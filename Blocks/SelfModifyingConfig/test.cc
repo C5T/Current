@@ -54,7 +54,8 @@ TEST(SelfModifyingConfig, Smoke) {
 
   current::FileSystem::WriteStringToFile(JSON(UnitTestSelfModifyingConfig(1)), config_filename.c_str());
 
-  current::time::SetNow(std::chrono::microseconds(429865200ll * 1000ll * 1000ll));  // I was born. -- D.K.
+  current::time::SetNow(
+      current::DateTimeStringToTimestamp("1983-08-16 00-00-00", "%Y-%m-%d %H-%M-%S"));  // I was born. -- D.K.
 
   current::SelfModifyingConfig<UnitTestSelfModifyingConfig> config(config_filename);
   EXPECT_EQ(1, config.Config().x);
@@ -62,7 +63,8 @@ TEST(SelfModifyingConfig, Smoke) {
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(config_filename));
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(historical_filename));
 
-  current::time::SetNow(std::chrono::microseconds(1439708400ll * 1000ll * 1000ll));  // I turned 32. -- D.K.
+  current::time::SetNow(
+      current::DateTimeStringToTimestamp("2015-08-16 00-00-00", "%Y-%m-%d %H-%M-%S"));  // I turned 32. -- D.K.
   config.Update(UnitTestSelfModifyingConfig(2));
 
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(historical_filename));
@@ -87,7 +89,8 @@ TEST(SelfModifyingConfig, ReadFileException) {
   const std::string historical_filename = config_filename + ".19830816-000000";
   const auto historical_file_remover = current::FileSystem::ScopedRmFile(historical_filename);
 
-  current::time::SetNow(std::chrono::microseconds(429865200ll * 1000ll * 1000ll));  // I was born. -- D.K.
+  current::time::SetNow(
+      current::DateTimeStringToTimestamp("1983-08-16 00-00-00", "%Y-%m-%d %H-%M-%S"));  // I was born. -- D.K.
 
   ASSERT_THROW(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename),
                current::SelfModifyingConfigReadFileException);
@@ -110,7 +113,8 @@ TEST(SelfModifyingConfig, ParseJSONException) {
   const std::string historical_filename = config_filename + ".19830816-000000";
   const auto historical_file_remover = current::FileSystem::ScopedRmFile(historical_filename);
 
-  current::time::SetNow(std::chrono::microseconds(429865200ll * 1000ll * 1000ll));  // I was born. -- D.K.
+  current::time::SetNow(
+      current::DateTimeStringToTimestamp("1983-08-16 00-00-00", "%Y-%m-%d %H-%M-%S"));  // I was born. -- D.K.
 
   current::FileSystem::WriteStringToFile("De Louboutin.", config_filename.c_str());
 
@@ -135,7 +139,9 @@ TEST(SelfModifyingConfig, WriteFileException) {
   const auto historical_file_remover = current::FileSystem::ScopedRmDir(historical_filename);
   current::FileSystem::MkDir(historical_filename, current::FileSystem::MkDirParameters::Silent);
 
-  current::time::SetNow(std::chrono::microseconds(429865200ll * 1000ll * 1000ll));  // I was born. -- D.K.
+  current::time::SetNow(
+      current::DateTimeStringToTimestamp("1983-08-16 00-00-00", "%Y-%m-%d %H-%M-%S"));  // I was born. -- D.K.
+
   current::FileSystem::WriteStringToFile(JSON(UnitTestSelfModifyingConfig(4)), config_filename.c_str());
 
   ASSERT_THROW(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename),
