@@ -28,7 +28,7 @@ SOFTWARE.
 // `SelfModifyingConfig<T>` reads the config of type `T`, and can update it dynamically, preserving the history.
 //
 // `SelfModifyingConfig<T>`, takes one required constructor parameter: path to the file from where the config
-// should be read. The underlying config can be accessed via `.Config()`, or a cast to `conts T&`.
+// should be read. The underlying config can be accessed via `.Config()`, or a cast to `const T&`.
 //
 // The user can reload the config via `Reload()`, or update the config via `Update(const T& new_config)`.
 //
@@ -90,7 +90,7 @@ class SelfModifyingConfig final : public SelfModifyingConfigHelper {
 
   // Not thread-safe.
   void Update(const config_t& new_config, std::chrono::microseconds now = current::time::Now()) {
-    // First, save the curent config under a new name.
+    // First, save the current config under a new name.
     // This could be atomic rename, but meh. -- D.K.
     const std::string new_filename = HistoricalFilename(filename_, now);
     try {

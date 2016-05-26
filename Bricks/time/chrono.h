@@ -152,6 +152,19 @@ inline std::string FormatDateTime(std::chrono::microseconds t,
   }
 }
 
+inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& datetime,
+                                                           const char* format_string) {
+  struct tm tm;
+  if (strptime(datetime.c_str(), format_string, &tm)) {
+    tm.tm_isdst = -1;
+    time_t tt = mktime(&tm);
+    return std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt))
+        .time_since_epoch();
+  } else {
+    return std::chrono::microseconds(0);
+  }
+}
+
 }  // namespace current
 
 #endif  // BRICKS_TIME_CHRONO_H

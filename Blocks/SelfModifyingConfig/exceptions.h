@@ -34,16 +34,16 @@ struct SelfModifyingConfigException : Exception {
   using Exception::Exception;
 };
 
-struct SelfModifyingConfigReadFileException : Exception {
-  using Exception::Exception;
+struct SelfModifyingConfigReadFileException : SelfModifyingConfigException {
+  using SelfModifyingConfigException::SelfModifyingConfigException;
 };
 
-struct SelfModifyingConfigWriteFileException : Exception {
-  using Exception::Exception;
+struct SelfModifyingConfigWriteFileException : SelfModifyingConfigException {
+  using SelfModifyingConfigException::SelfModifyingConfigException;
 };
 
-struct SelfModifyingConfigParseJSONException : Exception {
-  using Exception::Exception;
+struct SelfModifyingConfigParseJSONException : SelfModifyingConfigException {
+  using SelfModifyingConfigException::SelfModifyingConfigException;
 };
 
 }  // namespace current
