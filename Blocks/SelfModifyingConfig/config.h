@@ -92,7 +92,7 @@ class SelfModifyingConfig final : public SelfModifyingConfigHelper {
   void Update(const config_t& new_config, std::chrono::microseconds now = current::time::Now()) {
     // First, save the curent config under a new name.
     // This could be atomic rename, but meh. -- D.K.
-    const std::string new_filename = filename_ + current::FormatDateTime(now, ".%Y%m%d-%H%M%S");
+    const std::string new_filename = HistoricalFilename(filename_, now);
     try {
       current::FileSystem::WriteStringToFile(JSON(config_), new_filename.c_str());
     } catch (const current::FileException&) {
