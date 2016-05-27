@@ -563,7 +563,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   claire.codename = "ABCDEF";
   claire.local_port = PickPortForUnitTest();
   // Register a fake service.
-  HTTP(claire.local_port).Register("/.current", [](Request r) { r("GOTIT\n"); });
+  auto http_scope = HTTP(claire.local_port).Register("/.current", [](Request r) { r("GOTIT\n"); });
 
   {
     const std::string keepalive_url = Printf("%s?codename=%s&port=%d",

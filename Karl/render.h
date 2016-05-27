@@ -216,12 +216,17 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
 
   // Group services by machines.
   for (const auto& machine : status.machines) {
-    auto group = Group()
-                     .Label(machine.first + '\n' + machine.second.time_skew)
-                     .LabelLoc("t")
-                     .FontName("Courier")
-                     .FontSize("32")
-                     .GraphStyle("dashed");
+    const auto& m = machine.second;
+    auto group =
+        Group()
+            .Label(machine.first + '\n' +
+                   (Exists(m.cloud_instance_name) ? Value(m.cloud_instance_name) + '\n' : "") +
+                   (Exists(m.cloud_availability_group) ? Value(m.cloud_availability_group) + '\n' : "") +
+                   machine.second.time_skew)
+            .LabelLoc("t")
+            .FontName("Courier")
+            .FontSize("32")
+            .GraphStyle("dashed");
     for (const auto& codename : machines[machine.first]) {
       group.Add(services[codename]);
     }
