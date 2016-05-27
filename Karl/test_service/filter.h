@@ -49,6 +49,8 @@ class ServiceFilter final {
         http_stream_subscriber_(source_annotated_numbers_stream_,
                                 [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {
+    claire_.BoilerplateStatus().cloud_instance_name = "Computer";
+    claire_.BoilerplateStatus().cloud_availability_group = "Earth";
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
     claire_.Register(nullptr, true);
