@@ -423,7 +423,7 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
              ::current::storage::StorageFieldTypeSelector<field_container_##field_name##_t>(),                 \
              ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                   \
   }                                                                                                            \
-  field_type_##field_name##_t field_name = field_type_##field_name##_t(current_storage_mutation_journal_);     \
+  field_type_##field_name##_t field_name{current_storage_mutation_journal_};                                   \
   void operator()(const entry_name::persisted_event_1_t& e) { field_name(e); }                                 \
   void operator()(const entry_name::persisted_event_2_t& e) { field_name(e); }
 // clang-format on
