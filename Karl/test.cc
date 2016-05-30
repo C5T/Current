@@ -72,8 +72,9 @@ DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test fo
 
 DEFINE_bool(karl_overwrite_golden_files, false, "Set to true to have SVG golden files created/overwritten.");
 
-using unittest_karl_t =
-    current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
+using unittest_karl_t = current::karl::GenericKarl<current::karl::UseOwnStorage,
+                                                   current::karl::default_user_status::status,
+                                                   karl_unittest::is_prime>;
 using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
 
 static current::karl::KarlParameters UnittestKarlParameters() {
@@ -902,6 +903,82 @@ TEST(Karl, EndToEndTest) {
     while (true) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+  }
+}
+
+namespace karl_unittest {
+
+CURRENT_STRUCT(CustomField) {
+  CURRENT_FIELD(id, uint32_t);
+  CURRENT_USE_FIELD_AS_KEY(id);
+  CURRENT_FIELD(s, std::string);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(CustomField) {}
+  CURRENT_CONSTRUCTOR(CustomField)(uint32_t id, const std::string& s) : id(id), s(s) {}
+};
+
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, CustomField, CustomFieldDictionary);
+
+CURRENT_STORAGE(CustomKarlStorage) {
+  // Required storage fields for Karl.
+  CURRENT_STORAGE_FIELD(karl, current::karl::KarlInfoDictionary);
+  CURRENT_STORAGE_FIELD(claires, current::karl::ClaireInfoDictionary);
+  CURRENT_STORAGE_FIELD(builds, current::karl::BuildInfoDictionary);
+  CURRENT_STORAGE_FIELD(servers, current::karl::ServerInfoDictionary);
+  // Custom field.
+  CURRENT_STORAGE_FIELD(custom_field, CustomFieldDictionary);
+};
+
+}  // namespace karl_unittest
+
+TEST(Karl, CustomStorage) {
+  using namespace karl_unittest;
+  current::time::ResetToZero();
+
+  using custom_storage_t = CustomKarlStorage<SherlockStreamPersister>;
+  using custom_karl_t = current::karl::GenericKarl<custom_storage_t,
+                                                   current::karl::default_user_status::status,
+                                                   karl_unittest::is_prime>;
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  custom_storage_t storage(FLAGS_karl_test_storage_persistence_file);
+
+  {
+    const auto result = storage.ReadWriteTransaction([](MutableFields<custom_storage_t> fields) {
+      fields.custom_field.Add(CustomField(42, "UnitTest"));
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  std::string generator_codename;
+  {
+    const custom_karl_t karl(storage, UnittestKarlParameters());
+    const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+    const karl_unittest::ServiceGenerator generator(
+        FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
+    generator_codename = generator.ClaireCodename();
+
+    const auto result =
+        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+          ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                    Value(fields.claires[generator_codename]).registered_state);
+        }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    const auto result = storage.ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+      // `generator` has deregistered itself on destruction.
+      ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+      EXPECT_EQ(current::karl::ClaireRegisteredState::Deregistered,
+                Value(fields.claires[generator_codename]).registered_state);
+      // Our `custom_field` is fine.
+      ASSERT_TRUE(Exists(fields.custom_field[42]));
+      EXPECT_EQ("UnitTest", Value(fields.custom_field[42]).s);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
   }
 }
 

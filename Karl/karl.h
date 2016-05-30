@@ -142,41 +142,69 @@ class KarlNginxManager {
   uint64_t last_reflected_state_stream_size_;
 };
 
-// This class is to have the `Storage` initialized before `KarlNginxManager`.
-struct KarlBase {
-  using storage_t = ServiceStorage<SherlockStreamPersister>;
+struct UseOwnStorage {};
 
-  const KarlParameters parameters_;
-  const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
+// Storage initializer base class.
+// `STORAGE_TYPE` is either a real type of the storage if an external storage is used, or a `UseOwnStorage`,
+// which makes Karl create its own `ServiceStorage` instance.
+template <class STORAGE_TYPE>
+struct KarlStorage {
+  using storage_t = STORAGE_TYPE;
+  storage_t& storage_;
+
+ protected:
+  explicit KarlStorage(storage_t& storage) : storage_(storage) {}
+};
+
+template <>
+struct KarlStorage<UseOwnStorage> {
+  using storage_t = ServiceStorage<SherlockStreamPersister>;
   storage_t storage_;
 
  protected:
-  explicit KarlBase(const KarlParameters& parameters)
-      : parameters_(parameters),
-        actual_public_url_(
-            parameters_.public_url == kDefaultFleetViewURL
-                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
-                : parameters_.public_url),
-        storage_(parameters_.storage_persistence_file) {}
+  explicit KarlStorage(const std::string& persistence_file) : storage_(persistence_file) {}
 };
 
-template <typename... TS>
-class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStorage<SherlockStreamPersister>> {
+template <class STORAGE_TYPE, typename... TS>
+class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
+                          private KarlNginxManager<typename KarlStorage<STORAGE_TYPE>::storage_t> {
  public:
   using runtime_status_variant_t = Variant<TS...>;
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
   using karl_status_t = GenericKarlStatus<runtime_status_variant_t>;
   using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
-  using storage_t = KarlBase::storage_t;
+  using storage_t = typename KarlStorage<STORAGE_TYPE>::storage_t;
 
+  template <class S = STORAGE_TYPE, class = std::enable_if_t<std::is_same<S, UseOwnStorage>::value>>
   explicit GenericKarl(const KarlParameters& parameters)
-      : KarlBase(parameters),
-        KarlNginxManager(KarlBase::storage_,
-                         parameters.nginx_parameters,
-                         parameters.keepalives_port,
-                         parameters.fleet_view_port),
+      : GenericKarl(parameters.storage_persistence_file, parameters, PrivateConstructorSelector()) {}
+
+  template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
+  explicit GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters)
+      : GenericKarl(storage, parameters, PrivateConstructorSelector()) {}
+
+ private:
+  using karl_storage_t = KarlStorage<STORAGE_TYPE>;
+  using karl_nginx_manager_t = KarlNginxManager<typename karl_storage_t::storage_t>;
+  // We need these `using`s because of template base classes :(
+  using karl_storage_t::storage_;
+  using karl_nginx_manager_t::UpdateNginxIfNeeded;
+  using karl_nginx_manager_t::has_nginx_config_file_;
+  using karl_nginx_manager_t::nginx_parameters_;
+
+  struct PrivateConstructorSelector {};
+  template <typename T>
+  GenericKarl(T& storage_or_file, const KarlParameters& parameters, PrivateConstructorSelector)
+      : karl_storage_t(storage_or_file),
+        karl_nginx_manager_t(
+            storage_, parameters.nginx_parameters, parameters.keepalives_port, parameters.fleet_view_port),
         destructing_(false),
+        parameters_(parameters),
+        actual_public_url_(
+            parameters_.public_url == kDefaultFleetViewURL
+                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
+                : parameters_.public_url),
         keepalives_stream_(parameters_.stream_persistence_file),
         state_update_thread_([this]() { StateUpdateThread(); }),
         http_scope_(HTTP(parameters_.keepalives_port)
@@ -228,6 +256,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
     }).Wait();
   }
 
+ public:
   ~GenericKarl() {
     destructing_ = true;
     storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
@@ -831,6 +860,8 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
   }
 
   std::atomic_bool destructing_;
+  const KarlParameters parameters_;
+  const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
   std::condition_variable update_thread_condition_variable_;
@@ -845,7 +876,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
   const HTTPRoutesScope http_scope_;
 };
 
-using Karl = GenericKarl<default_user_status::status>;
+using Karl = GenericKarl<UseOwnStorage, default_user_status::status>;
 
 }  // namespace current::karl
 }  // namespace current
