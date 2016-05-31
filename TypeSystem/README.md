@@ -94,7 +94,7 @@ Along with `CURRENT_STRUCT`, Current type system supports `CURRENT_STRUCT_T`: ef
 
 ### Field Descriptions
 
-When a `CURRENT_STRUCT` defined a `CURRENT_FIELD(foo, ...);`, it may also define `CURRENT_FIELD_DESCRIPTION(foo, "This is the story of foo.");` Like fields, field descriptions can be reflected upon. Field descriptions can also be exported in various formats, most notably C++ itself (as the definition of the C++ struct), and (Markdown)[https://github.com/C5T/Current/blob/master/TypeSystem/Schema/golden/smoke_test_struct.md].
+When a `CURRENT_STRUCT` defined a `CURRENT_FIELD(foo, ...);`, it may also define `CURRENT_FIELD_DESCRIPTION(foo, "This is the story of foo.");` Like fields, field descriptions can be reflected upon. Field descriptions can also be exported in various formats, most notably C++ itself (as the definition of the C++ struct), and [Markdown](https://github.com/C5T/Current/blob/master/TypeSystem/Schema/golden/smoke_test_struct.md).
 
 ## `Optional`
 
@@ -113,11 +113,11 @@ For polymorphic types, `Variant<TS...>` can be used. C++ usage of `Variant<A, B>
  
 The former two syntaxes return an xvalue, which can be captured into a reference, assigned to, etc.
 
-The latter syntax is recommended as it's a) more efficient, and b) ensures the compile-type guarantee no inner type is left out.
+The latter syntax is recommended for implementing per-type dispatching, as it's a) more efficient, and b) ensures the compile-type guarantee no inner type is left out.
 
 # Serialization
 
-One objective behind extending the type system has been to enable JSON serialization of C++ objects. For the full story, we've been unhappy with the way (Cereal)[http://uscilab.github.io/cereal/]'s deals with polymorphic objects, both on the C++ side (not friendly with header-only) and on the resulting JSON side (not well-suited for RESTful API formats).
+One objective behind extending the type system has been to enable JSON serialization of C++ objects. For the full story, we've been unhappy with the way [Cereal](http://uscilab.github.io/cereal/)'s deals with polymorphic objects, both on the C++ side (not friendly with header-only) and on the resulting JSON side (not well-suited for RESTful API formats).
 
 All `CURRENT_STRUCT`-s, as well as STL containers containing them, and as well as top-level `Variant` types, are fully serializable to and from JSON.
 
@@ -127,11 +127,11 @@ The default syntax for JSON serialization is `T object; json = JSON(object)` and
 
 ### Minimalistic Format
 
-Note that for default serialization, `Variant<TS...>` types the resulting JSON would be a JSON object contain the Type ID of the serialized case of a variant, under a key of an empty string. For default deserialization, per-type dispatching is done based on the Type ID which is expected to be found in the empty-string key.
+Note that for default serialization of `Variant<TS...>` types the resulting JSON would be a JSON object contain the Type ID of the serialized case of a variant, under a key of an empty string. For default deserialization, per-type dispatching is done based on the Type ID which is expected to be found in the empty-string key.
 
-This is to enable distinguishing between two different types declared under the same name in different namespaces, as well as to eliminate the possibility of deserializing certain `Variant` case into an evolved version of this type, with different set of fields.
+This is to enable distinguishing between two different types declared under the same name in different namespaces, as well as to eliminate the possibility of deserializing certain `Variant` case into a modified version of this type, with different set of fields.
 
-If this behavior is undesired, and the user assumes responsibility for unique type naming (and knows what they are doing with respect to type evolution, such as adding fields or changing field types), `JSON<JSONFormat::Minimalistic>(object)` and `ParseJSON<T, JSONFormat::Minimalistic>` can be used.
+If this behavior is undesired, and the user assumes responsibility for unique type naming (and knows what they are doing with respect to modifying fields, such as adding/removing them or changing their types), `JSON<JSONFormat::Minimalistic>(object)` and `ParseJSON<T, JSONFormat::Minimalistic>` can be used.
 
 Generally, for a `Variant<A, B>`, where `A` is `CURRENT_STRUCT(A) { CURRENT_FIELD(x, int32_t); }` and `B` is `CURRENT_STRUCT(B) { CURRENT_FIELD(y, int32_t); }`, the `JSONFormat::Minimalistic` serialization would be:
 
@@ -186,4 +186,4 @@ For the above examples to work, run `git clone https://github.com/C5T/Current` a
 
 To save on compilation time, consider fine-graining your headers, ex. `#include "Current/TypeSystem/struct.h"` for just the `CURRENT_STRUCT`.
 
-The master branch of code is (C5T/Current/TypeSystem)[https://github.com/C5T/Current/tree/master/TypeSystem], and its (unit test)[https://github.com/C5T/Current/blob/master/TypeSystem/test.cc] contains plenty of usage examples.
+The master branch of code is [C5T/Current/TypeSystem](https://github.com/C5T/Current/tree/master/TypeSystem), and its [unit test](https://github.com/C5T/Current/blob/master/TypeSystem/test.cc) contains plenty of usage examples.
