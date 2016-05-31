@@ -102,6 +102,8 @@ A special type `Optional<T>` is used to define `T` or `null`. C++ usage of `Opti
 * an `if (Exists(x))` condition, and
 * a `T y = Value(x)` retrieval.
 
+This syntax returns an xvalue, which can be captured into a reference, assigned to, etc.
+
 ## `Variant`
 
 For polymorphic types, `Variant<TS...>` can be used. C++ usage of `Variant<A, B> x` is:
@@ -109,6 +111,8 @@ For polymorphic types, `Variant<TS...>` can be used. C++ usage of `Variant<A, B>
 * a `A a = Value<A>(x)` retrieval, or
 * the `x.Call(visitor)` pattern, where `visitor` is an instance of a struct/class that can be `operator()`-called for any of the underlying types.
  
+The former two syntaxes return an xvalue, which can be captured into a reference, assigned to, etc.
+
 The latter syntax is recommended as it's a) more efficient, and b) ensures the compile-type guarantee no inner type is left out.
 
 # Serialization
