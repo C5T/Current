@@ -9,11 +9,6 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-EPOCH_SECONDS="$(date +'%s')"
-if [[ $? -ne 0 ]]; then
-	exit 1
-fi
-
 COMPILER_INFO="$($CPLUSPLUS -v 2>&1)"
 if [[ $? -ne 0 ]]; then
 	exit 1
@@ -52,6 +47,7 @@ cat >$1 << EOF
 #include "$SCRIPT_DIR/../port.h"
 
 #include <chrono>
+#include <ctime>
 #include <vector>
 #include <string>
 
@@ -61,6 +57,7 @@ cat >$1 << EOF
 namespace current {
 namespace build {
 
+constexpr static const char* kBuildDateTime = __DATE__ ", " __TIME__;
 constexpr static const char* kGitCommit = "$GIT_COMMIT";
 constexpr static const char* kGitBranch = "$GIT_BRANCH";
 constexpr static const char* kOS = "$OS_VERSION";
@@ -74,8 +71,53 @@ inline const std::vector<std::string>& GitDiffNames() {
   return result;
 }
 
+inline std::chrono::microseconds BuildTimestamp() {
+  assert(strlen(kBuildDateTime) == 21u);
+  const char* s = kBuildDateTime;
+  std::tm tm;
+  if (s[0] == 'J') {
+    if (s[1] == 'a') {
+      tm.tm_mon = 0;  // January.
+    } else if (s[2] == 'n') {
+      tm.tm_mon = 5;  // June.
+    } else {
+      tm.tm_mon = 6;  // July.
+    }
+  } else if (s[0] == 'F') {
+    tm.tm_mon = 1;  // February.
+  } else if (s[0] == 'M') {
+    if (s[2] == 'r') {
+      tm.tm_mon = 2;  // March.
+    } else {
+      tm.tm_mon = 4;  // May.
+    }
+  } else if (s[0] == 'A') {
+    if (s[1] == 'p') {
+      tm.tm_mon = 3;  // April.
+    } else {
+      tm.tm_mon = 7;  // August.
+    }
+  } else if (s[0] == 'S') {
+      tm.tm_mon = 8;  // September.
+  } else if (s[0] == 'O') {
+      tm.tm_mon = 9;  // October.
+  } else if (s[0] == 'N') {
+      tm.tm_mon = 10;  // November.
+  } else {
+      tm.tm_mon = 11;  // December.
+  }
+  tm.tm_mday = (s[4] - '0') * 10 + (s[5] - '0');
+  tm.tm_year = ((s[7] - '0') * 1000 + (s[8] - '0') * 100 + (s[9] - '0') * 10 + (s[10] - '0')) - 1900;
+  tm.tm_hour = (s[13] - '0') * 10 + (s[14] - '0');
+  tm.tm_min = (s[16] - '0') * 10 + (s[17] - '0');
+  tm.tm_sec = (s[19] - '0') * 10 + (s[20] - '0');
+  tm.tm_isdst = -1;
+  time_t tt = mktime(&tm);
+  return std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt)).time_since_epoch();
+}
+
 CURRENT_STRUCT(BuildInfo) {
-  CURRENT_FIELD(build_time, std::string, __DATE__ ", " __TIME__);
+  CURRENT_FIELD(build_time, std::string, kBuildDateTime);
   CURRENT_FIELD_DESCRIPTION(build_time, "The date and time of the build, in 'mmm dd yyyy, hh:mm:ss' format.");
 
   CURRENT_FIELD(build_dir, std::string, "$PWD");
@@ -84,7 +126,7 @@ CURRENT_STRUCT(BuildInfo) {
   CURRENT_FIELD(build_user, std::string, "$(whoami)");
   CURRENT_FIELD_DESCRIPTION(build_user, "The system ID of the user who built the binary (\`whoami\`).");
 
-  CURRENT_FIELD(build_time_epoch_microseconds, std::chrono::microseconds, std::chrono::microseconds(1000ull * 1000ull * $EPOCH_SECONDS));
+  CURRENT_FIELD(build_time_epoch_microseconds, std::chrono::microseconds, BuildTimestamp());
   CURRENT_FIELD_DESCRIPTION(build_time_epoch_microseconds, "Unix epoch microseconds of when the binary was built.");
 
   CURRENT_FIELD(git_commit_hash, std::string, kGitCommit);
