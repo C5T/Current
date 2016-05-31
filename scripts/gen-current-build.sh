@@ -71,8 +71,12 @@ inline const std::vector<std::string>& GitDiffNames() {
   return result;
 }
 
+// A hacky, but cross-platform way to parse \`kBuildDateTime\` since:
+// * \`__DATE__\` always contains English months,
+// * GCC < 5.0 doesn't have \`get_time\`,
+// * \`strptime\` is locale-dependent and \`setlocale\` is not thread-safe.
 inline std::chrono::microseconds BuildTimestamp() {
-  assert(strlen(kBuildDateTime) == 21u);
+  assert(strlen(kBuildDateTime) == 21u); // "mmm dd yyyy, hh:mm:ss".
   const char* s = kBuildDateTime;
   std::tm tm;
   if (s[0] == 'J') {
