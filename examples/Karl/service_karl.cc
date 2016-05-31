@@ -44,8 +44,9 @@ int main(int argc, char **argv) {
   if (!FLAGS_nginx_config.empty()) {
     params.SetNginxParameters(current::karl::KarlNginxParameters(FLAGS_nginx_port, FLAGS_nginx_config));
   }
-  const current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime> karl(
-      params);
+  const current::karl::GenericKarl<current::karl::UseOwnStorage,
+                                   current::karl::default_user_status::status,
+                                   karl_unittest::is_prime> karl(params);
   std::cout << "Karl up, http://localhost:" << kDefaultKarlFleetViewPort << '/' << std::endl;
   if (!FLAGS_nginx_config.empty()) {
     std::cout << "Karl's Nginx is serving on http://localhost:" << FLAGS_nginx_port << '/' << std::endl;
