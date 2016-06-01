@@ -110,7 +110,7 @@ inline std::chrono::microseconds BuildTimestamp() {
   } else {
       tm.tm_mon = 11;  // December.
   }
-  tm.tm_mday = (s[4] - '0') * 10 + (s[5] - '0');
+  tm.tm_mday = (s[4] >= '0' ? (s[4] - '0') * 10 : 0) + (s[5] - '0');
   tm.tm_year = ((s[7] - '0') * 1000 + (s[8] - '0') * 100 + (s[9] - '0') * 10 + (s[10] - '0')) - 1900;
   tm.tm_hour = (s[13] - '0') * 10 + (s[14] - '0');
   tm.tm_min = (s[16] - '0') * 10 + (s[17] - '0');
