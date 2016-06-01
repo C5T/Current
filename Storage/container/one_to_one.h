@@ -53,7 +53,7 @@ class GenericOneToOne {
   using transposed_map_t = COL_MAP<col_t, const T*>;
   using rest_behavior_t = rest::behavior::Matrix;
 
-  explicit GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
+  GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }

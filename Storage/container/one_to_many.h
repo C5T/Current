@@ -55,7 +55,7 @@ class GenericOneToMany {
   using transposed_map_t = row_elements_map_t;
   using rest_behavior_t = rest::behavior::Matrix;
 
-  explicit GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
+  GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
