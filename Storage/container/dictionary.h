@@ -44,7 +44,7 @@ class GenericDictionary {
   using map_t = MAP<key_t, T>;
   using rest_behavior_t = rest::behavior::Dictionary;
 
-  explicit GenericDictionary(MutationJournal& journal) : journal_(journal) {}
+  GenericDictionary(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }

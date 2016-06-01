@@ -62,7 +62,7 @@ class GenericManyToMany {
   using DEPRECATED_T_(ROW) = row_t;
   using DEPRECATED_T_(COL) = col_t;
 
-  explicit GenericManyToMany(MutationJournal& journal) : journal_(journal) {}
+  GenericManyToMany(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
