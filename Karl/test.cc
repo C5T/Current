@@ -937,6 +937,7 @@ TEST(Karl, KarlNotifiesUserObject) {
   EXPECT_EQ(current::strings::Join(expected, ", "),
             current::strings::Join(karl_notifications_receiver.events, ", "));
 
+  // First, the end-to-end test with respect to callbacks.
   {
     const karl_unittest::ServiceGenerator generator(
         FLAGS_karl_generator_test_port, std::chrono::microseconds(1000000), karl_locator);
@@ -979,6 +980,47 @@ TEST(Karl, KarlNotifiesUserObject) {
   }
   EXPECT_EQ(current::strings::Join(expected, ", "),
             current::strings::Join(karl_notifications_receiver.events, ", "));
+
+  // Now, the timeout test with respect to callbacks.
+  {
+    current::karl::ClaireStatus claire;
+    claire.service = "unittest";
+    claire.codename = "ABCDEF";
+    claire.local_port = 8888;
+    ASSERT_TRUE(!karl.ActiveServicesCount());
+    {
+      const std::string keepalive_url = Printf("%s?codename=%s&port=%d",
+                                               karl_locator.address_port_route.c_str(),
+                                               claire.codename.c_str(),
+                                               claire.local_port);
+      const auto response = HTTP(POST(keepalive_url, claire));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      while (karl.ActiveServicesCount() != 1u) {
+        ;  // Spin lock.
+      }
+    }
+    expected.push_back("Keepalive: ABCDEF");
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+
+    current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
+                          std::chrono::microseconds(101 * 1000 * 1000));
+    bool is_timeouted_persisted = false;
+    while (!is_timeouted_persisted) {
+      is_timeouted_persisted =
+          Value(karl.InternalExposeStorage()
+                    .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                      EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                      return Value(fields.claires[claire.codename]).registered_state ==
+                             current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                    })
+                    .Go());
+    }
+
+    expected.push_back("TimedOut: ABCDEF");
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+  }
 }
 
 namespace karl_unittest {

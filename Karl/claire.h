@@ -74,10 +74,9 @@ inline std::string KeepaliveAttemptResultAsString(const InternalKeepaliveAttempt
   }
 }
 
-// Interface to implement for receiving notifications from Claire.
+// Interface to implement for receiving callbacks/notifications from Claire.
 class IClaireNotifiable {
  public:
-  IClaireNotifiable() = default;
   virtual ~IClaireNotifiable() = default;
   // Claire has been requested to change its Karl locator.
   virtual void OnKarlLocatorChanged(const Locator& locator) = 0;

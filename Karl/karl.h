@@ -168,7 +168,6 @@ struct KarlStorage<UseOwnStorage> {
 // Interface to implement for receiving callbacks/notifications from Karl.
 class IKarlNotifiable {
  public:
-  IKarlNotifiable() = default;
   virtual ~IKarlNotifiable() = default;
 
   // A new keepalive has been received from a service.
