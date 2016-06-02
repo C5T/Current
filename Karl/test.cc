@@ -760,26 +760,22 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
-namespace karl_unittest {
-
-struct ClaireNotifiable : current::karl::IClaireNotifiable {
-  std::vector<std::string> karl_urls;
-  void OnKarlLocatorChanged(const current::karl::Locator& locator) override {
-    karl_urls.push_back(locator.address_port_route);
-  }
-};
-
-}  // namespace karl_unittest
-
 TEST(Karl, ClaireNotifiesUserObject) {
   using namespace karl_unittest;
 
   current::time::ResetToZero();
 
+  struct ClaireNotifiable : current::karl::IClaireNotifiable {
+    std::vector<std::string> karl_urls;
+    void OnKarlLocatorChanged(const current::karl::Locator& locator) override {
+      karl_urls.push_back(locator.address_port_route);
+    }
+  };
+
   current::karl::Locator karl("http://localhost:12345/");
-  ClaireNotifiable notifications_receiver;
+  ClaireNotifiable claire_notifications_receiver;
   const uint16_t claire_port = PickPortForUnitTest();
-  current::karl::Claire claire(karl, "unittest", claire_port, notifications_receiver);
+  current::karl::Claire claire(karl, "unittest", claire_port, claire_notifications_receiver);
 
   // Switch Claire's Karl locator via HTTP request.
   {
@@ -799,7 +795,7 @@ TEST(Karl, ClaireNotifiesUserObject) {
   }
 
   EXPECT_EQ("http://host1:10000/,http://host2:10001/",
-            current::strings::Join(notifications_receiver.karl_urls, ','));
+            current::strings::Join(claire_notifications_receiver.karl_urls, ','));
 }
 
 TEST(Karl, ModifiedClaireBoilerplateStatus) {
@@ -904,6 +900,85 @@ TEST(Karl, EndToEndTest) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
+}
+
+TEST(Karl, KarlNotifiesUserObject) {
+  current::time::ResetToZero();
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+
+  using current::karl::ClaireStatus;
+  using current::karl::ClaireInfo;
+  struct KarlNotifiable : current::karl::IKarlNotifiable {
+    std::vector<std::string> events;
+    void OnKeepalive(std::chrono::microseconds, const std::string& codename, const ClaireStatus&) override {
+      events.push_back("Keepalive: " + codename);
+    }
+    void OnDeregistered(std::chrono::microseconds,
+                        const std::string& codename,
+                        const ImmutableOptional<ClaireInfo>&) override {
+      events.push_back("Deregistered: " + codename);
+    }
+    void OnTimedOut(std::chrono::microseconds,
+                    const std::string& codename,
+                    const ImmutableOptional<ClaireInfo>&) override {
+      events.push_back("TimedOut: " + codename);
+    }
+  };
+
+  KarlNotifiable karl_notifications_receiver;
+
+  const unittest_karl_t karl(UnittestKarlParameters(), karl_notifications_receiver);
+
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+
+  std::vector<std::string> expected;
+  EXPECT_EQ(current::strings::Join(expected, ", "),
+            current::strings::Join(karl_notifications_receiver.events, ", "));
+
+  {
+    const karl_unittest::ServiceGenerator generator(
+        FLAGS_karl_generator_test_port, std::chrono::microseconds(1000000), karl_locator);
+    expected.push_back("Keepalive: " + generator.ClaireCodename());
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+
+    const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
+    expected.push_back("Keepalive: " + is_prime.ClaireCodename());
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+
+    {
+      const karl_unittest::ServiceAnnotator annotator(
+          FLAGS_karl_annotator_test_port,
+          Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
+          Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
+          karl_locator);
+      expected.push_back("Keepalive: " + annotator.ClaireCodename());
+      EXPECT_EQ(current::strings::Join(expected, ", "),
+                current::strings::Join(karl_notifications_receiver.events, ", "));
+
+      {
+        const karl_unittest::ServiceFilter filter(FLAGS_karl_filter_test_port,
+                                                  Printf("http://localhost:%d", FLAGS_karl_annotator_test_port),
+                                                  karl_locator);
+        expected.push_back("Keepalive: " + filter.ClaireCodename());
+        EXPECT_EQ(current::strings::Join(expected, ", "),
+                  current::strings::Join(karl_notifications_receiver.events, ", "));
+        expected.push_back("Deregistered: " + filter.ClaireCodename());
+      }
+      EXPECT_EQ(current::strings::Join(expected, ", "),
+                current::strings::Join(karl_notifications_receiver.events, ", "));
+      expected.push_back("Deregistered: " + annotator.ClaireCodename());
+    }
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+    expected.push_back("Deregistered: " + is_prime.ClaireCodename());
+    expected.push_back("Deregistered: " + generator.ClaireCodename());
+  }
+  EXPECT_EQ(current::strings::Join(expected, ", "),
+            current::strings::Join(karl_notifications_receiver.events, ", "));
 }
 
 namespace karl_unittest {
