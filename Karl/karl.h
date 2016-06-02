@@ -166,12 +166,17 @@ struct KarlStorage<UseOwnStorage> {
 };
 
 // Interface to implement for receiving callbacks/notifications from Karl.
+template <typename RUNTIME_STATUS_VARIANT>
 class IKarlNotifiable {
  public:
+  using claire_status_t = ClaireServiceStatus<RUNTIME_STATUS_VARIANT>;
+
   virtual ~IKarlNotifiable() = default;
 
   // A new keepalive has been received from a service.
-  virtual void OnKeepalive(std::chrono::microseconds now, const std::string& codename, const ClaireStatus&) = 0;
+  virtual void OnKeepalive(std::chrono::microseconds now,
+                           const std::string& codename,
+                           const claire_status_t&) = 0;
   // A service has just gracefully deregistered itself.
   virtual void OnDeregistered(std::chrono::microseconds now,
                               const std::string& codename,
@@ -183,9 +188,11 @@ class IKarlNotifiable {
 };
 
 // Dummy class with no-op functions. Used by Karl if no custom notifiable class has been provided.
-class DummyKarlNotifiable : public IKarlNotifiable {
+template <typename RUNTIME_STATUS_VARIANT>
+class DummyKarlNotifiable : public IKarlNotifiable<RUNTIME_STATUS_VARIANT> {
  public:
-  void OnKeepalive(std::chrono::microseconds, const std::string&, const ClaireStatus&) override {}
+  using claire_status_t = ClaireServiceStatus<RUNTIME_STATUS_VARIANT>;
+  void OnKeepalive(std::chrono::microseconds, const std::string&, const claire_status_t&) override {}
   void OnDeregistered(std::chrono::microseconds,
                       const std::string&,
                       const ImmutableOptional<ClaireInfo>&) override {}
@@ -197,7 +204,7 @@ class DummyKarlNotifiable : public IKarlNotifiable {
 template <class STORAGE_TYPE, typename... TS>
 class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                           private KarlNginxManager<typename KarlStorage<STORAGE_TYPE>::storage_t>,
-                          private DummyKarlNotifiable {
+                          private DummyKarlNotifiable<Variant<TS...>> {
  public:
   using runtime_status_variant_t = Variant<TS...>;
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
@@ -209,14 +216,16 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   template <class S = STORAGE_TYPE, class = std::enable_if_t<std::is_same<S, UseOwnStorage>::value>>
   explicit GenericKarl(const KarlParameters& parameters)
       : GenericKarl(parameters.storage_persistence_file, parameters, *this, PrivateConstructorSelector()) {}
-  GenericKarl(const KarlParameters& parameters, IKarlNotifiable& notifiable)
+  GenericKarl(const KarlParameters& parameters, IKarlNotifiable<runtime_status_variant_t>& notifiable)
       : GenericKarl(parameters.storage_persistence_file, parameters, notifiable, PrivateConstructorSelector()) {
   }
 
   template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
   GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters)
       : GenericKarl(storage, parameters, *this, PrivateConstructorSelector()) {}
-  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters, IKarlNotifiable& notifiable)
+  GenericKarl(STORAGE_TYPE& storage,
+              const KarlParameters& parameters,
+              IKarlNotifiable<runtime_status_variant_t>& notifiable)
       : GenericKarl(storage, parameters, notifiable, PrivateConstructorSelector()) {}
 
  private:
@@ -232,7 +241,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   template <typename T>
   GenericKarl(T& storage_or_file,
               const KarlParameters& parameters,
-              IKarlNotifiable& notifiable,
+              IKarlNotifiable<runtime_status_variant_t>& notifiable,
               PrivateConstructorSelector)
       : karl_storage_t(storage_or_file),
         karl_nginx_manager_t(
@@ -485,11 +494,16 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
           auto& notifiable_ref = notifiable_ref_;
           storage_.ReadWriteTransaction(
-                       [this, now, location, &parsed_status, optional_behind_this_by, &notifiable_ref](
-                           MutableFields<storage_t> fields) -> Response {
+                       [this,
+                        now,
+                        location,
+                        &parsed_status,
+                        &detailed_parsed_status,
+                        optional_behind_this_by,
+                        &notifiable_ref](MutableFields<storage_t> fields) -> Response {
                          // OK to call from within a transaction.
                          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                         notifiable_ref.OnKeepalive(now, parsed_status.codename, parsed_status);
+                         notifiable_ref.OnKeepalive(now, parsed_status.codename, detailed_parsed_status);
 
                          const auto& service = parsed_status.service;
                          const auto& codename = parsed_status.codename;
@@ -918,7 +932,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   std::atomic_bool destructing_;
   const KarlParameters parameters_;
   const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
-  IKarlNotifiable& notifiable_ref_;
+  IKarlNotifiable<runtime_status_variant_t>& notifiable_ref_;
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
   std::condition_variable update_thread_condition_variable_;

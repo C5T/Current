@@ -908,21 +908,29 @@ TEST(Karl, KarlNotifiesUserObject) {
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
 
-  using current::karl::ClaireStatus;
-  using current::karl::ClaireInfo;
-  struct KarlNotifiable : current::karl::IKarlNotifiable {
+  struct KarlNotifiable : current::karl::IKarlNotifiable<
+                              Variant<current::karl::default_user_status::status, karl_unittest::is_prime>> {
     std::vector<std::string> events;
-    void OnKeepalive(std::chrono::microseconds, const std::string& codename, const ClaireStatus&) override {
-      events.push_back("Keepalive: " + codename);
+    void OnKeepalive(
+        std::chrono::microseconds,
+        const std::string& codename,
+        const current::karl::ClaireServiceStatus<
+            Variant<current::karl::default_user_status::status, karl_unittest::is_prime>>& status) override {
+      // First `Exists` for `Optional<>`, second for `Variant<>`.
+      if (!Exists(status.runtime) || !Exists<karl_unittest::is_prime>(Value(status.runtime))) {
+        events.push_back("Keepalive: " + codename);
+      } else {
+        events.push_back("PrimeKeepalive: " + codename);
+      }
     }
     void OnDeregistered(std::chrono::microseconds,
                         const std::string& codename,
-                        const ImmutableOptional<ClaireInfo>&) override {
+                        const ImmutableOptional<current::karl::ClaireInfo>&) override {
       events.push_back("Deregistered: " + codename);
     }
     void OnTimedOut(std::chrono::microseconds,
                     const std::string& codename,
-                    const ImmutableOptional<ClaireInfo>&) override {
+                    const ImmutableOptional<current::karl::ClaireInfo>&) override {
       events.push_back("TimedOut: " + codename);
     }
   };
@@ -946,7 +954,7 @@ TEST(Karl, KarlNotifiesUserObject) {
               current::strings::Join(karl_notifications_receiver.events, ", "));
 
     const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
-    expected.push_back("Keepalive: " + is_prime.ClaireCodename());
+    expected.push_back("PrimeKeepalive: " + is_prime.ClaireCodename());
     EXPECT_EQ(current::strings::Join(expected, ", "),
               current::strings::Join(karl_notifications_receiver.events, ", "));
 
