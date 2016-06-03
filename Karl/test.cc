@@ -913,6 +913,7 @@ TEST(Karl, KarlNotifiesUserObject) {
     std::vector<std::string> events;
     void OnKeepalive(
         std::chrono::microseconds,
+        const current::karl::ClaireServiceKey&,
         const std::string& codename,
         const current::karl::ClaireServiceStatus<
             Variant<current::karl::default_user_status::status, karl_unittest::is_prime>>& status) override {
