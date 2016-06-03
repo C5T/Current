@@ -109,7 +109,8 @@ class GenericClaire final : private DummyClaireNotifiable {
         notifiable_ref_(notifiable),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
-        keepalive_thread_terminating_(false) {}
+        keepalive_thread_terminating_(false),
+        keepalive_thread_force_wakeup_(false) {}
 
   GenericClaire(Locator karl,
                 const std::string& service,
@@ -178,6 +179,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
       notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
+    keepalive_thread_force_wakeup_ = true;
     keepalive_condition_variable_.notify_one();
   }
 
@@ -333,11 +335,18 @@ class GenericClaire final : private DummyClaireNotifiable {
       const std::chrono::microseconds now = current::time::Now();
 
       if (projected_next_keepalive > now) {
-        keepalive_condition_variable_.wait_for(lock, projected_next_keepalive - now);
+        keepalive_condition_variable_.wait_for(
+            lock,
+            projected_next_keepalive - now,
+            [this]() { return keepalive_thread_terminating_.load() || keepalive_thread_force_wakeup_.load(); });
       }
 
       if (keepalive_thread_terminating_) {
         return;
+      }
+
+      if (keepalive_thread_force_wakeup_) {
+        keepalive_thread_force_wakeup_ = false;
       }
 
       try {
@@ -425,6 +434,7 @@ class GenericClaire final : private DummyClaireNotifiable {
   const HTTPRoutesScope http_scope_;
 
   std::atomic_bool keepalive_thread_terminating_;
+  std::atomic_bool keepalive_thread_force_wakeup_;
   mutable std::mutex keepalive_mutex_;
   std::condition_variable keepalive_condition_variable_;
   std::thread keepalive_thread_;

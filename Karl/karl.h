@@ -175,6 +175,7 @@ class IKarlNotifiable {
 
   // A new keepalive has been received from a service.
   virtual void OnKeepalive(std::chrono::microseconds now,
+                           const ClaireServiceKey& location,
                            const std::string& codename,
                            const claire_status_t&) = 0;
   // A service has just gracefully deregistered itself.
@@ -192,7 +193,10 @@ template <typename RUNTIME_STATUS_VARIANT>
 class DummyKarlNotifiable : public IKarlNotifiable<RUNTIME_STATUS_VARIANT> {
  public:
   using claire_status_t = ClaireServiceStatus<RUNTIME_STATUS_VARIANT>;
-  void OnKeepalive(std::chrono::microseconds, const std::string&, const claire_status_t&) override {}
+  void OnKeepalive(std::chrono::microseconds,
+                   const ClaireServiceKey&,
+                   const std::string&,
+                   const claire_status_t&) override {}
   void OnDeregistered(std::chrono::microseconds,
                       const std::string&,
                       const ImmutableOptional<ClaireInfo>&) override {}
@@ -503,7 +507,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                         &notifiable_ref](MutableFields<storage_t> fields) -> Response {
                          // OK to call from within a transaction.
                          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                         notifiable_ref.OnKeepalive(now, parsed_status.codename, detailed_parsed_status);
+                         notifiable_ref.OnKeepalive(
+                             now, location, parsed_status.codename, detailed_parsed_status);
 
                          const auto& service = parsed_status.service;
                          const auto& codename = parsed_status.codename;

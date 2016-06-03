@@ -71,6 +71,7 @@ class ServiceGenerator final {
 
   ~ServiceGenerator() {
     destructing_ = true;
+    condition_variable_.notify_one();
     thread_.join();
   }
 
@@ -81,6 +82,7 @@ class ServiceGenerator final {
  private:
   void Thread() {
     while (!destructing_) {
+      std::unique_lock<std::mutex> lock(mutex_);
 #ifdef CURRENT_MOCK_TIME
       // Removed `SetNow` to avoid problems with service timeout tests -- M.Z.
       stream_.Publish(Number(current_value_),
@@ -89,7 +91,7 @@ class ServiceGenerator final {
       stream_.Publish(Number(current_value_));
 #endif
       ++current_value_;
-      std::this_thread::sleep_for(sleep_between_numbers_);
+      condition_variable_.wait_for(lock, sleep_between_numbers_, [this]() { return destructing_.load(); });
     }
   }
 
@@ -99,6 +101,8 @@ class ServiceGenerator final {
   const HTTPRoutesScope http_scope_;
   const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;
+  std::mutex mutex_;
+  std::condition_variable condition_variable_;
   std::thread thread_;
   current::karl::Claire claire_;
 };
