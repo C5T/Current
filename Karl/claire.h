@@ -70,20 +70,19 @@ inline std::string KeepaliveAttemptResultAsString(const InternalKeepaliveAttempt
   } else if (result.status == KeepaliveAttemptStatus::ErrorCodeReturned) {
     return "HTTP response code " + current::ToString(result.http_code);
   } else {
-    return "";
+    return "Error: " + JSON(result);
   }
 }
 
-// Interface to implement for receiving notifications from Claire.
+// Interface to implement for receiving callbacks/notifications from Claire.
 class IClaireNotifiable {
  public:
-  IClaireNotifiable() = default;
   virtual ~IClaireNotifiable() = default;
   // Claire has been requested to change its Karl locator.
   virtual void OnKarlLocatorChanged(const Locator& locator) = 0;
 };
 
-// Dummy class with no-op functions. Used by Claire if no custom notifiable class provided.
+// Dummy class with no-op functions. Used by Claire if no custom notifiable class has been provided.
 class DummyClaireNotifiable : public IClaireNotifiable {
  public:
   void OnKarlLocatorChanged(const Locator&) override {}
