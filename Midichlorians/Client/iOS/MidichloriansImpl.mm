@@ -321,7 +321,7 @@ using namespace current::midichlorians::ios::impl;
     }
     
     if (!info.empty()) {
-        [MidichloriansImpl emit:iOSDeviceInfo(info)];
+        [MidichloriansImpl emit:iOSDeviceInfo(std::move(info))];
     }
 #else
     static_cast<void>(options);
