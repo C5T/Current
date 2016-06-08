@@ -57,13 +57,14 @@ struct SUPER_SELECTOR<DeclareFields, T> {
 // `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`, and
 // its scope resolution for derived structs differs between Visual C++ and g++/clang++.
 // Confusing but works. -- D.K.
-template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T>
+template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T, typename TEMPLATE_INNER>
 struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   template <typename... ARGS>
   SUPER(ARGS&&... args)
       : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type(std::forward<ARGS>(args)...) {}
   using super_t = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
   using DEPRECATED_T_(SUPER) = super_t;
+  using template_inner_t = TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
   using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
   using typename REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
 #ifdef CURRENT_WINDOWS
@@ -165,9 +166,8 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   };                                                                                                \
   struct CURRENT_STRUCT_SUPER_HELPER_##s {                                                          \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
-    using SUPER = ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>,                        \
-                                               ::current::reflection::DeclareFields,                \
-                                               super>;                                              \
+    using SUPER = ::current::reflection::                                                           \
+        SUPER<CURRENT_REFLECTION_HELPER<s>, ::current::reflection::DeclareFields, super, void>;     \
     static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
   }
 
@@ -183,11 +183,13 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   };                                                                                                       \
-  struct CURRENT_STRUCT_T_SUPER_HELPER_##s {                                                               \
+  struct CURRENT_STRUCT_NO_T_SUPER_HELPER_##s {                                                            \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                        \
-    using SUPER = ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>,                             \
-                                               ::current::reflection::DeclareFields,                       \
-                                               super>;                                                     \
+  };                                                                                                       \
+  template <typename T>                                                                                    \
+  struct CURRENT_STRUCT_T_SUPER_HELPER_##s {                                                               \
+    using SUPER = ::current::reflection::                                                                  \
+        SUPER<CURRENT_REFLECTION_T_HELPER<s>, ::current::reflection::DeclareFields, super, T>;             \
     static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                       \
   }
 
@@ -229,21 +231,22 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 
 #ifndef CURRENT_WINDOWS
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                        \
-  template <typename INSTANTIATION_TYPE>                                                      \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_STRUCT_SUPER_HELPER_##s,                           \
-                                   ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, \
-                                                                INSTANTIATION_TYPE,           \
-                                                                ::current::CurrentStruct>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                  \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct); \
+  template <typename INSTANTIATION_TYPE>               \
+  struct CURRENT_STRUCT_IMPL_##s                       \
+      : CURRENT_STRUCT_SUPER_HELPER_##s,               \
+        ::current::reflection::                        \
+            SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, ::current::CurrentStruct, void>
 
-#define CURRENT_STRUCT_T_NOT_DERIVED(s)                                                           \
-  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                          \
-  template <typename T, typename INSTANTIATION_TYPE>                                              \
-  struct CURRENT_STRUCT_T_IMPL_##s : CURRENT_STRUCT_T_SUPER_HELPER_##s,                           \
-                                     ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, \
-                                                                  INSTANTIATION_TYPE,             \
-                                                                  ::current::CurrentStruct>
+#define CURRENT_STRUCT_T_NOT_DERIVED(s)                  \
+  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct); \
+  template <typename T, typename INSTANTIATION_TYPE>     \
+  struct CURRENT_STRUCT_T_IMPL_##s                       \
+      : CURRENT_STRUCT_NO_T_SUPER_HELPER_##s,            \
+        CURRENT_STRUCT_T_SUPER_HELPER_##s<T>,            \
+        ::current::reflection::                          \
+            SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, ::current::CurrentStruct, T>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                   \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
@@ -251,45 +254,46 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <typename INSTANTIATION_TYPE>                                                  \
   struct CURRENT_STRUCT_IMPL_##s                                                          \
       : CURRENT_STRUCT_SUPER_HELPER_##s,                                                  \
-        ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
+        ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base, void>
 
 #define CURRENT_STRUCT_T_DERIVED(s, base)                                                 \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
   CURRENT_STRUCT_T_HELPERS(s, base);                                                      \
   template <typename T, typename INSTANTIATION_TYPE>                                      \
   struct CURRENT_STRUCT_T_IMPL_##s                                                        \
-      : CURRENT_STRUCT_T_SUPER_HELPER_##s,                                                \
-        ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base>
+      : CURRENT_STRUCT_NO_T_SUPER_HELPER_##s,                                             \
+        CURRENT_STRUCT_T_SUPER_HELPER_##s<T>,                                             \
+        ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base, T>
 
 #else  // CURRENT_WINDOWS
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                        \
-  template <typename INSTANTIATION_TYPE>                                                      \
-  struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, \
-                                                                INSTANTIATION_TYPE,           \
-                                                                ::current::CurrentStruct>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                  \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct); \
+  template <typename INSTANTIATION_TYPE>               \
+  struct CURRENT_STRUCT_IMPL_##s                       \
+      : ::current::reflection::                        \
+            SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, ::current::CurrentStruct, void>
 
-#define CURRENT_STRUCT_T_NOT_DERIVED(s)                                                           \
-  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                          \
-  template <typename T, typename INSTANTIATION_TYPE>                                              \
-  struct CURRENT_STRUCT_T_IMPL_##s : ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, \
-                                                                  INSTANTIATION_TYPE,             \
-                                                                  ::current::CurrentStruct>
+#define CURRENT_STRUCT_T_NOT_DERIVED(s)                  \
+  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct); \
+  template <typename T, typename INSTANTIATION_TYPE>     \
+  struct CURRENT_STRUCT_T_IMPL_##s                       \
+      : ::current::reflection::                          \
+            SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, ::current::CurrentStruct, T>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                   \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
   CURRENT_STRUCT_HELPERS(s, base);                                                        \
   template <typename INSTANTIATION_TYPE>                                                  \
   struct CURRENT_STRUCT_IMPL_##s                                                          \
-      : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
+      : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base, void>
 
 #define CURRENT_STRUCT_T_DERIVED(s, base)                                                 \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
   CURRENT_STRUCT_T_HELPERS(s, base);                                                      \
   template <typename T, typename INSTANTIATION_TYPE>                                      \
   struct CURRENT_STRUCT_T_IMPL_##s                                                        \
-      : ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base>
+      : ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base, T>
 
 #endif  // CURRENT_WINDOWS
 
@@ -436,6 +440,16 @@ struct SuperTypeImpl {
 
 template <typename T>
 using SuperType = typename SuperTypeImpl<T>::type;
+
+template <typename T>
+struct TemplateInnerTypeImpl {
+  static_assert(IS_CURRENT_STRUCT(T),
+                "`TemplateInnerType` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  using type = typename T::template_inner_t;
+};
+
+template <typename T>
+using TemplateInnerType = typename TemplateInnerTypeImpl<T>::type;
 
 enum class FieldCounterPolicy { ThisStructOnly, IncludingSuperFields };
 

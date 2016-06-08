@@ -39,6 +39,7 @@ SOFTWARE.
 #include "../optional.h"
 #include "../variant.h"
 
+#include "../../Bricks/strings/util.h"
 #include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/util/crc32.h"
 #include "../../Bricks/util/rol.h"
@@ -152,10 +153,24 @@ CURRENT_STRUCT(ReflectedType_Struct_Field) {
 };
 
 CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
-  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(native_name, std::string);
   CURRENT_FIELD(super_id, TypeID);
+  CURRENT_FIELD(template_id, Optional<TypeID>);  // For instantiated `CURRENT_STRUCT_T`-s.
   CURRENT_FIELD(fields, std::vector<ReflectedType_Struct_Field>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct) {}
+  // The `CanonicalName()` method serves two purposes:
+  // 1) it generates the unique name, for a template-instantiated `CURRENT_STRUCT_T` as well, and
+  // 2) it makes sure the the 'autogen -> #include -> autogen' loop does not change TypeIDs of templated types.
+  std::string CanonicalName() const {
+    if (Exists(template_id)) {
+      // TODO(dkorolev): This code relies on `<>` at the end of the names of `CURRENT_STRUCT_T`-s. Fix it.
+      assert(native_name.length() > 2);
+      assert(native_name.substr(native_name.length() - 2) == "<>");
+      return native_name.substr(0, native_name.length() - 2) + "_T" + current::ToString(Value(template_id));
+    } else {
+      return native_name;
+    }
+  }
 };
 
 using ReflectedType = Variant<ReflectedType_Primitive,
@@ -172,7 +187,7 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete = false) {
-  uint64_t hash = current::CRC32(s.name);
+  uint64_t hash = current::CRC32(s.CanonicalName());
   size_t i = 0u;
   if (is_incomplete) {
     // For incomplete structs we use only the names of the fields for hashing,

@@ -151,11 +151,12 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9200000001262579448",
-          "name": "B2",
+          "native_name": "B2",
           "super_id": "T9206911749438269255",
+          "template_id": null,
           "fields": []
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -163,54 +164,84 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9200000002835747520",
-          "name": "Empty",
+          "native_name": "Empty",
           "super_id": "T1",
+          "template_id": null,
           "fields": []
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
       }
     ],
     [
-      "T9200530894714331022",
+      "T9201445533298328605",
       {
         "ReflectedType_Struct": {
-          "type_id": "T9200530894714331022",
-          "name": "FullTest",
-          "super_id": "T1",
+          "type_id": "T9201445533298328605",
+          "native_name": "TemplatedInheriting<>",
+          "super_id": "T9206911749438269255",
+          "template_id": "T9201673071807149456",
           "fields": [
             {
-              "type_id": "T9206969065948310524",
-              "name": "primitives",
-              "description": "A structure with a lot of primitive types."
-            },
-            {
-              "type_id": "T9319767778871345491",
-              "name": "v1",
+              "type_id": "T9000000000000000042",
+              "name": "baz",
               "description": null
             },
             {
-              "type_id": "T9315520306457829347",
-              "name": "v2",
+              "type_id": "T9201673071807149456",
+              "name": "meh",
               "description": null
-            },
-            {
-              "type_id": "T9334519405000386225",
-              "name": "p",
-              "description": null
-            },
-            {
-              "type_id": "T9211849004702662543",
-              "name": "o",
-              "description": null
-            },
-            {
-              "type_id": "T9220997507996730061",
-              "name": "q",
-              "description": "Field | descriptions | FTW !"
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9201595530795736902",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9201595530795736902",
+          "native_name": "TemplatedInheriting<>",
+          "super_id": "T9206911749438269255",
+          "template_id": "T9227782344077896555",
+          "fields": [
+            {
+              "type_id": "T9000000000000000042",
+              "name": "baz",
+              "description": null
+            },
+            {
+              "type_id": "T9227782344077896555",
+              "name": "meh",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9201673071807149456",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9201673071807149456",
+          "native_name": "Templated<>",
+          "super_id": "T1",
+          "template_id": "T9200000002835747520",
+          "fields": [
+            {
+              "type_id": "T9000000000000000033",
+              "name": "foo",
+              "description": null
+            },
+            {
+              "type_id": "T9200000002835747520",
+              "name": "bar",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -218,8 +249,9 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9202573821547132669",
-          "name": "B",
+          "native_name": "B",
           "super_id": "T9206911749438269255",
+          "template_id": null,
           "fields": [
             {
               "type_id": "T9000000000000000033",
@@ -228,7 +260,31 @@
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9202973911416238761",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9202973911416238761",
+          "native_name": "TemplatedInheriting<>",
+          "super_id": "T9206911749438269255",
+          "template_id": "T9200000002835747520",
+          "fields": [
+            {
+              "type_id": "T9000000000000000042",
+              "name": "baz",
+              "description": null
+            },
+            {
+              "type_id": "T9200000002835747520",
+              "name": "meh",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -236,8 +292,9 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9204551010916892864",
-          "name": "C",
+          "native_name": "C",
           "super_id": "T1",
+          "template_id": null,
           "fields": [
             {
               "type_id": "T9200000002835747520",
@@ -251,7 +308,31 @@
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9206251240926973264",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9206251240926973264",
+          "native_name": "Templated<>",
+          "super_id": "T1",
+          "template_id": "T9202973911416238761",
+          "fields": [
+            {
+              "type_id": "T9000000000000000033",
+              "name": "foo",
+              "description": null
+            },
+            {
+              "type_id": "T9202973911416238761",
+              "name": "bar",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -259,8 +340,9 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9206911749438269255",
-          "name": "A",
+          "native_name": "A",
           "super_id": "T1",
+          "template_id": null,
           "fields": [
             {
               "type_id": "T9000000000000000033",
@@ -269,7 +351,7 @@
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -277,8 +359,9 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9206969065948310524",
-          "name": "Primitives",
+          "native_name": "Primitives",
           "super_id": "T1",
+          "template_id": null,
           "fields": [
             {
               "type_id": "T9000000000000000021",
@@ -357,7 +440,7 @@
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -365,8 +448,9 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9208828720332602574",
-          "name": "Y",
+          "native_name": "Y",
           "super_id": "T1",
+          "template_id": null,
           "fields": [
             {
               "type_id": "T9010000003568589458",
@@ -375,7 +459,153 @@
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9208918217012896262",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9208918217012896262",
+          "native_name": "FullTest",
+          "super_id": "T1",
+          "template_id": null,
+          "fields": [
+            {
+              "type_id": "T9206969065948310524",
+              "name": "primitives",
+              "description": "A structure with a lot of primitive types."
+            },
+            {
+              "type_id": "T9319767778871345491",
+              "name": "v1",
+              "description": null
+            },
+            {
+              "type_id": "T9315520306457829347",
+              "name": "v2",
+              "description": null
+            },
+            {
+              "type_id": "T9334519405000386225",
+              "name": "p",
+              "description": null
+            },
+            {
+              "type_id": "T9211849004702662543",
+              "name": "o",
+              "description": null
+            },
+            {
+              "type_id": "T9220997507996730061",
+              "name": "q",
+              "description": "Field | descriptions | FTW !"
+            },
+            {
+              "type_id": "T9209454265127716773",
+              "name": "w1",
+              "description": null
+            },
+            {
+              "type_id": "T9209980087718877311",
+              "name": "w2",
+              "description": null
+            },
+            {
+              "type_id": "T9206251240926973264",
+              "name": "w3",
+              "description": null
+            },
+            {
+              "type_id": "T9209350173471375516",
+              "name": "w4",
+              "description": null
+            },
+            {
+              "type_id": "T9201595530795736902",
+              "name": "w5",
+              "description": null
+            },
+            {
+              "type_id": "T9201445533298328605",
+              "name": "w6",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9209350173471375516",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9209350173471375516",
+          "native_name": "TemplatedInheriting<>",
+          "super_id": "T9206911749438269255",
+          "template_id": "T9209980946934124423",
+          "fields": [
+            {
+              "type_id": "T9000000000000000042",
+              "name": "baz",
+              "description": null
+            },
+            {
+              "type_id": "T9209980946934124423",
+              "name": "meh",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9209454265127716773",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9209454265127716773",
+          "native_name": "Templated<>",
+          "super_id": "T1",
+          "template_id": "T9209980946934124423",
+          "fields": [
+            {
+              "type_id": "T9000000000000000033",
+              "name": "foo",
+              "description": null
+            },
+            {
+              "type_id": "T9209980946934124423",
+              "name": "bar",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
+      }
+    ],
+    [
+      "T9209980087718877311",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9209980087718877311",
+          "native_name": "Templated<>",
+          "super_id": "T1",
+          "template_id": "T9227782344077896555",
+          "fields": [
+            {
+              "type_id": "T9000000000000000033",
+              "name": "foo",
+              "description": null
+            },
+            {
+              "type_id": "T9227782344077896555",
+              "name": "bar",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -383,8 +613,9 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9209980946934124423",
-          "name": "X",
+          "native_name": "X",
           "super_id": "T1",
+          "template_id": null,
           "fields": [
             {
               "type_id": "T9000000000000000033",
@@ -393,7 +624,7 @@
             }
           ]
         },
-        "": "T9200309929209841417"
+        "": "T9206775416157022095"
       }
     ],
     [
@@ -486,6 +717,14 @@
     "T9227782344077896555",
     "T9204551010916892864",
     "T9220997507996730061",
-    "T9200530894714331022"
+    "T9209454265127716773",
+    "T9209980087718877311",
+    "T9202973911416238761",
+    "T9206251240926973264",
+    "T9209350173471375516",
+    "T9201595530795736902",
+    "T9201673071807149456",
+    "T9201445533298328605",
+    "T9208918217012896262"
   ]
 }

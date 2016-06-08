@@ -66,6 +66,66 @@ Algebraic type, `A` or `X` or `Y`
 Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 
 
+### `Templated_T9209980946934124423`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `foo` | Integer (32-bit signed) |
+| `bar` | `X` |
+
+
+### `Templated_T9227782344077896555`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `foo` | Integer (32-bit signed) |
+| `bar` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
+
+
+### `TemplatedInheriting_T9200000002835747520`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `a` | Integer (32-bit signed) |
+| `baz` | String |
+| `meh` | `Empty` |
+
+
+### `Templated_T9202973911416238761`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `foo` | Integer (32-bit signed) |
+| `bar` | `TemplatedInheriting_T9200000002835747520` |
+
+
+### `TemplatedInheriting_T9209980946934124423`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `a` | Integer (32-bit signed) |
+| `baz` | String |
+| `meh` | `X` |
+
+
+### `TemplatedInheriting_T9227782344077896555`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `a` | Integer (32-bit signed) |
+| `baz` | String |
+| `meh` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
+
+
+### `Templated_T9200000002835747520`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `foo` | Integer (32-bit signed) |
+| `bar` | `Empty` |
+
+
+### `TemplatedInheriting_T9201673071807149456`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `a` | Integer (32-bit signed) |
+| `baz` | String |
+| `meh` | `Templated_T9200000002835747520` |
+
+
 ### `FullTest`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
@@ -75,4 +135,10 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `p` | Pair of String and `Primitives` |
 | `o` | `null` or `Primitives` |
 | `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) | Field &#124; descriptions &#124; FTW ! |
+| `w1` | `Templated_T9209980946934124423` |
+| `w2` | `Templated_T9227782344077896555` |
+| `w3` | `Templated_T9202973911416238761` |
+| `w4` | `TemplatedInheriting_T9209980946934124423` |
+| `w5` | `TemplatedInheriting_T9227782344077896555` |
+| `w6` | `TemplatedInheriting_T9201673071807149456` |
 

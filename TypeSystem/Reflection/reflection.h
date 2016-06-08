@@ -152,12 +152,13 @@ struct ReflectorImpl {
         // First step: incomplete struct reflection using only field names.
         StructFieldReflector<T> field_names_reflector(s.fields, true);
         VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_names_reflector);
-        s.name = CurrentTypeName<T>();
+        s.native_name = CurrentTypeName<T>();
         s.type_id = CalculateTypeID(s, true);
         const TypeID incomplete_id = s.type_id;
 
         // Second step: full reflection with field types and names.
         s.super_id = ReflectSuper<T>();
+        s.template_id = ReflectTemplateInnerType<T>();
         s.fields.clear();
         StructFieldReflector<T> field_reflector(s.fields, false);
         VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_reflector);
@@ -175,6 +176,16 @@ struct ReflectorImpl {
     template <typename T>
     ENABLE_IF<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<SuperType<T>>()).type_id;
+    }
+
+    template <typename T>
+    ENABLE_IF<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+      return nullptr;
+    }
+
+    template <typename T>
+    ENABLE_IF<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+      return Value<ReflectedTypeBase>(Reflector().ReflectType<TemplateInnerType<T>>()).type_id;
     }
   };
 

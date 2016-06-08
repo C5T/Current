@@ -70,6 +70,50 @@ type Variant_B_A_B_B2_C_Empty_E =
 | C of C
 | Empty
 
+type Templated_T9209980946934124423 = {
+  foo : int32
+  bar : X
+}
+
+type Templated_T9227782344077896555 = {
+  foo : int32
+  bar : MyFreakingVariant
+}
+
+type TemplatedInheriting_T9200000002835747520 = {
+  a : int32
+  baz : string
+  meh : Empty
+}
+
+type Templated_T9202973911416238761 = {
+  foo : int32
+  bar : TemplatedInheriting_T9200000002835747520
+}
+
+type TemplatedInheriting_T9209980946934124423 = {
+  a : int32
+  baz : string
+  meh : X
+}
+
+type TemplatedInheriting_T9227782344077896555 = {
+  a : int32
+  baz : string
+  meh : MyFreakingVariant
+}
+
+type Templated_T9200000002835747520 = {
+  foo : int32
+  bar : Empty
+}
+
+type TemplatedInheriting_T9201673071807149456 = {
+  a : int32
+  baz : string
+  meh : Templated_T9200000002835747520
+}
+
 type FullTest = {
   // A structure with a lot of primitive types.
   primitives : Primitives
@@ -80,4 +124,10 @@ type FullTest = {
 
   // Field | descriptions | FTW !
   q : Variant_B_A_B_B2_C_Empty_E
+  w1 : Templated_T9209980946934124423
+  w2 : Templated_T9227782344077896555
+  w3 : Templated_T9202973911416238761
+  w4 : TemplatedInheriting_T9209980946934124423
+  w5 : TemplatedInheriting_T9227782344077896555
+  w6 : TemplatedInheriting_T9201673071807149456
 }

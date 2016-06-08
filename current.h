@@ -37,6 +37,7 @@ SOFTWARE.
 
 #include "TypeSystem/struct.h"
 #include "TypeSystem/Schema/schema.h"
+#include "TypeSystem/Evolution/type_evolution.h"
 
 #include "Storage/storage.h"
 

@@ -74,9 +74,16 @@ CURRENT_STRUCT(WithVector) {
   size_t vector_size() const { return v.size(); }
 };
 
+CURRENT_STRUCT_T(Templated) {
+  CURRENT_FIELD(i, uint32_t);
+  CURRENT_FIELD(t, T);
+};
+
 static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(Baz), "Struct `Baz` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(DerivedFromFoo), "Struct `DerivedFromFoo` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Templated<bool>), "Struct `Templated<>` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Templated<Foo>), "Struct `Templated<>` was not properly declared.");
 
 }  // namespace struct_definition_test
 
