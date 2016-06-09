@@ -208,7 +208,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
         SUPER<CURRENT_REFLECTION_T_HELPER<s>, ::current::reflection::DeclareFields, super, std::true_type>; \
   };                                                                                                        \
   template <typename T>                                                                                     \
-  struct CURRENT_STRUCT_T_SUPER_HELPER_2_##s {                                                              \
+  struct CURRENT_STRUCT_T_TEMPLATE_INNER_TYPE_EXTRACTOR_##s {                                               \
     using template_inner_t_impl = T;                                                                        \
   }
 
@@ -262,7 +262,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                          \
   template <typename T, typename INSTANTIATION_TYPE>                                              \
   struct CURRENT_STRUCT_T_IMPL_##s : CURRENT_STRUCT_T_SUPER_HELPER_##s,                           \
-                                     CURRENT_STRUCT_T_SUPER_HELPER_2_##s<T>,                      \
+                                     CURRENT_STRUCT_T_TEMPLATE_INNER_TYPE_EXTRACTOR_##s<T>,       \
                                      ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, \
                                                                   INSTANTIATION_TYPE,             \
                                                                   ::current::CurrentStruct,       \
@@ -279,12 +279,12 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // TODO(dkorolev): I've sacrificed the `static_assert(IS_CURRENT_STRUCT(base), #base " must be ...");` for now.
 // TODO(dkorolev): It can be re-inserted back via a helper class to inherit from. Not now. -- D.K.
 // ===>  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`.");  <===
-#define CURRENT_STRUCT_T_DERIVED(s, base)            \
-  CURRENT_STRUCT_T_HELPERS(s, base);                 \
-  template <typename T, typename INSTANTIATION_TYPE> \
-  struct CURRENT_STRUCT_T_IMPL_##s                   \
-      : CURRENT_STRUCT_T_SUPER_HELPER_##s,           \
-        CURRENT_STRUCT_T_SUPER_HELPER_2_##s<T>,      \
+#define CURRENT_STRUCT_T_DERIVED(s, base)                      \
+  CURRENT_STRUCT_T_HELPERS(s, base);                           \
+  template <typename T, typename INSTANTIATION_TYPE>           \
+  struct CURRENT_STRUCT_T_IMPL_##s                             \
+      : CURRENT_STRUCT_T_SUPER_HELPER_##s,                     \
+        CURRENT_STRUCT_T_TEMPLATE_INNER_TYPE_EXTRACTOR_##s<T>, \
         ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base, std::true_type>
 
 #else  // CURRENT_WINDOWS
