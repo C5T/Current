@@ -60,10 +60,13 @@ struct SUPER : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
 #else
 struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
 #endif
-  template <typename... ARGS>
-  SUPER(ARGS&&... args)
-      : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type(std::forward<ARGS>(args)...) {}
   using super_t = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
+
+  SUPER() = default;
+  SUPER(const super_t& rhs) : super_t(rhs) {}
+  SUPER(super_t&& rhs) : super_t(std::move(rhs)) {}
+  using super_t::super_t;
+
   using DEPRECATED_T_(SUPER) = super_t;
 #ifndef CURRENT_WINDOWS
   using template_inner_t_internal =
