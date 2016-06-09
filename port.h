@@ -216,7 +216,7 @@ const char* strptime(const char* input_string, const char* input_format, tm* out
   if (input.fail()) {
     return nullptr;
   } else {
-    return input_string + input.tellg();
+    return input_string + static_cast<std::ptrdiff_t>(input.tellg());
   }
 }
 }  // namespace enable_strptime_on_windows
