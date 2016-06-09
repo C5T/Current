@@ -73,6 +73,11 @@ CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
 #endif
 };
 
+CURRENT_STRUCT_T(Templated) {
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension, T);
+};
+
 using current::reflection::Reflector;
 
 }  // namespace reflection_test
@@ -121,6 +126,30 @@ TEST(Reflection, StructAndVariant) {
   EXPECT_NE(
       static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
       static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<AnotherFooBarBaz>()).type_id));
+
+  {
+    const auto& foo = Value<ReflectedType_Struct>(Reflector().ReflectType<Foo>());
+    EXPECT_EQ(9203762249085213197ull, static_cast<uint64_t>(foo.type_id));
+
+    const auto& bar = Value<ReflectedType_Struct>(Reflector().ReflectType<Bar>());
+    EXPECT_EQ(9206387322237345681ull, static_cast<uint64_t>(bar.type_id));
+
+    {
+      const auto& templated_foo = Value<ReflectedType_Struct>(Reflector().ReflectType<Templated<Foo>>());
+      EXPECT_EQ(2u, templated_foo.fields.size());
+      EXPECT_EQ(9204032299541411163ull, static_cast<uint64_t>(templated_foo.type_id));
+      EXPECT_EQ(9000000000000000042ull, static_cast<uint64_t>(templated_foo.fields[0].type_id));
+      EXPECT_EQ(static_cast<uint64_t>(foo.type_id), static_cast<uint64_t>(templated_foo.fields[1].type_id));
+    }
+
+    {
+      const auto& templated_bar = Value<ReflectedType_Struct>(Reflector().ReflectType<Templated<Bar>>());
+      EXPECT_EQ(2u, templated_bar.fields.size());
+      EXPECT_EQ(9202814639044342656ull, static_cast<uint64_t>(templated_bar.type_id));
+      EXPECT_EQ(9000000000000000042ull, static_cast<uint64_t>(templated_bar.fields[0].type_id));
+      EXPECT_EQ(static_cast<uint64_t>(bar.type_id), static_cast<uint64_t>(templated_bar.fields[1].type_id));
+    }
+  }
 }
 
 TEST(Reflection, CurrentStructInternals) {
@@ -150,6 +179,9 @@ TEST(Reflection, CurrentStructInternals) {
   EXPECT_EQ(4u, FieldCounter<Bar>::value + 0u);
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value + 0u);
+
+  static_assert(std::is_same<TemplateInnerType<Bar>, void>::value, "");
+  static_assert(std::is_same<TemplateInnerType<Templated<Bar>>, Bar>::value, "");
 }
 
 namespace reflection_test {

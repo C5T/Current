@@ -57,6 +57,16 @@ CURRENT_STRUCT(C) {
   CURRENT_CONSTRUCTOR(C)(Variant<A, X, Y> c) : c(c) {}  // Fully specified `Variant` name on purpose. -- D.K.
 };
 
+CURRENT_STRUCT_T(Templated) {
+  CURRENT_FIELD(foo, int32_t);
+  CURRENT_FIELD(bar, T);
+};
+
+CURRENT_STRUCT_T(TemplatedInheriting, A) {
+  CURRENT_FIELD(baz, std::string);
+  CURRENT_FIELD(meh, T);
+};
+
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
   CURRENT_FIELD_DESCRIPTION(primitives, "A structure with a lot of primitive types.");
@@ -66,6 +76,12 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(o, Optional<Primitives>);
   CURRENT_FIELD(q, (Variant<A, B, B2, C, Empty>));
   CURRENT_FIELD_DESCRIPTION(q, "Field | descriptions | FTW !");
+  CURRENT_FIELD(w1, Templated<X>);
+  CURRENT_FIELD(w2, Templated<MyFreakingVariant>);
+  CURRENT_FIELD(w3, Templated<TemplatedInheriting<Empty>>);
+  CURRENT_FIELD(w4, TemplatedInheriting<X>);
+  CURRENT_FIELD(w5, TemplatedInheriting<MyFreakingVariant>);
+  CURRENT_FIELD(w6, TemplatedInheriting<Templated<Empty>>);
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 
