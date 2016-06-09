@@ -52,10 +52,7 @@ TEST(Util, BasicException) {
     CURRENT_THROW(current::Exception("Foo"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
-    // Relative path prefix will be here when measuring code coverage, take it out.
-    const std::string actual = e.What();
-    ASSERT_GE(actual.length(), golden.length());
-    EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
+    ExpectStringEndsWith(golden, e.What());
   }
 }
 
@@ -71,9 +68,7 @@ TEST(Util, CustomException) {
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
-    const std::string actual = e.What();
-    ASSERT_GE(actual.length(), golden.length());
-    EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
+    ExpectStringEndsWith(golden, e.What());
   }
 }
 
