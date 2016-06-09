@@ -148,7 +148,7 @@ class GenericClaire final : private DummyClaireNotifiable {
     std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
       {
-        std::lock_guard<std::mutex> lock(status_mutex_);
+        std::lock_guard<std::mutex> inner_lock(status_mutex_);
         status_generator_ = status_filler;
       }
 
