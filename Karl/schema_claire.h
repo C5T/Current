@@ -166,7 +166,7 @@ CURRENT_STRUCT(status) {
 // clang-format off
 CURRENT_STRUCT_T_DERIVED(ClaireServiceStatus, ClaireStatus) {
   CURRENT_DEFAULT_CONSTRUCTOR_T(ClaireServiceStatus) {}
-  CURRENT_CONSTRUCTOR_T(ClaireServiceStatus)(const ClaireStatus& base_status) : SUPER<T>(base_status) {}
+  CURRENT_CONSTRUCTOR_T(ClaireServiceStatus)(const ClaireStatus& base_status) : SUPER(base_status) {}
 
   CURRENT_FIELD(runtime, Optional<T>);  // `T` is a `Variant<>` which should be `Optional<>`.
 };

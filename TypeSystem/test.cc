@@ -87,12 +87,11 @@ CURRENT_STRUCT_T(Templated) {
   CURRENT_CONSTRUCTOR_T(Templated)(uint32_t i, const T& t) : i(i), t(t) {}
 };
 
-// NOTE(dkorolev): Must user `SUPER<T>` in `CURRENT_STRUCT_T`-s.
 CURRENT_STRUCT_T(TemplatedDerivedFromFoo, Foo) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(t, T);
   CURRENT_CONSTRUCTOR_T(TemplatedDerivedFromFoo)(const uint32_t x, const std::string& s, const T& t)
-      : SUPER<T>(x * 1000001u), s(s), t(t) {}
+      : SUPER(x * 1000001u), s(s), t(t) {}
 };
 
 CURRENT_STRUCT(NonTemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDerivedFromFoo<std::string>){
@@ -100,12 +99,13 @@ CURRENT_STRUCT(NonTemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDer
       const uint32_t x, const std::string& s, const std::string& t) : SUPER(x, s, t){}
 };
 
-// This was *really* not easy to make compile and pass. -- @dkorolev, CC @mzhurovich
+#ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
 CURRENT_STRUCT_T(TemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDerivedFromFoo<T>){
   CURRENT_CONSTRUCTOR_T(TemplateDerivedFromTemplatedDerivedFromFooString)(const uint32_t x,
                                                                           const std::string& s,
                                                                           const T& t) : SUPER<T>(x, s, t){}
 };
+#endif  // CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
 
 static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(Baz), "Struct `Baz` was not properly declared.");
@@ -370,7 +370,7 @@ TEST(TypeSystemTest, ConstructingViaInitializerListIncludingSuper) {
     EXPECT_EQ("t", test.t);
   }
 
-  // This was *really* not easy to make compile and pass. -- @dkorolev, CC @mzhurovich
+#ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
   {
     {
       TemplateDerivedFromTemplatedDerivedFromFooString<std::string> test(1u, "s", "t");
@@ -385,6 +385,7 @@ TEST(TypeSystemTest, ConstructingViaInitializerListIncludingSuper) {
       EXPECT_TRUE(test.t);
     }
   }
+#endif  // CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
 };
 
 TEST(TypeSystemTest, ConstructingTemplatedStructs) {
