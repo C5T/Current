@@ -54,9 +54,6 @@ struct SUPER_SELECTOR<DeclareFields, T> {
   typedef T type;
 };
 
-// `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`, and
-// its scope resolution for derived structs differs between Visual C++ and g++/clang++.
-// Confusing but works. -- D.K.
 template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T, typename TEMPLATE_INNER>
 struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   template <typename... ARGS>
@@ -67,9 +64,11 @@ struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   using template_inner_t = TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
   using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
   using typename REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
-#ifdef CURRENT_WINDOWS
-  using REFLECTION_HELPER::CURRENT_FIELD_INDEX_BASE;
-#endif
+};
+
+template <typename T>
+struct FIELD_INDEX_BASE_IMPL {
+  constexpr static size_t CURRENT_FIELD_INDEX_BASE = T::CURRENT_FIELD_INDEX_BASE_IMPL;
 };
 
 // Fields declaration and counting.
@@ -153,22 +152,23 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // Current structure implementation.
 #ifndef CURRENT_WINDOWS
 
-#define CURRENT_STRUCT_HELPERS(s, super)                                                            \
-  template <typename INSTANTIATION_TYPE>                                                            \
-  struct CURRENT_STRUCT_IMPL_##s;                                                                   \
-  using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
-  template <typename>                                                                               \
-  struct CURRENT_REFLECTION_HELPER;                                                                 \
-  template <>                                                                                       \
-  struct CURRENT_REFLECTION_HELPER<s> {                                                             \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
-    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
-  };                                                                                                \
-  struct CURRENT_STRUCT_SUPER_HELPER_##s {                                                          \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
-    using SUPER = ::current::reflection::                                                           \
-        SUPER<CURRENT_REFLECTION_HELPER<s>, ::current::reflection::DeclareFields, super, void>;     \
-    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
+#define CURRENT_STRUCT_HELPERS(s, super)                                                                 \
+  template <typename INSTANTIATION_TYPE>                                                                 \
+  struct CURRENT_STRUCT_IMPL_##s;                                                                        \
+  using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                               \
+  template <typename>                                                                                    \
+  struct CURRENT_REFLECTION_HELPER;                                                                      \
+  template <>                                                                                            \
+  struct CURRENT_REFLECTION_HELPER<s> {                                                                  \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                 \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                                    \
+    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT;      \
+  };                                                                                                     \
+  struct CURRENT_STRUCT_SUPER_HELPER_##s {                                                               \
+    using FIELD_INDEX_BASE = ::current::reflection::FIELD_INDEX_BASE_IMPL<CURRENT_REFLECTION_HELPER<s>>; \
+    using SUPER = ::current::reflection::                                                                \
+        SUPER<CURRENT_REFLECTION_HELPER<s>, ::current::reflection::DeclareFields, super, void>;          \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                     \
   }
 
 #define CURRENT_STRUCT_T_HELPERS(s, super)                                                                 \
@@ -180,14 +180,13 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   struct CURRENT_REFLECTION_T_HELPER;                                                                      \
   template <>                                                                                              \
   struct CURRENT_REFLECTION_T_HELPER<s> {                                                                  \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                   \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   };                                                                                                       \
-  struct CURRENT_STRUCT_NO_T_SUPER_HELPER_##s {                                                            \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                        \
-  };                                                                                                       \
-  template <typename T>                                                                                    \
   struct CURRENT_STRUCT_T_SUPER_HELPER_##s {                                                               \
+    using FIELD_INDEX_BASE = ::current::reflection::FIELD_INDEX_BASE_IMPL<CURRENT_REFLECTION_T_HELPER<s>>; \
+    template <typename T>                                                                                  \
     using SUPER = ::current::reflection::                                                                  \
         SUPER<CURRENT_REFLECTION_T_HELPER<s>, ::current::reflection::DeclareFields, super, T>;             \
     static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                       \
@@ -204,7 +203,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                            \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
     static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
   }
@@ -219,7 +218,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <>                                                                                              \
   struct CURRENT_REFLECTION_T_HELPER<s> {                                                                  \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                        \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                   \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
     static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                       \
   }
@@ -243,8 +242,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct); \
   template <typename T, typename INSTANTIATION_TYPE>     \
   struct CURRENT_STRUCT_T_IMPL_##s                       \
-      : CURRENT_STRUCT_NO_T_SUPER_HELPER_##s,            \
-        CURRENT_STRUCT_T_SUPER_HELPER_##s<T>,            \
+      : CURRENT_STRUCT_T_SUPER_HELPER_##s,               \
         ::current::reflection::                          \
             SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, ::current::CurrentStruct, T>
 
@@ -256,13 +254,13 @@ struct CurrentStructFieldsConsistency<T, 0u> {
       : CURRENT_STRUCT_SUPER_HELPER_##s,                                                  \
         ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base, void>
 
-#define CURRENT_STRUCT_T_DERIVED(s, base)                                                 \
-  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
-  CURRENT_STRUCT_T_HELPERS(s, base);                                                      \
-  template <typename T, typename INSTANTIATION_TYPE>                                      \
-  struct CURRENT_STRUCT_T_IMPL_##s                                                        \
-      : CURRENT_STRUCT_NO_T_SUPER_HELPER_##s,                                             \
-        CURRENT_STRUCT_T_SUPER_HELPER_##s<T>,                                             \
+// TODO(dkorolev): I've sacrificed the `static_assert(IS_CURRENT_STRUCT(base), #base " must be ...");` for now.
+// TODO(dkorolev): It can be re-inserted back via a helper class to inherit from. Not now. -- D.K.
+#define CURRENT_STRUCT_T_DERIVED(s, base)            \
+  CURRENT_STRUCT_T_HELPERS(s, base);                 \
+  template <typename T, typename INSTANTIATION_TYPE> \
+  struct CURRENT_STRUCT_T_IMPL_##s                   \
+      : CURRENT_STRUCT_T_SUPER_HELPER_##s,           \
         ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base, T>
 
 #else  // CURRENT_WINDOWS
@@ -321,16 +319,16 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define CF_SWITCH(x, y) x y
 #define CURRENT_FIELD(...) CF_SWITCH(CF_CHOOSERX(CF_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                         \
-  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name; \
-  constexpr static size_t CURRENT_FIELD_INDEX_##name =                  \
-      CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1; \
+#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                                           \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name;                   \
+  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                    \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1; \
   CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                     \
-  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{CF_TYPE(value)}; \
-  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                  \
-      CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1;                 \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                       \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{CF_TYPE(value)};   \
+  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                    \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1; \
   CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
 
 #define CURRENT_FIELD_DESCRIPTION(name, description)                    \
