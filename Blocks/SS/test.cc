@@ -109,6 +109,8 @@ TEST(StreamSystem, EntryPublisher) {
   using DDE = DispatchDemoEntry;
   using EntryPublisher = current::ss::EntryPublisher<DemoEntryPublisherImpl, DDE>;
 
+  current::time::ResetToZero();
+
   EntryPublisher publisher;
   {
     DDE e1("E1");
