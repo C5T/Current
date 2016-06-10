@@ -401,4 +401,47 @@ TEST(Reflection, VisitAllFieldsForBaseType) {
   }
 }
 
+namespace reflection_test {
+
+// Two identical yet different base structs.
+CURRENT_STRUCT(BaseTypeOne){};
+CURRENT_STRUCT(BaseTypeTwo){};
+
+namespace one {
+CURRENT_STRUCT(IdenticalCurrentStructWithDifferentBaseType, BaseTypeOne){};
+}  // namespace reflection_test::one
+
+namespace two {
+CURRENT_STRUCT(IdenticalCurrentStructWithDifferentBaseType, BaseTypeTwo){};
+}  // namespace reflection_test::two
+
+using current::reflection::Reflector;
+
+}  // namespace reflection_test
+
+TEST(Reflection, BaseTypeMatters) {
+  using namespace reflection_test;
+  using current::reflection::ReflectedTypeBase;
+  EXPECT_NE(static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
+  EXPECT_NE(static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id),
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+  EXPECT_EQ(9200000000962478099ull,
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id));
+  EXPECT_EQ(9200000001392004228ull,
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
+  EXPECT_EQ(9200000001532548861ull,
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+  EXPECT_EQ(9200000001532548861ull,
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+}
+
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
