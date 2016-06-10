@@ -115,7 +115,7 @@ TEST(Reflection, StructAndVariant) {
   EXPECT_EQ(9319310138454761363ull, static_cast<uint64_t>(self_b.fields[0].type_id));
   const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
   EXPECT_EQ(2u, self_c.fields.size());
-  EXPECT_EQ(9208494189101737910ull, static_cast<uint64_t>(self_c.type_id));
+  EXPECT_EQ(9200831696630769615ull, static_cast<uint64_t>(self_c.type_id));
   EXPECT_EQ(9319310138454761363ull, static_cast<uint64_t>(self_c.fields[0].type_id));
   EXPECT_EQ(9344235412793316919ull, static_cast<uint64_t>(self_c.fields[1].type_id));
 
@@ -434,11 +434,11 @@ TEST(Reflection, BaseTypeMatters) {
             static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id));
   EXPECT_EQ(9200000001392004228ull,
             static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
-  EXPECT_EQ(9209999999733044975ull,
+  EXPECT_EQ(9205123477974540226ull,
             static_cast<uint64_t>(
                 Value<ReflectedTypeBase>(
                     Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
-  EXPECT_EQ(9200000000238066296ull,
+  EXPECT_EQ(9205123533591385154ull,
             static_cast<uint64_t>(
                 Value<ReflectedTypeBase>(
                     Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));

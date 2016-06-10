@@ -152,10 +152,6 @@ struct ReflectorImpl {
                                 std::hash<std::type_index>()(std::type_index(typeid(T))) % TYPEID_TYPE_RANGE);
         s.type_id = incomplete_id;
 
-        // As this structure has been marked used, visit all its fields recursively.
-        // StructFieldReflector<T> field_names_reflector(s.fields, true);
-        // VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_names_reflector);
-
         // After all the fields have been visited, compute the final type ID for this structure.
         s.super_id = ReflectSuper<T>();
         s.template_id = ReflectTemplateInnerType<T>();

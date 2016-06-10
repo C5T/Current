@@ -189,7 +189,9 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   uint64_t hash = current::CRC32(s.CanonicalName());
   size_t i = 0u;
-  hash ^= (static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct));
+  hash ^= ROL64(
+      static_cast<TypeID>(static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct)),
+      7u);
   for (const auto& f : s.fields) {
     assert(f.type_id != TypeID::INVALID_TYPE);
     hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);

@@ -1,14 +1,14 @@
 // The `current.h` file is the one from `https://github.com/C5T/Current`.
 // Compile with `-std=c++11` or higher.
 
-#ifndef CURRENT_USERSPACE_504F3B41CF471A78
-#define CURRENT_USERSPACE_504F3B41CF471A78
+#ifndef CURRENT_USERSPACE_B8072E8BD86137BD
+#define CURRENT_USERSPACE_B8072E8BD86137BD
 
 #include "current.h"
 
 // clang-format off
 
-namespace current_userspace_504f3b41cf471a78 {
+namespace current_userspace_b8072e8bd86137bd {
 struct Primitives {
   // It's the "order" of fields that matters.
   uint8_t a;
@@ -68,7 +68,7 @@ struct TemplatedInheriting_T9200000002835747520 : A {
   std::string baz;
   Empty meh;
 };
-struct Templated_T9205138582037435887 {
+struct Templated_T9209626390174323094 {
   int32_t foo;
   TemplatedInheriting_T9200000002835747520 bar;
 };
@@ -100,13 +100,13 @@ struct FullTest {
   Variant_B_A_B_B2_C_Empty_E q;
   Templated_T9209980946934124423 w1;
   Templated_T9227782344077896555 w2;
-  Templated_T9205138582037435887 w3;
+  Templated_T9209626390174323094 w3;
   TemplatedInheriting_T9209980946934124423 w4;
   TemplatedInheriting_T9227782344077896555 w5;
   TemplatedInheriting_T9201673071807149456 w6;
 };
-}  // namespace current_userspace_504f3b41cf471a78
+}  // namespace current_userspace_b8072e8bd86137bd
 
 // clang-format on
 
-#endif  // CURRENT_USERSPACE_504F3B41CF471A78
+#endif  // CURRENT_USERSPACE_B8072E8BD86137BD
