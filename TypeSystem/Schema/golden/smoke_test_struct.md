@@ -88,7 +88,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `meh` | `Empty` |
 
 
-### `Templated_T9202973911416238761`
+### `Templated_T9205138582037435887`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `foo` | Integer (32-bit signed) |
@@ -137,7 +137,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) | Field &#124; descriptions &#124; FTW ! |
 | `w1` | `Templated_T9209980946934124423` |
 | `w2` | `Templated_T9227782344077896555` |
-| `w3` | `Templated_T9202973911416238761` |
+| `w3` | `Templated_T9205138582037435887` |
 | `w4` | `TemplatedInheriting_T9209980946934124423` |
 | `w5` | `TemplatedInheriting_T9227782344077896555` |
 | `w6` | `TemplatedInheriting_T9201673071807149456` |

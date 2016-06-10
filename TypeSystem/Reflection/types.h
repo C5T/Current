@@ -186,27 +186,16 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
   return current::ROL64(static_cast<uint64_t>(type_id), nbits);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete = false) {
+inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   uint64_t hash = current::CRC32(s.CanonicalName());
   size_t i = 0u;
-  if (is_incomplete) {
-    // For incomplete structs we use only the names of the fields for hashing,
-    // since we don't know their real `type_id`-s.
-    // At this moment, reflected types of the fields should be empty.
-    for (const auto& f : s.fields) {
-      assert(f.type_id == TypeID::INVALID_TYPE);
-      hash ^= current::ROL64(current::CRC32(f.name), i + 19u);
-      ++i;
-    }
-    return static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
-  } else {
-    for (const auto& f : s.fields) {
-      assert(f.type_id != TypeID::INVALID_TYPE);
-      hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);
-      ++i;
-    }
-    return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
+  hash ^= (static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct));
+  for (const auto& f : s.fields) {
+    assert(f.type_id != TypeID::INVALID_TYPE);
+    hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);
+    ++i;
   }
+  return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {

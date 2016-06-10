@@ -55,8 +55,7 @@ struct ReflectorImpl {
   struct StructFieldReflector {
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    StructFieldReflector(fields_list_t& fields, bool reflect_names_only)
-        : fields_(fields), reflect_names_only_(reflect_names_only) {}
+    explicit StructFieldReflector(fields_list_t& fields) : fields_(fields) {}
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -65,16 +64,11 @@ struct ReflectorImpl {
       if (retrieved_description) {
         description = retrieved_description;
       }
-      if (reflect_names_only_) {
-        fields_.emplace_back(TypeID::INVALID_TYPE, name, description);
-      } else {
-        fields_.emplace_back(Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id, name, description);
-      }
+      fields_.emplace_back(Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id, name, description);
     }
 
    private:
     fields_list_t& fields_;
-    const bool reflect_names_only_;
   };
 
   struct TypeReflector {
@@ -149,18 +143,24 @@ struct ReflectorImpl {
     ENABLE_IF<IS_CURRENT_STRUCT(T), void> operator()(TypeSelector<T>, ReflectedType_Struct& s) {
       // Two step reflection is needed to support self-referring structs.
       if (TypePrefix(s.type_id) != TYPEID_INCOMPLETE_STRUCT_PREFIX) {
-        // First step: incomplete struct reflection using only field names.
-        StructFieldReflector<T> field_names_reflector(s.fields, true);
-        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_names_reflector);
         s.native_name = CurrentTypeName<T>();
-        s.type_id = CalculateTypeID(s, true);
-        const TypeID incomplete_id = s.type_id;
 
-        // Second step: full reflection with field types and names.
+        // Mark this structure as being visited, to make sure self-referring structs are correctly supported.
+        // The `incomplete_id` can really be anything as long as it's unique and different per type.
+        const TypeID incomplete_id =
+            static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE +
+                                std::hash<std::type_index>()(std::type_index(typeid(T))) % TYPEID_TYPE_RANGE);
+        s.type_id = incomplete_id;
+
+        // As this structure has been marked used, visit all its fields recursively.
+        // StructFieldReflector<T> field_names_reflector(s.fields, true);
+        // VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_names_reflector);
+
+        // After all the fields have been visited, compute the final type ID for this structure.
         s.super_id = ReflectSuper<T>();
         s.template_id = ReflectTemplateInnerType<T>();
         s.fields.clear();
-        StructFieldReflector<T> field_reflector(s.fields, false);
+        StructFieldReflector<T> field_reflector(s.fields);
         VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_reflector);
         s.type_id = CalculateTypeID(s);
         Reflector().FixIncompleteTypeIDs(incomplete_id, s.type_id);
