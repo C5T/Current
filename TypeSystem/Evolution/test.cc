@@ -1037,22 +1037,6 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
-    EXPECT_EQ("2983561538553967524",
-              current::ToString(std::hash<std::type_index>()(
-                  std::type_index(typeid(type_evolution_test::pre_evolution::User)))));
-    EXPECT_EQ("13443075441231432426",
-              current::ToString(std::hash<std::type_index>()(
-                  std::type_index(typeid(type_evolution_test::post_evolution::User)))));
-
-    EXPECT_EQ(
-        "{\"ReflectedType_Struct\":{\"type_id\":\"T9207102759476147844\",\"native_name\":\"User\",\"super_id\":"
-        "\"T9203533648527088493\",\"fields\":[{\"type_id\":\"T9000000000000000042\",\"name\":\"key\"}]}}",
-        JSON<JSONFormat::Minimalistic>(Reflector().ReflectType<type_evolution_test::pre_evolution::User>()));
-    EXPECT_EQ(
-        "{\"ReflectedType_Struct\":{\"type_id\":\"T9202361573173033476\",\"native_name\":\"User\",\"super_id\":"
-        "\"T9202335020894922996\",\"fields\":[{\"type_id\":\"T9000000000000000042\",\"name\":\"key\"}]}}",
-        JSON<JSONFormat::Minimalistic>(Reflector().ReflectType<type_evolution_test::post_evolution::User>()));
-
     {
       StructSchema struct_schema;
       struct_schema.AddType<type_evolution_test::post_evolution::User>();
@@ -1064,8 +1048,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "struct User : Name {\n"
           "  std::string key;\n"
           "};\n"
-          "}  // namespace current_userspace_ede833278fc50550\n"
-          "",
+          "}  // namespace current_userspace_ede833278fc50550\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
@@ -1073,7 +1056,6 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       StructSchema struct_schema;
       struct_schema.AddType<pre_evolution_transaction_t>();
       EXPECT_EQ(
-
           "namespace current_userspace_f57eac2563ce5708 {\n"
           "struct TransactionMeta {\n"
           "  std::chrono::microseconds timestamp;\n"
@@ -1098,8 +1080,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "  TransactionMeta meta;\n"
           "  std::vector<Variant_B_PersistedUserUpdated_PersistedUserDeleted_E> mutations;\n"
           "};\n"
-          "}  // namespace current_userspace_f57eac2563ce5708\n"
-          "",
+          "}  // namespace current_userspace_f57eac2563ce5708\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
     {
@@ -1205,7 +1186,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       // As mutations took place, create two storage log files to replay, one before and one after evolution.
       //
       // Note: This test could read shorter if instead of generating the output stream
-      // from a memory-persisted storage, the storage generates the output stream itself.
+      // from a memory-persisted storage, the storage could populate the output stream itself.
       // I decided to take the longer route to have stream persistence file creation
       // implemented explicitly, side-by-side with and without type evolution. -- D.K.
       //
@@ -1219,22 +1200,22 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
         // The next line would work just fine, but let's test deep copy through. -- D.K.
         // pre_evolution_stream.Publish(original_transaction, e.idx_ts.us);
 
-        // NOTE: The code below uses `ParseJSON(JSON(xxx))` constructs to "convert" C++ types.
-        // As structures are declared several times, the C++ types are different,
-        // and as RTTI dispatching uses C++ type IDs, not Current type IDs, `reinterpret_cast` doesn't do it.
+        // NOTE: The code below uses `ParseJSON(JSON(xxx))` constructs to "cast" C++ types between each other.
+        // As structures are declared several times, their C++ types are different,
+        // and, as RTTI dispatching uses C++ type IDs, not Current type IDs, `reinterpret_cast` doesn't do it.
         // This "problem" would not exist outside the unit test, as the right types are always passed in.
 
         {
           // Publish the original, pre-evolved, transaction.
 
-          using yy_t = typename SchemaOriginalStorage::Transaction;
-          const auto cast_original_transaction = ParseJSON<yy_t>(JSON(original_transaction));
+          const auto cast_original_transaction =
+              ParseJSON<typename SchemaOriginalStorage::Transaction>(JSON(original_transaction));
 
-          yy_t cast_type_evolved_transaction;
+          typename SchemaOriginalStorage::Transaction cast_type_evolved_transaction;
 
           // Still apply the `OriginalStorageToOriginalStorageEvolutor` to uppercase names.
           current::type_evolution::Evolve<SchemaOriginalStorage,
-                                          yy_t,
+                                          typename SchemaOriginalStorage::Transaction,
                                           current::type_evolution::OriginalStorageToOriginalStorageEvolutor>::
               template Go<SchemaOriginalStorage>(cast_original_transaction, cast_type_evolved_transaction);
 
@@ -1246,17 +1227,14 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
         {
           // Publish the evolved, old-to-new-storage, transformed transaction.
 
-          using yy_t = typename SchemaOriginalStorage::Transaction;
-          using zz_t = typename SchemaModifiedStorage::Transaction;
+          const auto cast_original_transaction =
+              ParseJSON<typename SchemaOriginalStorage::Transaction>(JSON(original_transaction));
 
-          const auto cast_original_transaction = ParseJSON<yy_t>(JSON(original_transaction));
+          typename SchemaModifiedStorage::Transaction cast_type_evolved_transaction;
 
-          zz_t cast_type_evolved_transaction;
-
-          // Apply the `OriginalStorageToModifiedStorageEvolutor` to converge `{ first, last }` name into `{
-          // full }` name.
+          // Apply the `OriginalStorageToModifiedStorageEvolutor` to convert `first+last` name into `full` name.
           current::type_evolution::Evolve<SchemaOriginalStorage,
-                                          yy_t,
+                                          typename SchemaOriginalStorage::Transaction,
                                           current::type_evolution::OriginalStorageToModifiedStorageEvolutor>::
               template Go<SchemaModifiedStorage>(cast_original_transaction, cast_type_evolved_transaction);
 
@@ -1287,7 +1265,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
                 current::FileSystem::ReadFileAsString(post_evolution_file_name));
     }
 
-    // Sanity check: confirm the replayed pre-evolution storage contains the original transactions.
+    // Sanity check: confirm the replayed pre-evolution storage contains the data UPPERCASED.
     {
       using restored_pre_storage_t = type_evolution_test::pre_evolution::Storage<SherlockStreamPersister>;
       restored_pre_storage_t replayed_pre_evolution_storage(pre_evolution_file_name);
@@ -1308,7 +1286,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       }).Wait();
     }
 
-    // The full end-to-end evolved storage test: confirm type-evolved transactions are legit.
+    // The full end-to-end schema test: confirm type-evolved transactions s.a. "First Last" became "Last, F".
     {
       using restored_post_storage_t = type_evolution_test::post_evolution::Storage<SherlockStreamPersister>;
       restored_post_storage_t replayed_post_evolution_storage(post_evolution_file_name);
