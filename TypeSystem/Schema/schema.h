@@ -353,19 +353,19 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "            class CHECK = NAMESPACE,\n"
                 << "            class = std::enable_if_t<::current::is_same_or_base_of<" << nmspc
                 << ", CHECK>::value>>\n"
-                << "  static void Go(const typename " << nmspc << "::" << type_name << "& from,\n"
+                << "  static void Go(const typename NAMESPACE::" << type_name << "& from,\n"
                 << "                 typename INTO::" << type_name << "& into) {\n"
                 << "      static_assert(::current::reflection::FieldCounter<typename " << nmspc
                 << "::" << type_name << ">::value == " << fields.size() << ",\n"
                 << "                    \"Custom evolutor required.\");\n";
             if (s.super_id != TypeID::CurrentStruct) {
               const std::string super_name = TypeName(s.super_id);
-              os_ << "      Evolve<" << nmspc << ", " << nmspc << "::" << super_name << ", EVOLUTOR>::"
-                  << "template Go<INTO>(static_cast<const " << nmspc << "::" << super_name
+              os_ << "      Evolve<NAMESPACE, " << nmspc << "::" << super_name << ", EVOLUTOR>::"
+                  << "template Go<INTO>(static_cast<const typename NAMESPACE::" << super_name
                   << "&>(from), static_cast<typename INTO::" << super_name << "&>(into));\n";
             }
             for (const auto& f : fields) {
-              os_ << "      Evolve<" << nmspc << ", decltype(from." << f << "), EVOLUTOR>::"
+              os_ << "      Evolve<NAMESPACE, decltype(from." << f << "), EVOLUTOR>::"
                   << "template Go<INTO>(from." << f << ", into." << f << ");\n";
             }
             if (fields.empty()) {
@@ -420,7 +420,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << ", CHECK>::value>>\n"
                 << "  static void Go(const " << vrnt << "& from,\n"
                 << "                 CUSTOM_INTO_VARIANT_TYPE& into) {\n"
-                << "    from.Call(" << evltr << "<decltype(into), " << nmspc << ", INTO, EVOLUTOR>(into));\n"
+                << "    from.Call(" << evltr << "<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));\n"
                 << "  }\n"
                 << "};\n" << '\n';
           }

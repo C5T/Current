@@ -919,10 +919,16 @@ CURRENT_STORAGE(Storage) { CURRENT_STORAGE_FIELD(user, PersistedUser); };
 #include "golden/storage_schema_original.h"
 #include "golden/storage_schema_evolved.h"
 
-using SchemaOriginalStorage = USERSPACE_F57EAC2563CE5708;
+CURRENT_DERIVED_NAMESPACE(SchemaOriginalStorage, USERSPACE_F57EAC2563CE5708) {
+  // Alias the long transaction type to just be `Transaction`.
+  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9227630689129186588);
+};
 
 CURRENT_DERIVED_NAMESPACE(SchemaModifiedStorage, USERSPACE_381EECA4ACB24A12) {
-  CURRENT_NAMESPACE_TYPE(Transaction_T9227630689129186588, Transaction_T9224928948940686845);
+  // Type `Transaction` in the modified storage points to the newly mutated transaction type.
+  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9224928948940686845);
+  // Should also point the type from the other storage to the same namespaced type name, for the evolutors.
+  CURRENT_NAMESPACE_TYPE(Transaction_T9227630689129186588, Transaction);
 };
 
 // Custom evolution for `Name` stored as part of Storage's transactions.
@@ -1221,7 +1227,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
         {
           // Publish the original, pre-evolved, transaction.
 
-          using yy_t = typename SchemaOriginalStorage::Transaction_T9227630689129186588;
+          using yy_t = typename SchemaOriginalStorage::Transaction;
           const auto cast_original_transaction = ParseJSON<yy_t>(JSON(original_transaction));
 
           yy_t cast_type_evolved_transaction;
@@ -1240,8 +1246,8 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
         {
           // Publish the evolved, old-to-new-storage, transformed transaction.
 
-          using yy_t = typename SchemaOriginalStorage::Transaction_T9227630689129186588;
-          using zz_t = typename SchemaModifiedStorage::Transaction_T9227630689129186588;
+          using yy_t = typename SchemaOriginalStorage::Transaction;
+          using zz_t = typename SchemaModifiedStorage::Transaction;
 
           const auto cast_original_transaction = ParseJSON<yy_t>(JSON(original_transaction));
 

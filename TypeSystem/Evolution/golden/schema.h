@@ -77,13 +77,13 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::SimpleStruct, EVOLUTOR> {
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::SimpleStruct& from,
+  static void Go(const typename NAMESPACE::SimpleStruct& from,
                  typename INTO::SimpleStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::SimpleStruct>::value == 3,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.y), EVOLUTOR>::template Go<INTO>(from.y, into.y);
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
+      Evolve<NAMESPACE, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
+      Evolve<NAMESPACE, decltype(from.y), EVOLUTOR>::template Go<INTO>(from.y, into.y);
+      Evolve<NAMESPACE, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
   }
 };
 
@@ -93,11 +93,11 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::StructWithStruct, EVOLUTOR>
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::StructWithStruct& from,
+  static void Go(const typename NAMESPACE::StructWithStruct& from,
                  typename INTO::StructWithStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::StructWithStruct>::value == 1,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);
+      Evolve<NAMESPACE, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);
   }
 };
 
@@ -107,11 +107,11 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::StructWithVariant, EVOLUTOR
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::StructWithVariant& from,
+  static void Go(const typename NAMESPACE::StructWithVariant& from,
                  typename INTO::StructWithVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::StructWithVariant>::value == 1,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.v), EVOLUTOR>::template Go<INTO>(from.v, into.v);
+      Evolve<NAMESPACE, decltype(from.v), EVOLUTOR>::template Go<INTO>(from.v, into.v);
   }
 };
 
@@ -121,12 +121,12 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::Name, EVOLUTOR> {
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::Name& from,
+  static void Go(const typename NAMESPACE::Name& from,
                  typename INTO::Name& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::Name>::value == 2,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.first), EVOLUTOR>::template Go<INTO>(from.first, into.first);
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last, into.last);
+      Evolve<NAMESPACE, decltype(from.first), EVOLUTOR>::template Go<INTO>(from.first, into.first);
+      Evolve<NAMESPACE, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last, into.last);
   }
 };
 
@@ -136,11 +136,11 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::StructWithVectorOfVariants,
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::StructWithVectorOfVariants& from,
+  static void Go(const typename NAMESPACE::StructWithVectorOfVariants& from,
                  typename INTO::StructWithVectorOfVariants& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::StructWithVectorOfVariants>::value == 1,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
+      Evolve<NAMESPACE, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
   }
 };
 
@@ -150,11 +150,11 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::StructWithVectorOfNames, EV
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::StructWithVectorOfNames& from,
+  static void Go(const typename NAMESPACE::StructWithVectorOfNames& from,
                  typename INTO::StructWithVectorOfNames& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::StructWithVectorOfNames>::value == 1,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.w), EVOLUTOR>::template Go<INTO>(from.w, into.w);
+      Evolve<NAMESPACE, decltype(from.w), EVOLUTOR>::template Go<INTO>(from.w, into.w);
   }
 };
 
@@ -164,12 +164,12 @@ struct Evolve<NAMESPACE, USERSPACE_197814A705FADCD0::WWW, EVOLUTOR> {
   template <typename INTO,
             class CHECK = NAMESPACE,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
-  static void Go(const typename USERSPACE_197814A705FADCD0::WWW& from,
+  static void Go(const typename NAMESPACE::WWW& from,
                  typename INTO::WWW& into) {
       static_assert(::current::reflection::FieldCounter<typename USERSPACE_197814A705FADCD0::WWW>::value == 2,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.github), EVOLUTOR>::template Go<INTO>(from.github, into.github);
-      Evolve<USERSPACE_197814A705FADCD0, decltype(from.slides), EVOLUTOR>::template Go<INTO>(from.slides, into.slides);
+      Evolve<NAMESPACE, decltype(from.github), EVOLUTOR>::template Go<INTO>(from.github, into.github);
+      Evolve<NAMESPACE, decltype(from.slides), EVOLUTOR>::template Go<INTO>(from.slides, into.slides);
   }
 };
 
@@ -198,7 +198,7 @@ struct Evolve<NAMESPACE, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImp
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_197814A705FADCD0::SimpleStruct, USERSPACE_197814A705FADCD0::StructWithStruct>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(USERSPACE_197814A705FADCD0_Variant_B_SimpleStruct_StructWithStruct_E_Cases<decltype(into), USERSPACE_197814A705FADCD0, INTO, EVOLUTOR>(into));
+    from.Call(USERSPACE_197814A705FADCD0_Variant_B_SimpleStruct_StructWithStruct_E_Cases<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));
   }
 };
 
@@ -227,7 +227,7 @@ struct Evolve<NAMESPACE, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImp
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_197814A705FADCD0, CHECK>::value>>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_197814A705FADCD0::Name, USERSPACE_197814A705FADCD0::WWW>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(USERSPACE_197814A705FADCD0_Variant_B_Name_WWW_E_Cases<decltype(into), USERSPACE_197814A705FADCD0, INTO, EVOLUTOR>(into));
+    from.Call(USERSPACE_197814A705FADCD0_Variant_B_Name_WWW_E_Cases<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));
   }
 };
 
