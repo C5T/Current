@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME
+
 #include "../port.h"
 
 #include "enum.h"

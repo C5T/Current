@@ -53,6 +53,7 @@ CURRENT_VARIANT(MyFreakingVariant, A, X, Y);
 CURRENT_STRUCT(C) {
   CURRENT_FIELD(e, Empty);
   CURRENT_FIELD(c, MyFreakingVariant);
+  CURRENT_FIELD(d, (Variant<A, X, Y>));  // Same type, test generating code and parsing it respects type ID.
   CURRENT_DEFAULT_CONSTRUCTOR(C) {}  // LCOV_EXCL_LINE
   CURRENT_CONSTRUCTOR(C)(Variant<A, X, Y> c) : c(c) {}  // Fully specified `Variant` name on purpose. -- D.K.
 };

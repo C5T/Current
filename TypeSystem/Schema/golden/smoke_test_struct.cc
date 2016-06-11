@@ -1,14 +1,14 @@
 // The `current.h` file is the one from `https://github.com/C5T/Current`.
 // Compile with `-std=c++11` or higher.
 
-#ifndef CURRENT_USERSPACE_B8072E8BD86137BD
-#define CURRENT_USERSPACE_B8072E8BD86137BD
+#ifndef CURRENT_USERSPACE_0473D52B47432E49
+#define CURRENT_USERSPACE_0473D52B47432E49
 
 #include "current.h"
 
 // clang-format off
 
-namespace current_userspace_b8072e8bd86137bd {
+namespace current_userspace_0473d52b47432e49 {
 struct Primitives {
   // It's the "order" of fields that matters.
   uint8_t a;
@@ -51,9 +51,11 @@ struct Y {
   E e;
 };
 using MyFreakingVariant = Variant<A, X, Y>;
+using Variant_B_A_X_Y_E = Variant<A, X, Y>;
 struct C {
   Empty e;
   MyFreakingVariant c;
+  Variant_B_A_X_Y_E d;
 };
 using Variant_B_A_B_B2_C_Empty_E = Variant<A, B, B2, C, Empty>;
 struct Templated_T9209980946934124423 {
@@ -105,8 +107,8 @@ struct FullTest {
   TemplatedInheriting_T9227782344077896555 w5;
   TemplatedInheriting_T9201673071807149456 w6;
 };
-}  // namespace current_userspace_b8072e8bd86137bd
+}  // namespace current_userspace_0473d52b47432e49
 
 // clang-format on
 
-#endif  // CURRENT_USERSPACE_B8072E8BD86137BD
+#endif  // CURRENT_USERSPACE_0473D52B47432E49

@@ -55,11 +55,16 @@
 Algebraic type, `A` or `X` or `Y`
 
 
+### `Variant_B_A_X_Y_E`
+Algebraic type, `A` or `X` or `Y`
+
+
 ### `C`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `e` | `Empty` |
 | `c` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
+| `d` | Algebraic `A` / `X` / `Y` (a.k.a. `Variant_B_A_X_Y_E`) |
 
 
 ### `Variant_B_A_B_B2_C_Empty_E`

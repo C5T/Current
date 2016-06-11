@@ -607,6 +607,17 @@ struct VisitAllFields {
 
 }  // namespace reflection
 
+// TODO(dkorolev): Find a better place for this code. Must be included from the top-level `current.h`.
+
+template<class B, class D>
+struct is_same_or_base_of {
+  constexpr static bool value = std::is_base_of<B, D>::value;
+};
+template<class C>
+struct is_same_or_base_of<C, C> {
+  constexpr static bool value = true;
+};
+
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_STRUCT_H

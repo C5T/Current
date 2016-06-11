@@ -37,7 +37,6 @@ SOFTWARE.
 #include "../Serialization/json.h"
 
 #include "../../Bricks/strings/strings.h"
-#include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/util/sha256.h"
 
@@ -331,80 +330,98 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         os_ << '\n' << "namespace current {\n"
             << "namespace type_evolution {\n";
 
+        // To only output distinct `Variant<>` & `CURRENT_VARIANT`-s once.
+        std::unordered_set<uint64_t> variant_evolutor_already_output;
+
         for (const auto& input_type : types_) {
           const auto type_name = TypeName(input_type.first);
           const auto& type_substance = input_type.second;
           if (Exists<ReflectedType_Struct>(type_substance)) {
-            // [ { name, [ variant cases or empty ] } ], as `Variant<>`-s are a special case to evolve.
-            std::vector<std::pair<std::string, std::vector<std::string>>> fields;
+            const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
 
-            std::function<void(TypeID)> enumerate_all_fields;
-            enumerate_all_fields = [&](TypeID id) {
-              assert(types_.count(id));
-              const auto& t = types_.at(id);
-              assert(Exists<ReflectedType_Struct>(t));
-              const ReflectedType_Struct& s = Value<ReflectedType_Struct>(t);
-              if (s.super_id != TypeID::CurrentStruct) {
-                enumerate_all_fields(s.super_id);
-              }
-              for (const auto& f : s.fields) {
-                fields.resize(fields.size() + 1);
-                fields.back().first = f.name;
-                if (TypePrefix(f.type_id) == TYPEID_VARIANT_PREFIX) {
-                  for (TypeID c : Value<ReflectedType_Variant>(types_.at(f.type_id)).cases) {
-                    fields.back().second.push_back(TypeName(c));
-                  }
-                }
-              }
-            };
-            enumerate_all_fields(input_type.first);
+            // Default evolutor for `CURRENT_STRUCT`.
+            std::vector<std::string> fields;
 
-            os_ << "// Default evolution for `" << type_name << "`.\n";
-            for (const auto& f : fields) {
-              if (!f.second.empty()) {
-                const std::string evltr = nmspc + '_' + type_name + '_' + f.first + "_Cases";
-                os_ << "// TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.\n"
-                    << "template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>\n"
-                    << "struct " << evltr << " {\n"
-                    << "  DST& into;\n"
-                    << "  explicit " << evltr << "(DST& into) : into(into) {}\n";
-                for (const auto& c : f.second) {
-                  os_ << "  void operator()(const typename FROM_NAMESPACE::" << c << "& value) {\n"
-                      << "    using into_t = typename INTO::" << c << ";\n"
-                      << "    into = into_t();\n"
-                      << "    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::" << c << ", EVOLUTOR>"
-                      << "::template Go<INTO>(value, Value<into_t>(into));\n"
-                      << "  }\n";
-                }
-                os_ << "};\n";
-              }
+            for (const auto& f : s.fields) {
+              fields.push_back(f.name);
             }
-            os_ << "template <typename EVOLUTOR>\n"
-                << "struct Evolve<" << nmspc << ", " << nmspc << "::" << type_name << ", EVOLUTOR> {\n"
-                << "  template <typename INTO>\n"
+            // enumerate_all_fields(input_type.first);
+            os_ << "// Default evolution for struct `" << type_name << "`.\n";
+            os_ << "template <typename NAMESPACE, typename EVOLUTOR>\n"
+                << "struct Evolve<NAMESPACE, " << nmspc << "::" << type_name << ", EVOLUTOR> {\n"
+                << "  template <typename INTO,\n"
+                << "            class CHECK = NAMESPACE,\n"
+                << "            class = std::enable_if_t<::current::is_same_or_base_of<" << nmspc
+                << ", CHECK>::value>>\n"
                 << "  static void Go(const typename " << nmspc << "::" << type_name << "& from,\n"
                 << "                 typename INTO::" << type_name << "& into) {\n"
-                << "      static_assert(::current::reflection::TotalFieldCounter<typename " << nmspc
+                << "      static_assert(::current::reflection::FieldCounter<typename " << nmspc
                 << "::" << type_name << ">::value == " << fields.size() << ",\n"
                 << "                    \"Custom evolutor required.\");\n";
+            if (s.super_id != TypeID::CurrentStruct) {
+              const std::string super_name = TypeName(s.super_id);
+              os_ << "      Evolve<" << nmspc << ", " << nmspc << "::" << super_name << ", EVOLUTOR>::"
+                  << "template Go<INTO>(static_cast<const " << nmspc << "::" << super_name
+                  << "&>(from), static_cast<typename INTO::" << super_name << "&>(into));\n";
+            }
             for (const auto& f : fields) {
-              if (f.second.empty()) {
-                // A simple, non-`Variant<>`, case for evolution.
-                os_ << "      Evolve<" << nmspc << ", decltype(from." << f.first << "), EVOLUTOR>::"
-                    << "template Go<INTO>(from." << f.first << ", into." << f.first << ");\n";
-              } else {
-                const std::string evltr = nmspc + '_' + type_name + '_' + f.first + "_Cases";
-                os_ << "      { " << evltr << "<decltype(into." << f.first << "), " << nmspc
-                    << ", INTO, EVOLUTOR> "
-                    << "logic(into." << f.first << "); "
-                    << "from." << f.first << ".Call(logic); }\n";
-              }
+              os_ << "      Evolve<" << nmspc << ", decltype(from." << f << "), EVOLUTOR>::"
+                  << "template Go<INTO>(from." << f << ", into." << f << ");\n";
             }
             if (fields.empty()) {
               os_ << "      static_cast<void>(from);\n"
                   << "      static_cast<void>(into);\n";
             }
             os_ << "  }\n"
+                << "};\n" << '\n';
+          } else if (Exists<ReflectedType_Variant>(type_substance)) {
+            // Default evolutor for `CURRENT_VARIANT`, or for a plain `Variant<>`.
+            std::vector<std::string> cases;
+            std::vector<std::string> fully_specified_cases;
+            std::vector<TypeID> types_list;
+            uint64_t variant_inner_type_list_hash = 0ull;
+            uint64_t multiplier = 1u;
+            for (TypeID c : Value<ReflectedType_Variant>(type_substance).cases) {
+              types_list.push_back(c);
+              const auto& case_name = TypeName(c);
+              cases.push_back(case_name);
+              fully_specified_cases.push_back(nmspc + "::" + case_name);
+              variant_inner_type_list_hash += static_cast<uint64_t>(c) * multiplier;
+              multiplier = multiplier * 17 + 1;
+            }
+            if (variant_evolutor_already_output.count(variant_inner_type_list_hash)) {
+              continue;
+            }
+            variant_evolutor_already_output.insert(variant_inner_type_list_hash);
+            os_ << "// Default evolution for `Variant<" << current::strings::Join(cases, ", ") << ">`.\n";
+            const std::string evltr = nmspc + '_' + type_name + "_Cases";
+            os_ << "template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>\n"
+                << "struct " << evltr << " {\n"
+                << "  DST& into;\n"
+                << "  explicit " << evltr << "(DST& into) : into(into) {}\n";
+            for (const auto& c : cases) {
+              os_ << "  void operator()(const typename FROM_NAMESPACE::" << c << "& value) const {\n"
+                  << "    using into_t = typename INTO::" << c << ";\n"
+                  << "    into = into_t();\n"
+                  << "    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::" << c << ", EVOLUTOR>"
+                  << "::template Go<INTO>(value, Value<into_t>(into));\n"
+                  << "  }\n";
+            }
+            const std::string vrnt = "::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<" +
+                                     current::strings::Join(fully_specified_cases, ", ") + ">>";
+            os_ << "};\n"
+                << "template <typename NAMESPACE, typename EVOLUTOR, typename VARIANT_NAME_HELPER>\n"
+                << "struct Evolve<NAMESPACE, " << vrnt << ", EVOLUTOR> {\n"
+                << "  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.\n"
+                << "  template <typename INTO,\n"
+                << "            typename CUSTOM_INTO_VARIANT_TYPE,\n"
+                << "            class CHECK = NAMESPACE,\n"
+                << "            class = std::enable_if_t<::current::is_same_or_base_of<" << nmspc
+                << ", CHECK>::value>>\n"
+                << "  static void Go(const " << vrnt << "& from,\n"
+                << "                 CUSTOM_INTO_VARIANT_TYPE& into) {\n"
+                << "    from.Call(" << evltr << "<decltype(into), " << nmspc << ", INTO, EVOLUTOR>(into));\n"
+                << "  }\n"
                 << "};\n" << '\n';
           }
         }
