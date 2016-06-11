@@ -86,7 +86,7 @@ type TemplatedInheriting_T9200000002835747520 = {
   meh : Empty
 }
 
-type Templated_T9202973911416238761 = {
+type Templated_T9209626390174323094 = {
   foo : int32
   bar : TemplatedInheriting_T9200000002835747520
 }
@@ -126,7 +126,7 @@ type FullTest = {
   q : Variant_B_A_B_B2_C_Empty_E
   w1 : Templated_T9209980946934124423
   w2 : Templated_T9227782344077896555
-  w3 : Templated_T9202973911416238761
+  w3 : Templated_T9209626390174323094
   w4 : TemplatedInheriting_T9209980946934124423
   w5 : TemplatedInheriting_T9227782344077896555
   w6 : TemplatedInheriting_T9201673071807149456

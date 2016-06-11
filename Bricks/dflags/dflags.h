@@ -304,7 +304,11 @@ class FlagRegisterer : public FlagRegistererBase {
 #define DEFINE_string(name, dflt_value, description) DEFINE_flag(std::string, name, dflt_value, description)
 #define DEFINE_bool(name, default_value, description) DEFINE_flag(bool, name, default_value, description)
 
+#ifndef CURRENT_MAKE_CHECK_MODE
 #define DECLARE_flag(type, name) extern type FLAGS_##name;
+#else
+#define DECLARE_flag(type, name) static type FLAGS_##name;  // To have multiple headers link w/o violating ODR.
+#endif
 
 #define DECLARE_int8(name) DECLARE_flag(int8_t, name)
 #define DECLARE_uint8(name) DECLARE_flag(uint8_t, name)

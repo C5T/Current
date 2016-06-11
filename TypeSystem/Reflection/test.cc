@@ -107,17 +107,17 @@ TEST(Reflection, StructAndVariant) {
 
   const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
   EXPECT_EQ(1u, self_a.fields.size());
-  EXPECT_EQ(9205901389225534299ull, static_cast<uint64_t>(self_a.type_id));
-  EXPECT_EQ(9317324759808216579ull, static_cast<uint64_t>(self_a.fields[0].type_id));
+  EXPECT_EQ(9206664846159389537ull, static_cast<uint64_t>(self_a.type_id));
+  EXPECT_EQ(9318143269698080259ull, static_cast<uint64_t>(self_a.fields[0].type_id));
   const ReflectedType_Struct& self_b = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingB>());
   EXPECT_EQ(1u, self_b.fields.size());
-  EXPECT_EQ(9203772139816579809ull, static_cast<uint64_t>(self_b.type_id));
-  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_b.fields[0].type_id));
+  EXPECT_EQ(9205249121542238939ull, static_cast<uint64_t>(self_b.type_id));
+  EXPECT_EQ(9318143287813964755ull, static_cast<uint64_t>(self_b.fields[0].type_id));
   const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
   EXPECT_EQ(2u, self_c.fields.size());
-  EXPECT_EQ(9200564679597442224ull, static_cast<uint64_t>(self_c.type_id));
-  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_c.fields[0].type_id));
-  EXPECT_EQ(9345487227046290999ull, static_cast<uint64_t>(self_c.fields[1].type_id));
+  EXPECT_EQ(9200251873128019120ull, static_cast<uint64_t>(self_c.type_id));
+  EXPECT_EQ(9318143287813964755ull, static_cast<uint64_t>(self_c.fields[0].type_id));
+  EXPECT_EQ(9345111461746810545ull, static_cast<uint64_t>(self_c.fields[1].type_id));
 
   EXPECT_NE(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
             static_cast<uint64_t>(
@@ -399,6 +399,49 @@ TEST(Reflection, VisitAllFieldsForBaseType) {
     VisitAllFields<Foo, FieldNameAndImmutableValue>::WithObject(base, values);
     EXPECT_EQ("2016", current::strings::Join(result, ','));
   }
+}
+
+namespace reflection_test {
+
+// Two identical yet different base structs.
+CURRENT_STRUCT(BaseTypeOne){};
+CURRENT_STRUCT(BaseTypeTwo){};
+
+namespace one {
+CURRENT_STRUCT(IdenticalCurrentStructWithDifferentBaseType, BaseTypeOne){};
+}  // namespace reflection_test::one
+
+namespace two {
+CURRENT_STRUCT(IdenticalCurrentStructWithDifferentBaseType, BaseTypeTwo){};
+}  // namespace reflection_test::two
+
+using current::reflection::Reflector;
+
+}  // namespace reflection_test
+
+TEST(Reflection, BaseTypeMatters) {
+  using namespace reflection_test;
+  using current::reflection::ReflectedTypeBase;
+  EXPECT_NE(static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
+  EXPECT_NE(static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id),
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+  EXPECT_EQ(9200000000962478099ull,
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id));
+  EXPECT_EQ(9200000001392004228ull,
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
+  EXPECT_EQ(9205123477974540226ull,
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+  EXPECT_EQ(9205123533591385154ull,
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
