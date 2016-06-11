@@ -51,11 +51,11 @@ struct TypeReflector;
 struct ReflectorImpl {
   static ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
 
-  template <typename TOP_LEVEL>
+  template <typename TOP_LEVEL, bool GO_DEEP>
   struct StructFieldReflector {
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    explicit StructFieldReflector(fields_list_t& fields) : fields_(fields) {}
+    explicit StructFieldReflector(fields_list_t& fields) : fields_(fields) { fields_.clear(); }
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -64,7 +64,11 @@ struct ReflectorImpl {
       if (retrieved_description) {
         description = retrieved_description;
       }
-      fields_.emplace_back(Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id, name, description);
+      if (GO_DEEP) {
+        fields_.emplace_back(Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id, name, description);
+      } else {
+        fields_.emplace_back(TypeID::NotYetReadyButYouGuysHangInThere, name, description);
+      }
     }
 
    private:
@@ -144,20 +148,17 @@ struct ReflectorImpl {
       // Two step reflection is needed to support self-referring structs.
       if (TypePrefix(s.type_id) != TYPEID_INCOMPLETE_STRUCT_PREFIX) {
         s.native_name = CurrentTypeName<T>();
+        s.super_id = ReflectSuper<T>();
+        s.template_id = ReflectTemplateInnerType<T>();
 
         // Mark this structure as being visited, to make sure self-referring structs are correctly supported.
         // The `incomplete_id` can really be anything as long as it's unique and different per type.
-        const TypeID incomplete_id =
-            static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE +
-                                std::hash<std::type_index>()(std::type_index(typeid(T))) % TYPEID_TYPE_RANGE);
+        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldReflector<T, false>(s.fields));
+        const TypeID incomplete_id = CalculateTypeID(s);
         s.type_id = incomplete_id;
 
         // After all the fields have been visited, compute the final type ID for this structure.
-        s.super_id = ReflectSuper<T>();
-        s.template_id = ReflectTemplateInnerType<T>();
-        s.fields.clear();
-        StructFieldReflector<T> field_reflector(s.fields);
-        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(field_reflector);
+        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldReflector<T, true>(s.fields));
         s.type_id = CalculateTypeID(s);
         Reflector().FixIncompleteTypeIDs(incomplete_id, s.type_id);
       }
@@ -193,7 +194,9 @@ struct ReflectorImpl {
       type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
           type_index;
     }
-    return reflected_cpp_types_.at(type_index);
+    const auto& result = reflected_cpp_types_.at(type_index);
+    assert(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
+    return result;
   }
 
   template <typename T>
@@ -205,7 +208,9 @@ struct ReflectorImpl {
       type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
           type_index;
     }
-    return reflected_cpp_types_.at(type_index);
+    const auto& result = reflected_cpp_types_.at(type_index);
+    assert(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
+    return result;
   }
 
   const ReflectedType& ReflectedTypeByTypeID(const TypeID type_id) const {

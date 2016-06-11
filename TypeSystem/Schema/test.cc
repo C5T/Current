@@ -241,8 +241,7 @@ TEST(Schema, SelfContatiningStruct) {
 
   const SchemaInfo schema = struct_schema.GetSchemaInfo();
   EXPECT_EQ(
-
-      "namespace current_userspace_4c35dd92f2d0dbe1 {\n"
+      "namespace current_userspace_6623b30e30ef1f16 {\n"
       "struct SelfContainingA {\n"
       "  std::vector<SelfContainingA> v;\n"
       "};\n"
@@ -253,8 +252,7 @@ TEST(Schema, SelfContatiningStruct) {
       "  std::vector<SelfContainingB> v;\n"
       "  std::map<std::string, SelfContainingC> m;\n"
       "};\n"
-      "}  // namespace current_userspace_4c35dd92f2d0dbe1\n",
-
+      "}  // namespace current_userspace_6623b30e30ef1f16\n",
       schema.Describe<Language::CPP>(false));
 }
 
