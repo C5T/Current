@@ -1613,7 +1613,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     // GET matrix as the collection.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
-    EXPECT_EQ("max:beer\ndima:beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+    EXPECT_EQ("max-beer\ndima-beer\n", HTTP(GET(base_url + "/api/data/like")).body);
 
     // Clean up the likes.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima-beer")).code));
