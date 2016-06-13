@@ -75,7 +75,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::Iterate(from, till);
   }
   IterableRange Iterate(std::chrono::microseconds from) const {
-    return IMPL::Iterate(from, std::chrono::microseconds(0));
+    return IMPL::Iterate(from, std::chrono::microseconds(-1));
   }
   IterableRange Iterate() const { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
 };

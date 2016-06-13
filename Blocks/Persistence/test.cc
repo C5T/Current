@@ -430,8 +430,8 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   // and run forever if every new iteator is scanning the file from the very beginning.
   for (int i = 0; i < N; ++i) {
     const auto cit = impl.Iterate(i, i + 1).begin();
-    EXPECT_EQ(cit, impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin());
     const auto& e = *cit;
+    EXPECT_EQ(JSON(e.idx_ts), JSON((*impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin()).idx_ts));
     EXPECT_EQ(static_cast<uint64_t>(i), e.idx_ts.index);
     EXPECT_EQ(static_cast<int64_t>(i * 1000), e.idx_ts.us.count());
     EXPECT_EQ(LargeTestStorableString(i).s, e.entry.s);

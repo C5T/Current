@@ -330,7 +330,7 @@ class FilePersister {
     if (begin_it != file_persister_impl_->timestamp.end()) {
       result.first = std::distance(file_persister_impl_->timestamp.begin(), begin_it);
     }
-    if (till.count() != 0) {
+    if (till.count() > 0) {
       const auto end_it = std::upper_bound(
           file_persister_impl_->timestamp.begin(),
           file_persister_impl_->timestamp.end(),
@@ -366,7 +366,7 @@ class FilePersister {
   }
 
   IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
-    if (till.count() && till < from) {
+    if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = IndexRangeByTimestampRange(from, till);
