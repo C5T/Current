@@ -51,13 +51,13 @@ default: all
 		find .current/ -perm +111 -type f -exec "{}" ";" ; \
 	fi
 
-test: phony_current_build .current/test
+test: .current/test
 	.current/test --current_runtime_arch=${OS}
 
 debug: phony_current_build
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)
 
-all: phony_current_build ${BIN}
+all: ${BIN}
 
 clean:
 	find . -type d -name .current | xargs rm -rf
@@ -68,7 +68,7 @@ clean:
 	find . -type l -name '.current_*' | xargs rm -f
 	find . -type l -name '.current_*.*' | xargs rm -f
 
-.current/%: %.cc ${LOCAL_HEADERS_DEPS}
+.current/%: %.cc ${LOCAL_HEADERS_DEPS} | phony_current_build
 	@(mkdir -p .current)
 	${CPLUSPLUS} ${CPPFLAGS} -o "$@" "$<" ${LDFLAGS}
 
