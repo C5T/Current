@@ -30,6 +30,7 @@ SOFTWARE.
 
 #include "../struct.h"
 #include "../variant.h"
+#include "../optional.h"
 
 #include "../../Bricks/template/pod.h"
 
@@ -40,6 +41,13 @@ SOFTWARE.
   struct ns : CURRENT_NAMESPACE_HELPER_##ns
 
 #define CURRENT_NAMESPACE_TYPE(external, ...) using external = __VA_ARGS__
+
+// TODO(dkorolev): `__VA_ARGS__` magic here.
+#define CURRENT_DERIVED_NAMESPACE(ns, parent)                   \
+  struct CURRENT_NAMESPACE_HELPER_##ns {                        \
+    static const char* CURRENT_NAMESPACE_NAME() { return #ns; } \
+  };                                                            \
+  struct ns : parent, CURRENT_NAMESPACE_HELPER_##ns
 
 namespace current {
 namespace type_evolution {
@@ -60,6 +68,55 @@ struct Evolve;
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+// Boilerplate default generic evolutor for `std::vector<T>`.
+template <typename FROM_NAMESPACE, typename EVOLUTOR, typename VECTOR_ELEMENT_TYPE>
+struct Evolve<FROM_NAMESPACE, std::vector<VECTOR_ELEMENT_TYPE>, EVOLUTOR> {
+  template <typename INTO, typename OUTPUT>
+  static void Go(const std::vector<VECTOR_ELEMENT_TYPE>& from, OUTPUT& into) {
+    into.resize(from.size());
+    auto placeholder = into.begin();
+    for (const auto& e : from) {
+      Evolve<FROM_NAMESPACE, VECTOR_ELEMENT_TYPE, EVOLUTOR>::template Go<INTO>(e, *placeholder++);
+    }
+  }
+};
+
+// Boilerplate default generic evolutor for `std::pair<T1, T2>`.
+template <typename FROM_NAMESPACE, typename EVOLUTOR, typename FIRST_TYPE, typename SECOND_TYPE>
+struct Evolve<FROM_NAMESPACE, std::pair<FIRST_TYPE, SECOND_TYPE>, EVOLUTOR> {
+  template <typename INTO, typename OUTPUT>
+  static void Go(const std::pair<FIRST_TYPE, SECOND_TYPE>& from, OUTPUT& into) {
+    Evolve<FROM_NAMESPACE, FIRST_TYPE, EVOLUTOR>::template Go<INTO>(from.first, into.first);
+    Evolve<FROM_NAMESPACE, SECOND_TYPE, EVOLUTOR>::template Go<INTO>(from.second, into.second);
+  }
+};
+
+// Boilerplate default generic evolutor for `std::map<K, V>`.
+template <typename FROM_NAMESPACE, typename EVOLUTOR, typename MAP_KEY, typename MAP_VALUE>
+struct Evolve<FROM_NAMESPACE, std::map<MAP_KEY, MAP_VALUE>, EVOLUTOR> {
+  template <typename INTO, typename OUTPUT>
+  static void Go(const std::map<MAP_KEY, MAP_VALUE>& from, OUTPUT& into) {
+    for (const auto& e : from) {
+      typename OUTPUT::key_type key;
+      Evolve<FROM_NAMESPACE, MAP_KEY, EVOLUTOR>::template Go<INTO>(e.first, key);
+      Evolve<FROM_NAMESPACE, MAP_VALUE, EVOLUTOR>::template Go<INTO>(e.second, into[key]);
+    }
+  }
+};
+
+// Boilerplate default generic evolutor for `Optional<T>`.
+template <typename FROM_NAMESPACE, typename EVOLUTOR, typename OPTIONAL_INNER_TYPE>
+struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLUTOR> {
+  template <typename INTO, typename OUTPUT>
+  static void Go(const Optional<OPTIONAL_INNER_TYPE>& from, OUTPUT& into) {
+    if (Exists(from)) {
+      into = Value(from);
+    } else {
+      into = nullptr;
+    }
+  }
+};
 
 }  // namespace current::type_evolution
 }  // namespace current

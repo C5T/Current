@@ -1,14 +1,14 @@
 // The `current.h` file is the one from `https://github.com/C5T/Current`.
 // Compile with `-std=c++11` or higher.
 
-#ifndef CURRENT_USERSPACE_B8072E8BD86137BD
-#define CURRENT_USERSPACE_B8072E8BD86137BD
+#ifndef CURRENT_USERSPACE_0473D52B47432E49
+#define CURRENT_USERSPACE_0473D52B47432E49
 
 #include "current.h"
 
 // clang-format off
 
-namespace current_userspace_b8072e8bd86137bd {
+namespace current_userspace_0473d52b47432e49 {
 
 CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(a, uint8_t);
@@ -66,14 +66,18 @@ using T9208828720332602574 = Y;
 CURRENT_VARIANT(MyFreakingVariant, A, X, Y);
 using T9227782344077896555 = MyFreakingVariant;
 
+CURRENT_VARIANT(Variant_B_A_X_Y_E, A, X, Y);
+using T9227782347108675041 = Variant_B_A_X_Y_E;
+
 CURRENT_STRUCT(C) {
   CURRENT_FIELD(e, Empty);
   CURRENT_FIELD(c, MyFreakingVariant);
+  CURRENT_FIELD(d, Variant_B_A_X_Y_E);
 };
-using T9204551010916892864 = C;
+using T9202971611369570493 = C;
 
 CURRENT_VARIANT(Variant_B_A_B_B2_C_Empty_E, A, B, B2, C, Empty);
-using T9221653011061437146 = Variant_B_A_B_B2_C_Empty_E;
+using T9228482442669086788 = Variant_B_A_B_B2_C_Empty_E;
 
 CURRENT_STRUCT(Templated_T9209980946934124423) {
   CURRENT_FIELD(foo, int32_t);
@@ -139,376 +143,417 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(w5, TemplatedInheriting_T9227782344077896555);
   CURRENT_FIELD(w6, TemplatedInheriting_T9201673071807149456);
 };
-using T9207515447801096914 = FullTest;
+using T9209385642811445282 = FullTest;
 
-}  // namespace current_userspace_b8072e8bd86137bd
+}  // namespace current_userspace_0473d52b47432e49
 
-CURRENT_NAMESPACE(USERSPACE_B8072E8BD86137BD) {
-  CURRENT_NAMESPACE_TYPE(E, current_userspace_b8072e8bd86137bd::E);
-  CURRENT_NAMESPACE_TYPE(Empty, current_userspace_b8072e8bd86137bd::Empty);
-  CURRENT_NAMESPACE_TYPE(B, current_userspace_b8072e8bd86137bd::B);
-  CURRENT_NAMESPACE_TYPE(Templated_T9209626390174323094, current_userspace_b8072e8bd86137bd::Templated_T9209626390174323094);
-  CURRENT_NAMESPACE_TYPE(Templated_T9200000002835747520, current_userspace_b8072e8bd86137bd::Templated_T9200000002835747520);
-  CURRENT_NAMESPACE_TYPE(C, current_userspace_b8072e8bd86137bd::C);
-  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9201673071807149456, current_userspace_b8072e8bd86137bd::TemplatedInheriting_T9201673071807149456);
-  CURRENT_NAMESPACE_TYPE(A, current_userspace_b8072e8bd86137bd::A);
-  CURRENT_NAMESPACE_TYPE(Primitives, current_userspace_b8072e8bd86137bd::Primitives);
-  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9209980946934124423, current_userspace_b8072e8bd86137bd::TemplatedInheriting_T9209980946934124423);
-  CURRENT_NAMESPACE_TYPE(FullTest, current_userspace_b8072e8bd86137bd::FullTest);
-  CURRENT_NAMESPACE_TYPE(Y, current_userspace_b8072e8bd86137bd::Y);
-  CURRENT_NAMESPACE_TYPE(Templated_T9209980946934124423, current_userspace_b8072e8bd86137bd::Templated_T9209980946934124423);
-  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9227782344077896555, current_userspace_b8072e8bd86137bd::TemplatedInheriting_T9227782344077896555);
-  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9200000002835747520, current_userspace_b8072e8bd86137bd::TemplatedInheriting_T9200000002835747520);
-  CURRENT_NAMESPACE_TYPE(B2, current_userspace_b8072e8bd86137bd::B2);
-  CURRENT_NAMESPACE_TYPE(Templated_T9227782344077896555, current_userspace_b8072e8bd86137bd::Templated_T9227782344077896555);
-  CURRENT_NAMESPACE_TYPE(X, current_userspace_b8072e8bd86137bd::X);
-  CURRENT_NAMESPACE_TYPE(Variant_B_A_B_B2_C_Empty_E, current_userspace_b8072e8bd86137bd::Variant_B_A_B_B2_C_Empty_E);
-  CURRENT_NAMESPACE_TYPE(MyFreakingVariant, current_userspace_b8072e8bd86137bd::MyFreakingVariant);
-};
+CURRENT_NAMESPACE(USERSPACE_0473D52B47432E49) {
+  CURRENT_NAMESPACE_TYPE(E, current_userspace_0473d52b47432e49::E);
+  CURRENT_NAMESPACE_TYPE(Empty, current_userspace_0473d52b47432e49::Empty);
+  CURRENT_NAMESPACE_TYPE(B, current_userspace_0473d52b47432e49::B);
+  CURRENT_NAMESPACE_TYPE(Templated_T9209626390174323094, current_userspace_0473d52b47432e49::Templated_T9209626390174323094);
+  CURRENT_NAMESPACE_TYPE(Templated_T9200000002835747520, current_userspace_0473d52b47432e49::Templated_T9200000002835747520);
+  CURRENT_NAMESPACE_TYPE(C, current_userspace_0473d52b47432e49::C);
+  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9201673071807149456, current_userspace_0473d52b47432e49::TemplatedInheriting_T9201673071807149456);
+  CURRENT_NAMESPACE_TYPE(A, current_userspace_0473d52b47432e49::A);
+  CURRENT_NAMESPACE_TYPE(Primitives, current_userspace_0473d52b47432e49::Primitives);
+  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9209980946934124423, current_userspace_0473d52b47432e49::TemplatedInheriting_T9209980946934124423);
+  CURRENT_NAMESPACE_TYPE(Y, current_userspace_0473d52b47432e49::Y);
+  CURRENT_NAMESPACE_TYPE(FullTest, current_userspace_0473d52b47432e49::FullTest);
+  CURRENT_NAMESPACE_TYPE(Templated_T9209980946934124423, current_userspace_0473d52b47432e49::Templated_T9209980946934124423);
+  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9227782344077896555, current_userspace_0473d52b47432e49::TemplatedInheriting_T9227782344077896555);
+  CURRENT_NAMESPACE_TYPE(TemplatedInheriting_T9200000002835747520, current_userspace_0473d52b47432e49::TemplatedInheriting_T9200000002835747520);
+  CURRENT_NAMESPACE_TYPE(B2, current_userspace_0473d52b47432e49::B2);
+  CURRENT_NAMESPACE_TYPE(Templated_T9227782344077896555, current_userspace_0473d52b47432e49::Templated_T9227782344077896555);
+  CURRENT_NAMESPACE_TYPE(X, current_userspace_0473d52b47432e49::X);
+  CURRENT_NAMESPACE_TYPE(MyFreakingVariant, current_userspace_0473d52b47432e49::MyFreakingVariant);
+  CURRENT_NAMESPACE_TYPE(Variant_B_A_X_Y_E, current_userspace_0473d52b47432e49::Variant_B_A_X_Y_E);
+  CURRENT_NAMESPACE_TYPE(Variant_B_A_B_B2_C_Empty_E, current_userspace_0473d52b47432e49::Variant_B_A_B_B2_C_Empty_E);
+};  // CURRENT_NAMESPACE(USERSPACE_0473D52B47432E49)
 
 namespace current {
 namespace type_evolution {
-// Default evolution for `Empty`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Empty, EVOLUTOR> {
+
+// Default evolution for `CURRENT_ENUM(E)`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::E, EVOLUTOR> {
   template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Empty& from,
+  static void Go(USERSPACE_0473D52B47432E49::E from,
+                 typename INTO::E& into) {
+    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.
+    into = static_cast<typename INTO::E>(from);
+  }
+};
+
+// Default evolution for struct `Empty`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Empty, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Empty& from,
                  typename INTO::Empty& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Empty>::value == 0,
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Empty>::value == 0,
                     "Custom evolutor required.");
       static_cast<void>(from);
       static_cast<void>(into);
   }
 };
 
-// Default evolution for `B`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::B, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::B& from,
+// Default evolution for struct `B`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::B, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::B& from,
                  typename INTO::B& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::B>::value == 2,
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::B>::value == 1,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.b), EVOLUTOR>::template Go<INTO>(from.b, into.b);
+      Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::A&>(from), static_cast<typename INTO::A&>(into));
+      Evolve<NAMESPACE, decltype(from.b), EVOLUTOR>::template Go<INTO>(from.b, into.b);
   }
 };
 
-// Default evolution for `Templated_T9209626390174323094`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Templated_T9209626390174323094, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Templated_T9209626390174323094& from,
+// Default evolution for struct `Templated_T9209626390174323094`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Templated_T9209626390174323094, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Templated_T9209626390174323094& from,
                  typename INTO::Templated_T9209626390174323094& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Templated_T9209626390174323094>::value == 2,
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Templated_T9209626390174323094>::value == 2,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
+      Evolve<NAMESPACE, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
+      Evolve<NAMESPACE, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
   }
 };
 
-// Default evolution for `Templated_T9200000002835747520`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Templated_T9200000002835747520, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Templated_T9200000002835747520& from,
+// Default evolution for struct `Templated_T9200000002835747520`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Templated_T9200000002835747520, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Templated_T9200000002835747520& from,
                  typename INTO::Templated_T9200000002835747520& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Templated_T9200000002835747520>::value == 2,
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Templated_T9200000002835747520>::value == 2,
                     "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
+      Evolve<NAMESPACE, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
+      Evolve<NAMESPACE, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
   }
 };
 
-// Default evolution for `C`.
-// TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
+// Default evolution for struct `C`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::C, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::C& from,
+                 typename INTO::C& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::C>::value == 3,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.e), EVOLUTOR>::template Go<INTO>(from.e, into.e);
+      Evolve<NAMESPACE, decltype(from.c), EVOLUTOR>::template Go<INTO>(from.c, into.c);
+      Evolve<NAMESPACE, decltype(from.d), EVOLUTOR>::template Go<INTO>(from.d, into.d);
+  }
+};
+
+// Default evolution for struct `TemplatedInheriting_T9201673071807149456`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::TemplatedInheriting_T9201673071807149456, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::TemplatedInheriting_T9201673071807149456& from,
+                 typename INTO::TemplatedInheriting_T9201673071807149456& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::TemplatedInheriting_T9201673071807149456>::value == 2,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::A&>(from), static_cast<typename INTO::A&>(into));
+      Evolve<NAMESPACE, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
+      Evolve<NAMESPACE, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
+  }
+};
+
+// Default evolution for struct `A`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::A& from,
+                 typename INTO::A& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::A>::value == 1,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
+  }
+};
+
+// Default evolution for struct `Primitives`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Primitives, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Primitives& from,
+                 typename INTO::Primitives& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Primitives>::value == 15,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
+      Evolve<NAMESPACE, decltype(from.b), EVOLUTOR>::template Go<INTO>(from.b, into.b);
+      Evolve<NAMESPACE, decltype(from.c), EVOLUTOR>::template Go<INTO>(from.c, into.c);
+      Evolve<NAMESPACE, decltype(from.d), EVOLUTOR>::template Go<INTO>(from.d, into.d);
+      Evolve<NAMESPACE, decltype(from.e), EVOLUTOR>::template Go<INTO>(from.e, into.e);
+      Evolve<NAMESPACE, decltype(from.f), EVOLUTOR>::template Go<INTO>(from.f, into.f);
+      Evolve<NAMESPACE, decltype(from.g), EVOLUTOR>::template Go<INTO>(from.g, into.g);
+      Evolve<NAMESPACE, decltype(from.h), EVOLUTOR>::template Go<INTO>(from.h, into.h);
+      Evolve<NAMESPACE, decltype(from.i), EVOLUTOR>::template Go<INTO>(from.i, into.i);
+      Evolve<NAMESPACE, decltype(from.j), EVOLUTOR>::template Go<INTO>(from.j, into.j);
+      Evolve<NAMESPACE, decltype(from.k), EVOLUTOR>::template Go<INTO>(from.k, into.k);
+      Evolve<NAMESPACE, decltype(from.l), EVOLUTOR>::template Go<INTO>(from.l, into.l);
+      Evolve<NAMESPACE, decltype(from.m), EVOLUTOR>::template Go<INTO>(from.m, into.m);
+      Evolve<NAMESPACE, decltype(from.n), EVOLUTOR>::template Go<INTO>(from.n, into.n);
+      Evolve<NAMESPACE, decltype(from.o), EVOLUTOR>::template Go<INTO>(from.o, into.o);
+  }
+};
+
+// Default evolution for struct `TemplatedInheriting_T9209980946934124423`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::TemplatedInheriting_T9209980946934124423, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::TemplatedInheriting_T9209980946934124423& from,
+                 typename INTO::TemplatedInheriting_T9209980946934124423& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::TemplatedInheriting_T9209980946934124423>::value == 2,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::A&>(from), static_cast<typename INTO::A&>(into));
+      Evolve<NAMESPACE, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
+      Evolve<NAMESPACE, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
+  }
+};
+
+// Default evolution for struct `Y`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Y, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Y& from,
+                 typename INTO::Y& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Y>::value == 1,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.e), EVOLUTOR>::template Go<INTO>(from.e, into.e);
+  }
+};
+
+// Default evolution for struct `FullTest`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::FullTest, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::FullTest& from,
+                 typename INTO::FullTest& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::FullTest>::value == 12,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.primitives), EVOLUTOR>::template Go<INTO>(from.primitives, into.primitives);
+      Evolve<NAMESPACE, decltype(from.v1), EVOLUTOR>::template Go<INTO>(from.v1, into.v1);
+      Evolve<NAMESPACE, decltype(from.v2), EVOLUTOR>::template Go<INTO>(from.v2, into.v2);
+      Evolve<NAMESPACE, decltype(from.p), EVOLUTOR>::template Go<INTO>(from.p, into.p);
+      Evolve<NAMESPACE, decltype(from.o), EVOLUTOR>::template Go<INTO>(from.o, into.o);
+      Evolve<NAMESPACE, decltype(from.q), EVOLUTOR>::template Go<INTO>(from.q, into.q);
+      Evolve<NAMESPACE, decltype(from.w1), EVOLUTOR>::template Go<INTO>(from.w1, into.w1);
+      Evolve<NAMESPACE, decltype(from.w2), EVOLUTOR>::template Go<INTO>(from.w2, into.w2);
+      Evolve<NAMESPACE, decltype(from.w3), EVOLUTOR>::template Go<INTO>(from.w3, into.w3);
+      Evolve<NAMESPACE, decltype(from.w4), EVOLUTOR>::template Go<INTO>(from.w4, into.w4);
+      Evolve<NAMESPACE, decltype(from.w5), EVOLUTOR>::template Go<INTO>(from.w5, into.w5);
+      Evolve<NAMESPACE, decltype(from.w6), EVOLUTOR>::template Go<INTO>(from.w6, into.w6);
+  }
+};
+
+// Default evolution for struct `Templated_T9209980946934124423`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Templated_T9209980946934124423, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Templated_T9209980946934124423& from,
+                 typename INTO::Templated_T9209980946934124423& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Templated_T9209980946934124423>::value == 2,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
+      Evolve<NAMESPACE, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
+  }
+};
+
+// Default evolution for struct `TemplatedInheriting_T9227782344077896555`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::TemplatedInheriting_T9227782344077896555, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::TemplatedInheriting_T9227782344077896555& from,
+                 typename INTO::TemplatedInheriting_T9227782344077896555& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::TemplatedInheriting_T9227782344077896555>::value == 2,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::A&>(from), static_cast<typename INTO::A&>(into));
+      Evolve<NAMESPACE, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
+      Evolve<NAMESPACE, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
+  }
+};
+
+// Default evolution for struct `TemplatedInheriting_T9200000002835747520`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::TemplatedInheriting_T9200000002835747520, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::TemplatedInheriting_T9200000002835747520& from,
+                 typename INTO::TemplatedInheriting_T9200000002835747520& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::TemplatedInheriting_T9200000002835747520>::value == 2,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::A&>(from), static_cast<typename INTO::A&>(into));
+      Evolve<NAMESPACE, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
+      Evolve<NAMESPACE, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
+  }
+};
+
+// Default evolution for struct `B2`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::B2, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::B2& from,
+                 typename INTO::B2& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::B2>::value == 0,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::A, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::A&>(from), static_cast<typename INTO::A&>(into));
+      static_cast<void>(from);
+      static_cast<void>(into);
+  }
+};
+
+// Default evolution for struct `Templated_T9227782344077896555`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Templated_T9227782344077896555, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::Templated_T9227782344077896555& from,
+                 typename INTO::Templated_T9227782344077896555& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::Templated_T9227782344077896555>::value == 2,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
+      Evolve<NAMESPACE, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
+  }
+};
+
+// Default evolution for struct `X`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::X, EVOLUTOR> {
+  template <typename INTO,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const typename NAMESPACE::X& from,
+                 typename INTO::X& into) {
+      static_assert(::current::reflection::FieldCounter<typename USERSPACE_0473D52B47432E49::X>::value == 1,
+                    "Custom evolutor required.");
+      Evolve<NAMESPACE, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
+  }
+};
+
+// Default evolution for `Variant<A, X, Y>`.
 template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct USERSPACE_B8072E8BD86137BD_C_c_Cases {
+struct USERSPACE_0473D52B47432E49_MyFreakingVariant_Cases {
   DST& into;
-  explicit USERSPACE_B8072E8BD86137BD_C_c_Cases(DST& into) : into(into) {}
-  void operator()(const typename FROM_NAMESPACE::A& value) {
+  explicit USERSPACE_0473D52B47432E49_MyFreakingVariant_Cases(DST& into) : into(into) {}
+  void operator()(const typename FROM_NAMESPACE::A& value) const {
     using into_t = typename INTO::A;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
-  void operator()(const typename FROM_NAMESPACE::X& value) {
+  void operator()(const typename FROM_NAMESPACE::X& value) const {
     using into_t = typename INTO::X;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::X, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
-  void operator()(const typename FROM_NAMESPACE::Y& value) {
+  void operator()(const typename FROM_NAMESPACE::Y& value) const {
     using into_t = typename INTO::Y;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Y, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::C, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::C& from,
-                 typename INTO::C& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::C>::value == 2,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.e), EVOLUTOR>::template Go<INTO>(from.e, into.e);
-      { USERSPACE_B8072E8BD86137BD_C_c_Cases<decltype(into.c), USERSPACE_B8072E8BD86137BD, INTO, EVOLUTOR> logic(into.c); from.c.Call(logic); }
+template <typename NAMESPACE, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
+struct Evolve<NAMESPACE, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_0473D52B47432E49::A, USERSPACE_0473D52B47432E49::X, USERSPACE_0473D52B47432E49::Y>>, EVOLUTOR> {
+  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
+  template <typename INTO,
+            typename CUSTOM_INTO_VARIANT_TYPE,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_0473D52B47432E49::A, USERSPACE_0473D52B47432E49::X, USERSPACE_0473D52B47432E49::Y>>& from,
+                 CUSTOM_INTO_VARIANT_TYPE& into) {
+    from.Call(USERSPACE_0473D52B47432E49_MyFreakingVariant_Cases<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));
   }
 };
 
-// Default evolution for `TemplatedInheriting_T9201673071807149456`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9201673071807149456, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9201673071807149456& from,
-                 typename INTO::TemplatedInheriting_T9201673071807149456& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9201673071807149456>::value == 3,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
-  }
-};
-
-// Default evolution for `A`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::A, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::A& from,
-                 typename INTO::A& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::A>::value == 1,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-  }
-};
-
-// Default evolution for `Primitives`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Primitives, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Primitives& from,
-                 typename INTO::Primitives& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Primitives>::value == 15,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.b), EVOLUTOR>::template Go<INTO>(from.b, into.b);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.c), EVOLUTOR>::template Go<INTO>(from.c, into.c);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.d), EVOLUTOR>::template Go<INTO>(from.d, into.d);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.e), EVOLUTOR>::template Go<INTO>(from.e, into.e);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.f), EVOLUTOR>::template Go<INTO>(from.f, into.f);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.g), EVOLUTOR>::template Go<INTO>(from.g, into.g);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.h), EVOLUTOR>::template Go<INTO>(from.h, into.h);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.i), EVOLUTOR>::template Go<INTO>(from.i, into.i);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.j), EVOLUTOR>::template Go<INTO>(from.j, into.j);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.k), EVOLUTOR>::template Go<INTO>(from.k, into.k);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.l), EVOLUTOR>::template Go<INTO>(from.l, into.l);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.m), EVOLUTOR>::template Go<INTO>(from.m, into.m);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.n), EVOLUTOR>::template Go<INTO>(from.n, into.n);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.o), EVOLUTOR>::template Go<INTO>(from.o, into.o);
-  }
-};
-
-// Default evolution for `TemplatedInheriting_T9209980946934124423`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9209980946934124423, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9209980946934124423& from,
-                 typename INTO::TemplatedInheriting_T9209980946934124423& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9209980946934124423>::value == 3,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
-  }
-};
-
-// Default evolution for `FullTest`.
-// TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
+// Default evolution for `Variant<A, B, B2, C, Empty>`.
 template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct USERSPACE_B8072E8BD86137BD_FullTest_q_Cases {
+struct USERSPACE_0473D52B47432E49_Variant_B_A_B_B2_C_Empty_E_Cases {
   DST& into;
-  explicit USERSPACE_B8072E8BD86137BD_FullTest_q_Cases(DST& into) : into(into) {}
-  void operator()(const typename FROM_NAMESPACE::A& value) {
+  explicit USERSPACE_0473D52B47432E49_Variant_B_A_B_B2_C_Empty_E_Cases(DST& into) : into(into) {}
+  void operator()(const typename FROM_NAMESPACE::A& value) const {
     using into_t = typename INTO::A;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
-  void operator()(const typename FROM_NAMESPACE::B& value) {
+  void operator()(const typename FROM_NAMESPACE::B& value) const {
     using into_t = typename INTO::B;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::B, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
-  void operator()(const typename FROM_NAMESPACE::B2& value) {
+  void operator()(const typename FROM_NAMESPACE::B2& value) const {
     using into_t = typename INTO::B2;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::B2, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
-  void operator()(const typename FROM_NAMESPACE::C& value) {
+  void operator()(const typename FROM_NAMESPACE::C& value) const {
     using into_t = typename INTO::C;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::C, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
-  void operator()(const typename FROM_NAMESPACE::Empty& value) {
+  void operator()(const typename FROM_NAMESPACE::Empty& value) const {
     using into_t = typename INTO::Empty;
     into = into_t();
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Empty, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::FullTest, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::FullTest& from,
-                 typename INTO::FullTest& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::FullTest>::value == 12,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.primitives), EVOLUTOR>::template Go<INTO>(from.primitives, into.primitives);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.v1), EVOLUTOR>::template Go<INTO>(from.v1, into.v1);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.v2), EVOLUTOR>::template Go<INTO>(from.v2, into.v2);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.p), EVOLUTOR>::template Go<INTO>(from.p, into.p);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.o), EVOLUTOR>::template Go<INTO>(from.o, into.o);
-      { USERSPACE_B8072E8BD86137BD_FullTest_q_Cases<decltype(into.q), USERSPACE_B8072E8BD86137BD, INTO, EVOLUTOR> logic(into.q); from.q.Call(logic); }
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.w1), EVOLUTOR>::template Go<INTO>(from.w1, into.w1);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.w2), EVOLUTOR>::template Go<INTO>(from.w2, into.w2);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.w3), EVOLUTOR>::template Go<INTO>(from.w3, into.w3);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.w4), EVOLUTOR>::template Go<INTO>(from.w4, into.w4);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.w5), EVOLUTOR>::template Go<INTO>(from.w5, into.w5);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.w6), EVOLUTOR>::template Go<INTO>(from.w6, into.w6);
-  }
-};
-
-// Default evolution for `Y`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Y, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Y& from,
-                 typename INTO::Y& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Y>::value == 1,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.e), EVOLUTOR>::template Go<INTO>(from.e, into.e);
-  }
-};
-
-// Default evolution for `Templated_T9209980946934124423`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Templated_T9209980946934124423, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Templated_T9209980946934124423& from,
-                 typename INTO::Templated_T9209980946934124423& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Templated_T9209980946934124423>::value == 2,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.bar), EVOLUTOR>::template Go<INTO>(from.bar, into.bar);
-  }
-};
-
-// Default evolution for `TemplatedInheriting_T9227782344077896555`.
-// TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct USERSPACE_B8072E8BD86137BD_TemplatedInheriting_T9227782344077896555_meh_Cases {
-  DST& into;
-  explicit USERSPACE_B8072E8BD86137BD_TemplatedInheriting_T9227782344077896555_meh_Cases(DST& into) : into(into) {}
-  void operator()(const typename FROM_NAMESPACE::A& value) {
-    using into_t = typename INTO::A;
-    into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-  void operator()(const typename FROM_NAMESPACE::X& value) {
-    using into_t = typename INTO::X;
-    into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::X, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-  void operator()(const typename FROM_NAMESPACE::Y& value) {
-    using into_t = typename INTO::Y;
-    into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Y, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-};
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9227782344077896555, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9227782344077896555& from,
-                 typename INTO::TemplatedInheriting_T9227782344077896555& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9227782344077896555>::value == 3,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
-      { USERSPACE_B8072E8BD86137BD_TemplatedInheriting_T9227782344077896555_meh_Cases<decltype(into.meh), USERSPACE_B8072E8BD86137BD, INTO, EVOLUTOR> logic(into.meh); from.meh.Call(logic); }
-  }
-};
-
-// Default evolution for `TemplatedInheriting_T9200000002835747520`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9200000002835747520, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9200000002835747520& from,
-                 typename INTO::TemplatedInheriting_T9200000002835747520& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::TemplatedInheriting_T9200000002835747520>::value == 3,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.baz), EVOLUTOR>::template Go<INTO>(from.baz, into.baz);
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.meh), EVOLUTOR>::template Go<INTO>(from.meh, into.meh);
-  }
-};
-
-// Default evolution for `B2`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::B2, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::B2& from,
-                 typename INTO::B2& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::B2>::value == 1,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.a), EVOLUTOR>::template Go<INTO>(from.a, into.a);
-  }
-};
-
-// Default evolution for `Templated_T9227782344077896555`.
-// TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct USERSPACE_B8072E8BD86137BD_Templated_T9227782344077896555_bar_Cases {
-  DST& into;
-  explicit USERSPACE_B8072E8BD86137BD_Templated_T9227782344077896555_bar_Cases(DST& into) : into(into) {}
-  void operator()(const typename FROM_NAMESPACE::A& value) {
-    using into_t = typename INTO::A;
-    into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-  void operator()(const typename FROM_NAMESPACE::X& value) {
-    using into_t = typename INTO::X;
-    into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::X, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-  void operator()(const typename FROM_NAMESPACE::Y& value) {
-    using into_t = typename INTO::Y;
-    into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Y, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-};
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::Templated_T9227782344077896555, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::Templated_T9227782344077896555& from,
-                 typename INTO::Templated_T9227782344077896555& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::Templated_T9227782344077896555>::value == 2,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.foo), EVOLUTOR>::template Go<INTO>(from.foo, into.foo);
-      { USERSPACE_B8072E8BD86137BD_Templated_T9227782344077896555_bar_Cases<decltype(into.bar), USERSPACE_B8072E8BD86137BD, INTO, EVOLUTOR> logic(into.bar); from.bar.Call(logic); }
-  }
-};
-
-// Default evolution for `X`.
-template <typename EVOLUTOR>
-struct Evolve<USERSPACE_B8072E8BD86137BD, USERSPACE_B8072E8BD86137BD::X, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const typename USERSPACE_B8072E8BD86137BD::X& from,
-                 typename INTO::X& into) {
-      static_assert(::current::reflection::TotalFieldCounter<typename USERSPACE_B8072E8BD86137BD::X>::value == 1,
-                    "Custom evolutor required.");
-      Evolve<USERSPACE_B8072E8BD86137BD, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
+template <typename NAMESPACE, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
+struct Evolve<NAMESPACE, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_0473D52B47432E49::A, USERSPACE_0473D52B47432E49::B, USERSPACE_0473D52B47432E49::B2, USERSPACE_0473D52B47432E49::C, USERSPACE_0473D52B47432E49::Empty>>, EVOLUTOR> {
+  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
+  template <typename INTO,
+            typename CUSTOM_INTO_VARIANT_TYPE,
+            class CHECK = NAMESPACE,
+            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_0473D52B47432E49, CHECK>::value>>
+  static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_0473D52B47432E49::A, USERSPACE_0473D52B47432E49::B, USERSPACE_0473D52B47432E49::B2, USERSPACE_0473D52B47432E49::C, USERSPACE_0473D52B47432E49::Empty>>& from,
+                 CUSTOM_INTO_VARIANT_TYPE& into) {
+    from.Call(USERSPACE_0473D52B47432E49_Variant_B_A_B_B2_C_Empty_E_Cases<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));
   }
 };
 
 }  // namespace current::type_evolution
 }  // namespace current
 
+// Privileged types.
+CURRENT_DERIVED_NAMESPACE(ExposedNamespace, USERSPACE_0473D52B47432E49) {
+  CURRENT_NAMESPACE_TYPE(Empty, current_userspace_0473d52b47432e49::Empty);
+  CURRENT_NAMESPACE_TYPE(ExposedFullTest, current_userspace_0473d52b47432e49::FullTest);
+  CURRENT_NAMESPACE_TYPE(Primitives, current_userspace_0473d52b47432e49::Primitives);
+};  // CURRENT_NAMESPACE(ExposedNamespace)
+
 // clang-format on
 
-#endif  // CURRENT_USERSPACE_B8072E8BD86137BD
+#endif  // CURRENT_USERSPACE_0473D52B47432E49

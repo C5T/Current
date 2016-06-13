@@ -1483,23 +1483,25 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "\n"
       "CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614) {\n"
       "  CURRENT_NAMESPACE_TYPE(SimpleUser, current_userspace_c546bdbf8f3a5614::SimpleUser);\n"
-      "};\n"
+      "};  // CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614)\n"
       "\n"
       "namespace current {\n"
       "namespace type_evolution {\n"
-      "// Default evolution for `SimpleUser`.\n"
-      "template <typename EVOLUTOR>\n"
-      "struct Evolve<USERSPACE_C546BDBF8F3A5614, USERSPACE_C546BDBF8F3A5614::SimpleUser, EVOLUTOR> {\n"
-      "  template <typename INTO>\n"
-      "  static void Go(const typename USERSPACE_C546BDBF8F3A5614::SimpleUser& from,\n"
+      "\n"
+      "// Default evolution for struct `SimpleUser`.\n"
+      "template <typename NAMESPACE, typename EVOLUTOR>\n"
+      "struct Evolve<NAMESPACE, USERSPACE_C546BDBF8F3A5614::SimpleUser, EVOLUTOR> {\n"
+      "  template <typename INTO,\n"
+      "            class CHECK = NAMESPACE,\n"
+      "            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_C546BDBF8F3A5614, "
+      "CHECK>::value>>\n"
+      "  static void Go(const typename NAMESPACE::SimpleUser& from,\n"
       "                 typename INTO::SimpleUser& into) {\n"
-      "      static_assert(::current::reflection::TotalFieldCounter<typename "
+      "      static_assert(::current::reflection::FieldCounter<typename "
       "USERSPACE_C546BDBF8F3A5614::SimpleUser>::value == 2,\n"
       "                    \"Custom evolutor required.\");\n"
-      "      Evolve<USERSPACE_C546BDBF8F3A5614, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, "
-      "into.key);\n"
-      "      Evolve<USERSPACE_C546BDBF8F3A5614, decltype(from.name), EVOLUTOR>::template Go<INTO>(from.name, "
-      "into.name);\n"
+      "      Evolve<NAMESPACE, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, into.key);\n"
+      "      Evolve<NAMESPACE, decltype(from.name), EVOLUTOR>::template Go<INTO>(from.name, into.name);\n"
       "  }\n"
       "};\n"
       "\n"
@@ -1612,7 +1614,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     // GET matrix as the collection.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
-    EXPECT_EQ("max:beer\ndima:beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+    EXPECT_EQ("max-beer\ndima-beer\n", HTTP(GET(base_url + "/api/data/like")).body);
 
     // Clean up the likes.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima-beer")).code));

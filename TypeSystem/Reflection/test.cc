@@ -152,6 +152,39 @@ TEST(Reflection, StructAndVariant) {
   }
 }
 
+namespace reflection_test {
+CURRENT_STRUCT(A){};
+CURRENT_STRUCT(X){};
+CURRENT_STRUCT(Y){};
+namespace explicitly_declared_named_variant_one {
+CURRENT_VARIANT(Variant_B_A_X_Y_E, A, X, Y);
+}  // namespace reflection_test::explicitly_declared_named_variant_one
+namespace explicitly_declared_named_variant_two {
+CURRENT_VARIANT(Variant_B_A_X_Y_E, A, X, Y);
+}  // namespace reflection_test::explicitly_declared_named_variant_two
+
+static_assert(!std::is_same<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E, Variant<A, X, Y>>::value,
+              "");
+static_assert(!std::is_same<explicitly_declared_named_variant_two::Variant_B_A_X_Y_E, Variant<A, X, Y>>::value,
+              "");
+static_assert(!std::is_same<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E,
+                            explicitly_declared_named_variant_two::Variant_B_A_X_Y_E>::value,
+              "");
+
+}  // namespace reflection_test
+
+TEST(Reflection, VariantAndCurrentVariantHaveSameTypeID) {
+  using one_t = reflection_test::explicitly_declared_named_variant_one::Variant_B_A_X_Y_E;
+  using two_t = reflection_test::explicitly_declared_named_variant_two::Variant_B_A_X_Y_E;
+  using vanilla_t = Variant<reflection_test::A, reflection_test::X, reflection_test::Y>;
+  using current::reflection::Reflector;
+  using current::reflection::ReflectedType_Variant;
+  EXPECT_EQ(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<one_t>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<vanilla_t>()).type_id));
+  EXPECT_EQ(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<two_t>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<vanilla_t>()).type_id));
+}
+
 TEST(Reflection, CurrentStructInternals) {
   using namespace reflection_test;
   using namespace current::reflection;

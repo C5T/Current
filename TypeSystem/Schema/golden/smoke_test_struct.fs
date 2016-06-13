@@ -58,9 +58,15 @@ type MyFreakingVariant =
 | X of X
 | Y of Y
 
+type Variant_B_A_X_Y_E =
+| A of A
+| X of X
+| Y of Y
+
 type C = {
   e : Empty
   c : MyFreakingVariant
+  d : Variant_B_A_X_Y_E
 }
 
 type Variant_B_A_B_B2_C_Empty_E =
