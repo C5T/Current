@@ -324,7 +324,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>();
+  auto exposed_stream =
+      current::sherlock::Stream<RecordWithTimestamp>(current::sherlock::SherlockNamespaceName("Sherlock"));
   // Expose stream via HTTP.
   HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
@@ -368,18 +369,60 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
         "// Compile with `-std=c++11` or higher.\n"
         "\n"
+        "#ifndef CURRENT_USERSPACE_2FD11A8D64DDBA65\n"
+        "#define CURRENT_USERSPACE_2FD11A8D64DDBA65\n"
+        "\n"
         "#include \"current.h\"\n"
         "\n"
         "// clang-format off\n"
         "\n"
-        "namespace current_userspace {\n"
+        "namespace current_userspace_2fd11a8d64ddba65 {\n"
+        "\n"
         "CURRENT_STRUCT(RecordWithTimestamp) {\n"
         "  CURRENT_FIELD(s, std::string);\n"
         "  CURRENT_FIELD(t, std::chrono::microseconds);\n"
         "};\n"
-        "}  // namespace current_userspace\n"
+        "using T9205399982292878352 = RecordWithTimestamp;\n"
         "\n"
-        "// clang-format on\n";
+        "}  // namespace current_userspace_2fd11a8d64ddba65\n"
+        "\n"
+        "CURRENT_NAMESPACE(USERSPACE_2FD11A8D64DDBA65) {\n"
+        "  CURRENT_NAMESPACE_TYPE(RecordWithTimestamp, "
+        "current_userspace_2fd11a8d64ddba65::RecordWithTimestamp);\n"
+        "};  // CURRENT_NAMESPACE(USERSPACE_2FD11A8D64DDBA65)\n"
+        "\n"
+        "namespace current {\n"
+        "namespace type_evolution {\n"
+        "\n"
+        "// Default evolution for struct `RecordWithTimestamp`.\n"
+        "template <typename NAMESPACE, typename EVOLUTOR>\n"
+        "struct Evolve<NAMESPACE, USERSPACE_2FD11A8D64DDBA65::RecordWithTimestamp, EVOLUTOR> {\n"
+        "  template <typename INTO,\n"
+        "            class CHECK = NAMESPACE,\n"
+        "            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_2FD11A8D64DDBA65, "
+        "CHECK>::value>>\n"
+        "  static void Go(const typename NAMESPACE::RecordWithTimestamp& from,\n"
+        "                 typename INTO::RecordWithTimestamp& into) {\n"
+        "      static_assert(::current::reflection::FieldCounter<typename "
+        "USERSPACE_2FD11A8D64DDBA65::RecordWithTimestamp>::value == 2,\n"
+        "                    \"Custom evolutor required.\");\n"
+        "      Evolve<NAMESPACE, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);\n"
+        "      Evolve<NAMESPACE, decltype(from.t), EVOLUTOR>::template Go<INTO>(from.t, into.t);\n"
+        "  }\n"
+        "};\n"
+        "\n"
+        "}  // namespace current::type_evolution\n"
+        "}  // namespace current\n"
+        "\n"
+        "// Privileged types.\n"
+        "CURRENT_DERIVED_NAMESPACE(Sherlock, USERSPACE_2FD11A8D64DDBA65) {\n"
+        "  CURRENT_NAMESPACE_TYPE(TopLevelTransaction, "
+        "current_userspace_2fd11a8d64ddba65::RecordWithTimestamp);\n"
+        "};  // CURRENT_NAMESPACE(Sherlock)\n"
+        "\n"
+        "// clang-format on\n"
+        "\n"
+        "#endif  // CURRENT_USERSPACE_2FD11A8D64DDBA65\n";
     const std::string golden_fs =
         "// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`\n"
         "(*\n"

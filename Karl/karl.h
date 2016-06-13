@@ -142,41 +142,121 @@ class KarlNginxManager {
   uint64_t last_reflected_state_stream_size_;
 };
 
-// This class is to have the `Storage` initialized before `KarlNginxManager`.
-struct KarlBase {
-  using storage_t = ServiceStorage<SherlockStreamPersister>;
+struct UseOwnStorage {};
 
-  const KarlParameters parameters_;
-  const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
+// Storage initializer base class.
+// `STORAGE_TYPE` is either a real type of the storage if an external storage is used, or a `UseOwnStorage`,
+// which makes Karl create its own `ServiceStorage` instance.
+template <class STORAGE_TYPE>
+struct KarlStorage {
+  using storage_t = STORAGE_TYPE;
+  storage_t& storage_;
+
+ protected:
+  explicit KarlStorage(storage_t& storage) : storage_(storage) {}
+};
+
+template <>
+struct KarlStorage<UseOwnStorage> {
+  using storage_t = ServiceStorage<SherlockStreamPersister>;
   storage_t storage_;
 
  protected:
-  explicit KarlBase(const KarlParameters& parameters)
-      : parameters_(parameters),
-        actual_public_url_(
-            parameters_.public_url == kDefaultFleetViewURL
-                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
-                : parameters_.public_url),
-        storage_(parameters_.storage_persistence_file) {}
+  explicit KarlStorage(const std::string& persistence_file) : storage_(persistence_file) {}
 };
 
-template <typename... TS>
-class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStorage<SherlockStreamPersister>> {
+// Interface to implement for receiving callbacks/notifications from Karl.
+template <typename RUNTIME_STATUS_VARIANT>
+class IKarlNotifiable {
+ public:
+  using claire_status_t = ClaireServiceStatus<RUNTIME_STATUS_VARIANT>;
+
+  virtual ~IKarlNotifiable() = default;
+
+  // A new keepalive has been received from a service.
+  virtual void OnKeepalive(std::chrono::microseconds now,
+                           const ClaireServiceKey& location,
+                           const std::string& codename,
+                           const claire_status_t&) = 0;
+  // A service has just gracefully deregistered itself.
+  virtual void OnDeregistered(std::chrono::microseconds now,
+                              const std::string& codename,
+                              const ImmutableOptional<ClaireInfo>&) = 0;
+  // A service has timed out (45 seconds by default), without gracefully deregistering itself.
+  virtual void OnTimedOut(std::chrono::microseconds now,
+                          const std::string& codename,
+                          const ImmutableOptional<ClaireInfo>&) = 0;
+};
+
+// Dummy class with no-op functions. Used by Karl if no custom notifiable class has been provided.
+template <typename RUNTIME_STATUS_VARIANT>
+class DummyKarlNotifiable : public IKarlNotifiable<RUNTIME_STATUS_VARIANT> {
+ public:
+  using claire_status_t = ClaireServiceStatus<RUNTIME_STATUS_VARIANT>;
+  void OnKeepalive(std::chrono::microseconds,
+                   const ClaireServiceKey&,
+                   const std::string&,
+                   const claire_status_t&) override {}
+  void OnDeregistered(std::chrono::microseconds,
+                      const std::string&,
+                      const ImmutableOptional<ClaireInfo>&) override {}
+  void OnTimedOut(std::chrono::microseconds,
+                  const std::string&,
+                  const ImmutableOptional<ClaireInfo>&) override {}
+};
+
+template <class STORAGE_TYPE, typename... TS>
+class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
+                          private KarlNginxManager<typename KarlStorage<STORAGE_TYPE>::storage_t>,
+                          private DummyKarlNotifiable<Variant<TS...>> {
  public:
   using runtime_status_variant_t = Variant<TS...>;
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
   using karl_status_t = GenericKarlStatus<runtime_status_variant_t>;
   using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
-  using storage_t = KarlBase::storage_t;
+  using storage_t = typename KarlStorage<STORAGE_TYPE>::storage_t;
 
+  template <class S = STORAGE_TYPE, class = std::enable_if_t<std::is_same<S, UseOwnStorage>::value>>
   explicit GenericKarl(const KarlParameters& parameters)
-      : KarlBase(parameters),
-        KarlNginxManager(KarlBase::storage_,
-                         parameters.nginx_parameters,
-                         parameters.keepalives_port,
-                         parameters.fleet_view_port),
+      : GenericKarl(parameters.storage_persistence_file, parameters, *this, PrivateConstructorSelector()) {}
+  GenericKarl(const KarlParameters& parameters, IKarlNotifiable<runtime_status_variant_t>& notifiable)
+      : GenericKarl(parameters.storage_persistence_file, parameters, notifiable, PrivateConstructorSelector()) {
+  }
+
+  template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
+  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters)
+      : GenericKarl(storage, parameters, *this, PrivateConstructorSelector()) {}
+  GenericKarl(STORAGE_TYPE& storage,
+              const KarlParameters& parameters,
+              IKarlNotifiable<runtime_status_variant_t>& notifiable)
+      : GenericKarl(storage, parameters, notifiable, PrivateConstructorSelector()) {}
+
+ private:
+  using karl_storage_t = KarlStorage<STORAGE_TYPE>;
+  using karl_nginx_manager_t = KarlNginxManager<typename karl_storage_t::storage_t>;
+  // We need these `using`s because of template base classes :(
+  using karl_storage_t::storage_;
+  using karl_nginx_manager_t::UpdateNginxIfNeeded;
+  using karl_nginx_manager_t::has_nginx_config_file_;
+  using karl_nginx_manager_t::nginx_parameters_;
+
+  struct PrivateConstructorSelector {};
+  template <typename T>
+  GenericKarl(T& storage_or_file,
+              const KarlParameters& parameters,
+              IKarlNotifiable<runtime_status_variant_t>& notifiable,
+              PrivateConstructorSelector)
+      : karl_storage_t(storage_or_file),
+        karl_nginx_manager_t(
+            storage_, parameters.nginx_parameters, parameters.keepalives_port, parameters.fleet_view_port),
         destructing_(false),
+        parameters_(parameters),
+        actual_public_url_(
+            parameters_.public_url == kDefaultFleetViewURL
+                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
+                : parameters_.public_url),
+        notifiable_ref_(notifiable),
         keepalives_stream_(parameters_.stream_persistence_file),
         state_update_thread_([this]() { StateUpdateThread(); }),
         http_scope_(HTTP(parameters_.keepalives_port)
@@ -228,6 +308,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
     }).Wait();
   }
 
+ public:
   ~GenericKarl() {
     destructing_ = true;
     storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
@@ -267,19 +348,24 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
         }
       }
       if (!timeouted_codenames.empty()) {
-        storage_.ReadWriteTransaction([&timeouted_codenames](MutableFields<storage_t> fields) -> void {
-          for (const auto& codename : timeouted_codenames) {
-            const auto& current_claire_info = fields.claires[codename];
-            ClaireInfo claire;
-            if (Exists(current_claire_info)) {
-              claire = Value(current_claire_info);
-            } else {
-              claire.codename = codename;
-            }
-            claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
-            fields.claires.Add(claire);
-          }
-        }).Wait();
+        auto& notifiable_ref = notifiable_ref_;
+        storage_.ReadWriteTransaction(
+                     [&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields) -> void {
+                       for (const auto& codename : timeouted_codenames) {
+                         const auto& current_claire_info = fields.claires[codename];
+                         // OK to call from within a transaction.
+                         // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                         ClaireInfo claire;
+                         if (Exists(current_claire_info)) {
+                           claire = Value(current_claire_info);
+                           notifiable_ref.OnTimedOut(now, codename, current_claire_info);
+                         } else {
+                           claire.codename = codename;
+                         }
+                         claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
+                         fields.claires.Add(claire);
+                       }
+                     }).Wait();
       }
       UpdateNginxIfNeeded();
 #ifdef CURRENT_MOCK_TIME
@@ -313,18 +399,25 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
       const std::string ip = r.connection.RemoteIPAndPort().ip;
       if (qs.has("codename")) {
         const std::string codename = qs["codename"];
-        storage_.ReadWriteTransaction([codename](MutableFields<storage_t> fields) -> Response {
-          ClaireInfo claire;
-          const auto& current_claire_info = fields.claires[codename];
-          if (Exists(current_claire_info)) {
-            claire = Value(current_claire_info);
-          } else {
-            claire.codename = codename;
-          }
-          claire.registered_state = ClaireRegisteredState::Deregistered;
-          fields.claires.Add(claire);
-          return Response("OK\n");
-        }, std::move(r)).Detach();
+        const auto now = current::time::Now();
+        auto& notifiable_ref = notifiable_ref_;
+        storage_.ReadWriteTransaction(
+                     [codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
+                       const auto& current_claire_info = fields.claires[codename];
+                       // OK to call from within a transaction.
+                       // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                       notifiable_ref.OnDeregistered(now, codename, current_claire_info);
+                       ClaireInfo claire;
+                       if (Exists(current_claire_info)) {
+                         claire = Value(current_claire_info);
+                       } else {
+                         claire.codename = codename;
+                       }
+                       claire.registered_state = ClaireRegisteredState::Deregistered;
+                       fields.claires.Add(claire);
+                       return Response("OK\n");
+                     },
+                     std::move(r)).Detach();
         {
           // Delete this `codename` from cache.
           std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
@@ -403,9 +496,20 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
                 now - parsed_status.now - Value(parsed_status.last_successful_keepalive_ping_us) / 2;
           }
 
+          auto& notifiable_ref = notifiable_ref_;
           storage_.ReadWriteTransaction(
-                       [this, now, location, &parsed_status, optional_behind_this_by](
-                           MutableFields<storage_t> fields) -> Response {
+                       [this,
+                        now,
+                        location,
+                        &parsed_status,
+                        &detailed_parsed_status,
+                        optional_behind_this_by,
+                        &notifiable_ref](MutableFields<storage_t> fields) -> Response {
+                         // OK to call from within a transaction.
+                         // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                         notifiable_ref.OnKeepalive(
+                             now, location, parsed_status.codename, detailed_parsed_status);
+
                          const auto& service = parsed_status.service;
                          const auto& codename = parsed_status.codename;
                          const auto& optional_build = parsed_status.build;
@@ -831,6 +935,9 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
   }
 
   std::atomic_bool destructing_;
+  const KarlParameters parameters_;
+  const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
+  IKarlNotifiable<runtime_status_variant_t>& notifiable_ref_;
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
   std::condition_variable update_thread_condition_variable_;
@@ -845,7 +952,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
   const HTTPRoutesScope http_scope_;
 };
 
-using Karl = GenericKarl<default_user_status::status>;
+using Karl = GenericKarl<UseOwnStorage, default_user_status::status>;
 
 }  // namespace current::karl
 }  // namespace current

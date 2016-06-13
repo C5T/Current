@@ -73,6 +73,11 @@ CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
 #endif
 };
 
+CURRENT_STRUCT_T(Templated) {
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension, T);
+};
+
 using current::reflection::Reflector;
 
 }  // namespace reflection_test
@@ -102,17 +107,17 @@ TEST(Reflection, StructAndVariant) {
 
   const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
   EXPECT_EQ(1u, self_a.fields.size());
-  EXPECT_EQ(9205901389225534299ull, static_cast<uint64_t>(self_a.type_id));
-  EXPECT_EQ(9317324759808216579ull, static_cast<uint64_t>(self_a.fields[0].type_id));
+  EXPECT_EQ(9206664846159389537ull, static_cast<uint64_t>(self_a.type_id));
+  EXPECT_EQ(9318143269698080259ull, static_cast<uint64_t>(self_a.fields[0].type_id));
   const ReflectedType_Struct& self_b = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingB>());
   EXPECT_EQ(1u, self_b.fields.size());
-  EXPECT_EQ(9203772139816579809ull, static_cast<uint64_t>(self_b.type_id));
-  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_b.fields[0].type_id));
+  EXPECT_EQ(9205249121542238939ull, static_cast<uint64_t>(self_b.type_id));
+  EXPECT_EQ(9318143287813964755ull, static_cast<uint64_t>(self_b.fields[0].type_id));
   const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
   EXPECT_EQ(2u, self_c.fields.size());
-  EXPECT_EQ(9200564679597442224ull, static_cast<uint64_t>(self_c.type_id));
-  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_c.fields[0].type_id));
-  EXPECT_EQ(9345487227046290999ull, static_cast<uint64_t>(self_c.fields[1].type_id));
+  EXPECT_EQ(9200251873128019120ull, static_cast<uint64_t>(self_c.type_id));
+  EXPECT_EQ(9318143287813964755ull, static_cast<uint64_t>(self_c.fields[0].type_id));
+  EXPECT_EQ(9345111461746810545ull, static_cast<uint64_t>(self_c.fields[1].type_id));
 
   EXPECT_NE(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
             static_cast<uint64_t>(
@@ -121,6 +126,63 @@ TEST(Reflection, StructAndVariant) {
   EXPECT_NE(
       static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
       static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<AnotherFooBarBaz>()).type_id));
+
+  {
+    const auto& foo = Value<ReflectedType_Struct>(Reflector().ReflectType<Foo>());
+    EXPECT_EQ(9203762249085213197ull, static_cast<uint64_t>(foo.type_id));
+
+    const auto& bar = Value<ReflectedType_Struct>(Reflector().ReflectType<Bar>());
+    EXPECT_EQ(9206387322237345681ull, static_cast<uint64_t>(bar.type_id));
+
+    {
+      const auto& templated_foo = Value<ReflectedType_Struct>(Reflector().ReflectType<Templated<Foo>>());
+      EXPECT_EQ(2u, templated_foo.fields.size());
+      EXPECT_EQ(9204032299541411163ull, static_cast<uint64_t>(templated_foo.type_id));
+      EXPECT_EQ(9000000000000000042ull, static_cast<uint64_t>(templated_foo.fields[0].type_id));
+      EXPECT_EQ(static_cast<uint64_t>(foo.type_id), static_cast<uint64_t>(templated_foo.fields[1].type_id));
+    }
+
+    {
+      const auto& templated_bar = Value<ReflectedType_Struct>(Reflector().ReflectType<Templated<Bar>>());
+      EXPECT_EQ(2u, templated_bar.fields.size());
+      EXPECT_EQ(9202814639044342656ull, static_cast<uint64_t>(templated_bar.type_id));
+      EXPECT_EQ(9000000000000000042ull, static_cast<uint64_t>(templated_bar.fields[0].type_id));
+      EXPECT_EQ(static_cast<uint64_t>(bar.type_id), static_cast<uint64_t>(templated_bar.fields[1].type_id));
+    }
+  }
+}
+
+namespace reflection_test {
+CURRENT_STRUCT(A){};
+CURRENT_STRUCT(X){};
+CURRENT_STRUCT(Y){};
+namespace explicitly_declared_named_variant_one {
+CURRENT_VARIANT(Variant_B_A_X_Y_E, A, X, Y);
+}  // namespace reflection_test::explicitly_declared_named_variant_one
+namespace explicitly_declared_named_variant_two {
+CURRENT_VARIANT(Variant_B_A_X_Y_E, A, X, Y);
+}  // namespace reflection_test::explicitly_declared_named_variant_two
+
+static_assert(!std::is_same<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E, Variant<A, X, Y>>::value,
+              "");
+static_assert(!std::is_same<explicitly_declared_named_variant_two::Variant_B_A_X_Y_E, Variant<A, X, Y>>::value,
+              "");
+static_assert(!std::is_same<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E,
+                            explicitly_declared_named_variant_two::Variant_B_A_X_Y_E>::value,
+              "");
+
+}  // namespace reflection_test
+
+TEST(Reflection, VariantAndCurrentVariantHaveSameTypeID) {
+  using one_t = reflection_test::explicitly_declared_named_variant_one::Variant_B_A_X_Y_E;
+  using two_t = reflection_test::explicitly_declared_named_variant_two::Variant_B_A_X_Y_E;
+  using vanilla_t = Variant<reflection_test::A, reflection_test::X, reflection_test::Y>;
+  using current::reflection::Reflector;
+  using current::reflection::ReflectedType_Variant;
+  EXPECT_EQ(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<one_t>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<vanilla_t>()).type_id));
+  EXPECT_EQ(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<two_t>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<vanilla_t>()).type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {
@@ -150,6 +212,9 @@ TEST(Reflection, CurrentStructInternals) {
   EXPECT_EQ(4u, FieldCounter<Bar>::value + 0u);
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value + 0u);
+
+  static_assert(std::is_same<TemplateInnerType<Bar>, void>::value, "");
+  static_assert(std::is_same<TemplateInnerType<Templated<Bar>>, Bar>::value, "");
 }
 
 namespace reflection_test {
@@ -367,6 +432,49 @@ TEST(Reflection, VisitAllFieldsForBaseType) {
     VisitAllFields<Foo, FieldNameAndImmutableValue>::WithObject(base, values);
     EXPECT_EQ("2016", current::strings::Join(result, ','));
   }
+}
+
+namespace reflection_test {
+
+// Two identical yet different base structs.
+CURRENT_STRUCT(BaseTypeOne){};
+CURRENT_STRUCT(BaseTypeTwo){};
+
+namespace one {
+CURRENT_STRUCT(IdenticalCurrentStructWithDifferentBaseType, BaseTypeOne){};
+}  // namespace reflection_test::one
+
+namespace two {
+CURRENT_STRUCT(IdenticalCurrentStructWithDifferentBaseType, BaseTypeTwo){};
+}  // namespace reflection_test::two
+
+using current::reflection::Reflector;
+
+}  // namespace reflection_test
+
+TEST(Reflection, BaseTypeMatters) {
+  using namespace reflection_test;
+  using current::reflection::ReflectedTypeBase;
+  EXPECT_NE(static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id),
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
+  EXPECT_NE(static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id),
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+  EXPECT_EQ(9200000000962478099ull,
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeOne>()).type_id));
+  EXPECT_EQ(9200000001392004228ull,
+            static_cast<uint64_t>(Value<ReflectedTypeBase>(Reflector().ReflectType<BaseTypeTwo>()).type_id));
+  EXPECT_EQ(9205123477974540226ull,
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<one::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+  EXPECT_EQ(9205123533591385154ull,
+            static_cast<uint64_t>(
+                Value<ReflectedTypeBase>(
+                    Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

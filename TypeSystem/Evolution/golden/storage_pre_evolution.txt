@@ -1,0 +1,2 @@
+{"index":0,"us":1}	{"meta":{"timestamp":0,"fields":{}},"mutations":[{"PersistedUserUpdated":{"data":{"first":"KARL","last":"MARX","key":"karl"}},"":"T9201121062548426382"}]}
+{"index":1,"us":3}	{"meta":{"timestamp":2,"fields":{}},"mutations":[{"PersistedUserUpdated":{"data":{"first":"DIMA","last":"KOROLEV","key":"dima"}},"":"T9201121062548426382"},{"PersistedUserUpdated":{"data":{"first":"MAX","last":"ZHUROVICH","key":"max"}},"":"T9201121062548426382"}]}

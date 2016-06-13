@@ -1,0 +1,2 @@
+{"index":0,"us":1}	{"meta":{"timestamp":0,"fields":{}},"mutations":[{"PersistedUserUpdated":{"data":{"full":"Marx, K","key":"karl"}},"":"T9205376179718671976"}]}
+{"index":1,"us":3}	{"meta":{"timestamp":2,"fields":{}},"mutations":[{"PersistedUserUpdated":{"data":{"full":"Korolev, D","key":"dima"}},"":"T9205376179718671976"},{"PersistedUserUpdated":{"data":{"full":"Zhurovich, M","key":"max"}},"":"T9205376179718671976"}]}

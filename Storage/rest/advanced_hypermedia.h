@@ -166,13 +166,16 @@ struct AdvancedHypermedia : Hypermedia {
           }
           return Response(response, HTTPResponseCode.OK);
         } else {
+#ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
           // Slow. Only available off the followers.
           if (input.role != StorageRole::Follower) {
             return ErrorResponse(
                 HypermediaRESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
                 HTTPResponseCode.Forbidden);
-          } else {
+          } else
+#endif  // CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
+          {
             // Sadly, the `Response` must be returned.
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.

@@ -484,35 +484,17 @@ TEST(Serialization, StructSchemaSerialization) {
   struct_schema.AddType<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
 
+  // This, really, is just a golden sanity check. Can keep it this way for now. -- D.K.
+  // clang-format off
   EXPECT_EQ(
-
-      "{\"types\":[[\"T9000000000000000011\",{\"ReflectedType_Primitive\":{\"type_id\":"
-      "\"T9000000000000000011\"},\"\":\"T9200000000887757410\"}],[\"T9000000000000000023\",{\"ReflectedType_"
-      "Primitive\":{\"type_id\":\"T9000000000000000023\"},\"\":\"T9200000000887757410\"}],["
-      "\"T9000000000000000024\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000024\"},\"\":"
-      "\"T9200000000887757410\"}],[\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":"
-      "\"T9000000000000000042\"},\"\":\"T9200000000887757410\"}],[\"T9010000002928410991\",{\"ReflectedType_"
-      "Enum\":{\"type_id\":\"T9010000002928410991\",\"name\":\"Enum\",\"underlying_type\":"
-      "\"T9000000000000000023\"},\"\":\"T9200284389866084350\"}],[\"T9201007113239016790\",{\"ReflectedType_"
-      "Struct\":{\"type_id\":\"T9201007113239016790\",\"name\":\"Serializable\",\"super_id\":\"T1\",\"fields\":"
-      "[{\"type_id\":\"T9000000000000000024\",\"name\":\"i\",\"description\":null},{\"type_id\":"
-      "\"T9000000000000000042\",\"name\":\"s\",\"description\":null},{\"type_id\":\"T9000000000000000011\","
-      "\"name\":\"b\",\"description\":null},{\"type_id\":\"T9010000002928410991\",\"name\":\"e\","
-      "\"description\":null}]},\"\":\"T9200309929209841417\"}],[\"T9209412029115735895\",{\"ReflectedType_"
-      "Struct\":{\"type_id\":\"T9209412029115735895\",\"name\":\"ComplexSerializable\",\"super_id\":\"T1\","
-      "\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"j\",\"description\":null},{\"type_id\":"
-      "\"T9000000000000000042\",\"name\":\"q\",\"description\":null},{\"type_id\":\"T9319767778871345491\","
-      "\"name\":\"v\",\"description\":null},{\"type_id\":\"T9201007113239016790\",\"name\":\"z\","
-      "\"description\":null}]},\"\":\"T9200309929209841417\"}],[\"T9319767778871345491\",{\"ReflectedType_"
-      "Vector\":{\"type_id\":\"T9319767778871345491\",\"element_type\":\"T9000000000000000042\"},\"\":"
-      "\"T9209585172575626540\"}]],\"order\":[\"T9319767778871345491\",\"T9010000002928410991\","
-      "\"T9201007113239016790\",\"T9209412029115735895\"]}",
-
+      "{\"types\":[[\"T9000000000000000011\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000011\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000023\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000023\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000024\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000024\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000042\"},\"\":\"T9202934106479999325\"}],[\"T9010000002928410991\",{\"ReflectedType_Enum\":{\"type_id\":\"T9010000002928410991\",\"name\":\"Enum\",\"underlying_type\":\"T9000000000000000023\"},\"\":\"T9201951882596398273\"}],[\"T9201007113239016790\",{\"ReflectedType_Struct\":{\"type_id\":\"T9201007113239016790\",\"native_name\":\"Serializable\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"i\",\"description\":null},{\"type_id\":\"T9000000000000000042\",\"name\":\"s\",\"description\":null},{\"type_id\":\"T9000000000000000011\",\"name\":\"b\",\"description\":null},{\"type_id\":\"T9010000002928410991\",\"name\":\"e\",\"description\":null}]},\"\":\"T9206858900297712816\"}],[\"T9209412029115735895\",{\"ReflectedType_Struct\":{\"type_id\":\"T9209412029115735895\",\"native_name\":\"ComplexSerializable\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"j\",\"description\":null},{\"type_id\":\"T9000000000000000042\",\"name\":\"q\",\"description\":null},{\"type_id\":\"T9319767778871345491\",\"name\":\"v\",\"description\":null},{\"type_id\":\"T9201007113239016790\",\"name\":\"z\",\"description\":null}]},\"\":\"T9206858900297712816\"}],[\"T9319767778871345491\",{\"ReflectedType_Vector\":{\"type_id\":\"T9319767778871345491\",\"element_type\":\"T9000000000000000042\"},\"\":\"T9200962247788856851\"}]],\"order\":[\"T9319767778871345491\",\"T9010000002928410991\",\"T9201007113239016790\",\"T9209412029115735895\"]}",
       schema_json);
+  // clang-format on
 
   const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
 
   EXPECT_EQ(
+      "namespace current_userspace_77a94a5a37cb768e {\n"
       "enum class Enum : uint32_t {};\n"
       "struct Serializable {\n"
       "  uint64_t i;\n"
@@ -525,7 +507,8 @@ TEST(Serialization, StructSchemaSerialization) {
       "  std::string q;\n"
       "  std::vector<std::string> v;\n"
       "  Serializable z;\n"
-      "};\n",
+      "};\n"
+      "}  // namespace current_userspace_77a94a5a37cb768e\n",
       loaded_schema.Describe<Language::CPP>(false));
 }
 

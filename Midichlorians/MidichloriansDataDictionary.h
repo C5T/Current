@@ -86,7 +86,11 @@ CURRENT_STRUCT(iOSAppLaunchEvent, iOSBaseEvent) {
 
 // iOS event with the detailed device information.
 // Emitted once during Midichlorians initialization.
-CURRENT_STRUCT(iOSDeviceInfo, iOSBaseEvent) { CURRENT_FIELD(info, (std::map<std::string, std::string>)); };
+CURRENT_STRUCT(iOSDeviceInfo, iOSBaseEvent) {
+  CURRENT_FIELD(info, (std::map<std::string, std::string>));
+  CURRENT_DEFAULT_CONSTRUCTOR(iOSDeviceInfo) {}
+  CURRENT_CONSTRUCTOR(iOSDeviceInfo)(const std::map<std::string, std::string>& info) : info(info) {}
+};
 
 // iOS event emitted by `identify` method.
 CURRENT_STRUCT(iOSIdentifyEvent, iOSBaseEvent){};

@@ -30,6 +30,8 @@ SOFTWARE.
 
 #include "schema.h"
 
+#include "../Evolution/type_evolution.h"
+
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/strings/strings.h"
 #include "../../Bricks/file/file.h"
@@ -88,7 +90,10 @@ TEST(Schema, StructSchema) {
     const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
-    EXPECT_EQ("", schema.Describe<Language::CPP>(false));
+    EXPECT_EQ(
+        "namespace current_userspace_4f53cda18c2baa0c {\n"
+        "}  // namespace current_userspace_4f53cda18c2baa0c\n",
+        schema.Describe<Language::CPP>(false));
   }
 
   struct_schema.AddType<uint64_t>();
@@ -99,7 +104,10 @@ TEST(Schema, StructSchema) {
     const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
-    EXPECT_EQ("", schema.Describe<Language::CPP>(false));
+    EXPECT_EQ(
+        "namespace current_userspace_4f53cda18c2baa0c {\n"
+        "}  // namespace current_userspace_4f53cda18c2baa0c\n",
+        schema.Describe<Language::CPP>(false));
   }
 
   struct_schema.AddType<Z>();
@@ -107,6 +115,7 @@ TEST(Schema, StructSchema) {
   {
     const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_EQ(
+        "namespace current_userspace_03b66394cd580dbc {\n"
         "struct X {\n"
         "  int32_t i;\n"
         "};\n"
@@ -117,7 +126,8 @@ TEST(Schema, StructSchema) {
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
-        "};\n",
+        "};\n"
+        "}  // namespace current_userspace_03b66394cd580dbc\n",
         schema.Describe<Language::CPP>(false));
   }
 
@@ -126,6 +136,7 @@ TEST(Schema, StructSchema) {
   {
     const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_EQ(
+        "namespace current_userspace_a7ba46663644347a {\n"
         "struct X {\n"
         "  int32_t i;\n"
         "};\n"
@@ -146,7 +157,8 @@ TEST(Schema, StructSchema) {
         "};\n"
         "struct C {\n"
         "  Optional<B> b;\n"
-        "};\n",
+        "};\n"
+        "}  // namespace current_userspace_a7ba46663644347a\n",
         schema.Describe<Language::CPP>(false));
   }
 }
@@ -181,6 +193,7 @@ TEST(Schema, VariantAloneIsTraversed) {
   {
     const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_EQ(
+        "namespace current_userspace_f2951e3b9a1472e2 {\n"
         "struct A {\n"
         "  uint32_t i;\n"
         "};\n"
@@ -190,7 +203,8 @@ TEST(Schema, VariantAloneIsTraversed) {
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n"
-        "using Variant_B_A_X_Y_E = Variant<A, X, Y>;\n",
+        "using Variant_B_A_X_Y_E = Variant<A, X, Y>;\n"
+        "}  // namespace current_userspace_f2951e3b9a1472e2\n",
         schema.Describe<Language::CPP>(false));
   }
 }
@@ -216,7 +230,7 @@ CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
 
 }  // namespace schema_test
 
-TEST(Schema, SelfContatiningStruct) {
+TEST(Schema, SelfContainingStruct) {
   using namespace schema_test;
   using current::reflection::StructSchema;
   using current::reflection::SchemaInfo;
@@ -227,6 +241,7 @@ TEST(Schema, SelfContatiningStruct) {
 
   const SchemaInfo schema = struct_schema.GetSchemaInfo();
   EXPECT_EQ(
+      "namespace current_userspace_6623b30e30ef1f16 {\n"
       "struct SelfContainingA {\n"
       "  std::vector<SelfContainingA> v;\n"
       "};\n"
@@ -236,7 +251,8 @@ TEST(Schema, SelfContatiningStruct) {
       "struct SelfContainingC : SelfContainingA {\n"
       "  std::vector<SelfContainingB> v;\n"
       "  std::map<std::string, SelfContainingC> m;\n"
-      "};\n",
+      "};\n"
+      "}  // namespace current_userspace_6623b30e30ef1f16\n",
       schema.Describe<Language::CPP>(false));
 }
 
@@ -258,9 +274,15 @@ TEST(Schema, SmokeTestFullStruct) {
   struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
   const SchemaInfo schema = struct_schema.GetSchemaInfo();
 
+  current::reflection::NamespaceToExpose namespace_to_expose("ExposedNamespace");
+  namespace_to_expose.template AddType<smoke_test_struct_namespace::Primitives>();
+  namespace_to_expose.template AddType<smoke_test_struct_namespace::Empty>();
+  namespace_to_expose.template AddType<smoke_test_struct_namespace::FullTest>("ExposedFullTest");
+
   if (FLAGS_write_reflection_golden_files) {
     // LCOV_EXCL_START
-    FileSystem::WriteStringToFile(schema.Describe<Language::Current>(), Golden("smoke_test_struct.h").c_str());
+    FileSystem::WriteStringToFile(schema.Describe<Language::Current>(true, namespace_to_expose),
+                                  Golden("smoke_test_struct.h").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::CPP>(), Golden("smoke_test_struct.cc").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), Golden("smoke_test_struct.fs").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::Markdown>(),
@@ -271,7 +293,8 @@ TEST(Schema, SmokeTestFullStruct) {
     // LCOV_EXCL_STOP
   }
 
-  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")), schema.Describe<Language::Current>());
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
+            schema.Describe<Language::Current>(true, namespace_to_expose));
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.cc")), schema.Describe<Language::CPP>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.fs")), schema.Describe<Language::FSharp>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.md")),
@@ -284,7 +307,7 @@ TEST(Schema, SmokeTestFullStruct) {
   EXPECT_EQ(JSON(restored_schema), JSON(struct_schema.GetSchemaInfo()));
 
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
-            restored_schema.Describe<Language::Current>());
+            restored_schema.Describe<Language::Current>(true, namespace_to_expose));
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.cc")),
             restored_schema.Describe<Language::CPP>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.fs")),
@@ -297,6 +320,63 @@ TEST(Schema, SmokeTestFullStruct) {
   const auto restored_short_schema = ParseJSON<current::reflection::JSONSchema, JSONFormat::Minimalistic>(
       FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
   EXPECT_EQ(schema.Describe<Language::JSON>(), JSON<JSONFormat::Minimalistic>(restored_short_schema));
+}
+
+namespace schema_test {
+
+// Manual tweak to make it legal to `#include` an autogenerated header file from within a namespace.
+namespace current {
+namespace type_evolution {
+template <typename FROM_NAMESPACE,
+          typename FROM_TYPE,
+          typename EVOLUTOR = ::current::type_evolution::NaturalEvolutor>
+struct Evolve;
+}  // namespace schema_test::current::type_evolution
+}  // namespace schema_test::current
+
+#include "golden/smoke_test_struct.h"
+using AUTOGENERATED_FullTest = typename USERSPACE_0473D52B47432E49::FullTest;
+}  // namespace schema_test
+
+TEST(Schema, SmokeTestFullStructCompiledFromAutogeneratedCode) {
+  using namespace current::reflection;
+
+  const auto Golden = [](const std::string& s) { return current::FileSystem::JoinPath("golden", s); };
+
+  // Must expose same types under the same names within the same exposed namespace.
+  current::reflection::NamespaceToExpose namespace_to_expose("ExposedNamespace");
+  namespace_to_expose.template AddType<smoke_test_struct_namespace::Primitives>();
+  namespace_to_expose.template AddType<smoke_test_struct_namespace::Empty>();
+  namespace_to_expose.template AddType<smoke_test_struct_namespace::FullTest>("ExposedFullTest");
+
+  // Verify the header is the right one. If fails, run `./current/test --write_reflection_golden_files`.
+  {
+    StructSchema old_struct_schema;
+    old_struct_schema.AddType<schema_test::AUTOGENERATED_FullTest>();
+    const SchemaInfo old_schema = old_struct_schema.GetSchemaInfo();
+    EXPECT_EQ(current::FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
+              old_schema.Describe<Language::Current>(true, namespace_to_expose));
+  }
+
+  // Verify the reflection of the type `#include`-d from its auto-generated header is the right one.
+  // It is essential to confirm all type IDs stay the same, including the ones from `CURRENT_STRUCT_T`-s.
+  {
+    StructSchema new_struct_schema;
+    new_struct_schema.AddType<schema_test::AUTOGENERATED_FullTest>();
+    const SchemaInfo new_schema = new_struct_schema.GetSchemaInfo();
+
+#ifdef CURRENT_WINDOWS
+    if (FLAGS_write_reflection_golden_files) {
+#else
+    if (true) {
+#endif
+      current::FileSystem::WriteStringToFile(new_schema.Describe<Language::Current>(true, namespace_to_expose),
+                                             ".current_regenerated_schema.h");
+    }
+    EXPECT_EQ(current::FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
+              new_schema.Describe<Language::Current>(true, namespace_to_expose))
+        << "diff '" << Golden("smoke_test_struct.h") << "' '.current_regenerated_schema.h'";
+  }
 }
 
 TEST(TypeSystemTest, LanguageEnumToString) {
@@ -319,9 +399,9 @@ TEST(TypeSystemTest, LanguageEnumIteration) {
 namespace schema_test {
 struct LanguagesIterator {
   std::vector<std::string> s;
-  template <current::reflection::Language language_as_compile_time_parameter>
+  template <::current::reflection::Language language_as_compile_time_parameter>
   void PerLanguage() {
-    s.push_back(current::ToString(language_as_compile_time_parameter));
+    s.push_back(::current::ToString(language_as_compile_time_parameter));
   }
 };
 }  // namespace schema_test

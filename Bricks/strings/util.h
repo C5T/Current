@@ -58,7 +58,8 @@ constexpr bool HasMemberFromString(char) {
 }
 
 template <typename T>
-constexpr auto HasMemberFromString(int) -> decltype(std::declval<T>().FromString(""), bool()) {
+constexpr auto HasMemberFromString(int)
+    -> decltype(std::declval<T>().FromString(std::declval<const char*>()), bool()) {
   return true;
 }
 
@@ -140,7 +141,7 @@ inline std::string ToString(T&& something) {
 template <typename FST, typename SND>
 struct ToStringImpl<std::pair<FST, SND>, false, false> {
   static std::string DoIt(const std::pair<FST, SND>& pair) {
-    return ToString(pair.first) + ':' + ToString(pair.second);
+    return ToString(pair.first) + '-' + ToString(pair.second);
   }
 };
 

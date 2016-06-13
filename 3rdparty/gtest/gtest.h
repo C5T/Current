@@ -55,4 +55,9 @@ inline std::string CurrentBinaryFullPath() {
   return FilePath::ConcatPaths(FilePath::GetCurrentDir(), FilePath(CurrentBinaryRelativePath())).string();
 }
 
+inline void ExpectStringEndsWith(const std::string& desired_suffix, const std::string& actual) {
+  ASSERT_GE(actual.length(), desired_suffix.length());
+  EXPECT_EQ(desired_suffix, actual.substr(actual.length() - desired_suffix.length()));
+}
+
 #endif  // THIRDPARTY_GTEST_H

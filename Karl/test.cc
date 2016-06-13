@@ -72,8 +72,9 @@ DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test fo
 
 DEFINE_bool(karl_overwrite_golden_files, false, "Set to true to have SVG golden files created/overwritten.");
 
-using unittest_karl_t =
-    current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
+using unittest_karl_t = current::karl::GenericKarl<current::karl::UseOwnStorage,
+                                                   current::karl::default_user_status::status,
+                                                   karl_unittest::is_prime>;
 using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
 
 static current::karl::KarlParameters UnittestKarlParameters() {
@@ -759,26 +760,22 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
-namespace karl_unittest {
-
-struct ClaireNotifiable : current::karl::IClaireNotifiable {
-  std::vector<std::string> karl_urls;
-  void OnKarlLocatorChanged(const current::karl::Locator& locator) override {
-    karl_urls.push_back(locator.address_port_route);
-  }
-};
-
-}  // namespace karl_unittest
-
 TEST(Karl, ClaireNotifiesUserObject) {
   using namespace karl_unittest;
 
   current::time::ResetToZero();
 
+  struct ClaireNotifiable : current::karl::IClaireNotifiable {
+    std::vector<std::string> karl_urls;
+    void OnKarlLocatorChanged(const current::karl::Locator& locator) override {
+      karl_urls.push_back(locator.address_port_route);
+    }
+  };
+
   current::karl::Locator karl("http://localhost:12345/");
-  ClaireNotifiable notifications_receiver;
+  ClaireNotifiable claire_notifications_receiver;
   const uint16_t claire_port = PickPortForUnitTest();
-  current::karl::Claire claire(karl, "unittest", claire_port, notifications_receiver);
+  current::karl::Claire claire(karl, "unittest", claire_port, claire_notifications_receiver);
 
   // Switch Claire's Karl locator via HTTP request.
   {
@@ -798,7 +795,7 @@ TEST(Karl, ClaireNotifiesUserObject) {
   }
 
   EXPECT_EQ("http://host1:10000/,http://host2:10001/",
-            current::strings::Join(notifications_receiver.karl_urls, ','));
+            current::strings::Join(claire_notifications_receiver.karl_urls, ','));
 }
 
 TEST(Karl, ModifiedClaireBoilerplateStatus) {
@@ -902,6 +899,212 @@ TEST(Karl, EndToEndTest) {
     while (true) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+  }
+}
+
+TEST(Karl, KarlNotifiesUserObject) {
+  current::time::ResetToZero();
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+
+  struct KarlNotifiable : current::karl::IKarlNotifiable<
+                              Variant<current::karl::default_user_status::status, karl_unittest::is_prime>> {
+    std::vector<std::string> events;
+    void OnKeepalive(
+        std::chrono::microseconds,
+        const current::karl::ClaireServiceKey&,
+        const std::string& codename,
+        const current::karl::ClaireServiceStatus<
+            Variant<current::karl::default_user_status::status, karl_unittest::is_prime>>& status) override {
+      // First `Exists` for `Optional<>`, second for `Variant<>`.
+      if (!Exists(status.runtime) || !Exists<karl_unittest::is_prime>(Value(status.runtime))) {
+        events.push_back("Keepalive: " + codename);
+      } else {
+        events.push_back("PrimeKeepalive: " + codename);
+      }
+    }
+    void OnDeregistered(std::chrono::microseconds,
+                        const std::string& codename,
+                        const ImmutableOptional<current::karl::ClaireInfo>&) override {
+      events.push_back("Deregistered: " + codename);
+    }
+    void OnTimedOut(std::chrono::microseconds,
+                    const std::string& codename,
+                    const ImmutableOptional<current::karl::ClaireInfo>&) override {
+      events.push_back("TimedOut: " + codename);
+    }
+  };
+
+  KarlNotifiable karl_notifications_receiver;
+
+  const unittest_karl_t karl(UnittestKarlParameters(), karl_notifications_receiver);
+
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+
+  std::vector<std::string> expected;
+  EXPECT_EQ(current::strings::Join(expected, ", "),
+            current::strings::Join(karl_notifications_receiver.events, ", "));
+
+  // First, the end-to-end test with respect to callbacks.
+  {
+    const karl_unittest::ServiceGenerator generator(
+        FLAGS_karl_generator_test_port, std::chrono::microseconds(1000000), karl_locator);
+    expected.push_back("Keepalive: " + generator.ClaireCodename());
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+
+    const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
+    expected.push_back("PrimeKeepalive: " + is_prime.ClaireCodename());
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+
+    {
+      const karl_unittest::ServiceAnnotator annotator(
+          FLAGS_karl_annotator_test_port,
+          Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
+          Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
+          karl_locator);
+      expected.push_back("Keepalive: " + annotator.ClaireCodename());
+      EXPECT_EQ(current::strings::Join(expected, ", "),
+                current::strings::Join(karl_notifications_receiver.events, ", "));
+
+      {
+        const karl_unittest::ServiceFilter filter(FLAGS_karl_filter_test_port,
+                                                  Printf("http://localhost:%d", FLAGS_karl_annotator_test_port),
+                                                  karl_locator);
+        expected.push_back("Keepalive: " + filter.ClaireCodename());
+        EXPECT_EQ(current::strings::Join(expected, ", "),
+                  current::strings::Join(karl_notifications_receiver.events, ", "));
+        expected.push_back("Deregistered: " + filter.ClaireCodename());
+      }
+      EXPECT_EQ(current::strings::Join(expected, ", "),
+                current::strings::Join(karl_notifications_receiver.events, ", "));
+      expected.push_back("Deregistered: " + annotator.ClaireCodename());
+    }
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+    expected.push_back("Deregistered: " + is_prime.ClaireCodename());
+    expected.push_back("Deregistered: " + generator.ClaireCodename());
+  }
+  EXPECT_EQ(current::strings::Join(expected, ", "),
+            current::strings::Join(karl_notifications_receiver.events, ", "));
+
+  // Now, the timeout test with respect to callbacks.
+  {
+    current::karl::ClaireStatus claire;
+    claire.service = "unittest";
+    claire.codename = "ABCDEF";
+    claire.local_port = 8888;
+    ASSERT_TRUE(!karl.ActiveServicesCount());
+    {
+      const std::string keepalive_url = Printf("%s?codename=%s&port=%d",
+                                               karl_locator.address_port_route.c_str(),
+                                               claire.codename.c_str(),
+                                               claire.local_port);
+      const auto response = HTTP(POST(keepalive_url, claire));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      while (karl.ActiveServicesCount() != 1u) {
+        ;  // Spin lock.
+      }
+    }
+    expected.push_back("Keepalive: ABCDEF");
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+
+    current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
+                          std::chrono::microseconds(101 * 1000 * 1000));
+    bool is_timeouted_persisted = false;
+    while (!is_timeouted_persisted) {
+      is_timeouted_persisted =
+          Value(karl.InternalExposeStorage()
+                    .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                      EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                      return Value(fields.claires[claire.codename]).registered_state ==
+                             current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                    })
+                    .Go());
+    }
+
+    expected.push_back("TimedOut: ABCDEF");
+    EXPECT_EQ(current::strings::Join(expected, ", "),
+              current::strings::Join(karl_notifications_receiver.events, ", "));
+  }
+}
+
+namespace karl_unittest {
+
+CURRENT_STRUCT(CustomField) {
+  CURRENT_FIELD(id, uint32_t);
+  CURRENT_USE_FIELD_AS_KEY(id);
+  CURRENT_FIELD(s, std::string);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(CustomField) {}
+  CURRENT_CONSTRUCTOR(CustomField)(uint32_t id, const std::string& s) : id(id), s(s) {}
+};
+
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, CustomField, CustomFieldDictionary);
+
+CURRENT_STORAGE(CustomKarlStorage) {
+  // Required storage fields for Karl.
+  CURRENT_STORAGE_FIELD(karl, current::karl::KarlInfoDictionary);
+  CURRENT_STORAGE_FIELD(claires, current::karl::ClaireInfoDictionary);
+  CURRENT_STORAGE_FIELD(builds, current::karl::BuildInfoDictionary);
+  CURRENT_STORAGE_FIELD(servers, current::karl::ServerInfoDictionary);
+  // Custom field.
+  CURRENT_STORAGE_FIELD(custom_field, CustomFieldDictionary);
+};
+
+}  // namespace karl_unittest
+
+TEST(Karl, CustomStorage) {
+  using namespace karl_unittest;
+  current::time::ResetToZero();
+
+  using custom_storage_t = CustomKarlStorage<SherlockStreamPersister>;
+  using custom_karl_t = current::karl::GenericKarl<custom_storage_t,
+                                                   current::karl::default_user_status::status,
+                                                   karl_unittest::is_prime>;
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  custom_storage_t storage(FLAGS_karl_test_storage_persistence_file);
+
+  {
+    const auto result = storage.ReadWriteTransaction([](MutableFields<custom_storage_t> fields) {
+      fields.custom_field.Add(CustomField(42, "UnitTest"));
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  std::string generator_codename;
+  {
+    const custom_karl_t karl(storage, UnittestKarlParameters());
+    const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+    const karl_unittest::ServiceGenerator generator(
+        FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
+    generator_codename = generator.ClaireCodename();
+
+    const auto result =
+        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+          ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                    Value(fields.claires[generator_codename]).registered_state);
+        }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    const auto result = storage.ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+      // `generator` has deregistered itself on destruction.
+      ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+      EXPECT_EQ(current::karl::ClaireRegisteredState::Deregistered,
+                Value(fields.claires[generator_codename]).registered_state);
+      // Our `custom_field` is fine.
+      ASSERT_TRUE(Exists(fields.custom_field[42]));
+      EXPECT_EQ("UnitTest", Value(fields.custom_field[42]).s);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
   }
 }
 

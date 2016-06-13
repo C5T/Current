@@ -70,20 +70,19 @@ inline std::string KeepaliveAttemptResultAsString(const InternalKeepaliveAttempt
   } else if (result.status == KeepaliveAttemptStatus::ErrorCodeReturned) {
     return "HTTP response code " + current::ToString(result.http_code);
   } else {
-    return "";
+    return "Error: " + JSON(result);
   }
 }
 
-// Interface to implement for receiving notifications from Claire.
+// Interface to implement for receiving callbacks/notifications from Claire.
 class IClaireNotifiable {
  public:
-  IClaireNotifiable() = default;
   virtual ~IClaireNotifiable() = default;
   // Claire has been requested to change its Karl locator.
   virtual void OnKarlLocatorChanged(const Locator& locator) = 0;
 };
 
-// Dummy class with no-op functions. Used by Claire if no custom notifiable class provided.
+// Dummy class with no-op functions. Used by Claire if no custom notifiable class has been provided.
 class DummyClaireNotifiable : public IClaireNotifiable {
  public:
   void OnKarlLocatorChanged(const Locator&) override {}
@@ -110,7 +109,8 @@ class GenericClaire final : private DummyClaireNotifiable {
         notifiable_ref_(notifiable),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
-        keepalive_thread_terminating_(false) {}
+        keepalive_thread_terminating_(false),
+        keepalive_thread_force_wakeup_(false) {}
 
   GenericClaire(Locator karl,
                 const std::string& service,
@@ -148,7 +148,7 @@ class GenericClaire final : private DummyClaireNotifiable {
     std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
       {
-        std::lock_guard<std::mutex> lock(status_mutex_);
+        std::lock_guard<std::mutex> inner_lock(status_mutex_);
         status_generator_ = status_filler;
       }
 
@@ -179,6 +179,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
       notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
+    keepalive_thread_force_wakeup_ = true;
     keepalive_condition_variable_.notify_one();
   }
 
@@ -334,11 +335,18 @@ class GenericClaire final : private DummyClaireNotifiable {
       const std::chrono::microseconds now = current::time::Now();
 
       if (projected_next_keepalive > now) {
-        keepalive_condition_variable_.wait_for(lock, projected_next_keepalive - now);
+        keepalive_condition_variable_.wait_for(
+            lock,
+            projected_next_keepalive - now,
+            [this]() { return keepalive_thread_terminating_.load() || keepalive_thread_force_wakeup_.load(); });
       }
 
       if (keepalive_thread_terminating_) {
         return;
+      }
+
+      if (keepalive_thread_force_wakeup_) {
+        keepalive_thread_force_wakeup_ = false;
       }
 
       try {
@@ -426,6 +434,7 @@ class GenericClaire final : private DummyClaireNotifiable {
   const HTTPRoutesScope http_scope_;
 
   std::atomic_bool keepalive_thread_terminating_;
+  std::atomic_bool keepalive_thread_force_wakeup_;
   mutable std::mutex keepalive_mutex_;
   std::condition_variable keepalive_condition_variable_;
   std::thread keepalive_thread_;

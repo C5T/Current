@@ -192,6 +192,10 @@ struct MutationJournal {
 
 template <typename BASE>
 struct FieldsBase : BASE {
+  FieldsBase() = default;
+  FieldsBase(const FieldsBase&) = delete;
+  FieldsBase(FieldsBase&&) = delete;
+
   MutationJournal current_storage_mutation_journal_;
 
   void SetTransactionMetaField(const std::string& key, const std::string& value) {

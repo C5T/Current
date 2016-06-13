@@ -1464,18 +1464,53 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
       "// Compile with `-std=c++11` or higher.\n"
       "\n"
+      "#ifndef CURRENT_USERSPACE_C546BDBF8F3A5614\n"
+      "#define CURRENT_USERSPACE_C546BDBF8F3A5614\n"
+      "\n"
       "#include \"current.h\"\n"
       "\n"
       "// clang-format off\n"
       "\n"
-      "namespace current_userspace {\n"
+      "namespace current_userspace_c546bdbf8f3a5614 {\n"
+      "\n"
       "CURRENT_STRUCT(SimpleUser) {\n"
       "  CURRENT_FIELD(key, std::string);\n"
       "  CURRENT_FIELD(name, std::string);\n"
       "};\n"
-      "}  // namespace current_userspace\n"
+      "using T9204302787243580577 = SimpleUser;\n"
       "\n"
-      "// clang-format on\n";
+      "}  // namespace current_userspace_c546bdbf8f3a5614\n"
+      "\n"
+      "CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614) {\n"
+      "  CURRENT_NAMESPACE_TYPE(SimpleUser, current_userspace_c546bdbf8f3a5614::SimpleUser);\n"
+      "};  // CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614)\n"
+      "\n"
+      "namespace current {\n"
+      "namespace type_evolution {\n"
+      "\n"
+      "// Default evolution for struct `SimpleUser`.\n"
+      "template <typename NAMESPACE, typename EVOLUTOR>\n"
+      "struct Evolve<NAMESPACE, USERSPACE_C546BDBF8F3A5614::SimpleUser, EVOLUTOR> {\n"
+      "  template <typename INTO,\n"
+      "            class CHECK = NAMESPACE,\n"
+      "            class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_C546BDBF8F3A5614, "
+      "CHECK>::value>>\n"
+      "  static void Go(const typename NAMESPACE::SimpleUser& from,\n"
+      "                 typename INTO::SimpleUser& into) {\n"
+      "      static_assert(::current::reflection::FieldCounter<typename "
+      "USERSPACE_C546BDBF8F3A5614::SimpleUser>::value == 2,\n"
+      "                    \"Custom evolutor required.\");\n"
+      "      Evolve<NAMESPACE, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, into.key);\n"
+      "      Evolve<NAMESPACE, decltype(from.name), EVOLUTOR>::template Go<INTO>(from.name, into.name);\n"
+      "  }\n"
+      "};\n"
+      "\n"
+      "}  // namespace current::type_evolution\n"
+      "}  // namespace current\n"
+      "\n"
+      "// clang-format on\n"
+      "\n"
+      "#endif  // CURRENT_USERSPACE_C546BDBF8F3A5614\n";
 
   // clang-format off
   const std::string golden_user_schema_json =
@@ -1579,7 +1614,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     // GET matrix as the collection.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
-    EXPECT_EQ("max:beer\ndima:beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+    EXPECT_EQ("max-beer\ndima-beer\n", HTTP(GET(base_url + "/api/data/like")).body);
 
     // Clean up the likes.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima-beer")).code));

@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME
+
 #include "../port.h"
 
 #include "enum.h"
@@ -69,14 +71,53 @@ CURRENT_STRUCT(DerivedFromFoo, Foo) {
   CURRENT_FIELD(baz, Baz);
 };
 
+// clang-format off
+CURRENT_STRUCT(DerivedFromDerivedFromFoo, DerivedFromFoo){
+  CURRENT_DEFAULT_CONSTRUCTOR(DerivedFromDerivedFromFoo) : SUPER(1u) {}
+  CURRENT_CONSTRUCTOR(DerivedFromDerivedFromFoo)(size_t x) : SUPER(x + 1) {}
+};
+// clang-format on
+
 CURRENT_STRUCT(WithVector) {
   CURRENT_FIELD(v, std::vector<std::string>);
   size_t vector_size() const { return v.size(); }
 };
 
+CURRENT_STRUCT_T(Templated) {
+  CURRENT_FIELD(i, uint32_t);
+  CURRENT_FIELD(t, T);
+  CURRENT_CONSTRUCTOR_T(Templated)(uint32_t i, const T& t) : i(i), t(t) {}
+};
+
+CURRENT_STRUCT_T(TemplatedDerivedFromFoo, Foo) {
+  CURRENT_FIELD(s, std::string);
+  CURRENT_FIELD(t, T);
+  CURRENT_CONSTRUCTOR_T(TemplatedDerivedFromFoo)(const uint32_t x, const std::string& s, const T& t)
+      : SUPER(x * 1000001u), s(s), t(t) {}
+};
+
+CURRENT_STRUCT(NonTemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDerivedFromFoo<std::string>){
+  CURRENT_CONSTRUCTOR(NonTemplateDerivedFromTemplatedDerivedFromFooString)(
+      const uint32_t x, const std::string& s, const std::string& t) : SUPER(x, s, t){}
+};
+
+#ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
+CURRENT_STRUCT_T(TemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDerivedFromFoo<T>){
+  CURRENT_CONSTRUCTOR_T(TemplateDerivedFromTemplatedDerivedFromFooString)(const uint32_t x,
+                                                                          const std::string& s,
+                                                                          const T& t) : SUPER<T>(x, s, t){}
+};
+#endif  // CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
+
 static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(Baz), "Struct `Baz` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(DerivedFromFoo), "Struct `DerivedFromFoo` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Templated<bool>), "Struct `Templated<>` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Templated<Foo>), "Struct `Templated<>` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(TemplatedDerivedFromFoo<bool>),
+              "Struct `TemplatedDerivedFromFoo<>` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(TemplatedDerivedFromFoo<Foo>),
+              "Struct `TemplatedDerivedFromFoo<>` was not properly declared.");
 
 }  // namespace struct_definition_test
 
@@ -142,6 +183,10 @@ TEST(TypeSystemTest, FieldCounter) {
     EXPECT_EQ(1u, current::reflection::FieldCounter<Bar>::value + 0u);
     EXPECT_EQ(5u, current::reflection::FieldCounter<Baz>::value + 0u);
     EXPECT_EQ(1u, current::reflection::FieldCounter<DerivedFromFoo>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::FieldCounter<Templated<bool>>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::FieldCounter<Templated<Empty>>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::FieldCounter<TemplatedDerivedFromFoo<bool>>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::FieldCounter<TemplatedDerivedFromFoo<Empty>>::value + 0u);
   }
   {
     EXPECT_EQ(0u, current::reflection::TotalFieldCounter<Empty>::value + 0u);
@@ -150,6 +195,10 @@ TEST(TypeSystemTest, FieldCounter) {
     EXPECT_EQ(1u, current::reflection::TotalFieldCounter<Bar>::value + 0u);
     EXPECT_EQ(5u, current::reflection::TotalFieldCounter<Baz>::value + 0u);
     EXPECT_EQ(2u, current::reflection::TotalFieldCounter<DerivedFromFoo>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::TotalFieldCounter<Templated<bool>>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::TotalFieldCounter<Templated<Empty>>::value + 0u);
+    EXPECT_EQ(3u, current::reflection::TotalFieldCounter<TemplatedDerivedFromFoo<bool>>::value + 0u);
+    EXPECT_EQ(3u, current::reflection::TotalFieldCounter<TemplatedDerivedFromFoo<Empty>>::value + 0u);
   }
 }
 
@@ -284,13 +333,79 @@ TEST(TypeSystemTest, CopyDoesItsJob) {
   EXPECT_EQ(3u, c.i);
 }
 
-TEST(TypeSystemTest, DerivedConstructorIsCalled) {
+TEST(TypeSystemTest, ConstructingViaInitializerListIncludingSuper) {
   using namespace struct_definition_test;
-  DerivedFromFoo one;
-  EXPECT_EQ(100u, one.i);
-  DerivedFromFoo two(123u);
-  EXPECT_EQ(123123u, two.i);
+
+  {
+    DerivedFromFoo one;
+    EXPECT_EQ(100u, one.i);
+    DerivedFromFoo two(123u);
+    EXPECT_EQ(123123u, two.i);
+  }
+
+  {
+    DerivedFromDerivedFromFoo one;
+    EXPECT_EQ(1001u, one.i);
+    DerivedFromDerivedFromFoo two(123u);
+    EXPECT_EQ(124124u, two.i);
+  }
+
+  {
+    {
+      TemplatedDerivedFromFoo<uint32_t> test(42u, "foo", 1u);
+      EXPECT_EQ(42000042u, test.i);
+      EXPECT_EQ("foo", test.s);
+      EXPECT_EQ(1u, test.t);
+    }
+    {
+      TemplatedDerivedFromFoo<std::string> test(42u, "foo", "test");
+      EXPECT_EQ(42000042u, test.i);
+      EXPECT_EQ("foo", test.s);
+      EXPECT_EQ("test", test.t);
+    }
+  }
+
+  {
+    NonTemplateDerivedFromTemplatedDerivedFromFooString test(1u, "s", "t");
+    EXPECT_EQ(1000001u, test.i);
+    EXPECT_EQ("s", test.s);
+    EXPECT_EQ("t", test.t);
+  }
+
+#ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
+  {
+    {
+      TemplateDerivedFromTemplatedDerivedFromFooString<std::string> test(1u, "s", "t");
+      EXPECT_EQ(1000001u, test.i);
+      EXPECT_EQ("s", test.s);
+      EXPECT_EQ("t", test.t);
+    }
+    {
+      TemplateDerivedFromTemplatedDerivedFromFooString<bool> test(1u, "s", true);
+      EXPECT_EQ(1000001u, test.i);
+      EXPECT_EQ("s", test.s);
+      EXPECT_TRUE(test.t);
+    }
+  }
+#endif  // CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
 };
+
+TEST(TypeSystemTest, ConstructingTemplatedStructs) {
+  using namespace struct_definition_test;
+
+  {
+    {
+      Templated<uint32_t> test(1u, 42u);
+      EXPECT_EQ(1u, test.i);
+      EXPECT_EQ(42u, test.t);
+    }
+    {
+      Templated<std::string> test(2u, "foo");
+      EXPECT_EQ(2u, test.i);
+      EXPECT_EQ("foo", test.t);
+    }
+  }
+}
 
 TEST(TypeSystemTest, ImmutableOptional) {
   {
