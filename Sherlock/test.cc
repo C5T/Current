@@ -324,7 +324,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>();
+  auto exposed_stream =
+      current::sherlock::Stream<RecordWithTimestamp>(current::sherlock::SherlockNamespaceName("Sherlock"));
   // Expose stream via HTTP.
   HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
