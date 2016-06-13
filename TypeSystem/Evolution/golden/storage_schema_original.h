@@ -56,7 +56,7 @@ CURRENT_NAMESPACE(USERSPACE_F57EAC2563CE5708) {
   CURRENT_NAMESPACE_TYPE(User, current_userspace_f57eac2563ce5708::User);
   CURRENT_NAMESPACE_TYPE(Transaction_T9227630689129186588, current_userspace_f57eac2563ce5708::Transaction_T9227630689129186588);
   CURRENT_NAMESPACE_TYPE(Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, current_userspace_f57eac2563ce5708::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E);
-};
+};  // CURRENT_NAMESPACE(USERSPACE_F57EAC2563CE5708)
 
 namespace current {
 namespace type_evolution {

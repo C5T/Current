@@ -55,7 +55,7 @@ CURRENT_NAMESPACE(USERSPACE_381EECA4ACB24A12) {
   CURRENT_NAMESPACE_TYPE(User, current_userspace_381eeca4acb24a12::User);
   CURRENT_NAMESPACE_TYPE(PersistedUserUpdated, current_userspace_381eeca4acb24a12::PersistedUserUpdated);
   CURRENT_NAMESPACE_TYPE(Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, current_userspace_381eeca4acb24a12::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E);
-};
+};  // CURRENT_NAMESPACE(USERSPACE_381EECA4ACB24A12)
 
 namespace current {
 namespace type_evolution {

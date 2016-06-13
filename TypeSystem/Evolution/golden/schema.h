@@ -61,7 +61,7 @@ CURRENT_NAMESPACE(USERSPACE_F055D51FBF78DB84) {
   CURRENT_NAMESPACE_TYPE(Name, current_userspace_f055d51fbf78db84::Name);
   CURRENT_NAMESPACE_TYPE(StructWithVectorOfNames, current_userspace_f055d51fbf78db84::StructWithVectorOfNames);
   CURRENT_NAMESPACE_TYPE(Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E, current_userspace_f055d51fbf78db84::Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E);
-};
+};  // CURRENT_NAMESPACE(USERSPACE_F055D51FBF78DB84)
 
 namespace current {
 namespace type_evolution {

@@ -43,6 +43,21 @@ SOFTWARE.
 namespace current {
 namespace reflection {
 
+// The container to optionally pass to schema generator to have certain types exposed under certain names.
+CURRENT_STRUCT(NamespaceToExpose) {
+  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(types, (std::map<std::string, TypeID>));
+  CURRENT_CONSTRUCTOR(NamespaceToExpose)(const std::string& name = "Schema") : name(name) {}
+  template <typename T>
+  void AddType(const std::string& exported_type_name) {
+    types[exported_type_name] = Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id;
+  }
+  template <typename T>
+  void AddType() {
+    types[CurrentTypeName<T>()] = Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id;
+  }
+};
+
 // TODO(dkorolev): Refactor `PrimitiveTypesList` to avoid copy-pasting of `operator()(const *_Primitive& p)`.
 struct PrimitiveTypesListImpl final {
   std::map<TypeID, std::string> cpp_name;
@@ -113,14 +128,15 @@ struct LanguageSyntax final {
   static void Describe(const std::map<TypeID, ReflectedType>& types,
                        const std::vector<TypeID>& order,
                        std::ostream& os,
-                       bool headers = true) {
+                       bool headers,
+                       const Optional<NamespaceToExpose>& namespace_to_expose) {
     const std::string unique_hash = SHA256(JSON(order)).substr(0, 16);
     if (headers) {
       os << LanguageSyntaxImpl<L>::Header(unique_hash);
     }
     {
       // Wrap `FullSchemaPrinter` into its own scope, so that its destructor would execture prior to `Footer()`.
-      typename LanguageSyntaxImpl<L>::FullSchemaPrinter printer(types, os, unique_hash);
+      typename LanguageSyntaxImpl<L>::FullSchemaPrinter printer(types, os, unique_hash, namespace_to_expose);
       for (TypeID type_id : order) {
         const auto cit = types.find(type_id);
         if (cit == types.end()) {
@@ -250,6 +266,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
     const std::map<TypeID, ReflectedType>& types_;
     std::ostream& os_;
     const std::string unique_hash_;
+    const Optional<NamespaceToExpose>& namespace_to_expose_;
 
     std::string TypeName(TypeID type_id) const {
       const auto cit = types_.find(type_id);
@@ -301,8 +318,9 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
 
     FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types,
                       std::ostream& os,
-                      const std::string& unique_hash)
-        : types_(types), os_(os), unique_hash_(unique_hash) {
+                      const std::string& unique_hash,
+                      const Optional<NamespaceToExpose>& namespace_to_expose)
+        : types_(types), os_(os), unique_hash_(unique_hash), namespace_to_expose_(namespace_to_expose) {
       os_ << "namespace current_userspace_" << unique_hash_ << " {\n";
       if (CPP_LANGUAGE_SELECTOR == CPPLanguageSelector::CurrentStructs) {
         os_ << '\n';
@@ -325,7 +343,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "::" << type_name << ");\n";
           }
         }
-        os_ << "};\n";
+        os_ << "};  // CURRENT_NAMESPACE(" << nmspc << ")\n";
 
         os_ << '\n' << "namespace current {\n"
             << "namespace type_evolution {\n" << '\n';
@@ -440,6 +458,18 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         }
         os_ << "}  // namespace current::type_evolution\n"
             << "}  // namespace current\n";
+
+        if (Exists(namespace_to_expose_)) {
+          const NamespaceToExpose& expose = Value(namespace_to_expose_);
+          os_ << "\n"
+              << "// Privileged types.\n"
+              << "CURRENT_DERIVED_NAMESPACE(" << expose.name << ", " << nmspc << ") {\n";
+          for (const auto& t : expose.types) {
+            os_ << "  CURRENT_NAMESPACE_TYPE(" << t.first << ", current_userspace_" << unique_hash_
+                << "::" << TypeName(t.second) << ");\n";
+          }
+          os_ << "};  // CURRENT_NAMESPACE(" << expose.name << ")\n";
+        }
       }
     }
 
@@ -542,7 +572,10 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       }
     }
 
-    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types, std::ostream& os, const std::string&)
+    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types,
+                      std::ostream& os,
+                      const std::string&,
+                      const Optional<NamespaceToExpose>&)
         : types_(types), os_(os) {}
 
     // `operator()`-s of this block print complete declarations of F# types.
@@ -668,7 +701,10 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       }
     }
 
-    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types, std::ostream& os, const std::string&)
+    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types,
+                      std::ostream& os,
+                      const std::string&,
+                      const Optional<NamespaceToExpose>&)
         : types_(types), os_(os) {}
 
     // `operator()`-s of this block print complete declarations of F# types.
@@ -829,7 +865,10 @@ struct LanguageSyntaxImpl<Language::JSON> final {
       }
     }
 
-    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types, std::ostream& os, const std::string&)
+    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types,
+                      std::ostream& os,
+                      const std::string&,
+                      const Optional<NamespaceToExpose>&)
         : types_(types), ostream_to_write_schema_to_(os) {}
 
     ~FullSchemaPrinter() { ostream_to_write_schema_to_ << JSON<JSONFormat::Minimalistic>(schema_object_); }
@@ -896,9 +935,11 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 template <Language L>
 struct LanguageDescribeCaller final {
   template <typename T>
-  static std::string CallDescribe(const T* instance, bool headers) {
+  static std::string CallDescribe(const T* instance,
+                                  bool headers,
+                                  const Optional<NamespaceToExpose>& namespace_to_expose) {
     std::ostringstream oss;
-    LanguageSyntax<L>::Describe(instance->types, instance->order, oss, headers);
+    LanguageSyntax<L>::Describe(instance->types, instance->order, oss, headers, namespace_to_expose);
     return oss.str();
   }
 };
@@ -927,14 +968,17 @@ CURRENT_STRUCT(SchemaInfo) {
   }
 
   template <Language L>
-  std::string Describe(bool headers = true) const {
-    return LanguageDescribeCaller<L>::CallDescribe(this, headers);
+  std::string Describe(bool headers = true, const Optional<NamespaceToExpose>& namespace_to_expose = nullptr)
+      const {
+    return LanguageDescribeCaller<L>::CallDescribe(this, headers, namespace_to_expose);
   }
 };
 
 template <>
 struct LanguageDescribeCaller<Language::InternalFormat> final {
-  static std::string CallDescribe(const SchemaInfo* instance, bool) { return JSON(*instance); }
+  static std::string CallDescribe(const SchemaInfo* instance, bool, const Optional<NamespaceToExpose>&) {
+    return JSON(*instance);
+  }
 };
 
 struct StructSchema final {

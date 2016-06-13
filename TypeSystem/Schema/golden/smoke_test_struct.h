@@ -169,7 +169,7 @@ CURRENT_NAMESPACE(USERSPACE_0473D52B47432E49) {
   CURRENT_NAMESPACE_TYPE(MyFreakingVariant, current_userspace_0473d52b47432e49::MyFreakingVariant);
   CURRENT_NAMESPACE_TYPE(Variant_B_A_X_Y_E, current_userspace_0473d52b47432e49::Variant_B_A_X_Y_E);
   CURRENT_NAMESPACE_TYPE(Variant_B_A_B_B2_C_Empty_E, current_userspace_0473d52b47432e49::Variant_B_A_B_B2_C_Empty_E);
-};
+};  // CURRENT_NAMESPACE(USERSPACE_0473D52B47432E49)
 
 namespace current {
 namespace type_evolution {
@@ -546,6 +546,13 @@ struct Evolve<NAMESPACE, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImp
 
 }  // namespace current::type_evolution
 }  // namespace current
+
+// Privileged types.
+CURRENT_DERIVED_NAMESPACE(ExposedNamespace, USERSPACE_0473D52B47432E49) {
+  CURRENT_NAMESPACE_TYPE(Empty, current_userspace_0473d52b47432e49::Empty);
+  CURRENT_NAMESPACE_TYPE(ExposedFullTest, current_userspace_0473d52b47432e49::FullTest);
+  CURRENT_NAMESPACE_TYPE(Primitives, current_userspace_0473d52b47432e49::Primitives);
+};  // CURRENT_NAMESPACE(ExposedNamespace)
 
 // clang-format on
 
