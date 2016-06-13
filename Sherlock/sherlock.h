@@ -483,7 +483,10 @@ class StreamImpl {
     explicit FillPerLanguageSchema(SherlockSchema& schema) : schema_ref(schema) {}
     template <current::reflection::Language language>
     void PerLanguage() {
-      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>();
+      current::reflection::NamespaceToExpose expose("Sherlock");
+      expose.template AddType<entry_t>("TopLevelTransaction");
+      schema_ref.language[current::ToString(language)] =
+          schema_ref.type_schema.Describe<language>(true, expose);
     }
   };
 

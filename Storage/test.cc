@@ -1483,7 +1483,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "\n"
       "CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614) {\n"
       "  CURRENT_NAMESPACE_TYPE(SimpleUser, current_userspace_c546bdbf8f3a5614::SimpleUser);\n"
-      "};\n"
+      "};  // CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614)\n"
       "\n"
       "namespace current {\n"
       "namespace type_evolution {\n"
@@ -1511,7 +1511,6 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "// clang-format on\n"
       "\n"
       "#endif  // CURRENT_USERSPACE_C546BDBF8F3A5614\n";
-  ;
 
   // clang-format off
   const std::string golden_user_schema_json =
