@@ -173,6 +173,17 @@ CURRENT_NAMESPACE(USERSPACE_0473D52B47432E49) {
 
 namespace current {
 namespace type_evolution {
+
+// Default evolution for `CURRENT_ENUM(E)`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::E, EVOLUTOR> {
+  template <typename INTO>
+  static void Go(USERSPACE_0473D52B47432E49::E from,
+                 typename INTO::E& into) {
+    into = from;
+  }
+};
+
 // Default evolution for struct `Empty`.
 template <typename NAMESPACE, typename EVOLUTOR>
 struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::Empty, EVOLUTOR> {

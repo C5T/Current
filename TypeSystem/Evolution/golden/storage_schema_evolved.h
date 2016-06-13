@@ -59,6 +59,7 @@ CURRENT_NAMESPACE(USERSPACE_381EECA4ACB24A12) {
 
 namespace current {
 namespace type_evolution {
+
 // Default evolution for struct `TransactionMeta`.
 template <typename NAMESPACE, typename EVOLUTOR>
 struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::TransactionMeta, EVOLUTOR> {

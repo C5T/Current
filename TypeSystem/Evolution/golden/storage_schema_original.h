@@ -60,6 +60,7 @@ CURRENT_NAMESPACE(USERSPACE_F57EAC2563CE5708) {
 
 namespace current {
 namespace type_evolution {
+
 // Default evolution for struct `PersistedUserUpdated`.
 template <typename NAMESPACE, typename EVOLUTOR>
 struct Evolve<NAMESPACE, USERSPACE_F57EAC2563CE5708::PersistedUserUpdated, EVOLUTOR> {

@@ -81,6 +81,16 @@ struct Evolve<FROM_NAMESPACE, std::vector<VECTOR_ELEMENT_TYPE>, EVOLUTOR> {
   }
 };
 
+// Boilerplate default generic evolutor for `std::pair<T1, T2>`.
+template <typename FROM_NAMESPACE, typename EVOLUTOR, typename FIRST_TYPE, typename SECOND_TYPE>
+struct Evolve<FROM_NAMESPACE, std::pair<FIRST_TYPE, SECOND_TYPE>, EVOLUTOR> {
+  template <typename INTO, typename OUTPUT>
+  static void Go(const std::pair<FIRST_TYPE, SECOND_TYPE>& from, OUTPUT& into) {
+    Evolve<FROM_NAMESPACE, FIRST_TYPE, EVOLUTOR>::template Go<INTO>(from.first, into.first);
+    Evolve<FROM_NAMESPACE, SECOND_TYPE, EVOLUTOR>::template Go<INTO>(from.second, into.second);
+  }
+};
+
 // Boilerplate default generic evolutor for `std::map<K, V>`.
 template <typename FROM_NAMESPACE, typename EVOLUTOR, typename MAP_KEY, typename MAP_VALUE>
 struct Evolve<FROM_NAMESPACE, std::map<MAP_KEY, MAP_VALUE>, EVOLUTOR> {

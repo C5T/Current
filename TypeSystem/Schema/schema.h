@@ -328,7 +328,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         os_ << "};\n";
 
         os_ << '\n' << "namespace current {\n"
-            << "namespace type_evolution {\n";
+            << "namespace type_evolution {\n" << '\n';
 
         // To only output distinct `Variant<>` & `CURRENT_VARIANT`-s once.
         std::unordered_set<uint64_t> variant_evolutor_already_output;
@@ -421,6 +421,18 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "  static void Go(const " << vrnt << "& from,\n"
                 << "                 CUSTOM_INTO_VARIANT_TYPE& into) {\n"
                 << "    from.Call(" << evltr << "<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));\n"
+                << "  }\n"
+                << "};\n" << '\n';
+          } else if (Exists<ReflectedType_Enum>(type_substance)) {
+            // Default evolutor for `CURRENT_ENUM`.
+            const auto& e = Value<ReflectedType_Enum>(type_substance);
+            os_ << "// Default evolution for `CURRENT_ENUM(" << e.name << ")`.\n"
+                << "template <typename NAMESPACE, typename EVOLUTOR>\n"
+                << "struct Evolve<NAMESPACE, " << nmspc << "::" << e.name << ", EVOLUTOR> {\n"
+                << "  template <typename INTO>\n"
+                << "  static void Go(" << nmspc << "::" << e.name << " from,\n"
+                << "                 typename INTO::" << e.name << "& into) {\n"
+                << "    into = from;\n"
                 << "  }\n"
                 << "};\n" << '\n';
           }
