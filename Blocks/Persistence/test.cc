@@ -103,6 +103,14 @@ TEST(PersistenceLayer, Memory) {
       }
       EXPECT_EQ("meh", Join(just_the_last_one, ","));
     }
+
+    {
+      std::vector<std::string> just_the_last_one;
+      for (const auto& e : impl.Iterate(std::chrono::microseconds(300))) {
+        just_the_last_one.push_back(e.entry);
+      }
+      EXPECT_EQ("meh", Join(just_the_last_one, ","));
+    }
   }
 
   {
@@ -379,6 +387,7 @@ inline StorableString LargeTestStorableString(int index) {
 template <typename IMPL, int N = 1000>
 void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   current::time::ResetToZero();
+  using us_t = std::chrono::microseconds;
 
   // Populate many entries. Skip if testing the "resume from an existing file" mode.
   if (publish) {
@@ -391,15 +400,30 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   EXPECT_EQ(static_cast<size_t>(N), impl.Size());
 
   // Confirm entries are as expected.
-  EXPECT_EQ(0ull, (*impl.Iterate(0, 1).begin()).idx_ts.index);
-  EXPECT_EQ(0ll, (*impl.Iterate(0, 1).begin()).idx_ts.us.count());
-  EXPECT_EQ("0000000 aaa", (*impl.Iterate(0, 1).begin()).entry.s);
-  EXPECT_EQ(10ull, (*impl.Iterate(10, 11).begin()).idx_ts.index);
-  EXPECT_EQ(10000ll, (*impl.Iterate(10, 11).begin()).idx_ts.us.count());
-  EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(10, 11).begin()).entry.s);
-  EXPECT_EQ(100ull, (*impl.Iterate(100, 101).begin()).idx_ts.index);
-  EXPECT_EQ(100000ll, (*impl.Iterate(100, 101).begin()).idx_ts.us.count());
-  EXPECT_EQ("0000100 wwwww", (*impl.Iterate(100, 101).begin()).entry.s);
+  {
+    // By index.
+    EXPECT_EQ(0ull, (*impl.Iterate(0, 1).begin()).idx_ts.index);
+    EXPECT_EQ(0ll, (*impl.Iterate(0, 1).begin()).idx_ts.us.count());
+    EXPECT_EQ("0000000 aaa", (*impl.Iterate(0, 1).begin()).entry.s);
+    EXPECT_EQ(10ull, (*impl.Iterate(10, 11).begin()).idx_ts.index);
+    EXPECT_EQ(10000ll, (*impl.Iterate(10, 11).begin()).idx_ts.us.count());
+    EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(10, 11).begin()).entry.s);
+    EXPECT_EQ(100ull, (*impl.Iterate(100, 101).begin()).idx_ts.index);
+    EXPECT_EQ(100000ll, (*impl.Iterate(100, 101).begin()).idx_ts.us.count());
+    EXPECT_EQ("0000100 wwwww", (*impl.Iterate(100, 101).begin()).entry.s);
+  }
+  {
+    // By timestamp.
+    EXPECT_EQ(0ull, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.index);
+    EXPECT_EQ(0ll, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.us.count());
+    EXPECT_EQ("0000000 aaa", (*impl.Iterate(us_t(0), us_t(1000)).begin()).entry.s);
+    EXPECT_EQ(10ull, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.index);
+    EXPECT_EQ(10000ll, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.us.count());
+    EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(us_t(10000), us_t(11000)).begin()).entry.s);
+    EXPECT_EQ(100ull, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.index);
+    EXPECT_EQ(100000ll, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.us.count());
+    EXPECT_EQ("0000100 wwwww", (*impl.Iterate(us_t(100000), us_t(101000)).begin()).entry.s);
+  }
 
   // Perftest the creation of a large number of iterators.
   // The test would pass swiftly if the file is being seeked to the right spot,
@@ -407,6 +431,7 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   for (int i = 0; i < N; ++i) {
     const auto cit = impl.Iterate(i, i + 1).begin();
     const auto& e = *cit;
+    EXPECT_EQ(JSON(e.idx_ts), JSON((*impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin()).idx_ts));
     EXPECT_EQ(static_cast<uint64_t>(i), e.idx_ts.index);
     EXPECT_EQ(static_cast<int64_t>(i * 1000), e.idx_ts.us.count());
     EXPECT_EQ(LargeTestStorableString(i).s, e.entry.s);

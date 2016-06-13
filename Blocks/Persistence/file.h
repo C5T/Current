@@ -117,6 +117,7 @@ class FilePersister {
     // `offset.size() == end.index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
     std::mutex mutex;
     std::vector<std::streampos> offset;
+    std::vector<std::chrono::microseconds> timestamp;
 
     // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
     // http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840
@@ -127,7 +128,7 @@ class FilePersister {
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
-          end(ValidateFileAndInitializeNext(filename, offset)) {
+          end(ValidateFileAndInitializeNext(filename, offset, timestamp)) {
       if (!appender.good()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
@@ -135,7 +136,8 @@ class FilePersister {
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
     static end_t ValidateFileAndInitializeNext(const std::string& filename,
-                                               std::vector<std::streampos>& offset) {
+                                               std::vector<std::streampos>& offset,
+                                               std::vector<std::chrono::microseconds>& timestamp) {
       std::ifstream fi(filename);
       if (fi.good()) {
         // Read through all the lines.
@@ -143,11 +145,14 @@ class FilePersister {
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
-        while (cit.ProcessNextEntry([&fi, &offset, &current_offset](const idxts_t& current, const char*) {
-          assert(current.index == offset.size());
-          offset.push_back(current_offset);
-          current_offset = fi.tellg();
-        })) {
+        while (cit.ProcessNextEntry(
+            [&fi, &offset, &timestamp, &current_offset](const idxts_t& current, const char*) {
+              assert(current.index == offset.size());
+              assert(current.index == timestamp.size());
+              offset.push_back(current_offset);
+              timestamp.push_back(current.us);
+              current_offset = fi.tellg();
+            })) {
           ;
         }
         const auto& end = cit.Next();
@@ -292,6 +297,7 @@ class FilePersister {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
       assert(file_persister_impl_->offset.size() == iterator.index);
       file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
+      file_persister_impl_->timestamp.push_back(timestamp);
     }
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.index;
@@ -310,6 +316,31 @@ class FilePersister {
     } else {
       CURRENT_THROW(NoEntriesPublishedYet());
     }
+  }
+
+  std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
+                                                           std::chrono::microseconds till) const {
+    std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+    const auto begin_it = std::lower_bound(
+        file_persister_impl_->timestamp.begin(),
+        file_persister_impl_->timestamp.end(),
+        from,
+        [](std::chrono::microseconds entry_t, std::chrono::microseconds t) { return entry_t < t; });
+    if (begin_it != file_persister_impl_->timestamp.end()) {
+      result.first = std::distance(file_persister_impl_->timestamp.begin(), begin_it);
+    }
+    if (till.count() > 0) {
+      const auto end_it = std::upper_bound(
+          file_persister_impl_->timestamp.begin(),
+          file_persister_impl_->timestamp.end(),
+          till,
+          [](std::chrono::microseconds t, std::chrono::microseconds entry_t) { return t < entry_t; });
+      if (end_it != file_persister_impl_->timestamp.end()) {
+        result.second = std::distance(file_persister_impl_->timestamp.begin(), end_it);
+      }
+    }
+    return result;
   }
 
   IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
@@ -332,6 +363,18 @@ class FilePersister {
            current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
     return IterableRange(
         file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
+  }
+
+  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    if (till.count() > 0 && till < from) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    const auto index_range = IndexRangeByTimestampRange(from, till);
+    if (index_range.first != static_cast<uint64_t>(-1)) {
+      return Iterate(index_range.first, index_range.second);
+    } else {  // No entries found in the given range.
+      return IterableRange(file_persister_impl_, 0, 0, 0);
+    }
   }
 
  private:

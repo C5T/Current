@@ -62,12 +62,21 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   uint64_t Size() const noexcept { return IMPL::Size(); }
 
   idxts_t LastPublishedIndexAndTimestamp() const { return IMPL::LastPublishedIndexAndTimestamp(); }
-
+  std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
+                                                           std::chrono::microseconds till) const {
+    return IMPL::IndexRangeByTimestampRange(from, till);
+  }
   using IterableRange = typename IMPL::IterableRange;
 
   // NOTE: `IMPL::Iterate()` may throw.
   IterableRange Iterate(uint64_t begin, uint64_t end) const { return IMPL::Iterate(begin, end); }
   IterableRange Iterate(uint64_t begin) const { return IMPL::Iterate(begin, static_cast<uint64_t>(-1)); }
+  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return IMPL::Iterate(from, till);
+  }
+  IterableRange Iterate(std::chrono::microseconds from) const {
+    return IMPL::Iterate(from, std::chrono::microseconds(-1));
+  }
   IterableRange Iterate() const { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
 };
 

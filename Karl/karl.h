@@ -753,38 +753,35 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     std::map<std::string, std::set<std::string>> codenames_per_service;
     std::map<ClaireServiceKey, std::string> service_key_into_codename;
 
-    for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
-      if (e.idx_ts.us >= from && e.idx_ts.us < to) {
-        const claire_status_t& keepalive = e.entry.keepalive;
+    for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate(from, to)) {
+      const claire_status_t& keepalive = e.entry.keepalive;
 
-        codenames_to_resolve.insert(keepalive.codename);
-        service_key_into_codename[e.entry.location] = keepalive.codename;
+      codenames_to_resolve.insert(keepalive.codename);
+      service_key_into_codename[e.entry.location] = keepalive.codename;
 
-        codenames_per_service[keepalive.service].insert(keepalive.codename);
-        // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`,
-        // etc.
-        ProtoReport report;
-        const std::string last_keepalive =
-            current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
-        if ((now - e.idx_ts.us) < parameters_.service_timeout_interval) {
-          // Service is up.
-          const auto projected_uptime_us =
-              (keepalive.now - keepalive.start_time_epoch_microseconds) + (now - e.idx_ts.us);
-          report.currently = current_service_state::up(
-              keepalive.start_time_epoch_microseconds,
-              last_keepalive,
-              e.idx_ts.us,
-              current::strings::TimeIntervalAsHumanReadableString(projected_uptime_us));
-        } else {
-          // Service is down.
-          // TODO(dkorolev): Graceful shutdown case for `done`.
-          report.currently = current_service_state::down(
-              keepalive.start_time_epoch_microseconds, last_keepalive, e.idx_ts.us, keepalive.uptime);
-        }
-        report.dependencies = keepalive.dependencies;
-        report.runtime = keepalive.runtime;
-        report_for_codename[keepalive.codename] = report;
+      codenames_per_service[keepalive.service].insert(keepalive.codename);
+      // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`, etc.
+      ProtoReport report;
+      const std::string last_keepalive =
+          current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
+      if ((now - e.idx_ts.us) < parameters_.service_timeout_interval) {
+        // Service is up.
+        const auto projected_uptime_us =
+            (keepalive.now - keepalive.start_time_epoch_microseconds) + (now - e.idx_ts.us);
+        report.currently =
+            current_service_state::up(keepalive.start_time_epoch_microseconds,
+                                      last_keepalive,
+                                      e.idx_ts.us,
+                                      current::strings::TimeIntervalAsHumanReadableString(projected_uptime_us));
+      } else {
+        // Service is down.
+        // TODO(dkorolev): Graceful shutdown case for `done`.
+        report.currently = current_service_state::down(
+            keepalive.start_time_epoch_microseconds, last_keepalive, e.idx_ts.us, keepalive.uptime);
       }
+      report.dependencies = keepalive.dependencies;
+      report.runtime = keepalive.runtime;
+      report_for_codename[keepalive.codename] = report;
     }
 
     // To list only the services that are currently in `Active` state.
