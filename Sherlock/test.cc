@@ -392,6 +392,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "\n"
         "namespace current {\n"
         "namespace type_evolution {\n"
+        "\n"
         "// Default evolution for struct `RecordWithTimestamp`.\n"
         "template <typename NAMESPACE, typename EVOLUTOR>\n"
         "struct Evolve<NAMESPACE, USERSPACE_2FD11A8D64DDBA65::RecordWithTimestamp, EVOLUTOR> {\n"

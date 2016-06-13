@@ -1487,6 +1487,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "\n"
       "namespace current {\n"
       "namespace type_evolution {\n"
+      "\n"
       "// Default evolution for struct `SimpleUser`.\n"
       "template <typename NAMESPACE, typename EVOLUTOR>\n"
       "struct Evolve<NAMESPACE, USERSPACE_C546BDBF8F3A5614::SimpleUser, EVOLUTOR> {\n"
@@ -1510,6 +1511,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "// clang-format on\n"
       "\n"
       "#endif  // CURRENT_USERSPACE_C546BDBF8F3A5614\n";
+  ;
 
   // clang-format off
   const std::string golden_user_schema_json =

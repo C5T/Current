@@ -432,7 +432,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "  template <typename INTO>\n"
                 << "  static void Go(" << nmspc << "::" << e.name << " from,\n"
                 << "                 typename INTO::" << e.name << "& into) {\n"
-                << "    into = from;\n"
+                << "    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.\n"
+                << "    into = static_cast<typename INTO::" << e.name << ">(from);\n"
                 << "  }\n"
                 << "};\n" << '\n';
           }

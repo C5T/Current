@@ -25,6 +25,9 @@ SOFTWARE.
 
 // This `test.cc` file is `#include`-d from `../test.cc`, and thus needs a header guard.
 
+// The next line can be temporarily uncommented to simplify compiling the test and generating the golden schema.
+// #define JUST_GENERATE_THAT_GOLDEN_FILE
+
 #ifndef CURRENT_TYPE_SYSTEM_EVOLUTION_TEST_CC
 #define CURRENT_TYPE_SYSTEM_EVOLUTION_TEST_CC
 
@@ -83,8 +86,21 @@ CURRENT_STRUCT(StructWithVector) {
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithVector) : numerical_ids({8, 50}) {}
 };
 
+// clang-format off
+CURRENT_ENUM(EnumClassType, bool) {
+  False = false,
+  True = true
+};
+// clang-format on
+
+CURRENT_STRUCT(OtherTypes) {
+  CURRENT_FIELD(enum_class, EnumClassType, EnumClassType::False);
+  CURRENT_FIELD(optional, Optional<std::string>);
+  CURRENT_DEFAULT_CONSTRUCTOR(OtherTypes) {}
+};
+
 CURRENT_STRUCT(StructWithVariant) {
-  CURRENT_FIELD(v, (Variant<SimpleStruct, StructWithStruct>));
+  CURRENT_FIELD(v, (Variant<SimpleStruct, StructWithStruct, OtherTypes>));
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithVariant) {}
 };
 
@@ -95,21 +111,9 @@ CURRENT_STRUCT(Name) {
   CURRENT_CONSTRUCTOR(Name)(const std::string& first, const std::string& last) : first(first), last(last) {}
 };
 
-CURRENT_ENUM(EnumClassType, bool) { False = false, True = true }; 
-CURRENT_STRUCT(LeftoverTypesToMakeSureTypeEvolutionHasThemAmm) {
-  CURRENT_FIELD(enum_class, EnumClassType, EnumClassType::False);
-  CURRENT_FIELD(optional, Optional<std::string>);
-  CURRENT_DEFAULT_CONSTRUCTOR(LeftoverTypesToMakeSureTypeEvolutionHasThemAmm) {}
-};
-
 CURRENT_STRUCT(StructWithVectorOfNames) {
   CURRENT_FIELD(w, std::vector<Name>);
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithVectorOfNames) {}
-};
-
-CURRENT_STRUCT(StructWithVectorOfVariants) {
-  CURRENT_FIELD(z, (std::vector<Variant<Name, LeftoverTypesToMakeSureTypeEvolutionHasThemAmm>>));
-  CURRENT_DEFAULT_CONSTRUCTOR(StructWithVectorOfVariants) {}
 };
 
 }  // namespacetype_evolution_test:: current_user_namespace::SchemaV1
@@ -119,11 +123,11 @@ CURRENT_NAMESPACE(SchemaV1) {
   CURRENT_NAMESPACE_TYPE(SimpleStruct, current_user_namespace::SchemaV1::SimpleStruct);
   CURRENT_NAMESPACE_TYPE(StructWithStruct, current_user_namespace::SchemaV1::StructWithStruct);
   CURRENT_NAMESPACE_TYPE(StructWithVector, current_user_namespace::SchemaV1::StructWithVector);
+  CURRENT_NAMESPACE_TYPE(EnumClassType, current_user_namespace::SchemaV1::EnumClassType);
+  CURRENT_NAMESPACE_TYPE(OtherTypes, current_user_namespace::SchemaV1::OtherTypes);
   CURRENT_NAMESPACE_TYPE(StructWithVariant, current_user_namespace::SchemaV1::StructWithVariant);
   CURRENT_NAMESPACE_TYPE(Name, current_user_namespace::SchemaV1::Name);
   CURRENT_NAMESPACE_TYPE(StructWithVectorOfNames, current_user_namespace::SchemaV1::StructWithVectorOfNames);
-  CURRENT_NAMESPACE_TYPE(StructWithVectorOfVariants,
-                         current_user_namespace::SchemaV1::StructWithVectorOfVariants);
 };
 
 }  // namespace type_evolution_test
@@ -182,6 +186,32 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
   }
 };
 
+// Default evolution for `CURRENT_ENUM(EnumClassType)`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, typename type_evolution_test::SchemaV1::EnumClassType, EVOLUTOR> {
+  template <typename INTO>
+  static void Go(typename type_evolution_test::SchemaV1::EnumClassType from,
+                 typename INTO::EnumClassType& into) {
+    into = static_cast<typename INTO::EnumClassType>(from);
+  }
+};
+
+// Default evolution for `OtherTypes`.
+template <typename EVOLUTOR>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::OtherTypes, EVOLUTOR> {
+  template <typename INTO>
+  static void Go(const typename type_evolution_test::SchemaV1::OtherTypes& from,
+                 typename INTO::OtherTypes& into) {
+    static_assert(reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::OtherTypes>::value ==
+                      reflection::TotalFieldCounter<typename INTO::OtherTypes>::value,
+                  "Total field count for `OtherTypes` must match.");
+    Evolve<type_evolution_test::SchemaV1, decltype(from.enum_class), EVOLUTOR>::template Go<INTO>(
+        from.enum_class, into.enum_class);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.optional), EVOLUTOR>::template Go<INTO>(from.optional,
+                                                                                                into.optional);
+  }
+};
+
 // Default evolution for `StructWithVariant`. Must auto-generate all `Variant<>` cases too.
 template <typename DESTINATION_VARIANT, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
 struct CustomVariantTypedEvolutor {
@@ -199,16 +229,24 @@ struct CustomVariantTypedEvolutor {
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::StructWithStruct, EVOLUTOR>::template Go<INTO>(
         value, Value<into_t>(into));
   }
+  void operator()(const typename FROM_NAMESPACE::OtherTypes& value) {
+    using into_t = typename INTO::OtherTypes;
+    into = into_t();
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::OtherTypes, EVOLUTOR>::template Go<INTO>(
+        value, Value<into_t>(into));
+  }
 };
 
 template <typename EVOLUTOR>
-struct Evolve<
-    type_evolution_test::SchemaV1,
-    Variant<type_evolution_test::SchemaV1::SimpleStruct, type_evolution_test::SchemaV1::StructWithStruct>,
-    EVOLUTOR> {
+struct Evolve<type_evolution_test::SchemaV1,
+              Variant<type_evolution_test::SchemaV1::SimpleStruct,
+                      type_evolution_test::SchemaV1::StructWithStruct,
+                      type_evolution_test::SchemaV1::OtherTypes>,
+              EVOLUTOR> {
   template <typename INTO, typename INTO_VARIANT_TYPE>
   static void Go(const Variant<type_evolution_test::SchemaV1::SimpleStruct,
-                               type_evolution_test::SchemaV1::StructWithStruct>& from,
+                               type_evolution_test::SchemaV1::StructWithStruct,
+                               type_evolution_test::SchemaV1::OtherTypes>& from,
                  INTO_VARIANT_TYPE& into) {
     {
       CustomVariantTypedEvolutor<decltype(into), type_evolution_test::SchemaV1, INTO, EVOLUTOR> logic(into);
@@ -312,8 +350,21 @@ CURRENT_STRUCT(StructWithVector) {
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithVector) : string_ids({"@-1", "@112"}) {}
 };
 
+// clang-format off
+CURRENT_ENUM(EnumClassType, bool) {
+  False = false,
+  True = true
+};
+// clang-format on
+
+CURRENT_STRUCT(OtherTypes) {
+  CURRENT_FIELD(enum_class, EnumClassType, EnumClassType::False);
+  CURRENT_FIELD(optional, Optional<std::string>);
+  CURRENT_DEFAULT_CONSTRUCTOR(OtherTypes) {}
+};
+
 CURRENT_STRUCT(StructWithVariant) {
-  CURRENT_FIELD(v, (Variant<SimpleStruct, StructWithStruct>));
+  CURRENT_FIELD(v, (Variant<SimpleStruct, StructWithStruct, OtherTypes>));
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithVariant) {}
 };
 
@@ -334,6 +385,8 @@ CURRENT_NAMESPACE(SchemaV2) {
   CURRENT_NAMESPACE_TYPE(SimpleStruct, arbitrarily_called_namespace::SimpleStruct);
   CURRENT_NAMESPACE_TYPE(StructWithStruct, arbitrarily_called_namespace::StructWithStruct);
   CURRENT_NAMESPACE_TYPE(StructWithVector, arbitrarily_called_namespace::StructWithVector);
+  CURRENT_NAMESPACE_TYPE(EnumClassType, arbitrarily_called_namespace::EnumClassType);
+  CURRENT_NAMESPACE_TYPE(OtherTypes, arbitrarily_called_namespace::OtherTypes);
   CURRENT_NAMESPACE_TYPE(StructWithVariant, arbitrarily_called_namespace::StructWithVariant);
   CURRENT_NAMESPACE_TYPE(Name, arbitrarily_called_namespace::Name);
   CURRENT_NAMESPACE_TYPE(StructWithVectorOfNames, arbitrarily_called_namespace::StructWithVectorOfNames);
@@ -492,9 +545,10 @@ TEST(TypeEvolutionTest, NameWithDifferentEvolutors) {
   }
 }
 
+#ifndef JUST_GENERATE_THAT_GOLDEN_FILE
 // Programmatically use the autogenerated schema and the default type evolutor generated for it.
 #include "golden/schema.h"
-using SchemaXX = USERSPACE_805F01FE9B050632;
+using SchemaXX = USERSPACE_F055D51FBF78DB84;
 
 // Custom evolution from the autogenerated `SimpleStruct`.
 CURRENT_TYPE_EVOLUTOR(AddFortyTwoToX,
@@ -523,13 +577,11 @@ CURRENT_TYPE_EVOLUTOR(AddOneOrTwoToX,
                         into.s.y = from.s.y;
                         into.s.z = from.s.z;
                       });
+#endif  // JUST_GENERATE_THAT_GOLDEN_FILE
 
 TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
   using namespace type_evolution_test;
   using namespace current::reflection;
-
-  // Confirm the types we are dealing with are indeed different.
-  static_assert(!std::is_same<typename SchemaV1::SimpleStruct, typename SchemaXX::SimpleStruct>::value, "");
 
   {
     // Validate or overwrite the autogenerated schema header file.
@@ -540,7 +592,6 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
     schema.AddType<typename SchemaV1::StructWithVariant>();
     schema.AddType<typename SchemaV1::Name>();
     schema.AddType<typename SchemaV1::StructWithVectorOfNames>();
-    schema.AddType<typename SchemaV1::StructWithVectorOfVariants>();
     const std::string golden = schema.GetSchemaInfo().Describe<Language::Current>();
     if (!FLAGS_write_type_evolution_golden_files) {
       // clang-format off
@@ -556,6 +607,10 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
       current::FileSystem::WriteStringToFile(golden, golden_filename.c_str());
     }
   }
+
+#ifndef JUST_GENERATE_THAT_GOLDEN_FILE
+  // Confirm the types we are dealing with are indeed different.
+  static_assert(!std::is_same<typename SchemaV1::SimpleStruct, typename SchemaXX::SimpleStruct>::value, "");
 
   {
     // Plain `SimpleStruct` tests, just copy the fields over, no evolution.
@@ -711,8 +766,12 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
       // Local `Variant<...>` into autogenerated `Variant<...>`.
       // The `Variant<>`-originating evolutor implemented manually above is used.
       {
-        Variant<typename SchemaV1::SimpleStruct, typename SchemaV1::StructWithStruct> from;
-        Variant<typename SchemaXX::SimpleStruct, typename SchemaXX::StructWithStruct> into;
+        Variant<typename SchemaV1::SimpleStruct,
+                typename SchemaV1::StructWithStruct,
+                typename SchemaV1::OtherTypes> from;
+        Variant<typename SchemaXX::SimpleStruct,
+                typename SchemaXX::StructWithStruct,
+                typename SchemaXX::OtherTypes> into;
         from = typename SchemaV1::SimpleStruct();
         Value<SchemaV1::SimpleStruct>(from).x = 1;
         current::type_evolution::Evolve<SchemaV1, decltype(from)>::template Go<SchemaXX>(from, into);
@@ -722,14 +781,19 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
       }
 
       {
-        Variant<typename SchemaV1::SimpleStruct, typename SchemaV1::StructWithStruct> from;
-        Variant<typename SchemaXX::SimpleStruct, typename SchemaXX::StructWithStruct> into;
+        Variant<typename SchemaV1::SimpleStruct,
+                typename SchemaV1::StructWithStruct,
+                typename SchemaV1::OtherTypes> from;
+        Variant<typename SchemaXX::SimpleStruct,
+                typename SchemaXX::StructWithStruct,
+                typename SchemaXX::OtherTypes> into;
         from = typename SchemaV1::StructWithStruct();
         Value<SchemaV1::StructWithStruct>(from).s.x = 2;
         current::type_evolution::Evolve<
             SchemaV1,
             Variant<typename SchemaV1::SimpleStruct,
-                    typename SchemaV1::StructWithStruct>>::template Go<SchemaXX>(from, into);
+                    typename SchemaV1::StructWithStruct,
+                    typename SchemaV1::OtherTypes>>::template Go<SchemaXX>(from, into);
         EXPECT_FALSE(Exists<typename SchemaXX::SimpleStruct>(into));
         EXPECT_TRUE(Exists<typename SchemaXX::StructWithStruct>(into));
         EXPECT_EQ(2, Value<typename SchemaXX::StructWithStruct>(into).s.x);
@@ -740,28 +804,38 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
       // Autogenerated `Variant<...>` into local `Variant<...>`.
       // The autogenerated `Variant<>`-originating evolutor is used.
       {
-        Variant<typename SchemaXX::SimpleStruct, typename SchemaXX::StructWithStruct> from;
-        Variant<typename SchemaV1::SimpleStruct, typename SchemaV1::StructWithStruct> into;
+        Variant<typename SchemaXX::SimpleStruct,
+                typename SchemaXX::StructWithStruct,
+                typename SchemaXX::OtherTypes> from;
+        Variant<typename SchemaV1::SimpleStruct,
+                typename SchemaV1::StructWithStruct,
+                typename SchemaV1::OtherTypes> into;
         from = typename SchemaXX::SimpleStruct();
         Value<SchemaXX::SimpleStruct>(from).x = 3;
         current::type_evolution::Evolve<
             SchemaXX,
             Variant<typename SchemaXX::SimpleStruct,
-                    typename SchemaXX::StructWithStruct>>::template Go<SchemaV1>(from, into);
+                    typename SchemaXX::StructWithStruct,
+                    typename SchemaXX::OtherTypes>>::template Go<SchemaV1>(from, into);
         EXPECT_TRUE(Exists<typename SchemaV1::SimpleStruct>(into));
         EXPECT_FALSE(Exists<typename SchemaV1::StructWithStruct>(into));
         EXPECT_EQ(3, Value<typename SchemaV1::SimpleStruct>(into).x);
       }
 
       {
-        Variant<typename SchemaXX::SimpleStruct, typename SchemaXX::StructWithStruct> from;
-        Variant<typename SchemaV1::SimpleStruct, typename SchemaV1::StructWithStruct> into;
+        Variant<typename SchemaXX::SimpleStruct,
+                typename SchemaXX::StructWithStruct,
+                typename SchemaXX::OtherTypes> from;
+        Variant<typename SchemaV1::SimpleStruct,
+                typename SchemaV1::StructWithStruct,
+                typename SchemaV1::OtherTypes> into;
         from = typename SchemaXX::StructWithStruct();
         Value<SchemaXX::StructWithStruct>(from).s.x = 4;
         current::type_evolution::Evolve<
             SchemaXX,
             Variant<typename SchemaXX::SimpleStruct,
-                    typename SchemaXX::StructWithStruct>>::template Go<SchemaV1>(from, into);
+                    typename SchemaXX::StructWithStruct,
+                    typename SchemaXX::OtherTypes>>::template Go<SchemaV1>(from, into);
         EXPECT_FALSE(Exists<typename SchemaV1::SimpleStruct>(into));
         EXPECT_TRUE(Exists<typename SchemaV1::StructWithStruct>(into));
         EXPECT_EQ(4, Value<typename SchemaV1::StructWithStruct>(into).s.x);
@@ -900,6 +974,7 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
       EXPECT_EQ("Korolev, Dima", evoluted.w[1].full);
     }
   }
+#endif  // JUST_GENERATE_THAT_GOLDEN_FILE
 }
 
 namespace type_evolution_test {

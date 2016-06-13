@@ -180,7 +180,8 @@ struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::E, EVOLUTOR> {
   template <typename INTO>
   static void Go(USERSPACE_0473D52B47432E49::E from,
                  typename INTO::E& into) {
-    into = from;
+    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.
+    into = static_cast<typename INTO::E>(from);
   }
 };
 
