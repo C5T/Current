@@ -51,8 +51,9 @@ template <typename ENTRY>
 class MemoryPersister {
  private:
   struct Container {
+    using entry_t = std::pair<std::chrono::microseconds, ENTRY>;
     std::mutex mutex;
-    std::deque<std::pair<std::chrono::microseconds, ENTRY>> entries;
+    std::deque<entry_t> entries;
   };
 
  public:
@@ -154,6 +155,31 @@ class MemoryPersister {
     }
   }
 
+  std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
+                                                           std::chrono::microseconds till) const {
+    std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    const auto begin_it = std::lower_bound(
+        container_->entries.begin(),
+        container_->entries.end(),
+        from,
+        [](const typename Container::entry_t& e, std::chrono::microseconds t) { return e.first < t; });
+    if (begin_it != container_->entries.end()) {
+      result.first = std::distance(container_->entries.begin(), begin_it);
+    }
+    if (till.count() != 0) {
+      const auto end_it = std::upper_bound(
+          container_->entries.begin(),
+          container_->entries.end(),
+          till,
+          [](std::chrono::microseconds t, const typename Container::entry_t& e) { return t < e.first; });
+      if (end_it != container_->entries.end()) {
+        result.second = std::distance(container_->entries.begin(), end_it);
+      }
+    }
+    return result;
+  }
+
   IterableRange Iterate(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
       std::lock_guard<std::mutex> lock(container_->mutex);
@@ -178,6 +204,18 @@ class MemoryPersister {
     }
 
     return IterableRange(container_, begin, end);
+  }
+
+  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    if (till.count() && till < from) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    const auto index_range = IndexRangeByTimestampRange(from, till);
+    if (index_range.first != static_cast<uint64_t>(-1)) {
+      return Iterate(index_range.first, index_range.second);
+    } else {  // No entries found in the given range.
+      return IterableRange(container_, 0, 0);
+    }
   }
 
  private:
