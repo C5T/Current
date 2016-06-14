@@ -114,10 +114,14 @@ class KarlNginxManager {
         nginx::config::ServerDirective server(nginx_parameters_.port);
         server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));
         storage_ref_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
+          // Proxy status pages of the services via `{route_prefix}/{codename}`.
           for (const auto& claire : fields.claires) {
             if (claire.registered_state == ClaireRegisteredState::Active) {
-              server.CreateProxyPassLocation(nginx_parameters_.route_prefix + '/' + claire.codename,
-                                             claire.location.StatusPageURL());
+              auto& location = server.CreateProxyPassLocation(
+                  nginx_parameters_.route_prefix + '/' + claire.codename, claire.location.StatusPageURL());
+              // Block all HTTP methods except `GET`.
+              location.Add(nginx::config::BlockDirective(
+                  "limit_except", "GET", {nginx::config::SimpleDirective("deny", "all")}));
             }
           }
         }).Go();
