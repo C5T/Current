@@ -645,7 +645,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         r.url.query.has("full") || r.url.query.has("f")) {
       r(KarlUpStatus(parameters_));
     } else {
-      r(JSON<JSONFormat::Minimalistic>(KarlUpStatus()),
+      // TODO(dkorolev) + TODO(mzhurovich): JSON headers magic.
+      r(JSON<JSONFormat::Minimalistic>(KarlUpStatus()) + '\n',
         HTTPResponseCode.OK,
         current::net::constants::kDefaultJSONContentType);
     }
