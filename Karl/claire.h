@@ -167,6 +167,11 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   const std::string& Codename() const { return codename_; }
 
+  void ForceSendKeepalive() {
+    keepalive_thread_force_wakeup_ = true;
+    keepalive_condition_variable_.notify_one();
+  }
+
   Locator GetKarlLocator() const {
     std::lock_guard<std::mutex> lock(keepalive_mutex_);
     return karl_;
@@ -179,9 +184,8 @@ class GenericClaire final : private DummyClaireNotifiable {
       karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
       notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
-    keepalive_thread_force_wakeup_ = true;
-    keepalive_condition_variable_.notify_one();
-  }
+    ForceSendKeepalive();
+   }
 
   ClaireStatus& BoilerplateStatus() { return boilerplate_status_; }
 
