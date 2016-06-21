@@ -466,6 +466,21 @@ struct Evolve<NAMESPACE, USERSPACE_0473D52B47432E49::X, EVOLUTOR> {
   }
 };
 
+// Default evolution for `Optional<Primitives>`.
+template <typename NAMESPACE, typename EVOLUTOR>
+struct Evolve<NAMESPACE, Optional<USERSPACE_0473D52B47432E49::Primitives>, EVOLUTOR> {
+  template <typename INTO>
+  static void Go(const Optional<USERSPACE_0473D52B47432E49::Primitives>& from, Optional<typename INTO::Primitives>& into) {
+    if (Exists(from)) {
+      typename INTO::Primitives evolved;
+      Evolve<NAMESPACE, typename USERSPACE_0473D52B47432E49::Primitives, EVOLUTOR>::template Go<INTO>(Value(from), evolved);
+      into = evolved;
+    } else {
+      into = nullptr;
+    }
+  }
+};
+
 // Default evolution for `Variant<A, X, Y>`.
 template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
 struct USERSPACE_0473D52B47432E49_MyFreakingVariant_Cases {

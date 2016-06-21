@@ -454,6 +454,31 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "    into = static_cast<typename INTO::" << e.name << ">(from);\n"
                 << "  }\n"
                 << "};\n" << '\n';
+          } else if (Exists<ReflectedType_Optional>(type_substance)) {
+            // Default evolutor for this particular `Optional<T>`.
+            // The global, top-level one, can only work if the underlying type does not change.
+            const auto& o = Value<ReflectedType_Optional>(type_substance);
+            const std::string tn = TypeName(o.optional_type);
+            if (TypePrefix(o.optional_type) != TYPEID_BASIC_PREFIX) {
+              // No need to spell out evolution of `Optional<>` for basic types, string-s, and millis/micros.
+              os_ << "// Default evolution for `Optional<" << tn << ">`.\n"
+                  << "template <typename NAMESPACE, typename EVOLUTOR>\n"
+                  << "struct Evolve<NAMESPACE, Optional<" << nmspc << "::" << tn << ">, EVOLUTOR> {\n"
+                  << "  template <typename INTO>\n"
+                  << "  static void Go(const Optional<" << nmspc << "::" << tn << ">& from, "
+                  << "Optional<typename INTO::" << tn << ">& into) {\n"
+                  << "    if (Exists(from)) {\n"
+                  << "      typename INTO::" << tn << " evolved;\n"
+                  << "      Evolve<NAMESPACE, typename " << nmspc << "::" << tn << ", EVOLUTOR>"
+                  << "::template Go<INTO>(Value(from), evolved);\n"
+                  << "      into = evolved;\n"
+                  << "    } else {\n"
+                  << "      into = nullptr;\n"
+                  << "    }\n"
+                  << "  }\n"
+                  << "};\n"
+                  << '\n';
+            }
           }
         }
         os_ << "}  // namespace current::type_evolution\n"
