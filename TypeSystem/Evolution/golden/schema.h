@@ -67,6 +67,8 @@ namespace current {
 namespace type_evolution {
 
 // Default evolution for `CURRENT_ENUM(EnumClassType)`.
+#ifndef DEFAULT_EVOLUTION_0EFC610EAA90005E980B02111A929865784B04C47419D8D3279378CAE96F393A  // USERSPACE_F055D51FBF78DB84::EnumClassType
+#define DEFAULT_EVOLUTION_0EFC610EAA90005E980B02111A929865784B04C47419D8D3279378CAE96F393A  // USERSPACE_F055D51FBF78DB84::EnumClassType
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, USERSPACE_F055D51FBF78DB84::EnumClassType, EVOLUTOR> {
   template <typename INTO>
@@ -76,8 +78,11 @@ struct Evolve<FROM, USERSPACE_F055D51FBF78DB84::EnumClassType, EVOLUTOR> {
     into = static_cast<typename INTO::EnumClassType>(from);
   }
 };
+#endif
 
 // Default evolution for struct `SimpleStruct`.
+#ifndef DEFAULT_EVOLUTION_9850B4E5F628696CA9E60DF29450B2961F0A045117CFDF273A060075719AB636  // typename USERSPACE_F055D51FBF78DB84::SimpleStruct
+#define DEFAULT_EVOLUTION_9850B4E5F628696CA9E60DF29450B2961F0A045117CFDF273A060075719AB636  // typename USERSPACE_F055D51FBF78DB84::SimpleStruct
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::SimpleStruct, EVOLUTOR> {
   template <typename INTO,
@@ -92,8 +97,11 @@ struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::SimpleStruct, EVOLUTOR>
       Evolve<FROM, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
   }
 };
+#endif
 
 // Default evolution for struct `StructWithStruct`.
+#ifndef DEFAULT_EVOLUTION_6E4B78BC03384BBFC04C0C083B1D4818552414583CEFA7969923A7AAF02AAD59  // typename USERSPACE_F055D51FBF78DB84::StructWithStruct
+#define DEFAULT_EVOLUTION_6E4B78BC03384BBFC04C0C083B1D4818552414583CEFA7969923A7AAF02AAD59  // typename USERSPACE_F055D51FBF78DB84::StructWithStruct
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithStruct, EVOLUTOR> {
   template <typename INTO,
@@ -106,8 +114,11 @@ struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithStruct, EVOLU
       Evolve<FROM, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);
   }
 };
+#endif
 
 // Default evolution for struct `OtherTypes`.
+#ifndef DEFAULT_EVOLUTION_0CD0FB4488BE4FCACFEF34083301F19BD5C8A23AC7DBD12045CB31BD9E925EA2  // typename USERSPACE_F055D51FBF78DB84::OtherTypes
+#define DEFAULT_EVOLUTION_0CD0FB4488BE4FCACFEF34083301F19BD5C8A23AC7DBD12045CB31BD9E925EA2  // typename USERSPACE_F055D51FBF78DB84::OtherTypes
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::OtherTypes, EVOLUTOR> {
   template <typename INTO,
@@ -121,8 +132,11 @@ struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::OtherTypes, EVOLUTOR> {
       Evolve<FROM, decltype(from.optional), EVOLUTOR>::template Go<INTO>(from.optional, into.optional);
   }
 };
+#endif
 
 // Default evolution for struct `StructWithVariant`.
+#ifndef DEFAULT_EVOLUTION_047F4B4BAEB8AA23AE9D63DA1BBDE3054F370E5202C02CAC751BDE1B4087A612  // typename USERSPACE_F055D51FBF78DB84::StructWithVariant
+#define DEFAULT_EVOLUTION_047F4B4BAEB8AA23AE9D63DA1BBDE3054F370E5202C02CAC751BDE1B4087A612  // typename USERSPACE_F055D51FBF78DB84::StructWithVariant
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithVariant, EVOLUTOR> {
   template <typename INTO,
@@ -135,8 +149,11 @@ struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithVariant, EVOL
       Evolve<FROM, decltype(from.v), EVOLUTOR>::template Go<INTO>(from.v, into.v);
   }
 };
+#endif
 
 // Default evolution for struct `Name`.
+#ifndef DEFAULT_EVOLUTION_AF9DF4C4F593A1A0A1E48E88D4D394E6CFEA4A1607BD341B7931182E44964756  // typename USERSPACE_F055D51FBF78DB84::Name
+#define DEFAULT_EVOLUTION_AF9DF4C4F593A1A0A1E48E88D4D394E6CFEA4A1607BD341B7931182E44964756  // typename USERSPACE_F055D51FBF78DB84::Name
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::Name, EVOLUTOR> {
   template <typename INTO,
@@ -150,8 +167,11 @@ struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::Name, EVOLUTOR> {
       Evolve<FROM, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last, into.last);
   }
 };
+#endif
 
 // Default evolution for struct `StructWithVectorOfNames`.
+#ifndef DEFAULT_EVOLUTION_3E57D01D4533C59AF50DCB73DDF7895BEFC1132BF11B3A29D4A86D97273BC22D  // typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames
+#define DEFAULT_EVOLUTION_3E57D01D4533C59AF50DCB73DDF7895BEFC1132BF11B3A29D4A86D97273BC22D  // typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames, EVOLUTOR> {
   template <typename INTO,
@@ -164,8 +184,11 @@ struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames
       Evolve<FROM, decltype(from.w), EVOLUTOR>::template Go<INTO>(from.w, into.w);
   }
 };
+#endif
 
 // Default evolution for `Variant<SimpleStruct, StructWithStruct, OtherTypes>`.
+#ifndef DEFAULT_EVOLUTION_D21B58F3FF6C13FBCFB803488EAED9464A7525BBB2B7C56605C9AF3FD859413C  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F055D51FBF78DB84::SimpleStruct, USERSPACE_F055D51FBF78DB84::StructWithStruct, USERSPACE_F055D51FBF78DB84::OtherTypes>>
+#define DEFAULT_EVOLUTION_D21B58F3FF6C13FBCFB803488EAED9464A7525BBB2B7C56605C9AF3FD859413C  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F055D51FBF78DB84::SimpleStruct, USERSPACE_F055D51FBF78DB84::StructWithStruct, USERSPACE_F055D51FBF78DB84::OtherTypes>>
 template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
 struct USERSPACE_F055D51FBF78DB84_Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E_Cases {
   DST& into;
@@ -198,6 +221,7 @@ struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USE
     from.Call(USERSPACE_F055D51FBF78DB84_Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E_Cases<decltype(into), FROM, INTO, EVOLUTOR>(into));
   }
 };
+#endif
 
 }  // namespace current::type_evolution
 }  // namespace current

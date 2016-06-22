@@ -384,7 +384,10 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             }
             os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
             const std::string origin = namespaced_from_struct_name;
-            os_ << "template <typename FROM, typename EVOLUTOR>\n"
+            const std::string origin_guard =
+                "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
+            os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
+                << "template <typename FROM, typename EVOLUTOR>\n"
                 << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  template <typename INTO,\n"
                 << "            class CHECK = FROM,\n"
@@ -410,7 +413,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "      static_cast<void>(into);\n";
             }
             os_ << "  }\n"
-                << "};\n" << '\n';
+                << "};\n"
+                << "#endif\n" << '\n';
           } else if (Exists<ReflectedType_Variant>(type_substance)) {
             // Default evolutor for `CURRENT_VARIANT`, or for a plain `Variant<>`.
             const auto bare_variant_name = TypeName(input_type.first);
@@ -431,9 +435,15 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               continue;
             }
             variant_evolutor_already_output.insert(variant_inner_type_list_hash);
+            const std::string vrnt = "::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<" +
+                                     current::strings::Join(fully_specified_cases, ", ") + ">>";
+            const std::string origin = vrnt;
+            const std::string origin_guard =
+                "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "// Default evolution for `Variant<" << current::strings::Join(cases, ", ") << ">`.\n";
             const std::string evltr = nmspc + '_' + bare_variant_name + "_Cases";
-            os_ << "template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>\n"
+            os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
+                << "template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>\n"
                 << "struct " << evltr << " {\n"
                 << "  DST& into;\n"
                 << "  explicit " << evltr << "(DST& into) : into(into) {}\n";
@@ -445,9 +455,6 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "::template Go<INTO>(value, Value<into_t>(into));\n"
                   << "  }\n";
             }
-            const std::string vrnt = "::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<" +
-                                     current::strings::Join(fully_specified_cases, ", ") + ">>";
-            const std::string origin = vrnt;
             os_ << "};\n"
                 << "template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>\n"
                 << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
@@ -461,12 +468,16 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "                 CUSTOM_INTO_VARIANT_TYPE& into) {\n"
                 << "    from.Call(" << evltr << "<decltype(into), FROM, INTO, EVOLUTOR>(into));\n"
                 << "  }\n"
-                << "};\n" << '\n';
+                << "};\n"
+                << "#endif\n" << '\n';
           } else if (Exists<ReflectedType_Enum>(type_substance)) {
             // Default evolutor for `CURRENT_ENUM`.
             const auto& e = Value<ReflectedType_Enum>(type_substance);
             const std::string origin = nmspc + "::" + e.name;
+            const std::string origin_guard =
+                "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "// Default evolution for `CURRENT_ENUM(" << e.name << ")`.\n"
+                << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
                 << "template <typename FROM, typename EVOLUTOR>\n"
                 << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  template <typename INTO>\n"
@@ -475,7 +486,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.\n"
                 << "    into = static_cast<typename INTO::" << e.name << ">(from);\n"
                 << "  }\n"
-                << "};\n" << '\n';
+                << "};\n"
+                << "#endif\n" << '\n';
           } else if (Exists<ReflectedType_Optional>(type_substance)) {
             // Default evolutor for this particular `Optional<T>`.
             // The global, top-level one, can only work if the underlying type does not change.
@@ -485,8 +497,11 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             const auto namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
             if (TypePrefix(o.optional_type) != TYPEID_BASIC_PREFIX) {
               const std::string origin = "Optional<" + namespaced_from_optional_type_name + '>';
+              const std::string origin_guard =
+                  "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
               // No need to spell out evolution of `Optional<>` for basic types, string-s, and millis/micros.
               os_ << "// Default evolution for `Optional<" << bare_optional_type_name << ">`.\n"
+                  << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
                   << "template <typename FROM, typename EVOLUTOR>\n"
                   << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                   << "  template <typename INTO, typename INTO_TYPE>\n"
@@ -501,7 +516,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "      into = nullptr;\n"
                   << "    }\n"
                   << "  }\n"
-                  << "};\n" << '\n';
+                  << "};\n"
+                  << "#endif\n" << '\n';
             }
           }
         }

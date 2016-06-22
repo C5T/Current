@@ -62,6 +62,8 @@ namespace current {
 namespace type_evolution {
 
 // Default evolution for struct `PersistedUserUpdated`.
+#ifndef DEFAULT_EVOLUTION_B3761CC8B76BC9C3F3DDC72DDD61FBC136E0EA868B3870162AF127B6AF5F52E3  // typename USERSPACE_F57EAC2563CE5708::PersistedUserUpdated
+#define DEFAULT_EVOLUTION_B3761CC8B76BC9C3F3DDC72DDD61FBC136E0EA868B3870162AF127B6AF5F52E3  // typename USERSPACE_F57EAC2563CE5708::PersistedUserUpdated
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::PersistedUserUpdated, EVOLUTOR> {
   template <typename INTO,
@@ -74,8 +76,11 @@ struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::PersistedUserUpdated, E
       Evolve<FROM, decltype(from.data), EVOLUTOR>::template Go<INTO>(from.data, into.data);
   }
 };
+#endif
 
 // Default evolution for struct `TransactionMeta`.
+#ifndef DEFAULT_EVOLUTION_EEC1318ECB472FC81CD147FE94AAB844AEBA9888593B4B269255EEA965B04FA7  // typename USERSPACE_F57EAC2563CE5708::TransactionMeta
+#define DEFAULT_EVOLUTION_EEC1318ECB472FC81CD147FE94AAB844AEBA9888593B4B269255EEA965B04FA7  // typename USERSPACE_F57EAC2563CE5708::TransactionMeta
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::TransactionMeta, EVOLUTOR> {
   template <typename INTO,
@@ -89,8 +94,11 @@ struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::TransactionMeta, EVOLUT
       Evolve<FROM, decltype(from.fields), EVOLUTOR>::template Go<INTO>(from.fields, into.fields);
   }
 };
+#endif
 
 // Default evolution for struct `PersistedUserDeleted`.
+#ifndef DEFAULT_EVOLUTION_E085795FF408651725DCA5B2F2C9F8FED28AFB00CFC15C7320F1747D23B7B037  // typename USERSPACE_F57EAC2563CE5708::PersistedUserDeleted
+#define DEFAULT_EVOLUTION_E085795FF408651725DCA5B2F2C9F8FED28AFB00CFC15C7320F1747D23B7B037  // typename USERSPACE_F57EAC2563CE5708::PersistedUserDeleted
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::PersistedUserDeleted, EVOLUTOR> {
   template <typename INTO,
@@ -103,8 +111,11 @@ struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::PersistedUserDeleted, E
       Evolve<FROM, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, into.key);
   }
 };
+#endif
 
 // Default evolution for struct `Name`.
+#ifndef DEFAULT_EVOLUTION_B430A0461EADE5FA7980A4D2DEDA7A6B34502CEE25BA5695FF541BDBEF027636  // typename USERSPACE_F57EAC2563CE5708::Name
+#define DEFAULT_EVOLUTION_B430A0461EADE5FA7980A4D2DEDA7A6B34502CEE25BA5695FF541BDBEF027636  // typename USERSPACE_F57EAC2563CE5708::Name
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::Name, EVOLUTOR> {
   template <typename INTO,
@@ -118,8 +129,11 @@ struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::Name, EVOLUTOR> {
       Evolve<FROM, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last, into.last);
   }
 };
+#endif
 
 // Default evolution for struct `User`.
+#ifndef DEFAULT_EVOLUTION_1EAC4318890E57ABA5ACDC26BBD0F668BF10768E70B89130DCF73306F3C408AB  // typename USERSPACE_F57EAC2563CE5708::User
+#define DEFAULT_EVOLUTION_1EAC4318890E57ABA5ACDC26BBD0F668BF10768E70B89130DCF73306F3C408AB  // typename USERSPACE_F57EAC2563CE5708::User
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::User, EVOLUTOR> {
   template <typename INTO,
@@ -133,8 +147,11 @@ struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::User, EVOLUTOR> {
       Evolve<FROM, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, into.key);
   }
 };
+#endif
 
 // Default evolution for struct `Transaction_T9227630689129186588`.
+#ifndef DEFAULT_EVOLUTION_E4FF10B2901359D6C20AAFF8B3EEFA8B772DB927748A00ECC2512098FC0EC2E0  // typename USERSPACE_F57EAC2563CE5708::Transaction_T9227630689129186588
+#define DEFAULT_EVOLUTION_E4FF10B2901359D6C20AAFF8B3EEFA8B772DB927748A00ECC2512098FC0EC2E0  // typename USERSPACE_F57EAC2563CE5708::Transaction_T9227630689129186588
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::Transaction_T9227630689129186588, EVOLUTOR> {
   template <typename INTO,
@@ -148,8 +165,11 @@ struct Evolve<FROM, typename USERSPACE_F57EAC2563CE5708::Transaction_T9227630689
       Evolve<FROM, decltype(from.mutations), EVOLUTOR>::template Go<INTO>(from.mutations, into.mutations);
   }
 };
+#endif
 
 // Default evolution for `Variant<PersistedUserUpdated, PersistedUserDeleted>`.
+#ifndef DEFAULT_EVOLUTION_108A079E91AB279856D66AB277093722CC82035897CA23DC590303D960C034EC  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F57EAC2563CE5708::PersistedUserUpdated, USERSPACE_F57EAC2563CE5708::PersistedUserDeleted>>
+#define DEFAULT_EVOLUTION_108A079E91AB279856D66AB277093722CC82035897CA23DC590303D960C034EC  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F57EAC2563CE5708::PersistedUserUpdated, USERSPACE_F57EAC2563CE5708::PersistedUserDeleted>>
 template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
 struct USERSPACE_F57EAC2563CE5708_Variant_B_PersistedUserUpdated_PersistedUserDeleted_E_Cases {
   DST& into;
@@ -177,6 +197,7 @@ struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USE
     from.Call(USERSPACE_F57EAC2563CE5708_Variant_B_PersistedUserUpdated_PersistedUserDeleted_E_Cases<decltype(into), FROM, INTO, EVOLUTOR>(into));
   }
 };
+#endif
 
 }  // namespace current::type_evolution
 }  // namespace current
