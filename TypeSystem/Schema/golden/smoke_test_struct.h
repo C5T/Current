@@ -503,8 +503,8 @@ struct Evolve<FROM, typename USERSPACE_15964E7953DBD27D::X, EVOLUTOR> {
 // Default evolution for `Optional<A>`.
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, Optional<typename USERSPACE_15964E7953DBD27D::A>, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const Optional<typename USERSPACE_15964E7953DBD27D::A>& from, Optional<typename INTO::A>& into) {
+  template <typename INTO, typename INTO_TYPE>
+  static void Go(const Optional<typename USERSPACE_15964E7953DBD27D::A>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       typename INTO::A evolved;
       Evolve<FROM, typename INTO::A, EVOLUTOR>::template Go<INTO>(Value(from), evolved);
@@ -518,8 +518,8 @@ struct Evolve<FROM, Optional<typename USERSPACE_15964E7953DBD27D::A>, EVOLUTOR> 
 // Default evolution for `Optional<Primitives>`.
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, Optional<typename USERSPACE_15964E7953DBD27D::Primitives>, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const Optional<typename USERSPACE_15964E7953DBD27D::Primitives>& from, Optional<typename INTO::Primitives>& into) {
+  template <typename INTO, typename INTO_TYPE>
+  static void Go(const Optional<typename USERSPACE_15964E7953DBD27D::Primitives>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       typename INTO::Primitives evolved;
       Evolve<FROM, typename INTO::Primitives, EVOLUTOR>::template Go<INTO>(Value(from), evolved);
@@ -533,8 +533,8 @@ struct Evolve<FROM, Optional<typename USERSPACE_15964E7953DBD27D::Primitives>, E
 // Default evolution for `Optional<std::vector<A>>`.
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, Optional<std::vector<typename USERSPACE_15964E7953DBD27D::A>>, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const Optional<std::vector<typename USERSPACE_15964E7953DBD27D::A>>& from, Optional<std::vector<typename INTO::A>>& into) {
+  template <typename INTO, typename INTO_TYPE>
+  static void Go(const Optional<std::vector<typename USERSPACE_15964E7953DBD27D::A>>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       std::vector<typename INTO::A> evolved;
       Evolve<FROM, std::vector<typename INTO::A>, EVOLUTOR>::template Go<INTO>(Value(from), evolved);
@@ -548,8 +548,8 @@ struct Evolve<FROM, Optional<std::vector<typename USERSPACE_15964E7953DBD27D::A>
 // Default evolution for `Optional<std::vector<int32_t>>`.
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, Optional<std::vector<int32_t>>, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const Optional<std::vector<int32_t>>& from, Optional<std::vector<int32_t>>& into) {
+  template <typename INTO, typename INTO_TYPE>
+  static void Go(const Optional<std::vector<int32_t>>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       std::vector<int32_t> evolved;
       Evolve<FROM, std::vector<int32_t>, EVOLUTOR>::template Go<INTO>(Value(from), evolved);
@@ -563,8 +563,8 @@ struct Evolve<FROM, Optional<std::vector<int32_t>>, EVOLUTOR> {
 // Default evolution for `Optional<std::vector<std::string>>`.
 template <typename FROM, typename EVOLUTOR>
 struct Evolve<FROM, Optional<std::vector<std::string>>, EVOLUTOR> {
-  template <typename INTO>
-  static void Go(const Optional<std::vector<std::string>>& from, Optional<std::vector<std::string>>& into) {
+  template <typename INTO, typename INTO_TYPE>
+  static void Go(const Optional<std::vector<std::string>>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       std::vector<std::string> evolved;
       Evolve<FROM, std::vector<std::string>, EVOLUTOR>::template Go<INTO>(Value(from), evolved);
