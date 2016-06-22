@@ -68,7 +68,7 @@ struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::TransactionMeta, EVOLUTOR> 
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_381EECA4ACB24A12, CHECK>::value>>
   static void Go(const typename NAMESPACE::TransactionMeta& from,
                  typename INTO::TransactionMeta& into) {
-      static_assert(::current::reflection::FieldCounter<typename USERSPACE_381EECA4ACB24A12::TransactionMeta>::value == 2,
+      static_assert(::current::reflection::FieldCounter<typename INTO::TransactionMeta>::value == 2,
                     "Custom evolutor required.");
       Evolve<NAMESPACE, decltype(from.timestamp), EVOLUTOR>::template Go<INTO>(from.timestamp, into.timestamp);
       Evolve<NAMESPACE, decltype(from.fields), EVOLUTOR>::template Go<INTO>(from.fields, into.fields);
@@ -83,7 +83,7 @@ struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::Transaction_T92249289489406
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_381EECA4ACB24A12, CHECK>::value>>
   static void Go(const typename NAMESPACE::Transaction_T9224928948940686845& from,
                  typename INTO::Transaction_T9224928948940686845& into) {
-      static_assert(::current::reflection::FieldCounter<typename USERSPACE_381EECA4ACB24A12::Transaction_T9224928948940686845>::value == 2,
+      static_assert(::current::reflection::FieldCounter<typename INTO::Transaction_T9224928948940686845>::value == 2,
                     "Custom evolutor required.");
       Evolve<NAMESPACE, decltype(from.meta), EVOLUTOR>::template Go<INTO>(from.meta, into.meta);
       Evolve<NAMESPACE, decltype(from.mutations), EVOLUTOR>::template Go<INTO>(from.mutations, into.mutations);
@@ -98,7 +98,7 @@ struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::PersistedUserDeleted, EVOLU
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_381EECA4ACB24A12, CHECK>::value>>
   static void Go(const typename NAMESPACE::PersistedUserDeleted& from,
                  typename INTO::PersistedUserDeleted& into) {
-      static_assert(::current::reflection::FieldCounter<typename USERSPACE_381EECA4ACB24A12::PersistedUserDeleted>::value == 1,
+      static_assert(::current::reflection::FieldCounter<typename INTO::PersistedUserDeleted>::value == 1,
                     "Custom evolutor required.");
       Evolve<NAMESPACE, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, into.key);
   }
@@ -112,7 +112,7 @@ struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::Name, EVOLUTOR> {
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_381EECA4ACB24A12, CHECK>::value>>
   static void Go(const typename NAMESPACE::Name& from,
                  typename INTO::Name& into) {
-      static_assert(::current::reflection::FieldCounter<typename USERSPACE_381EECA4ACB24A12::Name>::value == 1,
+      static_assert(::current::reflection::FieldCounter<typename INTO::Name>::value == 1,
                     "Custom evolutor required.");
       Evolve<NAMESPACE, decltype(from.full), EVOLUTOR>::template Go<INTO>(from.full, into.full);
   }
@@ -126,7 +126,7 @@ struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::User, EVOLUTOR> {
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_381EECA4ACB24A12, CHECK>::value>>
   static void Go(const typename NAMESPACE::User& from,
                  typename INTO::User& into) {
-      static_assert(::current::reflection::FieldCounter<typename USERSPACE_381EECA4ACB24A12::User>::value == 1,
+      static_assert(::current::reflection::FieldCounter<typename INTO::User>::value == 1,
                     "Custom evolutor required.");
       Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::Name, EVOLUTOR>::template Go<INTO>(static_cast<const typename NAMESPACE::Name&>(from), static_cast<typename INTO::Name&>(into));
       Evolve<NAMESPACE, decltype(from.key), EVOLUTOR>::template Go<INTO>(from.key, into.key);
@@ -141,7 +141,7 @@ struct Evolve<NAMESPACE, USERSPACE_381EECA4ACB24A12::PersistedUserUpdated, EVOLU
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_381EECA4ACB24A12, CHECK>::value>>
   static void Go(const typename NAMESPACE::PersistedUserUpdated& from,
                  typename INTO::PersistedUserUpdated& into) {
-      static_assert(::current::reflection::FieldCounter<typename USERSPACE_381EECA4ACB24A12::PersistedUserUpdated>::value == 1,
+      static_assert(::current::reflection::FieldCounter<typename INTO::PersistedUserUpdated>::value == 1,
                     "Custom evolutor required.");
       Evolve<NAMESPACE, decltype(from.data), EVOLUTOR>::template Go<INTO>(from.data, into.data);
   }

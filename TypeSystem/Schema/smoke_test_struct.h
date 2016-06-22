@@ -68,6 +68,16 @@ CURRENT_STRUCT_T(TemplatedInheriting, A) {
   CURRENT_FIELD(meh, T);
 };
 
+CURRENT_STRUCT(TrickySchemaCases) {
+  CURRENT_FIELD(o1, Optional<std::string>);
+  CURRENT_FIELD(o2, Optional<int32_t>);
+  CURRENT_FIELD(o3, Optional<std::vector<std::string>>);
+  CURRENT_FIELD(o4, Optional<std::vector<int32_t>>);
+  CURRENT_FIELD(o5, Optional<std::vector<A>>);
+  CURRENT_FIELD(o6, (std::pair<std::string, Optional<A>>));
+  CURRENT_FIELD(o7, (std::map<std::string, Optional<A>>));
+};
+
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
   CURRENT_FIELD_DESCRIPTION(primitives, "A structure with a lot of primitive types.");
@@ -83,6 +93,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(w4, TemplatedInheriting<X>);
   CURRENT_FIELD(w5, TemplatedInheriting<MyFreakingVariant>);
   CURRENT_FIELD(w6, TemplatedInheriting<Templated<Empty>>);
+  // CURRENT_FIELD(tsc, TrickySchemaCases);  // DIMA
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 
