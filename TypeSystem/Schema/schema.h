@@ -383,8 +383,9 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               fields.push_back(f.name);
             }
             os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
+            const std::string origin = namespaced_from_struct_name;
             os_ << "template <typename FROM, typename EVOLUTOR>\n"
-                << "struct Evolve<FROM, " << namespaced_from_struct_name << ", EVOLUTOR> {\n"
+                << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  template <typename INTO,\n"
                 << "            class CHECK = FROM,\n"
                 << "            class = std::enable_if_t<::current::is_same_or_base_of<" << nmspc
@@ -446,9 +447,10 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             }
             const std::string vrnt = "::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<" +
                                      current::strings::Join(fully_specified_cases, ", ") + ">>";
+            const std::string origin = vrnt;
             os_ << "};\n"
                 << "template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>\n"
-                << "struct Evolve<FROM, " << vrnt << ", EVOLUTOR> {\n"
+                << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.\n"
                 << "  template <typename INTO,\n"
                 << "            typename CUSTOM_INTO_VARIANT_TYPE,\n"
@@ -463,9 +465,10 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           } else if (Exists<ReflectedType_Enum>(type_substance)) {
             // Default evolutor for `CURRENT_ENUM`.
             const auto& e = Value<ReflectedType_Enum>(type_substance);
+            const std::string origin = nmspc + "::" + e.name;
             os_ << "// Default evolution for `CURRENT_ENUM(" << e.name << ")`.\n"
                 << "template <typename FROM, typename EVOLUTOR>\n"
-                << "struct Evolve<FROM, " << nmspc << "::" << e.name << ", EVOLUTOR> {\n"
+                << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  template <typename INTO>\n"
                 << "  static void Go(" << nmspc << "::" << e.name << " from,\n"
                 << "                 typename INTO::" << e.name << "& into) {\n"
@@ -481,10 +484,11 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             const auto namespaced_from_optional_type_name = TypeName(o.optional_type, "typename " + nmspc);
             const auto namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
             if (TypePrefix(o.optional_type) != TYPEID_BASIC_PREFIX) {
+              const std::string origin = "Optional<" + namespaced_from_optional_type_name + '>';
               // No need to spell out evolution of `Optional<>` for basic types, string-s, and millis/micros.
               os_ << "// Default evolution for `Optional<" << bare_optional_type_name << ">`.\n"
                   << "template <typename FROM, typename EVOLUTOR>\n"
-                  << "struct Evolve<FROM, Optional<" << namespaced_from_optional_type_name << ">, EVOLUTOR> {\n"
+                  << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                   << "  template <typename INTO, typename INTO_TYPE>\n"
                   << "  static void Go(const Optional<" << namespaced_from_optional_type_name << ">& from, "
                   << "INTO_TYPE& into) {\n"
