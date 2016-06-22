@@ -108,8 +108,8 @@ struct Evolve<FROM_NAMESPACE, std::map<MAP_KEY, MAP_VALUE>, EVOLUTOR> {
 // Boilerplate default generic evolutor for `Optional<T>`.
 template <typename FROM_NAMESPACE, typename EVOLUTOR, typename OPTIONAL_INNER_TYPE>
 struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLUTOR> {
-  template <typename INTO, typename OUTPUT>
-  static void Go(const Optional<OPTIONAL_INNER_TYPE>& from, OUTPUT& into) {
+  template <typename INTO>
+  static void Go(const Optional<OPTIONAL_INNER_TYPE>& from, Optional<OPTIONAL_INNER_TYPE>& into) {
     if (Exists(from)) {
       into = Value(from);
     } else {

@@ -268,7 +268,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
     const std::string unique_hash_;
     const Optional<NamespaceToExpose>& namespace_to_expose_;
 
-    std::string TypeName(TypeID type_id) const {
+    std::string TypeName(TypeID type_id, const std::string& nmspc = "") const {
       const auto cit = types_.find(type_id);
       if (cit == types_.end()) {
         return "UNKNOWN_TYPE_" + current::ToString(type_id);  // LCOV_EXCL_LINE
@@ -276,9 +276,12 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         struct CurrentTypeNamePrinter final {
           const FullSchemaPrinter& self_;
           std::ostringstream& oss_;
+          const std::string& nmspc_;
 
-          CurrentTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss)
-              : self_(self), oss_(oss) {}
+          CurrentTypeNamePrinter(const FullSchemaPrinter& self,
+                                 std::ostringstream& oss,
+                                 const std::string& nmspc)
+              : self_(self), oss_(oss), nmspc_(nmspc) {}
 
           // `operator()`-s of this block print C++ type name only, without the expansion.
           // They assume the declaration order is respected, and any dependencies have already been listed.
@@ -291,27 +294,43 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             }
           }
 
-          void operator()(const ReflectedType_Enum& e) const { oss_ << e.name; }
+          void operator()(const ReflectedType_Enum& e) const {
+            if (!nmspc_.empty()) {
+              oss_ << nmspc_ << "::";
+            }
+            oss_ << e.name;
+          }
           void operator()(const ReflectedType_Vector& v) const {
-            oss_ << "std::vector<" << self_.TypeName(v.element_type) << '>';
+            oss_ << "std::vector<" << self_.TypeName(v.element_type, nmspc_) << '>';
           }
 
           void operator()(const ReflectedType_Map& m) const {
-            oss_ << "std::map<" << self_.TypeName(m.key_type) << ", " << self_.TypeName(m.value_type) << '>';
+            oss_ << "std::map<" << self_.TypeName(m.key_type, nmspc_) << ", "
+                 << self_.TypeName(m.value_type, nmspc_) << '>';
           }
           void operator()(const ReflectedType_Pair& p) const {
-            oss_ << "std::pair<" << self_.TypeName(p.first_type) << ", " << self_.TypeName(p.second_type)
-                 << '>';
+            oss_ << "std::pair<" << self_.TypeName(p.first_type, nmspc_) << ", "
+                 << self_.TypeName(p.second_type, nmspc_) << '>';
           }
           void operator()(const ReflectedType_Optional& o) const {
-            oss_ << "Optional<" << self_.TypeName(o.optional_type) << '>';
+            oss_ << "Optional<" << self_.TypeName(o.optional_type, nmspc_) << '>';
           }
-          void operator()(const ReflectedType_Variant& v) const { oss_ << v.name; }
-          void operator()(const ReflectedType_Struct& s) const { oss_ << s.CanonicalName(); }
+          void operator()(const ReflectedType_Variant& v) const {
+            if (!nmspc_.empty()) {
+              oss_ << nmspc_ << "::";
+            }
+            oss_ << v.name;
+          }
+          void operator()(const ReflectedType_Struct& s) const {
+            if (!nmspc_.empty()) {
+              oss_ << nmspc_ << "::";
+            }
+            oss_ << s.CanonicalName();
+          }
         };
 
         std::ostringstream oss;
-        cit->second.Call(CurrentTypeNamePrinter(*this, oss));
+        cit->second.Call(CurrentTypeNamePrinter(*this, oss, nmspc));
         return oss.str();
       }
     }
@@ -352,38 +371,41 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         std::unordered_set<uint64_t> variant_evolutor_already_output;
 
         for (const auto& input_type : types_) {
-          const auto type_name = TypeName(input_type.first);
           const auto& type_substance = input_type.second;
           if (Exists<ReflectedType_Struct>(type_substance)) {
-            const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
-
             // Default evolutor for `CURRENT_STRUCT`.
+            const auto bare_struct_name = TypeName(input_type.first);
+            const auto namespaced_from_struct_name = TypeName(input_type.first, "typename " + nmspc);
+            const auto namespaced_into_struct_name = TypeName(input_type.first, "typename INTO");
+            const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
             std::vector<std::string> fields;
-
             for (const auto& f : s.fields) {
               fields.push_back(f.name);
             }
-            // enumerate_all_fields(input_type.first);
-            os_ << "// Default evolution for struct `" << type_name << "`.\n";
-            os_ << "template <typename NAMESPACE, typename EVOLUTOR>\n"
-                << "struct Evolve<NAMESPACE, " << nmspc << "::" << type_name << ", EVOLUTOR> {\n"
+            os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
+            const std::string origin = namespaced_from_struct_name;
+            const std::string origin_guard =
+                "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
+            os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
+                << "template <typename FROM, typename EVOLUTOR>\n"
+                << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  template <typename INTO,\n"
-                << "            class CHECK = NAMESPACE,\n"
+                << "            class CHECK = FROM,\n"
                 << "            class = std::enable_if_t<::current::is_same_or_base_of<" << nmspc
                 << ", CHECK>::value>>\n"
-                << "  static void Go(const typename NAMESPACE::" << type_name << "& from,\n"
-                << "                 typename INTO::" << type_name << "& into) {\n"
-                << "      static_assert(::current::reflection::FieldCounter<typename " << nmspc
-                << "::" << type_name << ">::value == " << fields.size() << ",\n"
+                << "  static void Go(const " << namespaced_from_struct_name << "& from,\n"
+                << "                 " << namespaced_into_struct_name << "& into) {\n"
+                << "      static_assert(::current::reflection::FieldCounter<" << namespaced_into_struct_name
+                << ">::value == " << fields.size() << ",\n"
                 << "                    \"Custom evolutor required.\");\n";
             if (s.super_id != TypeID::CurrentStruct) {
               const std::string super_name = TypeName(s.super_id);
-              os_ << "      Evolve<NAMESPACE, " << nmspc << "::" << super_name << ", EVOLUTOR>::"
-                  << "template Go<INTO>(static_cast<const typename NAMESPACE::" << super_name
+              os_ << "      Evolve<FROM, " << nmspc << "::" << super_name << ", EVOLUTOR>::"
+                  << "template Go<INTO>(static_cast<const typename FROM::" << super_name
                   << "&>(from), static_cast<typename INTO::" << super_name << "&>(into));\n";
             }
             for (const auto& f : fields) {
-              os_ << "      Evolve<NAMESPACE, decltype(from." << f << "), EVOLUTOR>::"
+              os_ << "      Evolve<FROM, decltype(from." << f << "), EVOLUTOR>::"
                   << "template Go<INTO>(from." << f << ", into." << f << ");\n";
             }
             if (fields.empty()) {
@@ -391,9 +413,11 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "      static_cast<void>(into);\n";
             }
             os_ << "  }\n"
-                << "};\n" << '\n';
+                << "};\n"
+                << "#endif\n" << '\n';
           } else if (Exists<ReflectedType_Variant>(type_substance)) {
             // Default evolutor for `CURRENT_VARIANT`, or for a plain `Variant<>`.
+            const auto bare_variant_name = TypeName(input_type.first);
             std::vector<std::string> cases;
             std::vector<std::string> fully_specified_cases;
             std::vector<TypeID> types_list;
@@ -411,9 +435,15 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               continue;
             }
             variant_evolutor_already_output.insert(variant_inner_type_list_hash);
+            const std::string vrnt = "::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<" +
+                                     current::strings::Join(fully_specified_cases, ", ") + ">>";
+            const std::string origin = vrnt;
+            const std::string origin_guard =
+                "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "// Default evolution for `Variant<" << current::strings::Join(cases, ", ") << ">`.\n";
-            const std::string evltr = nmspc + '_' + type_name + "_Cases";
-            os_ << "template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>\n"
+            const std::string evltr = nmspc + '_' + bare_variant_name + "_Cases";
+            os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
+                << "template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>\n"
                 << "struct " << evltr << " {\n"
                 << "  DST& into;\n"
                 << "  explicit " << evltr << "(DST& into) : into(into) {}\n";
@@ -425,35 +455,70 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "::template Go<INTO>(value, Value<into_t>(into));\n"
                   << "  }\n";
             }
-            const std::string vrnt = "::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<" +
-                                     current::strings::Join(fully_specified_cases, ", ") + ">>";
             os_ << "};\n"
-                << "template <typename NAMESPACE, typename EVOLUTOR, typename VARIANT_NAME_HELPER>\n"
-                << "struct Evolve<NAMESPACE, " << vrnt << ", EVOLUTOR> {\n"
+                << "template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>\n"
+                << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.\n"
                 << "  template <typename INTO,\n"
                 << "            typename CUSTOM_INTO_VARIANT_TYPE,\n"
-                << "            class CHECK = NAMESPACE,\n"
+                << "            class CHECK = FROM,\n"
                 << "            class = std::enable_if_t<::current::is_same_or_base_of<" << nmspc
                 << ", CHECK>::value>>\n"
                 << "  static void Go(const " << vrnt << "& from,\n"
                 << "                 CUSTOM_INTO_VARIANT_TYPE& into) {\n"
-                << "    from.Call(" << evltr << "<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));\n"
+                << "    from.Call(" << evltr << "<decltype(into), FROM, INTO, EVOLUTOR>(into));\n"
                 << "  }\n"
-                << "};\n" << '\n';
+                << "};\n"
+                << "#endif\n" << '\n';
           } else if (Exists<ReflectedType_Enum>(type_substance)) {
             // Default evolutor for `CURRENT_ENUM`.
             const auto& e = Value<ReflectedType_Enum>(type_substance);
+            const std::string origin = nmspc + "::" + e.name;
+            const std::string origin_guard =
+                "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "// Default evolution for `CURRENT_ENUM(" << e.name << ")`.\n"
-                << "template <typename NAMESPACE, typename EVOLUTOR>\n"
-                << "struct Evolve<NAMESPACE, " << nmspc << "::" << e.name << ", EVOLUTOR> {\n"
+                << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
+                << "template <typename FROM, typename EVOLUTOR>\n"
+                << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
                 << "  template <typename INTO>\n"
                 << "  static void Go(" << nmspc << "::" << e.name << " from,\n"
                 << "                 typename INTO::" << e.name << "& into) {\n"
                 << "    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.\n"
                 << "    into = static_cast<typename INTO::" << e.name << ">(from);\n"
                 << "  }\n"
-                << "};\n" << '\n';
+                << "};\n"
+                << "#endif\n" << '\n';
+          } else if (Exists<ReflectedType_Optional>(type_substance)) {
+            // Default evolutor for this particular `Optional<T>`.
+            // The global, top-level one, can only work if the underlying type does not change.
+            const auto& o = Value<ReflectedType_Optional>(type_substance);
+            const auto bare_optional_type_name = TypeName(o.optional_type);
+            const auto namespaced_from_optional_type_name = TypeName(o.optional_type, "typename " + nmspc);
+            const auto namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
+            if (TypePrefix(o.optional_type) != TYPEID_BASIC_PREFIX) {
+              const std::string origin = "Optional<" + namespaced_from_optional_type_name + '>';
+              const std::string origin_guard =
+                  "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
+              // No need to spell out evolution of `Optional<>` for basic types, string-s, and millis/micros.
+              os_ << "// Default evolution for `Optional<" << bare_optional_type_name << ">`.\n"
+                  << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
+                  << "template <typename FROM, typename EVOLUTOR>\n"
+                  << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
+                  << "  template <typename INTO, typename INTO_TYPE>\n"
+                  << "  static void Go(const Optional<" << namespaced_from_optional_type_name << ">& from, "
+                  << "INTO_TYPE& into) {\n"
+                  << "    if (Exists(from)) {\n"
+                  << "      " << namespaced_into_optional_type_name << " evolved;\n"
+                  << "      Evolve<FROM, " << namespaced_from_optional_type_name << ", EVOLUTOR>"
+                  << "::template Go<INTO>(Value(from), evolved);\n"
+                  << "      into = evolved;\n"
+                  << "    } else {\n"
+                  << "      into = nullptr;\n"
+                  << "    }\n"
+                  << "  }\n"
+                  << "};\n"
+                  << "#endif\n" << '\n';
+            }
           }
         }
         os_ << "}  // namespace current::type_evolution\n"
