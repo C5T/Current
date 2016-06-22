@@ -509,7 +509,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "INTO_TYPE& into) {\n"
                   << "    if (Exists(from)) {\n"
                   << "      " << namespaced_into_optional_type_name << " evolved;\n"
-                  << "      Evolve<FROM, " << namespaced_into_optional_type_name << ", EVOLUTOR>"
+                  << "      Evolve<FROM, " << namespaced_from_optional_type_name << ", EVOLUTOR>"
                   << "::template Go<INTO>(Value(from), evolved);\n"
                   << "      into = evolved;\n"
                   << "    } else {\n"
