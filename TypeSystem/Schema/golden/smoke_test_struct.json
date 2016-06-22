@@ -734,6 +734,131 @@
     ]
   },
   {
+    "object": "TrickySchemaCases",
+    "contains": [
+      {
+        "field": "o1",
+        "as": {
+          "optional": {
+            "underlying": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o2",
+        "as": {
+          "optional": {
+            "underlying": {
+              "primitive": {
+                "type": "int32_t",
+                "text": "Integer (32-bit signed)"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o3",
+        "as": {
+          "optional": {
+            "underlying": {
+              "array": {
+                "element": {
+                  "primitive": {
+                    "type": "std::string",
+                    "text": "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o4",
+        "as": {
+          "optional": {
+            "underlying": {
+              "array": {
+                "element": {
+                  "primitive": {
+                    "type": "int32_t",
+                    "text": "Integer (32-bit signed)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o5",
+        "as": {
+          "optional": {
+            "underlying": {
+              "array": {
+                "element": {
+                  "object": {
+                    "kind": "A"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o6",
+        "as": {
+          "pair": {
+            "first": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            },
+            "second": {
+              "optional": {
+                "underlying": {
+                  "object": {
+                    "kind": "A"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o7",
+        "as": {
+          "dictionary": {
+            "from": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            },
+            "into": {
+              "optional": {
+                "underlying": {
+                  "object": {
+                    "kind": "A"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
     "object": "FullTest",
     "contains": [
       {
@@ -880,6 +1005,14 @@
         "as": {
           "object": {
             "kind": "TemplatedInheriting_T9201673071807149456"
+          }
+        }
+      },
+      {
+        "field": "tsc",
+        "as": {
+          "object": {
+            "kind": "TrickySchemaCases"
           }
         }
       }

@@ -67,8 +67,8 @@ namespace current {
 namespace type_evolution {
 
 // Default evolution for `CURRENT_ENUM(EnumClassType)`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::EnumClassType, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, USERSPACE_F055D51FBF78DB84::EnumClassType, EVOLUTOR> {
   template <typename INTO>
   static void Go(USERSPACE_F055D51FBF78DB84::EnumClassType from,
                  typename INTO::EnumClassType& into) {
@@ -78,90 +78,90 @@ struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::EnumClassType, EVOLUTOR> {
 };
 
 // Default evolution for struct `SimpleStruct`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::SimpleStruct, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::SimpleStruct, EVOLUTOR> {
   template <typename INTO,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
-  static void Go(const typename NAMESPACE::SimpleStruct& from,
+  static void Go(const typename USERSPACE_F055D51FBF78DB84::SimpleStruct& from,
                  typename INTO::SimpleStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::SimpleStruct>::value == 3,
                     "Custom evolutor required.");
-      Evolve<NAMESPACE, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
-      Evolve<NAMESPACE, decltype(from.y), EVOLUTOR>::template Go<INTO>(from.y, into.y);
-      Evolve<NAMESPACE, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
+      Evolve<FROM, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
+      Evolve<FROM, decltype(from.y), EVOLUTOR>::template Go<INTO>(from.y, into.y);
+      Evolve<FROM, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
   }
 };
 
 // Default evolution for struct `StructWithStruct`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::StructWithStruct, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithStruct, EVOLUTOR> {
   template <typename INTO,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
-  static void Go(const typename NAMESPACE::StructWithStruct& from,
+  static void Go(const typename USERSPACE_F055D51FBF78DB84::StructWithStruct& from,
                  typename INTO::StructWithStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithStruct>::value == 1,
                     "Custom evolutor required.");
-      Evolve<NAMESPACE, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);
+      Evolve<FROM, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);
   }
 };
 
 // Default evolution for struct `OtherTypes`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::OtherTypes, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::OtherTypes, EVOLUTOR> {
   template <typename INTO,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
-  static void Go(const typename NAMESPACE::OtherTypes& from,
+  static void Go(const typename USERSPACE_F055D51FBF78DB84::OtherTypes& from,
                  typename INTO::OtherTypes& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::OtherTypes>::value == 2,
                     "Custom evolutor required.");
-      Evolve<NAMESPACE, decltype(from.enum_class), EVOLUTOR>::template Go<INTO>(from.enum_class, into.enum_class);
-      Evolve<NAMESPACE, decltype(from.optional), EVOLUTOR>::template Go<INTO>(from.optional, into.optional);
+      Evolve<FROM, decltype(from.enum_class), EVOLUTOR>::template Go<INTO>(from.enum_class, into.enum_class);
+      Evolve<FROM, decltype(from.optional), EVOLUTOR>::template Go<INTO>(from.optional, into.optional);
   }
 };
 
 // Default evolution for struct `StructWithVariant`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::StructWithVariant, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithVariant, EVOLUTOR> {
   template <typename INTO,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
-  static void Go(const typename NAMESPACE::StructWithVariant& from,
+  static void Go(const typename USERSPACE_F055D51FBF78DB84::StructWithVariant& from,
                  typename INTO::StructWithVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithVariant>::value == 1,
                     "Custom evolutor required.");
-      Evolve<NAMESPACE, decltype(from.v), EVOLUTOR>::template Go<INTO>(from.v, into.v);
+      Evolve<FROM, decltype(from.v), EVOLUTOR>::template Go<INTO>(from.v, into.v);
   }
 };
 
 // Default evolution for struct `Name`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::Name, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::Name, EVOLUTOR> {
   template <typename INTO,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
-  static void Go(const typename NAMESPACE::Name& from,
+  static void Go(const typename USERSPACE_F055D51FBF78DB84::Name& from,
                  typename INTO::Name& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Name>::value == 2,
                     "Custom evolutor required.");
-      Evolve<NAMESPACE, decltype(from.first), EVOLUTOR>::template Go<INTO>(from.first, into.first);
-      Evolve<NAMESPACE, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last, into.last);
+      Evolve<FROM, decltype(from.first), EVOLUTOR>::template Go<INTO>(from.first, into.first);
+      Evolve<FROM, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last, into.last);
   }
 };
 
 // Default evolution for struct `StructWithVectorOfNames`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR>
+struct Evolve<FROM, typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames, EVOLUTOR> {
   template <typename INTO,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
-  static void Go(const typename NAMESPACE::StructWithVectorOfNames& from,
+  static void Go(const typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames& from,
                  typename INTO::StructWithVectorOfNames& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithVectorOfNames>::value == 1,
                     "Custom evolutor required.");
-      Evolve<NAMESPACE, decltype(from.w), EVOLUTOR>::template Go<INTO>(from.w, into.w);
+      Evolve<FROM, decltype(from.w), EVOLUTOR>::template Go<INTO>(from.w, into.w);
   }
 };
 
@@ -186,16 +186,16 @@ struct USERSPACE_F055D51FBF78DB84_Variant_B_SimpleStruct_StructWithStruct_OtherT
     Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::OtherTypes, EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename NAMESPACE, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
-struct Evolve<NAMESPACE, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F055D51FBF78DB84::SimpleStruct, USERSPACE_F055D51FBF78DB84::StructWithStruct, USERSPACE_F055D51FBF78DB84::OtherTypes>>, EVOLUTOR> {
+template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
+struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F055D51FBF78DB84::SimpleStruct, USERSPACE_F055D51FBF78DB84::StructWithStruct, USERSPACE_F055D51FBF78DB84::OtherTypes>>, EVOLUTOR> {
   // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE,
-            class CHECK = NAMESPACE,
+            class CHECK = FROM,
             class = std::enable_if_t<::current::is_same_or_base_of<USERSPACE_F055D51FBF78DB84, CHECK>::value>>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F055D51FBF78DB84::SimpleStruct, USERSPACE_F055D51FBF78DB84::StructWithStruct, USERSPACE_F055D51FBF78DB84::OtherTypes>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(USERSPACE_F055D51FBF78DB84_Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E_Cases<decltype(into), NAMESPACE, INTO, EVOLUTOR>(into));
+    from.Call(USERSPACE_F055D51FBF78DB84_Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E_Cases<decltype(into), FROM, INTO, EVOLUTOR>(into));
   }
 };
 

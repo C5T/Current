@@ -1,14 +1,14 @@
 // The `current.h` file is the one from `https://github.com/C5T/Current`.
 // Compile with `-std=c++11` or higher.
 
-#ifndef CURRENT_USERSPACE_0473D52B47432E49
-#define CURRENT_USERSPACE_0473D52B47432E49
+#ifndef CURRENT_USERSPACE_15964E7953DBD27D
+#define CURRENT_USERSPACE_15964E7953DBD27D
 
 #include "current.h"
 
 // clang-format off
 
-namespace current_userspace_0473d52b47432e49 {
+namespace current_userspace_15964e7953dbd27d {
 struct Primitives {
   // It's the "order" of fields that matters.
   uint8_t a;
@@ -90,6 +90,15 @@ struct TemplatedInheriting_T9201673071807149456 : A {
   std::string baz;
   Templated_T9200000002835747520 meh;
 };
+struct TrickySchemaCases {
+  Optional<std::string> o1;
+  Optional<int32_t> o2;
+  Optional<std::vector<std::string>> o3;
+  Optional<std::vector<int32_t>> o4;
+  Optional<std::vector<A>> o5;
+  std::pair<std::string, Optional<A>> o6;
+  std::map<std::string, Optional<A>> o7;
+};
 struct FullTest {
   // A structure with a lot of primitive types.
   Primitives primitives;
@@ -106,9 +115,10 @@ struct FullTest {
   TemplatedInheriting_T9209980946934124423 w4;
   TemplatedInheriting_T9227782344077896555 w5;
   TemplatedInheriting_T9201673071807149456 w6;
+  TrickySchemaCases tsc;
 };
-}  // namespace current_userspace_0473d52b47432e49
+}  // namespace current_userspace_15964e7953dbd27d
 
 // clang-format on
 
-#endif  // CURRENT_USERSPACE_0473D52B47432E49
+#endif  // CURRENT_USERSPACE_15964E7953DBD27D

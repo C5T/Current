@@ -93,7 +93,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(w4, TemplatedInheriting<X>);
   CURRENT_FIELD(w5, TemplatedInheriting<MyFreakingVariant>);
   CURRENT_FIELD(w6, TemplatedInheriting<Templated<Empty>>);
-  // CURRENT_FIELD(tsc, TrickySchemaCases);  // DIMA
+  CURRENT_FIELD(tsc, TrickySchemaCases);
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 

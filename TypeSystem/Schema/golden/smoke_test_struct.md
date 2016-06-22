@@ -131,6 +131,18 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `meh` | `Templated_T9200000002835747520` |
 
 
+### `TrickySchemaCases`
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `o1` | `null` or String |
+| `o2` | `null` or Integer (32-bit signed) |
+| `o3` | `null` or Array of String |
+| `o4` | `null` or Array of Integer (32-bit signed) |
+| `o5` | `null` or Array of `A` |
+| `o6` | Pair of String and `null` or `A` |
+| `o7` | Map of String into `null` or `A` |
+
+
 ### `FullTest`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
@@ -146,4 +158,5 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `w4` | `TemplatedInheriting_T9209980946934124423` |
 | `w5` | `TemplatedInheriting_T9227782344077896555` |
 | `w6` | `TemplatedInheriting_T9201673071807149456` |
+| `tsc` | `TrickySchemaCases` |
 
