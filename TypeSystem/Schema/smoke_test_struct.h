@@ -68,7 +68,7 @@ CURRENT_STRUCT_T(TemplatedInheriting, A) {
   CURRENT_FIELD(meh, T);
 };
 
-CURRENT_STRUCT(TrickySchemaCases) {
+CURRENT_STRUCT(TrickyEvolutionCases) {
   CURRENT_FIELD(o1, Optional<std::string>);
   CURRENT_FIELD(o2, Optional<int32_t>);
   CURRENT_FIELD(o3, Optional<std::vector<std::string>>);
@@ -93,7 +93,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(w4, TemplatedInheriting<X>);
   CURRENT_FIELD(w5, TemplatedInheriting<MyFreakingVariant>);
   CURRENT_FIELD(w6, TemplatedInheriting<Templated<Empty>>);
-  CURRENT_FIELD(tsc, TrickySchemaCases);
+  CURRENT_FIELD(tsc, TrickyEvolutionCases);
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 

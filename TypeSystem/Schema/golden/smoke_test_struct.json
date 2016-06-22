@@ -734,7 +734,7 @@
     ]
   },
   {
-    "object": "TrickySchemaCases",
+    "object": "TrickyEvolutionCases",
     "contains": [
       {
         "field": "o1",
@@ -1012,7 +1012,7 @@
         "field": "tsc",
         "as": {
           "object": {
-            "kind": "TrickySchemaCases"
+            "kind": "TrickyEvolutionCases"
           }
         }
       }

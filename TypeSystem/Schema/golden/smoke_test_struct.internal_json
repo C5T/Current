@@ -160,6 +160,85 @@
       }
     ],
     [
+      "T9200642690288147741",
+      {
+        "ReflectedType_Struct": {
+          "type_id": "T9200642690288147741",
+          "native_name": "FullTest",
+          "super_id": "T1",
+          "template_id": null,
+          "fields": [
+            {
+              "type_id": "T9206969065948310524",
+              "name": "primitives",
+              "description": "A structure with a lot of primitive types."
+            },
+            {
+              "type_id": "T9319767778871345491",
+              "name": "v1",
+              "description": null
+            },
+            {
+              "type_id": "T9315520306457829347",
+              "name": "v2",
+              "description": null
+            },
+            {
+              "type_id": "T9334519405000386225",
+              "name": "p",
+              "description": null
+            },
+            {
+              "type_id": "T9211849004702662543",
+              "name": "o",
+              "description": null
+            },
+            {
+              "type_id": "T9228482442669086788",
+              "name": "q",
+              "description": "Field | descriptions | FTW !"
+            },
+            {
+              "type_id": "T9209454265127716773",
+              "name": "w1",
+              "description": null
+            },
+            {
+              "type_id": "T9209980087718877311",
+              "name": "w2",
+              "description": null
+            },
+            {
+              "type_id": "T9200915781714511302",
+              "name": "w3",
+              "description": null
+            },
+            {
+              "type_id": "T9207402181572240291",
+              "name": "w4",
+              "description": null
+            },
+            {
+              "type_id": "T9209503190895787129",
+              "name": "w5",
+              "description": null
+            },
+            {
+              "type_id": "T9206651538007828258",
+              "name": "w6",
+              "description": null
+            },
+            {
+              "type_id": "T9204352959449015213",
+              "name": "tsc",
+              "description": null
+            }
+          ]
+        },
+        "": "T9206858900297712816"
+      }
+    ],
+    [
       "T9200817599233955266",
       {
         "ReflectedType_Struct": {
@@ -256,11 +335,11 @@
       }
     ],
     [
-      "T9204352955776062011",
+      "T9204352959449015213",
       {
         "ReflectedType_Struct": {
-          "type_id": "T9204352955776062011",
-          "native_name": "TrickySchemaCases",
+          "type_id": "T9204352959449015213",
+          "native_name": "TrickyEvolutionCases",
           "super_id": "T1",
           "template_id": null,
           "fields": [
@@ -472,85 +551,6 @@
             {
               "type_id": "T9010000003568589458",
               "name": "e",
-              "description": null
-            }
-          ]
-        },
-        "": "T9206858900297712816"
-      }
-    ],
-    [
-      "T9208845362562817309",
-      {
-        "ReflectedType_Struct": {
-          "type_id": "T9208845362562817309",
-          "native_name": "FullTest",
-          "super_id": "T1",
-          "template_id": null,
-          "fields": [
-            {
-              "type_id": "T9206969065948310524",
-              "name": "primitives",
-              "description": "A structure with a lot of primitive types."
-            },
-            {
-              "type_id": "T9319767778871345491",
-              "name": "v1",
-              "description": null
-            },
-            {
-              "type_id": "T9315520306457829347",
-              "name": "v2",
-              "description": null
-            },
-            {
-              "type_id": "T9334519405000386225",
-              "name": "p",
-              "description": null
-            },
-            {
-              "type_id": "T9211849004702662543",
-              "name": "o",
-              "description": null
-            },
-            {
-              "type_id": "T9228482442669086788",
-              "name": "q",
-              "description": "Field | descriptions | FTW !"
-            },
-            {
-              "type_id": "T9209454265127716773",
-              "name": "w1",
-              "description": null
-            },
-            {
-              "type_id": "T9209980087718877311",
-              "name": "w2",
-              "description": null
-            },
-            {
-              "type_id": "T9200915781714511302",
-              "name": "w3",
-              "description": null
-            },
-            {
-              "type_id": "T9207402181572240291",
-              "name": "w4",
-              "description": null
-            },
-            {
-              "type_id": "T9209503190895787129",
-              "name": "w5",
-              "description": null
-            },
-            {
-              "type_id": "T9206651538007828258",
-              "name": "w6",
-              "description": null
-            },
-            {
-              "type_id": "T9204352955776062011",
-              "name": "tsc",
               "description": null
             }
           ]
@@ -912,7 +912,7 @@
     "T9210014876381341935",
     "T9330011180795395761",
     "T9340011180795395761",
-    "T9204352955776062011",
-    "T9208845362562817309"
+    "T9204352959449015213",
+    "T9200642690288147741"
   ]
 }

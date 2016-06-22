@@ -120,7 +120,7 @@ type TemplatedInheriting_T9201673071807149456 = {
   meh : Templated_T9200000002835747520
 }
 
-type TrickySchemaCases = {
+type TrickyEvolutionCases = {
   o1 : string option
   o2 : int32 option
   o3 : string array option
@@ -146,5 +146,5 @@ type FullTest = {
   w4 : TemplatedInheriting_T9209980946934124423
   w5 : TemplatedInheriting_T9227782344077896555
   w6 : TemplatedInheriting_T9201673071807149456
-  tsc : TrickySchemaCases
+  tsc : TrickyEvolutionCases
 }

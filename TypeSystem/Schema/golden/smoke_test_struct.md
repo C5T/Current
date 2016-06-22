@@ -131,7 +131,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `meh` | `Templated_T9200000002835747520` |
 
 
-### `TrickySchemaCases`
+### `TrickyEvolutionCases`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `o1` | `null` or String |
@@ -158,5 +158,5 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `w4` | `TemplatedInheriting_T9209980946934124423` |
 | `w5` | `TemplatedInheriting_T9227782344077896555` |
 | `w6` | `TemplatedInheriting_T9201673071807149456` |
-| `tsc` | `TrickySchemaCases` |
+| `tsc` | `TrickyEvolutionCases` |
 
