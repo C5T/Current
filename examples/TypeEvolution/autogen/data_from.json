@@ -1,0 +1,7 @@
+{"data":{"Basic":{"i":42,"s":"answer","t":123},"":"T9203341832538601265"}}
+{"data":{"FullName":{"first_name":"Dima","last_name":"Korolev"},"":"T9201952458119363219"}}
+{"data":{"WithOptional":{"maybe_name":null},"":"T9209615657629583566"}}
+{"data":{"WithOptional":{"maybe_name":{"first_name":"Max","last_name":"Zhurovich"}},"":"T9209615657629583566"}}
+{"data":{"WithExpandingVariant":{"v":{"CustomTypeA":{"a":1},"":"T9206911750362052937"}},"":"T9201009161779005289"}}
+{"data":{"WithShrinkingVariant":{"v":{"CustomTypeC":{"c":10},"":"T9207934621170686053"}},"":"T9205425707876881313"}}
+{"data":{"WithFieldsToRemove":{"foo":"thug","bar":"life","baz":["not","so","much","yoda","says"]},"":"T9206820554754825223"}}

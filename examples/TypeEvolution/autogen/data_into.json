@@ -1,0 +1,7 @@
+{"data":{"Basic":{"i":42,"s":"answer","t":123},"":"T9203341832538601265"}}
+{"data":{"FullName":{"full_name":"Korolev, Dima"},"":"T9202391653942970634"}}
+{"data":{"WithOptional":{"maybe_name":null},"":"T9207175600672737443"}}
+{"data":{"WithOptional":{"maybe_name":{"full_name":"Zhurovich, Max"}},"":"T9207175600672737443"}}
+{"data":{"WithExpandingVariant":{"v":{"CustomTypeA":{"a":1},"":"T9206911750362052937"}},"":"T9205232737393522834"}}
+{"data":{"WithShrinkingVariant":{"v":{"CustomTypeA":{"a":11},"":"T9206911750362052937"}},"":"T9200848076931525722"}}
+{"data":{"WithFieldsToRemove":{"foo":"thug not so much yoda says","bar":"life"},"":"T9207419971064567476"}}
