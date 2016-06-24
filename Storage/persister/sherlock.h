@@ -125,9 +125,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
       transaction.meta.timestamp = current::time::Now();
       std::swap(transaction.meta.fields, journal.meta_fields);
       stream_used_.Publish(std::move(transaction));
-      journal.commit_log.clear();
-      journal.rollback_log.clear();
     }
+    journal.Clear();
   }
 
   void ExposeRawLogViaHTTP(uint16_t port, const std::string& route) {

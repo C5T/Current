@@ -180,11 +180,17 @@ struct MutationJournal {
     for (auto rit = rollback_log.rbegin(); rit != rollback_log.rend(); ++rit) {
       (*rit)();
     }
+    Clear();
+  }
+
+  void Clear() {
+    meta_fields.clear();
     commit_log.clear();
     rollback_log.clear();
   }
 
   void AssertEmpty() const {
+    assert(meta_fields.empty());
     assert(commit_log.empty());
     assert(rollback_log.empty());
   }
