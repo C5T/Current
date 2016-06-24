@@ -1205,9 +1205,47 @@ TEST(TransactionalStorage, TransactionMetaFields) {
     EXPECT_TRUE(WasCommitted(result));
   }
 
-  // Add one entry, setting another meta field - `why`.
+  // The same for two-step transaction with user-initiated rollback.
   {
     current::time::SetNow(std::chrono::microseconds(200));
+    bool second_step_executed = false;
+    const auto result = storage.ReadWriteTransaction(
+                                    [](MutableFields<Storage> fields) -> int {
+                                      fields.d.Add(Record{"nonexistent", 0});
+                                      fields.SetTransactionMetaField("where", "here");
+                                      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, 42);
+                                      return 0;
+                                    },
+                                    [&second_step_executed](int v) {
+                                      EXPECT_EQ(42, v);
+                                      second_step_executed = true;
+                                    }).Go();
+    EXPECT_FALSE(WasCommitted(result));
+    EXPECT_TRUE(second_step_executed);
+  }
+
+  // The same for two-step transaction with unhandled exception.
+  {
+    current::time::SetNow(std::chrono::microseconds(300));
+    bool second_step_executed = false;
+    auto future = storage.ReadWriteTransaction(
+        [](MutableFields<Storage> fields) -> int {
+          fields.d.Add(Record{"nonexistent2", 0});
+          fields.SetTransactionMetaField("when", "now");
+          throw current::Exception();
+          return 0;
+        },
+        [&second_step_executed](int v) {
+          EXPECT_EQ(0, v);
+          second_step_executed = true;
+        });
+    EXPECT_THROW(future.Go(), current::Exception);
+    EXPECT_FALSE(second_step_executed);
+  }
+
+  // Add one entry, setting another meta field - `why`.
+  {
+    current::time::SetNow(std::chrono::microseconds(1000));
     const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"", 42});
       fields.SetTransactionMetaField("why", "because");
@@ -1215,11 +1253,11 @@ TEST(TransactionalStorage, TransactionMetaFields) {
     EXPECT_TRUE(WasCommitted(result));
   }
 
-  // Check that only the second transaction has been persisted with the sole meta-field `why`.
+  // Check that only the second transaction has been persisted with the sole meta field `why`.
   {
     ASSERT_EQ(1u, persister.Size());
     const auto& transaction = TransactionByIndex(0u);
-    EXPECT_EQ(200, transaction.meta.timestamp.count());
+    EXPECT_EQ(1000, transaction.meta.timestamp.count());
     EXPECT_EQ(1u, transaction.meta.fields.size());
     EXPECT_EQ(0u, transaction.meta.fields.count("who"));
     ASSERT_EQ(1u, transaction.meta.fields.count("why"));

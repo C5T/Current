@@ -58,16 +58,16 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
   PersisterDataAuthority DataAuthority() const { return PersisterDataAuthority::Own; }
 
   void PersistJournal(MutationJournal& journal) {
-    std::ofstream os(filename_, std::fstream::app);
-    if (!os.good()) {
-      throw StorageCannotAppendToFileException(filename_);  // LCOV_EXCL_LINE
+    if (!journal.commit_log.empty()) {
+      std::ofstream os(filename_, std::fstream::app);
+      if (!os.good()) {
+        throw StorageCannotAppendToFileException(filename_);  // LCOV_EXCL_LINE
+      }
+      for (auto&& entry : journal.commit_log) {
+        os << JSON(variant_t(std::move(entry))) << '\n';
+      }
     }
-    for (auto&& entry : journal.commit_log) {
-      os << JSON(variant_t(std::move(entry))) << '\n';
-    }
-    journal.commit_log.clear();
-    journal.rollback_log.clear();
-    journal.meta_fields.clear();
+    journal.Clear();
   }
 
   void InternalExposeStream() {}  // No-op to make it compile.
