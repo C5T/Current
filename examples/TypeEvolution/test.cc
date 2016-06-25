@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// If this file doesn't compile, run `regenerate.sh` to refresh the code in `autogen/`.
+// If this source file doesn't compile, run `regenerate.sh` to refresh the code in `autogen/`.
 
 #include "autogen/schema_from.h"
 #include "autogen/schema_into.h"
@@ -30,54 +30,74 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 #include "flags.h"
 
-// TODO(dkorolev): Perhaps a variadic macro and its "overload" by the number of arguments.
-// TODO(dkorolev): Perhaps the same for `CURRENT_NAMESPACE`.
-#define CURRENT_EVOLVE_IMPL(evolutor, from_namespace, into_namespace, from_object, into_object)    \
-  ::current::type_evolution::Evolve<from_namespace, decltype(from_object), evolutor>::template Go< \
-      into_namespace>(from_object, into_object)
+#define CURRENT_EVOLVE_IMPL(evolutor, from_namespace, into_namespace, from_object, into_object) \
+  ::current::type_evolution::Evolve<from_namespace,                                             \
+                                    ::current::decay<decltype(from_object)>,                    \
+                                    evolutor>::template Go<into_namespace>(from_object, into_object)
 
 #define CURRENT_EVOLVE(evolutor, from_namespace, into_namespace, from_object, into_object) \
   CURRENT_EVOLVE_IMPL(evolutor, from_namespace, into_namespace, from_object, into_object)
 
-#define CURRENT_DEFAULT_EVOLVE(from_namespace, into_namespace, from_object, into_object) \
+#define CURRENT_NATURAL_EVOLVE(from_namespace, into_namespace, from_object, into_object) \
   CURRENT_EVOLVE_IMPL(CURRENT_ACTIVE_EVOLUTOR, from_namespace, into_namespace, from_object, into_object)
 
+template <typename DST>
+struct CurrentGenericPerCaseVariantEvolutor {
+  current::decay<DST>* p_into;
+};
+
+template <int COUNTER, typename DST, typename FROM, typename INTO, typename EVOLUTOR>
+struct CurrentGenericPerCaseVariantEvolutorImpl;
+
+#define CURRENT_TYPE_EVOLUTOR_VARIANT(custom_evolutor, from_namespace, T, into_namespace)                    \
+  CURRENT_TYPE_EVOLUTOR(custom_evolutor,                                                                     \
+                        from_namespace,                                                                      \
+                        T,                                                                                   \
+                        {                                                                                    \
+    CurrentGenericPerCaseVariantEvolutorImpl<__COUNTER__,                                                    \
+                                             decltype(into),                                                 \
+                                             from_namespace,                                                 \
+                                             into_namespace,                                                 \
+                                             custom_evolutor> evolutor;                                      \
+    evolutor.p_into = &into;                                                                                 \
+    from.Call(evolutor);                                                                                     \
+                        });                                                                                  \
+                                                                                                             \
+  template <typename DST, typename FROM, typename INTO, typename CURRENT_ACTIVE_EVOLUTOR>                    \
+  struct CurrentGenericPerCaseVariantEvolutorImpl<__COUNTER__ - 1, DST, FROM, INTO, CURRENT_ACTIVE_EVOLUTOR> \
+      : CurrentGenericPerCaseVariantEvolutor<DST>
+
+#define CURRENT_TYPE_EVOLUTOR_VARIANT_CASE(T, ...)                   \
+  void operator()(const typename FROM::T& from) const {              \
+    auto& into = *CurrentGenericPerCaseVariantEvolutor<DST>::p_into; \
+    __VA_ARGS__;                                                     \
+  }
+
+// Evolve the variant case into the type of the same name, from the destination namespace.
+// Use the natural evolutor. This make sure each and every possible inner type
+// will be evolved using the evolutor specified by the user.
+#define CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(T, ...)            \
+  void operator()(const typename FROM::T& from) const {               \
+    auto& into0 = *CurrentGenericPerCaseVariantEvolutor<DST>::p_into; \
+    using into_t = typename INTO::T;                                  \
+    into0 = into_t();                                                 \
+    auto& into = Value<into_t>(into0);                                \
+    __VA_ARGS__;                                                      \
+  }
+
 // `FullName` has changed. Need to compose the full name from first and last ones.
-// TODO(dkorolev): Put the boilerplace of the next line into the autogenerated schema file.
 CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, FullName, into.full_name = from.last_name + ", " + from.first_name);
 
 // `ShrinkingVariant` has changed. With three options going into two, need to fit the 3rd one into the 1st one.
-// TODO(dkorolev): Put the boilerplace of the next several lines into the autogenerated schema file.
-// TODO(dkorolev): Unify the helper class to be a macro or a series of macros.
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct ShrinkingVariantEvolutor;
-CURRENT_TYPE_EVOLUTOR(CustomEvolutor,
-                      From,
-                      ShrinkingVariant,
-                      from.Call(ShrinkingVariantEvolutor<decltype(into), From, Into, CustomEvolutor>(into)));
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct ShrinkingVariantEvolutor {
-  DST& into;
-  explicit ShrinkingVariantEvolutor(DST& into) : into(into) {}
-  void operator()(const typename FROM_NAMESPACE::CustomTypeA& value) const {
-    using into_t = typename INTO::CustomTypeA;
-    into = into_t();
-    current::type_evolution::Evolve<FROM_NAMESPACE,
-                                    typename FROM_NAMESPACE::CustomTypeA,
-                                    EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-  void operator()(const typename FROM_NAMESPACE::CustomTypeB& value) const {
-    using into_t = typename INTO::CustomTypeB;
-    into = into_t();
-    current::type_evolution::Evolve<FROM_NAMESPACE,
-                                    typename FROM_NAMESPACE::CustomTypeB,
-                                    EVOLUTOR>::template Go<INTO>(value, Value<into_t>(into));
-  }
-  void operator()(const typename FROM_NAMESPACE::CustomTypeC& value) const {
-    typename Into::CustomTypeA result;
-    result.a = value.c + 1;
-    into = std::move(result);
-  }
+CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, From, ShrinkingVariant, Into) {
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
+  CURRENT_TYPE_EVOLUTOR_VARIANT_CASE(CustomTypeC,
+                                     {
+                                       typename Into::CustomTypeA value;
+                                       value.a = from.c + 1;
+                                       into = std::move(value);
+                                     });
 };
 
 // `WithFieldsToRemove` has changed. Need to copy over `.foo` and `.bar`, and process `.baz`.
@@ -85,8 +105,10 @@ CURRENT_TYPE_EVOLUTOR(CustomEvolutor,
                       From,
                       WithFieldsToRemove,
                       {
-                        CURRENT_DEFAULT_EVOLVE(From, Into, from.foo, into.foo);
-                        CURRENT_EVOLVE(CURRENT_ACTIVE_EVOLUTOR, From, Into, from.bar, into.bar);
+                        // Boilerplate evolutor for `CURRENT_STRUCT(WithFieldsToRemove)`. Replace the
+                        // `CURRENT_NATURAL_EVOLVE` lines with custom code initializing `into.X` from `from.X`.
+                        CURRENT_NATURAL_EVOLVE(From, Into, from.foo, into.foo);
+                        CURRENT_NATURAL_EVOLVE(From, Into, from.bar, into.bar);
                         if (!from.baz.empty()) {
                           into.foo += ' ' + current::strings::Join(from.baz, ' ');
                         }
