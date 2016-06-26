@@ -30,61 +30,6 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 #include "flags.h"
 
-#define CURRENT_EVOLVE_IMPL(evolutor, from_namespace, into_namespace, from_object, into_object) \
-  ::current::type_evolution::Evolve<from_namespace,                                             \
-                                    ::current::decay<decltype(from_object)>,                    \
-                                    evolutor>::template Go<into_namespace>(from_object, into_object)
-
-#define CURRENT_EVOLVE(evolutor, from_namespace, into_namespace, from_object, into_object) \
-  CURRENT_EVOLVE_IMPL(evolutor, from_namespace, into_namespace, from_object, into_object)
-
-#define CURRENT_NATURAL_EVOLVE(from_namespace, into_namespace, from_object, into_object) \
-  CURRENT_EVOLVE_IMPL(CURRENT_ACTIVE_EVOLUTOR, from_namespace, into_namespace, from_object, into_object)
-
-template <typename DST>
-struct CurrentGenericPerCaseVariantEvolutor {
-  current::decay<DST>* p_into;
-};
-
-template <int COUNTER, typename DST, typename FROM, typename INTO, typename EVOLUTOR>
-struct CurrentGenericPerCaseVariantEvolutorImpl;
-
-#define CURRENT_TYPE_EVOLUTOR_VARIANT(custom_evolutor, from_namespace, T, into_namespace)                    \
-  CURRENT_TYPE_EVOLUTOR(custom_evolutor,                                                                     \
-                        from_namespace,                                                                      \
-                        T,                                                                                   \
-                        {                                                                                    \
-    CurrentGenericPerCaseVariantEvolutorImpl<__COUNTER__,                                                    \
-                                             decltype(into),                                                 \
-                                             from_namespace,                                                 \
-                                             into_namespace,                                                 \
-                                             custom_evolutor> evolutor;                                      \
-    evolutor.p_into = &into;                                                                                 \
-    from.Call(evolutor);                                                                                     \
-                        });                                                                                  \
-                                                                                                             \
-  template <typename DST, typename FROM, typename INTO, typename CURRENT_ACTIVE_EVOLUTOR>                    \
-  struct CurrentGenericPerCaseVariantEvolutorImpl<__COUNTER__ - 1, DST, FROM, INTO, CURRENT_ACTIVE_EVOLUTOR> \
-      : CurrentGenericPerCaseVariantEvolutor<DST>
-
-#define CURRENT_TYPE_EVOLUTOR_VARIANT_CASE(T, ...)                   \
-  void operator()(const typename FROM::T& from) const {              \
-    auto& into = *CurrentGenericPerCaseVariantEvolutor<DST>::p_into; \
-    __VA_ARGS__;                                                     \
-  }
-
-// Evolve the variant case into the type of the same name, from the destination namespace.
-// Use the natural evolutor. This make sure each and every possible inner type
-// will be evolved using the evolutor specified by the user.
-#define CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(T, ...)            \
-  void operator()(const typename FROM::T& from) const {               \
-    auto& into0 = *CurrentGenericPerCaseVariantEvolutor<DST>::p_into; \
-    using into_t = typename INTO::T;                                  \
-    into0 = into_t();                                                 \
-    auto& into = Value<into_t>(into0);                                \
-    __VA_ARGS__;                                                      \
-  }
-
 // `FullName` has changed. Need to compose the full name from first and last ones.
 CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, FullName, into.full_name = from.last_name + ", " + from.first_name);
 
@@ -105,8 +50,6 @@ CURRENT_TYPE_EVOLUTOR(CustomEvolutor,
                       From,
                       WithFieldsToRemove,
                       {
-                        // Boilerplate evolutor for `CURRENT_STRUCT(WithFieldsToRemove)`. Replace the
-                        // `CURRENT_NATURAL_EVOLVE` lines with custom code initializing `into.X` from `from.X`.
                         CURRENT_NATURAL_EVOLVE(From, Into, from.foo, into.foo);
                         CURRENT_NATURAL_EVOLVE(From, Into, from.bar, into.bar);
                         if (!from.baz.empty()) {

@@ -28,6 +28,8 @@ SOFTWARE.
 
 #include <chrono>
 
+#include "macros.h"
+
 #include "../struct.h"
 #include "../variant.h"
 #include "../optional.h"
@@ -127,7 +129,7 @@ struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLUTOR> {
   struct evolutor;                                                                                   \
   template <>                                                                                        \
   struct Evolve<from_namespace, from_namespace::type_name, evolutor> {                               \
-    using CURRENT_ACTIVE_EVOLUTOR = evolutor; \
+    using CURRENT_ACTIVE_EVOLUTOR = evolutor;                                                        \
     template <typename INTO>                                                                         \
     static void Go(const typename from_namespace::type_name& from, typename INTO::type_name& into) { \
       __VA_ARGS__;                                                                                   \
