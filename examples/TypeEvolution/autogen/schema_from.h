@@ -308,7 +308,6 @@ struct USERSPACE_B6BA536DC3EE17F4_ExpandingVariant_Cases {
 };
 template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
 struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_B6BA536DC3EE17F4::CustomTypeA, USERSPACE_B6BA536DC3EE17F4::CustomTypeB>>, EVOLUTOR> {
-  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE,
             class CHECK = FROM,
@@ -345,7 +344,6 @@ struct USERSPACE_B6BA536DC3EE17F4_ShrinkingVariant_Cases {
 };
 template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
 struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_B6BA536DC3EE17F4::CustomTypeA, USERSPACE_B6BA536DC3EE17F4::CustomTypeB, USERSPACE_B6BA536DC3EE17F4::CustomTypeC>>, EVOLUTOR> {
-  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE,
             class CHECK = FROM,
@@ -397,7 +395,6 @@ struct USERSPACE_B6BA536DC3EE17F4_All_Cases {
 };
 template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
 struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_B6BA536DC3EE17F4::Basic, USERSPACE_B6BA536DC3EE17F4::FullName, USERSPACE_B6BA536DC3EE17F4::WithOptional, USERSPACE_B6BA536DC3EE17F4::WithExpandingVariant, USERSPACE_B6BA536DC3EE17F4::WithShrinkingVariant, USERSPACE_B6BA536DC3EE17F4::WithFieldsToRemove>>, EVOLUTOR> {
-  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE,
             class CHECK = FROM,
@@ -411,6 +408,75 @@ struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USE
 
 }  // namespace current::type_evolution
 }  // namespace current
+
+#if 0  // Boilerplate evolutors.
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, WithExpandingVariant, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.v, into.v);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, FullName, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.first_name, into.first_name);
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.last_name, into.last_name);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, CustomTypeB, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.b, into.b);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, Basic, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.i, into.i);
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.s, into.s);
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.t, into.t);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, TopLevel, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.data, into.data);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, WithShrinkingVariant, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.v, into.v);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, WithFieldsToRemove, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.foo, into.foo);
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.bar, into.bar);
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.baz, into.baz);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, CustomTypeA, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.a, into.a);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, CustomTypeC, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.c, into.c);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, WithOptional, {
+  CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from.maybe_name, into.maybe_name);
+});
+
+CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, From, ExpandingVariant, CustomDestinationNamespace) {
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+};
+
+CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, From, ShrinkingVariant, CustomDestinationNamespace) {
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeC, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+};
+
+CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, From, All, CustomDestinationNamespace) {
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(Basic, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(FullName, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(WithOptional, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(WithExpandingVariant, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(WithShrinkingVariant, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(WithFieldsToRemove, CURRENT_NATURAL_EVOLVE(From, CustomDestinationNamespace, from, into));
+};
+
+#endif  // Boilerplate evolutors.
 
 // Privileged types.
 CURRENT_DERIVED_NAMESPACE(From, USERSPACE_B6BA536DC3EE17F4) {
