@@ -74,7 +74,6 @@ struct Evolve<FROM, USERSPACE_F055D51FBF78DB84::EnumClassType, EVOLUTOR> {
   template <typename INTO>
   static void Go(USERSPACE_F055D51FBF78DB84::EnumClassType from,
                  typename INTO::EnumClassType& into) {
-    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.
     into = static_cast<typename INTO::EnumClassType>(from);
   }
 };
@@ -211,7 +210,6 @@ struct USERSPACE_F055D51FBF78DB84_Variant_B_SimpleStruct_StructWithStruct_OtherT
 };
 template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
 struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_F055D51FBF78DB84::SimpleStruct, USERSPACE_F055D51FBF78DB84::StructWithStruct, USERSPACE_F055D51FBF78DB84::OtherTypes>>, EVOLUTOR> {
-  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE,
             class CHECK = FROM,
@@ -225,6 +223,44 @@ struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USE
 
 }  // namespace current::type_evolution
 }  // namespace current
+
+#if 0  // Boilerplate evolutors.
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_F055D51FBF78DB84, SimpleStruct, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.x, into.x);
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.y, into.y);
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.z, into.z);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_F055D51FBF78DB84, StructWithStruct, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.s, into.s);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_F055D51FBF78DB84, OtherTypes, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.enum_class, into.enum_class);
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.optional, into.optional);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_F055D51FBF78DB84, StructWithVariant, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.v, into.v);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_F055D51FBF78DB84, Name, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.first, into.first);
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.last, into.last);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_F055D51FBF78DB84, StructWithVectorOfNames, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from.w, into.w);
+});
+
+CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, USERSPACE_F055D51FBF78DB84, Variant_B_SimpleStruct_StructWithStruct_OtherTypes_E, CustomDestinationNamespace) {
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(SimpleStruct, CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(StructWithStruct, CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(OtherTypes, CURRENT_NATURAL_EVOLVE(USERSPACE_F055D51FBF78DB84, CustomDestinationNamespace, from, into));
+};
+
+#endif  // Boilerplate evolutors.
 
 // clang-format on
 

@@ -185,7 +185,6 @@ struct USERSPACE_381EECA4ACB24A12_Variant_B_PersistedUserUpdated_PersistedUserDe
 };
 template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>
 struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USERSPACE_381EECA4ACB24A12::PersistedUserUpdated, USERSPACE_381EECA4ACB24A12::PersistedUserDeleted>>, EVOLUTOR> {
-  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE,
             class CHECK = FROM,
@@ -199,6 +198,41 @@ struct Evolve<FROM, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<USE
 
 }  // namespace current::type_evolution
 }  // namespace current
+
+#if 0  // Boilerplate evolutors.
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_381EECA4ACB24A12, TransactionMeta, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.timestamp, into.timestamp);
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.fields, into.fields);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_381EECA4ACB24A12, Transaction_T9224928948940686845, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.meta, into.meta);
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.mutations, into.mutations);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_381EECA4ACB24A12, PersistedUserDeleted, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.key, into.key);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_381EECA4ACB24A12, Name, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.full, into.full);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_381EECA4ACB24A12, User, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.key, into.key);
+});
+
+CURRENT_TYPE_EVOLUTOR(CustomEvolutor, USERSPACE_381EECA4ACB24A12, PersistedUserUpdated, {
+  CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from.data, into.data);
+});
+
+CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, USERSPACE_381EECA4ACB24A12, Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, CustomDestinationNamespace) {
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(PersistedUserUpdated, CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from, into));
+  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(PersistedUserDeleted, CURRENT_NATURAL_EVOLVE(USERSPACE_381EECA4ACB24A12, CustomDestinationNamespace, from, into));
+};
+
+#endif  // Boilerplate evolutors.
 
 // clang-format on
 
