@@ -39,17 +39,19 @@ PWD=$(shell pwd)
 SRC=$(wildcard *.cc)
 BIN=$(SRC:%.cc=.current/%)
 
+PERMSIGN= /
 OS=$(shell uname)
 ifeq ($(OS),Darwin)
   CPPFLAGS+= -stdlib=libc++ -x objective-c++ -fobjc-arc
   LDFLAGS+= -framework Foundation
+  PERMSIGN= +
 endif
 
 default: all
 	if [ -f test.cc ] ; then \
 		make test ;\
 	else \
-		find .current/ -perm /111 -type f -exec "{}" ";" ; \
+		find .current/ -perm ${PERMSIGN}111 -type f -exec "{}" ";" ; \
 	fi
 
 test: .current/test
