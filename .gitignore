@@ -39,9 +39,13 @@ coverage.info
 
 # Microsoft Visual Studio files.
 *.suo
+
+# Some say `*.sdf` should not be `.gitignore`-d, but I'm not carrying 50+MB into this repo. -- D.K.
 *.sdf
-*.opensdf
-*.filters
+
+*.sln.cache
+.vs/
+Thumbs.db
 *.user
 Debug
 Release

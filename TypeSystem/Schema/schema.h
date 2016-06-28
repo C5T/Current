@@ -351,7 +351,10 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
       os_ << "}  // namespace current_userspace_" << unique_hash_ << '\n';
 
       if (CPP_LANGUAGE_SELECTOR == CPPLanguageSelector::CurrentStructs) {
+        // Quite a few things other than `CURRENT_{STRUCT|VARIANT|ENUM}` definitions are to be done.
         os_ << '\n';
+
+        // Thing one: the `CURRENT_NAMESPACE` for all the newly generated types.
         os_ << "CURRENT_NAMESPACE(" << nmspc << ") {\n";
         for (const auto& input_type : types_) {
           const auto& type_substance = input_type.second;
@@ -364,10 +367,12 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         }
         os_ << "};  // CURRENT_NAMESPACE(" << nmspc << ")\n";
 
+        // Thing two: natural evolutors for all the generated types.
         os_ << '\n' << "namespace current {\n"
             << "namespace type_evolution {\n" << '\n';
 
         // To only output distinct `Variant<>` & `CURRENT_VARIANT`-s once.
+        // TODO(dkorolev): Strictly speaking, unnecessary, as we guard each evolutor by its own `#ifdef`.
         std::unordered_set<uint64_t> variant_evolutor_already_output;
 
         for (const auto& input_type : types_) {
@@ -458,7 +463,6 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             os_ << "};\n"
                 << "template <typename FROM, typename EVOLUTOR, typename VARIANT_NAME_HELPER>\n"
                 << "struct Evolve<FROM, " << origin << ", EVOLUTOR> {\n"
-                << "  // TODO(dkorolev): A `static_assert` to ensure the number of cases is the same.\n"
                 << "  template <typename INTO,\n"
                 << "            typename CUSTOM_INTO_VARIANT_TYPE,\n"
                 << "            class CHECK = FROM,\n"
@@ -483,7 +487,6 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "  template <typename INTO>\n"
                 << "  static void Go(" << nmspc << "::" << e.name << " from,\n"
                 << "                 typename INTO::" << e.name << "& into) {\n"
-                << "    // TODO(dkorolev): Check enum underlying type, but not too strictly to be extensible.\n"
                 << "    into = static_cast<typename INTO::" << e.name << ">(from);\n"
                 << "  }\n"
                 << "};\n"
@@ -524,6 +527,51 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         os_ << "}  // namespace current::type_evolution\n"
             << "}  // namespace current\n";
 
+        // Thing three: boilerplate evolutors for all the types.
+        os_ << '\n';
+        {
+          static const std::string USER_REPLACE_ME = "Custom";
+          const std::string src_nmspc = Exists(namespace_to_expose_) ? Value(namespace_to_expose_).name : nmspc;
+
+          os_ << "#if 0  // Boilerplate evolutors.\n" << '\n';
+          for (const auto& input_type : types_) {
+            const auto& type_substance = input_type.second;
+            if (Exists<ReflectedType_Struct>(type_substance)) {
+              // Boilerplate evolutor for `CURRENT_STRUCT`.
+              const auto bare_struct_name = TypeName(input_type.first);
+              const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
+              std::vector<std::string> fields;
+              for (const auto& f : s.fields) {
+                fields.push_back(f.name);
+              }
+              os_ << "CURRENT_TYPE_EVOLUTOR(" << USER_REPLACE_ME << "Evolutor, " << src_nmspc << ", "
+                  << bare_struct_name << ", {\n";
+              // TODO(dkorolev): REMINDER! DIMA! The base `CURRENT_STRUCT` should be handled here too.
+              for (const auto& f : s.fields) {
+                const auto& field_name = f.name;
+                os_ << "  CURRENT_NATURAL_EVOLVE(" << src_nmspc << ", " << USER_REPLACE_ME
+                    << "DestinationNamespace, from." << field_name << ", into." << field_name << ");\n";
+              }
+              os_ << "});\n";
+              os_ << '\n';
+            } else if (Exists<ReflectedType_Variant>(type_substance)) {
+              // Boilerplate evolutor for `CURRENT_VARIANT`, or for a plain `Variant<>`.
+              const auto bare_variant_name = TypeName(input_type.first);
+              os_ << "CURRENT_TYPE_EVOLUTOR_VARIANT(" << USER_REPLACE_ME << "Evolutor, " << src_nmspc << ", "
+                  << bare_variant_name << ", " << USER_REPLACE_ME << "DestinationNamespace) {\n";
+              for (TypeID c : Value<ReflectedType_Variant>(type_substance).cases) {
+                const auto& case_name = TypeName(c);
+                os_ << "  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(" << case_name
+                    << ", CURRENT_NATURAL_EVOLVE(" << src_nmspc << ", " << USER_REPLACE_ME
+                    << "DestinationNamespace, from, into));\n";
+              }
+              os_ << "};\n" << '\n';
+            }
+          }
+          os_ << "#endif  // Boilerplate evolutors.\n";
+        }
+
+        // Thing four: the externally-visible namespace and type, if the user has specified them.
         if (Exists(namespace_to_expose_)) {
           const NamespaceToExpose& expose = Value(namespace_to_expose_);
           os_ << "\n"
