@@ -49,7 +49,7 @@ default: all
 	if [ -f test.cc ] ; then \
 		make test ;\
 	else \
-		find .current/ -perm +111 -type f -exec "{}" ";" ; \
+		find .current/ -perm /111 -type f -exec "{}" ";" ; \
 	fi
 
 test: .current/test
