@@ -41,11 +41,11 @@ inline void GenerateData(const std::string& filename) {
   current::FileSystem::WriteStringToFile(current::strings::Join(records, '\n'), filename.c_str());
 }
 
-#define GEN_DATA(realm)                                                                                \
-  int main(int argc, char** argv) {                                                                    \
-    ParseDFlags(&argc, &argv);                                                                         \
-    current::FileSystem::MkDir(FLAGS_autogen_dir, current::FileSystem::MkDirParameters::Silent);       \
-    GenerateData(current::FileSystem::JoinPath(FLAGS_autogen_dir, FLAGS_data_##realm##_file).c_str()); \
+#define GEN_DATA(realm)                                                                               \
+  int main(int argc, char** argv) {                                                                   \
+    ParseDFlags(&argc, &argv);                                                                        \
+    current::FileSystem::MkDir(FLAGS_golden_dir, current::FileSystem::MkDirParameters::Silent);       \
+    GenerateData(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_##realm##_file).c_str()); \
   }
 
 #endif  // GEN_DATA_H

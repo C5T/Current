@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// If this source file doesn't compile, run `regenerate.sh` to refresh the code in `autogen/`.
+// If this source file doesn't compile, run `regenerate.sh` to refresh the code in `golden/`.
 
-#include "autogen/schema_from.h"
-#include "autogen/schema_into.h"
+#include "golden/schema_from.h"
+#include "golden/schema_into.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 #include "flags.h"
@@ -72,7 +72,7 @@ TEST(TypeEvolution, SchemaFrom) {
           '\n'),
       current::strings::Join(
           current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-              current::FileSystem::JoinPath(FLAGS_autogen_dir, FLAGS_schema_from_file))),
+              current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_from_file))),
           '\n'));
 }
 
@@ -91,7 +91,7 @@ TEST(TypeEvolution, SchemaInto) {
           '\n'),
       current::strings::Join(
           current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-              current::FileSystem::JoinPath(FLAGS_autogen_dir, FLAGS_schema_into_file))),
+              current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_into_file))),
           '\n'));
 }
 
@@ -103,7 +103,7 @@ TEST(TypeEvolution, Data) {
   // Run type evolution.
   for (const std::string& line :
        current::strings::Split(current::FileSystem::ReadFileAsString(
-                                   current::FileSystem::JoinPath(FLAGS_autogen_dir, FLAGS_data_from_file)),
+                                   current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file)),
                                '\n')) {
     typename From::TopLevel from;
     typename Into::TopLevel into;
@@ -120,13 +120,13 @@ TEST(TypeEvolution, Data) {
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
   EXPECT_EQ(current::strings::Join(
                 current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-                    current::FileSystem::JoinPath(FLAGS_autogen_dir, FLAGS_data_from_file))),
+                    current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file))),
                 '\n'),
             current::strings::Join(golden_from, '\n'));
 
   EXPECT_EQ(current::strings::Join(
                 current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-                    current::FileSystem::JoinPath(FLAGS_autogen_dir, FLAGS_data_into_file))),
+                    current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_into_file))),
                 '\n'),
             current::strings::Join(golden_into, '\n'));
 }

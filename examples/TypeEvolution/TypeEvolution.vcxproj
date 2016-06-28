@@ -117,8 +117,8 @@
     <ClCompile Include="test.cc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="autogen\schema_from.h" />
-    <ClInclude Include="autogen\schema_into.h" />
+    <ClInclude Include="golden\schema_from.h" />
+    <ClInclude Include="golden\schema_into.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

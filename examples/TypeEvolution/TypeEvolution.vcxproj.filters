@@ -16,10 +16,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="autogen\schema_from.h">
+    <ClInclude Include="golden\schema_from.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="autogen\schema_into.h">
+    <ClInclude Include="golden\schema_into.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
