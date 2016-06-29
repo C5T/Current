@@ -139,9 +139,17 @@ TEST(Util, FromString) {
   EXPECT_EQ(32767, static_cast<int>(current::FromString<int16_t>("32767")));
   EXPECT_EQ(65535, static_cast<int>(current::FromString<uint16_t>("65535")));
 
-  double tmp;
-  EXPECT_EQ(0.5, current::FromString("0.5", tmp));
-  EXPECT_EQ(0.5, tmp);
+  double tmp_double;
+  EXPECT_EQ(0.1, current::FromString("0.1", tmp_double));
+  EXPECT_EQ(0.1, tmp_double);
+  EXPECT_EQ(0.5, current::FromString<double>("0.5", tmp_double));
+  EXPECT_EQ(0.5, tmp_double);
+
+  bool tmp_bool = false;
+  EXPECT_TRUE(current::FromString<bool>("true", tmp_bool));
+  EXPECT_TRUE(tmp_bool);
+  EXPECT_FALSE(current::FromString("0", tmp_bool));
+  EXPECT_FALSE(tmp_bool);
 
   EXPECT_EQ(0u, current::FromString<size_t>(""));
   EXPECT_EQ(0u, current::FromString<size_t>("foo"));

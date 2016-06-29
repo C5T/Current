@@ -187,6 +187,15 @@ struct FromStringImpl<INPUT, OUTPUT, false, true> {
 };
 
 template <typename INPUT>
+struct FromStringImpl<INPUT, bool, false, false> {
+  // Must return a reference as the callers expects it so. -- D.K.
+  static const bool& Go(const std::string& input, bool& output) {
+    output = (std::string("") != input && std::string("0") != input && std::string("false") != input);
+    return output;
+  }
+};
+
+template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
   template <typename T>
   static const std::chrono::milliseconds& Go(T&& input, std::chrono::milliseconds& output) {
@@ -214,6 +223,12 @@ struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
   }
 };
 
+template <typename INPUT>
+inline const std::string& FromString(INPUT&& input, std::string& output) {
+  output = input;
+  return output;
+}
+
 template <typename OUTPUT, typename INPUT = std::string>
 inline const OUTPUT& FromString(INPUT&& input, OUTPUT& output) {
   return FromStringImpl<INPUT, OUTPUT, sfinae::HasMemberFromString<OUTPUT>(0), std::is_enum<OUTPUT>::value>::Go(
@@ -236,18 +251,6 @@ struct FromStringImpl<INPUT, std::pair<OUTPUT_FST, OUTPUT_SND>, false, false> {
     return output;
   }
 };
-
-template <typename INPUT>
-inline const std::string& FromString(INPUT&& input, std::string& output) {
-  output = input;
-  return output;
-}
-
-template <typename INPUT>
-inline bool FromString(INPUT&& input, bool& output) {
-  output = (std::string("") != input && std::string("0") != input && std::string("false") != input);
-  return output;
-}
 
 template <typename OUTPUT, typename INPUT = std::string>
 inline OUTPUT FromString(INPUT&& input) {
