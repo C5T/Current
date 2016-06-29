@@ -188,7 +188,8 @@ struct FromStringImpl<INPUT, OUTPUT, false, true> {
 
 template <typename INPUT>
 struct FromStringImpl<INPUT, bool, false, false> {
-  static inline const bool& Go(const std::string& input, bool& output) {
+  // Must return a reference as the callers expects it so. -- D.K.
+  static const bool& Go(const std::string& input, bool& output) {
     output = (std::string("") != input && std::string("0") != input && std::string("false") != input);
     return output;
   }
