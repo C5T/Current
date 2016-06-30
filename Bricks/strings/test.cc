@@ -140,8 +140,8 @@ TEST(Util, FromString) {
   EXPECT_EQ(65535, static_cast<int>(current::FromString<uint16_t>("65535")));
 
   double tmp_double;
-  EXPECT_EQ(0.1, current::FromString("0.1", tmp_double));
-  EXPECT_EQ(0.1, tmp_double);
+  EXPECT_EQ(0.25, current::FromString("0.25", tmp_double));
+  EXPECT_EQ(0.25, tmp_double);
   EXPECT_EQ(0.5, current::FromString<double>("0.5", tmp_double));
   EXPECT_EQ(0.5, tmp_double);
 

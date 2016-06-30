@@ -150,17 +150,15 @@ struct FromStringImpl;
 
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, true, false> {
-  template <typename T>
-  static const OUTPUT& Go(T&& input, OUTPUT& output) {
-    output.FromString(std::forward<T>(input));
+  static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
+    output.FromString(std::forward<INPUT>(input));
     return output;
   }
 };
 
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, false, false> {
-  template <typename T>
-  static const OUTPUT& Go(T&& input, OUTPUT& output) {
+  static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
     std::istringstream is(input);
     if (!(is >> output)) {
       // Default initializer, zero for primitive types.
@@ -172,8 +170,7 @@ struct FromStringImpl<INPUT, OUTPUT, false, false> {
 
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, false, true> {
-  template <typename T>
-  static const OUTPUT& Go(T&& input, OUTPUT& output) {
+  static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
     std::istringstream is(input);
     using underlying_output_t = typename std::underlying_type<OUTPUT>::type;
     underlying_output_t underlying_output;
@@ -197,8 +194,7 @@ struct FromStringImpl<INPUT, bool, false, false> {
 
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
-  template <typename T>
-  static const std::chrono::milliseconds& Go(T&& input, std::chrono::milliseconds& output) {
+  static const std::chrono::milliseconds& Go(INPUT&& input, std::chrono::milliseconds& output) {
     std::istringstream is(input);
     int64_t underlying_output;
     if (!(is >> underlying_output)) {
@@ -211,8 +207,7 @@ struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
 
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
-  template <typename T>
-  static const std::chrono::microseconds& Go(T&& input, std::chrono::microseconds& output) {
+  static const std::chrono::microseconds& Go(INPUT&& input, std::chrono::microseconds& output) {
     std::istringstream is(input);
     int64_t underlying_output;
     if (!(is >> underlying_output)) {
