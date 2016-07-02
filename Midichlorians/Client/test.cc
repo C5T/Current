@@ -70,7 +70,7 @@ class Server {
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());
     EXPECT_FALSE(event.binary_version.empty());
-    // Confirm the date is past some 2001. Looks like it's setup date of the workstation. -- D.K.
+    // Confirm the date is past some 2001. Looks like it's the setup date of the machine. -- D.K.
     // The original test was comparing it to some late 2014, while Travis' CI instances date back to 2013.
     EXPECT_GT(event.app_install_time, 1000000000000u);
     EXPECT_GT(event.app_update_time, 1000000000000u);
