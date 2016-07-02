@@ -346,7 +346,7 @@ struct Headers final {
   // respecting the order in which the headers have been added.
   headers_list_t list;
 
-  // Cookies are just an `std::map<std::string, std::string>`.
+  // Cookies are just an `std::map<std::string, Cookie>`.
   cookies_map_t cookies;
 };
 
