@@ -102,7 +102,7 @@ class Server {
 
   size_t MessagesProcessed() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return messages_processed_.size();
+    return messages_.size();
   }
 
   std::vector<std::string> Messages() const {
