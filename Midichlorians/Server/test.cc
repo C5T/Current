@@ -28,6 +28,8 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include <mutex>
+
 #define CURRENT_MOCK_TIME  // `SetNow()`.
 
 #if defined(CURRENT_APPLE) && !defined(CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H)
@@ -52,24 +54,52 @@ using namespace current::midichlorians::ios;
 using namespace current::midichlorians::web;
 using namespace current::midichlorians::server;
 
-struct GenericConsumer {
-  GenericConsumer() : total_count(0u) {}
+class GenericConsumer {
+ public:
+  GenericConsumer() {}
 
   void operator()(const TickLogEntry& e) {
-    events.push_back(Printf("[%lld][Tick]", e.server_us.count()));
-    ++total_count;
+    std::lock_guard<std::mutex> lock(mutex_);
+    events_.push_back(Printf("[%lld][Tick]", e.server_us.count()));
   }
 
   void operator()(const UnparsableLogEntry& e) {
-    errors.push_back(Printf("[%lld][Error]", e.server_us.count()));
-    ++total_count;
+    std::lock_guard<std::mutex> lock(mutex_);
+    errors_.push_back(Printf("[%lld][Error]", e.server_us.count()));
   }
 
   void operator()(const EventLogEntry& e) {
-    events.push_back(Printf("[%lld]", e.server_us.count()));
+    std::lock_guard<std::mutex> lock(mutex_);
+    events_.push_back(Printf("[%lld]", e.server_us.count()));
     e.event.Call(*this);
-    ++total_count;
   }
+
+  size_t EventsCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return events_.size();
+  }
+
+  size_t ErrorsCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return errors_.size();
+  }
+
+  size_t EventsAndErrorsTotalCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return events_.size() + errors_.size();
+  }
+
+  std::vector<std::string> Events() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return events_;
+  }
+
+  std::vector<std::string> Errors() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return errors_;
+  }
+
+  // All methods below are expected to be called from a mutex-locked section.
 
   // iOS events.
   void operator()(const iOSAppLaunchEvent& event) {
@@ -143,14 +173,15 @@ struct GenericConsumer {
   }
 
   void AppendToLastEvent(const std::string& what) {
-    assert(events.size());
-    std::string& last = events.back();
+    assert(events_.size());
+    std::string& last = events_.back();
     last += what;
   }
 
-  std::atomic_size_t total_count;
-  std::vector<std::string> events;
-  std::vector<std::string> errors;
+ private:
+  mutable std::mutex mutex_;
+  std::vector<std::string> events_;
+  std::vector<std::string> errors_;
 };
 
 }  // namespace midichlorians_server_test
@@ -178,11 +209,11 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
 
   current::time::SetNow(std::chrono::microseconds(112000));
   // Waiting for 3 entries: 1 valid, 1 unparsable and 1 tick.
-  while (consumer.total_count < 3u) {
+  while (consumer.EventsAndErrorsTotalCount() < 3u) {
     ;  // Spin lock.
   }
-  EXPECT_EQ(2u, consumer.events.size());
-  EXPECT_EQ(1u, consumer.errors.size());
+  EXPECT_EQ(2u, consumer.EventsCount());
+  EXPECT_EQ(1u, consumer.ErrorsCount());
 
   current::time::SetNow(std::chrono::microseconds(203000));
   iOSIdentifyEvent identify_event;
@@ -199,20 +230,20 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
 
   current::time::SetNow(std::chrono::microseconds(450000));
   // Waiting for 4 more entries: 2 valid, 1 unparsable and 1 tick.
-  while (consumer.total_count < 7u) {
+  while (consumer.EventsAndErrorsTotalCount() < 7u) {
     ;  // Spin lock.
   }
 
-  EXPECT_EQ(5u, consumer.events.size());
-  EXPECT_EQ(2u, consumer.errors.size());
+  EXPECT_EQ(5u, consumer.EventsCount());
+  EXPECT_EQ(2u, consumer.ErrorsCount());
   EXPECT_EQ(
       "[12000][iOSAppLaunchEvent user_ms=1],"
       "[112000][Tick],"
       "[203000][iOSIdentifyEvent user_ms=42 client_id=unit_test],"
       "[203000][iOSFocusEvent user_ms=50 gained_focus=true],"
       "[450000][Tick]",
-      Join(consumer.events, ','));
-  EXPECT_EQ("[12000][Error],[203000][Error]", Join(consumer.errors, ','));
+      Join(consumer.Events(), ','));
+  EXPECT_EQ("[12000][Error],[203000][Error]", Join(consumer.Errors(), ','));
 }
 
 #ifdef CURRENT_APPLE
@@ -319,7 +350,7 @@ TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
   current::time::SetNow(std::chrono::microseconds(10000));
   HTTP(MockGETRequest(server_url, 10, "action", "category"));
 
-  while (consumer.total_count < 5u) {
+  while (consumer.EventsAndErrorsTotalCount() < 5u) {
     ;  // Spin lock.
   }
 
@@ -334,7 +365,7 @@ TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
       "referer_path=/page1 x=8],"
       "[10000][WebGenericEvent action:category customer_id=test_customer user_ms=10 client_id=unit_test "
       "referer_host=myurl referer_path=/page1 x=8]",
-      Join(consumer.events, ','));
+      Join(consumer.Events(), ','));
 }
 
 #endif  // CURRENT_MIDICHLORIANS_CLIENT_SERVER_CC
