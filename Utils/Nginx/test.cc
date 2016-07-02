@@ -73,8 +73,8 @@ TEST(Nginx, NginxInvokerCheckGoldenConfig) {
     const std::string full_config_path = FileSystem::JoinPath(CurrentBinaryFullPath(), config_relative_path);
     EXPECT_TRUE(nginx.IsFullConfigValid(full_config_path));
   } else {
-    std::cout << "Skipping test as Nginx binary '" << current::nginx::impl::kDefaultNginxCommand
-              << "' can't be invoked.";
+    std::cout << "Skipping test as the Nginx binary '" << current::nginx::impl::kDefaultNginxCommand
+              << "' can't be invoked.\n";
   }
 }
 
