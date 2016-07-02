@@ -276,7 +276,7 @@ TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   current::time::SetNow(std::chrono::microseconds(15000));
   [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
-  while (consumer.total_count < 5u) {
+  while (consumer.EventsAndErrorsTotalCount() < 5u) {
     ;  // Spin lock.
   }
 
@@ -286,7 +286,7 @@ TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
       "[15000][iOSIdentifyEvent user_ms=2 client_id=unit_test],"
       "[15000][iOSGenericEvent user_ms=5 source=SmokeTest event=CustomEvent1 b=1 s=str x=1],"
       "[15000][iOSFocusEvent user_ms=15 gained_focus=false]",
-      Join(consumer.events, ','));
+      Join(consumer.Events(), ','));
 }
 #endif  // CURRENT_APPLE
 
