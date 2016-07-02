@@ -33,7 +33,13 @@ fi
 GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only)"
 GIT_DIFF_NAMES=${GIT_DIFF_NAMES_MULTILINE//$'\n'/\\n}
 
-GIT_DIFF_MD5SUM="$(git diff --no-ext-diff | md5sum)"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  MD5SUM=md5
+else
+  MD5SUM=md5sum
+fi
+
+GIT_DIFF_MD5SUM="$(git diff --no-ext-diff | $MD5SUM)"
 if [[ $? -ne 0 ]]; then
 	exit 1
 fi
