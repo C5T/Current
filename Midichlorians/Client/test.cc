@@ -62,6 +62,7 @@ class Server {
                                            events_variant_t event;
                                            try {
                                              event = ParseJSON<events_variant_t>(r.body);
+                                             std::lock_guard<std::mutex> lock(mutex_);
                                              event.Call(*this);
                                            } catch (const current::Exception&) {
                                            }
