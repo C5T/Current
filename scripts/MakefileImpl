@@ -25,11 +25,28 @@ CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
 CPPFLAGS+= -ftemplate-backtrace-limit=0  # Doesn't seem to increase compilation time, yet useful. -- D.K.
 ifeq ($(NDEBUG),1)
-CPPFLAGS+= -O3
+  CPPFLAGS+= -O3
 else
-# Commented out by @dkorolev -- this flag makes compilation slower for no good reason.
-# CPPFLAGS+= -g
+  # Commented out by @dkorolev -- this flag makes compilation slower for no good reason.
+  # CPPFLAGS+= -g
 endif
+
+CURRENT_CI?=0
+
+CONTINUOUS_INTEGRATION?=0
+ifeq ($(CONTINUOUS_INTEGRATION),true)
+  CURRENT_CI=1
+endif
+
+TRAVIS?=0
+ifeq ($(TRAVIS),true)
+  CURRENT_CI=1
+endif
+
+ifeq (${CURRENT_CI},1)
+  CPPFLAGS+= -DCURRENT_CI
+endif
+
 LDFLAGS=-pthread -ldl
 
 # Also `-latomic`, but due to discrepancies between g++ and clang++, not now. -- D.K.
