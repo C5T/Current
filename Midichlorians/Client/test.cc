@@ -120,7 +120,7 @@ class Server {
 TEST(MidichloriansClient, iOSSmokeTest) {
   Server server(FLAGS_midichlorians_client_test_http_port, FLAGS_midichlorians_client_test_http_route);
 
-  current::time::SetNow(std::chrono::microseconds(0));
+  current::time::ResetToZero();
   NSDictionary* launchOptions = [NSDictionary new];
   [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d%s",
                                                   FLAGS_midichlorians_client_test_http_port,

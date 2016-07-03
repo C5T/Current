@@ -55,7 +55,7 @@ using namespace current::midichlorians::web;
 using namespace current::midichlorians::server;
 
 class GenericConsumer {
- public:
+
   GenericConsumer() {}
 
   void operator()(const TickLogEntry& e) {
@@ -189,11 +189,9 @@ class GenericConsumer {
 // TODO(mzhurovich): add separate event tests after Midichlorians clients refactoring.
 
 TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
-  current::time::ResetToZero();
-
   using namespace midichlorians_server_test;
 
-  current::time::SetNow(std::chrono::microseconds(0));
+  current::time::ResetToZero();
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
@@ -253,7 +251,7 @@ TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   using namespace midichlorians_server_test;
   using namespace current::midichlorians::server;
 
-  current::time::SetNow(std::chrono::microseconds(0));
+  current::time::ResetToZero();
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
@@ -330,7 +328,7 @@ TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
   using namespace current::midichlorians::server;
   using namespace current::midichlorians::web;
 
-  current::time::SetNow(std::chrono::microseconds(0));
+  current::time::ResetToZero();
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
