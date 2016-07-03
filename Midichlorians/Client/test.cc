@@ -30,6 +30,11 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include <mutex>
+
+#include "../../Bricks/dflags/dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+
 #ifdef CURRENT_APPLE
 
 #define CURRENT_MOCK_TIME  // `SetNow()`.
@@ -44,9 +49,6 @@ SOFTWARE.
 #include "../../Bricks/strings/join.h"
 #include "../../Bricks/template/rtti_dynamic_call.h"
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
-
 DEFINE_int32(midichlorians_client_test_http_port, PickPortForUnitTest(), "Port to spawn server on.");
 DEFINE_string(midichlorians_client_test_http_route, "/log", "HTTP route of the server.");
 
@@ -55,14 +57,13 @@ class Server {
   using events_variant_t = Variant<ios_events_t>;
 
   Server(int http_port, const std::string& http_route)
-      : messages_processed_(0u),
-        routes_(HTTP(http_port).Register(http_route,
+      :  routes_(HTTP(http_port).Register(http_route,
                                          [this](Request r) {
                                            events_variant_t event;
                                            try {
                                              event = ParseJSON<events_variant_t>(r.body);
+                                             std::lock_guard<std::mutex> lock(mutex_);
                                              event.Call(*this);
-                                             ++messages_processed_;
                                            } catch (const current::Exception&) {
                                            }
                                          })) {}
@@ -70,8 +71,10 @@ class Server {
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());
     EXPECT_FALSE(event.binary_version.empty());
-    EXPECT_GT(event.app_install_time, 1420000000000u);
-    EXPECT_GT(event.app_update_time, 1420000000000u);
+    // Confirm the date is past some 2001. Looks like it's the setup date of the machine. -- D.K.
+    // The original test was comparing it to some late 2014, while Travis' CI instances date back to 2013.
+    EXPECT_GT(event.app_install_time, 1000000000000u);
+    EXPECT_GT(event.app_update_time, 1000000000000u);
     messages_.push_back(current::ToString(event.user_ms.count()) + ":Launch");
   }
 
@@ -98,20 +101,26 @@ class Server {
 
   void operator()(const iOSBaseEvent&) {}
 
-  size_t MessagesProcessed() const { return messages_processed_; }
+  size_t MessagesProcessed() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return messages_.size();
+  }
 
-  const std::vector<std::string>& Messages() const { return messages_; }
+  std::vector<std::string> Messages() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return messages_;
+  }
 
  private:
+  mutable std::mutex mutex_;
   std::vector<std::string> messages_;
-  std::atomic_size_t messages_processed_;
   HTTPRoutesScope routes_;
 };
 
 TEST(MidichloriansClient, iOSSmokeTest) {
   Server server(FLAGS_midichlorians_client_test_http_port, FLAGS_midichlorians_client_test_http_route);
 
-  current::time::SetNow(std::chrono::microseconds(0));
+  current::time::ResetToZero();
   NSDictionary* launchOptions = [NSDictionary new];
   [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d%s",
                                                   FLAGS_midichlorians_client_test_http_port,
@@ -135,6 +144,7 @@ TEST(MidichloriansClient, iOSSmokeTest) {
     ;  // spin lock.
   }
 
+  EXPECT_EQ(5u, server.Messages().size());
   EXPECT_EQ(
       "0:Launch,"
       "1:GainedFocus[applicationDidBecomeActive],"

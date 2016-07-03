@@ -1,9 +1,12 @@
-.PHONY: all test check
+.PHONY: all test individual_tests check
 
 all: test check
 
 test:
 	./scripts/full-test.sh
+
+individual_tests:
+	./scripts/individual-tests.sh
 
 check:
 	./scripts/check-headers.sh
