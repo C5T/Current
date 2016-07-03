@@ -47,6 +47,8 @@ matrix:
     - script:
       - brew update
       - brew install gnuplot
+      - clang++ -v
+      - clang++ --version
       - make individual_tests
       compiler: "native clang++, Job: make test"
       os: osx
