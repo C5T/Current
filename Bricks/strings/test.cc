@@ -698,3 +698,16 @@ TEST(IsStringType, StaticAsserts) {
   static_assert(is_string_type<const std::vector<char>&>::value, "");
   static_assert(is_string_type<std::vector<char>&&>::value, "");
 }
+
+TEST(CLangWarningSanityCheck, ThatOne) {
+  volatile bool b = true;
+  int foo = 1, bar = 2;
+  int &choice = [&]() -> int & {
+    if (b) {
+      return foo;
+    } else {
+      return bar;
+    }
+  }();
+  EXPECT_EQ(1, choice);
+}
