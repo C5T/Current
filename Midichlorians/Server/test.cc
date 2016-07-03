@@ -55,7 +55,7 @@ using namespace current::midichlorians::web;
 using namespace current::midichlorians::server;
 
 class GenericConsumer {
-
+ public:
   GenericConsumer() {}
 
   void operator()(const TickLogEntry& e) {
