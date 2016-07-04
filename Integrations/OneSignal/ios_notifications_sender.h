@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATION_SENDER_H
-#define INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATION_SENDER_H
+#ifndef INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATIONS_SENDER_H
+#define INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATIONS_SENDER_H
 
 #include "exceptions.h"
 
@@ -107,8 +107,7 @@ server {
   // Send one iOS push notification.
   // Returns true on success.
   // Returns false on "regular" errors.
-  // Throws on terrible errors, with the returned `e.What()` being good for jounrnaling and further
-  // investigation.
+  // Throws on terrible errors, with the returned `e.What()` good for journaling and further investigation.
   bool Push(const std::string& recipient_player_id,
             const std::string& message = "",
             int32_t increase_counter = 0) const {
@@ -180,4 +179,4 @@ server {
 }  // namespace current::integrations
 }  // namespace current
 
-#endif  // INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATION_SENDER_H
+#endif  // INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATIONS_SENDER_H

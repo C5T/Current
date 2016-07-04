@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "ios_notification_sender.h"
+#include "ios_notifications_sender.h"
 
 #include "../../Bricks/dflags/dflags.h"
 
