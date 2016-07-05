@@ -166,7 +166,7 @@ server {
     }
   }
 
-  bool Push(const std::string& recipient_player_id, int32_t increase_counter) {
+  bool Push(const std::string& recipient_player_id, int32_t increase_counter) const {
     return Push(recipient_player_id, "", increase_counter);
   }
 
