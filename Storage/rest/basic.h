@@ -33,6 +33,8 @@ SOFTWARE.
 
 #include "../storage.h"
 
+#include "../TypeSystem/Reflection/reflection.h"
+
 #include "../../Blocks/HTTP/api.h"
 
 namespace current {
