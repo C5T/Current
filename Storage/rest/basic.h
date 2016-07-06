@@ -173,51 +173,31 @@ struct Basic {
   };
 
   template <typename ENTRY>
-  struct RESTfulSchemaHandlerGenerator {
-    void RegisterRoutes(
-        std::function<void(const std::string& extension, std::function<void(Request)>)> registerer) {
+  class RESTfulSchemaHandlerGenerator {
+   private:
+    using registerer_t = std::function<void(const std::string& extension, std::function<void(Request)>)>;
+    struct LanguageIterator {
+      registerer_t registerer;
+      explicit LanguageIterator(registerer_t registerer) : registerer(registerer) {}
+      template <current::reflection::Language LANGUAGE>
+      void PerLanguage() {
+        registerer('.' + current::ToString(LANGUAGE),
+                   [](Request r) {
+                     // TODO(dkorolev): Add caching one day.
+                     reflection::StructSchema underlying_type_schema;
+                     underlying_type_schema.AddType<ENTRY>();
+                     r(underlying_type_schema.GetSchemaInfo().Describe<LANGUAGE>());
+                   });
+      }
+    };
+
+   public:
+    void RegisterRoutes(registerer_t registerer) {
+      // Top-level handler: Just the name of the `CURRENT_STRUCT`.
       registerer("", [](Request r) { r(reflection::CurrentTypeName<ENTRY>()); });
-      registerer(".h",
-                 [](Request r) {
-                   // TODO:
-                   // 1) REST-ify top-level schema and data responses.
-                   // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-                   // 3) Cache.
-                   reflection::StructSchema underlying_type_schema;
-                   underlying_type_schema.AddType<ENTRY>();
-                   r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>());
-                 });
-      registerer(
-          ".md",
-          [](Request r) {
-            // TODO:
-            // 1) REST-ify top-level schema and data responses.
-            // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-            // 3) Cache.
-            reflection::StructSchema underlying_type_schema;
-            underlying_type_schema.AddType<ENTRY>();
-            r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Markdown>());
-          });
-      registerer(".fs",
-                 [](Request r) {
-                   // TODO:
-                   // 1) REST-ify top-level schema and data responses.
-                   // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-                   // 3) Cache.
-                   reflection::StructSchema underlying_type_schema;
-                   underlying_type_schema.AddType<ENTRY>();
-                   r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::FSharp>());
-                 });
-      registerer(".json",
-                 [](Request r) {
-                   // TODO:
-                   // 1) REST-ify top-level schema and data responses.
-                   // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-                   // 3) Cache.
-                   reflection::StructSchema underlying_type_schema;
-                   underlying_type_schema.AddType<ENTRY>();
-                   r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::JSON>());
-                 });
+      // Per-language handlers: For `/schema.*` routes export the schema in the respective language.
+      LanguageIterator per_language(registerer);
+      current::reflection::ForEachLanguage(per_language);
     }
   };
 
