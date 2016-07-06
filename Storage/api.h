@@ -89,7 +89,7 @@ using storage_handlers_map_entry_t = typename storage_handlers_map_t::value_type
 using registerer_t = std::function<void(const storage_handlers_map_entry_t&)>;
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-struct RESTfulDataHandlerGenerator {
+struct PerFieldRESTfulHandlerGenerator {
   using storage_t = STORAGE;
   using immutable_fields_t = ImmutableFields<STORAGE>;
   using mutable_fields_t = MutableFields<STORAGE>;
@@ -113,11 +113,11 @@ struct RESTfulDataHandlerGenerator {
   const std::string data_url_component;
   const std::string schema_url_component;
 
-  RESTfulDataHandlerGenerator(registerer_t registerer,
-                              STORAGE& storage,
-                              const std::string& restful_url_prefix,
-                              const std::string& data_url_component,
-                              const std::string& schema_url_component)
+  PerFieldRESTfulHandlerGenerator(registerer_t registerer,
+                                  STORAGE& storage,
+                                  const std::string& restful_url_prefix,
+                                  const std::string& data_url_component,
+                                  const std::string& schema_url_component)
       : registerer(registerer),
         storage(storage),
         restful_url_prefix(restful_url_prefix),
@@ -132,6 +132,7 @@ struct RESTfulDataHandlerGenerator {
     const std::string schema_url_component = this->schema_url_component;
     const std::string field_name = input_field_name;
 
+    // Data handler.
     using entry_t = typename ENTRY_TYPE_WRAPPER::entry_t;
     using key_t = typename ENTRY_TYPE_WRAPPER::key_t;
     using GETHandler = CustomHandler<GET, specific_field_t, entry_t, key_t>;
@@ -274,23 +275,8 @@ struct RESTfulDataHandlerGenerator {
                 request(REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
               }
             })));
-  }
-};
 
-template <class REST_IMPL, int INDEX, typename STORAGE>
-struct RESTfulSchemaHandlerGenerator {
-  registerer_t registerer;
-  const std::string schema_url_component;
-
-  RESTfulSchemaHandlerGenerator(registerer_t registerer,
-                                STORAGE&,            // storage,
-                                const std::string&,  // restful_url_prefix,
-                                const std::string&,  // data_url_component,
-                                const std::string& schema_url_component)
-      : registerer(registerer), schema_url_component(schema_url_component) {}
-
-  template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
-  void operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
+    // Schema handlers.
     registerer(storage_handlers_map_entry_t(
         input_field_name,
         RESTfulRoute(
@@ -368,10 +354,7 @@ void GenerateRESTfulHandler(registerer_t registerer,
                             const std::string& data_url_component,
                             const std::string& schema_url_component) {
   storage(::current::storage::FieldNameAndTypeByIndex<INDEX>(),
-          RESTfulDataHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
-              registerer, storage, restful_url_prefix, data_url_component, schema_url_component));
-  storage(::current::storage::FieldNameAndTypeByIndex<INDEX>(),
-          RESTfulSchemaHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
+          PerFieldRESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
               registerer, storage, restful_url_prefix, data_url_component, schema_url_component));
 }
 
@@ -466,7 +449,7 @@ class RESTfulStorage {
       ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(
           storage, restful_url_prefix, data_url_component, schema_url_component, handlers);
       using specific_entry_type_t =
-          typename impl::RESTfulDataHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
+          typename impl::PerFieldRESTfulHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
       current::metaprogramming::CallIf<FieldExposedViaREST<STORAGE_IMPL, specific_entry_type_t>::exposed>::With(
           [&] {
             const auto registerer = [&handlers](const impl::storage_handlers_map_entry_t& restful_route) {
