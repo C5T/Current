@@ -422,8 +422,8 @@ struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
   using SUPER = current::storage::rest::AdvancedHypermedia;
 
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful: SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {
-    using ACTUAL_SUPER = SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
+  struct RESTfulDataHandlerGenerator : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {
+    using ACTUAL_SUPER = SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
 
     template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
     std::enable_if_t<!IS_GET, Response> Run(const INPUT& input) const {

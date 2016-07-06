@@ -105,7 +105,10 @@ struct PerFieldRESTfulHandlerGenerator {
   using specific_entry_type_t = typename specific_entry_type_extractor_t::particular_field_t;
 
   template <class VERB, typename FIELD, typename ENTRY, typename KEY>
-  using CustomHandler = typename REST_IMPL::template RESTful<VERB, FIELD, ENTRY, KEY>;
+  using DataHandlerImpl = typename REST_IMPL::template RESTfulDataHandlerGenerator<VERB, FIELD, ENTRY, KEY>;
+
+  template <typename ENTRY>
+  using SchemaHandlerImpl = typename REST_IMPL::template RESTfulSchemaHandlerGenerator<ENTRY>;
 
   const registerer_t registerer;
   STORAGE& storage;
@@ -135,10 +138,10 @@ struct PerFieldRESTfulHandlerGenerator {
     // Data handler.
     using entry_t = typename ENTRY_TYPE_WRAPPER::entry_t;
     using key_t = typename ENTRY_TYPE_WRAPPER::key_t;
-    using GETHandler = CustomHandler<GET, specific_field_t, entry_t, key_t>;
-    using POSTHandler = CustomHandler<POST, specific_field_t, entry_t, key_t>;
-    using PUTHandler = CustomHandler<PUT, specific_field_t, entry_t, key_t>;
-    using DELETEHandler = CustomHandler<DELETE, specific_field_t, entry_t, key_t>;
+    using GETHandler = DataHandlerImpl<GET, specific_field_t, entry_t, key_t>;
+    using POSTHandler = DataHandlerImpl<POST, specific_field_t, entry_t, key_t>;
+    using PUTHandler = DataHandlerImpl<PUT, specific_field_t, entry_t, key_t>;
+    using DELETEHandler = DataHandlerImpl<DELETE, specific_field_t, entry_t, key_t>;
 
     registerer(storage_handlers_map_entry_t(
         field_name,
@@ -189,7 +192,7 @@ struct PerFieldRESTfulHandlerGenerator {
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&handler, &generic_input, &field_name](Request request) {
                       try {
-                        auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::entry_t>(request.body);
+                        auto mutable_entry = ParseJSON<entry_t>(request.body);
                         specific_field_t& field =
                             generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                         generic_input.storage
@@ -197,9 +200,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                  // Capture local variables by value for safe async transactions.
                                  [handler, generic_input, &field, mutable_entry, field_name](
                                      mutable_fields_t fields) mutable -> Response {
-                                   using POSTInput = RESTfulPOSTInput<STORAGE,
-                                                                      specific_field_t,
-                                                                      typename ENTRY_TYPE_WRAPPER::entry_t>;
+                                   using POSTInput = RESTfulPOSTInput<STORAGE, specific_field_t, entry_t>;
                                    POSTInput input(
                                        std::move(generic_input), fields, field, field_name, mutable_entry);
                                    return handler.Run(input);
@@ -219,7 +220,7 @@ struct PerFieldRESTfulHandlerGenerator {
                       try {
                         const auto url_key =
                             current::FromString<typename ENTRY_TYPE_WRAPPER::key_t>(key_as_string);
-                        const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::entry_t>(request.body);
+                        const auto entry = ParseJSON<entry_t>(request.body);
                         const auto entry_key =
                             PerStorageFieldType<specific_field_t>::ExtractOrComposeKey(entry);
                         specific_field_t& field =
@@ -231,7 +232,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                      mutable_fields_t fields) -> Response {
                                    using PUTInput = RESTfulPUTInput<STORAGE,
                                                                     specific_field_t,
-                                                                    typename ENTRY_TYPE_WRAPPER::entry_t,
+                                                                    entry_t,
                                                                     typename ENTRY_TYPE_WRAPPER::key_t>;
                                    PUTInput input(std::move(generic_input),
                                                   fields,
@@ -277,6 +278,9 @@ struct PerFieldRESTfulHandlerGenerator {
             })));
 
     // Schema handlers.
+    SchemaRouteGenerator<entry_t> DIMA;
+    static_cast<void>(DIMA);
+#if 0
     registerer(storage_handlers_map_entry_t(
         input_field_name,
         RESTfulRoute(
@@ -344,6 +348,7 @@ struct PerFieldRESTfulHandlerGenerator {
               underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
               r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::JSON>());
             })));
+#endif
   }
 };
 
@@ -358,7 +363,7 @@ void GenerateRESTfulHandler(registerer_t registerer,
               registerer, storage, restful_url_prefix, data_url_component, schema_url_component));
 }
 
-}  // namespace impl
+}  // namespace current::storage::impl
 
 template <class STORAGE_IMPL, class REST_IMPL = Basic>
 class RESTfulStorage {
@@ -481,8 +486,8 @@ class RESTfulStorage {
   }
 };
 
-}  // namespace rest
-}  // namespace storage
+}  // namespace current::storage::rest
+}  // namespace current::storage
 }  // namespace current
 
 using current::storage::rest::RESTfulStorage;
