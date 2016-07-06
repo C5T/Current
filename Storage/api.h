@@ -143,6 +143,8 @@ struct PerFieldRESTfulHandlerGenerator {
     using PUTHandler = DataHandlerImpl<PUT, specific_field_t, entry_t, key_t>;
     using DELETEHandler = DataHandlerImpl<DELETE, specific_field_t, entry_t, key_t>;
 
+    using SchemaRoutesGenerator = SchemaHandlerImpl<entry_t>;
+
     registerer(storage_handlers_map_entry_t(
         field_name,
         RESTfulRoute(
@@ -278,77 +280,13 @@ struct PerFieldRESTfulHandlerGenerator {
             })));
 
     // Schema handlers.
-    SchemaRouteGenerator<entry_t> DIMA;
-    static_cast<void>(DIMA);
-#if 0
-    registerer(storage_handlers_map_entry_t(
-        input_field_name,
-        RESTfulRoute(
-            schema_url_component,
-            "",
-            URLPathArgs::CountMask::None,
-            [](Request r) { r(reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::entry_t>()); })));
-    registerer(storage_handlers_map_entry_t(
-        input_field_name,
-        RESTfulRoute(
-            schema_url_component,
-            ".h",
-            URLPathArgs::CountMask::None,
-            [](Request r) {
-              // TODO:
-              // 1) REST-ify top-level schema and data responses.
-              // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-              // 3) Cache.
-              reflection::StructSchema underlying_type_schema;
-              underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
-              r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>());
-            })));
-    registerer(storage_handlers_map_entry_t(
-        input_field_name,
-        RESTfulRoute(
-            schema_url_component,
-            ".md",
-            URLPathArgs::CountMask::None,
-            [](Request r) {
-              // TODO:
-              // 1) REST-ify top-level schema and data responses.
-              // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-              // 3) Cache.
-              reflection::StructSchema underlying_type_schema;
-              underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
-              r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Markdown>());
-            })));
-    registerer(storage_handlers_map_entry_t(
-        input_field_name,
-        RESTfulRoute(
-            schema_url_component,
-            ".fs",
-            URLPathArgs::CountMask::None,
-            [](Request r) {
-              // TODO:
-              // 1) REST-ify top-level schema and data responses.
-              // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-              // 3) Cache.
-              reflection::StructSchema underlying_type_schema;
-              underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
-              r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::FSharp>());
-            })));
-    registerer(storage_handlers_map_entry_t(
-        input_field_name,
-        RESTfulRoute(
-            schema_url_component,
-            ".json",
-            URLPathArgs::CountMask::None,
-            [](Request r) {
-              // TODO:
-              // 1) REST-ify top-level schema and data responses.
-              // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
-              // 3) Cache.
-              reflection::StructSchema underlying_type_schema;
-              underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
-              r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::JSON>());
-            })));
-#endif
+    SchemaRoutesGenerator schema_routes_generator;
+    schema_routes_generator.RegisterRoutes(
+        [&](const std::string& extension, const std::function<void(Request)> handler) {
+          registerer(storage_handlers_map_entry_t(
+              input_field_name,
+              RESTfulRoute(schema_url_component, extension, URLPathArgs::CountMask::None, handler)));
+        });
   }
 };
 

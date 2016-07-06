@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_HYPERMEDIA_H
 #define CURRENT_STORAGE_REST_HYPERMEDIA_H
 
+#include "basic.h"
 #include "sfinae.h"
 
 #include "../storage.h"
@@ -169,6 +170,10 @@ inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& message
 struct Hypermedia {
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
+
+  // For backwards compatibility. TODO(dkorolev): Remove this.
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  using RESTful = RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
@@ -352,9 +357,7 @@ struct Hypermedia {
   };
 
   template <typename ENTRY>
-  struct RESTfulSchemaHandlerGenerator {
-    // DIMA
-  };
+  struct RESTfulSchemaHandlerGenerator : Basic::template RESTfulSchemaHandlerGenerator<ENTRY> {};
 
   static Response ErrorMethodNotAllowed(const std::string& method) {
     return ErrorResponse(MethodNotAllowedError("Supported methods: GET, PUT, POST, DELETE.", method),
