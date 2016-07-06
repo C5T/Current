@@ -176,7 +176,7 @@ struct Basic {
   template <typename ENTRY>
   class RESTfulSchemaHandlerGenerator {
    private:
-    using registerer_t = std::function<void(const std::string& extension, std::function<void(Request)>)>;
+    using registerer_t = std::function<void(const std::string& route_suffix, std::function<void(Request)>)>;
     struct LanguageIterator {
       registerer_t registerer;
       explicit LanguageIterator(registerer_t registerer) : registerer(registerer) {}

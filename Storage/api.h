@@ -281,10 +281,10 @@ struct PerFieldRESTfulHandlerGenerator {
     // Schema handlers.
     SchemaRoutesGenerator schema_routes_generator;
     schema_routes_generator.RegisterRoutes(
-        [&](const std::string& extension, const std::function<void(Request)> handler) {
+        [&](const std::string& route_suffix, const std::function<void(Request)> handler) {
           registerer(storage_handlers_map_entry_t(
               input_field_name,
-              RESTfulRoute(schema_url_component, extension, URLPathArgs::CountMask::None, handler)));
+              RESTfulRoute(schema_url_component, route_suffix, URLPathArgs::CountMask::None, handler)));
         });
   }
 };
