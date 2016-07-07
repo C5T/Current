@@ -219,8 +219,7 @@ struct PerFieldRESTfulHandlerGenerator {
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
                       try {
-                        const auto url_key =
-                            current::FromString<typename ENTRY_TYPE_WRAPPER::key_t>(key_as_string);
+                        const auto url_key = current::FromString<key_t>(key_as_string);
                         const auto entry = ParseJSON<entry_t>(request.body);
                         const auto entry_key =
                             PerStorageFieldType<specific_field_t>::ExtractOrComposeKey(entry);
@@ -231,10 +230,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                  // Capture local variables by value for safe async transactions.
                                  [handler, generic_input, &field, url_key, entry, entry_key, field_name](
                                      mutable_fields_t fields) -> Response {
-                                   using PUTInput = RESTfulPUTInput<STORAGE,
-                                                                    specific_field_t,
-                                                                    entry_t,
-                                                                    typename ENTRY_TYPE_WRAPPER::key_t>;
+                                   using PUTInput = RESTfulPUTInput<STORAGE, specific_field_t, entry_t, key_t>;
                                    PUTInput input(std::move(generic_input),
                                                   fields,
                                                   field,
@@ -256,7 +252,7 @@ struct PerFieldRESTfulHandlerGenerator {
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
-                      const auto key = current::FromString<typename ENTRY_TYPE_WRAPPER::key_t>(key_as_string);
+                      const auto key = current::FromString<key_t>(key_as_string);
                       specific_field_t& field =
                           generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadWriteTransaction(
@@ -264,9 +260,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                                 [handler, generic_input, &field, key, field_name](
                                                     mutable_fields_t fields) -> Response {
                                                   using DELETEInput =
-                                                      RESTfulDELETEInput<STORAGE,
-                                                                         specific_field_t,
-                                                                         typename ENTRY_TYPE_WRAPPER::key_t>;
+                                                      RESTfulDELETEInput<STORAGE, specific_field_t, key_t>;
                                                   DELETEInput input(
                                                       std::move(generic_input), fields, field, field_name, key);
                                                   return handler.Run(input);
