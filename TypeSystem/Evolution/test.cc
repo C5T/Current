@@ -993,16 +993,16 @@ CURRENT_STORAGE(Storage) { CURRENT_STORAGE_FIELD(user, PersistedUser); };
 #include "golden/storage_schema_original.h"
 #include "golden/storage_schema_evolved.h"
 
-CURRENT_DERIVED_NAMESPACE(SchemaOriginalStorage, USERSPACE_F57EAC2563CE5708) {
+CURRENT_DERIVED_NAMESPACE(SchemaOriginalStorage, USERSPACE_D6D2A27DC90B2AB4) {
   // Alias the long transaction type to just be `Transaction`.
-  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9227630689129186588);
+  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9226378158835221611);
 };
 
-CURRENT_DERIVED_NAMESPACE(SchemaModifiedStorage, USERSPACE_381EECA4ACB24A12) {
+CURRENT_DERIVED_NAMESPACE(SchemaModifiedStorage, USERSPACE_229EB367F0CD061F) {
   // Type `Transaction` in the modified storage points to the newly mutated transaction type.
-  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9224928948940686845);
+  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9221660456409416796);
   // Should also point the type from the other storage to the same namespaced type name, for the evolutors.
-  CURRENT_NAMESPACE_TYPE(Transaction_T9227630689129186588, Transaction);
+  CURRENT_NAMESPACE_TYPE(Transaction_T9226378158835221611, Transaction);
 };
 
 // Custom evolution for `Name` stored as part of Storage's transactions.
@@ -1130,9 +1130,10 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       StructSchema struct_schema;
       struct_schema.AddType<pre_evolution_transaction_t>();
       EXPECT_EQ(
-          "namespace current_userspace_f57eac2563ce5708 {\n"
+          "namespace current_userspace_d6d2a27dc90b2ab4 {\n"
           "struct TransactionMeta {\n"
-          "  std::chrono::microseconds timestamp;\n"
+          "  std::chrono::microseconds begin_us;\n"
+          "  std::chrono::microseconds end_us;\n"
           "  std::map<std::string, std::string> fields;\n"
           "};\n"
           "struct Name {\n"
@@ -1143,27 +1144,30 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "  std::string key;\n"
           "};\n"
           "struct PersistedUserUpdated {\n"
+          "  std::chrono::microseconds us;\n"
           "  User data;\n"
           "};\n"
           "struct PersistedUserDeleted {\n"
+          "  std::chrono::microseconds us;\n"
           "  std::string key;\n"
           "};\n"
           "using Variant_B_PersistedUserUpdated_PersistedUserDeleted_E = Variant<PersistedUserUpdated, "
           "PersistedUserDeleted>;\n"
-          "struct Transaction_T9227630689129186588 {\n"
+          "struct Transaction_T9226378158835221611 {\n"
           "  TransactionMeta meta;\n"
           "  std::vector<Variant_B_PersistedUserUpdated_PersistedUserDeleted_E> mutations;\n"
           "};\n"
-          "}  // namespace current_userspace_f57eac2563ce5708\n",
+          "}  // namespace current_userspace_d6d2a27dc90b2ab4\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
     {
       StructSchema struct_schema;
       struct_schema.AddType<post_evolution_transaction_t>();
       EXPECT_EQ(
-          "namespace current_userspace_381eeca4acb24a12 {\n"
+          "namespace current_userspace_229eb367f0cd061f {\n"
           "struct TransactionMeta {\n"
-          "  std::chrono::microseconds timestamp;\n"
+          "  std::chrono::microseconds begin_us;\n"
+          "  std::chrono::microseconds end_us;\n"
           "  std::map<std::string, std::string> fields;\n"
           "};\n"
           "struct Name {\n"
@@ -1173,18 +1177,20 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "  std::string key;\n"
           "};\n"
           "struct PersistedUserUpdated {\n"
+          "  std::chrono::microseconds us;\n"
           "  User data;\n"
           "};\n"
           "struct PersistedUserDeleted {\n"
+          "  std::chrono::microseconds us;\n"
           "  std::string key;\n"
           "};\n"
           "using Variant_B_PersistedUserUpdated_PersistedUserDeleted_E = Variant<PersistedUserUpdated, "
           "PersistedUserDeleted>;\n"
-          "struct Transaction_T9224928948940686845 {\n"
+          "struct Transaction_T9221660456409416796 {\n"
           "  TransactionMeta meta;\n"
           "  std::vector<Variant_B_PersistedUserUpdated_PersistedUserDeleted_E> mutations;\n"
           "};\n"
-          "}  // namespace current_userspace_381eeca4acb24a12\n",
+          "}  // namespace current_userspace_229eb367f0cd061f\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
