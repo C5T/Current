@@ -72,7 +72,9 @@ class Synchronous final {
     bool successful = false;
     result_t f_result;
     try {
+      journal_.BeforeTransaction();
       f_result = f();
+      journal_.AfterTransaction();
       successful = true;
     } catch (StorageRollbackExceptionWithValue<result_t> e) {
       journal_.Rollback();
@@ -148,7 +150,9 @@ class Synchronous final {
     }
     bool successful = false;
     try {
+      journal_.BeforeTransaction();
       f();
+      journal_.AfterTransaction();
       successful = true;
     } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
@@ -219,7 +223,9 @@ class Synchronous final {
     }
     result_t f1_result;
     try {
+      journal_.BeforeTransaction();
       f1_result = f1();
+      journal_.AfterTransaction();
       PersistJournal();
       f2(std::move(f1_result));
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));

@@ -471,32 +471,41 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
       current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(client_storage_file_name));
   ASSERT_EQ(2u, persisted_entries.size());
 
-  const auto add_fields = current::strings::Split(persisted_entries[0], '\t');
-  ASSERT_TRUE(add_fields.size() == 2u);
-  const auto idx_ts = ParseJSON<idxts_t>(add_fields[0]);
-  EXPECT_EQ(0u, idx_ts.index);
-  EXPECT_EQ(1024, idx_ts.us.count());
-  const auto add_transaction = ParseJSON<TestStorage::transaction_t>(add_fields[1]);
-  EXPECT_EQ(1024, add_transaction.meta.timestamp.count());
-  ASSERT_EQ(1u, add_transaction.meta.fields.size());
-  EXPECT_EQ("unittest", add_transaction.meta.fields.at("who"));
-  ASSERT_EQ(1u, add_transaction.mutations.size());
+  {
+    const auto add_fields = current::strings::Split(persisted_entries[0], '\t');
+    ASSERT_TRUE(add_fields.size() == 2u);
+    const auto idx_ts = ParseJSON<idxts_t>(add_fields[0]);
+    EXPECT_EQ(0u, idx_ts.index);
+    EXPECT_EQ(1024, idx_ts.us.count());
+    const auto add_transaction = ParseJSON<TestStorage::transaction_t>(add_fields[1]);
+    EXPECT_EQ(1024, add_transaction.meta.begin_us.count());
+    EXPECT_EQ(1024, add_transaction.meta.end_us.count());
+    ASSERT_EQ(1u, add_transaction.meta.fields.size());
+    EXPECT_EQ("unittest", add_transaction.meta.fields.at("who"));
+    ASSERT_EQ(1u, add_transaction.mutations.size());
 
-  ASSERT_TRUE(Exists<PersistedClientUpdated>(add_transaction.mutations[0]));
-  const auto& client = Value<PersistedClientUpdated>(add_transaction.mutations[0]).data;
-  EXPECT_EQ(ClientID(101), client.key);
-  EXPECT_EQ("John Doe", client.name);
-  EXPECT_TRUE(client.white);
-  EXPECT_TRUE(client.straight);
-  EXPECT_TRUE(client.male);
+    ASSERT_TRUE(Exists<PersistedClientUpdated>(add_transaction.mutations[0]));
+    const auto& client = Value<PersistedClientUpdated>(add_transaction.mutations[0]).data;
+    EXPECT_EQ(ClientID(101), client.key);
+    EXPECT_EQ("John Doe", client.name);
+    EXPECT_TRUE(client.white);
+    EXPECT_TRUE(client.straight);
+    EXPECT_TRUE(client.male);
+  }
 
-  const auto del_fields = current::strings::Split(persisted_entries[1], '\t');
-  ASSERT_TRUE(del_fields.size() == 2u);
-  const auto del_transaction = ParseJSON<TestStorage::transaction_t>(del_fields[1]);
-  EXPECT_EQ(2000, del_transaction.meta.timestamp.count());
-  ASSERT_EQ(1u, del_transaction.meta.fields.size());
-  EXPECT_EQ("unittest", del_transaction.meta.fields.at("who"));
-  ASSERT_EQ(1u, del_transaction.mutations.size());
+  {
+    const auto del_fields = current::strings::Split(persisted_entries[1], '\t');
+    ASSERT_TRUE(del_fields.size() == 2u);
+    const auto idx_ts = ParseJSON<idxts_t>(del_fields[0]);
+    EXPECT_EQ(1u, idx_ts.index);
+    EXPECT_EQ(2000, idx_ts.us.count());
+    const auto del_transaction = ParseJSON<TestStorage::transaction_t>(del_fields[1]);
+    EXPECT_EQ(2000, del_transaction.meta.begin_us.count());
+    EXPECT_EQ(2000, del_transaction.meta.end_us.count());
+    ASSERT_EQ(1u, del_transaction.meta.fields.size());
+    EXPECT_EQ("unittest", del_transaction.meta.fields.at("who"));
+    ASSERT_EQ(1u, del_transaction.mutations.size());
+  }
 }
 
 #endif  // CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC

@@ -63,33 +63,35 @@ class GenericOneToMany {
   // Adds specified object and overwrites existing one if it has the same row and col.
   // Removes all other existing objects with the same col.
   void Add(const T& object) {
+    const auto now = current::time::Now();
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       const T& previous_object = *(cit->second);
-      journal_.LogMutation(UPDATE_EVENT(object),
+      journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
       const auto cit = transposed_.find(col);
       if (cit != transposed_.end()) {
         const T& previous_object = *(cit->second);
         const auto previous_key = std::make_pair(sfinae::GetRow(previous_object), col);
-        journal_.LogMutation(DELETE_EVENT(previous_object),
+        journal_.LogMutation(DELETE_EVENT(now, previous_object),
                              [this, previous_key, previous_object]() { DoAdd(previous_key, previous_object); });
         DoErase(previous_key);
       }
-      journal_.LogMutation(UPDATE_EVENT(object), [this, key]() { DoErase(key); });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() { DoErase(key); });
     }
     DoAdd(key, object);
   }
 
   void Erase(const key_t& key) {
+    const auto now = current::time::Now();
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       const T& previous_object = *(cit->second);
-      journal_.LogMutation(DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
     }
@@ -97,11 +99,12 @@ class GenericOneToMany {
   void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
 
   void EraseCol(sfinae::CF<col_t> col) {
+    const auto now = current::time::Now();
     const auto cit = transposed_.find(col);
     if (cit != transposed_.end()) {
       const T& previous_object = *(cit->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
-      journal_.LogMutation(DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
     }

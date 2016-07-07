@@ -1257,11 +1257,110 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   {
     ASSERT_EQ(1u, persister.Size());
     const auto& transaction = TransactionByIndex(0u);
-    EXPECT_EQ(1000, transaction.meta.timestamp.count());
+    EXPECT_EQ(1000, transaction.meta.begin_us.count());
     EXPECT_EQ(1u, transaction.meta.fields.size());
     EXPECT_EQ(0u, transaction.meta.fields.count("who"));
     ASSERT_EQ(1u, transaction.meta.fields.count("why"));
     ASSERT_EQ("because", transaction.meta.fields.at("why"));
+  }
+}
+
+TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  const auto& persister = storage.InternalExposeStream().InternalExposePersister();
+  const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
+    return (*persister.Iterate(index, index + 1).begin()).entry;
+  };
+
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      ASSERT_FALSE(Exists(fields.d.LastModified("x")));
+      current::time::SetNow(std::chrono::microseconds(101));
+      fields.d.Add(Record{"x", 1});
+      {
+        const auto t = fields.d.LastModified("x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(101, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(102));
+      fields.d.Add(Record{"y", 2});
+      {
+        const auto t = fields.d.LastModified("y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(102, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(103));
+      fields.d.Erase("y");
+      {
+        const auto t = fields.d.LastModified("y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(103, Value(t).count());
+      }
+
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+
+    ASSERT_EQ(1u, persister.Size());
+    const auto& transaction = TransactionByIndex(0u);
+    EXPECT_EQ(100, transaction.meta.begin_us.count());
+    EXPECT_EQ(103, transaction.meta.end_us.count());
+    ASSERT_EQ(3u, transaction.mutations.size());
+    ASSERT_TRUE(Exists<RecordDictionaryUpdated>(transaction.mutations[0]));
+    EXPECT_EQ(101, Value<RecordDictionaryUpdated>(transaction.mutations[0]).us.count());
+    ASSERT_TRUE(Exists<RecordDictionaryUpdated>(transaction.mutations[1]));
+    EXPECT_EQ(102, Value<RecordDictionaryUpdated>(transaction.mutations[1]).us.count());
+    ASSERT_TRUE(Exists<RecordDictionaryDeleted>(transaction.mutations[2]));
+    EXPECT_EQ(103, Value<RecordDictionaryDeleted>(transaction.mutations[2]).us.count());
+  }
+
+  {
+    current::time::SetNow(std::chrono::microseconds(300));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"x", 100});
+      fields.d.Erase("y");
+      fields.d.Add(Record{"z", 3});
+      CURRENT_STORAGE_THROW_ROLLBACK();
+    }).Go();
+    EXPECT_FALSE(WasCommitted(result));
+  }
+
+  {
+    current::time::SetNow(std::chrono::microseconds(300));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      {
+        const auto t = fields.d.LastModified("x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(101, Value(t).count());
+      }
+      {
+        const auto t = fields.d.LastModified("y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(103, Value(t).count());
+      }
+      EXPECT_FALSE(Exists(fields.d.LastModified("z")));
+      current::time::SetNow(std::chrono::microseconds(301));
+      fields.d.Erase("x");
+      {
+        const auto t = fields.d.LastModified("x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(301, Value(t).count());
+      }
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+
+    ASSERT_EQ(2u, persister.Size());
+    const auto& transaction = TransactionByIndex(1u);
+    EXPECT_EQ(300, transaction.meta.begin_us.count());
+    EXPECT_EQ(301, transaction.meta.end_us.count());
+    ASSERT_EQ(1u, transaction.mutations.size());
+    ASSERT_TRUE(Exists<RecordDictionaryDeleted>(transaction.mutations[0]));
+    EXPECT_EQ(301, Value<RecordDictionaryDeleted>(transaction.mutations[0]).us.count());
   }
 }
 
@@ -1284,17 +1383,23 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   {
     current::time::SetNow(std::chrono::microseconds(100));
     const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      current::time::SetNow(std::chrono::microseconds(101));
       fields.d.Add(Record{"one", 1});
+      current::time::SetNow(std::chrono::microseconds(102));
       fields.d.Add(Record{"two", 2});
       fields.SetTransactionMetaField("user", "dima");
+      current::time::SetNow(std::chrono::microseconds(103));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
     const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      current::time::SetNow(std::chrono::microseconds(201));
       fields.d.Add(Record{"three", 3});
+      current::time::SetNow(std::chrono::microseconds(202));
       fields.d.Erase("two");
+      current::time::SetNow(std::chrono::microseconds(203));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1445,6 +1550,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
     current::time::SetNow(std::chrono::microseconds(100));
     const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
+      current::time::SetNow(std::chrono::microseconds(101));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1452,6 +1558,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
     current::time::SetNow(std::chrono::microseconds(200));
     const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"two", 2});
+      current::time::SetNow(std::chrono::microseconds(201));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1460,10 +1567,12 @@ TEST(TransactionalStorage, InternalExposeStream) {
   StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
   storage.InternalExposeStream().Subscribe(processor);
   EXPECT_EQ(
-      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
-      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"
-      "{\"index\":1,\"us\":200}\t{\"meta\":{\"timestamp\":200,\"fields\":{}},\"mutations\":[{"
-      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}]}\n",
+      "{\"index\":0,\"us\":101}\t{\"meta\":{\"begin_us\":100,\"end_us\":101,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"us\":100,\"data\":{\"lhs\":\"one\",\"rhs\":1}},"
+      "\"\":\"T9200018162904582576\"}]}\n"
+      "{\"index\":1,\"us\":201}\t{\"meta\":{\"begin_us\":200,\"end_us\":201,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"us\":200,\"data\":{\"lhs\":\"two\",\"rhs\":2}},"
+      "\"\":\"T9200018162904582576\"}]}\n",
       collected);
 }
 
@@ -1865,9 +1974,9 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
   storage.InternalExposeStream().Subscribe(processor);
   EXPECT_EQ(
-      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
-      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
-      "\"T9205381019427680739\"}]}\n",
+      "{\"index\":0,\"us\":100}\t{\"meta\":{\"begin_us\":100,\"end_us\":100,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"us\":100,\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
+      "\"T9200018162904582576\"}]}\n",
       collected);
 }
 
@@ -1924,9 +2033,9 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     storage.InternalExposeStream().Subscribe<transaction_t>(processor);
     EXPECT_EQ(
         "{\"index\":1,\"us\":2}\t"
-        "{\"meta\":{\"timestamp\":2,\"fields\":{}},\"mutations\":["
-        "{\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}"
-        "]}\n",
+        "{\"meta\":{\"begin_us\":2,\"end_us\":2,\"fields\":{}},\"mutations\":["
+        "{\"RecordDictionaryUpdated\":{\"us\":2,\"data\":{\"lhs\":\"two\",\"rhs\":2}},"
+        "\"\":\"T9200018162904582576\"}]}\n",
         collected_transactions);
   }
 

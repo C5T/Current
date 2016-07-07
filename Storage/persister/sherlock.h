@@ -118,12 +118,16 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
 
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
+#ifndef CURRENT_MOCK_TIME
+      assert(journal.transaction_meta.begin_us < journal.transaction_meta.end_us);
+#else
+      assert(journal.transaction_meta.begin_us <= journal.transaction_meta.end_us);
+#endif
       transaction_t transaction;
       for (auto&& entry : journal.commit_log) {
         transaction.mutations.emplace_back(std::move(entry));
       }
-      transaction.meta.timestamp = current::time::Now();
-      std::swap(transaction.meta.fields, journal.meta_fields);
+      std::swap(transaction.meta, journal.transaction_meta);
       stream_used_.Publish(std::move(transaction));
     }
     journal.Clear();

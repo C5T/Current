@@ -68,25 +68,27 @@ class GenericManyToMany {
   size_t Size() const { return map_.size(); }
 
   void Add(const T& object) {
+    const auto now = current::time::Now();
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       const T& previous_object = *(cit->second);
-      journal_.LogMutation(UPDATE_EVENT(object),
+      journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
-      journal_.LogMutation(UPDATE_EVENT(object), [this, key]() { DoErase(key); });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() { DoErase(key); });
     }
     DoAdd(key, object);
   }
 
   void Erase(const key_t& key) {
+    const auto now = current::time::Now();
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       const T& previous_object = *(cit->second);
-      journal_.LogMutation(DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
     }
