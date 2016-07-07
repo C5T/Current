@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_HYPERMEDIA_H
 #define CURRENT_STORAGE_REST_HYPERMEDIA_H
 
+#include "basic.h"
 #include "sfinae.h"
 
 #include "../storage.h"
@@ -168,7 +169,11 @@ inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& message
 
 struct Hypermedia {
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful;
+  struct RESTfulDataHandlerGenerator;
+
+  // For backwards compatibility. TODO(dkorolev): Remove this.
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  using RESTful = RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
@@ -222,7 +227,7 @@ struct Hypermedia {
   }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
@@ -254,7 +259,7 @@ struct Hypermedia {
   };
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<POST, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -298,7 +303,7 @@ struct Hypermedia {
   };
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -333,7 +338,7 @@ struct Hypermedia {
     }
   };
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -350,6 +355,9 @@ struct Hypermedia {
       return Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
     }
   };
+
+  template <typename ENTRY>
+  struct RESTfulSchemaHandlerGenerator : Basic::template RESTfulSchemaHandlerGenerator<ENTRY> {};
 
   static Response ErrorMethodNotAllowed(const std::string& method) {
     return ErrorResponse(MethodNotAllowedError("Supported methods: GET, PUT, POST, DELETE.", method),
