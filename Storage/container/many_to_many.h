@@ -50,17 +50,12 @@ class GenericManyToMany {
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
-  using whole_matrix_map_t = std::unordered_map<std::pair<row_t, col_t>,
-                                                std::unique_ptr<T>,
-                                                CurrentHashFunction<std::pair<row_t, col_t>>>;
+  using whole_matrix_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
   using row_elements_map_t = COL_MAP<col_t, const T*>;
   using col_elements_map_t = ROW_MAP<row_t, const T*>;
   using forward_map_t = ROW_MAP<row_t, row_elements_map_t>;
   using transposed_map_t = COL_MAP<col_t, col_elements_map_t>;
   using rest_behavior_t = rest::behavior::Matrix;
-
-  using DEPRECATED_T_(ROW) = row_t;
-  using DEPRECATED_T_(COL) = col_t;
 
   GenericManyToMany(MutationJournal& journal) : journal_(journal) {}
 
@@ -72,25 +67,46 @@ class GenericManyToMany {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
-    const auto cit = map_.find(key);
-    if (cit != map_.end()) {
-      const T& previous_object = *(cit->second);
+    const auto map_cit = map_.find(key);
+    const auto lm_cit = last_modified_.find(key);
+    if (map_cit != map_.end()) {
+      const T& previous_object = *(map_cit->second);
+      assert(lm_cit != last_modified_.end());
+      const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object]() { DoAdd(key, previous_object); });
+                           [this, key, previous_object, previous_timestamp]() {
+                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                           });
     } else {
-      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() { DoErase(key); });
+      if (lm_cit != last_modified_.end()) {
+        const auto previous_timestamp = lm_cit->second;
+        journal_.LogMutation(
+            UPDATE_EVENT(now, object),
+            [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
+      } else {
+        journal_.LogMutation(UPDATE_EVENT(now, object),
+                             [this, key]() {
+                               DoErase(key);
+                               last_modified_.erase(key);
+                             });
+      }
     }
-    DoAdd(key, object);
+    DoAddWithLastModified(now, key, object);
   }
 
   void Erase(const key_t& key) {
     const auto now = current::time::Now();
-    const auto cit = map_.find(key);
-    if (cit != map_.end()) {
-      const T& previous_object = *(cit->second);
+    const auto map_cit = map_.find(key);
+    if (map_cit != map_.end()) {
+      const T& previous_object = *(map_cit->second);
+      const auto lm_cit = last_modified_.find(key);
+      assert(lm_cit != last_modified_.end());
+      const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object]() { DoAdd(key, previous_object); });
-      DoErase(key);
+                           [this, key, previous_object, previous_timestamp]() {
+                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                           });
+      DoEraseWithLastModified(now, key);
     }
   }
   void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
@@ -107,12 +123,27 @@ class GenericManyToMany {
     return operator[](std::make_pair(row, col));
   }
 
+  ImmutableOptional<std::chrono::microseconds> LastModified(const key_t& key) const {
+    const auto cit = last_modified_.find(key);
+    if (cit != last_modified_.end()) {
+      return cit->second;
+    } else {
+      return nullptr;
+    }
+  }
+  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<row_t> row,
+                                                            sfinae::CF<col_t> col) const {
+    return LastModified(std::make_pair(row, col));
+  }
+
   void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    DoAdd(std::make_pair(row, col), e.data);
+    DoAddWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
-  void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
+  void operator()(const DELETE_EVENT& e) {
+    DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
+  }
 
   template <typename OUTER_MAP>
   struct OuterAccessor final {
@@ -176,11 +207,12 @@ class GenericManyToMany {
   iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
-  void DoAdd(const key_t& key, const T& object) {
+  void DoAddWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
     auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
     forward_[key.first][key.second] = placeholder.get();
     transposed_[key.second][key.first] = placeholder.get();
+    last_modified_[key] = us;
   }
 
   void DoErase(const key_t& key) {
@@ -197,9 +229,15 @@ class GenericManyToMany {
     map_.erase(key);
   }
 
+  void DoEraseWithLastModified(std::chrono::microseconds us, const key_t& key) {
+    DoErase(key);
+    last_modified_[key] = us;
+  }
+
   whole_matrix_map_t map_;
   forward_map_t forward_;
   transposed_map_t transposed_;
+  std::unordered_map<key_t, std::chrono::microseconds, CurrentHashFunction<key_t>> last_modified_;
   MutationJournal& journal_;
 };
 

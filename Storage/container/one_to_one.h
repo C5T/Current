@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2016 Grigory Nikolaenko <nikolaenko.grigory@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -65,77 +66,123 @@ class GenericOneToOne {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
-    const auto cit = map_.find(key);
-    if (cit != map_.end()) {
-      const T& previous_object = *(cit->second);
+    const auto map_cit = map_.find(key);
+    const auto lm_cit = last_modified_.find(key);
+    if (map_cit != map_.end()) {
+      const T& previous_object = *(map_cit->second);
+      assert(lm_cit != last_modified_.end());
+      const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object]() { DoAdd(key, previous_object); });
+                           [this, key, previous_object, previous_timestamp]() {
+                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                           });
     } else {
       const auto cit_row = forward_.find(row);
       const auto cit_col = transposed_.find(col);
       const bool row_occupied = (cit_row != forward_.end());
       const bool col_occupied = (cit_col != transposed_.end());
       if (row_occupied && col_occupied) {
-        const T& previous_object_same_row = *(cit_row->second);
-        const T& previous_object_same_col = *(cit_col->second);
-        const auto key_same_row = std::make_pair(row, sfinae::GetCol(previous_object_same_row));
-        const auto key_same_col = std::make_pair(sfinae::GetRow(previous_object_same_col), col);
-        journal_.LogMutation(DELETE_EVENT(now, previous_object_same_row),
-                             [this, key_same_row, previous_object_same_row]() {
-                               DoAdd(key_same_row, previous_object_same_row);
+        const T& conflicting_object_same_row = *(cit_row->second);
+        const T& conflicting_object_same_col = *(cit_col->second);
+        const auto key_same_row = std::make_pair(row, sfinae::GetCol(conflicting_object_same_row));
+        const auto lm_same_row_cit = last_modified_.find(key_same_row);
+        assert(lm_same_row_cit != last_modified_.end());
+        const auto timestamp_same_row = lm_same_row_cit->second;
+        const auto key_same_col = std::make_pair(sfinae::GetRow(conflicting_object_same_col), col);
+        const auto lm_same_col_cit = last_modified_.find(key_same_col);
+        assert(lm_same_col_cit != last_modified_.end());
+        const auto timestamp_same_col = lm_same_col_cit->second;
+        journal_.LogMutation(DELETE_EVENT(now, conflicting_object_same_row),
+                             [this, key_same_row, conflicting_object_same_row, timestamp_same_row]() {
+                               DoAddWithLastModified(
+                                   timestamp_same_row, key_same_row, conflicting_object_same_row);
                              });
-        journal_.LogMutation(DELETE_EVENT(now, previous_object_same_col),
-                             [this, key_same_col, previous_object_same_col]() {
-                               DoAdd(key_same_col, previous_object_same_col);
+        journal_.LogMutation(DELETE_EVENT(now, conflicting_object_same_col),
+                             [this, key_same_col, conflicting_object_same_col, timestamp_same_col]() {
+                               DoAddWithLastModified(
+                                   timestamp_same_col, key_same_col, conflicting_object_same_col);
                              });
-        DoErase(key_same_row);
-        DoErase(key_same_col);
+        DoEraseWithLastModified(now, key_same_row);
+        DoEraseWithLastModified(now, key_same_col);
       } else if (row_occupied || col_occupied) {
-        const T& previous_object = row_occupied ? *(cit_row->second) : *(cit_col->second);
-        const auto previous_key =
-            std::make_pair(sfinae::GetRow(previous_object), sfinae::GetCol(previous_object));
-        journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                             [this, previous_key, previous_object]() { DoAdd(previous_key, previous_object); });
-        DoErase(previous_key);
+        const T& conflicting_object = row_occupied ? *(cit_row->second) : *(cit_col->second);
+        const auto conflicting_object_key =
+            std::make_pair(sfinae::GetRow(conflicting_object), sfinae::GetCol(conflicting_object));
+        const auto conflicting_object_lm_cit = last_modified_.find(conflicting_object_key);
+        assert(conflicting_object_lm_cit != last_modified_.end());
+        const auto conflicting_object_timestamp = conflicting_object_lm_cit->second;
+        journal_.LogMutation(
+            DELETE_EVENT(now, conflicting_object),
+            [this, conflicting_object_key, conflicting_object, conflicting_object_timestamp]() {
+              DoAddWithLastModified(conflicting_object_timestamp, conflicting_object_key, conflicting_object);
+            });
+        DoEraseWithLastModified(now, conflicting_object_key);
       }
-      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() { DoErase(key); });
+
+      if (lm_cit != last_modified_.end()) {
+        const auto previous_timestamp = lm_cit->second;
+        journal_.LogMutation(
+            UPDATE_EVENT(now, object),
+            [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
+      } else {
+        journal_.LogMutation(UPDATE_EVENT(now, object),
+                             [this, key]() {
+                               DoErase(key);
+                               last_modified_.erase(key);
+                             });
+      }
     }
-    DoAdd(key, object);
+    DoAddWithLastModified(now, key, object);
   }
 
   void Erase(const key_t& key) {
     const auto now = current::time::Now();
-    const auto cit = map_.find(key);
-    if (cit != map_.end()) {
-      const T& previous_object = *(cit->second);
+    const auto map_cit = map_.find(key);
+    if (map_cit != map_.end()) {
+      const T& previous_object = *(map_cit->second);
+      const auto lm_cit = last_modified_.find(key);
+      assert(lm_cit != last_modified_.end());
+      const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object]() { DoAdd(key, previous_object); });
-      DoErase(key);
+                           [this, key, previous_object, previous_timestamp]() {
+                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                           });
+      DoEraseWithLastModified(now, key);
     }
   }
   void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
 
   void EraseRow(sfinae::CF<row_t> row) {
     const auto now = current::time::Now();
-    const auto cit = forward_.find(row);
-    if (cit != forward_.end()) {
-      const T& previous_object = *(cit->second);
+    const auto forward_cit = forward_.find(row);
+    if (forward_cit != forward_.end()) {
+      const T& previous_object = *(forward_cit->second);
       const auto key = std::make_pair(row, sfinae::GetCol(previous_object));
+      const auto lm_cit = last_modified_.find(key);
+      assert(lm_cit != last_modified_.end());
+      const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object]() { DoAdd(key, previous_object); });
-      DoErase(key);
+                           [this, key, previous_object, previous_timestamp]() {
+                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                           });
+      DoEraseWithLastModified(now, key);
     }
   }
 
   void EraseCol(sfinae::CF<col_t> col) {
     const auto now = current::time::Now();
-    const auto cit = transposed_.find(col);
-    if (cit != transposed_.end()) {
-      const T& previous_object = *(cit->second);
+    const auto transposed_cit = transposed_.find(col);
+    if (transposed_cit != transposed_.end()) {
+      const T& previous_object = *(transposed_cit->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
+      const auto lm_cit = last_modified_.find(key);
+      assert(lm_cit != last_modified_.end());
+      const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object]() { DoAdd(key, previous_object); });
-      DoErase(key);
+                           [this, key, previous_object, previous_timestamp]() {
+                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                           });
+      DoEraseWithLastModified(now, key);
     }
   }
 
@@ -167,6 +214,19 @@ class GenericOneToOne {
     }
   }
 
+  ImmutableOptional<std::chrono::microseconds> LastModified(const key_t& key) const {
+    const auto cit = last_modified_.find(key);
+    if (cit != last_modified_.end()) {
+      return cit->second;
+    } else {
+      return nullptr;
+    }
+  }
+  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<row_t> row,
+                                                            sfinae::CF<col_t> col) const {
+    return LastModified(std::make_pair(row, col));
+  }
+
   bool DoesNotConflict(const key_t& key) const {
     return forward_.find(key.first) == forward_.end() && transposed_.find(key.second) == transposed_.end();
   }
@@ -177,9 +237,11 @@ class GenericOneToOne {
   void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    DoAdd(std::make_pair(row, col), e.data);
+    DoAddWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
-  void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
+  void operator()(const DELETE_EVENT& e) {
+    DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
+  }
 
   const GenericMapAccessor<forward_map_t> Rows() const { return GenericMapAccessor<forward_map_t>(forward_); }
 
@@ -193,22 +255,29 @@ class GenericOneToOne {
   iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
+  void DoAddWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
+    auto& placeholder = map_[key];
+    placeholder = std::make_unique<T>(object);
+    forward_[key.first] = placeholder.get();
+    transposed_[key.second] = placeholder.get();
+    last_modified_[key] = us;
+  }
+
   void DoErase(const key_t& key) {
     forward_.erase(key.first);
     transposed_.erase(key.second);
     map_.erase(key);
   }
 
-  void DoAdd(const key_t& key, const T& object) {
-    auto& placeholder = map_[key];
-    placeholder = std::make_unique<T>(object);
-    forward_[key.first] = placeholder.get();
-    transposed_[key.second] = placeholder.get();
+  void DoEraseWithLastModified(std::chrono::microseconds us, const key_t& key) {
+    DoErase(key);
+    last_modified_[key] = us;
   }
 
   elements_map_t map_;
   forward_map_t forward_;
   transposed_map_t transposed_;
+  std::unordered_map<key_t, std::chrono::microseconds, CurrentHashFunction<key_t>> last_modified_;
   MutationJournal& journal_;
 };
 
