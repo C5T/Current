@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../storage.h"
 
 #include "../../Blocks/HTTP/api.h"
+#include "../../TypeSystem/Schema/schema.h"
 
 namespace current {
 namespace storage {
@@ -41,7 +42,7 @@ namespace rest {
 
 struct Basic {
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful;
+  struct RESTfulDataHandlerGenerator;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT&) {}
@@ -72,7 +73,7 @@ struct Basic {
   }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
@@ -99,7 +100,7 @@ struct Basic {
   };
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<POST, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -133,7 +134,7 @@ struct Basic {
   };
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -160,7 +161,7 @@ struct Basic {
   };
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -169,6 +170,35 @@ struct Basic {
     Response Run(const INPUT& input) const {
       input.field.Erase(input.key);
       return Response("Deleted.\n", HTTPResponseCode.OK);
+    }
+  };
+
+  template <typename ENTRY>
+  class RESTfulSchemaHandlerGenerator {
+   private:
+    using registerer_t = std::function<void(const std::string& route_suffix, std::function<void(Request)>)>;
+    struct LanguageIterator {
+      registerer_t registerer;
+      explicit LanguageIterator(registerer_t registerer) : registerer(registerer) {}
+      template <current::reflection::Language LANGUAGE>
+      void PerLanguage() {
+        registerer('.' + current::ToString(LANGUAGE),
+                   [](Request r) {
+                     // TODO(dkorolev): Add caching one day.
+                     reflection::StructSchema underlying_type_schema;
+                     underlying_type_schema.AddType<ENTRY>();
+                     r(underlying_type_schema.GetSchemaInfo().Describe<LANGUAGE>());
+                   });
+      }
+    };
+
+   public:
+    void RegisterRoutes(registerer_t registerer) {
+      // Top-level handler: Just the name of the `CURRENT_STRUCT`.
+      registerer("", [](Request r) { r(reflection::CurrentTypeName<ENTRY>()); });
+      // Per-language handlers: For `/schema.*` routes export the schema in the respective language.
+      LanguageIterator per_language(registerer);
+      current::reflection::ForEachLanguage(per_language);
     }
   };
 
