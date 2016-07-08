@@ -91,7 +91,6 @@ struct FieldEntryTypeExtractor {};
 template <typename T>
 struct StorageExtractedFieldType {
   using particular_field_t = T;
-  using DEPRECATED_T_(PARTICULAR_FIELD) = T;
 };
 
 template <typename T>
@@ -112,11 +111,6 @@ struct FieldUnderlyingTypesWrapper {
   // For reflection.
   using update_event_t = typename T::update_event_t;
   using delete_event_t = typename T::delete_event_t;
-
-  using DEPRECATED_T_(ENTRY) = entry_t;
-  using DEPRECATED_T_(KEY) = key_t;
-  using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;
-  using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;
 };
 
 // Fields declaration and counting.
@@ -148,8 +142,6 @@ template <typename UPDATE_EVENT, typename DELETE_EVENT>
 struct FieldInfo {
   using update_event_t = UPDATE_EVENT;
   using delete_event_t = DELETE_EVENT;
-  using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;
-  using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;
 };
 
 // Persisted types list generator.
