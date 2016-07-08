@@ -182,12 +182,16 @@ struct MutationJournal {
   }
 
   void Clear() {
+    transaction_meta.begin_us = std::chrono::microseconds(0);
+    transaction_meta.end_us = std::chrono::microseconds(0);
     transaction_meta.fields.clear();
     commit_log.clear();
     rollback_log.clear();
   }
 
   void AssertEmpty() const {
+    assert(transaction_meta.begin_us.count() == 0);
+    assert(transaction_meta.end_us.count() == 0);
     assert(transaction_meta.fields.empty());
     assert(commit_log.empty());
     assert(rollback_log.empty());
