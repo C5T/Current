@@ -154,7 +154,7 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_EQ(1u, ExampleStorage::FIELDS_COUNT);
     ExampleStorage storage(persistence_file_name);
 
-    current::time::SetNow(std::chrono::microseconds(1001ull));
+    current::time::SetNow(std::chrono::microseconds(1000ull));
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
     const auto result1 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       User test1;
@@ -164,29 +164,33 @@ TEST(StorageDocumentation, BasicUsage) {
       test2.key = static_cast<UserID>(2);
       test2.name = "test2";
       test2.straight = false;
+      current::time::SetNow(std::chrono::microseconds(1001ull));
       data.users.Add(test1);
+      current::time::SetNow(std::chrono::microseconds(1002ull));
       data.users.Add(test2);
       data.SetTransactionMetaField("user", "vasya");
       data.EraseTransactionMetaField("user");
       data.SetTransactionMetaField("user", "max");
-      current::time::SetNow(std::chrono::microseconds(1002ull));  // <-- This timestamp will be used.
+      current::time::SetNow(std::chrono::microseconds(1003ull));  // = `idxts.us` = `end_us`.
     }).Go();
     EXPECT_TRUE(WasCommitted(result1));
 
-    current::time::SetNow(std::chrono::microseconds(1003ull));
+    current::time::SetNow(std::chrono::microseconds(1100ull));
     const auto result2 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
+      current::time::SetNow(std::chrono::microseconds(1101ull));
       User test3;
       test3.key = static_cast<UserID>(3);
       test3.name = "to be deleted";
       data.users.Add(test3);
-      current::time::SetNow(std::chrono::microseconds(1004ull));
+      current::time::SetNow(std::chrono::microseconds(1102ull));
     }).Go();
     EXPECT_TRUE(WasCommitted(result2));
 
-    current::time::SetNow(std::chrono::microseconds(1005ull));
+    current::time::SetNow(std::chrono::microseconds(1200ull));
     const auto result3 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
+      current::time::SetNow(std::chrono::microseconds(1201ull));
       data.users.Erase(static_cast<UserID>(3));
-      current::time::SetNow(std::chrono::microseconds(1006ull));
+      current::time::SetNow(std::chrono::microseconds(1202ull));
     }).Go();
     EXPECT_TRUE(WasCommitted(result3));
   }
@@ -206,41 +210,58 @@ TEST(StorageDocumentation, BasicUsage) {
   };
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[0], 0u, std::chrono::microseconds(1002));
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 0u, std::chrono::microseconds(1003));
     ASSERT_EQ(2u, t.mutations.size());
 
-    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
-    EXPECT_EQ("test1", Value<PersistedUserUpdated>(t.mutations[0]).data.name);
-    EXPECT_TRUE(Value<PersistedUserUpdated>(t.mutations[0]).data.straight);
+    {
+      ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
+      const auto& mutation = Value<PersistedUserUpdated>(t.mutations[0]);
+      EXPECT_EQ(1001, mutation.us.count());
+      EXPECT_EQ("test1", mutation.data.name);
+      EXPECT_TRUE(mutation.data.straight);
+    }
 
-    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[1]));
-    EXPECT_EQ("test2", Value<PersistedUserUpdated>(t.mutations[1]).data.name);
-    EXPECT_FALSE(Value<PersistedUserUpdated>(t.mutations[1]).data.straight);
+    {
+      ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[1]));
+      const auto& mutation = Value<PersistedUserUpdated>(t.mutations[1]);
+      EXPECT_EQ(1002, mutation.us.count());
+      EXPECT_EQ("test2", mutation.data.name);
+      EXPECT_FALSE(mutation.data.straight);
+    }
 
-    EXPECT_EQ(1002, static_cast<int>(t.meta.timestamp.count()));
+    EXPECT_EQ(1000, t.meta.begin_us.count());
+    EXPECT_EQ(1003, t.meta.end_us.count());
     EXPECT_EQ(1u, t.meta.fields.size());
     EXPECT_EQ("max", t.meta.fields.at("user"));
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[1], 1u, std::chrono::microseconds(1004));
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 1u, std::chrono::microseconds(1102));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
-    EXPECT_EQ("to be deleted", Value<PersistedUserUpdated>(t.mutations[0]).data.name);
+    const auto& mutation = Value<PersistedUserUpdated>(t.mutations[0]);
+    EXPECT_EQ(1101, mutation.us.count());
+    EXPECT_EQ("to be deleted", mutation.data.name);
 
-    EXPECT_EQ(1004, static_cast<int>(t.meta.timestamp.count()));
+    EXPECT_EQ(1100, t.meta.begin_us.count());
+    EXPECT_EQ(1102, t.meta.end_us.count());
+    EXPECT_TRUE(t.meta.fields.empty());
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[2], 2u, std::chrono::microseconds(1006));
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 2u, std::chrono::microseconds(1202));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_FALSE(Exists<PersistedUserUpdated>(t.mutations[0]));
     ASSERT_TRUE(Exists<PersistedUserDeleted>(t.mutations[0]));
-    EXPECT_EQ(3, static_cast<int>(Value<PersistedUserDeleted>(t.mutations[0]).key));
+    const auto& mutation = Value<PersistedUserDeleted>(t.mutations[0]);
+    EXPECT_EQ(1201, mutation.us.count());
+    EXPECT_EQ(3, static_cast<int>(mutation.key));
 
-    EXPECT_EQ(1006, static_cast<int>(t.meta.timestamp.count()));
+    EXPECT_EQ(1200, t.meta.begin_us.count());
+    EXPECT_EQ(1202, t.meta.end_us.count());
+    EXPECT_TRUE(t.meta.fields.empty());
   }
 
   {

@@ -1257,11 +1257,345 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   {
     ASSERT_EQ(1u, persister.Size());
     const auto& transaction = TransactionByIndex(0u);
-    EXPECT_EQ(1000, transaction.meta.timestamp.count());
+    EXPECT_EQ(1000, transaction.meta.begin_us.count());
     EXPECT_EQ(1u, transaction.meta.fields.size());
     EXPECT_EQ(0u, transaction.meta.fields.count("who"));
     ASSERT_EQ(1u, transaction.meta.fields.count("why"));
     ASSERT_EQ("because", transaction.meta.fields.at("why"));
+  }
+}
+
+TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  const auto& persister = storage.InternalExposeStream().InternalExposePersister();
+  const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
+    return (*persister.Iterate(index, index + 1).begin()).entry;
+  };
+
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      ASSERT_FALSE(Exists(fields.d.LastModified("x")));
+      current::time::SetNow(std::chrono::microseconds(101));
+      fields.d.Add(Record{"x", 1});
+      {
+        const auto t = fields.d.LastModified("x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(101, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(102));
+      fields.d.Add(Record{"y", 2});
+      {
+        const auto t = fields.d.LastModified("y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(102, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(103));
+      fields.d.Erase("y");
+      {
+        const auto t = fields.d.LastModified("y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(103, Value(t).count());
+      }
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+
+    ASSERT_EQ(1u, persister.Size());
+    const auto& transaction = TransactionByIndex(0u);
+    EXPECT_EQ(100, transaction.meta.begin_us.count());
+    EXPECT_EQ(103, transaction.meta.end_us.count());
+    ASSERT_EQ(3u, transaction.mutations.size());
+    ASSERT_TRUE(Exists<RecordDictionaryUpdated>(transaction.mutations[0]));
+    EXPECT_EQ(101, Value<RecordDictionaryUpdated>(transaction.mutations[0]).us.count());
+    ASSERT_TRUE(Exists<RecordDictionaryUpdated>(transaction.mutations[1]));
+    EXPECT_EQ(102, Value<RecordDictionaryUpdated>(transaction.mutations[1]).us.count());
+    ASSERT_TRUE(Exists<RecordDictionaryDeleted>(transaction.mutations[2]));
+    EXPECT_EQ(103, Value<RecordDictionaryDeleted>(transaction.mutations[2]).us.count());
+  }
+
+  {
+    current::time::SetNow(std::chrono::microseconds(200));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"x", 100});
+      fields.d.Erase("y");
+      fields.d.Add(Record{"z", 3});
+      CURRENT_STORAGE_THROW_ROLLBACK();
+    }).Go();
+    EXPECT_FALSE(WasCommitted(result));
+  }
+
+  {
+    current::time::SetNow(std::chrono::microseconds(300));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      {
+        const auto t = fields.d.LastModified("x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(101, Value(t).count());
+      }
+      {
+        const auto t = fields.d.LastModified("y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(103, Value(t).count());
+      }
+      EXPECT_FALSE(Exists(fields.d.LastModified("z")));
+      current::time::SetNow(std::chrono::microseconds(301));
+      fields.d.Erase("x");
+      {
+        const auto t = fields.d.LastModified("x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(301, Value(t).count());
+      }
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+
+    ASSERT_EQ(2u, persister.Size());
+    const auto& transaction = TransactionByIndex(1u);
+    EXPECT_EQ(300, transaction.meta.begin_us.count());
+    EXPECT_EQ(301, transaction.meta.end_us.count());
+    ASSERT_EQ(1u, transaction.mutations.size());
+    ASSERT_TRUE(Exists<RecordDictionaryDeleted>(transaction.mutations[0]));
+    EXPECT_EQ(301, Value<RecordDictionaryDeleted>(transaction.mutations[0]).us.count());
+  }
+}
+
+TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  const auto& persister = storage.InternalExposeStream().InternalExposePersister();
+  const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
+    return (*persister.Iterate(index, index + 1).begin()).entry;
+  };
+
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      ASSERT_FALSE(Exists(fields.umany_to_umany.LastModified(1, "x")));
+      current::time::SetNow(std::chrono::microseconds(101));
+      fields.umany_to_umany.Add(Cell{1, "x", 1});
+      {
+        const auto t = fields.umany_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(101, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(102));
+      fields.uone_to_umany.Add(Cell{1, "x", 1});
+      {
+        const auto t = fields.uone_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(102, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(103));
+      fields.uone_to_uone.Add(Cell{1, "x", 1});
+      {
+        const auto t = fields.uone_to_uone.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(103, Value(t).count());
+      }
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+
+    ASSERT_EQ(1u, persister.Size());
+    const auto& transaction = TransactionByIndex(0u);
+    EXPECT_EQ(100, transaction.meta.begin_us.count());
+    EXPECT_EQ(103, transaction.meta.end_us.count());
+    ASSERT_EQ(3u, transaction.mutations.size());
+    ASSERT_TRUE(Exists<CellUnorderedManyToUnorderedManyUpdated>(transaction.mutations[0]));
+    EXPECT_EQ(101, Value<CellUnorderedManyToUnorderedManyUpdated>(transaction.mutations[0]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[1]));
+    EXPECT_EQ(102, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[1]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[2]));
+    EXPECT_EQ(103, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[2]).us.count());
+  }
+
+  {
+    current::time::SetNow(std::chrono::microseconds(200));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      EXPECT_FALSE(Exists(fields.umany_to_umany.LastModified(1, "y")));
+      EXPECT_FALSE(Exists(fields.uone_to_umany.LastModified(1, "y")));
+      EXPECT_FALSE(Exists(fields.uone_to_uone.LastModified(1, "y")));
+      fields.umany_to_umany.Add(Cell{1, "x", 100});
+      fields.uone_to_umany.Add(Cell{2, "x", 100});
+      fields.uone_to_uone.Add(Cell{2, "y", 100});
+      fields.uone_to_uone.Add(Cell{1, "y", 42});
+      fields.umany_to_umany.Erase(1, "x");
+      fields.uone_to_umany.Erase(2, "x");
+      fields.uone_to_uone.Erase(1, "y");
+      CURRENT_STORAGE_THROW_ROLLBACK();
+    }).Go();
+    EXPECT_FALSE(WasCommitted(result));
+  }
+
+  {
+    current::time::SetNow(std::chrono::microseconds(300));
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      {
+        const auto t = fields.umany_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(101, Value(t).count());
+      }
+      {
+        const auto t = fields.uone_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(102, Value(t).count());
+      }
+      {
+        const auto t = fields.uone_to_uone.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(103, Value(t).count());
+      }
+      EXPECT_FALSE(Exists(fields.uone_to_umany.LastModified(2, "x")));
+      EXPECT_FALSE(Exists(fields.uone_to_uone.LastModified(2, "y")));
+      EXPECT_FALSE(Exists(fields.uone_to_uone.LastModified(1, "y")));
+
+      current::time::SetNow(std::chrono::microseconds(301));
+      fields.umany_to_umany.Add(Cell{1, "x", 100});
+      {
+        const auto t = fields.umany_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(301, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(302), std::chrono::microseconds(303));
+      fields.uone_to_umany.Add(Cell{2, "x", 100});
+      {
+        const auto removed_t = fields.uone_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(removed_t));
+        EXPECT_EQ(302, Value(removed_t).count());
+        const auto t = fields.uone_to_umany.LastModified(2, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(303, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(304));
+      fields.uone_to_uone.Add(Cell{2, "y", 100});
+      {
+        const auto t = fields.uone_to_uone.LastModified(2, "y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(304, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(305), std::chrono::microseconds(307));
+      fields.uone_to_uone.Add(Cell{1, "y", 42});
+      {
+        const auto removed_t1 = fields.uone_to_uone.LastModified(1, "x");
+        ASSERT_TRUE(Exists(removed_t1));
+        EXPECT_EQ(305, Value(removed_t1).count());
+        const auto removed_t2 = fields.uone_to_uone.LastModified(2, "y");
+        ASSERT_TRUE(Exists(removed_t2));
+        EXPECT_EQ(306, Value(removed_t2).count());
+        const auto t = fields.uone_to_uone.LastModified(1, "y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(307, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(308));
+      fields.umany_to_umany.Erase(1, "x");
+      {
+        const auto t = fields.umany_to_umany.LastModified(1, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(308, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(309));
+      fields.uone_to_umany.Add(Cell{42, "z", 42});
+      {
+        const auto t = fields.uone_to_umany.LastModified(42, "z");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(309, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(310));
+      fields.uone_to_umany.EraseCol("z");
+      {
+        const auto t = fields.uone_to_umany.LastModified(42, "z");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(310, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(311));
+      fields.uone_to_umany.Erase(2, "x");
+      {
+        const auto t = fields.uone_to_umany.LastModified(2, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(311, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(312));
+      fields.uone_to_uone.Add(Cell{2, "x", 2});
+      {
+        const auto t = fields.uone_to_uone.LastModified(2, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(312, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(313));
+      fields.uone_to_uone.Add(Cell{42, "z", 42});
+      {
+        const auto t = fields.uone_to_uone.LastModified(42, "z");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(313, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(314));
+      fields.uone_to_uone.EraseRow(42);
+      {
+        const auto t = fields.uone_to_uone.LastModified(42, "z");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(314, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(315));
+      fields.uone_to_uone.EraseCol("x");
+      {
+        const auto t = fields.uone_to_uone.LastModified(2, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(315, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(316));
+      fields.uone_to_uone.Erase(1, "y");
+      {
+        const auto t = fields.uone_to_uone.LastModified(1, "y");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(316, Value(t).count());
+      }
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+
+    ASSERT_EQ(2u, persister.Size());
+    const auto& transaction = TransactionByIndex(1u);
+    EXPECT_EQ(300, transaction.meta.begin_us.count());
+    EXPECT_EQ(316, transaction.meta.end_us.count());
+    ASSERT_EQ(16u, transaction.mutations.size());
+    ASSERT_TRUE(Exists<CellUnorderedManyToUnorderedManyUpdated>(transaction.mutations[0]));
+    EXPECT_EQ(301, Value<CellUnorderedManyToUnorderedManyUpdated>(transaction.mutations[0]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[1]));
+    EXPECT_EQ(302, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[1]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[2]));
+    EXPECT_EQ(303, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[2]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[3]));
+    EXPECT_EQ(304, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[3]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[4]));
+    EXPECT_EQ(305, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[4]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[5]));
+    EXPECT_EQ(306, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[5]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[6]));
+    EXPECT_EQ(307, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[6]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedManyToUnorderedManyDeleted>(transaction.mutations[7]));
+    EXPECT_EQ(308, Value<CellUnorderedManyToUnorderedManyDeleted>(transaction.mutations[7]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[8]));
+    EXPECT_EQ(309, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[8]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[9]));
+    EXPECT_EQ(310, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[9]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[10]));
+    EXPECT_EQ(311, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[10]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[11]));
+    EXPECT_EQ(312, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[11]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[12]));
+    EXPECT_EQ(313, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[12]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[13]));
+    EXPECT_EQ(314, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[13]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[14]));
+    EXPECT_EQ(315, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[14]).us.count());
+    ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[15]));
+    EXPECT_EQ(316, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[15]).us.count());
   }
 }
 
@@ -1284,17 +1618,23 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   {
     current::time::SetNow(std::chrono::microseconds(100));
     const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      current::time::SetNow(std::chrono::microseconds(101));
       fields.d.Add(Record{"one", 1});
+      current::time::SetNow(std::chrono::microseconds(102));
       fields.d.Add(Record{"two", 2});
       fields.SetTransactionMetaField("user", "dima");
+      current::time::SetNow(std::chrono::microseconds(103));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
     const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      current::time::SetNow(std::chrono::microseconds(201));
       fields.d.Add(Record{"three", 3});
+      current::time::SetNow(std::chrono::microseconds(202));
       fields.d.Erase("two");
+      current::time::SetNow(std::chrono::microseconds(203));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1445,6 +1785,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
     current::time::SetNow(std::chrono::microseconds(100));
     const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
+      current::time::SetNow(std::chrono::microseconds(101));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1452,6 +1793,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
     current::time::SetNow(std::chrono::microseconds(200));
     const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"two", 2});
+      current::time::SetNow(std::chrono::microseconds(201));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1460,10 +1802,12 @@ TEST(TransactionalStorage, InternalExposeStream) {
   StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
   storage.InternalExposeStream().Subscribe(processor);
   EXPECT_EQ(
-      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
-      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"
-      "{\"index\":1,\"us\":200}\t{\"meta\":{\"timestamp\":200,\"fields\":{}},\"mutations\":[{"
-      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}]}\n",
+      "{\"index\":0,\"us\":101}\t{\"meta\":{\"begin_us\":100,\"end_us\":101,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"us\":100,\"data\":{\"lhs\":\"one\",\"rhs\":1}},"
+      "\"\":\"T9200018162904582576\"}]}\n"
+      "{\"index\":1,\"us\":201}\t{\"meta\":{\"begin_us\":200,\"end_us\":201,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"us\":200,\"data\":{\"lhs\":\"two\",\"rhs\":2}},"
+      "\"\":\"T9200018162904582576\"}]}\n",
       collected);
 }
 
@@ -1865,9 +2209,9 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
   storage.InternalExposeStream().Subscribe(processor);
   EXPECT_EQ(
-      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
-      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
-      "\"T9205381019427680739\"}]}\n",
+      "{\"index\":0,\"us\":100}\t{\"meta\":{\"begin_us\":100,\"end_us\":100,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"us\":100,\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
+      "\"T9200018162904582576\"}]}\n",
       collected);
 }
 
@@ -1924,9 +2268,9 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     storage.InternalExposeStream().Subscribe<transaction_t>(processor);
     EXPECT_EQ(
         "{\"index\":1,\"us\":2}\t"
-        "{\"meta\":{\"timestamp\":2,\"fields\":{}},\"mutations\":["
-        "{\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}"
-        "]}\n",
+        "{\"meta\":{\"begin_us\":2,\"end_us\":2,\"fields\":{}},\"mutations\":["
+        "{\"RecordDictionaryUpdated\":{\"us\":2,\"data\":{\"lhs\":\"two\",\"rhs\":2}},"
+        "\"\":\"T9200018162904582576\"}]}\n",
         collected_transactions);
   }
 

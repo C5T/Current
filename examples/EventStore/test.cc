@@ -187,6 +187,8 @@ TEST(EventStore, SmokeWithHTTP) {
     Event event2;
     event2.key = "http2";
     event2.body.some_event_data = "yeah2";
+    // Corresponding stream entry will have timestamp = `42003`, since Storage makes several `Now()` calls
+    // to timestamp transaction begin/end as well as the mutation itself.
     EXPECT_EQ(201,
               static_cast<int>(
                   HTTP(POST(Printf("http://localhost:%d/event", FLAGS_event_store_test_port), event2)).code));
@@ -210,7 +212,7 @@ TEST(EventStore, SmokeWithHTTP) {
   ASSERT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
   EXPECT_EQ("Event added: http2",
             (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
-  // `42001` as the non-storage event is published after the storage one.
-  EXPECT_EQ("{\"index\":0,\"us\":42001}\t{\"message\":\"Event added: http2\"}\n",
+  // `42003` as the non-storage event is published after the storage one.
+  EXPECT_EQ("{\"index\":0,\"us\":42003}\t{\"message\":\"Event added: http2\"}\n",
             HTTP(GET(Printf("http://localhost:%d/subscribe?i=0&n=1", FLAGS_event_store_test_port))).body);
 }

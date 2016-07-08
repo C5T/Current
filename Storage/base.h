@@ -35,6 +35,8 @@ SOFTWARE.
 
 #include "../TypeSystem/struct.h"
 
+#include "../Bricks/time/chrono.h"
+
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/template/variadic_indexes.h"
 
@@ -89,7 +91,6 @@ struct FieldEntryTypeExtractor {};
 template <typename T>
 struct StorageExtractedFieldType {
   using particular_field_t = T;
-  using DEPRECATED_T_(PARTICULAR_FIELD) = T;
 };
 
 template <typename T>
@@ -110,11 +111,6 @@ struct FieldUnderlyingTypesWrapper {
   // For reflection.
   using update_event_t = typename T::update_event_t;
   using delete_event_t = typename T::delete_event_t;
-
-  using DEPRECATED_T_(ENTRY) = entry_t;
-  using DEPRECATED_T_(KEY) = key_t;
-  using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;
-  using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;
 };
 
 // Fields declaration and counting.
@@ -146,8 +142,6 @@ template <typename UPDATE_EVENT, typename DELETE_EVENT>
 struct FieldInfo {
   using update_event_t = UPDATE_EVENT;
   using delete_event_t = DELETE_EVENT;
-  using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;
-  using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;
 };
 
 // Persisted types list generator.
@@ -166,7 +160,7 @@ using FieldsTypeList =
 
 // `MutationJournal` keeps all the changes made during one transaction, as well as the way to rollback them.
 struct MutationJournal {
-  TransactionMetaFields meta_fields;
+  TransactionMeta transaction_meta;
   std::vector<std::unique_ptr<current::CurrentSuper>> commit_log;
   std::vector<std::function<void()>> rollback_log;
 
@@ -176,6 +170,10 @@ struct MutationJournal {
     rollback_log.push_back(rollback);
   }
 
+  void BeforeTransaction() { transaction_meta.begin_us = current::time::Now(); }
+
+  void AfterTransaction() { transaction_meta.end_us = current::time::Now(); }
+
   void Rollback() {
     for (auto rit = rollback_log.rbegin(); rit != rollback_log.rend(); ++rit) {
       (*rit)();
@@ -184,13 +182,17 @@ struct MutationJournal {
   }
 
   void Clear() {
-    meta_fields.clear();
+    transaction_meta.begin_us = std::chrono::microseconds(0);
+    transaction_meta.end_us = std::chrono::microseconds(0);
+    transaction_meta.fields.clear();
     commit_log.clear();
     rollback_log.clear();
   }
 
   void AssertEmpty() const {
-    assert(meta_fields.empty());
+    assert(transaction_meta.begin_us.count() == 0);
+    assert(transaction_meta.end_us.count() == 0);
+    assert(transaction_meta.fields.empty());
     assert(commit_log.empty());
     assert(rollback_log.empty());
   }
@@ -205,11 +207,11 @@ struct FieldsBase : BASE {
   MutationJournal current_storage_mutation_journal_;
 
   void SetTransactionMetaField(const std::string& key, const std::string& value) {
-    current_storage_mutation_journal_.meta_fields[key] = value;
+    current_storage_mutation_journal_.transaction_meta.fields[key] = value;
   }
 
   void EraseTransactionMetaField(const std::string& key) {
-    current_storage_mutation_journal_.meta_fields.erase(key);
+    current_storage_mutation_journal_.transaction_meta.fields.erase(key);
   }
 };
 

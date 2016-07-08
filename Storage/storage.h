@@ -68,33 +68,30 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
-#define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name) \
-  CURRENT_STRUCT(entry_name##Updated) {                                                      \
-    CURRENT_FIELD(data, entry_type);                                                         \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                      \
-    CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {}       \
-  };                                                                                         \
-  CURRENT_STRUCT(entry_name##Deleted) {                                                      \
-    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>);              \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                      \
-    CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                        \
-        : key(::current::storage::sfinae::GetKey(value)) {}                                  \
-  };                                                                                         \
-  struct entry_name {                                                                        \
-    template <typename T, typename E1, typename E2>                                          \
-    using field_t = dictionary_type<T, E1, E2>;                                              \
-    using entry_t = entry_type;                                                              \
-    using key_t = ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>;                    \
-    using update_event_t = entry_name##Updated;                                              \
-    using delete_event_t = entry_name##Deleted;                                              \
-    using persisted_event_1_t = entry_name##Updated;                                         \
-    using persisted_event_2_t = entry_name##Deleted;                                         \
-    using DEPRECATED_T_(ENTRY) = entry_t;                                                    \
-    using DEPRECATED_T_(KEY) = key_t;                                                        \
-    using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;                                      \
-    using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;                                      \
-    using DEPRECATED_T_(PERSISTED_EVENT_1) = persisted_event_1_t;                            \
-    using DEPRECATED_T_(PERSISTED_EVENT_2) = persisted_event_2_t;                            \
+#define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)        \
+  CURRENT_STRUCT(entry_name##Updated) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(data, entry_type);                                                                \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value) \
+        : us(us), data(value) {}                                                                    \
+  };                                                                                                \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>);                     \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value) \
+        : us(us), key(::current::storage::sfinae::GetKey(value)) {}                                 \
+  };                                                                                                \
+  struct entry_name {                                                                               \
+    template <typename T, typename E1, typename E2>                                                 \
+    using field_t = dictionary_type<T, E1, E2>;                                                     \
+    using entry_t = entry_type;                                                                     \
+    using key_t = ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>;                           \
+    using update_event_t = entry_name##Updated;                                                     \
+    using delete_event_t = entry_name##Deleted;                                                     \
+    using persisted_event_1_t = entry_name##Updated;                                                \
+    using persisted_event_2_t = entry_name##Deleted;                                                \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedDictionary(entry_type, entry_name) \
@@ -103,40 +100,36 @@ namespace storage {
 #define CURRENT_STORAGE_FIELD_ENTRY_OrderedDictionary(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(OrderedDictionary, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)   \
-  CURRENT_STRUCT(entry_name##Updated) {                                                \
-    CURRENT_FIELD(data, entry_type);                                                   \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                \
-    CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {} \
-  };                                                                                   \
-  CURRENT_STRUCT(entry_name##Deleted) {                                                \
-    CURRENT_FIELD(key,                                                                 \
-                  (std::pair<::current::storage::sfinae::entry_row_t<entry_type>,      \
-                             ::current::storage::sfinae::entry_col_t<entry_type>>));   \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                \
-    CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                  \
-        : key(std::make_pair(::current::storage::sfinae::GetRow(value),                \
-                             ::current::storage::sfinae::GetCol(value))) {}            \
-  };                                                                                   \
-  struct entry_name {                                                                  \
-    template <typename T, typename E1, typename E2>                                    \
-    using field_t = matrix_type<T, E1, E2>;                                            \
-    using entry_t = entry_type;                                                        \
-    using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                 \
-    using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                 \
-    using key_t = std::pair<row_t, col_t>;                                             \
-    using update_event_t = entry_name##Updated;                                        \
-    using delete_event_t = entry_name##Deleted;                                        \
-    using persisted_event_1_t = entry_name##Updated;                                   \
-    using persisted_event_2_t = entry_name##Deleted;                                   \
-    using DEPRECATED_T_(ENTRY) = entry_t;                                              \
-    using DEPRECATED_T_(ROW) = row_t;                                                  \
-    using DEPRECATED_T_(COL) = col_t;                                                  \
-    using DEPRECATED_T_(KEY) = key_t;                                                  \
-    using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;                                \
-    using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;                                \
-    using DEPRECATED_T_(PERSISTED_EVENT_1) = persisted_event_1_t;                      \
-    using DEPRECATED_T_(PERSISTED_EVENT_2) = persisted_event_2_t;                      \
+#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                \
+  CURRENT_STRUCT(entry_name##Updated) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(data, entry_type);                                                                \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value) \
+        : us(us), data(value) {}                                                                    \
+  };                                                                                                \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(key,                                                                              \
+                  (std::pair<::current::storage::sfinae::entry_row_t<entry_type>,                   \
+                             ::current::storage::sfinae::entry_col_t<entry_type>>));                \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value) \
+        : us(us),                                                                                   \
+          key(std::make_pair(::current::storage::sfinae::GetRow(value),                             \
+                             ::current::storage::sfinae::GetCol(value))) {}                         \
+  };                                                                                                \
+  struct entry_name {                                                                               \
+    template <typename T, typename E1, typename E2>                                                 \
+    using field_t = matrix_type<T, E1, E2>;                                                         \
+    using entry_t = entry_type;                                                                     \
+    using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                              \
+    using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                              \
+    using key_t = std::pair<row_t, col_t>;                                                          \
+    using update_event_t = entry_name##Updated;                                                     \
+    using delete_event_t = entry_name##Deleted;                                                     \
+    using persisted_event_1_t = entry_name##Updated;                                                \
+    using persisted_event_2_t = entry_name##Deleted;                                                \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToUnorderedMany(entry_type, entry_name) \
@@ -178,8 +171,6 @@ namespace storage {
 #define CURRENT_STORAGE_FIELD_ENTRY(container, entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_##container(entry_type, entry_name)
 
-// clang-format on
-
 #define CURRENT_STORAGE_FIELDS_HELPERS(name)                                                                   \
   template <typename T>                                                                                        \
   struct CURRENT_STORAGE_FIELDS_HELPER;                                                                        \
@@ -207,9 +198,6 @@ class GenericStorageImpl {
   using fields_type_list_t = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;
   using fields_variant_t = Variant<fields_type_list_t>;
   using persister_t = PERSISTER<fields_type_list_t, CUSTOM_PERSISTER_PARAM>;
-  using DEPRECATED_T_(FIELDS_TYPE_LIST) = fields_type_list_t;
-  using DEPRECATED_T_(FIELDS_VARIANT) = fields_variant_t;
-  using DEPRECATED_T_(PERSISTER) = persister_t;
 
  private:
   std::mutex mutex_;
@@ -223,10 +211,6 @@ class GenericStorageImpl {
   using fields_by_cref_t = const FIELDS&;
   using transaction_t = current::storage::Transaction<fields_variant_t>;
   using transaction_meta_fields_t = TransactionMetaFields;
-  using DEPRECATED_T_(FIELDS_BY_REFERENCE) = fields_by_ref_t;
-  using DEPRECATED_T_(FIELDS_BY_CONST_REFERENCE) = fields_by_cref_t;
-  using DEPRECATED_T_(TRANSACTION) = transaction_t;
-  using DEPRECATED_T_(TRANSACTION_META_FIELDS) = transaction_meta_fields_t;
 
   GenericStorageImpl(const GenericStorageImpl&) = delete;
   GenericStorageImpl(GenericStorageImpl&&) = delete;
@@ -331,8 +315,6 @@ class NullStoragePersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_REC
  public:
   using variant_t = Variant<TS...>;
   using transaction_t = Transaction<variant_t>;
-  using DEPRECATED_T_(VARIANT) = variant_t;
-  using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
   void InternalExposeStream() {}
 };
@@ -365,9 +347,6 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
   using entry_type_##field_name##_t = entry_name;                                                              \
   using field_type_##field_name##_t =                                                                          \
       ::current::storage::Field<INSTANTIATION_TYPE, field_container_##field_name##_t>;                         \
-  using DEPRECATED_T_(ENTRY_TYPE_##field_name) = entry_type_##field_name##_t;                                  \
-  using DEPRECATED_T_(FIELD_TYPE_##field_name) = field_type_##field_name##_t;                                  \
-  using DEPRECATED_T_(FIELD_CONTAINER_TYPE_##field_name) = field_container_##field_name##_t;                   \
   constexpr static size_t FIELD_INDEX_##field_name =                                                           \
       CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE;                                    \
   ::current::storage::FieldInfo<entry_name::persisted_event_1_t, entry_name::persisted_event_2_t> operator()(  \

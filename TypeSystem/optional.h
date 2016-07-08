@@ -56,19 +56,20 @@ class ImmutableOptional final {
  public:
   ImmutableOptional() = delete;
   ImmutableOptional(std::nullptr_t) : optional_object_(nullptr) {}
-  ImmutableOptional(const FromBarePointer&, const T* object) : optional_object_(object) {}
+  ImmutableOptional(const FromBarePointer&, const T* ptr) : optional_object_(ptr) {}
 
-  // NOTE: Constructors taking references or const references are a bad idea,
-  // since it makes it very easy to make a mistake of passing in a short-lived temporary.
-  // The users are advised to explicitly pass in a pointer if the object is externally owned,
-  // or `std::move()` an `std::unique_ptr<>` into an `ImmutableOptional`.
-  // Another alternative is construct an `ImmutableOptional<>` directly from `make_unique<>`.
+  ImmutableOptional(const T& object)
+      : owned_optional_object_(std::make_unique<T>(object)), optional_object_(owned_optional_object_.get()) {}
 
-  // TODO(dkorolev): Discuss the semantics with @mzhurovich.
+  ImmutableOptional(T&& object)
+      : owned_optional_object_(std::make_unique<T>(std::move(object))),
+        optional_object_(owned_optional_object_.get()) {}
 
-  ImmutableOptional(std::unique_ptr<T>&& rhs)
-      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
+  ImmutableOptional(std::unique_ptr<T>&& uptr)
+      : owned_optional_object_(std::move(uptr)), optional_object_(owned_optional_object_.get()) {}
+
   bool ExistsImpl() const { return optional_object_ != nullptr; }
+
   const T& ValueImpl() const {
     if (optional_object_ != nullptr) {
       return *optional_object_;
@@ -87,17 +88,17 @@ class Optional final {
  public:
   Optional() = default;
   Optional(std::nullptr_t) : optional_object_(nullptr) {}
-  Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
+  Optional(const FromBarePointer&, T* ptr) : optional_object_(ptr) {}
 
-  Optional(const T& value)
-      : owned_optional_object_(std::make_unique<T>(value)), optional_object_(owned_optional_object_.get()) {}
+  Optional(const T& object)
+      : owned_optional_object_(std::make_unique<T>(object)), optional_object_(owned_optional_object_.get()) {}
 
-  Optional(T&& value)
-      : owned_optional_object_(std::make_unique<T>(std::move(value))),
+  Optional(T&& object)
+      : owned_optional_object_(std::make_unique<T>(std::move(object))),
         optional_object_(owned_optional_object_.get()) {}
 
-  Optional(std::unique_ptr<T>&& rhs)
-      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
+  Optional(std::unique_ptr<T>&& uptr)
+      : owned_optional_object_(std::move(uptr)), optional_object_(owned_optional_object_.get()) {}
 
   Optional(const Optional<T>& rhs) {
     if (rhs.ExistsImpl()) {
@@ -118,8 +119,8 @@ class Optional final {
     optional_object_ = ptr;
     return *this;
   }
-  Optional<T>& operator=(std::unique_ptr<T>&& value) {
-    owned_optional_object_ = std::move(value);
+  Optional<T>& operator=(std::unique_ptr<T>&& uptr) {
+    owned_optional_object_ = std::move(uptr);
     optional_object_ = owned_optional_object_.get();
     return *this;
   }
@@ -134,9 +135,14 @@ class Optional final {
     return *this;
   }
 
-  // TODO(dkorolev): Discuss this semantics with Max.
-  Optional<T>& operator=(const T& data) {
-    owned_optional_object_ = std::move(std::make_unique<T>(data));
+  Optional<T>& operator=(const T& object) {
+    owned_optional_object_ = std::make_unique<T>(object);
+    optional_object_ = owned_optional_object_.get();
+    return *this;
+  }
+
+  Optional<T>& operator=(T&& object) {
+    owned_optional_object_ = std::make_unique<T>(std::move(object));
     optional_object_ = owned_optional_object_.get();
     return *this;
   }

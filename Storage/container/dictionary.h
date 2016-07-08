@@ -58,31 +58,76 @@ class GenericDictionary {
     }
   }
 
-  void Add(const T& object) {
-    const auto key = sfinae::GetKey(object);
-    const auto iterator = map_.find(key);
-    if (iterator != map_.end()) {
-      const T previous_object = iterator->second;
-      journal_.LogMutation(UPDATE_EVENT(object),
-                           [this, key, previous_object]() { map_[key] = previous_object; });
+  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<key_t> key) const {
+    const auto iterator = last_modified_.find(key);
+    if (iterator != last_modified_.end()) {
+      return ImmutableOptional<std::chrono::microseconds>(iterator->second);
     } else {
-      journal_.LogMutation(UPDATE_EVENT(object), [this, key]() { map_.erase(key); });
+      return nullptr;
+    }
+  }
+
+  void Add(const T& object) {
+    const auto now = current::time::Now();
+    const auto key = sfinae::GetKey(object);
+    const auto map_iterator = map_.find(key);
+    const auto lm_iterator = last_modified_.find(key);
+    if (map_iterator != map_.end()) {
+      const T& previous_object = map_iterator->second;
+      assert(lm_iterator != last_modified_.end());
+      const auto previous_timestamp = lm_iterator->second;
+      journal_.LogMutation(UPDATE_EVENT(now, object),
+                           [this, key, previous_object, previous_timestamp]() {
+                             map_[key] = previous_object;
+                             last_modified_[key] = previous_timestamp;
+                           });
+    } else {
+      if (lm_iterator != last_modified_.end()) {
+        const auto previous_timestamp = lm_iterator->second;
+        journal_.LogMutation(UPDATE_EVENT(now, object),
+                             [this, key, previous_timestamp]() {
+                               map_.erase(key);
+                               last_modified_[key] = previous_timestamp;
+                             });
+      } else {
+        journal_.LogMutation(UPDATE_EVENT(now, object),
+                             [this, key]() {
+                               map_.erase(key);
+                               last_modified_.erase(key);
+                             });
+      }
     }
     map_[key] = object;
+    last_modified_[key] = now;
   }
 
   void Erase(sfinae::CF<key_t> key) {
-    const auto iterator = map_.find(key);
-    if (iterator != map_.end()) {
-      const T previous_object = iterator->second;
-      journal_.LogMutation(DELETE_EVENT(previous_object),
-                           [this, key, previous_object]() { map_[key] = previous_object; });
+    const auto now = current::time::Now();
+    const auto map_iterator = map_.find(key);
+    if (map_iterator != map_.end()) {
+      const T& previous_object = map_iterator->second;
+      const auto lm_iterator = last_modified_.find(key);
+      assert(lm_iterator != last_modified_.end());
+      const auto previous_timestamp = lm_iterator->second;
+      journal_.LogMutation(DELETE_EVENT(now, previous_object),
+                           [this, key, previous_object, previous_timestamp]() {
+                             map_[key] = previous_object;
+                             last_modified_[key] = previous_timestamp;
+                           });
       map_.erase(key);
+      last_modified_[key] = now;
     }
   }
 
-  void operator()(const UPDATE_EVENT& e) { map_[sfinae::GetKey(e.data)] = e.data; }
-  void operator()(const DELETE_EVENT& e) { map_.erase(e.key); }
+  void operator()(const UPDATE_EVENT& e) {
+    const auto key = sfinae::GetKey(e.data);
+    map_[key] = e.data;
+    last_modified_[key] = e.us;
+  }
+  void operator()(const DELETE_EVENT& e) {
+    map_.erase(e.key);
+    last_modified_[e.key] = e.us;
+  }
 
   struct Iterator final {
     using iterator_t = typename map_t::const_iterator;
@@ -101,6 +146,7 @@ class GenericDictionary {
 
  private:
   map_t map_;
+  std::unordered_map<key_t, std::chrono::microseconds, CurrentHashFunction<key_t>> last_modified_;
   MutationJournal& journal_;
 };
 
