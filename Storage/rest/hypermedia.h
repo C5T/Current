@@ -140,6 +140,12 @@ inline HypermediaRESTError MethodNotAllowedError(const std::string& message,
   return HypermediaRESTError("MethodNotAllowed", message, {{"requested_method", requested_method}});
 }
 
+inline HypermediaRESTError InvalidHeaderError(const std::string& message,
+                                              const std::string& header,
+                                              const std::string& value) {
+  return HypermediaRESTError("InvalidHeader", message, {{"header", header}, {"header_value", value}});
+}
+
 inline HypermediaRESTError ParseJSONError(const std::string& message, const std::string& error_details) {
   return HypermediaRESTError("ParseJSONError", message, {{"error_details", error_details}});
 };
@@ -165,6 +171,15 @@ inline HypermediaRESTError ResourceNotFoundError(const std::string& message,
 inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& message,
                                                       const std::map<std::string, std::string>& details) {
   return HypermediaRESTError("ResourceAlreadyExists", message, details);
+}
+
+inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
+                                                    std::chrono::microseconds requested,
+                                                    std::chrono::microseconds last_modified) {
+  return HypermediaRESTError("ResourceWasModifiedError",
+                             message,
+                             {{"requested_date", FormatDateTimeRFC1123(requested)},
+                              {"resource_last_modified_date", FormatDateTimeRFC1123(last_modified)}});
 }
 
 struct Hypermedia {
@@ -224,6 +239,25 @@ struct Hypermedia {
   static void WithOptionalKeyFromURL(Request request, F&& next) {
     WithOrWithoutKeyFromURL(
         std::move(request), next, [&next](Request request) { next(std::move(request), ""); });
+  }
+
+  // Returns `false` on error.
+  static bool ExtractIfUnmodifiedSinceOrRespondWithError(Request& request,
+                                                         Optional<std::chrono::microseconds>& destination) {
+    if (request.headers.Has("If-Unmodified-Since")) {
+      const auto& header_value = request.headers.Get("If-Unmodified-Since");
+      try {
+        destination = net::http::ParseHTTPDate(header_value);
+      } catch (const current::net::http::InvalidHTTPDateException&) {
+        request(ErrorResponseObject(
+                    InvalidHeaderError("Unparsable datetime value.", "If-Unmodified-Since", header_value)),
+                HTTPResponseCode.BadRequest);
+        return false;
+      }
+    } else {
+      destination = nullptr;
+    }
+    return true;
   }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -304,15 +338,30 @@ struct Hypermedia {
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
+    Optional<std::chrono::microseconds> if_unmodified_since;
+
     template <typename F>
     void Enter(Request request, F&& next) {
-      WithKeyFromURL(std::move(request), std::forward<F>(next));
+      if (ExtractIfUnmodifiedSinceOrRespondWithError(request, if_unmodified_since)) {
+        WithKeyFromURL(std::move(request), std::forward<F>(next));
+      }
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       const std::string url_key = current::ToString(input.url_key);
       if (input.entry_key == input.url_key) {
         const bool exists = Exists(input.field[input.entry_key]);
+        if (exists && Exists(if_unmodified_since)) {
+          const auto last_modified = input.field.LastModified(input.entry_key);
+          if (Exists(last_modified) &&
+              Value(last_modified).count() * 1e-6 > Value(if_unmodified_since).count() * 1e-6) {
+            return ErrorResponse(
+                ResourceWasModifiedError("Resourse can not be updated as it has been modified in the meantime.",
+                                         Value(if_unmodified_since),
+                                         Value(last_modified)),
+                HTTPResponseCode.PreconditionFailed);
+          }
+        }
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
@@ -337,16 +386,32 @@ struct Hypermedia {
                            HTTPResponseCode.BadRequest);
     }
   };
+
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
+    Optional<std::chrono::microseconds> if_unmodified_since;
+
     template <typename F>
     void Enter(Request request, F&& next) {
-      WithKeyFromURL(std::move(request), std::forward<F>(next));
+      if (ExtractIfUnmodifiedSinceOrRespondWithError(request, if_unmodified_since)) {
+        WithKeyFromURL(std::move(request), std::forward<F>(next));
+      }
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       std::string message;
       if (Exists(input.field[input.key])) {
+        if (Exists(if_unmodified_since)) {
+          const auto last_modified = input.field.LastModified(input.key);
+          if (Exists(last_modified) &&
+              Value(last_modified).count() * 1e-6 > Value(if_unmodified_since).count() * 1e-6) {
+            return ErrorResponse(
+                ResourceWasModifiedError("Resourse can not be deleted as it has been modified in the meantime.",
+                                         Value(if_unmodified_since),
+                                         Value(last_modified)),
+                HTTPResponseCode.PreconditionFailed);
+          }
+        }
         message = "Resource deleted.";
       } else {
         message = "Resource didn't exist.";
