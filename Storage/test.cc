@@ -1463,98 +1463,98 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(301, Value(t).count());
       }
-      current::time::SetNow(std::chrono::microseconds(302));
+      current::time::SetNow(std::chrono::microseconds(302), std::chrono::microseconds(303));
       fields.uone_to_umany.Add(Cell{2, "x", 100});
       {
-        const auto t = fields.uone_to_umany.LastModified(2, "x");
-        ASSERT_TRUE(Exists(t));
-        EXPECT_EQ(302, Value(t).count());
         const auto removed_t = fields.uone_to_umany.LastModified(1, "x");
         ASSERT_TRUE(Exists(removed_t));
         EXPECT_EQ(302, Value(removed_t).count());
-      }
-      current::time::SetNow(std::chrono::microseconds(303));
-      fields.uone_to_uone.Add(Cell{2, "y", 100});
-      {
-        const auto t = fields.uone_to_uone.LastModified(2, "y");
+        const auto t = fields.uone_to_umany.LastModified(2, "x");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(303, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(304));
-      fields.uone_to_uone.Add(Cell{1, "y", 42});
+      fields.uone_to_uone.Add(Cell{2, "y", 100});
       {
-        const auto t = fields.uone_to_uone.LastModified(1, "y");
+        const auto t = fields.uone_to_uone.LastModified(2, "y");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(304, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(305), std::chrono::microseconds(307));
+      fields.uone_to_uone.Add(Cell{1, "y", 42});
+      {
         const auto removed_t1 = fields.uone_to_uone.LastModified(1, "x");
         ASSERT_TRUE(Exists(removed_t1));
-        EXPECT_EQ(304, Value(removed_t1).count());
+        EXPECT_EQ(305, Value(removed_t1).count());
         const auto removed_t2 = fields.uone_to_uone.LastModified(2, "y");
         ASSERT_TRUE(Exists(removed_t2));
-        EXPECT_EQ(304, Value(removed_t2).count());
-      }
-      current::time::SetNow(std::chrono::microseconds(305));
-      fields.umany_to_umany.Erase(1, "x");
-      {
-        const auto t = fields.umany_to_umany.LastModified(1, "x");
-        ASSERT_TRUE(Exists(t));
-        EXPECT_EQ(305, Value(t).count());
-      }
-      current::time::SetNow(std::chrono::microseconds(306));
-      fields.uone_to_umany.Add(Cell{42, "z", 42});
-      {
-        const auto t = fields.uone_to_umany.LastModified(42, "z");
-        ASSERT_TRUE(Exists(t));
-        EXPECT_EQ(306, Value(t).count());
-      }
-      current::time::SetNow(std::chrono::microseconds(307));
-      fields.uone_to_umany.EraseCol("z");
-      {
-        const auto t = fields.uone_to_umany.LastModified(42, "z");
+        EXPECT_EQ(306, Value(removed_t2).count());
+        const auto t = fields.uone_to_uone.LastModified(1, "y");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(307, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(308));
-      fields.uone_to_umany.Erase(2, "x");
+      fields.umany_to_umany.Erase(1, "x");
       {
-        const auto t = fields.uone_to_umany.LastModified(2, "x");
+        const auto t = fields.umany_to_umany.LastModified(1, "x");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(308, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(309));
-      fields.uone_to_uone.Add(Cell{2, "x", 2});
+      fields.uone_to_umany.Add(Cell{42, "z", 42});
       {
-        const auto t = fields.uone_to_uone.LastModified(2, "x");
+        const auto t = fields.uone_to_umany.LastModified(42, "z");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(309, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(310));
-      fields.uone_to_uone.Add(Cell{42, "z", 42});
+      fields.uone_to_umany.EraseCol("z");
       {
-        const auto t = fields.uone_to_uone.LastModified(42, "z");
+        const auto t = fields.uone_to_umany.LastModified(42, "z");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(310, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(311));
-      fields.uone_to_uone.EraseRow(42);
+      fields.uone_to_umany.Erase(2, "x");
       {
-        const auto t = fields.uone_to_uone.LastModified(42, "z");
+        const auto t = fields.uone_to_umany.LastModified(2, "x");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(311, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(312));
-      fields.uone_to_uone.EraseCol("x");
+      fields.uone_to_uone.Add(Cell{2, "x", 2});
       {
         const auto t = fields.uone_to_uone.LastModified(2, "x");
         ASSERT_TRUE(Exists(t));
         EXPECT_EQ(312, Value(t).count());
       }
       current::time::SetNow(std::chrono::microseconds(313));
+      fields.uone_to_uone.Add(Cell{42, "z", 42});
+      {
+        const auto t = fields.uone_to_uone.LastModified(42, "z");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(313, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(314));
+      fields.uone_to_uone.EraseRow(42);
+      {
+        const auto t = fields.uone_to_uone.LastModified(42, "z");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(314, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(315));
+      fields.uone_to_uone.EraseCol("x");
+      {
+        const auto t = fields.uone_to_uone.LastModified(2, "x");
+        ASSERT_TRUE(Exists(t));
+        EXPECT_EQ(315, Value(t).count());
+      }
+      current::time::SetNow(std::chrono::microseconds(316));
       fields.uone_to_uone.Erase(1, "y");
       {
         const auto t = fields.uone_to_uone.LastModified(1, "y");
         ASSERT_TRUE(Exists(t));
-        EXPECT_EQ(313, Value(t).count());
+        EXPECT_EQ(316, Value(t).count());
       }
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
@@ -1562,40 +1562,40 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
     ASSERT_EQ(2u, persister.Size());
     const auto& transaction = TransactionByIndex(1u);
     EXPECT_EQ(300, transaction.meta.begin_us.count());
-    EXPECT_EQ(313, transaction.meta.end_us.count());
+    EXPECT_EQ(316, transaction.meta.end_us.count());
     ASSERT_EQ(16u, transaction.mutations.size());
     ASSERT_TRUE(Exists<CellUnorderedManyToUnorderedManyUpdated>(transaction.mutations[0]));
     EXPECT_EQ(301, Value<CellUnorderedManyToUnorderedManyUpdated>(transaction.mutations[0]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[1]));
     EXPECT_EQ(302, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[1]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[2]));
-    EXPECT_EQ(302, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[2]).us.count());
+    EXPECT_EQ(303, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[2]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[3]));
-    EXPECT_EQ(303, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[3]).us.count());
+    EXPECT_EQ(304, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[3]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[4]));
-    EXPECT_EQ(304, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[4]).us.count());
+    EXPECT_EQ(305, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[4]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[5]));
-    EXPECT_EQ(304, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[5]).us.count());
+    EXPECT_EQ(306, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[5]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[6]));
-    EXPECT_EQ(304, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[6]).us.count());
+    EXPECT_EQ(307, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[6]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedManyToUnorderedManyDeleted>(transaction.mutations[7]));
-    EXPECT_EQ(305, Value<CellUnorderedManyToUnorderedManyDeleted>(transaction.mutations[7]).us.count());
+    EXPECT_EQ(308, Value<CellUnorderedManyToUnorderedManyDeleted>(transaction.mutations[7]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[8]));
-    EXPECT_EQ(306, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[8]).us.count());
+    EXPECT_EQ(309, Value<CellUnorderedOneToUnorderedManyUpdated>(transaction.mutations[8]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[9]));
-    EXPECT_EQ(307, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[9]).us.count());
+    EXPECT_EQ(310, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[9]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[10]));
-    EXPECT_EQ(308, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[10]).us.count());
+    EXPECT_EQ(311, Value<CellUnorderedOneToUnorderedManyDeleted>(transaction.mutations[10]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[11]));
-    EXPECT_EQ(309, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[11]).us.count());
+    EXPECT_EQ(312, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[11]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[12]));
-    EXPECT_EQ(310, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[12]).us.count());
+    EXPECT_EQ(313, Value<CellUnorderedOneToUnorderedOneUpdated>(transaction.mutations[12]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[13]));
-    EXPECT_EQ(311, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[13]).us.count());
+    EXPECT_EQ(314, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[13]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[14]));
-    EXPECT_EQ(312, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[14]).us.count());
+    EXPECT_EQ(315, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[14]).us.count());
     ASSERT_TRUE(Exists<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[15]));
-    EXPECT_EQ(313, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[15]).us.count());
+    EXPECT_EQ(316, Value<CellUnorderedOneToUnorderedOneDeleted>(transaction.mutations[15]).us.count());
   }
 }
 

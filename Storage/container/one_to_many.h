@@ -64,7 +64,8 @@ class GenericOneToMany {
   // Adds specified object and overwrites existing one if it has the same row and col.
   // Removes all other existing objects with the same col.
   void Add(const T& object) {
-    const auto now = current::time::Now();
+    // `now` can be updated to minimize the number of `Now()` calls and keep the order of the timestamps.
+    auto now = current::time::Now();
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
@@ -93,6 +94,7 @@ class GenericOneToMany {
                   conflicting_object_timestamp, conflicting_object_key, conflicting_object);
             });
         DoEraseWithLastModified(now, conflicting_object_key);
+        now = current::time::Now();
       }
       if (lm_cit != last_modified_.end()) {
         const auto previous_timestamp = lm_cit->second;

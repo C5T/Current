@@ -62,7 +62,8 @@ class GenericOneToOne {
   // Adds specified object and overwrites existing one if it has the same row and col.
   // Removes all other existing objects with the same row or col.
   void Add(const T& object) {
-    const auto now = current::time::Now();
+    // `now` can be updated to minimize the number of `Now()` calls and keep the order of the timestamps.
+    auto now = current::time::Now();
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
@@ -97,13 +98,15 @@ class GenericOneToOne {
                                DoUpdateWithLastModified(
                                    timestamp_same_row, key_same_row, conflicting_object_same_row);
                              });
+        DoEraseWithLastModified(now, key_same_row);
+        now = current::time::Now();
         journal_.LogMutation(DELETE_EVENT(now, conflicting_object_same_col),
                              [this, key_same_col, conflicting_object_same_col, timestamp_same_col]() {
                                DoUpdateWithLastModified(
                                    timestamp_same_col, key_same_col, conflicting_object_same_col);
                              });
-        DoEraseWithLastModified(now, key_same_row);
         DoEraseWithLastModified(now, key_same_col);
+        now = current::time::Now();
       } else if (row_occupied || col_occupied) {
         const T& conflicting_object = row_occupied ? *(cit_row->second) : *(cit_col->second);
         const auto conflicting_object_key =
@@ -118,6 +121,7 @@ class GenericOneToOne {
                   conflicting_object_timestamp, conflicting_object_key, conflicting_object);
             });
         DoEraseWithLastModified(now, conflicting_object_key);
+        now = current::time::Now();
       }
 
       if (lm_cit != last_modified_.end()) {
