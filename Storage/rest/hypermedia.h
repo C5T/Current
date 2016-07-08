@@ -269,11 +269,17 @@ struct Hypermedia {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (!input.url_key.empty()) {
-        const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
+        const auto key = current::FromString<KEY>(input.url_key);
+        const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
           const std::string url = input.restful_url_prefix + '/' + input.data_url_component + '/' +
                                   input.field_name + '/' + input.url_key;
-          return HypermediaRESTRecordResponse<ENTRY>(url, Value(result));
+          auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, Value(result)));
+          const auto last_modified = input.field.LastModified(key);
+          if (Exists(last_modified)) {
+            response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+          }
+          return response;
         } else {
           return ErrorResponse(
               ResourceNotFoundError("The requested resource not found.", {{"key", input.url_key}}),
@@ -320,8 +326,13 @@ struct Hypermedia {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + key;
-        return Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
-                        HTTPResponseCode.Created);
+        auto response = Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
+                                 HTTPResponseCode.Created);
+        const auto last_modified = input.field.LastModified(entry_key);
+        if (Exists(last_modified)) {
+          response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+        }
+        return response;
       } else {
         return Response(HypermediaRESTResourceUpdateResponse(
                             false,
@@ -365,15 +376,21 @@ struct Hypermedia {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
-        HypermediaRESTResourceUpdateResponse response(true);
-        response.resource_url = url;
+        Response response;
+        HypermediaRESTResourceUpdateResponse hypermedia_response(true);
+        hypermedia_response.resource_url = url;
         if (exists) {
-          response.message = "Resource updated.";
-          return Response(response, HTTPResponseCode.OK);
+          hypermedia_response.message = "Resource updated.";
+          response = Response(hypermedia_response, HTTPResponseCode.OK);
         } else {
-          response.message = "Resource created.";
-          return Response(response, HTTPResponseCode.Created);
+          hypermedia_response.message = "Resource created.";
+          response = Response(hypermedia_response, HTTPResponseCode.Created);
         }
+        const auto last_modified = input.field.LastModified(input.entry_key);
+        if (Exists(last_modified)) {
+          response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+        }
+        return response;
       } else {
         const std::string object_key = current::ToString(input.entry_key);
         return ErrorResponse(InvalidKeyError("Object key doesn't match URL key.",
@@ -400,7 +417,9 @@ struct Hypermedia {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       std::string message;
+      bool existed = false;
       if (Exists(input.field[input.key])) {
+        existed = true;
         if (Exists(if_unmodified_since)) {
           const auto last_modified = input.field.LastModified(input.key);
           if (Exists(last_modified) &&
@@ -417,7 +436,14 @@ struct Hypermedia {
         message = "Resource didn't exist.";
       }
       input.field.Erase(input.key);
-      return Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
+      auto response = Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
+      if (existed) {
+        const auto last_modified = input.field.LastModified(input.key);
+        if (Exists(last_modified)) {
+          response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+        }
+      }
+      return response;
     }
   };
 

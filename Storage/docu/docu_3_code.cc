@@ -439,6 +439,13 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
   const ClientID client1_key = static_cast<ClientID>(current::FromString<uint64_t>(client1_key_str));
   EXPECT_EQ(201, static_cast<int>(post_response.code));
 
+  {
+    const auto response = HTTP(GET(base_url + "/api/data/client/" + client1_key_str));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    ASSERT_TRUE(response.headers.Has("Last-Modified"));
+    EXPECT_EQ("Fri, 01 Jul 2016 09:00:00 GMT", response.headers.Get("Last-Modified"));
+  }
+
   Client updated_client1((ClientID(client1_key)));
   updated_client1.name = "Jane Doe";
 
@@ -480,6 +487,8 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
     const auto response = HTTP(PUT(base_url + "/api/data/client/" + client1_key_str, updated_client1)
                                    .SetHeader("If-Unmodified-Since", header_value));
     EXPECT_EQ(200, static_cast<int>(response.code));
+    ASSERT_TRUE(response.headers.Has("Last-Modified"));
+    EXPECT_EQ("Fri, 01 Jul 2016 12:00:00 GMT", response.headers.Get("Last-Modified"));
   }
 
   const auto delete_time = std::chrono::microseconds(1467385200000000);  // `Fri, 01 Jul 2016 15:00:00 GMT`.
@@ -490,6 +499,8 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
     const auto response = HTTP(DELETE(base_url + "/api/data/client/" + client1_key_str)
                                    .SetHeader("If-Unmodified-Since", header_value));
     EXPECT_EQ(200, static_cast<int>(response.code));
+    ASSERT_TRUE(response.headers.Has("Last-Modified"));
+    EXPECT_EQ("Fri, 01 Jul 2016 15:00:00 GMT", response.headers.Get("Last-Modified"));
   }
 }
 
