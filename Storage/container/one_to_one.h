@@ -74,7 +74,7 @@ class GenericOneToOne {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
     } else {
       const auto cit_row = forward_.find(row);
@@ -94,12 +94,12 @@ class GenericOneToOne {
         const auto timestamp_same_col = lm_same_col_cit->second;
         journal_.LogMutation(DELETE_EVENT(now, conflicting_object_same_row),
                              [this, key_same_row, conflicting_object_same_row, timestamp_same_row]() {
-                               DoAddWithLastModified(
+                               DoUpdateWithLastModified(
                                    timestamp_same_row, key_same_row, conflicting_object_same_row);
                              });
         journal_.LogMutation(DELETE_EVENT(now, conflicting_object_same_col),
                              [this, key_same_col, conflicting_object_same_col, timestamp_same_col]() {
-                               DoAddWithLastModified(
+                               DoUpdateWithLastModified(
                                    timestamp_same_col, key_same_col, conflicting_object_same_col);
                              });
         DoEraseWithLastModified(now, key_same_row);
@@ -114,7 +114,8 @@ class GenericOneToOne {
         journal_.LogMutation(
             DELETE_EVENT(now, conflicting_object),
             [this, conflicting_object_key, conflicting_object, conflicting_object_timestamp]() {
-              DoAddWithLastModified(conflicting_object_timestamp, conflicting_object_key, conflicting_object);
+              DoUpdateWithLastModified(
+                  conflicting_object_timestamp, conflicting_object_key, conflicting_object);
             });
         DoEraseWithLastModified(now, conflicting_object_key);
       }
@@ -127,12 +128,12 @@ class GenericOneToOne {
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
-                               DoErase(key);
+                               DoEraseWithoutTouchingLastModified(key);
                                last_modified_.erase(key);
                              });
       }
     }
-    DoAddWithLastModified(now, key, object);
+    DoUpdateWithLastModified(now, key, object);
   }
 
   // Here and below pass the key by a const reference, as `key_t` is an `std::pair<row_t, col_t>`.
@@ -146,7 +147,7 @@ class GenericOneToOne {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
       DoEraseWithLastModified(now, key);
     }
@@ -164,7 +165,7 @@ class GenericOneToOne {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
       DoEraseWithLastModified(now, key);
     }
@@ -181,7 +182,7 @@ class GenericOneToOne {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
       DoEraseWithLastModified(now, key);
     }
@@ -238,7 +239,7 @@ class GenericOneToOne {
   void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    DoAddWithLastModified(e.us, std::make_pair(row, col), e.data);
+    DoUpdateWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
   void operator()(const DELETE_EVENT& e) {
     DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
@@ -256,7 +257,7 @@ class GenericOneToOne {
   iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
-  void DoAddWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
+  void DoUpdateWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
     auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
     forward_[key.first] = placeholder.get();
@@ -264,14 +265,14 @@ class GenericOneToOne {
     last_modified_[key] = us;
   }
 
-  void DoErase(const key_t& key) {
+  void DoEraseWithoutTouchingLastModified(const key_t& key) {
     forward_.erase(key.first);
     transposed_.erase(key.second);
     map_.erase(key);
   }
 
   void DoEraseWithLastModified(std::chrono::microseconds us, const key_t& key) {
-    DoErase(key);
+    DoEraseWithoutTouchingLastModified(key);
     last_modified_[key] = us;
   }
 

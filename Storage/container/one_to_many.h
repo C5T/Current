@@ -76,7 +76,7 @@ class GenericOneToMany {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
     } else {
       const auto transposed_cit = transposed_.find(col);
@@ -89,7 +89,8 @@ class GenericOneToMany {
         journal_.LogMutation(
             DELETE_EVENT(now, conflicting_object),
             [this, conflicting_object_key, conflicting_object, conflicting_object_timestamp]() {
-              DoAddWithLastModified(conflicting_object_timestamp, conflicting_object_key, conflicting_object);
+              DoUpdateWithLastModified(
+                  conflicting_object_timestamp, conflicting_object_key, conflicting_object);
             });
         DoEraseWithLastModified(now, conflicting_object_key);
       }
@@ -101,12 +102,12 @@ class GenericOneToMany {
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
-                               DoErase(key);
+                               DoEraseWithoutTouchingLastModified(key);
                                last_modified_.erase(key);
                              });
       }
     }
-    DoAddWithLastModified(now, key, object);
+    DoUpdateWithLastModified(now, key, object);
   }
 
   // Here and below pass the key by a const reference, as `key_t` is an `std::pair<row_t, col_t>`.
@@ -120,7 +121,7 @@ class GenericOneToMany {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
       DoEraseWithLastModified(now, key);
     }
@@ -138,7 +139,7 @@ class GenericOneToMany {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
       DoEraseWithLastModified(now, key);
     }
@@ -185,7 +186,7 @@ class GenericOneToMany {
   void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    DoAddWithLastModified(e.us, std::make_pair(row, col), e.data);
+    DoUpdateWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
   void operator()(const DELETE_EVENT& e) {
     DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
@@ -248,7 +249,7 @@ class GenericOneToMany {
   iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
-  void DoAddWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
+  void DoUpdateWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
     auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
     forward_[key.first][key.second] = placeholder.get();
@@ -256,7 +257,7 @@ class GenericOneToMany {
     last_modified_[key] = us;
   }
 
-  void DoErase(const key_t& key) {
+  void DoEraseWithoutTouchingLastModified(const key_t& key) {
     auto& map_row = forward_[key.first];
     map_row.erase(key.second);
     if (map_row.empty()) {
@@ -267,7 +268,7 @@ class GenericOneToMany {
   }
 
   void DoEraseWithLastModified(std::chrono::microseconds us, const key_t& key) {
-    DoErase(key);
+    DoEraseWithoutTouchingLastModified(key);
     last_modified_[key] = us;
   }
 

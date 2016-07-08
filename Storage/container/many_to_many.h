@@ -75,7 +75,7 @@ class GenericManyToMany {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
     } else {
       if (lm_cit != last_modified_.end()) {
@@ -86,12 +86,12 @@ class GenericManyToMany {
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
-                               DoErase(key);
+                               DoEraseWithoutTouchingLastModified(key);
                                last_modified_.erase(key);
                              });
       }
     }
-    DoAddWithLastModified(now, key, object);
+    DoUpdateWithLastModified(now, key, object);
   }
 
   // Here and below pass the key by a const reference, as `key_t` is an `std::pair<row_t, col_t>`.
@@ -105,7 +105,7 @@ class GenericManyToMany {
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             DoAddWithLastModified(previous_timestamp, key, previous_object);
+                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
                            });
       DoEraseWithLastModified(now, key);
     }
@@ -140,7 +140,7 @@ class GenericManyToMany {
   void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    DoAddWithLastModified(e.us, std::make_pair(row, col), e.data);
+    DoUpdateWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
   void operator()(const DELETE_EVENT& e) {
     DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
@@ -208,7 +208,7 @@ class GenericManyToMany {
   iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
-  void DoAddWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
+  void DoUpdateWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
     auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
     forward_[key.first][key.second] = placeholder.get();
@@ -216,7 +216,7 @@ class GenericManyToMany {
     last_modified_[key] = us;
   }
 
-  void DoErase(const key_t& key) {
+  void DoEraseWithoutTouchingLastModified(const key_t& key) {
     auto& map_row = forward_[key.first];
     map_row.erase(key.second);
     if (map_row.empty()) {
@@ -231,7 +231,7 @@ class GenericManyToMany {
   }
 
   void DoEraseWithLastModified(std::chrono::microseconds us, const key_t& key) {
-    DoErase(key);
+    DoEraseWithoutTouchingLastModified(key);
     last_modified_[key] = us;
   }
 
