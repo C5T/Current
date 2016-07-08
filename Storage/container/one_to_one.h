@@ -135,6 +135,7 @@ class GenericOneToOne {
     DoAddWithLastModified(now, key, object);
   }
 
+  // Here and below pass the key by a const reference, as `key_t` is an `std::pair<row_t, col_t>`.
   void Erase(const key_t& key) {
     const auto now = current::time::Now();
     const auto map_cit = map_.find(key);
