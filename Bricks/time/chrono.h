@@ -172,13 +172,13 @@ inline std::string FormatDateTime(std::chrono::microseconds t,
   if (T == time::TimeRepresentation::Local) {
 // `localtime` and `gmtime` are thread-safe in Windows.
 #ifdef CURRENT_WINDOWS
-    ::localtime_s(&tt, &tmp_tm);
+    ::localtime_s(&tmp_tm, &tt);
 #else
     ::localtime_r(&tt, &tmp_tm);
 #endif
   } else {
 #ifdef CURRENT_WINDOWS
-    ::gmtime_s(&tt, &tmp_tm);
+    ::gmtime_s(&tmp_tm, &tt);
 #else
     ::gmtime_r(&tt, &tmp_tm);
 #endif
@@ -203,7 +203,7 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
     const std::string& datetime,
     const char* format_string,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  const long long million = 1e6;
+  const int64_t million = static_cast<int64_t>(1e6);
   struct tm tm;
   if (strptime(datetime.c_str(), format_string, &tm)) {
     time_t tt;
