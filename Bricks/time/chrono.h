@@ -140,7 +140,6 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
 
 }  // namespace current::strings
 
-
 namespace time {
 
 enum class TimeRepresentation { Local, UTC };
@@ -191,7 +190,8 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
     const std::string& datetime,
     const char* format_string,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-#if defined(CURRENT_POSIX) || defined(CURRENT_APPLE)
+  const long long million = 1e6;
+#if defined(CURRENT_POSIX)
   // I'm f*cking pissed off. -- D.K.
   if (!strcmp(format_string, time::DateTimeInputFmts::RFC1123) ||
       !strcmp(format_string, time::DateTimeInputFmts::RFC850)) {
@@ -204,7 +204,6 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
     if (!t) {
       return std::chrono::microseconds(0);
     } else {
-      const long long million = 1e6;
       return std::chrono::microseconds(
           t * million + (padding == time::SecondsToMicrosecondsPadding::Lower ? 0 : million - 1));
     }
@@ -214,8 +213,13 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
   if (strptime(datetime.c_str(), format_string, &tm)) {
     tm.tm_isdst = -1;
     time_t tt = mktime(&tm);
-    return std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt))
-        .time_since_epoch();
+    const auto result = std::chrono::time_point_cast<std::chrono::microseconds>(
+                            std::chrono::system_clock::from_time_t(tt)).time_since_epoch();
+    if (padding == time::SecondsToMicrosecondsPadding::Lower) {
+      return result;
+    } else {
+      return result + std::chrono::microseconds(million - 1);
+    }
   } else {
     return std::chrono::microseconds(0);
   }
