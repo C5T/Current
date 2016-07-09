@@ -167,23 +167,21 @@ inline std::string FormatDateTime(std::chrono::microseconds t,
   std::chrono::time_point<std::chrono::system_clock> tp(t);
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];
-  std::tm tmp_tm;
-  std::tm* tm = &tmp_tm;
+  std::tm tm;
   if (T == time::TimeRepresentation::Local) {
-// `localtime` and `gmtime` are thread-safe in Windows.
 #ifdef CURRENT_WINDOWS
-    ::localtime_s(&tmp_tm, &tt);
+    ::localtime_s(&tm, &tt);
 #else
-    ::localtime_r(&tt, &tmp_tm);
+    ::localtime_r(&tt, &tm);
 #endif
   } else {
 #ifdef CURRENT_WINDOWS
-    ::gmtime_s(&tmp_tm, &tt);
+    ::gmtime_s(&tm, &tt);
 #else
-    ::gmtime_r(&tt, &tmp_tm);
+    ::gmtime_r(&tt, &tm);
 #endif
   }
-  if (std::strftime(buf, sizeof(buf), format_string, tm)) {
+  if (std::strftime(buf, sizeof(buf), format_string, &tm)) {
     return buf;
   } else {
     return ToString(t) + "us";
@@ -204,7 +202,7 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
     const char* format_string,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
   const int64_t million = static_cast<int64_t>(1e6);
-  struct tm tm;
+  std::tm tm;
   if (strptime(datetime.c_str(), format_string, &tm)) {
     time_t tt;
     if (T == time::TimeRepresentation::Local) {
