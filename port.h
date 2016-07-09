@@ -209,7 +209,7 @@ struct PortForUnitTestPicker {
 #include <iomanip>
 #include <sstream>
 namespace enable_strptime_on_windows {
-const char* strptime(const char* input_string, const char* input_format, tm* output_tm) {
+inline const char* strptime(const char* input_string, const char* input_format, tm* output_tm) {
   std::istringstream input(input_string);
   input.imbue(std::locale(setlocale(LC_ALL, nullptr)));
   input >> std::get_time(output_tm, input_format);
