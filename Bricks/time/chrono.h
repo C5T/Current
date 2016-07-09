@@ -140,16 +140,48 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
 
 }  // namespace current::strings
 
+namespace time {
+
+enum class TimeRepresentation { Local, UTC };
+
+// TODO: Make it locale independent.
+struct DateTimeOutputFmts {
+  constexpr static const char* RFC1123 = "%a, %d %b %Y %H:%M:%S GMT";
+  constexpr static const char* RFC850 = "%A, %d-%b-%y %H:%M:%S GMT";
+};
+
+struct DateTimeInputFmts {
+  constexpr static const char* RFC1123 = "%a, %d %b %Y %H:%M:%S %Z";
+  constexpr static const char* RFC850 = "%A, %d-%b-%y %H:%M:%S %Z";
+};
+
+}  // namespace current::time
+
+template <time::TimeRepresentation T = time::TimeRepresentation::Local>
 inline std::string FormatDateTime(std::chrono::microseconds t,
                                   const char* format_string = "%Y/%m/%d %H:%M:%S") {
   std::chrono::time_point<std::chrono::system_clock> tp(t);
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];
-  if (std::strftime(buf, sizeof(buf), format_string, std::localtime(&tt))) {
+  std::tm* tm;
+  if (T == time::TimeRepresentation::Local) {
+    tm = std::localtime(&tt);
+  } else {
+    tm = std::gmtime(&tt);
+  }
+  if (std::strftime(buf, sizeof(buf), format_string, tm)) {
     return buf;
   } else {
     return ToString(t) + "us";
   }
+}
+
+inline std::string FormatDateTimeRFC1123(std::chrono::microseconds t) {
+  return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeOutputFmts::RFC1123);
+}
+
+inline std::string FormatDateTimeRFC850(std::chrono::microseconds t) {
+  return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeOutputFmts::RFC850);
 }
 
 inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& datetime,
@@ -163,6 +195,14 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& da
   } else {
     return std::chrono::microseconds(0);
   }
+}
+
+inline std::chrono::microseconds RFC1123DateTimeStringToTimestamp(const std::string& datetime) {
+  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC1123);
+}
+
+inline std::chrono::microseconds RFC850DateTimeStringToTimestamp(const std::string& datetime) {
+  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC850);
 }
 
 }  // namespace current

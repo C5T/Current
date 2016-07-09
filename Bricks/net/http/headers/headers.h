@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
+#include "../../../time/chrono.h"
 #include "../../../strings/split.h"
 #include "../../../strings/util.h"
 
@@ -49,6 +50,26 @@ struct HeaderNotFoundException : Exception {
 struct CookieIsNotYourRegularHeader : Exception {
   using Exception::Exception;
 };
+
+struct InvalidHTTPDateException : Exception {
+  explicit InvalidHTTPDateException(const std::string& d) : Exception("Unparsable date: `" + d + "`.") {}
+};
+
+std::chrono::microseconds ParseHTTPDate(const std::string& datetime) {
+  // Try RFC1123 format.
+  auto t = current::RFC1123DateTimeStringToTimestamp(datetime);
+  if (t.count()) {
+    return t;
+  }
+  // Try RFC850 format.
+  t = current::RFC850DateTimeStringToTimestamp(datetime);
+  if (t.count()) {
+    return t;
+  } else {
+    // TODO: Support ANSI C format as well.
+    CURRENT_THROW(InvalidHTTPDateException(datetime));
+  }
+}
 
 // A generic implementation for HTTP headers.
 // * Shared for client- and server-side use (set by the user or set by an internal HTTP response parser).
