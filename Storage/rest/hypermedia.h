@@ -178,8 +178,8 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
                                                     std::chrono::microseconds last_modified) {
   return HypermediaRESTError("ResourceWasModifiedError",
                              message,
-                             {{"requested_date", FormatDateTimeRFC1123(requested)},
-                              {"resource_last_modified_date", FormatDateTimeRFC1123(last_modified)}});
+                             {{"requested_date", FormatDateTimeAsIMFFix(requested)},
+                              {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
 struct Hypermedia {
@@ -277,7 +277,7 @@ struct Hypermedia {
           auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, Value(result)));
           const auto last_modified = input.field.LastModified(key);
           if (Exists(last_modified)) {
-            response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+            response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
           }
           return response;
         } else {
@@ -330,7 +330,7 @@ struct Hypermedia {
                                  HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
         if (Exists(last_modified)) {
-          response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+          response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
         }
         return response;
       } else {
@@ -387,7 +387,7 @@ struct Hypermedia {
         }
         const auto last_modified = input.field.LastModified(input.entry_key);
         if (Exists(last_modified)) {
-          response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+          response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
         }
         return response;
       } else {
@@ -438,7 +438,7 @@ struct Hypermedia {
       if (existed) {
         const auto last_modified = input.field.LastModified(input.key);
         if (Exists(last_modified)) {
-          response.SetHeader("Last-Modified", FormatDateTimeRFC1123(Value(last_modified)));
+          response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
         }
       }
       return response;

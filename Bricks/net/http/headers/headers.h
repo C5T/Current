@@ -60,8 +60,8 @@ struct InvalidHTTPDateException : Exception {
 inline std::chrono::microseconds ParseHTTPDate(
     const std::string& datetime,
     current::time::SecondsToMicrosecondsPadding padding = current::time::SecondsToMicrosecondsPadding::Upper) {
-  // Try RFC1123 format.
-  auto t = current::RFC1123DateTimeStringToTimestamp(datetime, padding);
+  // Try IMF-fixdate/RFC1123 format.
+  auto t = current::IMFFixDateTimeStringToTimestamp(datetime, padding);
   if (t.count()) {
     return t;
   }

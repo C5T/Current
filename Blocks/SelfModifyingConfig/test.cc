@@ -55,7 +55,7 @@ TEST(SelfModifyingConfig, Smoke) {
   current::FileSystem::WriteStringToFile(JSON(UnitTestSelfModifyingConfig(1)), config_filename.c_str());
 
   current::time::SetNow(
-      current::RFC1123DateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
+      current::IMFFixDateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
 
   current::SelfModifyingConfig<UnitTestSelfModifyingConfig> config(config_filename);
   EXPECT_EQ(1, config.Config().x);
@@ -64,7 +64,7 @@ TEST(SelfModifyingConfig, Smoke) {
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(historical_filename));
 
   current::time::SetNow(
-      current::RFC1123DateTimeStringToTimestamp("Sun, 16 Aug 2015 00:00:00 GMT"));  // I turned 32. -- D.K.
+      current::IMFFixDateTimeStringToTimestamp("Sun, 16 Aug 2015 00:00:00 GMT"));  // I turned 32. -- D.K.
   config.Update(UnitTestSelfModifyingConfig(2));
 
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(historical_filename));
@@ -90,7 +90,7 @@ TEST(SelfModifyingConfig, ReadFileException) {
   const auto historical_file_remover = current::FileSystem::ScopedRmFile(historical_filename);
 
   current::time::SetNow(
-      current::RFC1123DateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
+      current::IMFFixDateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
 
   ASSERT_THROW(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename),
                current::SelfModifyingConfigReadFileException);
@@ -114,7 +114,7 @@ TEST(SelfModifyingConfig, ParseJSONException) {
   const auto historical_file_remover = current::FileSystem::ScopedRmFile(historical_filename);
 
   current::time::SetNow(
-      current::RFC1123DateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
+      current::IMFFixDateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
 
   current::FileSystem::WriteStringToFile("De Louboutin.", config_filename.c_str());
 
@@ -143,7 +143,7 @@ TEST(SelfModifyingConfig, WriteFileException) {
   current::FileSystem::MkDir(historical_filename, current::FileSystem::MkDirParameters::Silent);
 
   current::time::SetNow(
-      current::RFC1123DateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
+      current::IMFFixDateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
 
   current::FileSystem::WriteStringToFile(JSON(UnitTestSelfModifyingConfig(4)), config_filename.c_str());
 

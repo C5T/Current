@@ -458,7 +458,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
 
   // Try to modify the record with the header `If-Unmodified-Since` set slightly in the past.
   {
-    const auto header_value = current::FormatDateTimeRFC1123(publish_time - std::chrono::microseconds(1000000));
+    const auto header_value = current::FormatDateTimeAsIMFFix(publish_time - std::chrono::microseconds(1000000));
     const auto response = HTTP(PUT(base_url + "/api/data/client/" + client1_key_str, updated_client1)
                                    .SetHeader("If-Unmodified-Since", header_value));
     EXPECT_EQ(412, static_cast<int>(response.code));
@@ -473,7 +473,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
 
   // Try to DELETE the record with the header `If-Unmodified-Since` set slightly in the past.
   {
-    const auto header_value = current::FormatDateTimeRFC1123(publish_time - std::chrono::microseconds(1000000));
+    const auto header_value = current::FormatDateTimeAsIMFFix(publish_time - std::chrono::microseconds(1000000));
     const auto response = HTTP(DELETE(base_url + "/api/data/client/" + client1_key_str)
                                    .SetHeader("If-Unmodified-Since", header_value));
     EXPECT_EQ(412, static_cast<int>(response.code));
@@ -483,7 +483,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
   current::time::SetNow(update_time);
   // `PUT` with the real modification timestamp should pass.
   {
-    const auto header_value = current::FormatDateTimeRFC1123(publish_time);
+    const auto header_value = current::FormatDateTimeAsIMFFix(publish_time);
     const auto response = HTTP(PUT(base_url + "/api/data/client/" + client1_key_str, updated_client1)
                                    .SetHeader("If-Unmodified-Since", header_value));
     EXPECT_EQ(200, static_cast<int>(response.code));
@@ -495,7 +495,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
   current::time::SetNow(delete_time);
   // `PUT` with the real modification timestamp should pass.
   {
-    const auto header_value = current::FormatDateTimeRFC1123(update_time);
+    const auto header_value = current::FormatDateTimeAsIMFFix(update_time);
     const auto response = HTTP(DELETE(base_url + "/api/data/client/" + client1_key_str)
                                    .SetHeader("If-Unmodified-Since", header_value));
     EXPECT_EQ(200, static_cast<int>(response.code));
