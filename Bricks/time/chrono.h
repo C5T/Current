@@ -140,29 +140,101 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
 
 }  // namespace current::strings
 
+namespace time {
+
+enum class TimeRepresentation { Local, UTC };
+
+// TODO: Make it locale independent.
+struct DateTimeOutputFmts {
+  constexpr static const char* RFC1123 = "%a, %d %b %Y %H:%M:%S GMT";
+  constexpr static const char* RFC850 = "%A, %d-%b-%y %H:%M:%S GMT";
+};
+
+struct DateTimeInputFmts {
+  constexpr static const char* RFC1123 = "%a, %d %b %Y %H:%M:%S %Z";
+  constexpr static const char* RFC850 = "%A, %d-%b-%y %H:%M:%S %Z";
+};
+
+enum class SecondsToMicrosecondsPadding : bool { Lower = false, Upper = true };
+
+}  // namespace current::time
+
+template <time::TimeRepresentation T = time::TimeRepresentation::Local>
 inline std::string FormatDateTime(std::chrono::microseconds t,
                                   const char* format_string = "%Y/%m/%d %H:%M:%S") {
   std::chrono::time_point<std::chrono::system_clock> tp(t);
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];
-  if (std::strftime(buf, sizeof(buf), format_string, std::localtime(&tt))) {
+  std::tm* tm;
+  if (T == time::TimeRepresentation::Local) {
+    tm = std::localtime(&tt);
+  } else {
+    tm = std::gmtime(&tt);
+  }
+  if (std::strftime(buf, sizeof(buf), format_string, tm)) {
     return buf;
   } else {
     return ToString(t) + "us";
   }
 }
 
-inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& datetime,
-                                                           const char* format_string) {
+inline std::string FormatDateTimeRFC1123(std::chrono::microseconds t) {
+  return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeOutputFmts::RFC1123);
+}
+
+inline std::string FormatDateTimeRFC850(std::chrono::microseconds t) {
+  return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeOutputFmts::RFC850);
+}
+
+inline std::chrono::microseconds DateTimeStringToTimestamp(
+    const std::string& datetime,
+    const char* format_string,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  const long long million = 1e6;
+#if defined(CURRENT_POSIX)
+  // I'm f*cking pissed off. -- D.K.
+  if (!strcmp(format_string, time::DateTimeInputFmts::RFC1123) ||
+      !strcmp(format_string, time::DateTimeInputFmts::RFC850)) {
+    FILE* f = ::popen(("date -d '" + datetime + "' +'%s' 2>/dev/null").c_str(), "r");
+    long long t = 0;
+    if (!fscanf(f, "%lld", &t)) {
+      t = 0;
+    }
+    pclose(f);
+    if (!t) {
+      return std::chrono::microseconds(0);
+    } else {
+      return std::chrono::microseconds(
+          t * million + (padding == time::SecondsToMicrosecondsPadding::Lower ? 0 : million - 1));
+    }
+  }
+#endif
   struct tm tm;
   if (strptime(datetime.c_str(), format_string, &tm)) {
     tm.tm_isdst = -1;
     time_t tt = mktime(&tm);
-    return std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt))
-        .time_since_epoch();
+    const auto result = std::chrono::time_point_cast<std::chrono::microseconds>(
+                            std::chrono::system_clock::from_time_t(tt)).time_since_epoch();
+    if (padding == time::SecondsToMicrosecondsPadding::Lower) {
+      return result;
+    } else {
+      return result + std::chrono::microseconds(million - 1);
+    }
   } else {
     return std::chrono::microseconds(0);
   }
+}
+
+inline std::chrono::microseconds RFC1123DateTimeStringToTimestamp(
+    const std::string& datetime,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC1123, padding);
+}
+
+inline std::chrono::microseconds RFC850DateTimeStringToTimestamp(
+    const std::string& datetime,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC850, padding);
 }
 
 }  // namespace current

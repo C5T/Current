@@ -221,6 +221,12 @@ struct Response {
     return *this;
   }
 
+  Response& SetHeader(const std::string& key, const std::string& value) {
+    headers[key] = value;
+    initialized = true;
+    return *this;
+  }
+
   template <typename T>
   Response& SetCookie(const std::string& name, T&& cookie) {
     headers.SetCookie(name, std::forward<T>(cookie));
