@@ -364,10 +364,9 @@ struct Hypermedia {
         const bool exists = Exists(input.field[input.entry_key]);
         if (exists && Exists(if_unmodified_since)) {
           const auto last_modified = input.field.LastModified(input.entry_key);
-          if (Exists(last_modified) &&
-              Value(last_modified).count() * 1e-6 > Value(if_unmodified_since).count() * 1e-6) {
+          if (Exists(last_modified) && Value(last_modified).count() > Value(if_unmodified_since).count()) {
             return ErrorResponse(
-                ResourceWasModifiedError("Resourse can not be updated as it has been modified in the meantime.",
+                ResourceWasModifiedError("Resource can not be updated as it has been modified in the meantime.",
                                          Value(if_unmodified_since),
                                          Value(last_modified)),
                 HTTPResponseCode.PreconditionFailed);
@@ -422,10 +421,9 @@ struct Hypermedia {
         existed = true;
         if (Exists(if_unmodified_since)) {
           const auto last_modified = input.field.LastModified(input.key);
-          if (Exists(last_modified) &&
-              Value(last_modified).count() * 1e-6 > Value(if_unmodified_since).count() * 1e-6) {
+          if (Exists(last_modified) && Value(last_modified).count() > Value(if_unmodified_since).count()) {
             return ErrorResponse(
-                ResourceWasModifiedError("Resourse can not be deleted as it has been modified in the meantime.",
+                ResourceWasModifiedError("Resource can not be deleted as it has been modified in the meantime.",
                                          Value(if_unmodified_since),
                                          Value(last_modified)),
                 HTTPResponseCode.PreconditionFailed);

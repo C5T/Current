@@ -140,6 +140,7 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
 
 }  // namespace current::strings
 
+
 namespace time {
 
 enum class TimeRepresentation { Local, UTC };
@@ -154,6 +155,8 @@ struct DateTimeInputFmts {
   constexpr static const char* RFC1123 = "%a, %d %b %Y %H:%M:%S %Z";
   constexpr static const char* RFC850 = "%A, %d-%b-%y %H:%M:%S %Z";
 };
+
+enum class SecondsToMicrosecondsPadding : bool { Lower = false, Upper = true };
 
 }  // namespace current::time
 
@@ -184,8 +187,29 @@ inline std::string FormatDateTimeRFC850(std::chrono::microseconds t) {
   return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeOutputFmts::RFC850);
 }
 
-inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& datetime,
-                                                           const char* format_string) {
+inline std::chrono::microseconds DateTimeStringToTimestamp(
+    const std::string& datetime,
+    const char* format_string,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+#if defined(CURRENT_POSIX)
+  // I'm f*cking pissed off. -- D.K.
+  if (!strcmp(format_string, time::DateTimeInputFmts::RFC1123) ||
+      !strcmp(format_string, time::DateTimeInputFmts::RFC850)) {
+    FILE* f = ::popen(("date -d '" + datetime + "' +'%s' 2>/dev/null").c_str(), "r");
+    long long t = 0;
+    if (!fscanf(f, "%lld", &t)) {
+      t = 0;
+    }
+    pclose(f);
+    if (!t) {
+      return std::chrono::microseconds(0);
+    } else {
+      const long long million = 1e6;
+      return std::chrono::microseconds(
+          t * million + (padding == time::SecondsToMicrosecondsPadding::Lower ? 0 : million - 1));
+    }
+  }
+#endif
   struct tm tm;
   if (strptime(datetime.c_str(), format_string, &tm)) {
     tm.tm_isdst = -1;
@@ -197,12 +221,16 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& da
   }
 }
 
-inline std::chrono::microseconds RFC1123DateTimeStringToTimestamp(const std::string& datetime) {
-  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC1123);
+inline std::chrono::microseconds RFC1123DateTimeStringToTimestamp(
+    const std::string& datetime,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC1123, padding);
 }
 
-inline std::chrono::microseconds RFC850DateTimeStringToTimestamp(const std::string& datetime) {
-  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC850);
+inline std::chrono::microseconds RFC850DateTimeStringToTimestamp(
+    const std::string& datetime,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp(datetime, time::DateTimeInputFmts::RFC850, padding);
 }
 
 }  // namespace current
