@@ -191,7 +191,7 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
     const std::string& datetime,
     const char* format_string,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-#if defined(CURRENT_POSIX)
+#if defined(CURRENT_POSIX) || defined(CURRENT_APPLE)
   // I'm f*cking pissed off. -- D.K.
   if (!strcmp(format_string, time::DateTimeInputFmts::RFC1123) ||
       !strcmp(format_string, time::DateTimeInputFmts::RFC850)) {
