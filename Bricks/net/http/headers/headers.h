@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
+#include "../../../time/chrono.h"
 #include "../../../strings/split.h"
 #include "../../../strings/util.h"
 
@@ -49,6 +50,30 @@ struct HeaderNotFoundException : Exception {
 struct CookieIsNotYourRegularHeader : Exception {
   using Exception::Exception;
 };
+
+struct InvalidHTTPDateException : Exception {
+  explicit InvalidHTTPDateException(const std::string& d) : Exception("Unparsable date: `" + d + "`.") {}
+};
+
+// Default `padding` to `Upper` (one microsecond left to the beginning of the next second)
+// to err on the right side when it comes to `If-Unmodified-Since` logic. -- D.K.
+inline std::chrono::microseconds ParseHTTPDate(
+    const std::string& datetime,
+    current::time::SecondsToMicrosecondsPadding padding = current::time::SecondsToMicrosecondsPadding::Upper) {
+  // Try IMF-fixdate/RFC1123 format.
+  auto t = current::IMFFixDateTimeStringToTimestamp(datetime, padding);
+  if (t.count()) {
+    return t;
+  }
+  // Try RFC850 format.
+  t = current::RFC850DateTimeStringToTimestamp(datetime, padding);
+  if (t.count()) {
+    return t;
+  } else {
+    // TODO: Support ANSI C format as well.
+    CURRENT_THROW(InvalidHTTPDateException(datetime));
+  }
+}
 
 // A generic implementation for HTTP headers.
 // * Shared for client- and server-side use (set by the user or set by an internal HTTP response parser).

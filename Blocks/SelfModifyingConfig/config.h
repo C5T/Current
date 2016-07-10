@@ -52,7 +52,7 @@ namespace current {
 struct SelfModifyingConfigHelper {
   static std::string HistoricalFilename(const std::string& filename,
                                         std::chrono::microseconds now = current::time::Now()) {
-    return filename + current::FormatDateTime(now, ".%Y%m%d-%H%M%S");
+    return filename + current::FormatDateTime<current::time::TimeRepresentation::UTC>(now, ".%Y%m%d-%H%M%S");
   }
 };
 

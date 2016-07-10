@@ -415,6 +415,95 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
 }
 
+TEST(StorageDocumentation, IfUnmodifiedSince) {
+  current::time::ResetToZero();
+
+  using namespace current::storage::rest;
+  using namespace storage_docu;
+  using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
+
+  TestStorage storage;
+
+  const auto basic_rest = RESTfulStorage<TestStorage>(
+      storage, FLAGS_client_storage_test_port, "/api_basic", "http://example.current.ai/api_basic");
+  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+      storage, FLAGS_client_storage_test_port, "/api", "http://example.current.ai/api");
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
+
+  // POST one record.
+  const auto publish_time = std::chrono::microseconds(1467363600000000);  // `Fri, 01 Jul 2016 09:00:00 GMT`.
+  current::time::SetNow(publish_time);
+  const auto post_response = HTTP(POST(base_url + "/api_basic/data/client", Client(ClientID(42))));
+  const std::string client1_key_str = post_response.body;
+  const ClientID client1_key = static_cast<ClientID>(current::FromString<uint64_t>(client1_key_str));
+  EXPECT_EQ(201, static_cast<int>(post_response.code));
+
+  {
+    const auto response = HTTP(GET(base_url + "/api/data/client/" + client1_key_str));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    ASSERT_TRUE(response.headers.Has("Last-Modified"));
+    EXPECT_EQ("Fri, 01 Jul 2016 09:00:00 GMT", response.headers.Get("Last-Modified"));
+  }
+
+  Client updated_client1((ClientID(client1_key)));
+  updated_client1.name = "Jane Doe";
+
+  // Try to modify the record with the incorrect header `If-Unmodified-Since`.
+  {
+    const auto response = HTTP(PUT(base_url + "/api/data/client/" + client1_key_str, updated_client1)
+                                   .SetHeader("If-Unmodified-Since", "Bad string"));
+    EXPECT_EQ(400, static_cast<int>(response.code));
+  }
+
+  // Try to modify the record with the header `If-Unmodified-Since` set slightly in the past.
+  {
+    const auto header_value = current::FormatDateTimeAsIMFFix(publish_time - std::chrono::microseconds(1000000));
+    const auto response = HTTP(PUT(base_url + "/api/data/client/" + client1_key_str, updated_client1)
+                                   .SetHeader("If-Unmodified-Since", header_value));
+    EXPECT_EQ(412, static_cast<int>(response.code));
+  }
+
+  // Try to DELETE the record with the incorrect header `If-Unmodified-Since`.
+  {
+    const auto response = HTTP(DELETE(base_url + "/api/data/client/" + client1_key_str)
+                                   .SetHeader("If-Unmodified-Since", "Bad string"));
+    EXPECT_EQ(400, static_cast<int>(response.code));
+  }
+
+  // Try to DELETE the record with the header `If-Unmodified-Since` set slightly in the past.
+  {
+    const auto header_value = current::FormatDateTimeAsIMFFix(publish_time - std::chrono::microseconds(1000000));
+    const auto response = HTTP(DELETE(base_url + "/api/data/client/" + client1_key_str)
+                                   .SetHeader("If-Unmodified-Since", header_value));
+    EXPECT_EQ(412, static_cast<int>(response.code));
+  }
+
+  const auto update_time = std::chrono::microseconds(1467374400000000);  // `Fri, 01 Jul 2016 12:00:00 GMT`.
+  current::time::SetNow(update_time);
+  // `PUT` with the real modification timestamp should pass.
+  {
+    const auto header_value = current::FormatDateTimeAsIMFFix(publish_time);
+    const auto response = HTTP(PUT(base_url + "/api/data/client/" + client1_key_str, updated_client1)
+                                   .SetHeader("If-Unmodified-Since", header_value));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    ASSERT_TRUE(response.headers.Has("Last-Modified"));
+    EXPECT_EQ("Fri, 01 Jul 2016 12:00:00 GMT", response.headers.Get("Last-Modified"));
+  }
+
+  const auto delete_time = std::chrono::microseconds(1467385200000000);  // `Fri, 01 Jul 2016 15:00:00 GMT`.
+  current::time::SetNow(delete_time);
+  // `PUT` with the real modification timestamp should pass.
+  {
+    const auto header_value = current::FormatDateTimeAsIMFFix(update_time);
+    const auto response = HTTP(DELETE(base_url + "/api/data/client/" + client1_key_str)
+                                   .SetHeader("If-Unmodified-Since", header_value));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    ASSERT_TRUE(response.headers.Has("Last-Modified"));
+    EXPECT_EQ("Fri, 01 Jul 2016 15:00:00 GMT", response.headers.Get("Last-Modified"));
+  }
+}
+
 namespace storage_docu {
 
 // Example of custom REST implementation that annotates transactions.

@@ -74,3 +74,30 @@ TEST(Time, SmokeTest) {
 #endif  // CURRENT_COVERAGE_REPORT_MODE
 
 #endif  // CURRENT_MOCK_TIME
+
+TEST(Time, DateTimeFormatFunctions) {
+  // Smoke test.
+  ASSERT_NE(current::IMFFixDateTimeStringToTimestamp("Sun, 24 Apr 2016 01:31:01 GMT").count(),
+            current::IMFFixDateTimeStringToTimestamp("Sun, 24 Apr 2016 01:31:01 PDT").count());
+
+  // Real test.
+  const auto t = std::chrono::microseconds(1461461461461461);
+  EXPECT_EQ("2016/04/24 01:31:01", current::FormatDateTime<current::time::TimeRepresentation::UTC>(t));
+  EXPECT_EQ("Sun, 24 Apr 2016 01:31:01 GMT", current::FormatDateTimeAsIMFFix(t));
+  EXPECT_EQ("Sunday, 24-Apr-16 01:31:01 GMT", current::FormatDateTimeAsRFC850(t));
+  EXPECT_EQ(1461461461000000,
+            current::IMFFixDateTimeStringToTimestamp("Sun, 24 Apr 2016 01:31:01 GMT").count());
+  EXPECT_EQ(1461461461999999,
+            current::IMFFixDateTimeStringToTimestamp(
+                "Sun, 24 Apr 2016 01:31:01 GMT", current::time::SecondsToMicrosecondsPadding::Upper).count());
+  EXPECT_EQ(0, current::IMFFixDateTimeStringToTimestamp("Not valid string,").count());
+  EXPECT_EQ(0,
+            current::IMFFixDateTimeStringToTimestamp(
+                "Not valid string,", current::time::SecondsToMicrosecondsPadding::Upper).count());
+  EXPECT_EQ(1461461461000000,
+            current::RFC850DateTimeStringToTimestamp("Sunday, 24-Apr-16 01:31:01 GMT").count());
+  EXPECT_EQ(1461461461999999,
+            current::RFC850DateTimeStringToTimestamp(
+                "Sunday, 24-Apr-16 01:31:01 GMT", current::time::SecondsToMicrosecondsPadding::Upper).count());
+  EXPECT_EQ(0, current::RFC850DateTimeStringToTimestamp("Not valid string,").count());
+}

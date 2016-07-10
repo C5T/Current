@@ -36,9 +36,10 @@ namespace storage {
 using TransactionMetaFields = std::map<std::string, std::string>;
 
 CURRENT_STRUCT(TransactionMeta) {
-  CURRENT_FIELD(begin_us, std::chrono::microseconds, 0);
-  CURRENT_FIELD(end_us, std::chrono::microseconds, 0);
+  CURRENT_FIELD(begin_us, std::chrono::microseconds);
+  CURRENT_FIELD(end_us, std::chrono::microseconds);
   CURRENT_FIELD(fields, TransactionMetaFields);
+  CURRENT_DEFAULT_CONSTRUCTOR(TransactionMeta) : begin_us(0), end_us(0) {}
 };
 
 CURRENT_STRUCT_T(Transaction) {

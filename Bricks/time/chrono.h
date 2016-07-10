@@ -29,16 +29,22 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <time.h>
+
 #include <algorithm>
-#include <thread>
 #include <chrono>
 #include <mutex>
+#include <thread>
 
 #include "../exception.h"
 
 #include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
 #include "../strings/util.h"
+
+#ifdef CURRENT_WINDOWS
+#define timegm _mkgmtime
+#endif
 
 namespace current {
 namespace time {
@@ -140,29 +146,110 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
 
 }  // namespace current::strings
 
+namespace time {
+
+enum class TimeRepresentation { Local, UTC };
+
+// TODO: Make it locale independent.
+struct DateTimeFmts {
+  // See `https://tools.ietf.org/html/rfc7231#section-7.1.1.1` for details.
+  constexpr static const char* IMFFix = "%a, %d %b %Y %H:%M:%S GMT";
+  constexpr static const char* RFC850 = "%A, %d-%b-%y %H:%M:%S GMT";
+};
+
+enum class SecondsToMicrosecondsPadding : bool { Lower = false, Upper = true };
+
+}  // namespace current::time
+
+template <time::TimeRepresentation T = time::TimeRepresentation::Local>
 inline std::string FormatDateTime(std::chrono::microseconds t,
                                   const char* format_string = "%Y/%m/%d %H:%M:%S") {
   std::chrono::time_point<std::chrono::system_clock> tp(t);
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];
-  if (std::strftime(buf, sizeof(buf), format_string, std::localtime(&tt))) {
+  std::tm tm;
+  if (T == time::TimeRepresentation::Local) {
+#ifdef CURRENT_WINDOWS
+    ::localtime_s(&tm, &tt);
+#else
+    ::localtime_r(&tt, &tm);
+#endif
+  } else {
+#ifdef CURRENT_WINDOWS
+    ::gmtime_s(&tm, &tt);
+#else
+    ::gmtime_r(&tt, &tm);
+#endif
+  }
+  if (std::strftime(buf, sizeof(buf), format_string, &tm)) {
     return buf;
   } else {
     return ToString(t) + "us";
   }
 }
 
-inline std::chrono::microseconds DateTimeStringToTimestamp(const std::string& datetime,
-                                                           const char* format_string) {
-  struct tm tm;
+inline std::string FormatDateTimeAsIMFFix(std::chrono::microseconds t) {
+  return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeFmts::IMFFix);
+}
+
+inline std::string FormatDateTimeAsRFC850(std::chrono::microseconds t) {
+  return FormatDateTime<time::TimeRepresentation::UTC>(t, time::DateTimeFmts::RFC850);
+}
+
+template <time::TimeRepresentation T>
+inline std::chrono::microseconds DateTimeStringToTimestamp(
+    const std::string& datetime,
+    const char* format_string,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  const int64_t million = static_cast<int64_t>(1e6);
+  std::tm tm;
   if (strptime(datetime.c_str(), format_string, &tm)) {
-    tm.tm_isdst = -1;
-    time_t tt = mktime(&tm);
-    return std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt))
-        .time_since_epoch();
+    time_t tt;
+    if (T == time::TimeRepresentation::Local) {
+      tm.tm_isdst = -1;
+      tt = ::mktime(&tm);
+    } else {
+      tm.tm_isdst = 0;
+      tt = ::timegm(&tm);
+    }
+    const auto result = std::chrono::time_point_cast<std::chrono::microseconds>(
+                            std::chrono::system_clock::from_time_t(tt)).time_since_epoch();
+    if (padding == time::SecondsToMicrosecondsPadding::Lower) {
+      return result;
+    } else {
+      return result + std::chrono::microseconds(million - 1);
+    }
   } else {
     return std::chrono::microseconds(0);
   }
+}
+
+inline std::chrono::microseconds UTCDateTimeStringToTimestamp(
+    const std::string& datetime,
+    const char* format_string,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(datetime, format_string, padding);
+}
+
+inline std::chrono::microseconds LocalDateTimeStringToTimestamp(
+    const std::string& datetime,
+    const char* format_string,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp<time::TimeRepresentation::Local>(datetime, format_string, padding);
+}
+
+inline std::chrono::microseconds IMFFixDateTimeStringToTimestamp(
+    const std::string& datetime,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
+      datetime, time::DateTimeFmts::IMFFix, padding);
+}
+
+inline std::chrono::microseconds RFC850DateTimeStringToTimestamp(
+    const std::string& datetime,
+    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
+      datetime, time::DateTimeFmts::RFC850, padding);
 }
 
 }  // namespace current
