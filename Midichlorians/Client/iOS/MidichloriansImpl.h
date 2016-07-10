@@ -59,7 +59,6 @@ using current::midichlorians::ios::iOSDeviceInfo;
 using current::midichlorians::ios::iOSIdentifyEvent;
 using current::midichlorians::ios::iOSFocusEvent;
 using current::midichlorians::ios::iOSGenericEvent;
-using current::midichlorians::ios::DEPRECATED_T_(IOS_EVENTS);
 using current::midichlorians::ios::ios_events_t;
 
 // Define the iOS interface, being comfortably within a C++ header file included exclusively from an `.mm` one.

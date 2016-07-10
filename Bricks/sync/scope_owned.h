@@ -175,7 +175,6 @@ template <typename T>
 class ScopeOwned {
  private:
   using instance_t = impl::ActualInstance<T>;
-  using DEPRECATED_T_(INSTANCE) = instance_t;
 
  protected:
   // `ScopeOwned<T>` is meant to be initialized by `ScopeOwnedByMe<T>` or `ScopeOwnedBySomeoneElse<T>` only.
@@ -351,9 +350,6 @@ class ScopeOwnedByMe final : private impl::ActualInstanceContainer<T>, public Sc
  private:
   using impl_t = impl::ActualInstanceContainer<T>;
   using base_t = ScopeOwned<T>;
-
-  using DEPRECATED_T_(IMPL) = impl_t;
-  using DEPRECATED_T_(BASE) = base_t;
 
  public:
   ScopeOwnedByMe() : impl_t(), base_t(impl::ConstructScopeOwnedByMe(), *impl_t::movable_instance_) {}

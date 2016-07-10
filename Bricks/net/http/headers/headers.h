@@ -168,10 +168,6 @@ struct Headers final {
   // Cookies as a map of `std::string` cookie name into the value of this cookie and extra parameters for it.
   using cookies_map_t = std::map<std::string, Cookie>;
 
-  using DEPRECATED_T_(HEADERS_MAP) = headers_map_t;
-  using DEPRECATED_T_(HEADERS_LIST) = headers_list_t;
-  using DEPRECATED_T_(COOKIES_MAP) = cookies_map_t;
-
   Headers() = default;
   Headers(Headers&&) = default;
   Headers& operator=(Headers&&) = default;

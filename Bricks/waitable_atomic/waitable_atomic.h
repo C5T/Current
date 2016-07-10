@@ -109,7 +109,6 @@ class WaitableAtomicImpl {
   class BasicImpl {
    public:
     using data_t = DATA;
-    using DEPRECATED_T_(DATA) = data_t;
     enum { IS_INTRUSIVE = false };
 
     BasicImpl() : data_() {}
@@ -148,13 +147,9 @@ class WaitableAtomicImpl {
       typedef PARENT parent_t;
       typedef typename NotifyIfMutable<PARENT>::type optional_notifier_t;
 
-      using DEPRECATED_T_(PARENT) = parent_t;
-      using DEPRECATED_T_(OPTIONAL_NOTIFIER) = optional_notifier_t;
-
       typedef typename std::conditional<std::is_const<parent_t>::value,
                                         const typename parent_t::data_t,
                                         typename parent_t::data_t>::type data_t;
-      using DEPRECATED_T_(DATA) = data_t;
 
       explicit ScopedAccessorImpl(parent_t* parent)
           : ScopedUniqueLock(parent->data_mutex_), optional_notifier_t(parent), pdata_(&parent->data_) {}
@@ -255,7 +250,6 @@ class WaitableAtomicImpl {
   class IntrusiveImpl : public BasicImpl, public IntrusiveClient::Interface {
    public:
     using data_t = DATA;
-    using DEPRECATED_T_(DATA) = data_t;
     enum { IS_INTRUSIVE = true };
 
     explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr)

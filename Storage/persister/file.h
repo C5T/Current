@@ -47,9 +47,6 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
   using transaction_t = std::vector<variant_t>;  // Mock to make it compile.
   using fields_update_function_t = std::function<void(const variant_t&)>;
 
-  using DEPRECATED_T_(VARIANT) = variant_t;
-  using DEPRECATED_T_(TRANSACTION) = transaction_t;
-
   explicit JSONFilePersister(std::mutex&, fields_update_function_t f, const std::string& filename)
       : filename_(filename) {
     Replay(f);

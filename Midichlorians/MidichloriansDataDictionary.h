@@ -145,8 +145,6 @@ using ios_events_t = TypeList<iOSFirstLaunchEvent,
                               iOSFocusEvent,
                               iOSGenericEvent>;
 
-using DEPRECATED_T_(IOS_EVENTS) = ios_events_t;
-
 }  // namespace ios
 
 namespace web {
@@ -185,8 +183,6 @@ CURRENT_STRUCT(WebGenericEvent, WebBaseEvent) {
 
 using web_events_t =
     TypeList<WebEnterEvent, WebExitEvent, WebForegroundEvent, WebBackgroundEvent, WebGenericEvent>;
-
-using DEPRECATED_T_(WEB_EVENTS) = web_events_t;
 
 }  // namespace web
 
