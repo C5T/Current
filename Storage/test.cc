@@ -30,6 +30,7 @@ SOFTWARE.
 #include "docu/docu_2_code.cc"
 #include "docu/docu_3_code.cc"
 
+#include "replicator.h"
 #include "storage.h"
 #include "api.h"
 #include "persister/sherlock.h"
@@ -1724,41 +1725,18 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
   sherlock_t replicated_stream(replicated_stream_file_name);
 
-  struct StreamPublisherOwner {
-    sherlock_t& stream_;
-    std::unique_ptr<sherlock_t::publisher_t> publisher_;
-    explicit StreamPublisherOwner(sherlock_t& stream) : stream_(stream) {}
-    ~StreamPublisherOwner() { EXPECT_FALSE(static_cast<bool>(publisher_)); }
-    void AcceptPublisher(std::unique_ptr<sherlock_t::publisher_t> publisher) {
-      publisher_ = std::move(publisher);
-    }
-    void ReturnPublisherToStream() { stream_.AcquirePublisher(std::move(publisher_)); }
-  };
-  // Move the data authority of the stream to a `StreamPublisherOwner` instance.
-  StreamPublisherOwner stream_publisher_owner(replicated_stream);
-  replicated_stream.MovePublisherTo(stream_publisher_owner);
-
+  current::storage::RemoteStreamReplicator<sherlock_t> replicator(Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
+  replicated_stream.MovePublisherTo(replicator);
+  
   // Create storage using following stream.
   Storage replicated_storage(replicated_stream);
 
   // Replicate data via subscription to master storage raw log.
-  const auto response = HTTP(GET(base_url + "?cap=1000&nowait"));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  std::istringstream body(response.body);
-  std::string line;
-  uint64_t expected_index = 0u;
-  while (std::getline(body, line)) {
-    const size_t tab_pos = line.find('\t');
-    ASSERT_FALSE(tab_pos == std::string::npos);
-    const auto idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
-    EXPECT_EQ(expected_index, idx_ts.index);
-    auto transaction = ParseJSON<Storage::transaction_t>(line.substr(tab_pos + 1));
-    ASSERT_NO_THROW(stream_publisher_owner.publisher_->Publish(std::move(transaction), idx_ts.us));
-    ++expected_index;
-  }
+  replicator.Subscribe();
+  replicator.Unsubscribe(2u);
 
   // Return data authority to the stream as we completed the replication process.
-  stream_publisher_owner.ReturnPublisherToStream();
+  replicator.ReturnPublisherToStream(replicated_stream);
 
   // Check that persisted files are the same.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
