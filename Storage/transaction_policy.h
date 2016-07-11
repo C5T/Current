@@ -44,7 +44,6 @@ template <class PERSISTER>
 class Synchronous final {
  public:
   using transaction_t = typename PERSISTER::transaction_t;
-  using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
   Synchronous(std::mutex& storage_mutex, PERSISTER& persister, MutationJournal& journal)
       : storage_mutex_ref_(storage_mutex), persister_(persister), journal_(journal) {}

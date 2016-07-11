@@ -141,7 +141,6 @@ struct VariantImpl;
 template <typename NAME, typename... TYPES>
 struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   using typelist_t = TypeListImpl<TYPES...>;
-  using DEPRECATED_T_(TYPELIST) = typelist_t;
 
   using variant_impl_t = VariantImpl<NAME, typelist_t>;
 

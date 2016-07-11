@@ -50,16 +50,9 @@ using TypeListCat = typename TypeListCatImpl<TS...>::result;
 using current::midichlorians::ios::ios_events_t;
 using current::midichlorians::web::web_events_t;
 
-using current::midichlorians::ios::DEPRECATED_T_(IOS_EVENTS);
-using current::midichlorians::web::DEPRECATED_T_(WEB_EVENTS);
-
 using ios_variant_t = Variant<ios_events_t>;
 using web_variant_t = Variant<web_events_t>;
 using event_variant_t = Variant<TypeListCat<ios_events_t, web_events_t>>;
-
-using DEPRECATED_T_(IOS_VARIANT) = ios_variant_t;
-using DEPRECATED_T_(WEB_VARIANT) = web_variant_t;
-using DEPRECATED_T_(EVENT_VARIANT) = event_variant_t;
 
 // clang-format off
 CURRENT_STRUCT(LogEntryBase) {
@@ -94,7 +87,6 @@ CURRENT_STRUCT(UnparsableLogEntry, LogEntryBase) {
 // clang-format on
 
 using log_entry_variant_t = Variant<TickLogEntry, EventLogEntry, UnparsableLogEntry>;
-using DEPRECATED_T_(LOG_ENTRY_VARIANT) = log_entry_variant_t;
 
 }  // namespace server
 }  // namespace midichlorians

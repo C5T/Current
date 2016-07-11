@@ -53,9 +53,6 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   using sherlock_t = sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>;
   using fields_update_function_t = std::function<void(const variant_t&)>;
 
-  using DEPRECATED_T_(VARIANT) = variant_t;
-  using DEPRECATED_T_(TRANSACTION) = transaction_t;
-
   struct SherlockSubscriberImpl {
     using EntryResponse = current::ss::EntryResponse;
     using TerminationResponse = current::ss::TerminationResponse;

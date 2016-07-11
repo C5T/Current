@@ -191,12 +191,6 @@ struct PortForUnitTestPicker {
 #error "Current has not been tested with Java for a while, and would likely require a bit of TLC. Thank you."
 #endif
 
-// We're retiring `T_FOO_BAR` in favor of `foo_bar_t`. In the meantime, we keep the old `T_FOO_BAR` names as
-// well, for backwards compatibility. For easier deprecation, everywhere in the code those `using`-s are now
-// `DEPRECATED_T_(FOO) `instead of `T_FOO`.
-// TODO(dkorolev): Finalize the retirement.
-#define DEPRECATED_T_(FOO_BAR) T_##FOO_BAR
-
 // We added `ChunkedGET` alongside `GET` into our `HTTP` library. Sadly, it only supports the POSIX,
 // not Mac native, implementation. Thus, to keep Current building on Mac, until we have a workaround or stub,
 // force Mac builds to use POSIX HTTP client implementation.

@@ -72,9 +72,6 @@ class MMQImpl {
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   using consumer_t = CONSUMER;
 
-  using DEPRECATED_T_(MESSAGE) = message_t;
-  using DEPRECATED_T_(CONSUMER) = consumer_t;
-
   MMQImpl(consumer_t& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),

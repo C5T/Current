@@ -203,13 +203,11 @@ struct ResponseTypeFromRequestType {};
 template <>
 struct ResponseTypeFromRequestType<KeepResponseInMemory> {
   using response_type_t = HTTPResponseWithBuffer;
-  using DEPRECATED_T_(RESPONSE_TYPE) = response_type_t;
 };
 
 template <>
 struct ResponseTypeFromRequestType<SaveResponseToFile> {
   using response_type_t = HTTPResponseWithResultingFileName;
-  using DEPRECATED_T_(RESPONSE_TYPE) = response_type_t;
 };
 
 // To allow adding new implementation to the framework defined in api.h, the corresponding implementations

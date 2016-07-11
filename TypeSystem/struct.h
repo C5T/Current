@@ -67,7 +67,6 @@ struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   SUPER(super_t&& rhs) : super_t(std::move(rhs)) {}
   using super_t::super_t;
 
-  using DEPRECATED_T_(SUPER) = super_t;
 #ifndef CURRENT_WINDOWS
   using template_inner_t_internal =
       TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
@@ -366,21 +365,18 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 
 #define CURRENT_USE_FIELD_AS_KEY(field)                                       \
   using cf_key_t = current::copy_free<decltype(field)>;                       \
-  using DEPRECATED_T_(COPY_FREE_KEY_TYPE) = cf_key_t;                         \
   const cf_key_t key() const { return field; }                                \
   void set_key(const cf_key_t new_key_value) const { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_ROW(field)                                       \
   using cf_row_t = current::copy_free<decltype(field)>;                       \
-  using DEPRECATED_T_(COPY_FREE_ROW_TYPE) = cf_row_t;                         \
   const cf_row_t row() const { return field; }                                \
   void set_row(const cf_row_t new_row_value) const { field = new_row_value; } \
   using CURRENT_USE_FIELD_AS_ROW_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_COL(field)                                       \
   using cf_col_t = current::copy_free<decltype(field)>;                       \
-  using DEPRECATED_T_(COPY_FREE_COL_TYPE) = cf_col_t;                         \
   const cf_col_t col() const { return field; }                                \
   void set_col(const cf_col_t new_col_value) const { field = new_col_value; } \
   using CURRENT_USE_FIELD_AS_COL_##field##_implemented = void
