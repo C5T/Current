@@ -186,10 +186,6 @@ struct Hypermedia {
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
-  // For backwards compatibility. TODO(dkorolev): Remove this.
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  using RESTful = RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
-
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
     input.scope +=
