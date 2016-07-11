@@ -136,23 +136,23 @@ namespace current {
 namespace type_evolution {
 
 // Default evolution for `SimpleStruct`.
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::SimpleStruct, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::SimpleStruct, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::SimpleStruct& from,
                  typename INTO::SimpleStruct& into) {
     static_assert(reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::SimpleStruct>::value ==
                       reflection::TotalFieldCounter<typename INTO::SimpleStruct>::value,
                   "Total field count for `SimpleStruct` must match.");
-    Evolve<type_evolution_test::SchemaV1, decltype(from.x), EVOLUTOR>::template Go<INTO>(from.x, into.x);
-    Evolve<type_evolution_test::SchemaV1, decltype(from.y), EVOLUTOR>::template Go<INTO>(from.y, into.y);
-    Evolve<type_evolution_test::SchemaV1, decltype(from.z), EVOLUTOR>::template Go<INTO>(from.z, into.z);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.x), EVOLVER>::template Go<INTO>(from.x, into.x);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.y), EVOLVER>::template Go<INTO>(from.y, into.y);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.z), EVOLVER>::template Go<INTO>(from.z, into.z);
   }
 };
 
 // Default evolution for `StructWithStruct`.
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithStruct, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithStruct, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::StructWithStruct& from,
                  typename INTO::StructWithStruct& into) {
@@ -160,15 +160,15 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
         reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::StructWithStruct>::value ==
             reflection::TotalFieldCounter<typename INTO::StructWithStruct>::value,
         "Total field count for `StructWithStruct` must match.");
-    Evolve<type_evolution_test::SchemaV1, decltype(from.s), EVOLUTOR>::template Go<INTO>(from.s, into.s);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.s), EVOLVER>::template Go<INTO>(from.s, into.s);
   }
 };
 
 // Default evolution for `StructWithVector`.
 // It won't compile if attempted to be used to evolve `SchemaV1` into `SchemaV2`,
 // since that would attemmpt to cast `std::string` into `int32_t`.
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithVector, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithVector, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::StructWithVector& from,
                  typename INTO::StructWithVector& into) {
@@ -181,14 +181,14 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
     for (const auto& cit : from.numerical_ids) {
       into.numerical_ids.push_back(Evolve<type_evolution_test::SchemaV1,
                                           typename decltype(from.numerical_ids)::value_type,
-                                          EVOLUTOR>::template Go<INTO>(cit));
+                                          EVOLVER>::template Go<INTO>(cit));
     }
   }
 };
 
 // Default evolution for `CURRENT_ENUM(EnumClassType)`.
-template <typename NAMESPACE, typename EVOLUTOR>
-struct Evolve<NAMESPACE, typename type_evolution_test::SchemaV1::EnumClassType, EVOLUTOR> {
+template <typename NAMESPACE, typename EVOLVER>
+struct Evolve<NAMESPACE, typename type_evolution_test::SchemaV1::EnumClassType, EVOLVER> {
   template <typename INTO>
   static void Go(typename type_evolution_test::SchemaV1::EnumClassType from,
                  typename INTO::EnumClassType& into) {
@@ -197,66 +197,66 @@ struct Evolve<NAMESPACE, typename type_evolution_test::SchemaV1::EnumClassType, 
 };
 
 // Default evolution for `OtherTypes`.
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::OtherTypes, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::OtherTypes, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::OtherTypes& from,
                  typename INTO::OtherTypes& into) {
     static_assert(reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::OtherTypes>::value ==
                       reflection::TotalFieldCounter<typename INTO::OtherTypes>::value,
                   "Total field count for `OtherTypes` must match.");
-    Evolve<type_evolution_test::SchemaV1, decltype(from.enum_class), EVOLUTOR>::template Go<INTO>(
+    Evolve<type_evolution_test::SchemaV1, decltype(from.enum_class), EVOLVER>::template Go<INTO>(
         from.enum_class, into.enum_class);
-    Evolve<type_evolution_test::SchemaV1, decltype(from.optional), EVOLUTOR>::template Go<INTO>(from.optional,
+    Evolve<type_evolution_test::SchemaV1, decltype(from.optional), EVOLVER>::template Go<INTO>(from.optional,
                                                                                                 into.optional);
   }
 };
 
 // Default evolution for `StructWithVariant`. Must auto-generate all `Variant<>` cases too.
-template <typename DESTINATION_VARIANT, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct CustomVariantTypedEvolutor {
+template <typename DESTINATION_VARIANT, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+struct CustomVariantTypedEvolver {
   DESTINATION_VARIANT& into;
-  explicit CustomVariantTypedEvolutor(DESTINATION_VARIANT& into) : into(into) {}
+  explicit CustomVariantTypedEvolver(DESTINATION_VARIANT& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::SimpleStruct& value) {
     using into_t = typename INTO::SimpleStruct;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::SimpleStruct, EVOLUTOR>::template Go<INTO>(
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::SimpleStruct, EVOLVER>::template Go<INTO>(
         value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::StructWithStruct& value) {
     using into_t = typename INTO::StructWithStruct;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::StructWithStruct, EVOLUTOR>::template Go<INTO>(
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::StructWithStruct, EVOLVER>::template Go<INTO>(
         value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::OtherTypes& value) {
     using into_t = typename INTO::OtherTypes;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::OtherTypes, EVOLUTOR>::template Go<INTO>(
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::OtherTypes, EVOLVER>::template Go<INTO>(
         value, Value<into_t>(into));
   }
 };
 
-template <typename EVOLUTOR>
+template <typename EVOLVER>
 struct Evolve<type_evolution_test::SchemaV1,
               Variant<type_evolution_test::SchemaV1::SimpleStruct,
                       type_evolution_test::SchemaV1::StructWithStruct,
                       type_evolution_test::SchemaV1::OtherTypes>,
-              EVOLUTOR> {
+              EVOLVER> {
   template <typename INTO, typename INTO_VARIANT_TYPE>
   static void Go(const Variant<type_evolution_test::SchemaV1::SimpleStruct,
                                type_evolution_test::SchemaV1::StructWithStruct,
                                type_evolution_test::SchemaV1::OtherTypes>& from,
                  INTO_VARIANT_TYPE& into) {
     {
-      CustomVariantTypedEvolutor<decltype(into), type_evolution_test::SchemaV1, INTO, EVOLUTOR> logic(into);
+      CustomVariantTypedEvolver<decltype(into), type_evolution_test::SchemaV1, INTO, EVOLVER> logic(into);
       from.Call(logic);
     }
   }
 };
 
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithVariant, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithVariant, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::StructWithVariant& from,
                  typename INTO::StructWithVariant& into) {
@@ -264,29 +264,29 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
         reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::StructWithVariant>::value ==
             reflection::TotalFieldCounter<typename INTO::StructWithVariant>::value,
         "Total field count for `StructWithVariant` must match.");
-    Evolve<type_evolution_test::SchemaV1, decltype(from.v), EVOLUTOR>::template Go<INTO>(from.v, into.v);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.v), EVOLVER>::template Go<INTO>(from.v, into.v);
   }
 };
 
 // Default evolution for `Name`.
 // It won't compile if attempted to be used to evolve `SchemaV1` into `SchemaV2`, as
 // the number and the set of fields in `SchemaV2::Name` is different from `SchemaV1::Name`.
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Name, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Name, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::Name& from, typename INTO::Name& into) {
     static_assert(reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::Name>::value ==
                       reflection::TotalFieldCounter<typename INTO::Name>::value,
                   "Total field count for `Name` must match.");
-    Evolve<type_evolution_test::SchemaV1, decltype(from.first), EVOLUTOR>::template Go<INTO>(from.first,
+    Evolve<type_evolution_test::SchemaV1, decltype(from.first), EVOLVER>::template Go<INTO>(from.first,
                                                                                              into.first);
-    Evolve<type_evolution_test::SchemaV1, decltype(from.last), EVOLUTOR>::template Go<INTO>(from.last,
+    Evolve<type_evolution_test::SchemaV1, decltype(from.last), EVOLVER>::template Go<INTO>(from.last,
                                                                                             into.last);
   }
 };
 
-template <typename EVOLUTOR>
-struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithVectorOfNames, EVOLUTOR> {
+template <typename EVOLVER>
+struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::StructWithVectorOfNames, EVOLVER> {
   template <typename INTO>
   static void Go(const typename type_evolution_test::SchemaV1::StructWithVectorOfNames& from,
                  typename INTO::StructWithVectorOfNames& into) {
@@ -294,7 +294,7 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
         reflection::TotalFieldCounter<typename type_evolution_test::SchemaV1::StructWithVectorOfNames>::value ==
             reflection::TotalFieldCounter<typename INTO::StructWithVectorOfNames>::value,
         "Total field count for `StructWithVectorOfNames` must match.");
-    Evolve<type_evolution_test::SchemaV1, decltype(from.w), EVOLUTOR>::template Go<INTO>(from.w, into.w);
+    Evolve<type_evolution_test::SchemaV1, decltype(from.w), EVOLVER>::template Go<INTO>(from.w, into.w);
   }
 };
 
@@ -306,7 +306,7 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Custom evolution for `StructWithVector`.
-CURRENT_TYPE_EVOLUTOR(V1ToV2Evolutor,
+CURRENT_TYPE_EVOLVER(V1ToV2Evolver,
                       type_evolution_test::SchemaV1,
                       StructWithVector,
                       {
@@ -318,13 +318,13 @@ CURRENT_TYPE_EVOLUTOR(V1ToV2Evolutor,
                       });
 
 // Custom evolution for `Name`.
-CURRENT_TYPE_EVOLUTOR(V1ToV2Evolutor,
+CURRENT_TYPE_EVOLVER(V1ToV2Evolver,
                       type_evolution_test::SchemaV1,
                       Name,
                       { into.full = from.first + ' ' + from.last; });
 
 // Alternative custom evolution for `Name`.
-CURRENT_TYPE_EVOLUTOR(AnotherV1ToV2Evolutor,
+CURRENT_TYPE_EVOLVER(AnotherV1ToV2Evolver,
                       type_evolution_test::SchemaV1,
                       Name,
                       { into.full = from.last + ", " + from.first; });
@@ -412,11 +412,11 @@ TEST(TypeEvolutionTest, SimpleStruct) {
     EXPECT_EQ("{\"x\":101,\"y\":102,\"z\":\"foo\"}", JSON(converted));
   }
   {
-    // `V1ToV2Evolutor` leaves `SimpleStruct` unaffected.
-    using current::type_evolution::V1ToV2Evolutor;
+    // `V1ToV2Evolver` leaves `SimpleStruct` unaffected.
+    using current::type_evolution::V1ToV2Evolver;
     const SchemaV1::SimpleStruct original;
     SchemaV2::SimpleStruct converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::SimpleStruct, V1ToV2Evolutor>::template Go<SchemaV2>(
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::SimpleStruct, V1ToV2Evolver>::template Go<SchemaV2>(
         original, converted);
     EXPECT_EQ("{\"x\":101,\"y\":102,\"z\":\"foo\"}", JSON(converted));
   }
@@ -440,11 +440,11 @@ TEST(TypeEvolutionTest, StructWithStruct) {
     EXPECT_EQ("{\"s\":{\"x\":101,\"y\":102,\"z\":\"foo\"}}", JSON(converted));
   }
   {
-    // `V1ToV2Evolutor` leaves `StructWithStruct` unaffected.
-    using current::type_evolution::V1ToV2Evolutor;
+    // `V1ToV2Evolver` leaves `StructWithStruct` unaffected.
+    using current::type_evolution::V1ToV2Evolver;
     const SchemaV1::StructWithStruct original;
     SchemaV2::StructWithStruct converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithStruct, V1ToV2Evolutor>::template Go<
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithStruct, V1ToV2Evolver>::template Go<
         SchemaV2>(original, converted);
     EXPECT_EQ("{\"s\":{\"x\":101,\"y\":102,\"z\":\"foo\"}}", JSON(converted));
   }
@@ -459,14 +459,14 @@ TEST(TypeEvolutionTest, StructWithVector) {
     EXPECT_EQ("@-1,@112", current::strings::Join(into.string_ids, ','));
   }
   {
-    using current::type_evolution::V1ToV2Evolutor;
+    using current::type_evolution::V1ToV2Evolver;
     const SchemaV1::StructWithVector original;
     // The default evolution won't compile as `vector<int32_t> numerical_ids`
     // changes into `vector<string> string_ids`.
     // const SchemaV2::StructWithVector converted = current::type_evolution::Evolve<SchemaV1,
     // SchemaV1::StructWithVector>::template Go<SchemaV2>(original);
     SchemaV2::StructWithVector converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVector, V1ToV2Evolutor>::template Go<
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVector, V1ToV2Evolver>::template Go<
         SchemaV2>(original, converted);
     EXPECT_EQ("@8,@50", current::strings::Join(converted.string_ids, ','));
   }
@@ -517,41 +517,41 @@ TEST(TypeEvolutionTest, StructWithVariant) {
   }
 }
 
-TEST(TypeEvolutionTest, NameWithDifferentEvolutors) {
+TEST(TypeEvolutionTest, NameWithDifferentEvolvers) {
   using namespace type_evolution_test;
   {
     const SchemaV2::Name SchemaV2;
     EXPECT_EQ("Friedrich Engels", SchemaV2.full);
   }
   {
-    using current::type_evolution::V1ToV2Evolutor;
+    using current::type_evolution::V1ToV2Evolver;
     const SchemaV1::Name original;
     // The default evolution won't compile as the structure layout changes from `SchemaV1` to `SchemaV2`.
     // const SchemaV2::Name converted = current::type_evolution::Evolve<SchemaV1,
     //     SchemaV1::Name>::template Go<SchemaV2>(original);
     SchemaV2::Name converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::Name, V1ToV2Evolutor>::template Go<SchemaV2>(original,
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::Name, V1ToV2Evolver>::template Go<SchemaV2>(original,
                                                                                                      converted);
     EXPECT_EQ("Karl Marx", converted.full);
   }
   {
     // Using alternative evolution for `Name`.
-    using current::type_evolution::AnotherV1ToV2Evolutor;
+    using current::type_evolution::AnotherV1ToV2Evolver;
     const SchemaV1::Name original;
     SchemaV2::Name converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::Name, AnotherV1ToV2Evolutor>::template Go<SchemaV2>(
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::Name, AnotherV1ToV2Evolver>::template Go<SchemaV2>(
         original, converted);
     EXPECT_EQ("Marx, Karl", converted.full);
   }
 }
 
 #ifndef JUST_GENERATE_THAT_GOLDEN_FILE
-// Programmatically use the autogenerated schema and the default type evolutor generated for it.
+// Programmatically use the autogenerated schema and the default type evolver generated for it.
 #include "golden/schema.h"
 using SchemaXX = USERSPACE_F055D51FBF78DB84;
 
 // Custom evolution from the autogenerated `SimpleStruct`.
-CURRENT_TYPE_EVOLUTOR(AddFortyTwoToX,
+CURRENT_TYPE_EVOLVER(AddFortyTwoToX,
                       SchemaXX,
                       SimpleStruct,
                       {
@@ -561,7 +561,7 @@ CURRENT_TYPE_EVOLUTOR(AddFortyTwoToX,
                       });
 
 // Custom evolution that behaves differently for `SimpleStruct` and `StructWithStruct`.
-CURRENT_TYPE_EVOLUTOR(AddOneOrTwoToX,
+CURRENT_TYPE_EVOLVER(AddOneOrTwoToX,
                       SchemaXX,
                       SimpleStruct,
                       {
@@ -569,7 +569,7 @@ CURRENT_TYPE_EVOLUTOR(AddOneOrTwoToX,
                         into.y = from.y;
                         into.z = from.z;
                       });
-CURRENT_TYPE_EVOLUTOR(AddOneOrTwoToX,
+CURRENT_TYPE_EVOLVER(AddOneOrTwoToX,
                       SchemaXX,
                       StructWithStruct,
                       {
@@ -764,7 +764,7 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
     // Plain `Variant<SimpleStruct, StructWithStruct>` tests, just copy the fields over, no evolution.
     {
       // Local `Variant<...>` into autogenerated `Variant<...>`.
-      // The `Variant<>`-originating evolutor implemented manually above is used.
+      // The `Variant<>`-originating evolver implemented manually above is used.
       {
         Variant<typename SchemaV1::SimpleStruct,
                 typename SchemaV1::StructWithStruct,
@@ -802,7 +802,7 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
 
     {
       // Autogenerated `Variant<...>` into local `Variant<...>`.
-      // The autogenerated `Variant<>`-originating evolutor is used.
+      // The autogenerated `Variant<>`-originating evolver is used.
       {
         Variant<typename SchemaXX::SimpleStruct,
                 typename SchemaXX::StructWithStruct,
@@ -847,7 +847,7 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
     // Plain `StructWithVariant` tests, just copy the fields over, no evolution.
     {
       // Local `StructWithVariant` into autogenerated `StructWithVariant`.
-      // The `Variant<>`-originating evolutor implemented manually above is used.
+      // The `Variant<>`-originating evolver implemented manually above is used.
       {
         typename SchemaV1::StructWithVariant from;
         typename SchemaXX::StructWithVariant into;
@@ -875,7 +875,7 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
 
     {
       // Autogenerated `StructWithVariant` into local `StructWithVariant`.
-      // The autogenerated `Variant<>`-originating evolutor is used.
+      // The autogenerated `Variant<>`-originating evolver is used.
       {
         typename SchemaXX::StructWithVariant from;
         typename SchemaV1::StructWithVariant into;
@@ -946,29 +946,29 @@ TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
 
   {
     // Confirm type evolution kicks in when running over an `std::vector<>`.
-    using current::type_evolution::V1ToV2Evolutor;
-    using current::type_evolution::AnotherV1ToV2Evolutor;
+    using current::type_evolution::V1ToV2Evolver;
+    using current::type_evolution::AnotherV1ToV2Evolver;
     {
-      // Evolve `SchemaV1`'s `StructWithVectorOfNames` into V2 using `V1ToV2Evolutor`.
+      // Evolve `SchemaV1`'s `StructWithVectorOfNames` into V2 using `V1ToV2Evolver`.
       typename SchemaV1::StructWithVectorOfNames original;
       typename SchemaV2::StructWithVectorOfNames evoluted;
       original.w.emplace_back("Dima", "Korolev");
       original.w.emplace_back("Max", "Zhurovich");
-      current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVectorOfNames, V1ToV2Evolutor>::template Go<
+      current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVectorOfNames, V1ToV2Evolver>::template Go<
           SchemaV2>(original, evoluted);
       ASSERT_EQ(2u, evoluted.w.size());
       EXPECT_EQ("Dima Korolev", evoluted.w[0].full);
       EXPECT_EQ("Max Zhurovich", evoluted.w[1].full);
     }
     {
-      // Evolve `SchemaV1`'s `StructWithVectorOfNames` into V2 using `AnotherV1ToV2Evolutor`.
+      // Evolve `SchemaV1`'s `StructWithVectorOfNames` into V2 using `AnotherV1ToV2Evolver`.
       typename SchemaV1::StructWithVectorOfNames original;
       typename SchemaV2::StructWithVectorOfNames evoluted;
       original.w.emplace_back("Max", "Zhurovich");
       original.w.emplace_back("Dima", "Korolev");
       current::type_evolution::Evolve<SchemaV1,
                                       SchemaV1::StructWithVectorOfNames,
-                                      AnotherV1ToV2Evolutor>::template Go<SchemaV2>(original, evoluted);
+                                      AnotherV1ToV2Evolver>::template Go<SchemaV2>(original, evoluted);
       ASSERT_EQ(2u, evoluted.w.size());
       EXPECT_EQ("Zhurovich, Max", evoluted.w[0].full);
       EXPECT_EQ("Korolev, Dima", evoluted.w[1].full);
@@ -993,8 +993,8 @@ CURRENT_STORAGE(Storage) { CURRENT_STORAGE_FIELD(user, PersistedUser); };
 #include "golden/storage_schema_original.h"
 #include "golden/storage_schema_evolved.h"
 
-// Default evolutor copy-pasted from the boilerplate to evolve the `Transaction`, type of which has changed.
-CURRENT_TYPE_EVOLUTOR(OriginalStorageToModifiedStorageEvolutor,
+// Default evolver copy-pasted from the boilerplate to evolve the `Transaction`, type of which has changed.
+CURRENT_TYPE_EVOLVER(OriginalStorageToModifiedStorageEvolver,
                       SchemaOriginalStorage,
                       Transaction,
                       {
@@ -1005,7 +1005,7 @@ CURRENT_TYPE_EVOLUTOR(OriginalStorageToModifiedStorageEvolutor,
                       });
 
 // Custom evolution for `Name` stored as part of Storage's transactions.
-CURRENT_TYPE_EVOLUTOR(OriginalStorageToOriginalStorageEvolutor,
+CURRENT_TYPE_EVOLVER(OriginalStorageToOriginalStorageEvolver,
                       SchemaOriginalStorage,
                       Name,
                       {
@@ -1013,7 +1013,7 @@ CURRENT_TYPE_EVOLUTOR(OriginalStorageToOriginalStorageEvolutor,
                         into.last = current::strings::ToUpper(from.last);
                       });
 
-CURRENT_TYPE_EVOLUTOR(OriginalStorageToModifiedStorageEvolutor,
+CURRENT_TYPE_EVOLVER(OriginalStorageToModifiedStorageEvolver,
                       SchemaOriginalStorage,
                       Name,
                       { into.full = from.last + ", " + from.first[0]; });
@@ -1033,7 +1033,7 @@ TEST(TypeEvolutionTest, StorageInnerTypes) {
     typename SchemaOriginalStorage::Name baz;
     current::type_evolution::Evolve<SchemaOriginalStorage,
                                     typename SchemaOriginalStorage::Name,
-                                    current::type_evolution::OriginalStorageToOriginalStorageEvolutor>::
+                                    current::type_evolution::OriginalStorageToOriginalStorageEvolver>::
         template Go<SchemaOriginalStorage>(foo, baz);
     EXPECT_EQ("{\"first\":\"AYN\",\"last\":\"RAND\"}", JSON(baz));
   }
@@ -1041,7 +1041,7 @@ TEST(TypeEvolutionTest, StorageInnerTypes) {
     typename SchemaModifiedStorage::Name meh;
     current::type_evolution::Evolve<SchemaOriginalStorage,
                                     typename SchemaOriginalStorage::Name,
-                                    current::type_evolution::OriginalStorageToModifiedStorageEvolutor>::
+                                    current::type_evolution::OriginalStorageToModifiedStorageEvolver>::
         template Go<SchemaModifiedStorage>(foo, meh);
     EXPECT_EQ("{\"full\":\"Rand, A\"}", JSON(meh));
   }
@@ -1296,10 +1296,10 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
 
           typename SchemaOriginalStorage::Transaction cast_type_evolved_transaction;
 
-          // Still apply the `OriginalStorageToOriginalStorageEvolutor` to uppercase names.
+          // Still apply the `OriginalStorageToOriginalStorageEvolver` to uppercase names.
           current::type_evolution::Evolve<SchemaOriginalStorage,
                                           typename SchemaOriginalStorage::Transaction,
-                                          current::type_evolution::OriginalStorageToOriginalStorageEvolutor>::
+                                          current::type_evolution::OriginalStorageToOriginalStorageEvolver>::
               template Go<SchemaOriginalStorage>(cast_original_transaction, cast_type_evolved_transaction);
 
           pre_evolution_stream.Publish(
@@ -1315,10 +1315,10 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
 
           typename SchemaModifiedStorage::Transaction cast_type_evolved_transaction;
 
-          // Apply the `OriginalStorageToModifiedStorageEvolutor` to convert `first+last` name into `full` name.
+          // Apply the `OriginalStorageToModifiedStorageEvolver` to convert `first+last` name into `full` name.
           current::type_evolution::Evolve<SchemaOriginalStorage,
                                           typename SchemaOriginalStorage::Transaction,
-                                          current::type_evolution::OriginalStorageToModifiedStorageEvolutor>::
+                                          current::type_evolution::OriginalStorageToModifiedStorageEvolver>::
               template Go<SchemaModifiedStorage>(cast_original_transaction, cast_type_evolved_transaction);
 
           post_evolution_stream.Publish(

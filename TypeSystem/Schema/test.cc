@@ -330,7 +330,7 @@ namespace current {
 namespace type_evolution {
 template <typename FROM_NAMESPACE,
           typename FROM_TYPE,
-          typename EVOLUTOR = ::current::type_evolution::NaturalEvolutor>
+          typename EVOLVER = ::current::type_evolution::NaturalEvolver>
 struct Evolve;
 }  // namespace schema_test::current::type_evolution
 }  // namespace schema_test::current

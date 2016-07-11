@@ -96,7 +96,7 @@ CURRENT_STRUCT(WithShrinkingVariant) {
   CURRENT_FIELD(v, ShrinkingVariant);
   CURRENT_DEFAULT_CONSTRUCTOR(WithShrinkingVariant) {}
 #ifndef OLD_SCHEMA
-  // The evolutor would add one, so `C.c == 10` would become `A.a == 11`.
+  // The evolver would add one, so `C.c == 10` would become `A.a == 11`.
   CURRENT_CONSTRUCTOR(WithShrinkingVariant)(std::integral_constant<int, 5>) : v(CustomTypeA(11)) {}
 #else
   CURRENT_CONSTRUCTOR(WithShrinkingVariant)(std::integral_constant<int, 5>) : v(CustomTypeC(10)) {}

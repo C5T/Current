@@ -31,13 +31,13 @@ SOFTWARE.
 #include "flags.h"
 
 // `FullName` has changed. Need to compose the full name from first and last ones.
-CURRENT_TYPE_EVOLUTOR(CustomEvolutor, From, FullName, into.full_name = from.last_name + ", " + from.first_name);
+CURRENT_TYPE_EVOLVER(CustomEvolver, From, FullName, into.full_name = from.last_name + ", " + from.first_name);
 
 // `ShrinkingVariant` has changed. With three options going into two, need to fit the 3rd one into the 1st one.
-CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, From, ShrinkingVariant, Into) {
-  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
-  CURRENT_TYPE_EVOLUTOR_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
-  CURRENT_TYPE_EVOLUTOR_VARIANT_CASE(CustomTypeC,
+CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, From, ShrinkingVariant, Into) {
+  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
+  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
+  CURRENT_TYPE_EVOLVER_VARIANT_CASE(CustomTypeC,
                                      {
                                        typename Into::CustomTypeA value;
                                        value.a = from.c + 1;
@@ -46,7 +46,7 @@ CURRENT_TYPE_EVOLUTOR_VARIANT(CustomEvolutor, From, ShrinkingVariant, Into) {
 };
 
 // `WithFieldsToRemove` has changed. Need to copy over `.foo` and `.bar`, and process `.baz`.
-CURRENT_TYPE_EVOLUTOR(CustomEvolutor,
+CURRENT_TYPE_EVOLVER(CustomEvolver,
                       From,
                       WithFieldsToRemove,
                       {
@@ -111,7 +111,7 @@ TEST(TypeEvolution, Data) {
     ParseJSON(line, from);
     current::type_evolution::Evolve<From,
                                     typename From::TopLevel,
-                                    current::type_evolution::CustomEvolutor>::template Go<Into>(from, into);
+                                    current::type_evolution::CustomEvolver>::template Go<Into>(from, into);
 
     golden_from.push_back(JSON(from));
     golden_into.push_back(JSON(into));

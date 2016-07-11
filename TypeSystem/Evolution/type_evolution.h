@@ -54,15 +54,15 @@ SOFTWARE.
 namespace current {
 namespace type_evolution {
 
-struct NaturalEvolutor {};
+struct NaturalEvolver {};
 
-template <typename FROM_NAMESPACE, typename FROM_TYPE, typename EVOLUTOR = NaturalEvolutor>
+template <typename FROM_NAMESPACE, typename FROM_TYPE, typename EVOLVER = NaturalEvolver>
 struct Evolve;
 
-// Identity evolutors for primitive types.
+// Identity evolvers for primitive types.
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type) \
-  template <typename FROM_NAMESPACE, typename EVOLUTOR>                                        \
-  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLUTOR> {                                          \
+  template <typename FROM_NAMESPACE, typename EVOLVER>                                        \
+  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLVER> {                                          \
     template <typename>                                                                        \
     static void Go(current::copy_free<cpp_type> from, cpp_type& into) {                        \
       into = from;                                                                             \
@@ -71,45 +71,45 @@ struct Evolve;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
-// Boilerplate default generic evolutor for `std::vector<T>`.
-template <typename FROM_NAMESPACE, typename EVOLUTOR, typename VECTOR_ELEMENT_TYPE>
-struct Evolve<FROM_NAMESPACE, std::vector<VECTOR_ELEMENT_TYPE>, EVOLUTOR> {
+// Boilerplate default generic evolver for `std::vector<T>`.
+template <typename FROM_NAMESPACE, typename EVOLVER, typename VECTOR_ELEMENT_TYPE>
+struct Evolve<FROM_NAMESPACE, std::vector<VECTOR_ELEMENT_TYPE>, EVOLVER> {
   template <typename INTO, typename OUTPUT>
   static void Go(const std::vector<VECTOR_ELEMENT_TYPE>& from, OUTPUT& into) {
     into.resize(from.size());
     auto placeholder = into.begin();
     for (const auto& e : from) {
-      Evolve<FROM_NAMESPACE, VECTOR_ELEMENT_TYPE, EVOLUTOR>::template Go<INTO>(e, *placeholder++);
+      Evolve<FROM_NAMESPACE, VECTOR_ELEMENT_TYPE, EVOLVER>::template Go<INTO>(e, *placeholder++);
     }
   }
 };
 
-// Boilerplate default generic evolutor for `std::pair<T1, T2>`.
-template <typename FROM_NAMESPACE, typename EVOLUTOR, typename FIRST_TYPE, typename SECOND_TYPE>
-struct Evolve<FROM_NAMESPACE, std::pair<FIRST_TYPE, SECOND_TYPE>, EVOLUTOR> {
+// Boilerplate default generic evolver for `std::pair<T1, T2>`.
+template <typename FROM_NAMESPACE, typename EVOLVER, typename FIRST_TYPE, typename SECOND_TYPE>
+struct Evolve<FROM_NAMESPACE, std::pair<FIRST_TYPE, SECOND_TYPE>, EVOLVER> {
   template <typename INTO, typename OUTPUT>
   static void Go(const std::pair<FIRST_TYPE, SECOND_TYPE>& from, OUTPUT& into) {
-    Evolve<FROM_NAMESPACE, FIRST_TYPE, EVOLUTOR>::template Go<INTO>(from.first, into.first);
-    Evolve<FROM_NAMESPACE, SECOND_TYPE, EVOLUTOR>::template Go<INTO>(from.second, into.second);
+    Evolve<FROM_NAMESPACE, FIRST_TYPE, EVOLVER>::template Go<INTO>(from.first, into.first);
+    Evolve<FROM_NAMESPACE, SECOND_TYPE, EVOLVER>::template Go<INTO>(from.second, into.second);
   }
 };
 
-// Boilerplate default generic evolutor for `std::map<K, V>`.
-template <typename FROM_NAMESPACE, typename EVOLUTOR, typename MAP_KEY, typename MAP_VALUE>
-struct Evolve<FROM_NAMESPACE, std::map<MAP_KEY, MAP_VALUE>, EVOLUTOR> {
+// Boilerplate default generic evolver for `std::map<K, V>`.
+template <typename FROM_NAMESPACE, typename EVOLVER, typename MAP_KEY, typename MAP_VALUE>
+struct Evolve<FROM_NAMESPACE, std::map<MAP_KEY, MAP_VALUE>, EVOLVER> {
   template <typename INTO, typename OUTPUT>
   static void Go(const std::map<MAP_KEY, MAP_VALUE>& from, OUTPUT& into) {
     for (const auto& e : from) {
       typename OUTPUT::key_type key;
-      Evolve<FROM_NAMESPACE, MAP_KEY, EVOLUTOR>::template Go<INTO>(e.first, key);
-      Evolve<FROM_NAMESPACE, MAP_VALUE, EVOLUTOR>::template Go<INTO>(e.second, into[key]);
+      Evolve<FROM_NAMESPACE, MAP_KEY, EVOLVER>::template Go<INTO>(e.first, key);
+      Evolve<FROM_NAMESPACE, MAP_VALUE, EVOLVER>::template Go<INTO>(e.second, into[key]);
     }
   }
 };
 
-// Boilerplate default generic evolutor for `Optional<T>`.
-template <typename FROM_NAMESPACE, typename EVOLUTOR, typename OPTIONAL_INNER_TYPE>
-struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLUTOR> {
+// Boilerplate default generic evolver for `Optional<T>`.
+template <typename FROM_NAMESPACE, typename EVOLVER, typename OPTIONAL_INNER_TYPE>
+struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLVER> {
   template <typename INTO>
   static void Go(const Optional<OPTIONAL_INNER_TYPE>& from, Optional<OPTIONAL_INNER_TYPE>& into) {
     if (Exists(from)) {
@@ -123,13 +123,13 @@ struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLUTOR> {
 }  // namespace current::type_evolution
 }  // namespace current
 
-#define CURRENT_TYPE_EVOLUTOR(evolutor, from_namespace, type_name, ...)                              \
+#define CURRENT_TYPE_EVOLVER(evolver, from_namespace, type_name, ...)                              \
   namespace current {                                                                                \
   namespace type_evolution {                                                                         \
-  struct evolutor;                                                                                   \
+  struct evolver;                                                                                   \
   template <>                                                                                        \
-  struct Evolve<from_namespace, from_namespace::type_name, evolutor> {                               \
-    using CURRENT_ACTIVE_EVOLUTOR = evolutor;                                                        \
+  struct Evolve<from_namespace, from_namespace::type_name, evolver> {                               \
+    using CURRENT_ACTIVE_EVOLVER = evolver;                                                        \
     template <typename INTO>                                                                         \
     static void Go(const typename from_namespace::type_name& from, typename INTO::type_name& into) { \
       __VA_ARGS__;                                                                                   \
