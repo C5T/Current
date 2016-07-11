@@ -519,10 +519,9 @@ class StreamImpl {
         : schema_ref(schema), exposed_namespace_name(exposed_namespace_name) {}
     template <current::reflection::Language language>
     void PerLanguage() {
-      current::reflection::NamespaceToExpose expose(exposed_namespace_name);
-      expose.template AddType<entry_t>("TopLevelTransaction");
-      schema_ref.language[current::ToString(language)] =
-          schema_ref.type_schema.Describe<language>(true, expose);
+      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
+          current::reflection::NamespaceToExpose(exposed_namespace_name)
+              .template AddType<entry_t>("TopLevelTransaction"));
     }
   };
 

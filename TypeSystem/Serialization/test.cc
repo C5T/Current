@@ -494,7 +494,7 @@ TEST(Serialization, StructSchemaSerialization) {
   const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
 
   EXPECT_EQ(
-      "namespace current_userspace_77a94a5a37cb768e {\n"
+      "namespace current_userspace {\n"
       "enum class Enum : uint32_t {};\n"
       "struct Serializable {\n"
       "  uint64_t i;\n"
@@ -508,7 +508,7 @@ TEST(Serialization, StructSchemaSerialization) {
       "  std::vector<std::string> v;\n"
       "  Serializable z;\n"
       "};\n"
-      "}  // namespace current_userspace_77a94a5a37cb768e\n",
+      "}  // namespace current_userspace\n",
       loaded_schema.Describe<Language::CPP>(false));
 }
 

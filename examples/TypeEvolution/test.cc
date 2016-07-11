@@ -62,7 +62,7 @@ TEST(TypeEvolution, SchemaFrom) {
   current::reflection::NamespaceToExpose expose("From");
 
   struct_schema.AddType<typename From::TopLevel>();
-  expose.template AddType<typename From::TopLevel>("TopLevel");
+  expose.template AddType<typename From::TopLevel>("ExposedTopLevel");
 
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
   EXPECT_EQ(
@@ -81,7 +81,7 @@ TEST(TypeEvolution, SchemaInto) {
   current::reflection::NamespaceToExpose expose("Into");
 
   struct_schema.AddType<typename Into::TopLevel>();
-  expose.template AddType<typename Into::TopLevel>("TopLevel");
+  expose.template AddType<typename Into::TopLevel>("ExposedTopLevel");
 
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
   EXPECT_EQ(

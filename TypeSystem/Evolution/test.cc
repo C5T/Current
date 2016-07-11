@@ -993,17 +993,16 @@ CURRENT_STORAGE(Storage) { CURRENT_STORAGE_FIELD(user, PersistedUser); };
 #include "golden/storage_schema_original.h"
 #include "golden/storage_schema_evolved.h"
 
-CURRENT_DERIVED_NAMESPACE(SchemaOriginalStorage, USERSPACE_D6D2A27DC90B2AB4) {
-  // Alias the long transaction type to just be `Transaction`.
-  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9226378158835221611);
-};
-
-CURRENT_DERIVED_NAMESPACE(SchemaModifiedStorage, USERSPACE_229EB367F0CD061F) {
-  // Type `Transaction` in the modified storage points to the newly mutated transaction type.
-  CURRENT_NAMESPACE_TYPE(Transaction, Transaction_T9221660456409416796);
-  // Should also point the type from the other storage to the same namespaced type name, for the evolutors.
-  CURRENT_NAMESPACE_TYPE(Transaction_T9226378158835221611, Transaction);
-};
+// Default evolutor copy-pasted from the boilerplate to evolve the `Transaction`, type of which has changed.
+CURRENT_TYPE_EVOLUTOR(OriginalStorageToModifiedStorageEvolutor,
+                      SchemaOriginalStorage,
+                      Transaction,
+                      {
+                        CURRENT_NATURAL_EVOLVE(
+                            SchemaOriginalStorage, SchemaModifiedStorage, from.meta, into.meta);
+                        CURRENT_NATURAL_EVOLVE(
+                            SchemaOriginalStorage, SchemaModifiedStorage, from.mutations, into.mutations);
+                      });
 
 // Custom evolution for `Name` stored as part of Storage's transactions.
 CURRENT_TYPE_EVOLUTOR(OriginalStorageToOriginalStorageEvolutor,
@@ -1076,30 +1075,30 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       StructSchema struct_schema;
       struct_schema.AddType<typename type_evolution_test::SchemaV1::Name>();
       EXPECT_EQ(
-          "namespace current_userspace_22c0377341b56772 {\n"
+          "namespace current_userspace {\n"
           "struct Name {\n"
           "  std::string first;\n"
           "  std::string last;\n"
           "};\n"
-          "}  // namespace current_userspace_22c0377341b56772\n",
+          "}  // namespace current_userspace\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
     {
       StructSchema struct_schema;
       struct_schema.AddType<typename type_evolution_test::SchemaV2::Name>();
       EXPECT_EQ(
-          "namespace current_userspace_941ac0989a542965 {\n"
+          "namespace current_userspace {\n"
           "struct Name {\n"
           "  std::string full;\n"
           "};\n"
-          "}  // namespace current_userspace_941ac0989a542965\n",
+          "}  // namespace current_userspace\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
     {
       StructSchema struct_schema;
       struct_schema.AddType<type_evolution_test::pre_evolution::User>();
       EXPECT_EQ(
-          "namespace current_userspace_8d0df03b34e554d4 {\n"
+          "namespace current_userspace {\n"
           "struct Name {\n"
           "  std::string first;\n"
           "  std::string last;\n"
@@ -1107,7 +1106,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "struct User : Name {\n"
           "  std::string key;\n"
           "};\n"
-          "}  // namespace current_userspace_8d0df03b34e554d4\n",
+          "}  // namespace current_userspace\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
@@ -1115,14 +1114,14 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       StructSchema struct_schema;
       struct_schema.AddType<type_evolution_test::post_evolution::User>();
       EXPECT_EQ(
-          "namespace current_userspace_ede833278fc50550 {\n"
+          "namespace current_userspace {\n"
           "struct Name {\n"
           "  std::string full;\n"
           "};\n"
           "struct User : Name {\n"
           "  std::string key;\n"
           "};\n"
-          "}  // namespace current_userspace_ede833278fc50550\n",
+          "}  // namespace current_userspace\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
@@ -1130,7 +1129,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       StructSchema struct_schema;
       struct_schema.AddType<pre_evolution_transaction_t>();
       EXPECT_EQ(
-          "namespace current_userspace_d6d2a27dc90b2ab4 {\n"
+          "namespace current_userspace {\n"
           "struct TransactionMeta {\n"
           "  std::chrono::microseconds begin_us;\n"
           "  std::chrono::microseconds end_us;\n"
@@ -1157,14 +1156,14 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "  TransactionMeta meta;\n"
           "  std::vector<Variant_B_PersistedUserUpdated_PersistedUserDeleted_E> mutations;\n"
           "};\n"
-          "}  // namespace current_userspace_d6d2a27dc90b2ab4\n",
+          "}  // namespace current_userspace\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
     {
       StructSchema struct_schema;
       struct_schema.AddType<post_evolution_transaction_t>();
       EXPECT_EQ(
-          "namespace current_userspace_229eb367f0cd061f {\n"
+          "namespace current_userspace {\n"
           "struct TransactionMeta {\n"
           "  std::chrono::microseconds begin_us;\n"
           "  std::chrono::microseconds end_us;\n"
@@ -1190,7 +1189,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           "  TransactionMeta meta;\n"
           "  std::vector<Variant_B_PersistedUserUpdated_PersistedUserDeleted_E> mutations;\n"
           "};\n"
-          "}  // namespace current_userspace_229eb367f0cd061f\n",
+          "}  // namespace current_userspace\n",
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
@@ -1205,7 +1204,9 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       {
         StructSchema struct_schema;
         struct_schema.AddType<pre_evolution_transaction_t>();
-        const std::string schema_cpp = struct_schema.GetSchemaInfo().Describe<Language::Current>();
+        const std::string schema_cpp = struct_schema.GetSchemaInfo().Describe<Language::Current>(
+            NamespaceToExpose("SchemaOriginalStorage")
+                .template AddType<pre_evolution_transaction_t>("Transaction"));
 
         const auto autogenerated_schema_file =
             current::FileSystem::JoinPath("golden", "storage_schema_original.h");
@@ -1220,7 +1221,9 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       {
         StructSchema struct_schema;
         struct_schema.AddType<post_evolution_transaction_t>();
-        const std::string schema_cpp = struct_schema.GetSchemaInfo().Describe<Language::Current>();
+        const std::string schema_cpp = struct_schema.GetSchemaInfo().Describe<Language::Current>(
+            NamespaceToExpose("SchemaModifiedStorage")
+                .template AddType<post_evolution_transaction_t>("Transaction"));
 
         const auto autogenerated_schema_file =
             current::FileSystem::JoinPath("golden", "storage_schema_evolved.h");
