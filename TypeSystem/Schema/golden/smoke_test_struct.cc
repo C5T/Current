@@ -1,14 +1,11 @@
 // The `current.h` file is the one from `https://github.com/C5T/Current`.
 // Compile with `-std=c++11` or higher.
 
-#ifndef CURRENT_USERSPACE_B528C6626C40443D
-#define CURRENT_USERSPACE_B528C6626C40443D
-
 #include "current.h"
 
 // clang-format off
 
-namespace current_userspace_b528c6626c40443d {
+namespace current_userspace {
 struct Primitives {
   // It's the "order" of fields that matters.
   uint8_t a;
@@ -117,8 +114,6 @@ struct FullTest {
   TemplatedInheriting_T9201673071807149456 w6;
   TrickyEvolutionCases tsc;
 };
-}  // namespace current_userspace_b528c6626c40443d
+}  // namespace current_userspace
 
 // clang-format on
-
-#endif  // CURRENT_USERSPACE_B528C6626C40443D

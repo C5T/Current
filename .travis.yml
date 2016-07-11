@@ -50,7 +50,7 @@ matrix:
       - clang++ -v
       - clang++ --version
       - make individual_tests
-      compiler: "native clang++, Job: make test"
+      compiler: "native clang++, Job: make individual_tests"
       os: osx
 
     - script: make check
