@@ -111,14 +111,20 @@ struct AdvancedHypermedia : Hypermedia {
     Response Run(const INPUT& input) const {
       if (!input.url_key.empty()) {
         // Single record view.
-        const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
+        const auto entry_key = current::FromString<KEY>(input.url_key);
+        const ImmutableOptional<ENTRY> result = input.field[entry_key];
         if (Exists(result)) {
           const auto& value = Value(result);
           if (!input.export_requested) {
-            return (brief
+            auto response = (brief
                         ? Response(FormatAsAdvancedHypermediaRecord<brief_entry_t>(value, input),
                                    HTTPResponseCode.OK)
                         : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
+            const auto last_modified = input.field.LastModified(entry_key);
+            if (Exists(last_modified)) {
+              response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+            }
+            return response;
           } else {
             // Export requested via `?export`, dump the raw JSON record.
             return value;
