@@ -100,7 +100,7 @@ class GenericHTTPClientPOSIX final {
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
-      if (request_has_body_) {
+      if (!request_body_contents_.empty()) {
         connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n",
                                  true);
         connection.BlockingWrite("\r\n", true);
@@ -134,7 +134,6 @@ class GenericHTTPClientPOSIX final {
   std::string request_method_ = "";
   std::string request_url_ = "";
   std::string request_body_content_type_ = "";
-  bool request_has_body_ = false;  // TODO(dkorolev): Support this in ObjectiveC and Java code as well.
   std::string request_body_contents_ = "";
   std::string request_user_agent_ = "";
   current::net::http::Headers request_headers_;
@@ -171,7 +170,6 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     client.request_headers_ = request.custom_headers;
-    client.request_has_body_ = true;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
   }
@@ -181,7 +179,6 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     client.request_headers_ = request.custom_headers;
-    client.request_has_body_ = true;
     client.request_body_contents_ =
         current::FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
@@ -192,7 +189,6 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     client.request_headers_ = request.custom_headers;
-    client.request_has_body_ = true;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
   }
