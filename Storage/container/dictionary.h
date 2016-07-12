@@ -78,27 +78,27 @@ class GenericDictionary {
       const auto previous_timestamp = lm_iterator->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
-                             map_[key] = previous_object;
                              last_modified_[key] = previous_timestamp;
+                             map_[key] = previous_object;
                            });
     } else {
       if (lm_iterator != last_modified_.end()) {
         const auto previous_timestamp = lm_iterator->second;
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key, previous_timestamp]() {
-                               map_.erase(key);
                                last_modified_[key] = previous_timestamp;
+                               map_.erase(key);
                              });
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
-                               map_.erase(key);
                                last_modified_.erase(key);
+                               map_.erase(key);
                              });
       }
     }
-    map_[key] = object;
     last_modified_[key] = now;
+    map_[key] = object;
   }
 
   void Erase(sfinae::CF<key_t> key) {
@@ -111,22 +111,22 @@ class GenericDictionary {
       const auto previous_timestamp = lm_iterator->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
-                             map_[key] = previous_object;
                              last_modified_[key] = previous_timestamp;
+                             map_[key] = previous_object;
                            });
-      map_.erase(key);
       last_modified_[key] = now;
+      map_.erase(key);
     }
   }
 
   void operator()(const UPDATE_EVENT& e) {
     const auto key = sfinae::GetKey(e.data);
-    map_[key] = e.data;
     last_modified_[key] = e.us;
+    map_[key] = e.data;
   }
   void operator()(const DELETE_EVENT& e) {
-    map_.erase(e.key);
     last_modified_[e.key] = e.us;
+    map_.erase(e.key);
   }
 
   struct Iterator final {
