@@ -277,6 +277,16 @@ TEST(TypeSystemTest, ExistsForNonVariants) {
 TEST(TypeSystemTest, ValueOfMutableAndImmutableObjects) {
   using namespace struct_definition_test;
 
+  int x;
+  int& x_ref = x;
+  const int& x_cref = x;
+  const int cx = 1;
+  static_assert(std::is_same<decltype(Value(x)), int&>::value, "");
+  static_assert(std::is_same<decltype(Value(x_ref)), int&>::value, "");
+  static_assert(std::is_same<decltype(Value(x_cref)), const int&>::value, "");
+  static_assert(std::is_same<decltype(Value(std::move(x))), int&&>::value, "");
+  static_assert(std::is_same<decltype(Value(cx)), const int&>::value, "");
+
   Foo foo(42);
   EXPECT_TRUE(Exists<Foo>(foo));
   EXPECT_EQ(42ull, Value(foo).i);
@@ -408,8 +418,19 @@ TEST(TypeSystemTest, ConstructingTemplatedStructs) {
 }
 
 TEST(TypeSystemTest, ImmutableOptional) {
+  using struct_definition_test::Foo;
+
+  // POD version.
   {
-    ImmutableOptional<int> foo(std::make_unique<int>(100));
+    ImmutableOptional<int> foo(100);
+    const ImmutableOptional<int>& foo_cref = foo;
+    static_assert(std::is_same<decltype(Value(foo)), int>::value, "");
+    static_assert(std::is_same<decltype(Value(foo_cref)), int>::value, "");
+    const ImmutableOptional<int> bar(200);
+    static_assert(std::is_same<decltype(Value(bar)), int>::value, "");
+  }
+  {
+    ImmutableOptional<int> foo(100);
     ASSERT_TRUE(Exists(foo));
     EXPECT_EQ(100, foo.ValueImpl());
     EXPECT_EQ(100, static_cast<int>(Value(foo)));
@@ -424,41 +445,50 @@ TEST(TypeSystemTest, ImmutableOptional) {
     } catch (NoValue) {
     }
   }
+
+  // Non-POD version.
   {
-    ImmutableOptional<int> meh(nullptr);
+    ImmutableOptional<Foo> foo(100);
+    const ImmutableOptional<Foo>& foo_cref = foo;
+    static_assert(std::is_same<decltype(Value(foo)), const Foo&>::value, "");
+    static_assert(std::is_same<decltype(Value(foo_cref)), const Foo&>::value, "");
+    const ImmutableOptional<Foo> bar(200);
+    static_assert(std::is_same<decltype(Value(bar)), const Foo&>::value, "");
+  }
+  {
+    ImmutableOptional<Foo> meh(nullptr);
     ASSERT_FALSE(Exists(meh));
     try {
       Value(meh);
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (NoValueOfType<int>) {
+    } catch (NoValueOfType<Foo>) {
     }
   }
   {
-    struct_definition_test::Foo bare;
+    Foo bare;
     ASSERT_TRUE(Exists(bare));
     EXPECT_EQ(42u, Value(bare).i);
     EXPECT_EQ(42u, Value(Value(bare)).i);
   }
   {
-    struct_definition_test::Foo bare;
-    ImmutableOptional<struct_definition_test::Foo> wrapped(FromBarePointer(), &bare);
+    Foo bare;
+    ImmutableOptional<Foo> wrapped(FromBarePointer(), &bare);
     ASSERT_TRUE(Exists(wrapped));
     EXPECT_EQ(42u, wrapped.ValueImpl().i);
     EXPECT_EQ(42u, Value(wrapped).i);
     EXPECT_EQ(42u, Value(Value(wrapped)).i);
   }
   {
-    struct_definition_test::Foo bare;
-    ImmutableOptional<struct_definition_test::Foo> wrapped(FromBarePointer(), &bare);
-    const ImmutableOptional<struct_definition_test::Foo>& double_wrapped(wrapped);
+    Foo bare;
+    ImmutableOptional<Foo> wrapped(FromBarePointer(), &bare);
+    const ImmutableOptional<Foo>& double_wrapped(wrapped);
     ASSERT_TRUE(Exists(double_wrapped));
     EXPECT_EQ(42u, double_wrapped.ValueImpl().i);
     EXPECT_EQ(42u, Value(double_wrapped).i);
     EXPECT_EQ(42u, Value(Value(double_wrapped)).i);
   }
   {
-    const auto lambda =
-        [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(std::make_unique<int>(x)); };
+    const auto lambda = [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(x); };
     ASSERT_TRUE(Exists(lambda(101)));
     EXPECT_EQ(102, lambda(102).ValueImpl());
     EXPECT_EQ(102, Value(lambda(102)));
@@ -466,16 +496,115 @@ TEST(TypeSystemTest, ImmutableOptional) {
 }
 
 TEST(TypeSystemTest, Optional) {
-  Optional<int> foo(std::make_unique<int>(200));
-  ASSERT_TRUE(Exists(foo));
-  EXPECT_EQ(200, foo.ValueImpl());
-  EXPECT_EQ(200, Value(foo));
-  foo = nullptr;
-  ASSERT_FALSE(Exists(foo));
-  try {
-    Value(foo);
-    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-  } catch (NoValue) {
+  using struct_definition_test::Foo;
+
+  // POD version: `Value()` return type.
+  {
+    Optional<int> foo(200);
+    const Optional<int>& foo_cref = foo;
+    static_assert(std::is_same<decltype(Value(foo)), int&>::value, "");
+    static_assert(std::is_same<decltype(Value(foo_cref)), int>::value, "");
+    static_assert(std::is_same<decltype(Value(std::move(foo))), int&>::value, "");
+    const Optional<int> bar(200);
+    static_assert(std::is_same<decltype(Value(bar)), int>::value, "");
+  }
+  // POD version: Initialize in ctor, reset by assignment.
+  {
+    Optional<int> foo(200);
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(200, foo.ValueImpl());
+    EXPECT_EQ(200, Value(foo));
+  }
+  // POD version: Create empty, initialize by assignment.
+  {
+    Optional<int> foo;
+    EXPECT_FALSE(Exists(foo));
+    foo = 1;
+    EXPECT_TRUE(Exists(foo));
+    EXPECT_EQ(1, Value(foo));
+  }
+  // POD version: Exception.
+  {
+    Optional<int> foo(200);
+    ASSERT_TRUE(Exists(foo));
+    foo = nullptr;
+    ASSERT_FALSE(Exists(foo));
+    try {
+      Value(foo);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (NoValue) {
+    }
+  }
+
+  // Non-POD version: `Value()` return type.
+  {
+    Optional<Foo> foo(200);
+    const Optional<Foo>& foo_cref = foo;
+    static_assert(std::is_same<decltype(Value(foo)), Foo&>::value, "");
+    static_assert(std::is_same<decltype(Value(foo_cref)), const Foo&>::value, "");
+    const Optional<Foo> bar(200);
+    static_assert(std::is_same<decltype(Value(bar)), const Foo&>::value, "");
+  }
+  // Non-POD version: Construct from `Foo&`.
+  {
+    Foo f(42u);
+    Optional<Foo> foo(static_cast<Foo&>(f));
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(42u, Value(foo).i);
+  }
+  // Non-POD version: Construct from `const Foo&`.
+  {
+    Foo f(42u);
+    Optional<Foo> foo(static_cast<const Foo&>(f));
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(42u, Value(foo).i);
+  }
+  // Non-POD version: Construct from `Foo&&`.
+  {
+    Optional<Foo> foo(Foo(42u));
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(42u, Value(foo).i);
+  }
+  // Non-POD version: Construct from `const Optional<Foo>&`.
+  {
+    Optional<Foo> foo(Foo(42));
+    Optional<Foo> bar(static_cast<const Optional<Foo>&>(foo));
+    ASSERT_TRUE(Exists(foo));
+    Value(foo).i = 100u;
+    ASSERT_TRUE(Exists(bar));
+    EXPECT_EQ(100u, Value(foo).i);
+    EXPECT_EQ(42u, Value(bar).i);
+  }
+  // Non-POD version: Construct from `Optional<Foo>&&`.
+  {
+    Optional<Foo> foo(Foo(42));
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(42u, Value(foo).i);
+    Optional<Foo> bar(std::move(foo));
+    ASSERT_FALSE(Exists(foo));
+    ASSERT_TRUE(Exists(bar));
+    EXPECT_EQ(42u, Value(bar).i);
+  }
+  // Non-POD version: Create empty, initialize by rvalue assignment.
+  {
+    Optional<Foo> foo(Foo(100u));
+    Optional<Foo> bar;
+    EXPECT_TRUE(Exists(foo));
+    EXPECT_FALSE(Exists(bar));
+    bar = std::move(foo);
+    ASSERT_FALSE(Exists(foo));
+    ASSERT_TRUE(Exists(bar));
+    EXPECT_EQ(100u, Value(bar).i);
+  }
+  // Non-POD version: Exception.
+  {
+    Optional<Foo> foo(Foo(1u));
+    foo = nullptr;
+    try {
+      Value(foo);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (NoValue) {
+    }
   }
 }
 

@@ -51,11 +51,40 @@ namespace current {
 // construct itself from a bare pointer.
 struct FromBarePointer {};
 
+template <typename, typename Enable = void>
+class ImmutableOptional;
+
 template <typename T>
-class ImmutableOptional final {
+class ImmutableOptional<T, std::enable_if_t<std::is_pod<T>::value>> final {
  public:
   ImmutableOptional() = delete;
+
+  ImmutableOptional(std::nullptr_t) : value_(), exists_(false) {}
+
+  ImmutableOptional(T value) : value_(value), exists_(true) {}
+
+  bool ExistsImpl() const { return exists_; }
+
+  T ValueImpl() const {
+    if (exists_) {
+      return value_;
+    } else {
+      throw NoValueOfTypeException<T>();
+    }
+  }
+
+ private:
+  const T value_;
+  bool exists_;
+};
+
+template <typename T>
+class ImmutableOptional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
+ public:
+  ImmutableOptional() = delete;
+
   ImmutableOptional(std::nullptr_t) : optional_object_(nullptr) {}
+
   ImmutableOptional(const FromBarePointer&, const T* ptr) : optional_object_(ptr) {}
 
   ImmutableOptional(const T& object)
@@ -83,11 +112,83 @@ class ImmutableOptional final {
   const T* optional_object_;
 };
 
+template <typename, typename Enable = void>
+class Optional;
+
 template <typename T>
-class Optional final {
+class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
+ public:
+  Optional() : exists_(false) {}
+
+  Optional(std::nullptr_t) : exists_(false) {}
+
+  Optional(T value) : value_(value), exists_(true) {}
+
+  Optional(const Optional<T>& rhs) {
+    value_ = rhs.value_;
+    exists_ = rhs.exists_;
+  }
+
+  Optional(Optional<T>&& rhs) {
+    value_ = rhs.value_;
+    exists_ = rhs.exists_;
+    rhs.exists_ = false;
+  }
+
+  Optional<T>& operator=(std::nullptr_t) {
+    exists_ = false;
+    return *this;
+  }
+
+  Optional<T>& operator=(T value) {
+    value_ = value;
+    exists_ = true;
+    return *this;
+  }
+
+  Optional<T>& operator=(const Optional<T>& rhs) {
+    value_ = rhs.value_;
+    exists_ = rhs.exists_;
+    return *this;
+  }
+
+  Optional<T>& operator=(Optional<T>&& rhs) {
+    value_ = rhs.value_;
+    exists_ = rhs.exists_;
+    rhs.exists_ = false;
+    return *this;
+  }
+
+  bool ExistsImpl() const { return exists_; }
+
+  T ValueImpl() const {
+    if (exists_) {
+      return value_;
+    } else {
+      throw NoValueOfTypeException<T>();
+    }
+  }
+
+  T& ValueImpl() {
+    if (exists_) {
+      return value_;
+    } else {
+      throw NoValueOfTypeException<T>();
+    }
+  }
+
+ private:
+  T value_;
+  bool exists_;
+};
+
+template <typename T>
+class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
  public:
   Optional() = default;
+
   Optional(std::nullptr_t) : optional_object_(nullptr) {}
+
   Optional(const FromBarePointer&, T* ptr) : optional_object_(ptr) {}
 
   Optional(const T& object)
@@ -109,16 +210,28 @@ class Optional final {
     optional_object_ = owned_optional_object_.get();
   }
 
+  Optional(Optional<T>&& rhs) {
+    if (rhs.ExistsImpl()) {
+      owned_optional_object_ = std::move(rhs.owned_optional_object_);
+      rhs = nullptr;
+    } else {
+      owned_optional_object_ = nullptr;
+    }
+    optional_object_ = owned_optional_object_.get();
+  }
+
   Optional<T>& operator=(std::nullptr_t) {
     owned_optional_object_ = nullptr;
     optional_object_ = nullptr;
     return *this;
   }
+
   Optional<T>& operator=(T* ptr) {
     owned_optional_object_ = nullptr;
     optional_object_ = ptr;
     return *this;
   }
+
   Optional<T>& operator=(std::unique_ptr<T>&& uptr) {
     owned_optional_object_ = std::move(uptr);
     optional_object_ = owned_optional_object_.get();
@@ -128,6 +241,17 @@ class Optional final {
   Optional<T>& operator=(const Optional<T>& rhs) {
     if (rhs.ExistsImpl()) {
       owned_optional_object_ = std::make_unique<T>(rhs.ValueImpl());
+    } else {
+      owned_optional_object_ = nullptr;
+    }
+    optional_object_ = owned_optional_object_.get();
+    return *this;
+  }
+
+  Optional<T>& operator=(Optional<T>&& rhs) {
+    if (rhs.ExistsImpl()) {
+      owned_optional_object_ = std::move(rhs.owned_optional_object_);
+      rhs = nullptr;
     } else {
       owned_optional_object_ = nullptr;
     }
