@@ -488,7 +488,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
     EXPECT_EQ(42u, Value(Value(double_wrapped)).i);
   }
   {
-    const auto lambda = [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(x); };
+    const auto lambda = [](int x) -> ImmutableOptional<int> { return x; };
     ASSERT_TRUE(Exists(lambda(101)));
     EXPECT_EQ(102, lambda(102).ValueImpl());
     EXPECT_EQ(102, Value(lambda(102)));
@@ -508,7 +508,7 @@ TEST(TypeSystemTest, Optional) {
     const Optional<int> bar(200);
     static_assert(std::is_same<decltype(Value(bar)), int>::value, "");
   }
-  // POD version: Initialize in ctor, reset by assignment.
+  // POD version: Initialize in ctor.
   {
     Optional<int> foo(200);
     ASSERT_TRUE(Exists(foo));
@@ -534,6 +534,19 @@ TEST(TypeSystemTest, Optional) {
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
+  }
+  // POD version: Using `Value()`.
+  {
+    Optional<int> foo(100);
+    const auto foo_value = Value(foo);
+    const auto& foo_value_ref = Value(foo);
+    EXPECT_EQ(100, Value(foo));
+    EXPECT_EQ(100, foo_value);
+    EXPECT_EQ(100, foo_value_ref);
+    foo = 200;
+    EXPECT_EQ(200, Value(foo));
+    EXPECT_EQ(100, foo_value);
+    EXPECT_EQ(200, foo_value_ref);
   }
 
   // Non-POD version: `Value()` return type.
