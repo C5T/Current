@@ -126,14 +126,13 @@ struct PowerfulValueImplCaller<T, T, false> {
   using DECAYED_T = current::decay<T>;
   static const DECAYED_T& AccessValue(const DECAYED_T& x) { return x; }
   static DECAYED_T& AccessValue(DECAYED_T& x) { return x; }
-  static DECAYED_T&& AccessValue(DECAYED_T&& x) { return x; }
+  static DECAYED_T&& AccessValue(DECAYED_T&& x) { return std::move(x); }
 };
 
 template <typename T>
 struct PowerfulValueImplCaller<T, T&, false> {
   using DECAYED_T = current::decay<T>;
   static DECAYED_T& AccessValue(DECAYED_T& x) { return x; }
-  static DECAYED_T&& AccessValue(DECAYED_T&& x) { return x; }
 };
 
 template <typename T>
