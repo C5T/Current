@@ -132,8 +132,8 @@ class GenericOneToOne {
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
-                               DoEraseWithoutTouchingLastModified(key);
                                last_modified_.erase(key);
+                               DoEraseWithoutTouchingLastModified(key);
                              });
       }
     }
@@ -262,11 +262,11 @@ class GenericOneToOne {
 
  private:
   void DoUpdateWithLastModified(std::chrono::microseconds us, const key_t& key, const T& object) {
+    last_modified_[key] = us;
     auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
     forward_[key.first] = placeholder.get();
     transposed_[key.second] = placeholder.get();
-    last_modified_[key] = us;
   }
 
   void DoEraseWithoutTouchingLastModified(const key_t& key) {
@@ -276,8 +276,8 @@ class GenericOneToOne {
   }
 
   void DoEraseWithLastModified(std::chrono::microseconds us, const key_t& key) {
-    DoEraseWithoutTouchingLastModified(key);
     last_modified_[key] = us;
+    DoEraseWithoutTouchingLastModified(key);
   }
 
   elements_map_t map_;
