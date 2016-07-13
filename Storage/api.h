@@ -107,7 +107,7 @@ struct PerFieldRESTfulHandlerGenerator {
   using DataHandlerImpl = typename REST_IMPL::template RESTfulDataHandlerGenerator<VERB, FIELD, ENTRY, KEY>;
 
   template <typename ENTRY>
-  using SchemaHandlerImpl = typename REST_IMPL::template RESTfulSchemaHandlerGenerator<ENTRY>;
+  using SchemaHandlerImpl = typename REST_IMPL::template RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
 
   const registerer_t registerer;
   STORAGE& storage;
@@ -275,6 +275,7 @@ struct PerFieldRESTfulHandlerGenerator {
     // Schema handlers.
     SchemaRoutesGenerator schema_routes_generator;
     schema_routes_generator.RegisterRoutes(
+        storage,
         [&](const std::string& route_suffix, const std::function<void(Request)> handler) {
           registerer(storage_handlers_map_entry_t(
               input_field_name,

@@ -173,10 +173,13 @@ struct Basic {
     }
   };
 
-  template <typename ENTRY>
-  class RESTfulSchemaHandlerGenerator {
-   private:
+  template <typename STORAGE, typename ENTRY>
+  struct RESTfulSchemaHandlerGenerator {
+    using storage_t = STORAGE;
+    using entry_t = ENTRY;
+
     using registerer_t = std::function<void(const std::string& route_suffix, std::function<void(Request)>)>;
+
     struct LanguageIterator {
       registerer_t registerer;
       explicit LanguageIterator(registerer_t registerer) : registerer(registerer) {}
@@ -186,16 +189,17 @@ struct Basic {
                    [](Request r) {
                      // TODO(dkorolev): Add caching one day.
                      reflection::StructSchema underlying_type_schema;
-                     underlying_type_schema.AddType<ENTRY>();
+                     underlying_type_schema.AddType<entry_t>();
                      r(underlying_type_schema.GetSchemaInfo().Describe<LANGUAGE>());
                    });
       }
     };
 
-   public:
-    void RegisterRoutes(registerer_t registerer) {
+    void RegisterRoutes(const storage_t& storage, registerer_t registerer) {
+      // The default implementation of schema generation doesn't need to access the `storage` itself.
+      static_cast<void>(storage);
       // Top-level handler: Just the name of the `CURRENT_STRUCT`.
-      registerer("", [](Request r) { r(reflection::CurrentTypeName<ENTRY>()); });
+      registerer("", [](Request r) { r(reflection::CurrentTypeName<entry_t>()); });
       // Per-language handlers: For `/schema.*` routes export the schema in the respective language.
       LanguageIterator per_language(registerer);
       current::reflection::ForEachLanguage(per_language);
