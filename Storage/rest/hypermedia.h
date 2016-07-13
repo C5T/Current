@@ -441,8 +441,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename ENTRY>
-  struct RESTfulSchemaHandlerGenerator : Basic::template RESTfulSchemaHandlerGenerator<ENTRY> {};
+  template <typename STORAGE, typename ENTRY>
+  using RESTfulSchemaHandlerGenerator = Basic::template RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
 
   static Response ErrorMethodNotAllowed(const std::string& method) {
     return ErrorResponse(MethodNotAllowedError("Supported methods: GET, PUT, POST, DELETE.", method),

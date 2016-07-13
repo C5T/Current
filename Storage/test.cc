@@ -1821,7 +1821,7 @@ TEST(TransactionalStorage, GracefulShutdown) {
   storage.GracefulShutdown();
   auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage>) {});
   ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
-};
+}
 
 namespace transactional_storage_test {
 

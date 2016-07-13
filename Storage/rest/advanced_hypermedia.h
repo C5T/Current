@@ -84,8 +84,8 @@ struct AdvancedHypermedia : Hypermedia {
   struct RESTfulDataHandlerGenerator
       : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {};
 
-  template <typename ENTRY>
-  struct RESTfulSchemaHandlerGenerator : SUPER::RESTfulSchemaHandlerGenerator<ENTRY> {};
+  template <typename STORAGE, typename ENTRY>
+  using RESTfulSchemaHandlerGenerator = SUPER::RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
@@ -116,10 +116,10 @@ struct AdvancedHypermedia : Hypermedia {
         if (Exists(result)) {
           const auto& value = Value(result);
           if (!input.export_requested) {
-            auto response = (brief
-                        ? Response(FormatAsAdvancedHypermediaRecord<brief_entry_t>(value, input),
-                                   HTTPResponseCode.OK)
-                        : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
+            auto response =
+                (brief ? Response(FormatAsAdvancedHypermediaRecord<brief_entry_t>(value, input),
+                                  HTTPResponseCode.OK)
+                       : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
             const auto last_modified = input.field.LastModified(entry_key);
             if (Exists(last_modified)) {
               response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
