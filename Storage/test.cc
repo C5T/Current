@@ -1725,18 +1725,18 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
   sherlock_t replicated_stream(replicated_stream_file_name);
 
-  current::storage::RemoteStreamReplicator<sherlock_t> replicator(Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
-  replicated_stream.MovePublisherTo(replicator);
-  
+  // Replicate data via subscription to master storage raw log.
+  current::storage::SubscribableRemoteStream<sherlock_t> replicator(
+      Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
+  auto subscriber_scope = replicator.Subscribe(replicated_stream);
+
   // Create storage using following stream.
   Storage replicated_storage(replicated_stream);
 
-  // Replicate data via subscription to master storage raw log.
-  replicator.Subscribe();
-  replicator.Unsubscribe(2u);
+  subscriber_scope.Unsubscribe(2u);
 
   // Return data authority to the stream as we completed the replication process.
-  replicator.ReturnPublisherToStream(replicated_stream);
+  subscriber_scope.ReturnPublisherToStream(replicated_stream);
 
   // Check that persisted files are the same.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
