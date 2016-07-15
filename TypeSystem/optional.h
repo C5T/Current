@@ -118,9 +118,9 @@ class Optional;
 template <typename T>
 class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
  public:
-  Optional() : exists_(false) {}
+  Optional() : value_(), exists_(false) {}
 
-  Optional(std::nullptr_t) : exists_(false) {}
+  Optional(std::nullptr_t) : value_(), exists_(false) {}
 
   Optional(T value) : value_(value), exists_(true) {}
 
