@@ -55,7 +55,7 @@ namespace karl {
 
 // No need for `CURRENT_FIELD_DESCRIPTION`-s in this structure. -- D.K.
 CURRENT_STRUCT(InternalKeepaliveAttemptResult) {
-  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(timestamp, std::chrono::microseconds, std::chrono::microseconds(0));
   CURRENT_FIELD(status, KeepaliveAttemptStatus, KeepaliveAttemptStatus::Unknown);
   CURRENT_FIELD(http_code, uint16_t, static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode));
 };
