@@ -157,8 +157,8 @@ inline void PerformReplayBenchmark(const std::string& file,
 
     // Bare persister iteration.
     {
-      const auto& persister = stream.InternalExposePersister();
       std::vector<std::thread> threads(subscribers_count);
+      const auto& persister = stream.InternalExposePersister();
       const auto begin = current::time::Now();
       for (auto& t : threads) {
         t = std::thread([&]() {
@@ -172,57 +172,59 @@ inline void PerformReplayBenchmark(const std::string& file,
       }
       const auto end = current::time::Now();
       report.raw_persister_replay_ms.push_back((end - begin).count() / 1000);
+    }
 
-      // Bare log file scan.
-      {
-        const auto begin = current::time::Now();
-        for (auto& t : threads) {
-          t = std::thread([&]() {
-            size_t lines = 0;
-            {
-              std::ifstream fi(FLAGS_file.c_str());
-              std::string line;
-              while (std::getline(fi, line)) {
-                ++lines;
-              }
+    // Bare log file scan.
+    {
+      std::vector<std::thread> threads(subscribers_count);
+      const auto begin = current::time::Now();
+      for (auto& t : threads) {
+        t = std::thread([&]() {
+          size_t lines = 0;
+          {
+            std::ifstream fi(FLAGS_file.c_str());
+            std::string line;
+            while (std::getline(fi, line)) {
+              ++lines;
             }
-            assert(lines == stream_size);
-          });
-        }
-        for (auto& t : threads) {
-          t.join();
-        }
-        const auto end = current::time::Now();
-        report.raw_file_scan_ms.push_back((end - begin).count() / 1000);
+          }
+          assert(lines == stream_size);
+        });
       }
+      for (auto& t : threads) {
+        t.join();
+      }
+      const auto end = current::time::Now();
+      report.raw_file_scan_ms.push_back((end - begin).count() / 1000);
+    }
 
-      // Transaction-parsing log file scan.
-      {
-        const auto begin = current::time::Now();
-        for (auto& t : threads) {
-          t = std::thread([&]() {
-            size_t lines = 0;
-            {
-              std::ifstream fi(FLAGS_file.c_str());
-              std::string line;
-              std::vector<std::string> pieces;
-              while (std::getline(fi, line)) {
-                pieces = current::strings::Split(line, '\t');
-                assert(pieces.size() == 2u);
-                assert(ParseJSON<idxts_t>(pieces[0]).us.count() > 0);
-                assert(ParseJSON<transaction_t>(pieces[1]).mutations.size() == 1u);
-                ++lines;
-              }
+    // Transaction-parsing log file scan.
+    {
+      std::vector<std::thread> threads(subscribers_count);
+      const auto begin = current::time::Now();
+      for (auto& t : threads) {
+        t = std::thread([&]() {
+          size_t lines = 0;
+          {
+            std::ifstream fi(FLAGS_file.c_str());
+            std::string line;
+            std::vector<std::string> pieces;
+            while (std::getline(fi, line)) {
+              pieces = current::strings::Split(line, '\t');
+              assert(pieces.size() == 2u);
+              assert(ParseJSON<idxts_t>(pieces[0]).us.count() > 0);
+              assert(ParseJSON<transaction_t>(pieces[1]).mutations.size() == 1u);
+              ++lines;
             }
-            assert(lines == stream_size);
-          });
-        }
-        for (auto& t : threads) {
-          t.join();
-        }
-        const auto end = current::time::Now();
-        report.parsing_file_scan_ms.push_back((end - begin).count() / 1000);
+          }
+          assert(lines == stream_size);
+        });
       }
+      for (auto& t : threads) {
+        t.join();
+      }
+      const auto end = current::time::Now();
+      report.parsing_file_scan_ms.push_back((end - begin).count() / 1000);
     }
   }
 }
