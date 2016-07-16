@@ -74,6 +74,7 @@ CURRENT_STRUCT(Report) {
   CURRENT_FIELD(subs, std::vector<uint16_t>);
   CURRENT_FIELD(owning_storage_replay_ms, std::vector<uint64_t>);
   CURRENT_FIELD(following_storage_replay_ms, std::vector<uint64_t>);
+  CURRENT_FIELD(raw_persister_replay_ms, std::vector<uint64_t>);
 };
 
 inline void PerformReplayBenchmark(const std::string& file,
@@ -151,6 +152,27 @@ inline void PerformReplayBenchmark(const std::string& file,
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
     report.following_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
+
+    // Bare persister iteration.
+    {
+      const auto& persister = stream.InternalExposePersister();
+      std::vector<std::thread> threads(subscribers_count);
+      std::atomic_size_t total_mutations(0u);
+      const auto begin = current::time::Now();
+      for (auto& t : threads) {
+        t = std::thread([&]() {
+          for (const auto& e : persister.Iterate(0, stream_size)) {
+            assert(!e.entry.mutations.empty());
+            total_mutations += e.entry.mutations.size();
+          }
+        });
+      }
+      for (auto& t : threads) {
+        t.join();
+      }
+      const auto end = current::time::Now();
+      report.raw_persister_replay_ms.push_back((end - begin).count() / 1000);
+    }
   }
 }
 
@@ -186,7 +208,12 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < report.subs.size(); ++i) {
               p(report.subs[i], 1e-3 * report.following_storage_replay_ms[i]);
             }
-          }).LineWidth(5).Color("rgb '#0000B9'").Name("Following storage"));
+          }).LineWidth(5).Color("rgb '#0000B9'").Name("Following storage"))
+          .Plot(WithMeta([&report](Plotter p) {
+            for (size_t i = 0; i < report.subs.size(); ++i) {
+              p(report.subs[i], 1e-3 * report.raw_persister_replay_ms[i]);
+            }
+          }).LineWidth(5).Color("rgb '#008080'").Name("Persister iterators"));
         current::FileSystem::WriteStringToFile(png, FLAGS_png.c_str());
       }
     }
