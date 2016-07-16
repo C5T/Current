@@ -1,8 +1,9 @@
 #include <atomic>
 
-#include "../../../Bricks/dflags/dflags.h"
-
 #include "schema.h"
+
+#include "../../../Bricks/dflags/dflags.h"
+#include "../../../Bricks/graph/gnuplot.h"
 
 DEFINE_string(file, ".current/log.json", "Storage persistence file in Sherlock format to use.");
 DEFINE_uint32(gen, 0u, "Set to nonzero to generate this number of entries, overwriting the test data.");
@@ -11,6 +12,10 @@ DEFINE_int16(sleep_ms,
              "The time in milliseconds to sleep in the spin-lock while checking "
              "actual replayed entries count.");
 DEFINE_uint16(subs, 0, "The number of dummy stream subscribers.");
+
+DEFINE_uint16(subs_range, 25, "For batch test, iterate from zero to this number of subscribers, inclusive.");
+DEFINE_string(json, ".current/result.json", "The name of the file to write the benchmark result as JSON.");
+DEFINE_string(png, ".current/result.png", "The name of the file to write the benchmark resuls as PNG.");
 
 inline void GenerateTestData(const std::string& file, uint32_t size) {
   current::FileSystem::RmFile(file, current::FileSystem::RmFileParameters::Silent);
@@ -65,12 +70,21 @@ struct RawLogSubscriberImpl {
   MutationCollector mutation_collector_;
 };
 
+CURRENT_STRUCT(Report) {
+  CURRENT_FIELD(subs, std::vector<uint16_t>);
+  CURRENT_FIELD(owning_storage_replay_ms, std::vector<uint64_t>);
+  CURRENT_FIELD(following_storage_replay_ms, std::vector<uint64_t>);
+};
+
 inline void PerformReplayBenchmark(const std::string& file,
                                    std::chrono::milliseconds spin_lock_sleep,
-                                   uint16_t subscribers_count) {
+                                   uint16_t subscribers_count,
+                                   Report& report) {
   using stream_t = typename storage_t::persister_t::sherlock_t;
   using transaction_t = typename stream_t::entry_t;
   using subscriber_t = current::ss::StreamSubscriber<RawLogSubscriberImpl<transaction_t>, transaction_t>;
+
+  report.subs.push_back(subscribers_count);
 
   // Owning storage replay.
   {
@@ -94,6 +108,7 @@ inline void PerformReplayBenchmark(const std::string& file,
                 << " ms\n";
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
+    report.owning_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
   }
 
   struct PublisherAcquirer {
@@ -135,6 +150,7 @@ inline void PerformReplayBenchmark(const std::string& file,
                 << " ms\n";
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
+    report.following_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
   }
 }
 
@@ -143,6 +159,36 @@ int main(int argc, char** argv) {
   if (FLAGS_gen) {
     GenerateTestData(FLAGS_file, FLAGS_gen);
   } else {
-    PerformReplayBenchmark(FLAGS_file, std::chrono::milliseconds(FLAGS_sleep_ms), FLAGS_subs);
+    Report report;
+    if (FLAGS_subs) {
+      PerformReplayBenchmark(FLAGS_file, std::chrono::milliseconds(FLAGS_sleep_ms), FLAGS_subs, report);
+    } else {
+      for (uint16_t subs = 0; subs <= FLAGS_subs_range; ++subs) {
+        PerformReplayBenchmark(FLAGS_file, std::chrono::milliseconds(FLAGS_sleep_ms), subs, report);
+      }
+      if (!FLAGS_json.empty()) {
+        current::FileSystem::WriteStringToFile(JSON(report), FLAGS_json.c_str());
+      }
+      if (!FLAGS_png.empty()) {
+        using namespace current::gnuplot;
+        const std::string png = GNUPlot()
+          .Title("Subscribers benchmark")
+          .XLabel("Subscribers")
+          .YLabel("Seconds")
+          .ImageSize(1000)
+          .OutputFormat("pngcairo")
+          .Plot(WithMeta([&report](Plotter p) {
+            for (size_t i = 0; i < report.subs.size(); ++i) {
+              p(report.subs[i], 1e-3 * report.owning_storage_replay_ms[i]);
+            }
+          }).LineWidth(5).Color("rgb '#B90000'").Name("Owning storage"))
+          .Plot(WithMeta([&report](Plotter p) {
+            for (size_t i = 0; i < report.subs.size(); ++i) {
+              p(report.subs[i], 1e-3 * report.following_storage_replay_ms[i]);
+            }
+          }).LineWidth(5).Color("rgb '#0000B9'").Name("Following storage"));
+        current::FileSystem::WriteStringToFile(png, FLAGS_png.c_str());
+      }
+    }
   }
 }
