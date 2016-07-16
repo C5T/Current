@@ -4,10 +4,9 @@
 
 #include "schema.h"
 
-DEFINE_string(file, "", "Storage persistence file in Sherlock format to use.");
-DEFINE_bool(gen, false, "Generate test data and save to the file specified by `--file.`");
-DEFINE_uint32(size, 0u, "If `--gen` is set, the number of entries to generate.");
-DEFINE_int16(sleep,
+DEFINE_string(file, ".current/log.json", "Storage persistence file in Sherlock format to use.");
+DEFINE_uint32(gen, 0u, "Set to nonzero to generate this number of entries, overwriting the test data.");
+DEFINE_int16(sleep_ms,
              10,
              "The time in milliseconds to sleep in the spin-lock while checking "
              "actual replayed entries count.");
@@ -142,8 +141,8 @@ inline void PerformReplayBenchmark(const std::string& file,
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
   if (FLAGS_gen) {
-    GenerateTestData(FLAGS_file, FLAGS_size);
+    GenerateTestData(FLAGS_file, FLAGS_gen);
   } else {
-    PerformReplayBenchmark(FLAGS_file, std::chrono::milliseconds(FLAGS_sleep), FLAGS_subs);
+    PerformReplayBenchmark(FLAGS_file, std::chrono::milliseconds(FLAGS_sleep_ms), FLAGS_subs);
   }
 }
