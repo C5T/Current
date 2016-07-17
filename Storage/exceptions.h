@@ -92,6 +92,14 @@ struct SubscriptionIsNotActiveException : StorageException {
   using StorageException::StorageException;
 };
 
+struct RemoteStreamDoesNotRespondException : StorageException {
+  using StorageException::StorageException;
+};
+
+struct RemoteStreamSchemaInvalidException : StorageException {
+  using StorageException::StorageException;
+};
+
 }  // namespace current::storage
 }  // namespace current
 

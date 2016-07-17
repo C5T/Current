@@ -155,10 +155,23 @@ class SubscribableRemoteStream final {
     std::unique_ptr<publisher_t> publisher_;
   };
 
+  using entry_t = typename T_STREAM::entry_t;
   using publisher_t = typename T_STREAM::publisher_t;
   using subscriber_t = RemoteSubscriberScope<T_STREAM>;
 
-  explicit SubscribableRemoteStream(const std::string& remote_stream_url) : stream_(remote_stream_url) {}
+  explicit SubscribableRemoteStream(const std::string& remote_stream_url) : stream_(remote_stream_url) {
+    const auto response = HTTP(
+        GET(remote_stream_url + "?schema=" + current::ToString(current::reflection::Language::InternalFormat)));
+    if (static_cast<int>(response.code) == 200) {
+      current::reflection::StructSchema schema;
+      schema.AddType<entry_t>();
+      const std::string description =
+          schema.GetSchemaInfo().Describe<current::reflection::Language::InternalFormat>(false);
+      if (description != response.body) CURRENT_THROW(RemoteStreamSchemaInvalidException());
+    } else {
+      CURRENT_THROW(RemoteStreamDoesNotRespondException());
+    }
+  }
   ~SubscribableRemoteStream(){};
 
   subscriber_t Subscribe(std::unique_ptr<publisher_t> publisher, uint64_t index = 0u) {
