@@ -393,7 +393,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
         "\n"
         "  // Privileged types.\n"
-        "  CURRENT_NAMESPACE_TYPE(TopLevelTransaction, "
+        "  CURRENT_NAMESPACE_TYPE(Transaction, "
         "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
         "};  // CURRENT_NAMESPACE(Sherlock)\n"
         "#endif  // CURRENT_NAMESPACE_Sherlock_DEFINED\n"
