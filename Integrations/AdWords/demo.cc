@@ -43,6 +43,8 @@ ADWORDS_PARAM(idtype);
 
 DEFINE_string(rdid, "", "The `rdid` (\"advertising identifier\") to send the tracking info for.");
 
+DEFINE_bool(dump, false, "Set to dump configuration parameters and exit.");
+
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
@@ -60,6 +62,12 @@ int main(int argc, char** argv) {
   ADWORDS_PARAM(bundleid);
   ADWORDS_PARAM(idtype);
 #undef ADWORDS_PARAM
+
+  if (FLAGS_dump) {
+    std::cout << "Local port :   " << FLAGS_port << std::endl;
+    std::cout << "Configuration: " << JSON(params) << std::endl;
+    return 0;
+  }
 
   try {
     const current::integrations::adwords::conversion_tracking::AdWordsMobileConversionEventsSender sender(
