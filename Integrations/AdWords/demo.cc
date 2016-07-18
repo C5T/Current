@@ -34,7 +34,7 @@ DEFINE_uint16(port,
               current::integrations::adwords::conversion_tracking::kDefaultAdWordsIntegrationPort,
               "The port from which the local nginx proxies request to AdWords.");
 
-#define ADWORDS_PARAM(x) DEFINE_string(x, "", "The `#x` param for AdWords conversion tracking.");
+#define ADWORDS_PARAM(x) DEFINE_string(x, "", "The `" #x "` param for AdWords conversion tracking.");
 ADWORDS_PARAM(conversion_id);
 ADWORDS_PARAM(label);
 ADWORDS_PARAM(bundleid);
