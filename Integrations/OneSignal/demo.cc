@@ -27,7 +27,9 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 
 DEFINE_string(app_id, "", "The `app_id` for OneSignal integration.");
-DEFINE_uint16(port, 24001, "The port from which the local nginx proxies request to OneSignal.");
+DEFINE_uint16(port,
+              current::integrations::onesignal::kDefaultOneSignalIntegrationPort,
+              "The port from which the local nginx proxies request to OneSignal.");
 
 DEFINE_string(recipient_id, "", "The `recipient_id` for OneSignal integration.");
 DEFINE_string(message, "", "The string to send as the message.");
