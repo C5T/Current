@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
     if (!FLAGS_rdid.empty()) {
       if (sender.SendConversionEvent(FLAGS_rdid)) {
         return 0;
-      } else{
+      } else {
         std::cerr << "An error occurred.\n";
         return 1;
       }
