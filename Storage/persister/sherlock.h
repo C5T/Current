@@ -131,7 +131,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   }
 
   void ExposeRawLogViaHTTP(uint16_t port, const std::string& route) {
-    handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_used_);
+    handlers_scope_ +=
+        HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, stream_used_);
   }
 
   sherlock_t& InternalExposeStream() { return stream_used_; }
