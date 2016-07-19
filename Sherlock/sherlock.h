@@ -95,7 +95,9 @@ using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
 struct SherlockNamespaceName {
   const std::string namespace_name;
-  explicit SherlockNamespaceName(const std::string& namespace_name) : namespace_name(namespace_name) {}
+  const std::string top_level_name;
+  explicit SherlockNamespaceName(const std::string& namespace_name, const std::string& top_level_name)
+      : namespace_name(namespace_name), top_level_name(top_level_name) {}
 };
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
@@ -144,14 +146,17 @@ class StreamImpl {
 
   StreamImpl()
       : own_data_(),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_)),
+        schema_as_object_(
+            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   StreamImpl(const SherlockNamespaceName& exposed_namespace)
       : own_data_(),
         schema_exposed_namespace_name_(exposed_namespace.namespace_name),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_)),
+        schema_top_level_name_(exposed_namespace.top_level_name),
+        schema_as_object_(
+            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
@@ -160,7 +165,8 @@ class StreamImpl {
             class = std::enable_if_t<!std::is_same<X, SherlockNamespaceName>::value>>
   StreamImpl(X&& x, XS&&... xs)
       : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_)),
+        schema_as_object_(
+            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
@@ -168,14 +174,18 @@ class StreamImpl {
   StreamImpl(const SherlockNamespaceName& exposed_namespace, X&& x, XS&&... xs)
       : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
         schema_exposed_namespace_name_(exposed_namespace.namespace_name),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_)),
+        schema_top_level_name_(exposed_namespace.top_level_name),
+        schema_as_object_(
+            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   StreamImpl(StreamImpl&& rhs)
       : own_data_(std::move(rhs.own_data_)),
         schema_exposed_namespace_name_(rhs.schema_exposed_namespace_name_),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_)),
+        schema_top_level_name_(rhs.schema_top_level_name_),
+        schema_as_object_(
+            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::move(rhs.publisher_)),
         authority_(rhs.authority_) {
     rhs.authority_ = StreamDataAuthority::External;
@@ -515,17 +525,21 @@ class StreamImpl {
   struct FillPerLanguageSchema {
     SherlockSchema& schema_ref;
     const std::string& exposed_namespace_name;
-    explicit FillPerLanguageSchema(SherlockSchema& schema, const std::string& exposed_namespace_name)
-        : schema_ref(schema), exposed_namespace_name(exposed_namespace_name) {}
+    const std::string& top_level_name;
+    explicit FillPerLanguageSchema(SherlockSchema& schema,
+                                   const std::string& exposed_namespace_name,
+                                   const std::string& top_level_name)
+        : schema_ref(schema), exposed_namespace_name(exposed_namespace_name), top_level_name(top_level_name) {}
     template <current::reflection::Language language>
     void PerLanguage() {
       schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
           current::reflection::NamespaceToExpose(exposed_namespace_name)
-              .template AddType<entry_t>("TopLevelTransaction"));
+              .template AddType<entry_t>(top_level_name));
     }
   };
 
-  static SherlockSchema StaticConstructSchemaAsObject(const std::string& exposed_namespace_name) {
+  static SherlockSchema StaticConstructSchemaAsObject(const std::string& exposed_namespace_name,
+                                                      const std::string& top_level_name) {
     SherlockSchema schema;
 
     schema.type_name = current::reflection::CurrentTypeName<entry_t>();
@@ -536,13 +550,14 @@ class StreamImpl {
     underlying_type_schema.AddType<entry_t>();
     schema.type_schema = underlying_type_schema.GetSchemaInfo();
 
-    current::reflection::ForEachLanguage(FillPerLanguageSchema(schema, exposed_namespace_name));
+    current::reflection::ForEachLanguage(FillPerLanguageSchema(schema, exposed_namespace_name, top_level_name));
 
     return schema;
   }
 
  private:
   const std::string schema_exposed_namespace_name_ = "SherlockSchema";
+  const std::string schema_top_level_name_ = "TopLevelTransaction";
   const SherlockSchema schema_as_object_;
   const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
                                                      HTTPResponseCode.OK,

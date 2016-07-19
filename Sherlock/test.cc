@@ -324,8 +324,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream =
-      current::sherlock::Stream<RecordWithTimestamp>(current::sherlock::SherlockNamespaceName("Sherlock"));
+  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>(
+      current::sherlock::SherlockNamespaceName("Sherlock", "Transaction"));
   // Expose stream via HTTP.
   HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
@@ -393,7 +393,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
         "\n"
         "  // Privileged types.\n"
-        "  CURRENT_NAMESPACE_TYPE(TopLevelTransaction, "
+        "  CURRENT_NAMESPACE_TYPE(Transaction, "
         "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
         "};  // CURRENT_NAMESPACE(Sherlock)\n"
         "#endif  // CURRENT_NAMESPACE_Sherlock_DEFINED\n"
