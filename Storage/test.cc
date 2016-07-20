@@ -1613,6 +1613,15 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   const auto master_storage_file_remover = current::FileSystem::ScopedRmFile(master_storage_file_name);
   Storage master_storage(master_storage_file_name);
   master_storage.ExposeRawLogViaHTTP(FLAGS_transactional_storage_test_port, "/raw_log");
+  const std::string base_url = Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port);
+
+  // Check that the Storage is available via HTTP.
+  {
+    const auto result = HTTP(GET(base_url + "?schema=json"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    const auto result2 = HTTP(GET(base_url + "/schema.json"));
+    EXPECT_EQ(200, static_cast<int>(result2.code));
+  }
 
   // Perform a couple of transactions.
   {
@@ -1679,8 +1688,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   Storage replicated_storage(replicated_stream);
 
   // Replicate data via subscription to master storage raw log.
-  const auto response =
-      HTTP(GET(Printf("http://localhost:%d/raw_log?cap=1000&nowait", FLAGS_transactional_storage_test_port)));
+  const auto response = HTTP(GET(base_url + "?cap=1000&nowait"));
   EXPECT_EQ(200, static_cast<int>(response.code));
   std::istringstream body(response.body);
   std::string line;
