@@ -26,22 +26,14 @@ SOFTWARE.
 #define TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H
 
 #include "../../port.h"
-#include "../../Bricks/exception.h"
-#include "../../Bricks/strings/strings.h"
 
-#define RAPIDJSON_HAS_STDSTRING 1
-#include "../../3rdparty/rapidjson/document.h"
-#include "../../3rdparty/rapidjson/prettywriter.h"
-#include "../../3rdparty/rapidjson/streamwrapper.h"
+#include "exceptions_base.h"
+
+#include "rapidjson.h"
 
 namespace current {
 namespace serialization {
-
 namespace json {
-
-struct TypeSystemParseJSONException : Exception {
-  using Exception::Exception;
-};
 
 struct JSONSchemaException : TypeSystemParseJSONException {
   const std::string expected_;
@@ -81,45 +73,8 @@ struct JSONSchemaException : TypeSystemParseJSONException {
   }
 };
 
-struct InvalidJSONException : TypeSystemParseJSONException {
-  explicit InvalidJSONException(const std::string& json) : TypeSystemParseJSONException(json) {}
-};
-
-struct JSONUninitializedVariantObjectException : TypeSystemParseJSONException {};
-
-}  // namepsace json
-
-namespace binary {
-
-struct BinarySerializationException : Exception {
-  using Exception::Exception;
-};
-
-// LCOV_EXCL_START
-struct BinarySaveToStreamException : BinarySerializationException {
-  using BinarySerializationException::BinarySerializationException;
-  BinarySaveToStreamException(const size_t bytes_to_write, const size_t actually_wrote)
-      : BinarySerializationException("Failed to write " + current::ToString(bytes_to_write) +
-                                     " bytes, wrote only " + current::ToString(actually_wrote) + '.') {}
-};
-// LCOV_EXCL_STOP
-
-struct BinaryLoadFromStreamException : BinarySerializationException {
-  using BinarySerializationException::BinarySerializationException;
-  BinaryLoadFromStreamException(const size_t bytes_to_read, const size_t actually_read)
-      : BinarySerializationException("Failed to read " + current::ToString(bytes_to_read) +
-                                     " bytes, read only " + current::ToString(actually_read) + '.') {}
-};
-
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
-
-using current::serialization::json::InvalidJSONException;
-using current::serialization::json::TypeSystemParseJSONException;
-using current::serialization::json::JSONUninitializedVariantObjectException;
-
-using current::serialization::binary::BinarySaveToStreamException;
-using current::serialization::binary::BinaryLoadFromStreamException;
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H
