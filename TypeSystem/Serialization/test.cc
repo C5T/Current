@@ -1022,4 +1022,47 @@ TEST(Serialization, ComplexTemplatedUsage) {
   }
 }
 
+namespace serialization_test {
+
+CURRENT_ENUM(CrashingEnum, uint64_t){};
+
+CURRENT_STRUCT(CrashingStruct) {
+  CURRENT_FIELD(i, int64_t, 0);
+  CURRENT_FIELD(o, Optional<int64_t>);
+  CURRENT_FIELD(e, CrashingEnum, static_cast<CrashingEnum>(0));
+};
+
+}  // namespace serialization_test
+
+TEST(Serialization, JSONCrashTest1) {
+  EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
+  try {
+    ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
+    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+  } catch (const RapidJSONAssertionFailedException& e) {
+    EXPECT_EQ("./../../3rdparty/rapidjson/document.h:1450\tflags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+  }
+}
+
+TEST(Serialization, JSONCrashTest2) {
+  EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
+  try {
+    ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
+    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+  } catch (const RapidJSONAssertionFailedException& e) {
+    EXPECT_EQ("./../../3rdparty/rapidjson/document.h:1450\tflags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+  }
+}
+
+TEST(Serialization, JSONCrashTest3) {
+  EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
+  try {
+    ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
+    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+  } catch (const RapidJSONAssertionFailedException& e) {
+    EXPECT_EQ("./../../3rdparty/rapidjson/document.h:1451\tflags_ & kUint64Flag\tflags_ & kUint64Flag",
+              e.What());
+  }
+}
+
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
