@@ -1621,6 +1621,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     const auto result2 = HTTP(GET(base_url + "/schema.json"));
     EXPECT_EQ(200, static_cast<int>(result2.code));
+    EXPECT_EQ(result.body, result2.body);
   }
 
   // Perform a couple of transactions.
