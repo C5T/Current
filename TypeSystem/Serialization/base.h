@@ -29,11 +29,7 @@ SOFTWARE.
 #include <iostream>
 
 #include "exceptions.h"
-
-#define RAPIDJSON_HAS_STDSTRING 1
-#include "../../3rdparty/rapidjson/document.h"
-#include "../../3rdparty/rapidjson/prettywriter.h"
-#include "../../3rdparty/rapidjson/streamwrapper.h"
+#include "rapidjson.h"
 
 namespace current {
 namespace serialization {
