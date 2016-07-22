@@ -279,19 +279,34 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   Data d;
   SherlockTestProcessor p(d, true);
   {
-    auto scope = meh_stream.Subscribe(p);
+    auto scope1 = meh_stream.Subscribe(p);
+    EXPECT_TRUE(scope1);
     {
-      auto scope2 = std::move(scope);
+      auto scope2 = std::move(scope1);
+      EXPECT_TRUE(scope2);
+      EXPECT_FALSE(scope1);
       {
-        auto scope3 = std::move(scope2);
-        while (d.seen_ < 3u) {
-          ;  // Spin lock.
+        current::sherlock::SubscriberScope scope3;
+        EXPECT_FALSE(scope3);
+        EXPECT_TRUE(scope2);
+        {
+          scope3 = std::move(scope2);
+          EXPECT_TRUE(scope3);
+          EXPECT_FALSE(scope2);
+          p.SetMax(3u);
+          while (d.seen_ < 3u) {
+            ;  // Spin lock.
+          }
+          while (scope3) {
+            ;  // Spin lock.
+          }
         }
+        EXPECT_FALSE(scope3);
       }
     }
   }
   EXPECT_EQ(3u, d.seen_);
-  EXPECT_EQ("10,11,12," + SherlockTestProcessor::kTerminateStr, d.results_);
+  EXPECT_EQ("10,11,12", d.results_);
 }
 
 namespace sherlock_unittest {
@@ -762,6 +777,26 @@ TEST(Sherlock, ParsesFromFile) {
   }
   ASSERT_FALSE(d.subscriber_alive_);
 
+  {
+    // Try scope-based subscription of a limited-range subscriber, and confirm
+    // casting the scope of this subscription to `bool` eventially become `false`.
+    Data d2;
+    {
+      ASSERT_FALSE(d2.subscriber_alive_);
+      SherlockTestProcessor p2(d2, false, true);
+      ASSERT_TRUE(d2.subscriber_alive_);
+      p2.SetMax(3u);
+      const auto scope = parsed.Subscribe(p2);
+      while (static_cast<bool>(scope)) {
+        ;  // Spin lock.
+      }
+      EXPECT_FALSE(static_cast<bool>(scope));
+      EXPECT_EQ(3u, d2.seen_);
+      EXPECT_TRUE(d2.subscriber_alive_);
+    }
+    EXPECT_FALSE(d2.subscriber_alive_);
+  }
+
   const std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(
@@ -871,6 +906,7 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
     // values of `Record`s.
     SherlockTestProcessor p(d, true);
     auto scope = stream.Subscribe(p);
+    EXPECT_TRUE(static_cast<bool>(scope));
 
     // Publish the first entry as usual.
     stream.Publish(1, std::chrono::microseconds(100));
@@ -907,6 +943,8 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
     EXPECT_EQ(3u, d.seen_);
     EXPECT_EQ("1,3,4", d.results_);
     EXPECT_TRUE(d.subscriber_alive_);
+
+    EXPECT_TRUE(static_cast<bool>(scope));
   }
   EXPECT_EQ("1,3,4,TERMINATE", d.results_);
   EXPECT_FALSE(d.subscriber_alive_);

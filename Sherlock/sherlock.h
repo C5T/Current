@@ -260,7 +260,6 @@ class StreamImpl {
     ScopeOwnedBySomeoneElse<stream_data_t> data_;
     F& subscriber_;
     const uint64_t begin_idx_;
-    std::atomic_bool thread_done_;
     std::thread thread_;
 
     SubscriberThreadInstance() = delete;
@@ -285,7 +284,6 @@ class StreamImpl {
                 }),
           subscriber_(subscriber),
           begin_idx_(begin_idx),
-          thread_done_(false),
           thread_(&SubscriberThreadInstance::Thread, this) {
       // Must guard against the constructor of `ScopeOwnedBySomeoneElse<stream_data_t> data_` throwing.
       this_is_valid_ = true;
@@ -295,7 +293,7 @@ class StreamImpl {
       if (this_is_valid_) {
         // The constructor has completed successfully. The thread has started, and `data_` is valid.
         assert(thread_.joinable());
-        if (!thread_done_) {
+        if (!subscriber_thread_done_) {
           std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
           terminate_signal_.SignalExternalTermination();
         }
@@ -314,7 +312,7 @@ class StreamImpl {
       // strictly within the scope of existence of `stream_data_t` contained in `data_`.
       stream_data_t& bare_data = data_.ObjectAccessorDespitePossiblyDestructing();
       ThreadImpl(bare_data, begin_idx_);
-      thread_done_ = true;
+      subscriber_thread_done_ = true;
       std::lock_guard<std::mutex> lock(bare_data.http_subscriptions_mutex);
       if (done_callback_) {
         done_callback_();
