@@ -74,7 +74,6 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
   };
   using SherlockSubscriber = current::ss::StreamSubscriber<SherlockSubscriberImpl, transaction_t>;
-  using subscriber_scope_t = typename sherlock_t::template SubscriberScope<SherlockSubscriber, transaction_t>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(std::mutex& storage_mutex, fields_update_function_t f, ARGS&&... args)
@@ -173,8 +172,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   void SubscribeToStream() {
     assert(!subscriber_scope_);
     assert(subscriber_);
-    subscriber_scope_ = std::make_unique<subscriber_scope_t>(
-        std::move(stream_used_.template Subscribe<transaction_t>(*subscriber_)));
+    subscriber_scope_ = std::move(stream_used_.template Subscribe<transaction_t>(*subscriber_));
   }
 
   void TerminateStreamSubscription() { subscriber_scope_ = nullptr; }
@@ -186,7 +184,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   std::unique_ptr<sherlock::Stream<transaction_t, UNDERLYING_PERSISTER>> stream_owned_if_any_;
   sherlock_t& stream_used_;
   std::unique_ptr<SherlockSubscriber> subscriber_;
-  std::unique_ptr<subscriber_scope_t> subscriber_scope_;
+  current::sherlock::SubscriberScope subscriber_scope_;
   PersisterDataAuthority authority_;
   HTTPRoutesScope handlers_scope_;
 };
