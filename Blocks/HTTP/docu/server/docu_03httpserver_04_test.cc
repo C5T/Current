@@ -54,7 +54,6 @@ using current::strings::Printf;
   
 TEST(Docu, HTTPServer04) {
 const auto port = FLAGS_docu_net_server_port_04;
-HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
   const auto scope = HTTP(port).Register("/penny", [](Request r) {
     try {

@@ -38,7 +38,6 @@ DEFINE_int32(docu_net_server_port_05, PickPortForUnitTest(), "");
 
 TEST(Docu, HTTPServer05) {
 const auto port = FLAGS_docu_net_server_port_05;
-HTTP(port).ResetAllHandlers();
   // Returning a potentially unlimited response chunk by chunk.
   const auto scope = HTTP(port).Register("/chunked", [](Request r) {
     const size_t n = atoi(r.url.query["n"].c_str());

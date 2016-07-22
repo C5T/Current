@@ -36,7 +36,6 @@ using current::strings::Printf;
 
 TEST(Docu, HTTPServer02) {
 const auto port = FLAGS_docu_net_server_port_02;
-HTTP(port).ResetAllHandlers();
   // Accessing input fields.
   const auto scope = HTTP(port).Register("/demo", [](Request r) {
     r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);

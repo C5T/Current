@@ -222,11 +222,6 @@ class HTTPServerPOSIX final {
     return scope;
   }
 
-  void ResetAllHandlers() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    handlers_.clear();
-  }
-
   size_t PathHandlersCount() const {
     // NOTE: The total number of handlers is no longer an interesting measure.
     //       Just return the number of distinct paths, which may be path prefixes.

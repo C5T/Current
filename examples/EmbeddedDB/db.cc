@@ -103,7 +103,6 @@ struct UserNicknamesReadModel {
     return current::ss::EntryResponse::More;
   }
 
-  // TODO(dkorolev): Revisit the above calls, they are all wrong.
   current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
 };
 

@@ -36,7 +36,6 @@ using current::strings::Printf;
 
 TEST(Docu, HTTPServer03) {
 const auto port = FLAGS_docu_net_server_port_03;
-HTTP(port).ResetAllHandlers();
   // Constructing a more complex response.
   const auto scope = HTTP(port).Register("/found", [](Request r) {
     r("Yes.",
