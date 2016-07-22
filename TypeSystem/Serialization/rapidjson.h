@@ -29,17 +29,15 @@ SOFTWARE.
 
 #include "exceptions_base.h"
 
-inline void RapidJSONAssert(bool condition, const char* text, const char* file, int line) {
-  if (!condition) {
-    current::serialization::json::RapidJSONAssertionFailedException e(text);
-    e.SetCaller(text);
-    e.SetOrigin(file, line);
-    throw e;
-  }
+inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
+  current::serialization::json::RapidJSONAssertionFailedException e(text);
+  e.SetCaller(text);
+  e.SetOrigin(file, line);
+  throw e;
 }
 
 #define RAPIDJSON_HAS_STDSTRING 1
-#define RAPIDJSON_ASSERT(x) RapidJSONAssert(x, #x, __FILE__, __LINE__)
+#define RAPIDJSON_ASSERT(x) ((x) ? static_cast<void>(0) : RapidJSONAssertThrow(#x, __FILE__, __LINE__))
 
 #include "../../3rdparty/rapidjson/document.h"
 #include "../../3rdparty/rapidjson/prettywriter.h"
