@@ -1634,8 +1634,9 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
     stream.MovePublisherTo(stream_publisher_owner);
     // Spawn following storage.
     Storage storage(stream);
+    EXPECT_EQ(3u, storage.InternalExposeStream().InternalExposePersister().Size());
     // Wait until the whole log is replayed.
-    storage.WaitForTransactionsCount(storage.InternalExposeStream().InternalExposePersister().Size());
+    storage.WaitForTransactionsCount(3u);
     EXPECT_EQ(3u, storage.TransactionsCount());
     // Check the data.
     const auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
