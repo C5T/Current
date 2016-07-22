@@ -1034,33 +1034,37 @@ CURRENT_STRUCT(CrashingStruct) {
 
 }  // namespace serialization_test
 
-TEST(Serialization, JSONCrashTest1) {
+TEST(Serialization, JSONCrashTests) {
   EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
-  try {
-    ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
-    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-  } catch (const RapidJSONAssertionFailedException& e) {
-    ExpectStringEndsWith("flags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
-  }
-}
 
-TEST(Serialization, JSONCrashTest2) {
-  EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
-  try {
-    ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
-    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-  } catch (const RapidJSONAssertionFailedException& e) {
-    ExpectStringEndsWith("flags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+  {
+    // Attempt to fit `0.5` into an `int64_t`.
+    try {
+      ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const RapidJSONAssertionFailedException& e) {
+      ExpectStringEndsWith("flags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+    }
   }
-}
 
-TEST(Serialization, JSONCrashTest3) {
-  EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
-  try {
-    ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
-    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-  } catch (const RapidJSONAssertionFailedException& e) {
-    ExpectStringEndsWith("flags_ & kUint64Flag\tflags_ & kUint64Flag", e.What());
+  {
+    // Attempt to fit `0.5` into an `Optional<int64_t>`.
+    try {
+      ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const RapidJSONAssertionFailedException& e) {
+      ExpectStringEndsWith("flags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+    }
+  }
+
+  {
+    // Attempt to fit `0.5` into a `CURRENT_ENUM(*, uint64_t)`.
+    try {
+      ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const RapidJSONAssertionFailedException& e) {
+      ExpectStringEndsWith("flags_ & kUint64Flag\tflags_ & kUint64Flag", e.What());
+    }
   }
 }
 
