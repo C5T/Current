@@ -365,7 +365,7 @@ class StreamImpl {
 
   // Expose the means to control the scope of the subscriber.
   template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  class SubscriberScope : public current::sherlock::SubscriberScope {
+  class SubscriberScope final : public current::sherlock::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     using base_t = current::sherlock::SubscriberScope;
