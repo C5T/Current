@@ -91,11 +91,10 @@ CURRENT_STRUCT(SherlockSchema) {
 };
 
 CURRENT_STRUCT(SubscribableSherlockSchema) {
-  CURRENT_FIELD(type_id, current::reflection::TypeID);
-  CURRENT_FIELD(namespace_name, std::string, constants::kDefaultNamespaceName);
-  CURRENT_FIELD(top_level_name, std::string, constants::kDefaultTopLevelName);
+  CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
+  CURRENT_FIELD(namespace_name, std::string);
+  CURRENT_FIELD(top_level_name, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
-  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(current::reflection::TypeID type_id) : type_id(type_id) {}
   CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
       current::reflection::TypeID type_id, const std::string& namespace_name, const std::string& top_level_name)
       : type_id(type_id), namespace_name(namespace_name), top_level_name(top_level_name) {}
