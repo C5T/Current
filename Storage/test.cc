@@ -1599,6 +1599,58 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
   }
 }
 
+TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockStreamPersister>;
+  using stream_t = typename Storage::persister_t::sherlock_t;
+
+  const std::string storage_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "storage_data");
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(storage_file_name);
+  // Write mutation log.
+  {
+    Storage master_storage(storage_file_name);
+    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"one", 1});
+    }).Go();
+    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"two", 2});
+    }).Go();
+    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"three", 3});
+    }).Go();
+  }
+
+  // Test following storage.
+  {
+    // Create stream using previously written log.
+    stream_t stream(storage_file_name);
+    // Move data authority from the stream.
+    struct StreamPublisherOwner {
+      void AcceptPublisher(std::unique_ptr<stream_t::publisher_t>) {}
+    } stream_publisher_owner;
+    stream.MovePublisherTo(stream_publisher_owner);
+    // Spawn following storage.
+    Storage storage(stream);
+    // Wait until the whole log is replayed.
+    storage.WaitForTransactionsCount(storage.InternalExposeStream().InternalExposePersister().Size());
+    EXPECT_EQ(3u, storage.TransactionsCount());
+    // Check the data.
+    const auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      EXPECT_TRUE(Exists(fields.d["one"]));
+      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+      EXPECT_TRUE(Exists(fields.d["two"]));
+      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+      EXPECT_TRUE(Exists(fields.d["three"]));
+      EXPECT_EQ(3, Value(fields.d["three"]).rhs);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(3u, storage.TransactionsCount());
+  }
+}
+
 TEST(TransactionalStorage, ReplicationViaHTTP) {
   current::time::ResetToZero();
 
@@ -2362,7 +2414,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   auto rest = RESTfulStorage<Storage>(
       follower_storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
 
-  // Launch continuos replication process.
+  // Launch continuous replication process.
   {
     const auto replicator_scope =
         master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
