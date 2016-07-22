@@ -63,40 +63,40 @@ class Synchronous final {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<result_t>> promise;
-    Future<TransactionResult<result_t>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
-      return future;                                                                         // LCOV_EXCL_LINE
-    }
-    bool successful = false;
-    result_t f_result;
-    try {
-      journal_.BeforeTransaction();
-      f_result = f();
-      journal_.AfterTransaction();
-      successful = true;
-    } catch (StorageRollbackExceptionWithValue<result_t> e) {
-      journal_.Rollback();
-      promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
-    } catch (StorageRollbackExceptionWithNoValue) {
-      journal_.Rollback();
-      promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
-    } catch (...) {  // The exception is captured with `std::current_exception()` below.
-      journal_.Rollback();
-      // LCOV_EXCL_START
+    } else {
+      bool successful = false;
+      result_t f_result;
       try {
-        promise.set_exception(std::current_exception());
-      } catch (const std::exception& e) {
-        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
-        std::exit(-1);
+        journal_.BeforeTransaction();
+        f_result = f();
+        journal_.AfterTransaction();
+        successful = true;
+      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+        journal_.Rollback();
+        promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
+      } catch (StorageRollbackExceptionWithNoValue) {
+        journal_.Rollback();
+        promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
+      } catch (...) {  // The exception is captured with `std::current_exception()` below.
+        journal_.Rollback();
+        // LCOV_EXCL_START
+        try {
+          promise.set_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what()
+                    << std::endl;
+          std::exit(-1);
+        }
+        // LCOV_EXCL_STOP
       }
-      // LCOV_EXCL_STOP
+      if (successful) {
+        PersistJournal();
+        promise.set_value(TransactionResult<result_t>::Committed(std::move(f_result)));
+      }
     }
-    if (successful) {
-      PersistJournal();
-      promise.set_value(TransactionResult<result_t>::Committed(std::move(f_result)));
-    }
-    return future;
+    return Future<TransactionResult<result_t>, StrictFuture::Strict>(promise.get_future());
   }
 
   // Read-only transaction returning non-void type.
@@ -106,34 +106,34 @@ class Synchronous final {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<result_t>> promise;
-    Future<TransactionResult<result_t>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
-      return future;                                                                         // LCOV_EXCL_LINE
-    }
-    bool successful = false;
-    result_t f_result;
-    try {
-      f_result = f();
-      successful = true;
-    } catch (StorageRollbackExceptionWithValue<result_t> e) {
-      promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
-    } catch (StorageRollbackExceptionWithNoValue) {
-      promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
-    } catch (...) {  // The exception is captured with `std::current_exception()` below.
-      // LCOV_EXCL_START
+    } else {
+      bool successful = false;
+      result_t f_result;
       try {
-        promise.set_exception(std::current_exception());
-      } catch (const std::exception& e) {
-        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
-        std::exit(-1);
+        f_result = f();
+        successful = true;
+      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+        promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
+      } catch (StorageRollbackExceptionWithNoValue) {
+        promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
+      } catch (...) {  // The exception is captured with `std::current_exception()` below.
+        // LCOV_EXCL_START
+        try {
+          promise.set_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what()
+                    << std::endl;
+          std::exit(-1);
+        }
+        // LCOV_EXCL_STOP
       }
-      // LCOV_EXCL_STOP
+      if (successful) {
+        promise.set_value(TransactionResult<result_t>::Committed(std::move(f_result)));
+      }
     }
-    if (successful) {
-      promise.set_value(TransactionResult<result_t>::Committed(std::move(f_result)));
-    }
-    return future;
+    return Future<TransactionResult<result_t>, StrictFuture::Strict>(promise.get_future());
   }
 
   // Read-write transaction returning void type.
@@ -142,36 +142,36 @@ class Synchronous final {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
-    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
-      return future;
-    }
-    bool successful = false;
-    try {
-      journal_.BeforeTransaction();
-      f();
-      journal_.AfterTransaction();
-      successful = true;
-    } catch (StorageRollbackExceptionWithNoValue) {
-      journal_.Rollback();
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
-    } catch (...) {  // The exception is captured with `std::current_exception()` below.
-      journal_.Rollback();
-      // LCOV_EXCL_START
+    } else {
+      bool successful = false;
       try {
-        promise.set_exception(std::current_exception());
-      } catch (const std::exception& e) {
-        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
-        std::exit(-1);
+        journal_.BeforeTransaction();
+        f();
+        journal_.AfterTransaction();
+        successful = true;
+      } catch (StorageRollbackExceptionWithNoValue) {
+        journal_.Rollback();
+        promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
+      } catch (...) {  // The exception is captured with `std::current_exception()` below.
+        journal_.Rollback();
+        // LCOV_EXCL_START
+        try {
+          promise.set_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what()
+                    << std::endl;
+          std::exit(-1);
+        }
+        // LCOV_EXCL_STOP
       }
-      // LCOV_EXCL_STOP
+      if (successful) {
+        PersistJournal();
+        promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
+      }
     }
-    if (successful) {
-      PersistJournal();
-      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-    }
-    return future;
+    return Future<TransactionResult<void>, StrictFuture::Strict>(promise.get_future());
   }
 
   // Read-only transaction returning void type.
@@ -180,31 +180,31 @@ class Synchronous final {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
-    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
-      return future;
-    }
-    bool successful = false;
-    try {
-      f();
-      successful = true;
-    } catch (StorageRollbackExceptionWithNoValue) {
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
-    } catch (...) {  // The exception is captured with `std::current_exception()` below.
-      // LCOV_EXCL_START
+    } else {
+      bool successful = false;
       try {
-        promise.set_exception(std::current_exception());
-      } catch (const std::exception& e) {
-        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
-        std::exit(-1);
+        f();
+        successful = true;
+      } catch (StorageRollbackExceptionWithNoValue) {
+        promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
+      } catch (...) {  // The exception is captured with `std::current_exception()` below.
+        // LCOV_EXCL_START
+        try {
+          promise.set_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what()
+                    << std::endl;
+          std::exit(-1);
+        }
+        // LCOV_EXCL_STOP
       }
-      // LCOV_EXCL_STOP
+      if (successful) {
+        promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
+      }
     }
-    if (successful) {
-      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-    }
-    return future;
+    return Future<TransactionResult<void>, StrictFuture::Strict>(promise.get_future());
   }
 
   // TODO(mz+dk): implement proper logic here (consider rollbacks & exceptions).
@@ -215,40 +215,40 @@ class Synchronous final {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
-    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
-      return future;                                                                         // LCOV_EXCL_LINE
-    }
-    result_t f1_result;
-    try {
-      journal_.BeforeTransaction();
-      f1_result = f1();
-      journal_.AfterTransaction();
-      PersistJournal();
-      f2(std::move(f1_result));
-      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-    } catch (StorageRollbackExceptionWithValue<result_t> e) {
-      // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
-      journal_.Rollback();
-      f2(std::move(e.value));
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
-    } catch (StorageRollbackExceptionWithNoValue) {
-      // Transaction was rolled back and returned nothing we can pass to `f2`.
-      journal_.Rollback();
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
-    } catch (...) {  // The exception is captured with `std::current_exception()` below.
-      // LCOV_EXCL_START
-      journal_.Rollback();
+    } else {
+      result_t f1_result;
       try {
-        promise.set_exception(std::current_exception());
-      } catch (const std::exception& e) {
-        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
-        std::exit(-1);
+        journal_.BeforeTransaction();
+        f1_result = f1();
+        journal_.AfterTransaction();
+        PersistJournal();
+        f2(std::move(f1_result));
+        promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
+      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+        // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
+        journal_.Rollback();
+        f2(std::move(e.value));
+        promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+      } catch (StorageRollbackExceptionWithNoValue) {
+        // Transaction was rolled back and returned nothing we can pass to `f2`.
+        journal_.Rollback();
+        promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+      } catch (...) {  // The exception is captured with `std::current_exception()` below.
+        // LCOV_EXCL_START
+        journal_.Rollback();
+        try {
+          promise.set_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what()
+                    << std::endl;
+          std::exit(-1);
+        }
+        // LCOV_EXCL_STOP
       }
-      // LCOV_EXCL_STOP
     }
-    return future;
+    return Future<TransactionResult<void>, StrictFuture::Strict>(promise.get_future());
   }
 
   // Read-only two-step transaction.
@@ -258,32 +258,32 @@ class Synchronous final {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
-    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
-      return future;                                                                         // LCOV_EXCL_LINE
-    }
-    try {
-      f2(f1());
-      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-    } catch (StorageRollbackExceptionWithValue<result_t> e) {
-      // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
-      f2(std::move(e.value));
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
-    } catch (StorageRollbackExceptionWithNoValue) {
-      // Transaction was rolled back and returned nothing we can pass to `f2`.
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
-    } catch (...) {  // The exception is captured with `std::current_exception()` below.
-      // LCOV_EXCL_START
+    } else {
       try {
-        promise.set_exception(std::current_exception());
-      } catch (const std::exception& e) {
-        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
-        std::exit(-1);
+        f2(f1());
+        promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
+      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+        // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
+        f2(std::move(e.value));
+        promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+      } catch (StorageRollbackExceptionWithNoValue) {
+        // Transaction was rolled back and returned nothing we can pass to `f2`.
+        promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+      } catch (...) {  // The exception is captured with `std::current_exception()` below.
+        // LCOV_EXCL_START
+        try {
+          promise.set_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what()
+                    << std::endl;
+          std::exit(-1);
+        }
+        // LCOV_EXCL_STOP
       }
-      // LCOV_EXCL_STOP
     }
-    return future;
+    return Future<TransactionResult<void>, StrictFuture::Strict>(promise.get_future());
   }
 
   void GracefulShutdown() {
