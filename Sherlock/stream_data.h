@@ -60,10 +60,15 @@ class SubscriberScope {
 
   SubscriberScope() = default;
   SubscriberScope(std::unique_ptr<SubscriberThread>&& thread) : thread_(std::move(thread)) {}
-  SubscriberScope(SubscriberScope&& rhs) : thread_(std::move(rhs.thread_)) { rhs.thread_ = nullptr; }
-  SubscriberScope& operator=(SubscriberScope&& rhs) {
+  SubscriberScope(SubscriberScope&& rhs) {
+    std::lock_guard<std::mutex> rhs_lock(rhs.mutex_);
     thread_ = std::move(rhs.thread_);
-    rhs.thread_ = nullptr;
+  }
+  SubscriberScope& operator=(SubscriberScope&& rhs) {
+    std::lock(mutex_, rhs.mutex_);
+    std::lock_guard<std::mutex> lk1(mutex_, std::adopt_lock);
+    std::lock_guard<std::mutex> lk2(rhs.mutex_, std::adopt_lock);
+    thread_ = std::move(rhs.thread_);
     return *this;
   }
 
