@@ -202,6 +202,14 @@ TEST(HTTPAPI, ScopedUnRegister) {
   }
 }
 
+TEST(HTTPAPI, ScopeCanBeAssignedNullPtr) {
+  auto scope = HTTP(FLAGS_net_api_test_port).Register("/are_we_there_yet", [](Request r) { r("So far."); });
+  const string url = Printf("http://localhost:%d/are_we_there_yet", FLAGS_net_api_test_port);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
+  scope = nullptr;
+  EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
+}
+
 TEST(HTTPAPI, URLParameters) {
   const auto scope =
       HTTP(FLAGS_net_api_test_port).Register("/query", [](Request r) { r("x=" + r.url.query["x"]); });

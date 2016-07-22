@@ -62,6 +62,9 @@ class AccumulativeScopedDeleter {
   // Destruction unregisters previously added instances.
   ~AccumulativeScopedDeleter() { ReleaseCaptured(); }
 
+  // Also enable assigning `nullptr` explicitly.
+  void operator=(std::nullptr_t) { ReleaseCaptured(); }
+
   // Adds an instance, or several instances, erasing them from the `rhs`.
   template <bool B>
   AccumulativeScopedDeleter& operator+=(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs) {
