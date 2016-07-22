@@ -75,12 +75,40 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
+namespace constants {
+
+constexpr const char* kDefaultNamespaceName = "SherlockSchema";
+constexpr const char* kDefaultTopLevelName = "TopLevelTransaction";
+
+}  // namespace constants
+
 CURRENT_STRUCT(SherlockSchema) {
   CURRENT_FIELD(language, (std::map<std::string, std::string>));
   CURRENT_FIELD(type_name, std::string);
   CURRENT_FIELD(type_id, current::reflection::TypeID);
   CURRENT_FIELD(type_schema, reflection::SchemaInfo);
   CURRENT_DEFAULT_CONSTRUCTOR(SherlockSchema) {}
+};
+
+CURRENT_STRUCT(SubscribableSherlockSchema) {
+  CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
+  CURRENT_FIELD(type_name, std::string);
+  CURRENT_FIELD(top_level_name, std::string);
+  CURRENT_FIELD(namespace_name, std::string);
+  CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
+  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(current::reflection::TypeID type_id,
+                                                  const std::string& type_name,
+                                                  const std::string& namespace_name,
+                                                  const std::string& top_level_name)
+      : type_id(type_id),
+        type_name(type_name),
+        top_level_name(top_level_name),
+        namespace_name(namespace_name) {}
+  bool operator==(const SubscribableSherlockSchema& rhs) const {
+    return type_id == rhs.type_id && type_name == rhs.type_name && namespace_name == rhs.namespace_name &&
+           top_level_name == rhs.top_level_name;
+  }
+  bool operator!=(const SubscribableSherlockSchema& rhs) const { return !operator==(rhs); }
 };
 
 CURRENT_STRUCT(SherlockSchemaFormatNotFound) {
@@ -455,6 +483,11 @@ class StreamImpl {
         // Return the schema the user is requesting, in a top-level, or more fine-grained format.
         if (schema_format.empty()) {
           r(schema_as_http_response_);
+        } else if (schema_format == "simple") {
+          r(SubscribableSherlockSchema(schema_as_object_.type_id,
+                                       schema_as_object_.type_name,
+                                       schema_exposed_namespace_name_,
+                                       schema_top_level_name_));
         } else {
           const auto cit = schema_as_object_.language.find(schema_format);
           if (cit != schema_as_object_.language.end()) {
@@ -554,8 +587,8 @@ class StreamImpl {
   }
 
  private:
-  const std::string schema_exposed_namespace_name_ = "SherlockSchema";
-  const std::string schema_top_level_name_ = "TopLevelTransaction";
+  const std::string schema_exposed_namespace_name_ = constants::kDefaultNamespaceName;
+  const std::string schema_top_level_name_ = constants::kDefaultTopLevelName;
   const SherlockSchema schema_as_object_;
   const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
                                                      HTTPResponseCode.OK,
