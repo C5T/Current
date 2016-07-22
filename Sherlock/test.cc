@@ -342,12 +342,12 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>(
       current::sherlock::SherlockNamespaceName("Sherlock", "Transaction"));
   // Expose stream via HTTP.
-  HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
-  HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
-
-  HTTP(FLAGS_sherlock_http_test_port)
-      .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
+  const auto scope =
+      HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream) +
+      HTTP(FLAGS_sherlock_http_test_port)
+          .Register(
+              "/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
   const std::string base_url_with_args =
       Printf("http://localhost:%d/exposed_more", FLAGS_sherlock_http_test_port);
 
@@ -665,9 +665,9 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   using namespace sherlock_unittest;
 
   auto exposed_stream = current::sherlock::Stream<Record>();
-  HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
-  HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
+
+  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
 
   std::atomic_bool keep_publishing(true);
   std::thread slow_publisher([&exposed_stream, &keep_publishing]() {

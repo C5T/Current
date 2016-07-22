@@ -32,6 +32,11 @@ SOFTWARE.
 
 namespace current {
 
+// TODO(dkorolev): Later.
+// enum class AccumulativeScopedDeleterPolicy { GarbageCollect = 0, LeaveHanging = 1, AssertNotLeftHanging = 2
+// };
+// template <class DIFFERENTIATOR, AccumulativeScopedDeleterPolicy POLICY =
+// AccumulativeScopedDeleterPolicy::GarbageCollect>
 template <class DIFFERENTIATOR, bool SHOULD_DELETE = true>
 class AccumulativeScopedDeleter {
  public:
@@ -56,6 +61,9 @@ class AccumulativeScopedDeleter {
 
   // Destruction unregisters previously added instances.
   ~AccumulativeScopedDeleter() { ReleaseCaptured(); }
+
+  // Also enable assigning `nullptr` explicitly.
+  void operator=(std::nullptr_t) { ReleaseCaptured(); }
 
   // Adds an instance, or several instances, erasing them from the `rhs`.
   template <bool B>

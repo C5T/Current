@@ -137,7 +137,7 @@ class HTTPServerPOSIX final {
   // Scoped de-registerer of routes, of its own type.
   struct ScopedRegistererDifferentiator {};
   using HTTPRoutesScope = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator>;
-  using HTTPRoutesScopeEntry = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator, false>;
+  using HTTPRoutesScopeEntry = HTTPRoutesScope;  // TODO(dkorolev): Eliminate.
 
   // The philosophy of Register(path, handler):
   //
@@ -202,28 +202,24 @@ class HTTPServerPOSIX final {
     }
   }
 
-  void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
-    // TODO(dkorolev): Add a scoped version of registerers.
+  HTTPRoutesScope ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
+    HTTPRoutesScope scope;
     current::FileSystem::ScanDir(
         dir,
-        [this, &dir, &route_prefix](const std::string& file) {
+        [this, &dir, &route_prefix, &scope](const std::string& file) {
           const std::string content_type(current::net::GetFileMimeType(file, ""));
           if (!content_type.empty()) {
             // TODO(dkorolev): Wrap keeping file contents into a singleton
             // that keeps a map from a (SHA256) hash to the contents.
             auto static_file_server = std::make_unique<StaticFileServer>(
                 current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)), content_type);
-            Register(route_prefix + file, *static_file_server);
+            scope += Register(route_prefix + file, *static_file_server);
             static_file_servers_.push_back(std::move(static_file_server));
           } else {
             CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
           }
         });
-  }
-
-  void ResetAllHandlers() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    handlers_.clear();
+    return scope;
   }
 
   size_t PathHandlersCount() const {

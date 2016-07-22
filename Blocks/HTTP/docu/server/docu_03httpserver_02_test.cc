@@ -36,9 +36,8 @@ using current::strings::Printf;
 
 TEST(Docu, HTTPServer02) {
 const auto port = FLAGS_docu_net_server_port_02;
-HTTP(port).ResetAllHandlers();
   // Accessing input fields.
-  HTTP(port).Register("/demo", [](Request r) {
+  const auto scope = HTTP(port).Register("/demo", [](Request r) {
     r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
   });
 EXPECT_EQ("A POST body", HTTP(POST(Printf("http://localhost:%d/demo?q=A", port), "body", "text/plain")).body);

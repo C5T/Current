@@ -36,9 +36,8 @@ using current::strings::Printf;
 
 TEST(Docu, HTTPServer01) {
 const auto port = FLAGS_docu_net_server_port_01;
-HTTP(port).ResetAllHandlers();
   // Simple "OK" endpoint.
-  HTTP(port).Register("/ok", [](Request r) {
+  const auto scope = HTTP(port).Register("/ok", [](Request r) {
     r("OK");
   });
 EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", port))).body);
