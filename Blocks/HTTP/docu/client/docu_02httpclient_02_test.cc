@@ -39,8 +39,8 @@ CURRENT_STRUCT(SimpleType) {
 };
 
 TEST(Docu, HTTPClient02) {
-HTTP(FLAGS_docu_net_client_port_02).ResetAllHandlers();
-HTTP(FLAGS_docu_net_client_port_02).Register("/ok", [](Request r) { r("OK"); });
+const auto scope =
+  HTTP(FLAGS_docu_net_client_port_02).Register("/ok", [](Request r) { r("OK"); });
 #if 1
 EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), "BODY", "text/plain")).body);
 EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), SimpleType())).body);

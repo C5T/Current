@@ -56,7 +56,7 @@ TEST(Docu, HTTPServer04) {
 const auto port = FLAGS_docu_net_server_port_04;
 HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
-  HTTP(port).Register("/penny", [](Request r) {
+  const auto scope = HTTP(port).Register("/penny", [](Request r) {
     try {
       const auto input = ParseJSON<PennyInput>(r.body);
       if (input.op == "add") {

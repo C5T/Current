@@ -35,8 +35,8 @@ DEFINE_int32(docu_net_client_port_01, PickPortForUnitTest(), "");
 using current::strings::Printf;
 
 TEST(Docu, HTTPClient01A) {
-HTTP(FLAGS_docu_net_client_port_01).ResetAllHandlers();
-HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
+const auto scope =
+  HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
 #if 1
 EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_01))).body);
 #else
@@ -46,8 +46,8 @@ EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_
 }
   
 TEST(Docu, HTTPClient01B) {
-HTTP(FLAGS_docu_net_client_port_01).ResetAllHandlers();
-HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
+const auto scope =
+  HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
   // More fields.
 #if 1
 const auto response = HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_01)));
