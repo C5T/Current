@@ -53,6 +53,9 @@ struct FutureImpl {
       std::exit(-1);
     }
   }
+  FutureImpl(const FutureImpl&) = delete;
+  FutureImpl& operator=(const FutureImpl&) = delete;
+  FutureImpl& operator=(FutureImpl&&) = delete;
 
   T Go() {
     used_ = true;
@@ -77,6 +80,16 @@ struct FutureImpl<void, STRICTNESS> {
   FutureImpl(FutureImpl<void, StrictFuture::Strict>&& rhs) : f_(std::move(rhs.f_)), used_(false) {
     rhs.used_ = true;
   }
+  ~FutureImpl() {
+    if (STRICTNESS == StrictFuture::Strict && !used_) {
+      std::cerr << "Strict future has been left hanging, while Go(), Wait(), or Detach() must have been called."
+                << std::endl;
+      std::exit(-1);
+    }
+  }
+  FutureImpl(const FutureImpl&) = delete;
+  FutureImpl& operator=(const FutureImpl&) = delete;
+  FutureImpl& operator=(FutureImpl&&) = delete;
 
   void Go() {
     used_ = true;
