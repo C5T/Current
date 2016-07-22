@@ -79,32 +79,31 @@ class EventCollectorHTTPServer {
         send_ticks_(tick_interval_us_.count() > 0),
         last_event_t_(0u),
         events_pushed_(0u),
-        timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
-    HTTP(http_port_)
-        .Register(route_,
-                  [this](Request r) {
-                    LogEntryWithHeaders entry;
-                    {
-                      const auto now = current::time::Now();
-                      std::lock_guard<std::mutex> lock(mutex_);
-                      entry.t = now.count();
-                      entry.m = r.method;
-                      entry.u = r.url.url_without_parameters;
-                      entry.q = r.url.AllQueryParameters();
-                      entry.h = r.headers.AsMap();
-                      entry.c = r.headers.CookiesAsString();
-                      entry.b = r.body;
-                      entry.f = r.url.fragment;
-                      ostream_ << JSON(entry) << std::endl;
-                      ++events_pushed_;
-                      last_event_t_ = now;
-                      if (callback_) {
-                        callback_(entry);
-                      }
-                    }
-                    r(response_text_);
-                  });
-  }
+        timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this),
+        http_route_scope_(HTTP(http_port_)
+                              .Register(route_,
+                                        [this](Request r) {
+                                          LogEntryWithHeaders entry;
+                                          {
+                                            const auto now = current::time::Now();
+                                            std::lock_guard<std::mutex> lock(mutex_);
+                                            entry.t = now.count();
+                                            entry.m = r.method;
+                                            entry.u = r.url.url_without_parameters;
+                                            entry.q = r.url.AllQueryParameters();
+                                            entry.h = r.headers.AsMap();
+                                            entry.c = r.headers.CookiesAsString();
+                                            entry.b = r.body;
+                                            entry.f = r.url.fragment;
+                                            ostream_ << JSON(entry) << std::endl;
+                                            ++events_pushed_;
+                                            last_event_t_ = now;
+                                            if (callback_) {
+                                              callback_(entry);
+                                            }
+                                          }
+                                          r(response_text_);
+                                        })) {}
 
   EventCollectorHTTPServer(const EventCollectorHTTPServer&) = delete;
   EventCollectorHTTPServer(EventCollectorHTTPServer&&) = delete;
@@ -112,7 +111,6 @@ class EventCollectorHTTPServer {
   void operator=(EventCollectorHTTPServer&&) = delete;
 
   ~EventCollectorHTTPServer() {
-    HTTP(http_port_).UnRegister(route_);
     send_ticks_ = false;
     timer_thread_.join();
   }
@@ -162,6 +160,7 @@ class EventCollectorHTTPServer {
   std::chrono::microseconds last_event_t_;
   std::atomic_size_t events_pushed_;
   std::thread timer_thread_;
+  HTTPRoutesScope http_route_scope_;
 };
 
 #endif  // EVENT_COLLECTOR_H

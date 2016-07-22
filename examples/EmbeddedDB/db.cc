@@ -1,5 +1,3 @@
-// TODO(dkorolev): Revisit this example as we no longer have `ReplayDone()`.
-
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -92,18 +90,21 @@ struct UserNicknamesReadModel {
   }
 
   // A new event from the event log. Process it in a polymorphic way, ignore everything but `UserAdded`.
-  void operator()(const Event& e) {
+  current::ss::EntryResponse operator()(const Event& e, idxts_t current, idxts_t total) {
     std::lock_guard<std::mutex> lock(mutex_);
     e.event.Call(state_);
+    if (current.index + 1 == total.index) {
+      replay_done_ = true;
+    }
+    return current::ss::EntryResponse::More;
   }
 
-  // Once the batch replay is done, keep running assuming eventual consistency.
-  void ReplayDone() {
-    if (FLAGS_verbose) {
-      std::cerr << "Replay done, ready to serve the read model in eventually consistent fashion." << std::endl;
-    }
-    replay_done_ = true;
+  current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
+    return current::ss::EntryResponse::More;
   }
+
+  // TODO(dkorolev): Revisit the above calls, they are all wrong.
+  current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
 };
 
 int main(int argc, char** argv) {
@@ -195,7 +196,8 @@ int main(int argc, char** argv) {
                 });
 
   // Read model.
-  stream.Subscribe(std::make_unique<UserNicknamesReadModel>(FLAGS_db_demo_port)).Detach();
+  current::ss::StreamSubscriber<UserNicknamesReadModel, Event> read_model(FLAGS_db_demo_port);
+  const auto subscriber_scope = stream.Subscribe(read_model);
 
   // Run forever.
   HTTP(FLAGS_db_demo_port).Join();
