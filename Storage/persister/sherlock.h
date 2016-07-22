@@ -58,15 +58,13 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     using TerminationResponse = current::ss::TerminationResponse;
     using replay_function_t = std::function<void(const transaction_t&)>;
     replay_function_t replay_f_;
-    idxts_t last_idxts_;
-    uint64_t entries_seen_ = 0u;
+    uint64_t next_replay_index_ = 0u;
 
     SherlockSubscriberImpl(replay_function_t f) : replay_f_(f) {}
 
     EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
       replay_f_(transaction);
-      last_idxts_ = current;
-      ++entries_seen_;
+      next_replay_index_ = current.index + 1u;
       return EntryResponse::More;
     }
 
@@ -85,7 +83,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
         stream_used_(*stream_owned_if_any_.get()),
         authority_(PersisterDataAuthority::Own) {
     // Do not use lock since we are in ctor.
-    ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>();
+    SyncReplayStream<current::locks::MutexLockStatus::AlreadyLocked>();
   }
 
   // TODO(dkorolev): `ScopeOwnedBySomeoneElse<>` ?
@@ -100,7 +98,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
         [this](const transaction_t& transaction) { ApplyMutations(transaction); });
     if (authority_ == PersisterDataAuthority::Own) {
       // Do not use lock since we are in ctor.
-      ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>();
+      SyncReplayStream<current::locks::MutexLockStatus::AlreadyLocked>();
     } else {
       SubscribeToStream();
     }
@@ -142,9 +140,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     current::locks::SmartMutexLockGuard<MLS> lock(storage_mutex_ref_);
     if (stream_used_.DataAuthority() == current::sherlock::StreamDataAuthority::Own) {
       TerminateStreamSubscription();
-      const uint64_t index_to_replay_from =
-          subscriber_->entries_seen_ ? subscriber_->last_idxts_.index + 1u : 0u;
-      ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>(index_to_replay_from);
+      SyncReplayStream<current::locks::MutexLockStatus::AlreadyLocked>(subscriber_->next_replay_index_);
       subscriber_ = nullptr;
     } else {
       CURRENT_THROW(UnderlyingStreamHasExternalDataAuthorityException());
@@ -153,7 +149,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
 
  private:
   template <current::locks::MutexLockStatus MLS>
-  void ReplayStream(uint64_t from_idx = 0u) {
+  void SyncReplayStream(uint64_t from_idx = 0u) {
     for (const auto& stream_record : stream_used_.InternalExposePersister().Iterate(from_idx)) {
       if (Exists<transaction_t>(stream_record.entry)) {
         const transaction_t& transaction = Value<transaction_t>(stream_record.entry);
