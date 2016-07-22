@@ -110,7 +110,7 @@ struct StreamData {
       : persistence(std::forward<ARGS>(args)...) {}
 
   static std::string GenerateRandomHTTPSubscriptionID() {
-    return current::SHA256("sherlock_http_subsrciption_" +
+    return current::SHA256("sherlock_http_subscription_" +
                            current::ToString(current::random::CSRandomUInt64(0ull, ~0ull)));
   }
 };
