@@ -64,6 +64,7 @@ SOFTWARE.
 #include "../Bricks/exception.h"
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 namespace current {
 namespace storage {
@@ -202,6 +203,7 @@ class GenericStorageImpl {
  private:
   std::mutex mutex_;
   FIELDS fields_;
+  WaitableAtomic<uint64_t> transactions_count_;
   persister_t persister_;
   TRANSACTION_POLICY<persister_t> transaction_policy_;
   std::atomic<StorageRole> role_;
@@ -219,8 +221,12 @@ class GenericStorageImpl {
 
   template <typename... ARGS>
   GenericStorageImpl(ARGS&&... args)
-      : persister_(mutex_,
-                   [this](const fields_variant_t& entry) { entry.Call(fields_); },
+      : transactions_count_(0u),
+        persister_(mutex_,
+                   [this](const fields_variant_t& entry) {
+                     entry.Call(fields_);
+                     transactions_count_.MutableUse([](uint64_t& value) { ++value; });
+                   },
                    std::forward<ARGS>(args)...),
         transaction_policy_(mutex_, persister_, fields_.current_storage_mutation_journal_) {
     role_ = (persister_.DataAuthority() == persister::PersisterDataAuthority::Own) ? StorageRole::Master
@@ -274,6 +280,14 @@ class GenericStorageImpl {
   typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type
   InternalExposeStream() {
     return persister_.InternalExposeStream();
+  }
+
+  persister_t& InternalExposePersister() { return persister_; }
+
+  uint64_t TransactionsCount() const { return transactions_count_.GetValue(); }
+
+  void WaitForTransactionsCount(uint64_t count) const {
+    transactions_count_.Wait([count](uint64_t value) { return value >= count; });
   }
 
   void FlipToMaster() {
