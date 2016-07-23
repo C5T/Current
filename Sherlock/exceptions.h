@@ -47,6 +47,30 @@ struct PublisherAlreadyOwnedException : SherlockException {
   using SherlockException::SherlockException;
 };
 
+struct PublisherDoesNotExistException : SherlockException {
+  using SherlockException::SherlockException;
+};
+
+struct PublisherIsUsedException : SherlockException {
+  using SherlockException::SherlockException;
+};
+
+struct SubscriptionIsActiveException : SherlockException {
+  using SherlockException::SherlockException;
+};
+
+struct SubscriptionIsNotActiveException : SherlockException {
+  using SherlockException::SherlockException;
+};
+
+struct RemoteStreamDoesNotRespondException : SherlockException {
+  using SherlockException::SherlockException;
+};
+
+struct RemoteStreamSchemaInvalidException : SherlockException {
+  using SherlockException::SherlockException;
+};
+
 struct StreamInGracefulShutdownException : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };

@@ -30,7 +30,6 @@ SOFTWARE.
 #include "docu/docu_2_code.cc"
 #include "docu/docu_3_code.cc"
 
-#include "replicator.h"
 #include "storage.h"
 #include "api.h"
 #include "persister/sherlock.h"
@@ -41,6 +40,8 @@ SOFTWARE.
 
 #include "../Bricks/file/file.h"
 #include "../Bricks/dflags/dflags.h"
+
+#include "../Sherlock/replicator.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -1726,7 +1727,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   sherlock_t replicated_stream(replicated_stream_file_name);
 
   // Replicate data via subscription to master storage raw log.
-  current::storage::SubscribableRemoteStream<sherlock_t> replicator(
+  current::sherlock::SubscribableRemoteStream<sherlock_t> replicator(
       Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
   auto subscriber_scope = replicator.Subscribe(replicated_stream);
 

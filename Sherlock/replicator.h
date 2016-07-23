@@ -26,7 +26,7 @@ SOFTWARE.
 #define REMOTE_STREAM_REPLICATOR_H
 
 namespace current {
-namespace storage {
+namespace sherlock {
 
 template <typename T_STREAM>
 class SubscribableRemoteStream final {
@@ -220,7 +220,7 @@ class SubscribableRemoteStream final {
   sherlock::SubscribableSherlockSchema schema_;
 };
 
-}  // namespace storage
+}  // namespace sherlock
 }  // namespace current
 
 #endif  // REMOTE_STREAM_REPLICATOR_H

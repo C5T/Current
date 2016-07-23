@@ -68,38 +68,6 @@ struct StorageInGracefulShutdownException : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };
 
-struct PublisherDoesNotExistException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct PublisherAlreadyReleasedException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct PublisherAlreadyOwnedException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct PublisherIsUsedException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct SubscriptionIsActiveException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct SubscriptionIsNotActiveException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct RemoteStreamDoesNotRespondException : StorageException {
-  using StorageException::StorageException;
-};
-
-struct RemoteStreamSchemaInvalidException : StorageException {
-  using StorageException::StorageException;
-};
-
 }  // namespace current::storage
 }  // namespace current
 
