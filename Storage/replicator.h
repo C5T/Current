@@ -44,7 +44,15 @@ class SubscribableRemoteStream final {
     using entry_t = typename T::entry_t;
 
     explicit RemoteSubscriberScope(ScopeOwned<RemoteStream>& remote_stream)
-        : remote_stream_(remote_stream, [this]() { Unsubscribe(); }), index_(0), stop_(false) {}
+        : remote_stream_(remote_stream,
+                         [this]() {
+                           if (thread_) {
+                             TerminateSubscription();
+                             thread_->join();
+                           }
+                         }),
+          index_(0),
+          stop_(false) {}
 
     RemoteSubscriberScope(RemoteSubscriberScope&& rhs)
         : remote_stream_(std::move(rhs.remote_stream_)), index_(rhs.index_), stop_(bool(rhs.stop_)) {}
@@ -159,18 +167,24 @@ class SubscribableRemoteStream final {
   using publisher_t = typename T_STREAM::publisher_t;
   using subscriber_t = RemoteSubscriberScope<T_STREAM>;
 
-  explicit SubscribableRemoteStream(const std::string& remote_stream_url) : stream_(remote_stream_url) {
-    const auto response = HTTP(
-        GET(remote_stream_url + "?schema=" + current::ToString(current::reflection::Language::InternalFormat)));
-    if (static_cast<int>(response.code) == 200) {
-      current::reflection::StructSchema schema;
-      schema.AddType<entry_t>();
-      const std::string description =
-          schema.GetSchemaInfo().Describe<current::reflection::Language::InternalFormat>(false);
-      if (description != response.body) CURRENT_THROW(RemoteStreamSchemaInvalidException());
-    } else {
-      CURRENT_THROW(RemoteStreamDoesNotRespondException());
-    }
+  explicit SubscribableRemoteStream(const std::string& remote_stream_url)
+      : stream_(remote_stream_url),
+        schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
+                reflection::CurrentTypeName<entry_t>(),
+                sherlock::constants::kDefaultTopLevelName,
+                sherlock::constants::kDefaultNamespaceName) {
+    CheckRemoteSchema();
+  }
+
+  explicit SubscribableRemoteStream(const std::string& remote_stream_url,
+                                    const std::string& top_level_name,
+                                    const std::string& namespace_name)
+      : stream_(remote_stream_url),
+        schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
+                reflection::CurrentTypeName<entry_t>(),
+                top_level_name,
+                namespace_name) {
+    CheckRemoteSchema();
   }
   ~SubscribableRemoteStream(){};
 
@@ -189,7 +203,21 @@ class SubscribableRemoteStream final {
   }
 
  private:
+  void CheckRemoteSchema() {
+    const auto response = HTTP(GET(stream_->url_ + "/schema.simple"));
+    if (static_cast<int>(response.code) == 200) {
+      sherlock::SubscribableSherlockSchema remote_schema =
+          ParseJSON<sherlock::SubscribableSherlockSchema>(response.body);
+      if (remote_schema != schema_) {
+        CURRENT_THROW(RemoteStreamSchemaInvalidException());
+      }
+    } else {
+      CURRENT_THROW(RemoteStreamDoesNotRespondException());
+    }
+  }
+
   ScopeOwnedByMe<RemoteStream> stream_;
+  sherlock::SubscribableSherlockSchema schema_;
 };
 
 }  // namespace storage

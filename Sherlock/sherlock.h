@@ -98,8 +98,8 @@ CURRENT_STRUCT(SubscribableSherlockSchema) {
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
   CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(current::reflection::TypeID type_id,
                                                   const std::string& type_name,
-                                                  const std::string& namespace_name,
-                                                  const std::string& top_level_name)
+                                                  const std::string& top_level_name,
+                                                  const std::string& namespace_name)
       : type_id(type_id),
         type_name(type_name),
         top_level_name(top_level_name),
@@ -486,8 +486,8 @@ class StreamImpl {
         } else if (schema_format == "simple") {
           r(SubscribableSherlockSchema(schema_as_object_.type_id,
                                        schema_as_object_.type_name,
-                                       schema_exposed_namespace_name_,
-                                       schema_top_level_name_));
+                                       schema_top_level_name_,
+                                       schema_exposed_namespace_name_));
         } else {
           const auto cit = schema_as_object_.language.find(schema_format);
           if (cit != schema_as_object_.language.end()) {
