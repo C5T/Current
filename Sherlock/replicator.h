@@ -28,7 +28,7 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
-template <typename T_STREAM>
+template <typename T_STREAM_ENTRY>
 class SubscribableRemoteStream final {
  public:
   struct RemoteStream final {
@@ -37,90 +37,82 @@ class SubscribableRemoteStream final {
     const std::string url_;
   };
 
-  template <typename T>
-  class RemoteSubscriberScope final {
-   public:
-    using publisher_t = typename T::publisher_t;
-    using entry_t = typename T::entry_t;
-
-    explicit RemoteSubscriberScope(ScopeOwned<RemoteStream>& remote_stream)
-        : remote_stream_(remote_stream,
-                         [this]() {
-                           if (thread_) {
-                             TerminateSubscription();
-                             thread_->join();
-                           }
-                         }),
-          index_(0),
-          stop_(false) {}
-
-    RemoteSubscriberScope(RemoteSubscriberScope&& rhs)
-        : remote_stream_(std::move(rhs.remote_stream_)), index_(rhs.index_), stop_(bool(rhs.stop_)) {}
-
-    ~RemoteSubscriberScope() {
-      if (thread_) {
-        TerminateSubscription();
-        thread_->join();
-      }
-    }
-
-    void Subscribe() { Subscribe(index_); }
-
-    void Subscribe(uint64_t index) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      if (!publisher_) CURRENT_THROW(PublisherDoesNotExistException());
-      if (thread_) CURRENT_THROW(SubscriptionIsActiveException());
-      index_ = index;
-      thread_.reset(new std::thread([this]() { Thread(); }));
-    }
-
-    void Unsubscribe() { Unsubscribe(index_); }
-
-    void Unsubscribe(uint64_t index) {
-      if (!thread_) CURRENT_THROW(SubscriptionIsNotActiveException());
-      Wait(index);
-      TerminateSubscription();
-      thread_->join();
-      thread_.reset();
-    }
-
-    void Wait(uint64_t index) const {
-      std::unique_lock<std::mutex> lock(mutex_);
-      event_.wait(lock, [this, index]() { return index_ >= index; });
-    }
-
-    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      if (publisher_) CURRENT_THROW(PublisherAlreadyOwnedException());
-      publisher_ = std::move(publisher);
-    }
-
-    void ReturnPublisherToStream(T& stream) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      if (!publisher_) CURRENT_THROW(PublisherAlreadyReleasedException());
-      if (thread_) CURRENT_THROW(PublisherIsUsedException());
-      stream.AcquirePublisher(std::move(publisher_));
-    }
-
+  template <typename F, typename TYPE_SUBSCRIBED_TO>
+  class RemoteSubscriberThread final : public current::sherlock::SubscriberScope::SubscriberThread {
    private:
-    void TerminateSubscription() {
-      stop_ = true;
-      std::unique_lock<std::mutex> lock(mutex_);
-      if (!subscription_id_.empty()) {
-        const std::string terminate_url = remote_stream_->url_ + "?terminate=" + subscription_id_;
-        try {
-          const auto result = HTTP(GET(terminate_url));
-        } catch (current::net::NetworkException&) {
+    bool valid_;
+    std::function<void()> done_callback_;
+    std::atomic_bool external_stop_;
+    std::atomic_bool internal_stop_;
+    ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
+    F& subscriber_;
+    uint64_t index_;
+    std::thread thread_;
+    std::mutex mutex_;
+    std::condition_variable event_;
+    std::string subscription_id_;
+
+    RemoteSubscriberThread() = delete;
+    RemoteSubscriberThread(const RemoteSubscriberThread&) = delete;
+    RemoteSubscriberThread(RemoteSubscriberThread&&) = delete;
+    void operator=(const RemoteSubscriberThread&) = delete;
+    void operator=(RemoteSubscriberThread&&) = delete;
+
+   public:
+    RemoteSubscriberThread(ScopeOwned<RemoteStream>& remote_stream,
+                           F& subscriber,
+                           uint64_t start_idx,
+                           std::function<void()> done_callback)
+        : valid_(false),
+          done_callback_(done_callback),
+          external_stop_(false),
+          internal_stop_(false),
+          remote_stream_(remote_stream,
+                         [this]() {
+                           TerminateSubscription();
+                           thread_.join();
+                         }),
+          subscriber_(subscriber),
+          index_(start_idx),
+          thread_([this]() { Thread(); }) {
+      static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+      valid_ = true;
+    }
+
+    ~RemoteSubscriberThread() {
+      if (valid_) {
+        if (!subscriber_thread_done_) {
+          TerminateSubscription();
+        }
+        thread_.join();
+      } else {
+        if (done_callback_) {
+          done_callback_();
         }
       }
     }
 
+   private:
     void Thread() {
-      while (!stop_) {
-        const std::string url = remote_stream_->url_ + "?i=" + current::ToString(index_);
+      ThreadImpl();
+      if (done_callback_) {
+        done_callback_();
+      }
+    }
+
+    void ThreadImpl() {
+      const std::string& url = remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_;
+      bool terminate_sent = false;
+      while (!internal_stop_) {
+        if (!terminate_sent && external_stop_) {
+          terminate_sent = true;
+          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+            return;
+          }
+        }
         try {
           HTTP(ChunkedGET(
-              url,
+              url + "?i=" + current::ToString(index_),
               [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
               [this](const std::string& chunk_body) { OnChunk(chunk_body); },
               [this]() {}));
@@ -133,11 +125,12 @@ class SubscribableRemoteStream final {
       if (header == "X-Current-Stream-Subscription-Id") {
         std::unique_lock<std::mutex> lock(mutex_);
         subscription_id_ = value;
+        event_.notify_one();
       }
     }
 
     void OnChunk(const std::string& chunk) {
-      if (stop_) {
+      if (external_stop_ || internal_stop_) {
         return;
       }
       std::unique_lock<std::mutex> lock(mutex_);
@@ -146,33 +139,49 @@ class SubscribableRemoteStream final {
       assert(split.size() == 2u);
       const auto idx = ParseJSON<idxts_t>(split[0]);
       assert(idx.index == index_);
-      auto transaction = ParseJSON<entry_t>(split[1]);
-      publisher_->Publish(std::move(transaction), idx.us);
+      auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+      internal_stop_ =
+          (subscriber_(std::move(entry), idx, idxts_t() /*unused "last" arg*/) == ss::EntryResponse::Done);
       ++index_;
       event_.notify_one();
     }
 
-   private:
-    ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
-    uint64_t index_;
-    std::string subscription_id_;
-    std::unique_ptr<std::thread> thread_;
-    mutable std::mutex mutex_;
-    mutable std::condition_variable event_;
-    std::atomic_bool stop_;
-    std::unique_ptr<publisher_t> publisher_;
+    void TerminateSubscription() {
+      std::unique_lock<std::mutex> lock(mutex_);
+      event_.wait(lock, [this]() { return !subscription_id_.empty(); });
+      external_stop_ = true;
+      const std::string terminate_url = remote_stream_->url_ + "?terminate=" + subscription_id_;
+      try {
+        const auto result = HTTP(GET(terminate_url));
+      } catch (current::net::NetworkException&) {
+      }
+    }
   };
 
-  using entry_t = typename T_STREAM::entry_t;
-  using publisher_t = typename T_STREAM::publisher_t;
-  using subscriber_t = RemoteSubscriberScope<T_STREAM>;
+  template <typename F, typename TYPE_SUBSCRIBED_TO>
+  class RemoteSubscriberScope final : public current::sherlock::SubscriberScope {
+   private:
+    static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    using base_t = current::sherlock::SubscriberScope;
+
+   public:
+    using subscriber_thread_t = RemoteSubscriberThread<F, TYPE_SUBSCRIBED_TO>;
+
+    RemoteSubscriberScope(ScopeOwned<RemoteStream>& remote_stream,
+                          F& subscriber,
+                          uint64_t start_idx,
+                          std::function<void()> done_callback)
+        : base_t(std::move(
+              std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
+  };
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
       : stream_(remote_stream_url),
-        schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
-                reflection::CurrentTypeName<entry_t>(),
-                sherlock::constants::kDefaultTopLevelName,
-                sherlock::constants::kDefaultNamespaceName) {
+        schema_(
+            Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<T_STREAM_ENTRY>()).type_id,
+            reflection::CurrentTypeName<T_STREAM_ENTRY>(),
+            sherlock::constants::kDefaultTopLevelName,
+            sherlock::constants::kDefaultNamespaceName) {
     CheckRemoteSchema();
   }
 
@@ -180,26 +189,25 @@ class SubscribableRemoteStream final {
                                     const std::string& top_level_name,
                                     const std::string& namespace_name)
       : stream_(remote_stream_url),
-        schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
-                reflection::CurrentTypeName<entry_t>(),
-                top_level_name,
-                namespace_name) {
+        schema_(
+            Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<T_STREAM_ENTRY>()).type_id,
+            reflection::CurrentTypeName<T_STREAM_ENTRY>(),
+            top_level_name,
+            namespace_name) {
     CheckRemoteSchema();
   }
   ~SubscribableRemoteStream(){};
 
-  subscriber_t Subscribe(std::unique_ptr<publisher_t> publisher, uint64_t index = 0u) {
-    subscriber_t subscriber(stream_);
-    subscriber.AcceptPublisher(std::move(publisher));
-    subscriber.Subscribe(index);
-    return subscriber;
-  }
-
-  subscriber_t Subscribe(T_STREAM& local_stream, uint64_t index = 0u) {
-    subscriber_t subscriber(stream_);
-    local_stream.MovePublisherTo(subscriber);
-    subscriber.Subscribe(index);
-    return subscriber;
+  template <typename F>
+  RemoteSubscriberScope<F, T_STREAM_ENTRY> Subscribe(F& subscriber,
+                                                     uint64_t start_idx = 0u,
+                                                     std::function<void()> done_callback = nullptr) {
+    static_assert(current::ss::IsStreamSubscriber<F, T_STREAM_ENTRY>::value, "");
+    try {
+      return RemoteSubscriberScope<F, T_STREAM_ENTRY>(stream_, subscriber, start_idx, done_callback);
+    } catch (const current::sync::InDestructingModeException&) {
+      CURRENT_THROW(StreamInGracefulShutdownException());
+    }
   }
 
  private:
@@ -219,6 +227,34 @@ class SubscribableRemoteStream final {
   ScopeOwnedByMe<RemoteStream> stream_;
   sherlock::SubscribableSherlockSchema schema_;
 };
+
+template <typename T_STREAM>
+struct RemoteStreamReplicatorImpl {
+  using EntryResponse = current::ss::EntryResponse;
+  using TerminationResponse = current::ss::TerminationResponse;
+  using entry_t = typename T_STREAM::entry_t;
+  using publisher_t = typename T_STREAM::publisher_t;
+
+  T_STREAM& stream_;
+  std::unique_ptr<publisher_t> publisher_;
+
+  RemoteStreamReplicatorImpl(T_STREAM& stream) : stream_(stream) {}
+
+  void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
+  void ReturnPublisherToStream() { stream_.AcquirePublisher(std::move(publisher_)); }
+
+  EntryResponse operator()(entry_t&& entry, idxts_t current, idxts_t) {
+    publisher_->Publish(std::move(entry), current.us);
+    return EntryResponse::More;
+  }
+
+  EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
+  TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
+};
+
+template <typename T_STREAM>
+using RemoteStreamReplicator =
+    current::ss::StreamSubscriber<RemoteStreamReplicatorImpl<T_STREAM>, typename T_STREAM::entry_t>;
 
 }  // namespace sherlock
 }  // namespace current
