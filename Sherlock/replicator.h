@@ -151,7 +151,8 @@ class SubscribableRemoteStream final {
       std::unique_lock<std::mutex> lock(mutex_);
       event_.wait(lock, [this]() { return !subscription_id_.empty(); });
       external_stop_ = true;
-      const std::string terminate_url = remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "?terminate=" + subscription_id_;
+      const std::string terminate_url =
+          remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "?terminate=" + subscription_id_;
       try {
         const auto result = HTTP(GET(terminate_url));
       } catch (current::net::NetworkException&) {
@@ -180,7 +181,6 @@ class SubscribableRemoteStream final {
       : stream_(remote_stream_url),
         schema_(
             Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<T_STREAM_ENTRY>()).type_id,
-            reflection::CurrentTypeName<T_STREAM_ENTRY>(),
             sherlock::constants::kDefaultTopLevelName,
             sherlock::constants::kDefaultNamespaceName) {
     CheckRemoteSchema();
@@ -192,12 +192,11 @@ class SubscribableRemoteStream final {
       : stream_(remote_stream_url),
         schema_(
             Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<T_STREAM_ENTRY>()).type_id,
-            reflection::CurrentTypeName<T_STREAM_ENTRY>(),
             top_level_name,
             namespace_name) {
     CheckRemoteSchema();
   }
-  ~SubscribableRemoteStream(){}
+  ~SubscribableRemoteStream() {}
 
   template <typename F>
   RemoteSubscriberScope<F, T_STREAM_ENTRY> Subscribe(F& subscriber,
