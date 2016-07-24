@@ -95,13 +95,14 @@ class SubscribableRemoteStream final {
    private:
     void Thread() {
       ThreadImpl();
+      subscriber_thread_done_ = true;
       if (done_callback_) {
         done_callback_();
       }
     }
 
     void ThreadImpl() {
-      const std::string& url = remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_;
+      const std::string url = remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_;
       bool terminate_sent = false;
       while (!internal_stop_) {
         if (!terminate_sent && external_stop_) {
@@ -133,7 +134,6 @@ class SubscribableRemoteStream final {
       if (external_stop_ || internal_stop_) {
         return;
       }
-      std::unique_lock<std::mutex> lock(mutex_);
 
       const auto split = current::strings::Split(chunk, '\t');
       assert(split.size() == 2u);
@@ -142,6 +142,7 @@ class SubscribableRemoteStream final {
       auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
       internal_stop_ =
           (subscriber_(std::move(entry), idx, idxts_t() /*unused "last" arg*/) == ss::EntryResponse::Done);
+      std::unique_lock<std::mutex> lock(mutex_);
       ++index_;
       event_.notify_one();
     }
@@ -150,7 +151,7 @@ class SubscribableRemoteStream final {
       std::unique_lock<std::mutex> lock(mutex_);
       event_.wait(lock, [this]() { return !subscription_id_.empty(); });
       external_stop_ = true;
-      const std::string terminate_url = remote_stream_->url_ + "?terminate=" + subscription_id_;
+      const std::string terminate_url = remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "?terminate=" + subscription_id_;
       try {
         const auto result = HTTP(GET(terminate_url));
       } catch (current::net::NetworkException&) {
@@ -196,7 +197,7 @@ class SubscribableRemoteStream final {
             namespace_name) {
     CheckRemoteSchema();
   }
-  ~SubscribableRemoteStream(){};
+  ~SubscribableRemoteStream(){}
 
   template <typename F>
   RemoteSubscriberScope<F, T_STREAM_ENTRY> Subscribe(F& subscriber,
@@ -212,7 +213,7 @@ class SubscribableRemoteStream final {
 
  private:
   void CheckRemoteSchema() {
-    const auto response = HTTP(GET(stream_->url_ + "/schema.simple"));
+    const auto response = HTTP(GET(stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "/schema.simple"));
     if (static_cast<int>(response.code) == 200) {
       sherlock::SubscribableSherlockSchema remote_schema =
           ParseJSON<sherlock::SubscribableSherlockSchema>(response.body);
