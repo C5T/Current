@@ -25,6 +25,21 @@ SOFTWARE.
 #ifndef REMOTE_STREAM_REPLICATOR_H
 #define REMOTE_STREAM_REPLICATOR_H
 
+#include <functional>
+#include <string>
+#include <thread>
+
+#include "exceptions.h"
+#include "sherlock.h"
+#include "stream_data.h"
+
+#include "../Blocks/HTTP/api.h"
+#include "../Blocks/SS/ss.h"
+
+#include "../Bricks/sync/scope_owned.h"
+
+#include "../TypeSystem/Reflection/types.h"
+
 namespace current {
 namespace sherlock {
 
@@ -214,8 +229,8 @@ class SubscribableRemoteStream final {
   void CheckRemoteSchema() {
     const auto response = HTTP(GET(stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "/schema.simple"));
     if (static_cast<int>(response.code) == 200) {
-      sherlock::SubscribableSherlockSchema remote_schema =
-          ParseJSON<sherlock::SubscribableSherlockSchema>(response.body);
+      SubscribableSherlockSchema remote_schema =
+          ParseJSON<SubscribableSherlockSchema>(response.body);
       if (remote_schema != schema_) {
         CURRENT_THROW(RemoteStreamSchemaInvalidException());
       }
@@ -225,7 +240,7 @@ class SubscribableRemoteStream final {
   }
 
   ScopeOwnedByMe<RemoteStream> stream_;
-  sherlock::SubscribableSherlockSchema schema_;
+  SubscribableSherlockSchema schema_;
 };
 
 template <typename T_STREAM>
