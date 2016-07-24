@@ -1735,7 +1735,12 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   // Create storage using following stream.
   Storage replicated_storage(replicated_stream);
 
-  { auto subscriber_scope = remote_stream.Subscribe(replicator); }
+  {
+    auto subscriber_scope = remote_stream.Subscribe(replicator);
+    while (replicated_stream.InternalExposePersister().Size() < 2u) {
+      std::this_thread::yield();
+    }
+  }
 
   // Return data authority to the stream as we completed the replication process.
   replicator.ReturnPublisherToStream();
