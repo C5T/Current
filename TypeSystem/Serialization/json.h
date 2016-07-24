@@ -74,12 +74,10 @@ std::string CreateJSONViaRapidJSON(const T& value) {
 
   save::SaveIntoJSONImpl<T, J>::Save(destination, document.GetAllocator(), value);
 
-  std::ostringstream os;
-  rapidjson::OStreamWrapper stream(os);
-  rapidjson::Writer<rapidjson::OStreamWrapper> writer(stream);
+  rapidjson::StringBuffer string_buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(string_buffer);
   document.Accept(writer);
-
-  return os.str();
+  return string_buffer.GetString();
 }
 
 template <JSONFormat J, typename T>

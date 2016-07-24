@@ -41,6 +41,5 @@ inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
 
 #include "../../3rdparty/rapidjson/document.h"
 #include "../../3rdparty/rapidjson/prettywriter.h"
-#include "../../3rdparty/rapidjson/streamwrapper.h"
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
