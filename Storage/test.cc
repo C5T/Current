@@ -1751,14 +1751,8 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
             current::FileSystem::ReadFileAsString(replicated_stream_file_name));
 
   // Wait until the we can see the mutation made in the last transaction.
-  bool last_added_entry_exists;
-  do {
-    const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
-      return Exists(fields.d["three"]);
-    }).Go();
-    EXPECT_TRUE(WasCommitted(result));
-    last_added_entry_exists = Value(result);
-  } while (!last_added_entry_exists);
+  replicated_storage.WaitForTransactionsCount(4u);
+  EXPECT_EQ(4u, replicated_storage.TransactionsCount());
 
   // Test data consistency performing a transaction in the replicated storage.
   const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
