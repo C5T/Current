@@ -238,10 +238,10 @@ struct RemoteStreamReplicatorImpl {
   T_STREAM& stream_;
   std::unique_ptr<publisher_t> publisher_;
 
-  RemoteStreamReplicatorImpl(T_STREAM& stream) : stream_(stream) {}
+  RemoteStreamReplicatorImpl(T_STREAM& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
+  ~RemoteStreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
 
   void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
-  void ReturnPublisherToStream() { stream_.AcquirePublisher(std::move(publisher_)); }
 
   EntryResponse operator()(entry_t&& entry, idxts_t current, idxts_t) {
     publisher_->Publish(std::move(entry), current.us);

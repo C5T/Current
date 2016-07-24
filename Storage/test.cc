@@ -1724,26 +1724,27 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(replicated_stream_file_name);
   using transaction_t = typename Storage::transaction_t;
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+  using RemoteStreamReplicator = current::sherlock::RemoteStreamReplicator<sherlock_t>;
   sherlock_t replicated_stream(replicated_stream_file_name);
 
   // Replicate data via subscription to master storage raw log.
-  current::sherlock::RemoteStreamReplicator<sherlock_t> replicator(replicated_stream);
   current::sherlock::SubscribableRemoteStream<transaction_t> remote_stream(
       Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
-  replicated_stream.MovePublisherTo(replicator);
+  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
 
   // Create storage using following stream.
   Storage replicated_storage(replicated_stream);
+  EXPECT_EQ(current::storage::StorageRole::Follower, replicated_storage.GetRole());
 
   {
-    auto subscriber_scope = remote_stream.Subscribe(replicator);
+    auto subscriber_scope = remote_stream.Subscribe(*replicator);
     while (replicated_stream.InternalExposePersister().Size() < 2u) {
       std::this_thread::yield();
     }
   }
 
   // Return data authority to the stream as we completed the replication process.
-  replicator.ReturnPublisherToStream();
+  replicator = nullptr;
 
   // Check that persisted files are the same.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
@@ -1767,6 +1768,10 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     EXPECT_FALSE(Exists(fields.d["two"]));
   }).Go();
   EXPECT_TRUE(WasCommitted(result));
+
+  // Check that the `Storage` could be flipped to master after the `RemoteStreamReplicator` destruction.
+  ASSERT_NO_THROW(replicated_storage.FlipToMaster());
+  EXPECT_EQ(current::storage::StorageRole::Master, replicated_storage.GetRole());
 }
 
 namespace transactional_storage_test {
