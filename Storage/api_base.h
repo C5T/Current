@@ -38,18 +38,10 @@ struct RESTfulGenericInput {
   using STORAGE_TYPE = STORAGE;
   STORAGE& storage;
   const std::string restful_url_prefix;
-  const std::string data_url_component;
-  const std::string schema_url_component;
 
   explicit RESTfulGenericInput(STORAGE& storage) : storage(storage) {}
-  RESTfulGenericInput(STORAGE& storage,
-                      const std::string& restful_url_prefix,
-                      const std::string& data_url_component,
-                      const std::string& schema_url_component)
-      : storage(storage),
-        restful_url_prefix(restful_url_prefix),
-        data_url_component(data_url_component),
-        schema_url_component(schema_url_component) {}
+  RESTfulGenericInput(STORAGE& storage, const std::string& restful_url_prefix)
+      : storage(storage), restful_url_prefix(restful_url_prefix) {}
   RESTfulGenericInput(const RESTfulGenericInput&) = default;
   RESTfulGenericInput(RESTfulGenericInput&&) = default;
 };
@@ -64,14 +56,12 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 
   RESTfulRegisterTopLevelInput(STORAGE& storage,
                                const std::string& restful_url_prefix,
-                               const std::string& data_url_component,
-                               const std::string& schema_url_component,
                                int port,
                                HTTPRoutesScope& scope,
                                const std::vector<std::string>& field_names,
                                const std::string& route_prefix,
                                std::atomic_bool& up_status)
-      : RESTfulGenericInput<STORAGE>(storage, restful_url_prefix, data_url_component, schema_url_component),
+      : RESTfulGenericInput<STORAGE>(storage, restful_url_prefix),
         port(port),
         scope(scope),
         field_names(field_names),

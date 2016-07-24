@@ -195,8 +195,7 @@ struct Hypermedia {
                         const bool up = input.up_status;
                         HypermediaRESTTopLevel response(input.restful_url_prefix, up);
                         for (const auto& f : input.field_names) {
-                          response.url_data[f] =
-                              input.restful_url_prefix + '/' + input.data_url_component + '/' + f;
+                          response.url_data[f] = input.restful_url_prefix + "/data/" + f;
                         }
                         request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                       });
@@ -268,8 +267,7 @@ struct Hypermedia {
         const auto key = current::FromString<KEY>(input.url_key);
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
-          const std::string url = input.restful_url_prefix + '/' + input.data_url_component + '/' +
-                                  input.field_name + '/' + input.url_key;
+          const std::string url = input.restful_url_prefix + "/data/" + input.field_name + '/' + input.url_key;
           auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, Value(result)));
           const auto last_modified = input.field.LastModified(key);
           if (Exists(last_modified)) {
@@ -283,7 +281,7 @@ struct Hypermedia {
         }
       } else {
         HypermediaRESTContainerResponse response;
-        response.url = input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name;
+        response.url = input.restful_url_prefix + "/data/" + input.field_name;
         for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
           response.data.emplace_back(
               response.url + '/' +
@@ -320,8 +318,7 @@ struct Hypermedia {
       const std::string key = current::ToString(entry_key);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
-        const std::string url =
-            input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + key;
+        const std::string url = input.restful_url_prefix + "/data/" + input.field_name + '/' + key;
         auto response = Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
                                  HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
@@ -369,8 +366,7 @@ struct Hypermedia {
           }
         }
         input.field.Add(input.entry);
-        const std::string url =
-            input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
+        const std::string url = input.restful_url_prefix + "/data/" + input.field_name + '/' + url_key;
         Response response;
         HypermediaRESTResourceUpdateResponse hypermedia_response(true);
         hypermedia_response.resource_url = url;
