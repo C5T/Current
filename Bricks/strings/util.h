@@ -136,6 +136,8 @@ inline std::string ToString(T&& something) {
       something);
 }
 
+// As of July 23rd 2016, I'm retiring `key1-key2` in REST storage for matrices. Thus, no need. -- D.K.
+#if 0
 // Special case for `std::pair<>`. For Storage REST only for now.
 // TODO(dkorolev) + TODO(mzhurovich): Unify `ToString()` and `JSON()` under one `Serialize()` w/ policies?
 template <typename FST, typename SND>
@@ -144,6 +146,7 @@ struct ToStringImpl<std::pair<FST, SND>, false, false> {
     return ToString(pair.first) + '-' + ToString(pair.second);
   }
 };
+#endif
 
 template <typename INPUT, typename OUTPUT, bool HAS_MEMBER_FROM_STRING, bool IS_ENUM>
 struct FromStringImpl;
@@ -230,6 +233,8 @@ inline const OUTPUT& FromString(INPUT&& input, OUTPUT& output) {
       std::forward<INPUT>(input), output);
 }
 
+// As of July 23rd 2016, I'm retiring `key1-key2` in REST storage for matrices. Thus, no need. -- D.K.
+#if 0
 // Special case for `std::pair<>`. For Storage REST only for now.
 // TODO(dkorolev) + TODO(mzhurovich): Unify `FromString()` and `JSON()` under one `Serialize()` w/ policies?
 template <typename INPUT, typename OUTPUT_FST, typename OUTPUT_SND>
@@ -246,6 +251,7 @@ struct FromStringImpl<INPUT, std::pair<OUTPUT_FST, OUTPUT_SND>, false, false> {
     return output;
   }
 };
+#endif
 
 template <typename OUTPUT, typename INPUT = std::string>
 inline OUTPUT FromString(INPUT&& input) {
