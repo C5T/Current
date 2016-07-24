@@ -1043,7 +1043,7 @@ TEST(Serialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("flags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+      ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.What());
     }
   }
 
@@ -1053,7 +1053,7 @@ TEST(Serialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("flags_ & kInt64Flag\tflags_ & kInt64Flag", e.What());
+      ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.What());
     }
   }
 
@@ -1063,7 +1063,7 @@ TEST(Serialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("flags_ & kUint64Flag\tflags_ & kUint64Flag", e.What());
+      ExpectStringEndsWith("data_.f.flags & kUint64Flag\tdata_.f.flags & kUint64Flag", e.What());
     }
   }
 }

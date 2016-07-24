@@ -47,21 +47,20 @@ struct JSONSchemaException : TypeSystemParseJSONException {
     // that has been parsed but is of wrong schema.
     if (value) {
       try {
-        std::ostringstream os;
-        rapidjson::OStreamWrapper stream(os);
-        rapidjson::Writer<rapidjson::OStreamWrapper> writer(stream);
+        rapidjson::StringBuffer string_buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(string_buffer);
         rapidjson::Document document;
         if (value->IsObject() || value->IsArray()) {
           // Objects and arrays can be dumped directly.
           value->Accept(writer);
-          return os.str();
+          return string_buffer.GetString();
         } else {
           // Every other type of value has to be wrapped into an object or an array.
           // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
           document.SetArray();
           document.PushBack(*value, document.GetAllocator());
           document.Accept(writer);
-          const std::string result = os.str();
+          const std::string result = string_buffer.GetString();
           return result.substr(1u, result.length() - 2u);
         }
       } catch (const std::exception&) {     // LCOV_EXCL_LINE

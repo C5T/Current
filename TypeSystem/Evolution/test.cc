@@ -208,7 +208,7 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Othe
     Evolve<type_evolution_test::SchemaV1, decltype(from.enum_class), EVOLVER>::template Go<INTO>(
         from.enum_class, into.enum_class);
     Evolve<type_evolution_test::SchemaV1, decltype(from.optional), EVOLVER>::template Go<INTO>(from.optional,
-                                                                                                into.optional);
+                                                                                               into.optional);
   }
 };
 
@@ -279,9 +279,9 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Name
                       reflection::TotalFieldCounter<typename INTO::Name>::value,
                   "Total field count for `Name` must match.");
     Evolve<type_evolution_test::SchemaV1, decltype(from.first), EVOLVER>::template Go<INTO>(from.first,
-                                                                                             into.first);
+                                                                                            into.first);
     Evolve<type_evolution_test::SchemaV1, decltype(from.last), EVOLVER>::template Go<INTO>(from.last,
-                                                                                            into.last);
+                                                                                           into.last);
   }
 };
 
@@ -307,27 +307,27 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
 
 // Custom evolution for `StructWithVector`.
 CURRENT_TYPE_EVOLVER(V1ToV2Evolver,
-                      type_evolution_test::SchemaV1,
-                      StructWithVector,
-                      {
-                        into.string_ids.clear();
-                        into.string_ids.reserve(from.numerical_ids.size());
-                        for (const auto& cit : from.numerical_ids) {
-                          into.string_ids.push_back('@' + current::ToString(cit));
-                        }
-                      });
+                     type_evolution_test::SchemaV1,
+                     StructWithVector,
+                     {
+                       into.string_ids.clear();
+                       into.string_ids.reserve(from.numerical_ids.size());
+                       for (const auto& cit : from.numerical_ids) {
+                         into.string_ids.push_back('@' + current::ToString(cit));
+                       }
+                     });
 
 // Custom evolution for `Name`.
 CURRENT_TYPE_EVOLVER(V1ToV2Evolver,
-                      type_evolution_test::SchemaV1,
-                      Name,
-                      { into.full = from.first + ' ' + from.last; });
+                     type_evolution_test::SchemaV1,
+                     Name,
+                     { into.full = from.first + ' ' + from.last; });
 
 // Alternative custom evolution for `Name`.
 CURRENT_TYPE_EVOLVER(AnotherV1ToV2Evolver,
-                      type_evolution_test::SchemaV1,
-                      Name,
-                      { into.full = from.last + ", " + from.first; });
+                     type_evolution_test::SchemaV1,
+                     Name,
+                     { into.full = from.last + ", " + from.first; });
 
 namespace type_evolution_test {
 namespace arbitrarily_called_namespace {
@@ -444,8 +444,8 @@ TEST(TypeEvolutionTest, StructWithStruct) {
     using current::type_evolution::V1ToV2Evolver;
     const SchemaV1::StructWithStruct original;
     SchemaV2::StructWithStruct converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithStruct, V1ToV2Evolver>::template Go<
-        SchemaV2>(original, converted);
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithStruct, V1ToV2Evolver>::template Go<SchemaV2>(
+        original, converted);
     EXPECT_EQ("{\"s\":{\"x\":101,\"y\":102,\"z\":\"foo\"}}", JSON(converted));
   }
 }
@@ -466,8 +466,8 @@ TEST(TypeEvolutionTest, StructWithVector) {
     // const SchemaV2::StructWithVector converted = current::type_evolution::Evolve<SchemaV1,
     // SchemaV1::StructWithVector>::template Go<SchemaV2>(original);
     SchemaV2::StructWithVector converted;
-    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVector, V1ToV2Evolver>::template Go<
-        SchemaV2>(original, converted);
+    current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVector, V1ToV2Evolver>::template Go<SchemaV2>(
+        original, converted);
     EXPECT_EQ("@8,@50", current::strings::Join(converted.string_ids, ','));
   }
 }
@@ -531,7 +531,7 @@ TEST(TypeEvolutionTest, NameWithDifferentEvolvers) {
     //     SchemaV1::Name>::template Go<SchemaV2>(original);
     SchemaV2::Name converted;
     current::type_evolution::Evolve<SchemaV1, SchemaV1::Name, V1ToV2Evolver>::template Go<SchemaV2>(original,
-                                                                                                     converted);
+                                                                                                    converted);
     EXPECT_EQ("Karl Marx", converted.full);
   }
   {
@@ -552,31 +552,31 @@ using SchemaXX = USERSPACE_F055D51FBF78DB84;
 
 // Custom evolution from the autogenerated `SimpleStruct`.
 CURRENT_TYPE_EVOLVER(AddFortyTwoToX,
-                      SchemaXX,
-                      SimpleStruct,
-                      {
-                        into.x = from.x + 42;
-                        into.y = from.y;
-                        into.z = from.z;
-                      });
+                     SchemaXX,
+                     SimpleStruct,
+                     {
+                       into.x = from.x + 42;
+                       into.y = from.y;
+                       into.z = from.z;
+                     });
 
 // Custom evolution that behaves differently for `SimpleStruct` and `StructWithStruct`.
 CURRENT_TYPE_EVOLVER(AddOneOrTwoToX,
-                      SchemaXX,
-                      SimpleStruct,
-                      {
-                        into.x = from.x + 1;
-                        into.y = from.y;
-                        into.z = from.z;
-                      });
+                     SchemaXX,
+                     SimpleStruct,
+                     {
+                       into.x = from.x + 1;
+                       into.y = from.y;
+                       into.z = from.z;
+                     });
 CURRENT_TYPE_EVOLVER(AddOneOrTwoToX,
-                      SchemaXX,
-                      StructWithStruct,
-                      {
-                        into.s.x = from.s.x + 2;
-                        into.s.y = from.s.y;
-                        into.s.z = from.s.z;
-                      });
+                     SchemaXX,
+                     StructWithStruct,
+                     {
+                       into.s.x = from.s.x + 2;
+                       into.s.y = from.s.y;
+                       into.s.z = from.s.z;
+                     });
 #endif  // JUST_GENERATE_THAT_GOLDEN_FILE
 
 TEST(TypeEvolutionTest, AutogeneratedCurrentStructsAreReadyForEvolution) {
@@ -995,28 +995,28 @@ CURRENT_STORAGE(Storage) { CURRENT_STORAGE_FIELD(user, PersistedUser); };
 
 // Default evolver copy-pasted from the boilerplate to evolve the `Transaction`, type of which has changed.
 CURRENT_TYPE_EVOLVER(OriginalStorageToModifiedStorageEvolver,
-                      SchemaOriginalStorage,
-                      Transaction,
-                      {
-                        CURRENT_NATURAL_EVOLVE(
-                            SchemaOriginalStorage, SchemaModifiedStorage, from.meta, into.meta);
-                        CURRENT_NATURAL_EVOLVE(
-                            SchemaOriginalStorage, SchemaModifiedStorage, from.mutations, into.mutations);
-                      });
+                     SchemaOriginalStorage,
+                     Transaction,
+                     {
+                       CURRENT_NATURAL_EVOLVE(
+                           SchemaOriginalStorage, SchemaModifiedStorage, from.meta, into.meta);
+                       CURRENT_NATURAL_EVOLVE(
+                           SchemaOriginalStorage, SchemaModifiedStorage, from.mutations, into.mutations);
+                     });
 
 // Custom evolution for `Name` stored as part of Storage's transactions.
 CURRENT_TYPE_EVOLVER(OriginalStorageToOriginalStorageEvolver,
-                      SchemaOriginalStorage,
-                      Name,
-                      {
-                        into.first = current::strings::ToUpper(from.first);
-                        into.last = current::strings::ToUpper(from.last);
-                      });
+                     SchemaOriginalStorage,
+                     Name,
+                     {
+                       into.first = current::strings::ToUpper(from.first);
+                       into.last = current::strings::ToUpper(from.last);
+                     });
 
 CURRENT_TYPE_EVOLVER(OriginalStorageToModifiedStorageEvolver,
-                      SchemaOriginalStorage,
-                      Name,
-                      { into.full = from.last + ", " + from.first[0]; });
+                     SchemaOriginalStorage,
+                     Name,
+                     { into.full = from.last + ", " + from.first[0]; });
 
 TEST(TypeEvolutionTest, StorageInnerTypes) {
   // Test the plain `Name` type goes through.

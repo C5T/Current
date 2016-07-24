@@ -36,8 +36,8 @@ SOFTWARE.
 // `CURRENT_EVOLVE` and `CURRENT_NATURAL_EVOLVE` are the syntaxes to eliminate the need
 // to write `::current::type_evolution::Evolve<...>::template Go<...>(from_object, into_object)`.
 #define CURRENT_EVOLVE_IMPL(evolver, from_namespace, into_namespace, from_object, into_object) \
-  ::current::type_evolution::Evolve<from_namespace,                                             \
-                                    ::current::decay<decltype(from_object)>,                    \
+  ::current::type_evolution::Evolve<from_namespace,                                            \
+                                    ::current::decay<decltype(from_object)>,                   \
                                     evolver>::template Go<into_namespace>(from_object, into_object)
 
 // `CURRENT_EVOLVE` uses the `evolver` provided explicitly as the first parameter.
@@ -61,41 +61,41 @@ struct CurrentGenericPerCaseVariantEvolver {
 }  // namespace current
 
 #define CURRENT_TYPE_EVOLVER_VARIANT(custom_evolver, from_namespace, T, into_namespace)                    \
-  template <int COUNTER, typename DST, typename FROM, typename INTO, typename EVOLVER>                      \
-  struct CurrentGenericPerCaseVariantEvolverImpl;                                                           \
+  template <int COUNTER, typename DST, typename FROM, typename INTO, typename EVOLVER>                     \
+  struct CurrentGenericPerCaseVariantEvolverImpl;                                                          \
   CURRENT_TYPE_EVOLVER(custom_evolver,                                                                     \
-                        from_namespace,                                                                      \
-                        T,                                                                                   \
-                        {                                                                                    \
-    CurrentGenericPerCaseVariantEvolverImpl<__COUNTER__,                                                    \
-                                             decltype(into),                                                 \
-                                             from_namespace,                                                 \
-                                             into_namespace,                                                 \
-                                             custom_evolver> evolver;                                      \
-    evolver.p_into = &into;                                                                                 \
-    from.Call(evolver);                                                                                     \
-                        });                                                                                  \
-                                                                                                             \
-  template <typename DST, typename FROM, typename INTO, typename CURRENT_ACTIVE_EVOLVER>                    \
+                       from_namespace,                                                                     \
+                       T,                                                                                  \
+                       {                                                                                   \
+    CurrentGenericPerCaseVariantEvolverImpl<__COUNTER__,                                                   \
+                                            decltype(into),                                                \
+                                            from_namespace,                                                \
+                                            into_namespace,                                                \
+                                            custom_evolver> evolver;                                       \
+    evolver.p_into = &into;                                                                                \
+    from.Call(evolver);                                                                                    \
+                       });                                                                                 \
+                                                                                                           \
+  template <typename DST, typename FROM, typename INTO, typename CURRENT_ACTIVE_EVOLVER>                   \
   struct CurrentGenericPerCaseVariantEvolverImpl<__COUNTER__ - 1, DST, FROM, INTO, CURRENT_ACTIVE_EVOLVER> \
       : ::current::type_evolution::CurrentGenericPerCaseVariantEvolver<DST>
 
 #define CURRENT_TYPE_EVOLVER_VARIANT_CASE(T, ...)                                              \
-  void operator()(const typename FROM::T& from) const {                                         \
+  void operator()(const typename FROM::T& from) const {                                        \
     auto& into = *::current::type_evolution::CurrentGenericPerCaseVariantEvolver<DST>::p_into; \
-    __VA_ARGS__;                                                                                \
+    __VA_ARGS__;                                                                               \
   }
 
 // Evolve the variant case into the type of the same name, from the destination namespace.
 // Use the natural evolver. This make sure each and every possible inner type
 // will be evolved using the evolver specified by the user.
 #define CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(T, ...)                                       \
-  void operator()(const typename FROM::T& from) const {                                          \
+  void operator()(const typename FROM::T& from) const {                                         \
     auto& into0 = *::current::type_evolution::CurrentGenericPerCaseVariantEvolver<DST>::p_into; \
-    using into_t = typename INTO::T;                                                             \
-    into0 = into_t();                                                                            \
-    auto& into = Value<into_t>(into0);                                                           \
-    __VA_ARGS__;                                                                                 \
+    using into_t = typename INTO::T;                                                            \
+    into0 = into_t();                                                                           \
+    auto& into = Value<into_t>(into0);                                                          \
+    __VA_ARGS__;                                                                                \
   }
 
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_MACROS_H

@@ -61,8 +61,8 @@ struct Evolve;
 
 // Identity evolvers for primitive types.
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type) \
-  template <typename FROM_NAMESPACE, typename EVOLVER>                                        \
-  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLVER> {                                          \
+  template <typename FROM_NAMESPACE, typename EVOLVER>                                         \
+  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLVER> {                                           \
     template <typename>                                                                        \
     static void Go(current::copy_free<cpp_type> from, cpp_type& into) {                        \
       into = from;                                                                             \
@@ -123,13 +123,13 @@ struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLVER> {
 }  // namespace current::type_evolution
 }  // namespace current
 
-#define CURRENT_TYPE_EVOLVER(evolver, from_namespace, type_name, ...)                              \
+#define CURRENT_TYPE_EVOLVER(evolver, from_namespace, type_name, ...)                                \
   namespace current {                                                                                \
   namespace type_evolution {                                                                         \
-  struct evolver;                                                                                   \
+  struct evolver;                                                                                    \
   template <>                                                                                        \
-  struct Evolve<from_namespace, from_namespace::type_name, evolver> {                               \
-    using CURRENT_ACTIVE_EVOLVER = evolver;                                                        \
+  struct Evolve<from_namespace, from_namespace::type_name, evolver> {                                \
+    using CURRENT_ACTIVE_EVOLVER = evolver;                                                          \
     template <typename INTO>                                                                         \
     static void Go(const typename from_namespace::type_name& from, typename INTO::type_name& into) { \
       __VA_ARGS__;                                                                                   \

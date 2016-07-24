@@ -83,7 +83,7 @@ TEST(RapidJSON, Smoke) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::OStreamWrapper;
+  using rapidjson::StringBuffer;
 
   std::string json;
 
@@ -99,11 +99,10 @@ TEST(RapidJSON, Smoke) {
     EXPECT_TRUE(document["foo"].IsString());
     EXPECT_EQ("bar", document["foo"].GetString());
 
-    std::ostringstream os;
-    OStreamWrapper stream(os);
-    Writer<OStreamWrapper> writer(stream);
+    StringBuffer string_buffer;
+    Writer<StringBuffer> writer(string_buffer);
     document.Accept(writer);
-    json = os.str();
+    json = string_buffer.GetString();
   }
 
   EXPECT_EQ("{\"foo\":\"bar\"}", json);
@@ -124,7 +123,7 @@ TEST(RapidJSON, Array) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::OStreamWrapper;
+  using rapidjson::StringBuffer;
 
   std::string json;
 
@@ -141,11 +140,10 @@ TEST(RapidJSON, Array) {
     EXPECT_TRUE(document.IsArray());
     EXPECT_FALSE(document.IsObject());
 
-    std::ostringstream os;
-    OStreamWrapper stream(os);
-    Writer<OStreamWrapper> writer(stream);
+    StringBuffer string_buffer;
+    Writer<StringBuffer> writer(string_buffer);
     document.Accept(writer);
-    json = os.str();
+    json = string_buffer.GetString();
   }
 
   EXPECT_EQ("[42,\"bar\"]", json);
@@ -155,7 +153,7 @@ TEST(RapidJSON, NullInString) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::OStreamWrapper;
+  using rapidjson::StringBuffer;
 
   std::string json;
 
@@ -167,11 +165,10 @@ TEST(RapidJSON, NullInString) {
     document.SetObject();
     document.AddMember("s", s, allocator);
 
-    std::ostringstream os;
-    OStreamWrapper stream(os);
-    Writer<OStreamWrapper> writer(stream);
+    StringBuffer string_buffer;
+    Writer<StringBuffer> writer(string_buffer);
     document.Accept(writer);
-    json = os.str();
+    json = string_buffer.GetString();
   }
 
   EXPECT_EQ("{\"s\":\"terrible\\u0000avoided\"}", json);

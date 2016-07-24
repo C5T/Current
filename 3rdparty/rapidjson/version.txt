@@ -1,2 +1,4 @@
-Source: https://github.com/c5t/rapidjson
-Commit: 292714e64a89b880b611c9b915c0ab07663668c9
+Origin: https://github.com/C5T/rapidjson, C5T fork kept up to date with https://github.com/miloyip/rapidjson.git
+Commit: 67d8a99477b4e1b638b920cc9b02f8910dfb05e7
+
+Cut by @dkorolev July 23rd 2016.
