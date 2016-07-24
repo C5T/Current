@@ -42,7 +42,7 @@ DECLARE_double(golden_qps);
 #endif
 
 // clang-format off
-SCENARIO(golden_1kqps, "golden 1000 QPS") {
+SCENARIO(golden_1kqps, "Golden 1000 QPS.") {
   // Don't use `current::time::Now()`, as it's:
   // a) under an unnecessary mutex, and
   // b) guaranteed to increase by at least 1 per call.
