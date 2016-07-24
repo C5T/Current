@@ -229,32 +229,40 @@ class SubscribableRemoteStream final {
 };
 
 template <typename T_STREAM>
-struct RemoteStreamReplicatorImpl {
+struct StreamReplicatorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
   using entry_t = typename T_STREAM::entry_t;
   using publisher_t = typename T_STREAM::publisher_t;
 
-  T_STREAM& stream_;
-  std::unique_ptr<publisher_t> publisher_;
-
-  RemoteStreamReplicatorImpl(T_STREAM& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
-  ~RemoteStreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
+  StreamReplicatorImpl(T_STREAM& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
+  ~StreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
 
   void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
 
   EntryResponse operator()(entry_t&& entry, idxts_t current, idxts_t) {
+    assert(publisher_);
     publisher_->Publish(std::move(entry), current.us);
+    return EntryResponse::More;
+  }
+
+  EntryResponse operator()(const entry_t& entry, idxts_t current, idxts_t) {
+    assert(publisher_);
+    publisher_->Publish(entry, current.us);
     return EntryResponse::More;
   }
 
   EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
   TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
+
+ private:
+  T_STREAM& stream_;
+  std::unique_ptr<publisher_t> publisher_;
 };
 
 template <typename T_STREAM>
-using RemoteStreamReplicator =
-    current::ss::StreamSubscriber<RemoteStreamReplicatorImpl<T_STREAM>, typename T_STREAM::entry_t>;
+using StreamReplicator =
+    current::ss::StreamSubscriber<StreamReplicatorImpl<T_STREAM>, typename T_STREAM::entry_t>;
 
 }  // namespace sherlock
 }  // namespace current

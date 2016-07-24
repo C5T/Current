@@ -1724,7 +1724,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(replicated_stream_file_name);
   using transaction_t = typename Storage::transaction_t;
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-  using RemoteStreamReplicator = current::sherlock::RemoteStreamReplicator<sherlock_t>;
+  using RemoteStreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
   sherlock_t replicated_stream(replicated_stream_file_name);
 
   // Replicate data via subscription to master storage raw log.
@@ -2355,32 +2355,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   using Storage = SimpleStorage<SherlockStreamPersister>;
   using transaction_t = typename Storage::transaction_t;
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-
-  // Class performing stream-level replication.
-  struct StreamReplicatorImpl {
-    using EntryResponse = current::ss::EntryResponse;
-    using TerminationResponse = current::ss::TerminationResponse;
-    using publisher_t = typename sherlock_t::publisher_t;
-
-    StreamReplicatorImpl(sherlock_t& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
-    ~StreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
-
-    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
-
-    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
-      assert(publisher_);
-      publisher_->Publish(transaction, current.us);
-      return EntryResponse::More;
-    }
-
-    EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
-    TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
-
-   private:
-    sherlock_t& stream_;
-    std::unique_ptr<publisher_t> publisher_;
-  };
-  using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl, transaction_t>;
+  using StreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
 
   const std::string master_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
