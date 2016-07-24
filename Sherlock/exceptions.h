@@ -67,7 +67,7 @@ struct RemoteStreamDoesNotRespondException : SherlockException {
   using SherlockException::SherlockException;
 };
 
-struct RemoteStreamSchemaInvalidException : SherlockException {
+struct RemoteStreamInvalidSchemaException : SherlockException {
   using SherlockException::SherlockException;
 };
 

@@ -1737,7 +1737,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   EXPECT_EQ(current::storage::StorageRole::Follower, replicated_storage.GetRole());
 
   {
-    auto subscriber_scope = remote_stream.Subscribe(*replicator);
+    const auto subscriber_scope = remote_stream.Subscribe(*replicator);
     while (replicated_stream.InternalExposePersister().Size() < 2u) {
       std::this_thread::yield();
     }

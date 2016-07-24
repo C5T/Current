@@ -104,7 +104,7 @@ class SelfModifyingConfig final : public SelfModifyingConfigHelper {
     }
     // Then, update the config.
     config_ = new_config;
-    // Finally, save the curent config under the original config file name.
+    // Finally, save the current config under the original config file name.
     try {
       current::FileSystem::WriteStringToFile(JSON(config_), filename_.c_str());
     } catch (const current::FileException&) {
