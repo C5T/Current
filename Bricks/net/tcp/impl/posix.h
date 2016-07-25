@@ -93,11 +93,51 @@ class SocketHandle : private SocketSystemInitializer {
     FromHandle(SOCKET handle) : handle(handle) {}
   };
 
-  inline SocketHandle(NewHandle) : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
+  inline SocketHandle(NewHandle, const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
+      : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
     BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
+
+#ifndef CURRENT_WINDOWS
+    int just_one = 1;
+#else
+    u_long just_one = 1;
+#endif
+
+    // LCOV_EXCL_START
+    if (disable_nagle_algorithm) {
+#ifndef CURRENT_WINDOWS
+      if (::setsockopt(socket_, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
+#else
+      if (::setsockopt(
+              socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
+#endif
+      {
+        CURRENT_THROW(SocketCreateException());
+      }
+    }
+
+    // LCOV_EXCL_STOP
+    if (::setsockopt(socket_,
+                     SOL_SOCKET,
+                     SO_REUSEADDR,
+#ifndef CURRENT_WINDOWS
+                     &just_one,
+#else
+                     reinterpret_cast<const char*>(&just_one),
+#endif
+                     sizeof(just_one))) {
+      CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+    }
+
+#ifdef CURRENT_APPLE
+    // Emulate MSG_NOSIGNAL behavior.
+    if (::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&just_one), sizeof(just_one))) {
+      CURRENT_THROW(SocketCreateException());
+    }
+#endif
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {
@@ -111,8 +151,10 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ != static_cast<SOCKET>(-1)) {
       BRICKS_NET_LOG("S%05d close() ...\n", socket_);
 #ifndef CURRENT_WINDOWS
+      ::shutdown(socket, SHUT_RDWR);
       ::close(socket_);
 #else
+      ::shutdown(socket, SD_BOTH);
       ::closesocket(socket_);
 #endif
       BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
@@ -390,45 +432,7 @@ class Socket final : public SocketHandle {
   inline explicit Socket(const int port,
                          const int max_connections = kMaxServerQueuedConnections,
                          const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
-      : SocketHandle(SocketHandle::NewHandle()) {
-#ifndef CURRENT_WINDOWS
-    int just_one = 1;
-#else
-    u_long just_one = 1;
-#endif
-
-    // LCOV_EXCL_START
-    if (disable_nagle_algorithm) {
-#ifndef CURRENT_WINDOWS
-      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
-#else
-      if (::setsockopt(
-              socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
-#endif
-      {
-        CURRENT_THROW(SocketCreateException());
-      }
-    }
-    // LCOV_EXCL_STOP
-    if (::setsockopt(socket,
-                     SOL_SOCKET,
-                     SO_REUSEADDR,
-#ifndef CURRENT_WINDOWS
-                     &just_one,
-#else
-                     reinterpret_cast<const char*>(&just_one),
-#endif
-                     sizeof(just_one))) {
-      CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
-    }
-
-#ifdef CURRENT_APPLE
-    // Emulate MSG_NOSIGNAL behavior.
-    if (::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&just_one), sizeof(just_one))) {
-      CURRENT_THROW(SocketCreateException());
-    }
-#endif
-
+      : SocketHandle(SocketHandle::NewHandle(), disable_nagle_algorithm) {
     sockaddr_in addr_server;
     memset(&addr_server, 0, sizeof(addr_server));
     addr_server.sin_family = AF_INET;
@@ -553,8 +557,8 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       remote_ip_and_port.port = htons(p_addr_in->sin_port);
 
       BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
-      const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
-      if (retval2) {
+      const int retval = ::connect(socket, p_addr, sizeof(*p_addr));
+      if (retval) {
         CURRENT_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
 
