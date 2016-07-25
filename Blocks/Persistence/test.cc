@@ -470,7 +470,12 @@ TEST(PersistenceLayer, FileIteratorPerformanceTest) {
   }
 }
 
-TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
+#ifndef CURRENT_CI
+TEST(PersistenceLayer, FileIteratorCanNotOutliveFile)
+#else
+TEST(PersistenceLayer, DISABLED_FileIteratorCanNotOutliveFile)
+#endif
+{
   using namespace persistence_test;
   using IMPL = current::persistence::File<std::string>;
   const std::string persistence_file_name =
