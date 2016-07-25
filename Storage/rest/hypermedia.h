@@ -29,6 +29,7 @@ SOFTWARE.
 #include "basic.h"
 #include "sfinae.h"
 
+#include "../api_types.h"
 #include "../storage.h"
 
 #include "../../TypeSystem/struct.h"
@@ -196,7 +197,7 @@ struct Hypermedia {
                         HypermediaRESTTopLevel response(input.restful_url_prefix, up);
                         for (const auto& f : input.field_names) {
                           response.url_data[f] =
-                              input.restful_url_prefix + '/' + input.data_url_component + '/' + f;
+                              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
                         }
                         request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                       });
@@ -207,34 +208,6 @@ struct Hypermedia {
                                    request(HypermediaRESTStatus(up),
                                            up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                                  });
-  }
-
-  template <typename F_WITH, typename F_WITHOUT>
-  static void WithOrWithoutKeyFromURL(Request request, F_WITH&& with, F_WITHOUT&& without) {
-    if (request.url.query.has("key")) {
-      with(std::move(request), request.url.query["key"]);
-    } else if (!request.url_path_args.empty()) {
-      with(std::move(request), request.url_path_args[0]);
-    } else {
-      without(std::move(request));
-    }
-  }
-
-  template <typename F>
-  static void WithKeyFromURL(Request request, F&& next_with_key) {
-    WithOrWithoutKeyFromURL(
-        std::move(request),
-        next_with_key,
-        [](Request request) {
-          request(ErrorResponseObject(RequiredKeyIsMissingError("Need resource key in the URL.")),
-                  HTTPResponseCode.BadRequest);
-        });
-  }
-
-  template <typename F>
-  static void WithOptionalKeyFromURL(Request request, F&& next) {
-    WithOrWithoutKeyFromURL(
-        std::move(request), next, [&next](Request request) { next(std::move(request), ""); });
   }
 
   // Returns `false` on error.
@@ -260,16 +233,19 @@ struct Hypermedia {
   struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                           std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      if (!input.url_key.empty()) {
-        const auto key = current::FromString<KEY>(input.url_key);
+      if (Exists(input.get_url_key)) {
+        const auto url_key_value = Value(input.get_url_key);
+        const auto key = field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
-          const std::string url = input.restful_url_prefix + '/' + input.data_url_component + '/' +
-                                  input.field_name + '/' + input.url_key;
+          const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' +
+                                  input.field_name + '/' +
+                                  field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
           auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, Value(result)));
           const auto last_modified = input.field.LastModified(key);
           if (Exists(last_modified)) {
@@ -278,16 +254,18 @@ struct Hypermedia {
           return response;
         } else {
           return ErrorResponse(
-              ResourceNotFoundError("The requested resource not found.", {{"key", input.url_key}}),
+              ResourceNotFoundError(
+                  "The requested resource not found.",
+                  {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
               HTTPResponseCode.NotFound);
         }
       } else {
         HypermediaRESTContainerResponse response;
-        response.url = input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name;
-        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+        response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+        for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
           response.data.emplace_back(
-              response.url + '/' +
-              current::ToString(PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
+              response.url + '/' + field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
+                                       field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
         }
         return Response(response);
       }
@@ -316,12 +294,12 @@ struct Hypermedia {
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
-      const std::string key = current::ToString(entry_key);
+      const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
+      const std::string key = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
         const std::string url =
-            input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + key;
+            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + key;
         auto response = Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
                                  HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
@@ -350,13 +328,13 @@ struct Hypermedia {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (ExtractIfUnmodifiedSinceOrRespondWithError(request, if_unmodified_since)) {
-        WithKeyFromURL(std::move(request), std::forward<F>(next));
+        field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
       }
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      const std::string url_key = current::ToString(input.url_key);
-      if (input.entry_key == input.url_key) {
+      const std::string url_key = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.put_key);
+      if (input.entry_key == input.put_key) {
         const bool exists = Exists(input.field[input.entry_key]);
         if (exists && Exists(if_unmodified_since)) {
           const auto last_modified = input.field.LastModified(input.entry_key);
@@ -370,7 +348,7 @@ struct Hypermedia {
         }
         input.field.Add(input.entry);
         const std::string url =
-            input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
+            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + url_key;
         Response response;
         HypermediaRESTResourceUpdateResponse hypermedia_response(true);
         hypermedia_response.resource_url = url;
@@ -387,9 +365,10 @@ struct Hypermedia {
         }
         return response;
       } else {
-        const std::string object_key = current::ToString(input.entry_key);
+        const std::string key_as_url_string =
+            field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.entry_key);
         return ErrorResponse(InvalidKeyError("Object key doesn't match URL key.",
-                                             {{"object_key", object_key}, {"url_key", url_key}}),
+                                             {{"object_key", key_as_url_string}, {"url_key", url_key}}),
                              HTTPResponseCode.BadRequest);
       }
     }
@@ -406,17 +385,17 @@ struct Hypermedia {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (ExtractIfUnmodifiedSinceOrRespondWithError(request, if_unmodified_since)) {
-        WithKeyFromURL(std::move(request), std::forward<F>(next));
+        field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
       }
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       std::string message;
       bool existed = false;
-      if (Exists(input.field[input.key])) {
+      if (Exists(input.field[input.delete_key])) {
         existed = true;
         if (Exists(if_unmodified_since)) {
-          const auto last_modified = input.field.LastModified(input.key);
+          const auto last_modified = input.field.LastModified(input.delete_key);
           if (Exists(last_modified) && Value(last_modified).count() > Value(if_unmodified_since).count()) {
             return ErrorResponse(
                 ResourceWasModifiedError("Resource can not be deleted as it has been modified in the meantime.",
@@ -429,10 +408,10 @@ struct Hypermedia {
       } else {
         message = "Resource didn't exist.";
       }
-      input.field.Erase(input.key);
+      input.field.Erase(input.delete_key);
       auto response = Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
       if (existed) {
-        const auto last_modified = input.field.LastModified(input.key);
+        const auto last_modified = input.field.LastModified(input.delete_key);
         if (Exists(last_modified)) {
           response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
         }

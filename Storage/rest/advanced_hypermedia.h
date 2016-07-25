@@ -34,6 +34,8 @@ SOFTWARE.
 #include "hypermedia.h"
 #include "sfinae.h"
 
+#include "../api_types.h"
+
 namespace current {
 namespace storage {
 namespace rest {
@@ -63,14 +65,16 @@ template <typename T, typename INPUT, typename TT>
 inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(TT& record,
                                                                                 const INPUT& input,
                                                                                 bool set_success = true) {
+  using particular_field_t = current::decay<decltype(input.field)>;
+
   AdvancedHypermediaRESTRecordResponse<T> response;
-  const std::string key_as_string = current::ToString(
-      PerStorageFieldType<current::decay<decltype(input.field)>>::ExtractOrComposeKey(record));
+  const std::string key_as_url_string = field_type_dependent_t<particular_field_t>::ComposeURLKey(
+      field_type_dependent_t<particular_field_t>::ExtractOrComposeKey(record));
   if (set_success) {
     response.success = true;
   }
-  response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
-  response.url = response.url_directory + '/' + key_as_string;
+  response.url_directory = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+  response.url = response.url_directory + '/' + key_as_url_string;
   response.url_full = response.url;
   response.url_brief = response.url + "?fields=brief";
   response.data = static_cast<const T&>(record);
@@ -104,14 +108,17 @@ struct AdvancedHypermedia : Hypermedia {
       brief = (q["fields"] == "brief");
       query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
       query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
-      WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                           std::forward<F>(next));
     }
 
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      if (!input.url_key.empty()) {
+      if (Exists(input.get_url_key)) {
         // Single record view.
-        const auto entry_key = current::FromString<KEY>(input.url_key);
+        const auto url_key_value = Value(input.get_url_key);
+        const auto entry_key =
+            field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
         const ImmutableOptional<ENTRY> result = input.field[entry_key];
         if (Exists(result)) {
           const auto& value = Value(result);
@@ -131,7 +138,9 @@ struct AdvancedHypermedia : Hypermedia {
           }
         } else {
           return ErrorResponse(
-              ResourceNotFoundError("Resource with requested key not found.", {{"key", input.url_key}}),
+              ResourceNotFoundError(
+                  "The resource with the requested key has found been.",
+                  {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
               HTTPResponseCode.NotFound);
         }
       } else {
@@ -141,16 +150,17 @@ struct AdvancedHypermedia : Hypermedia {
           // `data` is an array of `AdvancedHypermediaRESTRecordResponse<brief_entry_t>`.
           using data_entry_t = AdvancedHypermediaRESTRecordResponse<brief_entry_t>;
           AdvancedHypermediaRESTContainerResponse<data_entry_t> response;
-          response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
+          response.url_directory =
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           const auto GenPageURL = [&](uint64_t i, uint64_t n) {
-            return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) +
-                   "&n=" + current::ToString(n);
+            return input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + "?i=" +
+                   current::ToString(i) + "&n=" + current::ToString(n);
           };
           // Poor man's pagination.
           uint64_t i = 0;
           bool has_previous_page = false;
           bool has_next_page = false;
-          for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+          for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
             if (i >= query_i && i < query_i + query_n) {
               response.data.push_back(FormatAsAdvancedHypermediaRecord<brief_entry_t>(element, input, false));
             } else if (i < query_i) {
@@ -190,7 +200,7 @@ struct AdvancedHypermedia : Hypermedia {
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.
             std::ostringstream result;
-            for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+            for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
               result << JSON<JSONFormat::Minimalistic>(element) << '\n';
             }
             return result.str();
