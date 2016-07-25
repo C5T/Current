@@ -36,7 +36,12 @@ SOFTWARE.
 #include "../../dflags/dflags.h"
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-TEST(Graph, Love) {
+#ifndef CURRENT_CI
+TEST(Graph, Love)
+#else
+TEST(Graph, DISABLED_Love)
+#endif
+{
   // Where visualization meets love.
   using namespace current::gnuplot;
 #ifndef CURRENT_APPLE
