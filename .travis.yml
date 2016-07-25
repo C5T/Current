@@ -59,23 +59,6 @@ matrix:
             - gnuplot
 
     - script:
-      - mkdir local_bin
-      - ln -sf $(which g++-5) local_bin/g++
-      - ln -sf $(which clang++-3.6) local_bin/clang++
-      - export PATH=$PWD/local_bin:$PATH
-      - make check
-      compiler: "g++-5 && clang++-3.6, Job: make check"
-      os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.6
-          packages:
-            - g++-5
-            - clang-3.6
-
-    - script:
       - brew update
       - brew install gnuplot
       - clang++ -v
@@ -97,7 +80,28 @@ matrix:
       compiler: "native clang++, Job: make individual_tests"
       os: osx
 
+    - script:
+      - mkdir local_bin
+      - ln -sf $(which g++-5) local_bin/g++
+      - ln -sf $(which clang++-3.6) local_bin/clang++
+      - export PATH=$PWD/local_bin:$PATH
+      - make check
+      env:
+      - MAKE_CHECK=1
+      compiler: "g++-5 && clang++-3.6, Job: make check"
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.6
+          packages:
+            - g++-5
+            - clang-3.6
+
     - script: make check
+      env:
+      - MAKE_CHECK=1
       compiler: "native clang++, Job: make check"
       os: osx
 
