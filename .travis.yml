@@ -75,25 +75,25 @@ matrix:
             - g++-5
             - clang-3.6
 
-    - env:
-      - NDEBUG=0
     - script:
       - brew update
       - brew install gnuplot
       - clang++ -v
       - clang++ --version
       - make individual_tests
+      env:
+      - NDEBUG=0
       compiler: "native clang++, Job: make individual_tests"
       os: osx
 
-    - env:
-      - NDEBUG=1
     - script:
       - brew update
       - brew install gnuplot
       - clang++ -v
       - clang++ --version
       - make individual_tests
+      env:
+      - NDEBUG=1
       compiler: "native clang++, Job: make individual_tests"
       os: osx
 
