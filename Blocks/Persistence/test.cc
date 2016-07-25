@@ -199,15 +199,31 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
       p = nullptr;
     });
 
-    do {
-      ;  // Spin lock.
-    } while (static_cast<bool>(iterator));
+    // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
+    {
+      std::mutex mutex;
+      while (true) {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (!iterator) {
+          break;
+        }
+      }
+    }
+
     ASSERT_THROW(*iterator, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
     ASSERT_THROW(++iterator, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
 
-    do {
-      ;  // Spin lock.
-    } while (static_cast<bool>(iterable));
+    // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
+    {
+      std::mutex mutex;
+      while (true) {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (!iterable) {
+          break;
+        }
+      }
+    }
+
     ASSERT_THROW(iterable.begin(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
     ASSERT_THROW(iterable.end(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
   }
@@ -491,15 +507,31 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
       p = nullptr;
     });
 
-    do {
-      ;  // Spin lock.
-    } while (static_cast<bool>(iterator));
+    // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
+    {
+      std::mutex mutex;
+      while (true) {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (!iterator) {
+          break;
+        }
+      }
+    }
+
     ASSERT_THROW(*iterator, current::persistence::PersistenceFileNoLongerAvailable);
     ASSERT_THROW(++iterator, current::persistence::PersistenceFileNoLongerAvailable);
 
-    do {
-      ;  // Spin lock.
-    } while (static_cast<bool>(iterable));
+    // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
+    {
+      std::mutex mutex;
+      while (true) {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (!iterable) {
+          break;
+        }
+      }
+    }
+
     ASSERT_THROW(iterable.begin(), current::persistence::PersistenceFileNoLongerAvailable);
     ASSERT_THROW(iterable.end(), current::persistence::PersistenceFileNoLongerAvailable);
   }
