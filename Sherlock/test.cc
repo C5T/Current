@@ -267,7 +267,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
 #ifndef CURRENT_CI
 TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
 #else
-TEST(Sherlock, DIDABLED_SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
+TEST(Sherlock, DISABLED_SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
 #endif
 {
   current::time::ResetToZero();
