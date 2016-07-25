@@ -176,7 +176,12 @@ TEST(PersistenceLayer, MemoryExceptions) {
   }
 }
 
-TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
+#ifndef CURRENT_CI
+TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock)
+#else
+TEST(PersistenceLayer, DISABLED_MemoryIteratorCanNotOutliveMemoryBlock)
+#endif
+{
   using namespace persistence_test;
   using IMPL = current::persistence::Memory<std::string>;
 
