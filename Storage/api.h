@@ -31,7 +31,7 @@ SOFTWARE.
 #include <vector>
 #include <map>
 
-#include "api_base.h"
+#include "api_types.h"
 
 #include "rest/basic.h"
 
@@ -79,7 +79,7 @@ struct RESTfulRoute {
 
 namespace impl {
 
-// RESTful routes per fields. Multimap to allow both `/data/$FIELD` and `/schema/$FIELD`.
+// RESTful routes per fields. Multimap to allow `/{data|schema|map|etc.}/$FIELD` per `$FIELD`.
 using storage_handlers_map_t = std::multimap<std::string, RESTfulRoute>;
 
 // The inner `std::pair<>` of the above multimap.
@@ -112,26 +112,16 @@ struct PerFieldRESTfulHandlerGenerator {
   const registerer_t registerer;
   STORAGE& storage;
   const std::string restful_url_prefix;
-  const std::string data_url_component;
-  const std::string schema_url_component;
 
   PerFieldRESTfulHandlerGenerator(registerer_t registerer,
                                   STORAGE& storage,
-                                  const std::string& restful_url_prefix,
-                                  const std::string& data_url_component,
-                                  const std::string& schema_url_component)
-      : registerer(registerer),
-        storage(storage),
-        restful_url_prefix(restful_url_prefix),
-        data_url_component(data_url_component),
-        schema_url_component(schema_url_component) {}
+                                  const std::string& restful_url_prefix)
+      : registerer(registerer), storage(storage), restful_url_prefix(restful_url_prefix) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
   void operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
     const std::string restful_url_prefix = this->restful_url_prefix;
-    const std::string data_url_component = this->data_url_component;
-    const std::string schema_url_component = this->schema_url_component;
     const std::string field_name = input_field_name;
 
     // Data handler.
@@ -147,14 +137,12 @@ struct PerFieldRESTfulHandlerGenerator {
     registerer(storage_handlers_map_entry_t(
         field_name,
         RESTfulRoute(
-            data_url_component,
+            kRESTfulDataURLComponent,
             "",
-            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+            URLPathArgs::CountMask::Any,
             // Top-level capture by value to make own copy.
-            [&storage, restful_url_prefix, field_name, data_url_component, schema_url_component](
-                Request request) {
-              auto generic_input = RESTfulGenericInput<STORAGE>(
-                  storage, restful_url_prefix, data_url_component, schema_url_component);
+            [&storage, restful_url_prefix, field_name](Request request) {
+              auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix);
               if (request.method == "GET") {
                 GETHandler handler;
                 const bool export_requested = request.url.query.has("export");
@@ -162,7 +150,8 @@ struct PerFieldRESTfulHandlerGenerator {
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&storage, &handler, &generic_input, &field_name, export_requested](
-                        Request request, const std::string& url_key) {
+                        Request request,
+                        const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
                       const specific_field_t& field =
                           generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadOnlyTransaction(
@@ -217,12 +206,16 @@ struct PerFieldRESTfulHandlerGenerator {
                 handler.Enter(
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
-                    [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
+                    [&handler, &generic_input, &field_name](
+                        Request request,
+                        const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
                       try {
-                        const auto url_key = current::FromString<key_t>(key_as_string);
+                        const auto url_key =
+                            field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(
+                                input_url_key);
                         const auto entry = ParseJSON<entry_t>(request.body);
                         const auto entry_key =
-                            PerStorageFieldType<specific_field_t>::ExtractOrComposeKey(entry);
+                            field_type_dependent_t<specific_field_t>::ExtractOrComposeKey(entry);
                         specific_field_t& field =
                             generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                         generic_input.storage
@@ -251,18 +244,24 @@ struct PerFieldRESTfulHandlerGenerator {
                 handler.Enter(
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
-                    [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
-                      const auto key = current::FromString<key_t>(key_as_string);
+                    [&handler, &generic_input, &field_name](
+                        Request request,
+                        const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
+                      const auto url_key =
+                          field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(input_url_key);
                       specific_field_t& field =
                           generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadWriteTransaction(
                                                 // Capture local variables by value for safe async transactions.
-                                                [handler, generic_input, &field, key, field_name](
+                                                [handler, generic_input, &field, url_key, field_name](
                                                     mutable_fields_t fields) -> Response {
                                                   using DELETEInput =
                                                       RESTfulDELETEInput<STORAGE, specific_field_t, key_t>;
-                                                  DELETEInput input(
-                                                      std::move(generic_input), fields, field, field_name, key);
+                                                  DELETEInput input(std::move(generic_input),
+                                                                    fields,
+                                                                    field,
+                                                                    field_name,
+                                                                    url_key);
                                                   return handler.Run(input);
                                                 },
                                                 std::move(request)).Detach();
@@ -279,20 +278,15 @@ struct PerFieldRESTfulHandlerGenerator {
         [&](const std::string& route_suffix, const std::function<void(Request)> handler) {
           registerer(storage_handlers_map_entry_t(
               input_field_name,
-              RESTfulRoute(schema_url_component, route_suffix, URLPathArgs::CountMask::None, handler)));
+              RESTfulRoute(kRESTfulSchemaURLComponent, route_suffix, URLPathArgs::CountMask::None, handler)));
         });
   }
 };
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-void GenerateRESTfulHandler(registerer_t registerer,
-                            STORAGE& storage,
-                            const std::string& restful_url_prefix,
-                            const std::string& data_url_component,
-                            const std::string& schema_url_component) {
+void GenerateRESTfulHandler(registerer_t registerer, STORAGE& storage, const std::string& restful_url_prefix) {
   storage(::current::storage::FieldNameAndTypeByIndex<INDEX>(),
-          PerFieldRESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
-              registerer, storage, restful_url_prefix, data_url_component, schema_url_component));
+          PerFieldRESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(registerer, storage, restful_url_prefix));
 }
 
 }  // namespace current::storage::impl
@@ -303,21 +297,14 @@ class RESTfulStorage {
   RESTfulStorage(STORAGE_IMPL& storage,
                  int port,
                  const std::string& route_prefix,
-                 const std::string& restful_url_prefix_input,
-                 const std::string& data_url_component = "data",
-                 const std::string& schema_url_component = "schema")
-      : port_(port),
-        up_status_(std::make_unique<std::atomic_bool>(true)),
-        route_prefix_(route_prefix),
-        data_url_component_(data_url_component),
-        schema_url_component_(schema_url_component) {
+                 const std::string& restful_url_prefix_input)
+      : port_(port), up_status_(std::make_unique<std::atomic_bool>(true)), route_prefix_(route_prefix) {
     const std::string restful_url_prefix = restful_url_prefix_input;
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
-    ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(
-        storage, restful_url_prefix, data_url_component, schema_url_component, handlers_);
+    ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& endpoint : handlers_) {
       RegisterRoute(endpoint.first, endpoint.second);
@@ -330,8 +317,6 @@ class RESTfulStorage {
     RESTfulRegisterTopLevelInput<STORAGE_IMPL> input(
         storage,
         restful_url_prefix,
-        data_url_component_,
-        schema_url_component_,
         port,
         handlers_scope_,
         std::vector<std::string>(fields_set.begin(), fields_set.end()),
@@ -369,8 +354,6 @@ class RESTfulStorage {
   // Need an `std::unique_ptr<>` for the whole REST to stay `std::move()`-able.
   std::unique_ptr<std::atomic_bool> up_status_;
   const std::string route_prefix_;
-  const std::string data_url_component_;
-  const std::string schema_url_component_;
   std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
   impl::storage_handlers_map_t handlers_;
   HTTPRoutesScope handlers_scope_;
@@ -380,11 +363,8 @@ class RESTfulStorage {
   struct ForEachFieldByIndex {
     static void RegisterIt(STORAGE_IMPL& storage,
                            const std::string& restful_url_prefix,
-                           const std::string& data_url_component,
-                           const std::string& schema_url_component,
                            impl::storage_handlers_map_t& handlers) {
-      ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(
-          storage, restful_url_prefix, data_url_component, schema_url_component, handlers);
+      ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, handlers);
       using specific_entry_type_t =
           typename impl::PerFieldRESTfulHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
       current::metaprogramming::CallIf<FieldExposedViaREST<STORAGE_IMPL, specific_entry_type_t>::exposed>::With(
@@ -393,18 +373,14 @@ class RESTfulStorage {
               handlers.insert(restful_route);
             };
             impl::GenerateRESTfulHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
-                registerer, storage, restful_url_prefix, data_url_component, schema_url_component);
+                registerer, storage, restful_url_prefix);
           });
     }
   };
 
   template <typename BLAH>
   struct ForEachFieldByIndex<BLAH, 0> {
-    static void RegisterIt(STORAGE_IMPL&,
-                           const std::string&,
-                           const std::string&,
-                           const std::string&,
-                           impl::storage_handlers_map_t&) {}
+    static void RegisterIt(STORAGE_IMPL&, const std::string&, impl::storage_handlers_map_t&) {}
   };
 
   void RegisterRoute(const std::string& field_name, const RESTfulRoute& route) {

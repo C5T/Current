@@ -2090,8 +2090,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
 
     // Test RESTful matrix too.
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima-beer")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max-beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
 
     // For this test, we disallow POST for the `/like`-s matrix.
     EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api/data/like", SimpleLike("dima", "beer"))).code));
@@ -2099,32 +2099,36 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Add a few likes.
     EXPECT_EQ(
         201,
-        static_cast<int>(HTTP(PUT(base_url + "/api/data/like/dima-beer", SimpleLike("dima", "beer"))).code));
+        static_cast<int>(HTTP(PUT(base_url + "/api/data/like/dima/beer", SimpleLike("dima", "beer"))).code));
     EXPECT_EQ(201,
               static_cast<int>(
-                  HTTP(PUT(base_url + "/api/data/like/max-beer", SimpleLike("max", "beer", "Cheers!"))).code));
+                  HTTP(PUT(base_url + "/api/data/like/max/beer", SimpleLike("max", "beer", "Cheers!"))).code));
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima-beer")).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max-beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
 
     EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
-              HTTP(GET(base_url + "/api/data/like/dima-beer")).body);
+              HTTP(GET(base_url + "/api/data/like/dima/beer")).body);
+    EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
+              HTTP(GET(base_url + "/api/data/like?row=max&col=beer")).body);
+    EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
+              HTTP(GET(base_url + "/api/data/like?key1=max&key2=beer")).body);
     // Meh, this test is not for `AdvancedHypermedia`. -- D.K.
     // EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\"}\n",
     //           HTTP(GET(base_url + "/api/data/like/max-beer?fields=brief")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
-              HTTP(GET(base_url + "/api/data/like/max-beer")).body);
+              HTTP(GET(base_url + "/api/data/like/max/beer")).body);
 
     // GET matrix as the collection.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
-    EXPECT_EQ("max-beer\ndima-beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+    EXPECT_EQ("max/beer\ndima/beer\n", HTTP(GET(base_url + "/api/data/like")).body);
 
     // Clean up the likes.
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima-beer")).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/max-beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/max/beer")).code));
 
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima-beer")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max-beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
 
     // Confirm REST endpoints successfully change to 503s.
     rest.SwitchHTTPEndpointsTo503s();
@@ -2132,10 +2136,10 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah-blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah/blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/like", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah-blah", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah-blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah/blah", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah/blah")).code));
 
     // Twice, just in case.
     rest.SwitchHTTPEndpointsTo503s();
@@ -2143,10 +2147,10 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah-blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah/blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/like", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah-blah", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah-blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah/blah", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah/blah")).code));
   }
 
   const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
