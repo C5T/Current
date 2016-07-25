@@ -222,7 +222,9 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
           break;
         }
       }
-    }    ASSERT_THROW(iterable.begin(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    }
+
+    ASSERT_THROW(iterable.begin(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
     ASSERT_THROW(iterable.end(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
   }
 
@@ -514,7 +516,9 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
           break;
         }
       }
-    }    ASSERT_THROW(*iterator, current::persistence::PersistenceFileNoLongerAvailable);
+    }
+
+    ASSERT_THROW(*iterator, current::persistence::PersistenceFileNoLongerAvailable);
     ASSERT_THROW(++iterator, current::persistence::PersistenceFileNoLongerAvailable);
 
     // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
@@ -526,7 +530,9 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
           break;
         }
       }
-    }    ASSERT_THROW(iterable.begin(), current::persistence::PersistenceFileNoLongerAvailable);
+    }
+
+    ASSERT_THROW(iterable.begin(), current::persistence::PersistenceFileNoLongerAvailable);
     ASSERT_THROW(iterable.end(), current::persistence::PersistenceFileNoLongerAvailable);
   }
 
