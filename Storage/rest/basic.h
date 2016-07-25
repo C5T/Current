@@ -52,15 +52,14 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithOptionalKeyFromURL(
-          std::move(request), std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                           std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (Exists(input.get_url_key)) {
         const auto key =
-            KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::template ParseURLKey<KEY>(
-                Value(input.get_url_key));
+            field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(Value(input.get_url_key));
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
           return Value(result);
@@ -70,7 +69,7 @@ struct Basic {
       } else {
         std::ostringstream result;
         for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
-          result << KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::ComposeURLKey(
+          result << field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
                         PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element)) << '\n';
         }
         return result.str();
@@ -82,10 +81,9 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithOrWithoutKeyFromURL(
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOrWithoutKeyFromURL(
           std::move(request),
-          [](Request request,
-             const typename KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::url_key_t&) {
+          [](Request request, const typename field_type_dependent_t<PARTICULAR_FIELD>::url_key_t&) {
             request("Should not have resource key in the URL.\n", HTTPResponseCode.BadRequest);
           },
           std::forward<F>(next));
@@ -104,7 +102,7 @@ struct Basic {
       const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
-        return Response(KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::ComposeURLKey(entry_key),
+        return Response(field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key),
                         HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
@@ -119,8 +117,7 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithKeyFromURL(std::move(request),
-                                                                                       std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
@@ -147,8 +144,7 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithKeyFromURL(std::move(request),
-                                                                                       std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {

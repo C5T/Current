@@ -68,13 +68,12 @@ inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(
   using particular_field_t = current::decay<decltype(input.field)>;
 
   AdvancedHypermediaRESTRecordResponse<T> response;
-  const std::string key_as_url_string =
-      KeyTypeDependent<typename particular_field_t::rest_behavior_t>::ComposeURLKey(
-          PerStorageFieldType<particular_field_t>::ExtractOrComposeKey(record));
+  const std::string key_as_url_string = field_type_dependent_t<particular_field_t>::ComposeURLKey(
+      PerStorageFieldType<particular_field_t>::ExtractOrComposeKey(record));
   if (set_success) {
     response.success = true;
   }
-  response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
+  response.url_directory = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
   response.url = response.url_directory + '/' + key_as_url_string;
   response.url_full = response.url;
   response.url_brief = response.url + "?fields=brief";
@@ -109,8 +108,8 @@ struct AdvancedHypermedia : Hypermedia {
       brief = (q["fields"] == "brief");
       query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
       query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
-      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithOptionalKeyFromURL(
-          std::move(request), std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                           std::forward<F>(next));
     }
 
     template <class INPUT>
@@ -119,8 +118,7 @@ struct AdvancedHypermedia : Hypermedia {
         // Single record view.
         const auto url_key_value = Value(input.get_url_key);
         const auto entry_key =
-            KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::template ParseURLKey<KEY>(
-                url_key_value);
+            field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
         const ImmutableOptional<ENTRY> result = input.field[entry_key];
         if (Exists(result)) {
           const auto& value = Value(result);
@@ -139,12 +137,11 @@ struct AdvancedHypermedia : Hypermedia {
             return value;
           }
         } else {
-          return ErrorResponse(ResourceNotFoundError(
-                                   "The resource with the requested key has found been.",
-                                   {{"key",
-                                     KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::FormatURLKey(
-                                         url_key_value)}}),
-                               HTTPResponseCode.NotFound);
+          return ErrorResponse(
+              ResourceNotFoundError(
+                  "The resource with the requested key has found been.",
+                  {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
+              HTTPResponseCode.NotFound);
         }
       } else {
         // Collection view.
@@ -153,10 +150,11 @@ struct AdvancedHypermedia : Hypermedia {
           // `data` is an array of `AdvancedHypermediaRESTRecordResponse<brief_entry_t>`.
           using data_entry_t = AdvancedHypermediaRESTRecordResponse<brief_entry_t>;
           AdvancedHypermediaRESTContainerResponse<data_entry_t> response;
-          response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
+          response.url_directory =
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           const auto GenPageURL = [&](uint64_t i, uint64_t n) {
-            return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) +
-                   "&n=" + current::ToString(n);
+            return input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + "?i=" +
+                   current::ToString(i) + "&n=" + current::ToString(n);
           };
           // Poor man's pagination.
           uint64_t i = 0;

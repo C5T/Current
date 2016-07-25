@@ -34,11 +34,15 @@ namespace current {
 namespace storage {
 namespace rest {
 
+const std::string kRESTfulDataURLComponent = "data";
+const std::string kRESTfulSchemaURLComponent = "schema";
+// TODO(dkorolev): const std::string kRESTfulMapURLComponent = "map";
+
 template <typename>
-struct KeyTypeDependentImpl {};
+struct FieldTypeDependentImpl {};
 
 template <>
-struct KeyTypeDependentImpl<behavior::Dictionary> {
+struct FieldTypeDependentImpl<behavior::Dictionary> {
   using url_key_t = std::string;
   template <typename F_WITH, typename F_WITHOUT>
   static void CallWithOrWithoutKeyFromURL(Request&& request_rref, F_WITH&& with, F_WITHOUT&& without) {
@@ -65,7 +69,7 @@ struct KeyTypeDependentImpl<behavior::Dictionary> {
 };
 
 template <>
-struct KeyTypeDependentImpl<behavior::Matrix> {
+struct FieldTypeDependentImpl<behavior::Matrix> {
   using url_key_t = std::pair<std::string, std::string>;
 
   template <typename F_WITH, typename F_WITHOUT>
@@ -100,10 +104,10 @@ struct KeyTypeDependentImpl<behavior::Matrix> {
 };
 
 template <typename REST_BEHAVIOR>
-struct KeyTypeDependent : KeyTypeDependentImpl<REST_BEHAVIOR> {
+struct FieldTypeDependent : FieldTypeDependentImpl<REST_BEHAVIOR> {
   template <typename F>
   static void CallWithKeyFromURL(Request&& request_rref, F&& next_with_key) {
-    KeyTypeDependentImpl<REST_BEHAVIOR>::CallWithOrWithoutKeyFromURL(
+    FieldTypeDependentImpl<REST_BEHAVIOR>::CallWithOrWithoutKeyFromURL(
         std::move(request_rref),
         std::forward<F>(next_with_key),
         [](Request&& proxied_request_rref) {
@@ -113,12 +117,15 @@ struct KeyTypeDependent : KeyTypeDependentImpl<REST_BEHAVIOR> {
 
   template <typename F>
   static void CallWithOptionalKeyFromURL(Request&& request_rref, F&& next) {
-    KeyTypeDependentImpl<REST_BEHAVIOR>::CallWithOrWithoutKeyFromURL(
+    FieldTypeDependentImpl<REST_BEHAVIOR>::CallWithOrWithoutKeyFromURL(
         std::move(request_rref),
         std::forward<F>(next),
         [&next](Request&& proxied_request_rref) { next(std::move(proxied_request_rref), nullptr); });
   }
 };
+
+template <typename FIELD_TYPE>
+using field_type_dependent_t = FieldTypeDependent<typename FIELD_TYPE::rest_behavior_t>;
 
 template <typename STORAGE>
 struct RESTfulGenericInput {
@@ -183,7 +190,7 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
   using immutable_fields_t = ImmutableFields<STORAGE>;
-  using url_key_t = typename KeyTypeDependent<typename FIELD::rest_behavior_t>::url_key_t;
+  using url_key_t = typename field_type_dependent_t<FIELD>::url_key_t;
 
   immutable_fields_t fields;
   const FIELD& field;

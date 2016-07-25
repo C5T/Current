@@ -79,7 +79,7 @@ struct RESTfulRoute {
 
 namespace impl {
 
-// RESTful routes per fields. Multimap to allow both `/data/$FIELD` and `/schema/$FIELD`.
+// RESTful routes per fields. Multimap to allow `/{data|schema|map|etc.}/$FIELD` per `$FIELD`.
 using storage_handlers_map_t = std::multimap<std::string, RESTfulRoute>;
 
 // The inner `std::pair<>` of the above multimap.
@@ -137,7 +137,7 @@ struct PerFieldRESTfulHandlerGenerator {
     registerer(storage_handlers_map_entry_t(
         field_name,
         RESTfulRoute(
-            "data",
+            kRESTfulDataURLComponent,
             "",
             URLPathArgs::CountMask::Any,
             // Top-level capture by value to make own copy.
@@ -151,8 +151,7 @@ struct PerFieldRESTfulHandlerGenerator {
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&storage, &handler, &generic_input, &field_name, export_requested](
                         Request request,
-                        const Optional<typename KeyTypeDependent<
-                            typename specific_field_t::rest_behavior_t>::url_key_t>& url_key) {
+                        const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
                       const specific_field_t& field =
                           generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadOnlyTransaction(
@@ -209,12 +208,11 @@ struct PerFieldRESTfulHandlerGenerator {
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&handler, &generic_input, &field_name](
                         Request request,
-                        const typename KeyTypeDependent<typename specific_field_t::rest_behavior_t>::url_key_t&
-                            input_url_key) {
+                        const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
                       try {
                         const auto url_key =
-                            KeyTypeDependent<typename specific_field_t::rest_behavior_t>::template ParseURLKey<
-                                key_t>(input_url_key);
+                            field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(
+                                input_url_key);
                         const auto entry = ParseJSON<entry_t>(request.body);
                         const auto entry_key =
                             PerStorageFieldType<specific_field_t>::ExtractOrComposeKey(entry);
@@ -248,11 +246,9 @@ struct PerFieldRESTfulHandlerGenerator {
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&handler, &generic_input, &field_name](
                         Request request,
-                        const typename KeyTypeDependent<typename specific_field_t::rest_behavior_t>::url_key_t&
-                            input_url_key) {
+                        const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
                       const auto url_key =
-                          KeyTypeDependent<typename specific_field_t::rest_behavior_t>::template ParseURLKey<
-                              key_t>(input_url_key);
+                          field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(input_url_key);
                       specific_field_t& field =
                           generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadWriteTransaction(
@@ -281,7 +277,8 @@ struct PerFieldRESTfulHandlerGenerator {
         storage,
         [&](const std::string& route_suffix, const std::function<void(Request)> handler) {
           registerer(storage_handlers_map_entry_t(
-              input_field_name, RESTfulRoute("schema", route_suffix, URLPathArgs::CountMask::None, handler)));
+              input_field_name,
+              RESTfulRoute(kRESTfulSchemaURLComponent, route_suffix, URLPathArgs::CountMask::None, handler)));
         });
   }
 };
