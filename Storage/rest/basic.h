@@ -31,6 +31,7 @@ SOFTWARE.
 
 #include "sfinae.h"
 
+#include "../api_types.h"
 #include "../storage.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -47,41 +48,19 @@ struct Basic {
   template <class INPUT>
   static void RegisterTopLevel(const INPUT&) {}
 
-  template <typename F_WITH, typename F_WITHOUT>
-  static void WithOrWithoutKeyFromURL(Request request, F_WITH&& with, F_WITHOUT&& without) {
-    if (request.url.query.has("key")) {
-      with(std::move(request), request.url.query["key"]);
-    } else if (!request.url_path_args.empty()) {
-      with(std::move(request), request.url_path_args[0]);
-    } else {
-      without(std::move(request));
-    }
-  }
-
-  template <typename F>
-  static void WithKeyFromURL(Request request, F&& next_with_key) {
-    WithOrWithoutKeyFromURL(
-        std::move(request),
-        next_with_key,
-        [](Request request) { request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest); });
-  }
-
-  template <typename F>
-  static void WithOptionalKeyFromURL(Request request, F&& next) {
-    WithOrWithoutKeyFromURL(
-        std::move(request), next, [&next](Request request) { next(std::move(request), ""); });
-  }
-
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
+      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithOptionalKeyFromURL(
+          std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      if (!input.url_key.empty()) {
-        const auto key = current::FromString<KEY>(input.url_key);
+      if (Exists(input.get_url_key)) {
+        const auto key =
+            KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::template ParseURLKey<KEY>(
+                Value(input.get_url_key));
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
           return Value(result);
@@ -91,8 +70,8 @@ struct Basic {
       } else {
         std::ostringstream result;
         for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
-          result << current::ToString(PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element))
-                 << '\n';
+          result << KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::ComposeURLKey(
+                        PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element)) << '\n';
         }
         return result.str();
       }
@@ -103,11 +82,13 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      if (!request.url_path_args.empty()) {
-        request("Should not have resource key in the URL.\n", HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
+      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithOrWithoutKeyFromURL(
+          std::move(request),
+          [](Request request,
+             const typename KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::url_key_t&) {
+            request("Should not have resource key in the URL.\n", HTTPResponseCode.BadRequest);
+          },
+          std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
@@ -123,7 +104,8 @@ struct Basic {
       const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
-        return Response(current::ToString(entry_key), HTTPResponseCode.Created);
+        return Response(KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::ComposeURLKey(entry_key),
+                        HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }
@@ -137,11 +119,12 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      WithKeyFromURL(std::move(request), std::forward<F>(next));
+      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithKeyFromURL(std::move(request),
+                                                                                       std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      if (input.entry_key == input.url_key) {
+      if (input.entry_key == input.put_key) {
         const bool exists = Exists(input.field[input.entry_key]);
         input.field.Add(input.entry);
         if (exists) {
@@ -164,11 +147,12 @@ struct Basic {
   struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      WithKeyFromURL(std::move(request), std::forward<F>(next));
+      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithKeyFromURL(std::move(request),
+                                                                                       std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      input.field.Erase(input.key);
+      input.field.Erase(input.delete_key);
       return Response("Deleted.\n", HTTPResponseCode.OK);
     }
   };

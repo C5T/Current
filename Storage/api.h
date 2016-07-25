@@ -31,7 +31,7 @@ SOFTWARE.
 #include <vector>
 #include <map>
 
-#include "api_base.h"
+#include "api_types.h"
 
 #include "rest/basic.h"
 
@@ -139,7 +139,7 @@ struct PerFieldRESTfulHandlerGenerator {
         RESTfulRoute(
             "data",
             "",
-            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+            URLPathArgs::CountMask::Any,
             // Top-level capture by value to make own copy.
             [&storage, restful_url_prefix, field_name](Request request) {
               auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix);
@@ -150,7 +150,9 @@ struct PerFieldRESTfulHandlerGenerator {
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
                     [&storage, &handler, &generic_input, &field_name, export_requested](
-                        Request request, const std::string& url_key) {
+                        Request request,
+                        const Optional<typename KeyTypeDependent<
+                            typename specific_field_t::rest_behavior_t>::url_key_t>& url_key) {
                       const specific_field_t& field =
                           generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadOnlyTransaction(
@@ -205,9 +207,14 @@ struct PerFieldRESTfulHandlerGenerator {
                 handler.Enter(
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
-                    [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
+                    [&handler, &generic_input, &field_name](
+                        Request request,
+                        const typename KeyTypeDependent<typename specific_field_t::rest_behavior_t>::url_key_t&
+                            input_url_key) {
                       try {
-                        const auto url_key = current::FromString<key_t>(key_as_string);
+                        const auto url_key =
+                            KeyTypeDependent<typename specific_field_t::rest_behavior_t>::template ParseURLKey<
+                                key_t>(input_url_key);
                         const auto entry = ParseJSON<entry_t>(request.body);
                         const auto entry_key =
                             PerStorageFieldType<specific_field_t>::ExtractOrComposeKey(entry);
@@ -239,18 +246,26 @@ struct PerFieldRESTfulHandlerGenerator {
                 handler.Enter(
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
-                    [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
-                      const auto key = current::FromString<key_t>(key_as_string);
+                    [&handler, &generic_input, &field_name](
+                        Request request,
+                        const typename KeyTypeDependent<typename specific_field_t::rest_behavior_t>::url_key_t&
+                            input_url_key) {
+                      const auto url_key =
+                          KeyTypeDependent<typename specific_field_t::rest_behavior_t>::template ParseURLKey<
+                              key_t>(input_url_key);
                       specific_field_t& field =
                           generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadWriteTransaction(
                                                 // Capture local variables by value for safe async transactions.
-                                                [handler, generic_input, &field, key, field_name](
+                                                [handler, generic_input, &field, url_key, field_name](
                                                     mutable_fields_t fields) -> Response {
                                                   using DELETEInput =
                                                       RESTfulDELETEInput<STORAGE, specific_field_t, key_t>;
-                                                  DELETEInput input(
-                                                      std::move(generic_input), fields, field, field_name, key);
+                                                  DELETEInput input(std::move(generic_input),
+                                                                    fields,
+                                                                    field,
+                                                                    field_name,
+                                                                    url_key);
                                                   return handler.Run(input);
                                                 },
                                                 std::move(request)).Detach();

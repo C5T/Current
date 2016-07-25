@@ -34,6 +34,8 @@ SOFTWARE.
 #include "hypermedia.h"
 #include "sfinae.h"
 
+#include "../api_types.h"
+
 namespace current {
 namespace storage {
 namespace rest {
@@ -63,14 +65,17 @@ template <typename T, typename INPUT, typename TT>
 inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(TT& record,
                                                                                 const INPUT& input,
                                                                                 bool set_success = true) {
+  using particular_field_t = current::decay<decltype(input.field)>;
+
   AdvancedHypermediaRESTRecordResponse<T> response;
-  const std::string key_as_string = current::ToString(
-      PerStorageFieldType<current::decay<decltype(input.field)>>::ExtractOrComposeKey(record));
+  const std::string key_as_url_string =
+      KeyTypeDependent<typename particular_field_t::rest_behavior_t>::ComposeURLKey(
+          PerStorageFieldType<particular_field_t>::ExtractOrComposeKey(record));
   if (set_success) {
     response.success = true;
   }
   response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
-  response.url = response.url_directory + '/' + key_as_string;
+  response.url = response.url_directory + '/' + key_as_url_string;
   response.url_full = response.url;
   response.url_brief = response.url + "?fields=brief";
   response.data = static_cast<const T&>(record);
@@ -104,14 +109,18 @@ struct AdvancedHypermedia : Hypermedia {
       brief = (q["fields"] == "brief");
       query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
       query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
-      WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
+      KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::CallWithOptionalKeyFromURL(
+          std::move(request), std::forward<F>(next));
     }
 
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      if (!input.url_key.empty()) {
+      if (Exists(input.get_url_key)) {
         // Single record view.
-        const auto entry_key = current::FromString<KEY>(input.url_key);
+        const auto url_key_value = Value(input.get_url_key);
+        const auto entry_key =
+            KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::template ParseURLKey<KEY>(
+                url_key_value);
         const ImmutableOptional<ENTRY> result = input.field[entry_key];
         if (Exists(result)) {
           const auto& value = Value(result);
@@ -130,9 +139,12 @@ struct AdvancedHypermedia : Hypermedia {
             return value;
           }
         } else {
-          return ErrorResponse(
-              ResourceNotFoundError("Resource with requested key not found.", {{"key", input.url_key}}),
-              HTTPResponseCode.NotFound);
+          return ErrorResponse(ResourceNotFoundError(
+                                   "The resource with the requested key has found been.",
+                                   {{"key",
+                                     KeyTypeDependent<typename PARTICULAR_FIELD::rest_behavior_t>::FormatURLKey(
+                                         url_key_value)}}),
+                               HTTPResponseCode.NotFound);
         }
       } else {
         // Collection view.
