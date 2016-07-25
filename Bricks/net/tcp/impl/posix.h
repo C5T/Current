@@ -118,8 +118,8 @@ class SocketHandle : private SocketSystemInitializer {
         CURRENT_THROW(SocketCreateException());
       }
     }
-
     // LCOV_EXCL_STOP
+
     if (::setsockopt(socket_,
                      SOL_SOCKET,
                      SO_REUSEADDR,
