@@ -2,6 +2,7 @@ matrix:
   include:
     - script: make individual_tests
       env:
+      - NDEBUG=0
       - CPLUSPLUS=g++-5
       compiler: "g++-5, Job: make individual_tests"
       os: linux
@@ -15,6 +16,36 @@ matrix:
 
     - script: make individual_tests
       env:
+      - NDEBUG=0
+      - CPLUSPLUS=clang++-3.6
+      compiler: "clang++-3.6, Job: make individual_tests"
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
+            - llvm-toolchain-precise-3.6
+          packages:
+            - clang-3.6
+            - gnuplot
+
+    - script: make individual_tests
+      env:
+      - NDEBUG=1
+      - CPLUSPLUS=g++-5
+      compiler: "g++-5, Job: make individual_tests"
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+            - gnuplot
+
+    - script: make individual_tests
+      env:
+      - NDEBUG=1
       - CPLUSPLUS=clang++-3.6
       compiler: "clang++-3.6, Job: make individual_tests"
       os: linux
@@ -28,11 +59,35 @@ matrix:
             - gnuplot
 
     - script:
+      - brew update
+      - brew install gnuplot
+      - clang++ -v
+      - clang++ --version
+      - make individual_tests
+      env:
+      - NDEBUG=0
+      compiler: "native clang++, Job: make individual_tests"
+      os: osx
+
+    - script:
+      - brew update
+      - brew install gnuplot
+      - clang++ -v
+      - clang++ --version
+      - make individual_tests
+      env:
+      - NDEBUG=1
+      compiler: "native clang++, Job: make individual_tests"
+      os: osx
+
+    - script:
       - mkdir local_bin
       - ln -sf $(which g++-5) local_bin/g++
       - ln -sf $(which clang++-3.6) local_bin/clang++
       - export PATH=$PWD/local_bin:$PATH
       - make check
+      env:
+      - MAKE_CHECK=1
       compiler: "g++-5 && clang++-3.6, Job: make check"
       os: linux
       addons:
@@ -44,16 +99,9 @@ matrix:
             - g++-5
             - clang-3.6
 
-    - script:
-      - brew update
-      - brew install gnuplot
-      - clang++ -v
-      - clang++ --version
-      - make individual_tests
-      compiler: "native clang++, Job: make individual_tests"
-      os: osx
-
     - script: make check
+      env:
+      - MAKE_CHECK=1
       compiler: "native clang++, Job: make check"
       os: osx
 
