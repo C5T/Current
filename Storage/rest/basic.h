@@ -68,9 +68,9 @@ struct Basic {
         }
       } else {
         std::ostringstream result;
-        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+        for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
           result << field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
-                        PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element)) << '\n';
+                        field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)) << '\n';
         }
         return result.str();
       }
@@ -99,7 +99,7 @@ struct Basic {
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
+      const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
         return Response(field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key),

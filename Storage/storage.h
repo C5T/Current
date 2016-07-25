@@ -427,48 +427,6 @@ using MutableFields = typename STORAGE::fields_by_ref_t;
 template <typename STORAGE>
 using ImmutableFields = typename STORAGE::fields_by_cref_t;
 
-template <typename>
-struct PerStorageFieldTypeImpl;
-
-template <typename T>
-using PerStorageFieldType = PerStorageFieldTypeImpl<typename T::rest_behavior_t>;
-
-template <>
-struct PerStorageFieldTypeImpl<rest::behavior::Dictionary> {
-  template <typename RECORD>
-  static auto ExtractOrComposeKey(const RECORD& entry)
-      -> decltype(current::storage::sfinae::GetKey(std::declval<RECORD>())) {
-    return current::storage::sfinae::GetKey(entry);
-  }
-  template <typename DICTIONARY>
-  static const DICTIONARY& Iterate(const DICTIONARY& dictionary) {
-    return dictionary;
-  }
-};
-
-template <>
-struct PerStorageFieldTypeImpl<rest::behavior::Matrix> {
-  template <typename RECORD>
-  static auto ExtractOrComposeKey(const RECORD& entry)
-      -> std::pair<decltype(current::storage::sfinae::GetRow(std::declval<RECORD>())),
-                   decltype(current::storage::sfinae::GetCol(std::declval<RECORD>()))> {
-    return std::make_pair(current::storage::sfinae::GetRow(entry), current::storage::sfinae::GetCol(entry));
-  }
-  template <typename MATRIX>
-  struct Iterable {
-    const MATRIX& matrix;
-    explicit Iterable(const MATRIX& matrix) : matrix(matrix) {}
-    using Iterator = typename MATRIX::iterator_t;
-    Iterator begin() const { return matrix.begin(); }
-    Iterator end() const { return matrix.end(); }
-  };
-
-  template <typename MATRIX>
-  static Iterable<MATRIX> Iterate(const MATRIX& matrix) {
-    return Iterable<MATRIX>(matrix);
-  }
-};
-
 }  // namespace current::storage
 }  // namespace current
 

@@ -66,6 +66,15 @@ struct FieldTypeDependentImpl<behavior::Dictionary> {
   static std::string ComposeURLKey(const KEY& key) {
     return FormatURLKey(current::ToString(key));
   }
+  template <typename RECORD>
+  static auto ExtractOrComposeKey(const RECORD& entry)
+      -> decltype(current::storage::sfinae::GetKey(std::declval<RECORD>())) {
+    return current::storage::sfinae::GetKey(entry);
+  }
+  template <typename DICTIONARY>
+  static const DICTIONARY& Iterate(const DICTIONARY& dictionary) {
+    return dictionary;
+  }
 };
 
 template <>
@@ -100,6 +109,25 @@ struct FieldTypeDependentImpl<behavior::Matrix> {
   static std::string ComposeURLKey(const KEY& key) {
     return FormatURLKey(std::make_pair(current::ToString(current::storage::sfinae::GetRow(key)),
                                        current::ToString(current::storage::sfinae::GetCol(key))));
+  }
+  template <typename RECORD>
+  static auto ExtractOrComposeKey(const RECORD& entry)
+      -> std::pair<decltype(current::storage::sfinae::GetRow(std::declval<RECORD>())),
+                   decltype(current::storage::sfinae::GetCol(std::declval<RECORD>()))> {
+    return std::make_pair(current::storage::sfinae::GetRow(entry), current::storage::sfinae::GetCol(entry));
+  }
+  template <typename MATRIX>
+  struct Iterable {
+    const MATRIX& matrix;
+    explicit Iterable(const MATRIX& matrix) : matrix(matrix) {}
+    using Iterator = typename MATRIX::iterator_t;
+    Iterator begin() const { return matrix.begin(); }
+    Iterator end() const { return matrix.end(); }
+  };
+
+  template <typename MATRIX>
+  static Iterable<MATRIX> Iterate(const MATRIX& matrix) {
+    return Iterable<MATRIX>(matrix);
   }
 };
 

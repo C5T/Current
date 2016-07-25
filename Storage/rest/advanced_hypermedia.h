@@ -69,7 +69,7 @@ inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(
 
   AdvancedHypermediaRESTRecordResponse<T> response;
   const std::string key_as_url_string = field_type_dependent_t<particular_field_t>::ComposeURLKey(
-      PerStorageFieldType<particular_field_t>::ExtractOrComposeKey(record));
+      field_type_dependent_t<particular_field_t>::ExtractOrComposeKey(record));
   if (set_success) {
     response.success = true;
   }
@@ -160,7 +160,7 @@ struct AdvancedHypermedia : Hypermedia {
           uint64_t i = 0;
           bool has_previous_page = false;
           bool has_next_page = false;
-          for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+          for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
             if (i >= query_i && i < query_i + query_n) {
               response.data.push_back(FormatAsAdvancedHypermediaRecord<brief_entry_t>(element, input, false));
             } else if (i < query_i) {
@@ -200,7 +200,7 @@ struct AdvancedHypermedia : Hypermedia {
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.
             std::ostringstream result;
-            for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+            for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
               result << JSON<JSONFormat::Minimalistic>(element) << '\n';
             }
             return result.str();

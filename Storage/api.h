@@ -215,7 +215,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                 input_url_key);
                         const auto entry = ParseJSON<entry_t>(request.body);
                         const auto entry_key =
-                            PerStorageFieldType<specific_field_t>::ExtractOrComposeKey(entry);
+                            field_type_dependent_t<specific_field_t>::ExtractOrComposeKey(entry);
                         specific_field_t& field =
                             generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                         generic_input.storage

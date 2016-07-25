@@ -262,10 +262,10 @@ struct Hypermedia {
       } else {
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
-        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
-          response.data.emplace_back(response.url + '/' +
-                                     field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
-                                         PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
+        for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
+          response.data.emplace_back(
+              response.url + '/' + field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
+                                       field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
         }
         return Response(response);
       }
@@ -294,7 +294,7 @@ struct Hypermedia {
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
+      const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       const std::string key = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
