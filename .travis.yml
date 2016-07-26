@@ -80,7 +80,12 @@ matrix:
       compiler: "native clang++, Job: make individual_tests"
       os: osx
 
-    - script: make storage_perftest
+    - script:
+      - cat /proc/cpuinfo
+      - lscpu
+      - uname -a
+      - cat /etc/lsb-release
+      - make storage_perftest
       env:
       - CPLUSPLUS=g++-5
       - NDEBUG=1
@@ -93,7 +98,10 @@ matrix:
           packages:
             - g++-5
 
-    - script: make storage_perftest
+    - script:
+      - system_profiler
+      - sysctl hw
+      - make storage_perftest
       env:
       - NDEBUG=1
       compiler: "native clang++, Job: make storage_perftest"
