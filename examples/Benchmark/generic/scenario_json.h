@@ -186,6 +186,7 @@ SCENARIO(json, "JSON performance test.") {
       f = [this]() { ParseJSON<TopLevel>(JSON(test_object)); };
     } else {
       std::cerr << "The `--json` flag must be 'gen', 'parse', or 'both'." << std::endl;
+      assert(false);
     }
   }
 

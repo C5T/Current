@@ -322,7 +322,7 @@ class FlagRegisterer : public FlagRegistererBase {
 #define DECLARE_float(name) DECLARE_flag(float, name)
 #define DECLARE_double(name) DECLARE_flag(double, name)
 #define DECLARE_string(name) DECLARE_flag(std::string, name)
-#define DECLARE_bool(name) DECLARE_flag(bool, name, default_value, description)
+#define DECLARE_bool(name) DECLARE_flag(bool, name)
 
 }  // namespace dflags
 
