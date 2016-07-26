@@ -8,6 +8,9 @@ test:
 individual_tests:
 	./scripts/individual-tests.sh
 
+storage_perftest:
+	(cd examples/Benchmark/generic ; ./run_storage_tests.sh)
+
 check:
 	./scripts/check-headers.sh
 

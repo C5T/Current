@@ -80,6 +80,25 @@ matrix:
       compiler: "native clang++, Job: make individual_tests"
       os: osx
 
+    - script: make storage_perftest
+      env:
+      - CPLUSPLUS=g++-5
+      - NDEBUG=1
+      compiler: "g++-5, Job: make storage_perftest"
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+
+    - script: make storage_perftest
+      env:
+      - NDEBUG=1
+      compiler: "native clang++, Job: make storage_perftest"
+      os: osx
+
     - script:
       - mkdir local_bin
       - ln -sf $(which g++-5) local_bin/g++
