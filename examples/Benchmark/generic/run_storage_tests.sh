@@ -3,9 +3,8 @@
 # Runs storage performance tests in bulk.
 
 if [ ! -f .current/run ] ; then
-  echo "Building '.current/run' to run the tests. You may want to check compilation flags."
+  echo "Building '.current/run' to run the tests. You may want to check the compilation flags."
   make .current/run
-  echo "Built '.current/run'."
 fi
 
 CMD="./.current/run --scenario=storage"
