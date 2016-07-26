@@ -515,7 +515,7 @@ TEST(Karl, DisconnectedByTimout) {
     const auto response = HTTP(POST(keepalive_url, claire));
     EXPECT_EQ(200, static_cast<int>(response.code));
     while (karl.ActiveServicesCount() == 0u) {
-      ;  // Spin lock.
+      std::this_thread::yield();  // Spin lock.
     }
     const auto result = karl.InternalExposeStorage()
                             .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
@@ -574,7 +574,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
     const auto response = HTTP(POST(keepalive_url, claire));
     EXPECT_EQ(200, static_cast<int>(response.code));
     while (karl.ActiveServicesCount() == 0u) {
-      ;  // Spin lock.
+      std::this_thread::yield();  // Spin lock.
     }
     const auto result = karl.InternalExposeStorage()
                             .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
@@ -705,7 +705,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 
   while (secondary_karl.ActiveServicesCount() == 0u) {
-    ;  // Spin lock.
+    std::this_thread::yield();  // Spin lock.
   }
   // The `generator` service is registered in the secondary `Karl`.
   {
@@ -744,7 +744,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 
   while (primary_karl.ActiveServicesCount() == 0u) {
-    ;  // Spin lock.
+    std::this_thread::yield();  // Spin lock.
   }
   // The `generator` service is again registered as active in the primary `Karl`.
   {
@@ -831,12 +831,7 @@ TEST(Karl, ModifiedClaireBoilerplateStatus) {
 }
 
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
-#ifndef CURRENT_CI
-TEST(Karl, EndToEndTest)
-#else
-TEST(Karl, DISABLED_EndToEndTest)
-#endif
-{
+TEST(Karl, EndToEndTest) {
   current::time::ResetToZero();
 
   if (FLAGS_karl_run_test_forever) {
@@ -907,12 +902,7 @@ TEST(Karl, DISABLED_EndToEndTest)
   }
 }
 
-#ifndef CURRENT_CI
-TEST(Karl, KarlNotifiesUserObject)
-#else
-TEST(Karl, DISABLED_KarlNotifiesUserObject)
-#endif
-{
+TEST(Karl, KarlNotifiesUserObject) {
   current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
@@ -1000,13 +990,17 @@ TEST(Karl, DISABLED_KarlNotifiesUserObject)
   EXPECT_EQ(current::strings::Join(expected, ", "),
             current::strings::Join(karl_notifications_receiver.events, ", "));
 
+  while (karl.ActiveServicesCount()) {
+    std::this_thread::yield();  // Spin lock.
+  }
+
   // Now, the timeout test with respect to callbacks.
   {
     current::karl::ClaireStatus claire;
     claire.service = "unittest";
     claire.codename = "ABCDEF";
     claire.local_port = 8888;
-    ASSERT_TRUE(!karl.ActiveServicesCount());
+    ASSERT_EQ(0u, karl.ActiveServicesCount());
     {
       const std::string keepalive_url = Printf("%s?codename=%s&port=%d",
                                                karl_locator.address_port_route.c_str(),
@@ -1015,7 +1009,7 @@ TEST(Karl, DISABLED_KarlNotifiesUserObject)
       const auto response = HTTP(POST(keepalive_url, claire));
       EXPECT_EQ(200, static_cast<int>(response.code));
       while (karl.ActiveServicesCount() != 1u) {
-        ;  // Spin lock.
+        std::this_thread::yield();  // Spin lock.
       }
     }
     expected.push_back("Keepalive: ABCDEF");

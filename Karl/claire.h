@@ -122,8 +122,11 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   virtual ~GenericClaire() {
     if (keepalive_thread_.joinable()) {
-      keepalive_thread_terminating_ = true;
-      keepalive_condition_variable_.notify_one();
+      {
+        std::lock_guard<std::mutex> lock(keepalive_mutex_);
+        keepalive_thread_terminating_ = true;
+        keepalive_condition_variable_.notify_one();
+      }
       keepalive_thread_.join();
       // Deregister self from Karl.
       try {
