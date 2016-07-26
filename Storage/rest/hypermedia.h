@@ -184,7 +184,7 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
 }
 
 struct Hypermedia {
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
   struct RESTfulDataHandlerGenerator;
 
   template <class INPUT>
@@ -229,13 +229,14 @@ struct Hypermedia {
     return true;
   }
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
                                                                            std::forward<F>(next));
     }
+
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (Exists(input.get_url_key)) {
@@ -262,7 +263,7 @@ struct Hypermedia {
       } else {
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
-        for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
+        for (const auto& element : input.field) {
           response.data.emplace_back(
               response.url + '/' + field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
                                        field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
@@ -272,8 +273,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -321,8 +322,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     Optional<std::chrono::microseconds> if_unmodified_since;
 
     template <typename F>
@@ -378,8 +379,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     Optional<std::chrono::microseconds> if_unmodified_since;
 
     template <typename F>

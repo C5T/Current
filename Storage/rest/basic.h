@@ -42,19 +42,41 @@ namespace storage {
 namespace rest {
 
 struct Basic {
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
   struct RESTfulDataHandlerGenerator;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT&) {}
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
                                                                            std::forward<F>(next));
     }
+
+    template <class FIELD>
+    std::string RunIterate(const FIELD& field, behavior::Dictionary) const {
+      std::ostringstream result;
+      for (const auto& element : field) {
+        // Basic REST, mostly for unit testing purposes. No need to URL-ify plain text output.
+        result << current::ToString(current::storage::sfinae::GetKey(element)) << '\t' << JSON(element) << '\n';
+      }
+      return result.str();
+    }
+
+    template <class FIELD>
+    std::string RunIterate(const FIELD& field, behavior::Matrix) const {
+      std::ostringstream result;
+      for (const auto& element : field) {
+        // Basic REST, mostly for unit testing purposes. No need to URL-ify plain text output.
+        result << current::ToString(current::storage::sfinae::GetRow(element)) << '\t'
+               << current::ToString(current::storage::sfinae::GetCol(element)) << '\t' << JSON(element) << '\n';
+      }
+      return result.str();
+    }
+
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (Exists(input.get_url_key)) {
@@ -67,18 +89,13 @@ struct Basic {
           return Response("Nope.\n", HTTPResponseCode.NotFound);
         }
       } else {
-        std::ostringstream result;
-        for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
-          result << field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
-                        field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)) << '\n';
-        }
-        return result.str();
+        return RunIterate(input.field, BEHAVIOR());
       }
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOrWithoutKeyFromURL(
@@ -113,8 +130,8 @@ struct Basic {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -140,8 +157,8 @@ struct Basic {
     // LCOV_EXCL_STOP
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));

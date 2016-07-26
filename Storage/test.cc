@@ -57,8 +57,6 @@ DEFINE_int32(transactional_storage_test_port,
              PickPortForUnitTest(),
              "Local port to run [REST] API tests against.");
 
-#define USE_KEY_METHODS
-
 namespace transactional_storage_test {
 
 CURRENT_STRUCT(Element) {
@@ -67,48 +65,24 @@ CURRENT_STRUCT(Element) {
 };
 
 CURRENT_STRUCT(Record) {
-#ifdef USE_KEY_METHODS
   CURRENT_FIELD(lhs, std::string);
-  const std::string& key() const { return lhs; }
-  void set_key(const std::string& key) { lhs = key; }
-#else
-  CURRENT_FIELD(key, std::string);
-#endif
   CURRENT_FIELD(rhs, int32_t);
 
-#ifdef USE_KEY_METHODS
+  CURRENT_USE_FIELD_AS_KEY(lhs);
+
   CURRENT_CONSTRUCTOR(Record)(const std::string& lhs = "", int32_t rhs = 0) : lhs(lhs), rhs(rhs) {}
-#else
-  CURRENT_CONSTRUCTOR(Record)(const std::string& key = "", int32_t rhs = 0) : key(key), rhs(rhs) {}
-#endif
 };
 
 CURRENT_STRUCT(Cell) {
-#ifdef USE_KEY_METHODS
   CURRENT_FIELD(foo, int32_t);
-  int32_t row() const { return foo; }
-  void set_row(int32_t row) { foo = row; }
-#else
-  CURRENT_FIELD(row, int32_t);
-#endif
-
-#ifdef USE_KEY_METHODS
   CURRENT_FIELD(bar, std::string);
-  const std::string& col() const { return bar; }
-  void set_col(const std::string& col) { bar = col; }
-#else
-  CURRENT_FIELD(col, std::string);
-#endif
-
   CURRENT_FIELD(phew, int32_t);
 
-#ifdef USE_KEY_METHODS
+  CURRENT_USE_FIELD_AS_ROW(foo);
+  CURRENT_USE_FIELD_AS_COL(bar);
+
   CURRENT_CONSTRUCTOR(Cell)(int32_t foo = 0, const std::string& bar = "", int32_t phew = 0)
       : foo(foo), bar(bar), phew(phew) {}
-#else
-  CURRENT_CONSTRUCTOR(Cell)(int32_t row = 0, const std::string& bar = "", int32_t phew = 0)
-      : row(row), bar(bar), phew(phew) {}
-#endif
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
@@ -2050,9 +2024,14 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
     EXPECT_EQ("", HTTP(GET(base_url + "/api/data/user")).body);
 
-    const auto post_user1_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
+    // Begin POST-ing data.
+    auto user1 = SimpleUser("max", "MZ");
+    auto user2 = SimpleUser("dima", "DK");
+
+    const auto post_user1_response = HTTP(POST(base_url + "/api/data/user", user1));
     EXPECT_EQ(201, static_cast<int>(post_user1_response.code));
     const auto user1_key = post_user1_response.body;
+    user1.key = user1_key;  // Assigned by the server, save for the purposes of this test.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).code));
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).body).name);
 
@@ -2064,14 +2043,22 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     // Confirm a collection of one element is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
-    EXPECT_EQ(user1_key + '\n', HTTP(GET(base_url + "/api/data/user")).body);
+    EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n', HTTP(GET(base_url + "/api/data/user")).body);
 
     // Test collection retrieval.
-    const auto post_user2_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("dima", "DK")));
+    const auto post_user2_response = HTTP(POST(base_url + "/api/data/user", user2));
     EXPECT_EQ(201, static_cast<int>(post_user2_response.code));
     const auto user2_key = post_user2_response.body;
+    user2.key = user2_key;  // Assigned by the server, save for the purposes of this test.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
-    EXPECT_EQ(user1_key + '\n' + user2_key + '\n', HTTP(GET(base_url + "/api/data/user")).body);
+    EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n' + user2_key + '\t' + JSON(user2) + '\n',
+              HTTP(GET(base_url + "/api/data/user")).body);
+
+    // Confirm matrix collection retrieval.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user.key")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/user.row")).code));
+    // EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
+    // EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
 
     // Delete the users.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user1_key)).code));
@@ -2121,7 +2108,10 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     // GET matrix as the collection.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
-    EXPECT_EQ("max/beer\ndima/beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+    EXPECT_EQ(
+        "max\tbeer\t{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
+        "dima\tbeer\t{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+        HTTP(GET(base_url + "/api/data/like")).body);
 
     // Clean up the likes.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima/beer")).code));

@@ -84,15 +84,15 @@ inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(
 struct AdvancedHypermedia : Hypermedia {
   using SUPER = Hypermedia;
 
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
   struct RESTfulDataHandlerGenerator
-      : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {};
+      : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {};
 
   template <typename STORAGE, typename ENTRY>
   using RESTfulSchemaHandlerGenerator = SUPER::RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
     using brief_entry_t = sfinae::brief_of_t<ENTRY>;
 
     // For per-record view, whether a full or brief format should be used.
@@ -160,7 +160,7 @@ struct AdvancedHypermedia : Hypermedia {
           uint64_t i = 0;
           bool has_previous_page = false;
           bool has_next_page = false;
-          for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
+          for (const auto& element : input.field) {
             if (i >= query_i && i < query_i + query_n) {
               response.data.push_back(FormatAsAdvancedHypermediaRecord<brief_entry_t>(element, input, false));
             } else if (i < query_i) {
@@ -200,7 +200,7 @@ struct AdvancedHypermedia : Hypermedia {
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.
             std::ostringstream result;
-            for (const auto& element : field_type_dependent_t<PARTICULAR_FIELD>::Iterate(input.field)) {
+            for (const auto& element : input.field) {
               result << JSON<JSONFormat::Minimalistic>(element) << '\n';
             }
             return result.str();

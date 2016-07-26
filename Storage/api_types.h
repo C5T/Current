@@ -36,7 +36,6 @@ namespace rest {
 
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
-// TODO(dkorolev): const std::string kRESTfulMapURLComponent = "map";
 
 template <typename>
 struct FieldTypeDependentImpl {};
@@ -70,10 +69,6 @@ struct FieldTypeDependentImpl<behavior::Dictionary> {
   static auto ExtractOrComposeKey(const RECORD& entry)
       -> decltype(current::storage::sfinae::GetKey(std::declval<RECORD>())) {
     return current::storage::sfinae::GetKey(entry);
-  }
-  template <typename DICTIONARY>
-  static const DICTIONARY& Iterate(const DICTIONARY& dictionary) {
-    return dictionary;
   }
 };
 
@@ -115,19 +110,6 @@ struct FieldTypeDependentImpl<behavior::Matrix> {
       -> std::pair<decltype(current::storage::sfinae::GetRow(std::declval<RECORD>())),
                    decltype(current::storage::sfinae::GetCol(std::declval<RECORD>()))> {
     return std::make_pair(current::storage::sfinae::GetRow(entry), current::storage::sfinae::GetCol(entry));
-  }
-  template <typename MATRIX>
-  struct Iterable {
-    const MATRIX& matrix;
-    explicit Iterable(const MATRIX& matrix) : matrix(matrix) {}
-    using Iterator = typename MATRIX::iterator_t;
-    Iterator begin() const { return matrix.begin(); }
-    Iterator end() const { return matrix.end(); }
-  };
-
-  template <typename MATRIX>
-  static Iterable<MATRIX> Iterate(const MATRIX& matrix) {
-    return Iterable<MATRIX>(matrix);
   }
 };
 
