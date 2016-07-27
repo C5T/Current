@@ -107,19 +107,40 @@ struct AdvancedHypermedia : Hypermedia {
     mutable uint64_t query_n = 10u;  // Default page size.
 
     template <typename F>
+    void EnterByKeyCompletenessFamily(Request request,
+                                      semantics::key_completeness::FullKey,
+                                      semantics::key_completeness::DictionaryOrMatrixCompleteKey,
+                                      F&& next) {
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                           std::forward<F>(next));
+    }
+
+    template <typename F, typename KEY_COMPLETENESS>
+    void EnterByKeyCompletenessFamily(Request request,
+                                      KEY_COMPLETENESS,
+                                      semantics::key_completeness::MatrixHalfKey,
+                                      F&& next) {
+      key_type_dependent_t<semantics::primary_key::Key>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                                    std::forward<F>(next));
+    }
+
+    template <typename F>
     void Enter(Request request, F&& next) {
       const auto& q = request.url.query;
       brief = (q["fields"] == "brief");
       query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
       query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
-      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
-                                                                           std::forward<F>(next));
+      EnterByKeyCompletenessFamily(std::move(request),
+                                   typename OPERATION::key_completeness_t(),
+                                   typename OPERATION::key_completeness_t::completeness_family_t(),
+                                   std::forward<F>(next));
     }
 
-    template <class INPUT>
-    Response RunByKeyCompletenessFamily(const INPUT& input,
-                                        semantics::key_completeness::FullKey,
-                                        semantics::key_completeness::DictionaryFullKey) const {
+    template <class INPUT, typename FIELD_SEMANTICS>
+    Response RunForFullOrPartialKey(const INPUT& input,
+                                    semantics::key_completeness::FullKey,
+                                    FIELD_SEMANTICS,
+                                    semantics::key_completeness::DictionaryOrMatrixCompleteKey) const {
       if (Exists(input.get_url_key)) {
         // Single record view.
         const auto url_key_value = Value(input.get_url_key);
@@ -215,19 +236,21 @@ struct AdvancedHypermedia : Hypermedia {
       }
     }
 
-    template <class INPUT, typename KEY_COMPLETENESS>
-    Response RunByKeyCompletenessFamily(const INPUT& input,
-                                        KEY_COMPLETENESS,
-                                        semantics::key_completeness::MatrixHalfKey) const {
-      return SUPER_GET_HANDLER::RunByKeyCompletenessFamily(
-          input, KEY_COMPLETENESS(), semantics::key_completeness::MatrixHalfKey());
+    template <class INPUT, typename FIELD_SEMANTICS, typename KEY_COMPLETENESS>
+    Response RunForFullOrPartialKey(const INPUT& input,
+                                    KEY_COMPLETENESS,
+                                    FIELD_SEMANTICS,
+                                    semantics::key_completeness::MatrixHalfKey) const {
+      return SUPER_GET_HANDLER::RunForFullOrPartialKey(
+          input, KEY_COMPLETENESS(), FIELD_SEMANTICS(), semantics::key_completeness::MatrixHalfKey());
     }
 
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      return RunByKeyCompletenessFamily(input,
-                                        typename INPUT::key_completeness_t(),
-                                        typename INPUT::key_completeness_t::completeness_family_t());
+      return RunForFullOrPartialKey(input,
+                                    typename INPUT::key_completeness_t(),
+                                    typename INPUT::field_t::semantics_t(),
+                                    typename INPUT::key_completeness_t::completeness_family_t());
     }
   };
 };

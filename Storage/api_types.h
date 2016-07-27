@@ -109,6 +109,8 @@ struct FieldTypeDependentImpl<semantics::primary_key::RowCol> {
     return FormatURLKey(std::make_pair(current::ToString(current::storage::sfinae::GetRow(key)),
                                        current::ToString(current::storage::sfinae::GetCol(key))));
   }
+
+  // TODO(dkorolev): `RECORD` -> `ENTRY` and `decltype` -> `key_t` or `sfinae::...`?
   template <typename RECORD>
   static auto ExtractOrComposeKey(const RECORD& entry)
       -> std::pair<decltype(current::storage::sfinae::GetRow(std::declval<RECORD>())),
@@ -405,6 +407,9 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
   template <typename FIELD>
   using inner_key_t = typename current::decay<FIELD>::col_t;
 
+  template <typename ENTRY>
+  using sfinae_based_outer_key_t = current::storage::sfinae::entry_row_t<ENTRY>;
+
   template <typename FIELD, typename ROW>
   static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
                                                                                          ROW&& row) {
@@ -430,6 +435,9 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
 
   template <typename FIELD>
   using inner_key_t = typename current::decay<FIELD>::row_t;
+
+  template <typename ENTRY>
+  using sfinae_based_outer_key_t = current::storage::sfinae::entry_col_t<ENTRY>;
 
   template <typename FIELD, typename COL>
   static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,

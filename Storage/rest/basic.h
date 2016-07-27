@@ -53,7 +53,7 @@ struct Basic {
     template <typename F>
     void EnterByKeyCompletenessFamily(Request request,
                                       semantics::key_completeness::FullKey,
-                                      semantics::key_completeness::DictionaryFullKey,
+                                      semantics::key_completeness::DictionaryOrMatrixCompleteKey,
                                       F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
                                                                            std::forward<F>(next));
@@ -102,7 +102,7 @@ struct Basic {
     Response RunForFullOrPartialKey(const INPUT& input,
                                     semantics::key_completeness::FullKey,
                                     FIELD_SEMANTICS,
-                                    semantics::key_completeness::DictionaryFullKey) const {
+                                    semantics::key_completeness::DictionaryOrMatrixCompleteKey) const {
       if (Exists(input.get_url_key)) {
         const auto key =
             field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(Value(input.get_url_key));
@@ -123,10 +123,11 @@ struct Basic {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
-        const auto row_key =
-            current::FromString<current::storage::sfinae::entry_row_t<ENTRY>>(Value(input.rowcol_get_url_key));
+        const auto row_or_col_key = current::FromString<
+            typename MatrixContainerProxy<KEY_COMPLETENESS>::template sfinae_based_outer_key_t<ENTRY>>(
+            Value(input.rowcol_get_url_key));
         const auto iterable =
-            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_key);
+            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           std::ostringstream result;
           for (const auto& e : iterable) {

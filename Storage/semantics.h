@@ -80,10 +80,10 @@ struct OneToOne {
 };
 
 namespace key_completeness {
-struct DictionaryFullKey {};
+struct DictionaryOrMatrixCompleteKey {};
 struct MatrixHalfKey {};
 struct FullKey {
-  using completeness_family_t = DictionaryFullKey;
+  using completeness_family_t = DictionaryOrMatrixCompleteKey;
 };
 struct PartialRowKey {
   using completeness_family_t = MatrixHalfKey;
