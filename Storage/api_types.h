@@ -399,27 +399,37 @@ struct GenericMatrixIteratorProxyCaller;
 
 template <>
 struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialRowKey> {
-  template <typename FIELD, typename ROW_OR_COL_KEY>
-  static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
-      -> decltype(std::declval<FIELD>().Row(std::declval<ROW_OR_COL_KEY>())) {
-    return field.Row(std::forward<ROW_OR_COL_KEY>(row_or_col_key));
+  template <typename FIELD, typename ROW>
+  static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,
+                                                                                         ROW&& row) {
+    return field.Row(std::forward<ROW>(row));
   }
   template <typename FIELD>
-  static auto RowsOrCols(FIELD&& field) -> decltype(std::declval<FIELD>().Rows()) {
+  static typename current::decay<FIELD>::rows_outer_accessor_t RowsOrCols(FIELD&& field) {
     return field.Rows();
+  }
+  template <typename FIELD, typename ROW>
+  static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field,
+                                                                                         ROW&& row) {
+    return field.GetEntryFromRow(std::forward<ROW>(row));
   }
 };
 
 template <>
 struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialColKey> {
-  template <typename FIELD, typename ROW_OR_COL_KEY>
-  static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
-      -> decltype(std::declval<FIELD>().Col(std::declval<ROW_OR_COL_KEY>())) {
-    return field.Col(std::forward<ROW_OR_COL_KEY>(row_or_col_key));
+  template <typename FIELD, typename COL>
+  static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
+                                                                                         COL&& col) {
+    return field.Col(std::forward<COL>(col));
   }
   template <typename FIELD>
-  static auto RowsOrCols(FIELD&& field) -> decltype(std::declval<FIELD>().Cols()) {
+  static typename current::decay<FIELD>::cols_outer_accessor_t RowsOrCols(FIELD&& field) {
     return field.Cols();
+  }
+  template <typename FIELD, typename COL>
+  static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field,
+                                                                                         COL&& col) {
+    return field.GetEntryFromCol(std::forward<COL>(col));
   }
 };
 
@@ -429,21 +439,6 @@ struct GenericMatrixIteratorImplSelector;
 template <typename ROW_OR_COL>
 struct GenericMatrixIteratorImplSelector<ROW_OR_COL, semantics::matrix_dimension_type::IterableRange> {
   using Impl = GenericMatrixIteratorProxyCaller<ROW_OR_COL>;
-};
-
-template <typename ROW_OR_COL>
-struct GenericMatrixIteratorImplSelector<ROW_OR_COL, semantics::matrix_dimension_type::SingleElement> {
-  struct Impl {
-    template <typename FIELD, typename ROW_OR_COL_KEY>
-    static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
-        -> decltype(std::declval<FIELD>().Col(std::declval<ROW_OR_COL_KEY>())) {
-      return field.Col(std::forward<ROW_OR_COL_KEY>(row_or_col_key));
-    }
-    template <typename FIELD>
-    static auto RowsOrCols(FIELD&& field) -> decltype(std::declval<FIELD>().Cols()) {
-      return field.Cols();
-    }
-  };
 };
 
 template <typename PARTIAL_KEY, typename FIELD>

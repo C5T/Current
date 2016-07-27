@@ -47,6 +47,7 @@ template <typename T,
           template <typename...> class COL_MAP>
 class GenericManyToMany {
  public:
+  using entry_t = T;
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
@@ -186,8 +187,10 @@ class GenericManyToMany {
     OuterIterator end() const { return OuterIterator(map_.cend()); }
   };
 
-  OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
+  using rows_outer_accessor_t = OuterAccessor<forward_map_t>;
+  using cols_outer_accessor_t = OuterAccessor<transposed_map_t>;
 
+  OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
   GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {

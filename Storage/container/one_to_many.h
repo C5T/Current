@@ -47,6 +47,7 @@ template <typename T,
           template <typename...> class COL_MAP>
 class GenericOneToMany {
  public:
+  using entry_t = T;
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
