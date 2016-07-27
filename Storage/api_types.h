@@ -395,19 +395,27 @@ struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
 // Also make sure all matrix containers -- ManyToMany, OneToMany, OneToOne -- can be iterated
 // in semantically identical ways: assuming an iterable range of records per row/col.
 template <typename>
-struct GenericMatrixIteratorProxyCaller;
+struct MatrixContainerProxy;
 
 template <>
-struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialRowKey> {
+struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
+  template <typename FIELD>
+  using outer_key_t = typename current::decay<FIELD>::row_t;
+
+  template <typename FIELD>
+  using inner_key_t = typename current::decay<FIELD>::col_t;
+
   template <typename FIELD, typename ROW>
   static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,
                                                                                          ROW&& row) {
     return field.Row(std::forward<ROW>(row));
   }
+
   template <typename FIELD>
   static typename current::decay<FIELD>::rows_outer_accessor_t RowsOrCols(FIELD&& field) {
     return field.Rows();
   }
+
   template <typename FIELD, typename ROW>
   static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field,
                                                                                          ROW&& row) {
@@ -416,16 +424,24 @@ struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialRowK
 };
 
 template <>
-struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialColKey> {
+struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
+  template <typename FIELD>
+  using outer_key_t = typename current::decay<FIELD>::col_t;
+
+  template <typename FIELD>
+  using inner_key_t = typename current::decay<FIELD>::row_t;
+
   template <typename FIELD, typename COL>
   static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
                                                                                          COL&& col) {
     return field.Col(std::forward<COL>(col));
   }
+
   template <typename FIELD>
   static typename current::decay<FIELD>::cols_outer_accessor_t RowsOrCols(FIELD&& field) {
     return field.Cols();
   }
+
   template <typename FIELD, typename COL>
   static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field,
                                                                                          COL&& col) {
@@ -436,9 +452,61 @@ struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialColK
 template <typename, typename>
 struct GenericMatrixIteratorImplSelector;
 
-template <typename ROW_OR_COL>
-struct GenericMatrixIteratorImplSelector<ROW_OR_COL, semantics::matrix_dimension_type::IterableRange> {
-  using Impl = GenericMatrixIteratorProxyCaller<ROW_OR_COL>;
+template <typename PARTIAL_KEY_TYPE>
+struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dimension_type::IterableRange> {
+  using Impl = MatrixContainerProxy<PARTIAL_KEY_TYPE>;
+};
+
+template <typename ENTRY>
+struct DummyInnerAccessor {
+  bool Empty() const { return true; }
+  size_t Size() const { return 0u; }
+  struct DummyInnerIterator {
+    ENTRY operator*() const { return ENTRY(); }
+    bool operator==(const DummyInnerIterator&) { return true; }
+    bool operator!=(const DummyInnerIterator& rhs) { return !operator==(rhs); }
+    void operator++() {}
+  };
+  DummyInnerIterator begin() const { return DummyInnerIterator(); }
+  DummyInnerIterator end() const { return DummyInnerIterator(); }
+};
+
+template <typename INNER_KEY, typename ENTRY>
+struct DummyOuterAccessor {
+  bool Empty() const { return true; }
+  size_t Size() const { return 0u; }
+  struct DummyOuterIterator final {
+    void operator++() {}  // ++iterator; }
+    bool operator==(const DummyOuterIterator&) const { return true; }
+    bool operator!=(const DummyOuterIterator& rhs) const { return !operator==(rhs); }
+    INNER_KEY key() const { return INNER_KEY(); }
+    DummyInnerAccessor<ENTRY> operator*() const { return DummyInnerAccessor<ENTRY>(); }
+  };
+  DummyOuterIterator begin() const { return DummyOuterIterator(); }
+  DummyOuterIterator end() const { return DummyOuterIterator(); }
+};
+
+template <typename PARTIAL_KEY_TYPE>
+struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dimension_type::SingleElement> {
+  using Proxy = MatrixContainerProxy<PARTIAL_KEY_TYPE>;
+  struct Impl {
+    template <typename FIELD, typename ROW_OR_COL>
+    static DummyInnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(FIELD&& field,
+                                                                                ROW_OR_COL&& row_or_col) {
+      static_cast<void>(field);
+      static_cast<void>(row_or_col);
+      return DummyInnerAccessor<typename current::decay<FIELD>::entry_t>();
+    }
+
+    template <typename FIELD>
+    static DummyOuterAccessor<typename Proxy::template inner_key_t<FIELD>,
+                              typename current::decay<FIELD>::entry_t>
+    RowsOrCols(FIELD&& field) {
+      static_cast<void>(field);
+      return DummyOuterAccessor<typename Proxy::template inner_key_t<FIELD>,
+                                typename current::decay<FIELD>::entry_t>();
+    }
+  };
 };
 
 template <typename PARTIAL_KEY, typename FIELD>
