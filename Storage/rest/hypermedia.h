@@ -256,10 +256,11 @@ struct Hypermedia {
                                    typename OPERATION::key_completeness_t::completeness_family_t(),
                                    std::forward<F>(next));
     }
-    template <class INPUT>
-    Response RunByKeyCompletenessFamily(const INPUT& input,
-                                        semantics::key_completeness::FullKey,
-                                        semantics::key_completeness::DictionaryFullKey) const {
+    template <class INPUT, typename FIELD_SEMANTICS>
+    Response RunForFullOrPartialKey(const INPUT& input,
+                                    semantics::key_completeness::FullKey,
+                                    FIELD_SEMANTICS,
+                                    semantics::key_completeness::DictionaryFullKey) const {
       if (Exists(input.get_url_key)) {
         const auto url_key_value = Value(input.get_url_key);
         const auto key = field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
@@ -293,14 +294,16 @@ struct Hypermedia {
       }
     }
 
-    template <class INPUT, typename KEY_COMPLETENESS>
-    Response RunByKeyCompletenessFamily(const INPUT& input,
-                                        KEY_COMPLETENESS,
-                                        semantics::key_completeness::MatrixHalfKey) const {
+    template <class INPUT, typename FIELD_SEMANTICS, typename KEY_COMPLETENESS>
+    Response RunForFullOrPartialKey(const INPUT& input,
+                                    KEY_COMPLETENESS,
+                                    FIELD_SEMANTICS,
+                                    semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
         const auto row_key =
             current::FromString<current::storage::sfinae::entry_row_t<ENTRY>>(Value(input.rowcol_get_url_key));
-        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowOrCol(input.field, row_key);
+        const auto iterable =
+            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_key);
         if (!iterable.Empty()) {
           HypermediaRESTContainerResponse response;
           response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
@@ -319,7 +322,7 @@ struct Hypermedia {
       } else {
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
-        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowsOrCols(input.field);
+        const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
           response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
         }
@@ -329,9 +332,10 @@ struct Hypermedia {
 
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      return RunByKeyCompletenessFamily(input,
-                                        typename INPUT::key_completeness_t(),
-                                        typename INPUT::key_completeness_t::completeness_family_t());
+      return RunForFullOrPartialKey(input,
+                                    typename INPUT::key_completeness_t(),
+                                    typename INPUT::field_t::semantics_t(),
+                                    typename INPUT::key_completeness_t::completeness_family_t());
     }
   };
 

@@ -207,13 +207,14 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
+  using field_t = FIELD;
   using key_completeness_t = semantics::key_completeness::FullKey;
 
   using immutable_fields_t = ImmutableFields<STORAGE>;
-  using url_key_t = typename FIELD::semantics_t::url_key_t;
+  using url_key_t = typename field_t::semantics_t::url_key_t;
 
   immutable_fields_t fields;
-  const FIELD& field;
+  const field_t& field;
   const std::string field_name;
   Optional<url_key_t> get_url_key;
   const StorageRole role;
@@ -221,7 +222,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
                   immutable_fields_t fields,
-                  const FIELD& field,
+                  const field_t& field,
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
                   const StorageRole role,
@@ -235,7 +236,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
         export_requested(export_requested) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
                   immutable_fields_t fields,
-                  const FIELD& field,
+                  const field_t& field,
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
                   const StorageRole role,
@@ -256,17 +257,18 @@ struct RESTfulGETRowColInput : RESTfulGenericInput<STORAGE> {
                     std::is_same<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialColKey>::value,
                 "");
 
+  using field_t = FIELD;
   using key_completeness_t = INCOMPLETE_KEY_TYPE;
   using immutable_fields_t = ImmutableFields<STORAGE>;
 
   immutable_fields_t fields;
-  const FIELD& field;
+  const field_t& field;
   const std::string field_name;
   Optional<std::string> rowcol_get_url_key;
 
   RESTfulGETRowColInput(const RESTfulGenericInput<STORAGE>& input,
                         immutable_fields_t fields,
-                        const FIELD& field,
+                        const field_t& field,
                         const std::string& field_name,
                         const Optional<std::string>& rowcol_get_url_key)
       : RESTfulGenericInput<STORAGE>(input),
@@ -276,7 +278,7 @@ struct RESTfulGETRowColInput : RESTfulGenericInput<STORAGE> {
         rowcol_get_url_key(rowcol_get_url_key) {}
   RESTfulGETRowColInput(RESTfulGenericInput<STORAGE>&& input,
                         immutable_fields_t fields,
-                        const FIELD& field,
+                        const field_t& field,
                         const std::string& field_name,
                         const Optional<std::string>& rowcol_get_url_key)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
@@ -288,15 +290,16 @@ struct RESTfulGETRowColInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD, typename ENTRY>
 struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
+  using field_t = FIELD;
   using mutable_fields_t = MutableFields<STORAGE>;
   mutable_fields_t fields;
-  FIELD& field;
+  field_t& field;
   const std::string field_name;
   ENTRY& entry;
 
   RESTfulPOSTInput(const RESTfulGenericInput<STORAGE>& input,
                    mutable_fields_t fields,
-                   FIELD& field,
+                   field_t& field,
                    const std::string& field_name,
                    ENTRY& entry)
       : RESTfulGenericInput<STORAGE>(input),
@@ -306,7 +309,7 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
         entry(entry) {}
   RESTfulPOSTInput(RESTfulGenericInput<STORAGE>&& input,
                    mutable_fields_t fields,
-                   FIELD& field,
+                   field_t& field,
                    const std::string& field_name,
                    ENTRY& entry)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
@@ -318,9 +321,10 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD, typename ENTRY, typename KEY>
 struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
+  using field_t = FIELD;
   using mutable_fields_t = MutableFields<STORAGE>;
   mutable_fields_t fields;
-  FIELD& field;
+  field_t& field;
   const std::string field_name;
   const KEY& put_key;
   const ENTRY& entry;
@@ -328,7 +332,7 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
 
   RESTfulPUTInput(const RESTfulGenericInput<STORAGE>& input,
                   mutable_fields_t fields,
-                  FIELD& field,
+                  field_t& field,
                   const std::string& field_name,
                   const KEY& put_key,
                   const ENTRY& entry,
@@ -342,7 +346,7 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
         entry_key(entry_key) {}
   RESTfulPUTInput(RESTfulGenericInput<STORAGE>&& input,
                   mutable_fields_t fields,
-                  FIELD& field,
+                  field_t& field,
                   const std::string& field_name,
                   const KEY& put_key,
                   const ENTRY& entry,
@@ -358,15 +362,16 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD, typename KEY>
 struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
+  using field_t = FIELD;
   using mutable_fields_t = MutableFields<STORAGE>;
   mutable_fields_t fields;
-  FIELD& field;
+  field_t& field;
   const std::string field_name;
   const KEY& delete_key;
 
   RESTfulDELETEInput(const RESTfulGenericInput<STORAGE>& input,
                      mutable_fields_t fields,
-                     FIELD& field,
+                     field_t& field,
                      const std::string& field_name,
                      const KEY& delete_key)
       : RESTfulGenericInput<STORAGE>(input),
@@ -376,7 +381,7 @@ struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
         delete_key(delete_key) {}
   RESTfulDELETEInput(RESTfulGenericInput<STORAGE>&& input,
                      mutable_fields_t fields,
-                     FIELD& field,
+                     field_t& field,
                      const std::string& field_name,
                      const KEY& delete_key)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
@@ -387,11 +392,13 @@ struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
 };
 
 // Generic wrapper to have per-`Row` and per-`Col` code collapsed into one snippet.
+// Also make sure all matrix containers -- ManyToMany, OneToMany, OneToOne -- can be iterated
+// in semantically identical ways: assuming an iterable range of records per row/col.
 template <typename>
-struct RowOrCallSelector;
+struct GenericMatrixIteratorProxyCaller;
 
 template <>
-struct RowOrCallSelector<semantics::key_completeness::PartialRowKey> {
+struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialRowKey> {
   template <typename FIELD, typename ROW_OR_COL_KEY>
   static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
       -> decltype(std::declval<FIELD>().Row(std::declval<ROW_OR_COL_KEY>())) {
@@ -404,7 +411,7 @@ struct RowOrCallSelector<semantics::key_completeness::PartialRowKey> {
 };
 
 template <>
-struct RowOrCallSelector<semantics::key_completeness::PartialColKey> {
+struct GenericMatrixIteratorProxyCaller<semantics::key_completeness::PartialColKey> {
   template <typename FIELD, typename ROW_OR_COL_KEY>
   static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
       -> decltype(std::declval<FIELD>().Col(std::declval<ROW_OR_COL_KEY>())) {
@@ -415,6 +422,47 @@ struct RowOrCallSelector<semantics::key_completeness::PartialColKey> {
     return field.Cols();
   }
 };
+
+template <typename, typename>
+struct GenericMatrixIteratorImplSelector;
+
+template <typename ROW_OR_COL>
+struct GenericMatrixIteratorImplSelector<ROW_OR_COL, semantics::matrix_dimension_type::IterableRange> {
+  using Impl = GenericMatrixIteratorProxyCaller<ROW_OR_COL>;
+};
+
+template <typename ROW_OR_COL>
+struct GenericMatrixIteratorImplSelector<ROW_OR_COL, semantics::matrix_dimension_type::SingleElement> {
+  struct Impl {
+    template <typename FIELD, typename ROW_OR_COL_KEY>
+    static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
+        -> decltype(std::declval<FIELD>().Col(std::declval<ROW_OR_COL_KEY>())) {
+      return field.Col(std::forward<ROW_OR_COL_KEY>(row_or_col_key));
+    }
+    template <typename FIELD>
+    static auto RowsOrCols(FIELD&& field) -> decltype(std::declval<FIELD>().Cols()) {
+      return field.Cols();
+    }
+  };
+};
+
+template <typename PARTIAL_KEY, typename FIELD>
+struct ExtractRowOrColDimensionType;
+
+template <typename FIELD>
+struct ExtractRowOrColDimensionType<semantics::key_completeness::PartialRowKey, FIELD> {
+  using matrix_dimension_t = typename FIELD::row_dimension_t;
+};
+
+template <typename FIELD>
+struct ExtractRowOrColDimensionType<semantics::key_completeness::PartialColKey, FIELD> {
+  using matrix_dimension_t = typename FIELD::col_dimension_t;
+};
+
+template <typename PARTIAL_KEY, typename FIELD>
+using GenericMatrixIterator = typename GenericMatrixIteratorImplSelector<
+    PARTIAL_KEY,
+    typename ExtractRowOrColDimensionType<PARTIAL_KEY, FIELD>::matrix_dimension_t>::Impl;
 
 }  // namespace rest
 }  // namespace storage

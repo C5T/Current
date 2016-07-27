@@ -47,6 +47,11 @@ struct Key {};
 struct RowCol {};
 }  // namespace current::storage::semantics::primary_key
 
+namespace matrix_dimension_type {
+struct IterableRange {};
+struct SingleElement {};
+}  // namespace current::storage::semantics::matrix_dimension_type
+
 struct Dictionary {
   using url_key_t = std::string;
   using primary_key_t = primary_key::Key;
@@ -56,16 +61,22 @@ struct ManyToMany {
   using url_key_t = std::pair<std::string, std::string>;
   using primary_key_t = primary_key::RowCol;
   using rest_endpoints_schema_t = rest::RESTWithPairedKey;
+  using row_dimension_t = matrix_dimension_type::IterableRange;
+  using col_dimension_t = matrix_dimension_type::IterableRange;
 };
 struct OneToMany {
   using url_key_t = std::pair<std::string, std::string>;
   using primary_key_t = primary_key::RowCol;
   using rest_endpoints_schema_t = rest::RESTWithPairedKey;
+  using row_dimension_t = matrix_dimension_type::SingleElement;
+  using col_dimension_t = matrix_dimension_type::IterableRange;
 };
 struct OneToOne {
   using url_key_t = std::pair<std::string, std::string>;
   using primary_key_t = primary_key::RowCol;
   using rest_endpoints_schema_t = rest::RESTWithPairedKey;
+  using row_dimension_t = matrix_dimension_type::SingleElement;
+  using col_dimension_t = matrix_dimension_type::SingleElement;
 };
 
 namespace key_completeness {

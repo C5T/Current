@@ -203,6 +203,7 @@ class GenericManyToMany {
   }
 
   // For REST, iterate over all the elements of the ManyToMany, in no particular order.
+  // TODO(dkorolev): Revisit whether this semantics is the right one.
   using iterator_t = GenericMapIterator<whole_matrix_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }

@@ -256,6 +256,7 @@ class GenericOneToOne {
   }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
+  // TODO(dkorolev): Revisit whether this semantics is the right one.
   using iterator_t = GenericMapIterator<elements_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }

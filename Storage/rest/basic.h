@@ -97,10 +97,12 @@ struct Basic {
       return result.str();
     }
 
-    template <class INPUT>
-    Response RunByKeyCompletenessFamily(const INPUT& input,
-                                        semantics::key_completeness::FullKey,
-                                        semantics::key_completeness::DictionaryFullKey) const {
+    // TODO(dkorolev): Or can `FIELD_SEMANTICS` be hardcoded here?
+    template <class INPUT, typename FIELD_SEMANTICS>
+    Response RunForFullOrPartialKey(const INPUT& input,
+                                    semantics::key_completeness::FullKey,
+                                    FIELD_SEMANTICS,
+                                    semantics::key_completeness::DictionaryFullKey) const {
       if (Exists(input.get_url_key)) {
         const auto key =
             field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(Value(input.get_url_key));
@@ -115,14 +117,16 @@ struct Basic {
       }
     }
 
-    template <class INPUT, typename KEY_COMPLETENESS>
-    Response RunByKeyCompletenessFamily(const INPUT& input,
-                                        KEY_COMPLETENESS,
-                                        semantics::key_completeness::MatrixHalfKey) const {
+    template <class INPUT, typename FIELD_SEMANTICS, typename KEY_COMPLETENESS>
+    Response RunForFullOrPartialKey(const INPUT& input,
+                                    KEY_COMPLETENESS,
+                                    FIELD_SEMANTICS,
+                                    semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
         const auto row_key =
             current::FromString<current::storage::sfinae::entry_row_t<ENTRY>>(Value(input.rowcol_get_url_key));
-        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowOrCol(input.field, row_key);
+        const auto iterable =
+            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_key);
         if (!iterable.Empty()) {
           std::ostringstream result;
           for (const auto& e : iterable) {
@@ -134,7 +138,7 @@ struct Basic {
         }
       } else {
         std::ostringstream result;
-        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowsOrCols(input.field);
+        const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
           result << current::ToString(iterator.key()) << '\t' << (*iterator).Size() << '\n';
         }
@@ -144,9 +148,10 @@ struct Basic {
 
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      return RunByKeyCompletenessFamily(input,
-                                        typename INPUT::key_completeness_t(),
-                                        typename INPUT::key_completeness_t::completeness_family_t());
+      return RunForFullOrPartialKey(input,
+                                    typename INPUT::key_completeness_t(),
+                                    typename INPUT::field_t::semantics_t(),
+                                    typename INPUT::key_completeness_t::completeness_family_t());
     }
   };
 
