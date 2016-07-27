@@ -1901,19 +1901,25 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
       : SUPER(who, what), details(details) {}
 };
 
+// Test RESTful compilation with different `row` and `col` types.
+CURRENT_STRUCT(SimpleComplex) {
+  CURRENT_FIELD(row, uint64_t);
+  CURRENT_FIELD(col, std::chrono::microseconds);
+};
+
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLikeM2MPersisted);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedOne, SimpleLike, SimpleLikeO2OPersisted);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedMany, SimpleLike, SimpleLikeO2MPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLikePersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedOne, SimpleComplex, SimpleComplexO2OPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedMany, SimpleComplex, SimpleComplexO2MPersisted);
 // Perhaps ordered matrix containers are to be tested too. Although a load test should suffuce. -- D.K.
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
   CURRENT_STORAGE_FIELD(post, SimplePostPersisted);
-  CURRENT_STORAGE_FIELD(like, SimpleLikeM2MPersisted);
-  CURRENT_STORAGE_FIELD(like_o2o, SimpleLikeO2OPersisted);
-  CURRENT_STORAGE_FIELD(like_o2m, SimpleLikeO2MPersisted);
+  CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
+  CURRENT_STORAGE_FIELD(complex_o2o, SimpleComplexO2OPersisted);
+  CURRENT_STORAGE_FIELD(complex_o2m, SimpleComplexO2MPersisted);
 };
 
 }  // namespace transactional_storage_test
@@ -2194,8 +2200,9 @@ CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted
 CURRENT_STORAGE(PartiallyExposedStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersistedExposed);
   CURRENT_STORAGE_FIELD(post, SimplePostPersistedNotExposed);
-  CURRENT_STORAGE_FIELD(like, SimpleLikeM2MPersisted);
-  CURRENT_STORAGE_FIELD(like_o2m, SimpleLikeO2OPersisted);
+  CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
+  CURRENT_STORAGE_FIELD(complex_o2o, SimpleComplexO2OPersisted);
+  CURRENT_STORAGE_FIELD(complex_o2m, SimpleComplexO2MPersisted);
 };
 }  // namespace transactional_storage_test
 // LCOV_EXCL_STOP
