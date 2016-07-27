@@ -68,8 +68,8 @@ struct OneToMany {
   using url_key_t = std::pair<std::string, std::string>;
   using primary_key_t = primary_key::RowCol;
   using rest_endpoints_schema_t = rest::RESTWithPairedKey;
-  using row_dimension_t = matrix_dimension_type::SingleElement;
-  using col_dimension_t = matrix_dimension_type::IterableRange;
+  using row_dimension_t = matrix_dimension_type::IterableRange;
+  using col_dimension_t = matrix_dimension_type::SingleElement;
 };
 struct OneToOne {
   using url_key_t = std::pair<std::string, std::string>;

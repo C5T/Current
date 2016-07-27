@@ -406,7 +406,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
   using inner_key_t = typename current::decay<FIELD>::col_t;
 
   template <typename FIELD, typename ROW>
-  static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,
+  static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
                                                                                          ROW&& row) {
     return field.Row(std::forward<ROW>(row));
   }
@@ -432,7 +432,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   using inner_key_t = typename current::decay<FIELD>::row_t;
 
   template <typename FIELD, typename COL>
-  static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
+  static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,
                                                                                          COL&& col) {
     return field.Col(std::forward<COL>(col));
   }
@@ -457,38 +457,39 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
   using Impl = MatrixContainerProxy<PARTIAL_KEY_TYPE>;
 };
 
-template <typename ENTRY>
-struct DummyInnerAccessor {
-  bool Empty() const { return true; }
-  size_t Size() const { return 0u; }
-  struct DummyInnerIterator {
-    ENTRY operator*() const { return ENTRY(); }
-    bool operator==(const DummyInnerIterator&) { return true; }
-    bool operator!=(const DummyInnerIterator& rhs) { return !operator==(rhs); }
-    void operator++() {}
-  };
-  DummyInnerIterator begin() const { return DummyInnerIterator(); }
-  DummyInnerIterator end() const { return DummyInnerIterator(); }
-};
-
-template <typename INNER_KEY, typename ENTRY>
-struct DummyOuterAccessor {
-  bool Empty() const { return true; }
-  size_t Size() const { return 0u; }
-  struct DummyOuterIterator final {
-    void operator++() {}  // ++iterator; }
-    bool operator==(const DummyOuterIterator&) const { return true; }
-    bool operator!=(const DummyOuterIterator& rhs) const { return !operator==(rhs); }
-    INNER_KEY key() const { return INNER_KEY(); }
-    DummyInnerAccessor<ENTRY> operator*() const { return DummyInnerAccessor<ENTRY>(); }
-  };
-  DummyOuterIterator begin() const { return DummyOuterIterator(); }
-  DummyOuterIterator end() const { return DummyOuterIterator(); }
-};
-
 template <typename PARTIAL_KEY_TYPE>
 struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dimension_type::SingleElement> {
   using Proxy = MatrixContainerProxy<PARTIAL_KEY_TYPE>;
+
+  template <typename ENTRY>
+  struct DummyInnerAccessor {
+    bool Empty() const { return true; }
+    size_t Size() const { return 0u; }
+    struct DummyInnerIterator {
+      ENTRY operator*() const { return ENTRY(); }
+      bool operator==(const DummyInnerIterator&) { return true; }
+      bool operator!=(const DummyInnerIterator& rhs) { return !operator==(rhs); }
+      void operator++() {}
+    };
+    DummyInnerIterator begin() const { return DummyInnerIterator(); }
+    DummyInnerIterator end() const { return DummyInnerIterator(); }
+  };
+
+  template <typename INNER_KEY, typename ENTRY>
+  struct DummyOuterAccessor {
+    bool Empty() const { return true; }
+    size_t Size() const { return 0u; }
+    struct DummyOuterIterator final {
+      void operator++() {}  // ++iterator; }
+      bool operator==(const DummyOuterIterator&) const { return true; }
+      bool operator!=(const DummyOuterIterator& rhs) const { return !operator==(rhs); }
+      INNER_KEY key() const { return INNER_KEY(); }
+      DummyInnerAccessor<ENTRY> operator*() const { return DummyInnerAccessor<ENTRY>(); }
+    };
+    DummyOuterIterator begin() const { return DummyOuterIterator(); }
+    DummyOuterIterator end() const { return DummyOuterIterator(); }
+  };
+
   struct Impl {
     template <typename FIELD, typename ROW_OR_COL>
     static DummyInnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(FIELD&& field,

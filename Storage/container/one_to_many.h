@@ -234,6 +234,8 @@ class GenericOneToMany {
     RowsIterator end() const { return RowsIterator(map_.cend()); }
   };
 
+  using rows_outer_accessor_t = RowsAccessor<forward_map_t>;
+
   RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
 
   GenericMapAccessor<transposed_map_t> Cols() const {

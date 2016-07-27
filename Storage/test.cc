@@ -1905,6 +1905,7 @@ CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLikeM2MPersisted);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedOne, SimpleLike, SimpleLikeO2OPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedMany, SimpleLike, SimpleLikeO2MPersisted);
 // Perhaps ordered matrix containers are to be tested too. Although a load test should suffuce. -- D.K.
 
 CURRENT_STORAGE(SimpleStorage) {
@@ -1912,6 +1913,7 @@ CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(post, SimplePostPersisted);
   CURRENT_STORAGE_FIELD(like, SimpleLikeM2MPersisted);
   CURRENT_STORAGE_FIELD(like_o2o, SimpleLikeO2OPersisted);
+  CURRENT_STORAGE_FIELD(like_o2m, SimpleLikeO2MPersisted);
 };
 
 }  // namespace transactional_storage_test
@@ -1928,7 +1930,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  EXPECT_EQ(4u, Storage::FIELDS_COUNT);
+  EXPECT_EQ(5u, Storage::FIELDS_COUNT);
   Storage storage(persistence_file_name);
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
@@ -2211,7 +2213,7 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
   using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
 
-  EXPECT_EQ(4u, Storage1::FIELDS_COUNT);
+  EXPECT_EQ(5u, Storage1::FIELDS_COUNT);
   EXPECT_EQ(4u, Storage2::FIELDS_COUNT);
 
   Storage1 storage1;
@@ -2237,7 +2239,7 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   EXPECT_TRUE(fields1.url_data.count("user") == 1);
   EXPECT_TRUE(fields1.url_data.count("post") == 1);
   EXPECT_TRUE(fields1.url_data.count("like") == 1);
-  EXPECT_EQ(4u, fields1.url_data.size());
+  EXPECT_EQ(5u, fields1.url_data.size());
 
   EXPECT_TRUE(fields2.url_data.count("user") == 1);
   EXPECT_TRUE(fields2.url_data.count("post") == 0);
