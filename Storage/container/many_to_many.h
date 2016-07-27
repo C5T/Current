@@ -55,7 +55,7 @@ class GenericManyToMany {
   using col_elements_map_t = ROW_MAP<row_t, const T*>;
   using forward_map_t = ROW_MAP<row_t, row_elements_map_t>;
   using transposed_map_t = COL_MAP<col_t, col_elements_map_t>;
-  using rest_behavior_t = rest::behavior::Matrix;
+  using semantics_t = storage::semantics::ManyToMany;
 
   GenericManyToMany(MutationJournal& journal) : journal_(journal) {}
 

@@ -42,7 +42,7 @@ class GenericDictionary {
  public:
   using key_t = sfinae::ENTRY_KEY_TYPE<T>;
   using map_t = MAP<key_t, T>;
-  using rest_behavior_t = rest::behavior::Dictionary;
+  using semantics_t = storage::semantics::Dictionary;
 
   GenericDictionary(MutationJournal& journal) : journal_(journal) {}
 

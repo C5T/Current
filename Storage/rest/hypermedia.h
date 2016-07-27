@@ -184,7 +184,7 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
 }
 
 struct Hypermedia {
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
   template <class INPUT>
@@ -229,16 +229,37 @@ struct Hypermedia {
     return true;
   }
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
-    void Enter(Request request, F&& next) {
+    void EnterByKeyCompletenessFamily(Request request,
+                                      semantics::key_completeness::FullKey,
+                                      semantics::key_completeness::DictionaryFullKey,
+                                      F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
                                                                            std::forward<F>(next));
     }
 
+    template <typename F, typename KEY_COMPLETENESS>
+    void EnterByKeyCompletenessFamily(Request request,
+                                      KEY_COMPLETENESS,
+                                      semantics::key_completeness::MatrixHalfKey,
+                                      F&& next) {
+      key_type_dependent_t<semantics::primary_key::Key>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                                    std::forward<F>(next));
+    }
+
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      EnterByKeyCompletenessFamily(std::move(request),
+                                   typename OPERATION::key_completeness_t(),
+                                   typename OPERATION::key_completeness_t::completeness_family_t(),
+                                   std::forward<F>(next));
+    }
     template <class INPUT>
-    Response Run(const INPUT& input) const {
+    Response RunByKeyCompletenessFamily(const INPUT& input,
+                                        semantics::key_completeness::FullKey,
+                                        semantics::key_completeness::DictionaryFullKey) const {
       if (Exists(input.get_url_key)) {
         const auto url_key_value = Value(input.get_url_key);
         const auto key = field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
@@ -271,10 +292,51 @@ struct Hypermedia {
         return Response(response);
       }
     }
+
+    template <class INPUT, typename KEY_COMPLETENESS>
+    Response RunByKeyCompletenessFamily(const INPUT& input,
+                                        KEY_COMPLETENESS,
+                                        semantics::key_completeness::MatrixHalfKey) const {
+      if (Exists(input.rowcol_get_url_key)) {
+        const auto row_key =
+            current::FromString<current::storage::sfinae::entry_row_t<ENTRY>>(Value(input.rowcol_get_url_key));
+        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowOrCol(input.field, row_key);
+        if (!iterable.Empty()) {
+          HypermediaRESTContainerResponse response;
+          response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+          for (const auto& element : iterable) {
+            response.data.emplace_back(
+                response.url + '/' +
+                field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
+                    field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
+          }
+          return Response(response);
+        } else {
+          return ErrorResponse(ResourceNotFoundError("The requested resource not found.",
+                                                     {{"key", Value(input.rowcol_get_url_key)}}),
+                               HTTPResponseCode.NotFound);
+        }
+      } else {
+        HypermediaRESTContainerResponse response;
+        response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowsOrCols(input.field);
+        for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+          response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
+        }
+        return Response(response);
+      }
+    }
+
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      return RunByKeyCompletenessFamily(input,
+                                        typename INPUT::key_completeness_t(),
+                                        typename INPUT::key_completeness_t::completeness_family_t());
+    }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<POST, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -322,8 +384,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<PUT, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     Optional<std::chrono::microseconds> if_unmodified_since;
 
     template <typename F>
@@ -379,8 +441,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<DELETE, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     Optional<std::chrono::microseconds> if_unmodified_since;
 
     template <typename F>

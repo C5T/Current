@@ -54,7 +54,7 @@ class GenericOneToMany {
   using row_elements_map_t = COL_MAP<col_t, const T*>;
   using forward_map_t = ROW_MAP<row_t, row_elements_map_t>;
   using transposed_map_t = row_elements_map_t;
-  using rest_behavior_t = rest::behavior::Matrix;
+  using semantics_t = storage::semantics::OneToMany;
 
   GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
 

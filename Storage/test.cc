@@ -23,12 +23,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// #define STORAGE_ONLY_RUN_RESTFUL_TESTS
+
 #define CURRENT_MOCK_TIME
 
 #include <set>
 
+#ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 #include "docu/docu_2_code.cc"
 #include "docu/docu_3_code.cc"
+#endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 #include "storage.h"
 #include "api.h"
@@ -116,6 +120,8 @@ CURRENT_STORAGE(TestStorage) {
 };
 
 }  // namespace transactional_storage_test
+
+#ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 TEST(TransactionalStorage, SmokeTest) {
   current::time::ResetToZero();
@@ -1859,6 +1865,8 @@ TEST(TransactionalStorage, GracefulShutdown) {
   ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
 }
 
+#endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS
+
 namespace transactional_storage_test {
 
 CURRENT_STRUCT(SimpleUser) {
@@ -2057,8 +2065,9 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Confirm matrix collection retrieval.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user.key")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/user.row")).code));
-    // EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
-    // EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.key")).code));
 
     // Delete the users.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user1_key)).code));
@@ -2106,12 +2115,36 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like/max/beer")).body);
 
-    // GET matrix as the collection.
+    // GET matrix as the collection, all records.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
     EXPECT_EQ(
         "max\tbeer\t{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
         "dima\tbeer\t{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
         HTTP(GET(base_url + "/api/data/like")).body);
+
+    // GET matrix as the collection, per rows.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
+    EXPECT_EQ("max\t1\ndima\t1\n", HTTP(GET(base_url + "/api/data/like.row")).body);
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row/foo")).code));
+    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api/data/like.row/foo")).body);
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row/dima")).code));
+    EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+              HTTP(GET(base_url + "/api/data/like.row/dima")).body);
+
+    // GET matrix as the collection, per cols.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
+    EXPECT_EQ("beer\t2\n", HTTP(GET(base_url + "/api/data/like.col")).body);
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col/foo")).code));
+    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api/data/like.col/foo")).body);
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col/beer")).code));
+    EXPECT_EQ(
+        "{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
+        "{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+        HTTP(GET(base_url + "/api/data/like.col/beer")).body);
 
     // Clean up the likes.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima/beer")).code));
@@ -2163,6 +2196,8 @@ CURRENT_STORAGE(PartiallyExposedStorage) {
 // LCOV_EXCL_STOP
 
 CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(transactional_storage_test::SimplePostPersistedNotExposed);
+
+#ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   current::time::ResetToZero();
@@ -2518,3 +2553,5 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     EXPECT_TRUE(WasCommitted(result));
   }
 }
+
+#endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS

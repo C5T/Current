@@ -82,17 +82,21 @@ inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(
 }
 
 struct AdvancedHypermedia : Hypermedia {
-  using SUPER = Hypermedia;
+  using SUPER_HYPERMEDIA = Hypermedia;
 
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator
-      : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {};
+      : SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {};
 
   template <typename STORAGE, typename ENTRY>
-  using RESTfulSchemaHandlerGenerator = SUPER::RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
+  using RESTfulSchemaHandlerGenerator = SUPER_HYPERMEDIA::RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>
+      : SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    using SUPER_GET_HANDLER =
+        SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
+
     using brief_entry_t = sfinae::brief_of_t<ENTRY>;
 
     // For per-record view, whether a full or brief format should be used.
@@ -113,7 +117,9 @@ struct AdvancedHypermedia : Hypermedia {
     }
 
     template <class INPUT>
-    Response Run(const INPUT& input) const {
+    Response RunByKeyCompletenessFamily(const INPUT& input,
+                                        semantics::key_completeness::FullKey,
+                                        semantics::key_completeness::DictionaryFullKey) const {
       if (Exists(input.get_url_key)) {
         // Single record view.
         const auto url_key_value = Value(input.get_url_key);
@@ -207,6 +213,21 @@ struct AdvancedHypermedia : Hypermedia {
           }
         }
       }
+    }
+
+    template <class INPUT, typename KEY_COMPLETENESS>
+    Response RunByKeyCompletenessFamily(const INPUT& input,
+                                        KEY_COMPLETENESS,
+                                        semantics::key_completeness::MatrixHalfKey) const {
+      return SUPER_GET_HANDLER::RunByKeyCompletenessFamily(
+          input, KEY_COMPLETENESS(), semantics::key_completeness::MatrixHalfKey());
+    }
+
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      return RunByKeyCompletenessFamily(input,
+                                        typename INPUT::key_completeness_t(),
+                                        typename INPUT::key_completeness_t::completeness_family_t());
     }
   };
 };

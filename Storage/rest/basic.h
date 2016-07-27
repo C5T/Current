@@ -42,22 +42,42 @@ namespace storage {
 namespace rest {
 
 struct Basic {
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
+  template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT&) {}
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<GET, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
-    void Enter(Request request, F&& next) {
+    void EnterByKeyCompletenessFamily(Request request,
+                                      semantics::key_completeness::FullKey,
+                                      semantics::key_completeness::DictionaryFullKey,
+                                      F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
                                                                            std::forward<F>(next));
     }
 
+    template <typename F, typename KEY_COMPLETENESS>
+    void EnterByKeyCompletenessFamily(Request request,
+                                      KEY_COMPLETENESS,
+                                      semantics::key_completeness::MatrixHalfKey,
+                                      F&& next) {
+      key_type_dependent_t<semantics::primary_key::Key>::CallWithOptionalKeyFromURL(std::move(request),
+                                                                                    std::forward<F>(next));
+    }
+
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      EnterByKeyCompletenessFamily(std::move(request),
+                                   typename OPERATION::key_completeness_t(),
+                                   typename OPERATION::key_completeness_t::completeness_family_t(),
+                                   std::forward<F>(next));
+    }
+
     template <class FIELD>
-    std::string RunIterate(const FIELD& field, behavior::Dictionary) const {
+    std::string RunIterate(const FIELD& field, semantics::primary_key::Key) const {
       std::ostringstream result;
       for (const auto& element : field) {
         // Basic REST, mostly for unit testing purposes. No need to URL-ify plain text output.
@@ -67,7 +87,7 @@ struct Basic {
     }
 
     template <class FIELD>
-    std::string RunIterate(const FIELD& field, behavior::Matrix) const {
+    std::string RunIterate(const FIELD& field, semantics::primary_key::RowCol) const {
       std::ostringstream result;
       for (const auto& element : field) {
         // Basic REST, mostly for unit testing purposes. No need to URL-ify plain text output.
@@ -78,7 +98,9 @@ struct Basic {
     }
 
     template <class INPUT>
-    Response Run(const INPUT& input) const {
+    Response RunByKeyCompletenessFamily(const INPUT& input,
+                                        semantics::key_completeness::FullKey,
+                                        semantics::key_completeness::DictionaryFullKey) const {
       if (Exists(input.get_url_key)) {
         const auto key =
             field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(Value(input.get_url_key));
@@ -89,13 +111,47 @@ struct Basic {
           return Response("Nope.\n", HTTPResponseCode.NotFound);
         }
       } else {
-        return RunIterate(input.field, BEHAVIOR());
+        return RunIterate(input.field, typename OPERATION::top_level_iterating_key_t());
       }
+    }
+
+    template <class INPUT, typename KEY_COMPLETENESS>
+    Response RunByKeyCompletenessFamily(const INPUT& input,
+                                        KEY_COMPLETENESS,
+                                        semantics::key_completeness::MatrixHalfKey) const {
+      if (Exists(input.rowcol_get_url_key)) {
+        const auto row_key =
+            current::FromString<current::storage::sfinae::entry_row_t<ENTRY>>(Value(input.rowcol_get_url_key));
+        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowOrCol(input.field, row_key);
+        if (!iterable.Empty()) {
+          std::ostringstream result;
+          for (const auto& e : iterable) {
+            result << JSON(e) << '\n';
+          }
+          return result.str();
+        } else {
+          return Response("Nope.\n", HTTPResponseCode.NotFound);
+        }
+      } else {
+        std::ostringstream result;
+        const auto iterable = RowOrCallSelector<KEY_COMPLETENESS>::RowsOrCols(input.field);
+        for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+          result << current::ToString(iterator.key()) << '\t' << (*iterator).Size() << '\n';
+        }
+        return result.str();
+      }
+    }
+
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      return RunByKeyCompletenessFamily(input,
+                                        typename INPUT::key_completeness_t(),
+                                        typename INPUT::key_completeness_t::completeness_family_t());
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<POST, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<POST, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOrWithoutKeyFromURL(
@@ -130,8 +186,8 @@ struct Basic {
     }
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<PUT, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<PUT, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -157,8 +213,8 @@ struct Basic {
     // LCOV_EXCL_STOP
   };
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator<DELETE, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator<DELETE, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));

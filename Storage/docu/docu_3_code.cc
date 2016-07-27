@@ -416,6 +416,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("101\t" + JSON(client1) + "\n102\t" + JSON(client2) + '\n', result.body);
   }
+
 }
 
 TEST(StorageDocumentation, IfUnmodifiedSince) {
@@ -513,9 +514,10 @@ namespace storage_docu {
 struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
   using SUPER = current::storage::rest::AdvancedHypermedia;
 
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY, typename BEHAVIOR>
-  struct RESTfulDataHandlerGenerator : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR> {
-    using ACTUAL_SUPER = SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY, BEHAVIOR>;
+  template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandlerGenerator :
+      SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    using ACTUAL_SUPER = SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
 
     template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
     std::enable_if_t<!IS_GET, Response> Run(const INPUT& input) const {

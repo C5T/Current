@@ -37,14 +37,17 @@ namespace rest {
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
 
+// TODO(dkorolev): The whole `FieldTypeDependentImpl` section below to be moved to `semantics.h`.
 template <typename>
 struct FieldTypeDependentImpl {};
 
 template <>
-struct FieldTypeDependentImpl<behavior::Dictionary> {
+struct FieldTypeDependentImpl<semantics::primary_key::Key> {
   using url_key_t = std::string;
   template <typename F_WITH, typename F_WITHOUT>
   static void CallWithOrWithoutKeyFromURL(Request&& request_rref, F_WITH&& with, F_WITHOUT&& without) {
+    // TODO(dkorolev): Also accept `?row` w/o `?col`, and other types of one-of-two-keys scenarios,
+    // as this `semantics::primary_key::Key` mode is used for partial access as well.
     if (request_rref.url_path_args.size() == 1u) {
       with(std::move(request_rref), request_rref.url_path_args[0]);
     } else if (request_rref.url.query.has("key")) {
@@ -73,11 +76,12 @@ struct FieldTypeDependentImpl<behavior::Dictionary> {
 };
 
 template <>
-struct FieldTypeDependentImpl<behavior::Matrix> {
+struct FieldTypeDependentImpl<semantics::primary_key::RowCol> {
   using url_key_t = std::pair<std::string, std::string>;
 
   template <typename F_WITH, typename F_WITHOUT>
   static void CallWithOrWithoutKeyFromURL(Request&& request_rref, F_WITH&& with, F_WITHOUT&& without) {
+    // TODO(dkorolev): `?1=...&2=...`, `?L=...&R=...`, etc. -- make the code more generic.
     if (request_rref.url_path_args.size() == 2u) {
       with(std::move(request_rref),
            std::make_pair(request_rref.url_path_args[0], request_rref.url_path_args[1]));
@@ -113,11 +117,11 @@ struct FieldTypeDependentImpl<behavior::Matrix> {
   }
 };
 
-template <typename REST_BEHAVIOR>
-struct FieldTypeDependent : FieldTypeDependentImpl<REST_BEHAVIOR> {
+template <typename PRIMARY_KEY_TYPE>
+struct FieldTypeDependent : FieldTypeDependentImpl<PRIMARY_KEY_TYPE> {
   template <typename F>
   static void CallWithKeyFromURL(Request&& request_rref, F&& next_with_key) {
-    FieldTypeDependentImpl<REST_BEHAVIOR>::CallWithOrWithoutKeyFromURL(
+    FieldTypeDependentImpl<PRIMARY_KEY_TYPE>::CallWithOrWithoutKeyFromURL(
         std::move(request_rref),
         std::forward<F>(next_with_key),
         [](Request&& proxied_request_rref) {
@@ -127,15 +131,19 @@ struct FieldTypeDependent : FieldTypeDependentImpl<REST_BEHAVIOR> {
 
   template <typename F>
   static void CallWithOptionalKeyFromURL(Request&& request_rref, F&& next) {
-    FieldTypeDependentImpl<REST_BEHAVIOR>::CallWithOrWithoutKeyFromURL(
+    FieldTypeDependentImpl<PRIMARY_KEY_TYPE>::CallWithOrWithoutKeyFromURL(
         std::move(request_rref),
         std::forward<F>(next),
         [&next](Request&& proxied_request_rref) { next(std::move(proxied_request_rref), nullptr); });
   }
 };
 
-template <typename FIELD_TYPE>
-using field_type_dependent_t = FieldTypeDependent<typename FIELD_TYPE::rest_behavior_t>;
+template <typename KEY>
+using key_type_dependent_t = FieldTypeDependent<KEY>;
+
+template <typename FIELD>
+using field_type_dependent_t = key_type_dependent_t<typename FIELD::semantics_t::primary_key_t>;
+// TODO(dkorolev): The whole `FieldTypeDependentImpl` section above to be moved to `semantics.h`.
 
 template <typename STORAGE>
 struct RESTfulGenericInput {
@@ -199,8 +207,10 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
+  using key_completeness_t = semantics::key_completeness::FullKey;
+
   using immutable_fields_t = ImmutableFields<STORAGE>;
-  using url_key_t = typename field_type_dependent_t<FIELD>::url_key_t;
+  using url_key_t = typename FIELD::semantics_t::url_key_t;
 
   immutable_fields_t fields;
   const FIELD& field;
@@ -237,6 +247,43 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
         get_url_key(get_url_key),
         role(role),
         export_requested(export_requested) {}
+};
+
+// A dedicated "GETInput" for the GETs over row or col of a matrix container.
+template <typename STORAGE, typename INCOMPLETE_KEY_TYPE, typename FIELD>
+struct RESTfulGETRowColInput : RESTfulGenericInput<STORAGE> {
+  static_assert(std::is_same<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialRowKey>::value ||
+                    std::is_same<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialColKey>::value,
+                "");
+
+  using key_completeness_t = INCOMPLETE_KEY_TYPE;
+  using immutable_fields_t = ImmutableFields<STORAGE>;
+
+  immutable_fields_t fields;
+  const FIELD& field;
+  const std::string field_name;
+  Optional<std::string> rowcol_get_url_key;
+
+  RESTfulGETRowColInput(const RESTfulGenericInput<STORAGE>& input,
+                        immutable_fields_t fields,
+                        const FIELD& field,
+                        const std::string& field_name,
+                        const Optional<std::string>& rowcol_get_url_key)
+      : RESTfulGenericInput<STORAGE>(input),
+        fields(fields),
+        field(field),
+        field_name(field_name),
+        rowcol_get_url_key(rowcol_get_url_key) {}
+  RESTfulGETRowColInput(RESTfulGenericInput<STORAGE>&& input,
+                        immutable_fields_t fields,
+                        const FIELD& field,
+                        const std::string& field_name,
+                        const Optional<std::string>& rowcol_get_url_key)
+      : RESTfulGenericInput<STORAGE>(std::move(input)),
+        fields(fields),
+        field(field),
+        field_name(field_name),
+        rowcol_get_url_key(rowcol_get_url_key) {}
 };
 
 template <typename STORAGE, typename FIELD, typename ENTRY>
@@ -337,6 +384,36 @@ struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
         field(field),
         field_name(field_name),
         delete_key(delete_key) {}
+};
+
+// Generic wrapper to have per-`Row` and per-`Col` code collapsed into one snippet.
+template <typename>
+struct RowOrCallSelector;
+
+template <>
+struct RowOrCallSelector<semantics::key_completeness::PartialRowKey> {
+  template <typename FIELD, typename ROW_OR_COL_KEY>
+  static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
+      -> decltype(std::declval<FIELD>().Row(std::declval<ROW_OR_COL_KEY>())) {
+    return field.Row(std::forward<ROW_OR_COL_KEY>(row_or_col_key));
+  }
+  template <typename FIELD>
+  static auto RowsOrCols(FIELD&& field) -> decltype(std::declval<FIELD>().Rows()) {
+    return field.Rows();
+  }
+};
+
+template <>
+struct RowOrCallSelector<semantics::key_completeness::PartialColKey> {
+  template <typename FIELD, typename ROW_OR_COL_KEY>
+  static auto RowOrCol(FIELD&& field, ROW_OR_COL_KEY&& row_or_col_key)
+      -> decltype(std::declval<FIELD>().Col(std::declval<ROW_OR_COL_KEY>())) {
+    return field.Col(std::forward<ROW_OR_COL_KEY>(row_or_col_key));
+  }
+  template <typename FIELD>
+  static auto RowsOrCols(FIELD&& field) -> decltype(std::declval<FIELD>().Cols()) {
+    return field.Cols();
+  }
 };
 
 }  // namespace rest
