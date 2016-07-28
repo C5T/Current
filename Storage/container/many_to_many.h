@@ -160,7 +160,8 @@ class GenericManyToMany {
       void operator++() { ++iterator; }
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
+      sfinae::CF<OUTER_KEY> OuterKeyForPartialHypermediaCollectionView() const { return iterator->first; }
+      size_t TotalElementsForHypermediaCollectionView() const { return iterator->second.size(); }
       using value_t = GenericMapAccessor<INNER_MAP>;
       void has_range_element_t() {}
       using range_element_t = GenericMapAccessor<INNER_MAP>;

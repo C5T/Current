@@ -2233,14 +2233,14 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
               static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
                                          SimpleComposite("!2", std::chrono::microseconds(1)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/text/data/composite_m2m",
-                                         SimpleComposite("!2", std::chrono::microseconds(3)))).code));
+              static_cast<int>(HTTP(PUT(base_url + "/text/data/composite_m2m/!2/3",
+                                        SimpleComposite("!2", std::chrono::microseconds(3)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
-                                         SimpleComposite("!3", std::chrono::microseconds(1)))).code));
+              static_cast<int>(HTTP(PUT(base_url + "/basic/data/composite_m2m/!3/1",
+                                        SimpleComposite("!3", std::chrono::microseconds(1)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
-                                         SimpleComposite("!3", std::chrono::microseconds(2)))).code));
+              static_cast<int>(HTTP(PUT(base_url + "/hypermedia/data/composite_m2m/!3/2",
+                                        SimpleComposite("!3", std::chrono::microseconds(2)))).code));
   }
 
   {
@@ -2248,15 +2248,17 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     {
       const auto response = HTTP(GET(base_url + "/text/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
+      // The top-level container is still unordered, so meh.
+      std::vector<std::string> elements = current::strings::Split<current::strings::ByLines>(response.body);
+      std::sort(elements.begin(), elements.end());
       EXPECT_EQ(
-          "!3\t2\t{\"row\":\"!3\",\"col\":2}\n"
-          "!3\t1\t{\"row\":\"!3\",\"col\":1}\n"
+          "!1\t2\t{\"row\":\"!1\",\"col\":2}\n"
           "!1\t3\t{\"row\":\"!1\",\"col\":3}\n"
           "!2\t1\t{\"row\":\"!2\",\"col\":1}\n"
-          "!1\t2\t{\"row\":\"!1\",\"col\":2}\n"
           "!2\t3\t{\"row\":\"!2\",\"col\":3}\n"
-          "",
-          response.body);
+          "!3\t1\t{\"row\":\"!3\",\"col\":1}\n"
+          "!3\t2\t{\"row\":\"!3\",\"col\":2}",
+          current::strings::Join(elements, '\n'));
     }
     {
       const auto response = HTTP(GET(base_url + "/text/data/composite_m2m.row"));
@@ -2285,15 +2287,23 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     {
       const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
+      using parsed_t = HypermediaRESTContainerResponse;
+      parsed_t parsed;
+      ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
+      // Don't test the body of `"/basic/data/composite_m2m"`, it's unordered and machine-dependent.
+      std::vector<std::string> strings;
+      for (const auto& resource : parsed.data) {
+        strings.push_back(JSON(resource));
+      }
+      std::sort(strings.begin(), strings.end());
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":["
-          "\"/data/composite_m2m/!3/2\","
-          "\"/data/composite_m2m/!3/1\","
-          "\"/data/composite_m2m/!1/3\","
-          "\"/data/composite_m2m/!2/1\","
-          "\"/data/composite_m2m/!1/2\","
-          "\"/data/composite_m2m/!2/3\"]}\n",
-          response.body);
+          "\"/data/composite_m2m/!1/2\"\n"
+          "\"/data/composite_m2m/!1/3\"\n"
+          "\"/data/composite_m2m/!2/1\"\n"
+          "\"/data/composite_m2m/!2/3\"\n"
+          "\"/data/composite_m2m/!3/1\"\n"
+          "\"/data/composite_m2m/!3/2\"",
+          current::strings::Join(strings, '\n'));
     }
     {
       const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.row"));
@@ -2333,27 +2343,15 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":0,\"n\":6,\"total\":6,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!3/2\",\"url_full\":\"/data/composite_m2m/"
-          "!3/2\",\"url_brief\":\"/data/composite_m2m/!3/2?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!3/1\",\"url_full\":\"/data/composite_m2m/!3/1\",\"url_brief\":\"/data/composite_m2m/!3/"
-          "1?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!1/3\",\"url_full\":\"/data/composite_m2m/!1/3\",\"url_brief\":\"/data/composite_m2m/!1/"
-          "3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!2/1\",\"url_full\":\"/data/composite_m2m/!2/1\",\"url_brief\":\"/data/composite_m2m/!2/"
-          "1?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!1/2\",\"url_full\":\"/data/composite_m2m/!1/2\",\"url_brief\":\"/data/composite_m2m/!1/"
-          "2?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/!2/"
-          "3?fields=brief\",\"url_directory\":\"/data/composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
-          response.body);
+      using parsed_t =
+          ExtendedHypermediaRESTContainerResponse<ExtendedHypermediaRESTRecordResponse<SimpleComposite>>;
+      parsed_t parsed;
+      ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
+      std::vector<std::string> strings;
+      for (const auto& resource : parsed.data) {
+        strings.push_back(JSON(resource.data));
+      }
+      std::sort(strings.begin(), strings.end());
     }
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row"));
@@ -2361,16 +2359,16 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       EXPECT_EQ(
           "{\"success\":true,\"url\":\"/data/composite_m2m.row?i=0&n=10\",\"url_directory\":\"/data/"
           "composite_m2m.row\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.row/!1\",\"url_full\":\"/data/"
-          "composite_m2m.row/!1\",\"url_brief\":\"/data/composite_m2m.row/"
-          "!1?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m.row/!2\",\"url_full\":\"/data/composite_m2m.row/!2\",\"url_brief\":\"/data/"
-          "composite_m2m.row/!2?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m.row/!3\",\"url_full\":\"/data/composite_m2m.row/!3\",\"url_brief\":\"/data/"
-          "composite_m2m.row/!3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.row/"
+          "!1\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!1\","
+          "\"col\":3}]}},{\"success\":null,\"url\":\"/data/composite_m2m.row/"
+          "!2\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!2\","
+          "\"col\":3}]}},{\"success\":null,\"url\":\"/data/composite_m2m.row/"
+          "!3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!3\",\"col\":1},{\"row\":\"!3\","
+          "\"col\":2}]}}]}\n",
           response.body);
     }
     {
@@ -2379,15 +2377,16 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       EXPECT_EQ(
           "{\"success\":true,\"url\":\"/data/composite_m2m.col?i=0&n=10\",\"url_directory\":\"/data/"
           "composite_m2m.col\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.col/1\",\"url_full\":\"/data/"
-          "composite_m2m.col/1\",\"url_brief\":\"/data/composite_m2m.col/1?fields=brief\",\"url_directory\":\"/"
-          "data/composite_m2m.col\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m.col/2\",\"url_full\":\"/data/composite_m2m.col/2\",\"url_brief\":\"/data/"
-          "composite_m2m.col/2?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m.col\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m.col/3\",\"url_full\":\"/data/composite_m2m.col/3\",\"url_brief\":\"/data/"
-          "composite_m2m.col/3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m.col\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.col/"
+          "1\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m.col\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!3\","
+          "\"col\":1}]}},{\"success\":null,\"url\":\"/data/composite_m2m.col/"
+          "2\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m.col\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!3\","
+          "\"col\":2}]}},{\"success\":null,\"url\":\"/data/composite_m2m.col/"
+          "3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m.col\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":3},{\"row\":\"!2\","
+          "\"col\":3}]}}]}\n",
           response.body);
     }
     {
@@ -2396,12 +2395,11 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       EXPECT_EQ(
           "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
           "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!2/1\",\"url_full\":\"/data/composite_m2m/"
-          "!2/1\",\"url_brief\":\"/data/composite_m2m/!2/1?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/!2/"
-          "3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!2/"
+          "1\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!2/3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
           response.body);
     }
     {
@@ -2410,11 +2408,11 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       EXPECT_EQ(
           "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
           "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!1/3\",\"url_full\":\"/data/composite_m2m/"
-          "!1/3\",\"url_brief\":\"/data/composite_m2m/!1/3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
-          "!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/!2/"
-          "3?fields=brief\",\"url_directory\":\"/data/composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!1/"
+          "3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!2/3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
           response.body);
     }
   }

@@ -183,12 +183,17 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
                               {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
+CURRENT_STRUCT_T(HypermediaSubCollection) {
+  CURRENT_FIELD(total, int64_t, 0);
+  CURRENT_FIELD(preview, std::vector<T>);
+};
+
 // The magic to compose URL key or subkey, be it dictionary or matrix, full or partial.
-template <typename PARTICULAR_FIELD, typename ENTRY, typename VT>
+template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERATOR_VALUE_TYPE>
 struct ComposeRESTfulKeyImpl {
   template <typename T>
   static std::string DoIt(const T& iterator) {
-    return current::ToString(iterator.key());
+    return current::ToString(iterator.OuterKeyForPartialHypermediaCollectionView());
   }
 };
 
@@ -329,7 +334,9 @@ struct SimpleImpl {
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
-          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
+          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
+                                                                                     ENTRY,
+                                                                                     ENTRY>(
               context,
               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
               input.field);
@@ -370,7 +377,9 @@ struct SimpleImpl {
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
-          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
+          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
+                                                                                     ENTRY,
+                                                                                     ENTRY>(
               context,
               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
               iterable);
@@ -381,11 +390,12 @@ struct SimpleImpl {
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
-        return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
-            context,
-            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
-                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
-            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
+        return HYPERMEDIA_RESPONSE_FORMATTER::
+            template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, HypermediaSubCollection<ENTRY>>(
+                context,
+                input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
+                    MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
+                GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
       }
     }
 
@@ -564,7 +574,7 @@ struct SimpleImpl {
 struct SimpleHypermediaResponseFormatter {
   struct Context {};
 
-  template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERABLE>
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context&, const std::string& url, ITERABLE&& span) {
     HypermediaRESTContainerResponse payload;
     payload.url = url;

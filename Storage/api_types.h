@@ -486,7 +486,8 @@ struct SingleElementContainer {
   SingleElementContainer() = default;
   SingleElementContainer(current::copy_free<outer_key_t> outer_key, iterator_t iterator)
       : outer_key(outer_key), iterator(iterator) {}
-  size_t Size() const { return 1u; }
+  // This method can be avoided, but it's kept for clarity and cleaniness of the user code. -- D.K.
+  size_t TotalElementsForHypermediaCollectionView() const { return 1u; }
 };
 
 template <typename, typename>
@@ -543,7 +544,9 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
       void operator++() { ++iterator; }
       bool operator==(const SingleElementOuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const SingleElementOuterIterator& rhs) const { return !operator==(rhs); }
-      current::copy_free<OUTER_KEY> key() const { return iterator.key(); }
+      current::copy_free<OUTER_KEY> OuterKeyForPartialHypermediaCollectionView() const {
+        return iterator.key();
+      }
       using value_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
       void has_range_element_t() {}
       using range_element_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;

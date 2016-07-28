@@ -131,13 +131,13 @@ class GenericDictionary {
 
   struct Iterator final {
     using iterator_t = typename map_t::const_iterator;
-    using value_t = sfinae::CF<key_t>;
+    using value_t = sfinae::CF<T>;
     iterator_t iterator;
     explicit Iterator(iterator_t iterator) : iterator(std::move(iterator)) {}
     void operator++() { ++iterator; }
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    value_t key() const { return iterator->first; }
+    key_t OuterKeyForPartialHypermediaCollectionView() const { return iterator->first; }
     const T& operator*() const { return iterator->second; }
     const T* operator->() const { return &iterator->second; }
   };

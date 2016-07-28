@@ -63,6 +63,11 @@ struct GenericMapAccessor final {
 
   iterator_t begin() const { return iterator_t(map_.cbegin()); }
   iterator_t end() const { return iterator_t(map_.cend()); }
+
+  // TODO(dkorolev): Replace this by `Size()` once the REST-related dust settles.
+  int64_t TotalElementsForHypermediaCollectionView() const {
+    return static_cast<int64_t>(Size());
+  }
 };
 
 }  // namespace current

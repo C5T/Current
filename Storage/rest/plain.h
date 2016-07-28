@@ -143,7 +143,8 @@ struct Plain {
         // Must use `begin()/end()` here, as `GenericMapAccessor` doesn't have the `key` exposed. -- D.K.
         // TODO(dkorolev): DIMA SIMPLIFY THIS
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-          result << current::ToString(iterator.key()) << '\t' << (*iterator).Size() << '\n';
+          result << current::ToString(iterator.OuterKeyForPartialHypermediaCollectionView()) << '\t'
+                 << (*iterator).TotalElementsForHypermediaCollectionView() << '\n';
         }
         return result.str();
       }
