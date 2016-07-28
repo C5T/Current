@@ -183,34 +183,35 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
                               {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
-template<typename PARTICULAR_FIELD, typename ENTRY, typename VT>
-struct DIMA_WTF_IMPL {
-  template<typename T>
+// The magic to compose URL key or subkey, be it dictionary or matrix, full or partial.
+template <typename PARTICULAR_FIELD, typename ENTRY, typename VT>
+struct ComposeRESTfulKeyImpl {
+  template <typename T>
   static std::string DoIt(const T& iterator) {
-    return  current::ToString(iterator.key());
+    return current::ToString(iterator.key());
   }
 };
 
-template<typename PARTICULAR_FIELD, typename ENTRY>
-struct DIMA_WTF_IMPL<PARTICULAR_FIELD, ENTRY, ENTRY> {
-  template<typename T>
+template <typename PARTICULAR_FIELD, typename ENTRY>
+struct ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, ENTRY> {
+  template <typename T>
   static std::string DoIt(const T& iterator) {
     return field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
         field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(*iterator));
   }
 };
 
-template<typename PARTICULAR_FIELD, typename ENTRY, typename K, typename I>
-struct DIMA_WTF_IMPL<PARTICULAR_FIELD, ENTRY, SingleElementContainer<K, I>> {
-  template<typename T>
+template <typename PARTICULAR_FIELD, typename ENTRY, typename K, typename I>
+struct ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, SingleElementContainer<K, I>> {
+  template <typename T>
   static std::string DoIt(const T& t) {
     return current::ToString((*t).outer_key);
   }
 };
 
-template<typename PARTICULAR_FIELD, typename ENTRY, typename T>
-std::string DIMA_WTF(const T& iterator) {
-  return DIMA_WTF_IMPL<PARTICULAR_FIELD, ENTRY, typename T::value_t>::DoIt(iterator);
+template <typename PARTICULAR_FIELD, typename ENTRY, typename T>
+std::string ComposeRESTfulKey(const T& iterator) {
+  return ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, typename T::value_t>::DoIt(iterator);
 };
 
 template <typename HTML_OUTPUT_FORMATTER>
@@ -328,8 +329,7 @@ struct SimpleImpl {
               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name);
           const auto& iterable = input.field;
           for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-            //payload.data.emplace_back(payload.url + '/' + DIMAComposeKey<PARTICULAR_FIELD>(iterator));
-            payload.data.emplace_back(payload.url + '/' + DIMA_WTF<PARTICULAR_FIELD, ENTRY>(iterator));
+            payload.data.emplace_back(payload.url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
           }
           return Response(payload);
         } else {
@@ -372,7 +372,7 @@ struct SimpleImpl {
           auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name);
           for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-            payload.data.emplace_back(payload.url + '/' + DIMA_WTF<PARTICULAR_FIELD, ENTRY>(iterator));
+            payload.data.emplace_back(payload.url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
           }
           return Response(payload);
         } else {
@@ -397,7 +397,7 @@ struct SimpleImpl {
           // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
           //    where SE stands for SingleElement.
           // To have Hypermedia pagination generic, they are accessed in the same way.
-          payload.data.emplace_back(payload.url + '/' + DIMA_WTF<PARTICULAR_FIELD, ENTRY>(iterator));
+          payload.data.emplace_back(payload.url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
         }
         return Response(payload);
       }
