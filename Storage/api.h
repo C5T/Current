@@ -300,7 +300,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                            semantics::rest::RESTWithSingleKey,
                                            GENERIC_HANDLER generic_data_handler) {
     // TODO(dkorolev): `".$KEY_NAME"` alongside `".key"`.
-    for (const auto dot_key : {".key"}) {
+    for (const auto dot_key : {".key", ".0", ".K"}) {
       registerer(storage_handlers_map_entry_t(
           field_name,
           RESTfulRoute(kRESTfulDataURLComponent, dot_key, URLPathArgs::CountMask::Any, generic_data_handler)));
@@ -360,7 +360,7 @@ struct PerFieldRESTfulHandlerGenerator {
         GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixRow>(field_name);
     const auto col_handler =
         GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixCol>(field_name);
-    for (const auto dot_row : {".row", ".1", ".left", ".l", "L"}) {
+    for (const auto dot_row : {".row", ".1", ".left", ".l", ".L"}) {
       registerer(
           storage_handlers_map_entry_t(field_name,
                                        RESTfulRoute(kRESTfulDataURLComponent,
@@ -368,7 +368,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                                     URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                                     row_handler)));
     }
-    for (const auto dot_col : {".col", ".2", ".right", "r", "R"}) {
+    for (const auto dot_col : {".col", ".2", ".right", "r", ".R"}) {
       registerer(
           storage_handlers_map_entry_t(field_name,
                                        RESTfulRoute(kRESTfulDataURLComponent,
