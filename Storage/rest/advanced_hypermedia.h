@@ -194,6 +194,7 @@ struct AdvancedHypermedia : Hypermedia {
               has_previous_page = true;
             } else if (i >= query_i + query_n) {
               has_next_page = true;
+              break;
             }
             ++i;
           }

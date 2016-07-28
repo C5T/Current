@@ -190,8 +190,8 @@ class GenericManyToMany {
   using rows_outer_accessor_t = OuterAccessor<forward_map_t>;
   using cols_outer_accessor_t = OuterAccessor<transposed_map_t>;
 
-  OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
-  OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
+  rows_outer_accessor_t Rows() const { return OuterAccessor<forward_map_t>(forward_); }
+  cols_outer_accessor_t Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
   GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
     const auto cit = forward_.find(row);

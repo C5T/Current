@@ -250,11 +250,11 @@ class GenericOneToOne {
     DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
   }
 
-  const GenericMapAccessor<forward_map_t> Rows() const { return GenericMapAccessor<forward_map_t>(forward_); }
+  using rows_outer_accessor_t = GenericMapAccessor<forward_map_t>;
+  rows_outer_accessor_t Rows() const { return GenericMapAccessor<forward_map_t>(forward_); }
 
-  const GenericMapAccessor<transposed_map_t> Cols() const {
-    return GenericMapAccessor<transposed_map_t>(transposed_);
-  }
+  using cols_outer_accessor_t = GenericMapAccessor<transposed_map_t>;
+  cols_outer_accessor_t Cols() const { return GenericMapAccessor<transposed_map_t>(transposed_); }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
   // TODO(dkorolev): Revisit whether this semantics is the right one.

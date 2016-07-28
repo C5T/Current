@@ -32,12 +32,12 @@ namespace current {
 
 template <typename MAP>
 struct GenericMapIterator final {
-  using iterator_t = typename MAP::const_iterator;
+  using inner_iterator_t = typename MAP::const_iterator;
   using key_t = typename MAP::key_type;
   using mapped_t = typename std::remove_pointer<typename MAP::mapped_type>::type;
   using value_t = typename is_unique_ptr<mapped_t>::underlying_type;
-  iterator_t iterator_;
-  explicit GenericMapIterator(iterator_t iterator) : iterator_(iterator) {}
+  inner_iterator_t iterator_;
+  explicit GenericMapIterator(inner_iterator_t iterator) : iterator_(iterator) {}
   void operator++() { ++iterator_; }
   bool operator==(const GenericMapIterator& rhs) const { return iterator_ == rhs.iterator_; }
   bool operator!=(const GenericMapIterator& rhs) const { return !operator==(rhs); }
@@ -49,7 +49,8 @@ struct GenericMapIterator final {
 
 template <typename MAP>
 struct GenericMapAccessor final {
-  using iterator_t = GenericMapIterator<MAP>;
+  using const_iterator = GenericMapIterator<MAP>;
+  using iterator_t = const_iterator;
   using key_t = typename MAP::key_type;
   const MAP& map_;
 

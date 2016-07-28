@@ -235,12 +235,10 @@ class GenericOneToMany {
   };
 
   using rows_outer_accessor_t = RowsAccessor<forward_map_t>;
+  rows_outer_accessor_t Rows() const { return RowsAccessor<forward_map_t>(forward_); }
 
-  RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
-
-  GenericMapAccessor<transposed_map_t> Cols() const {
-    return GenericMapAccessor<transposed_map_t>(transposed_);
-  }
+  using cols_outer_accessor_t = GenericMapAccessor<transposed_map_t>;
+  cols_outer_accessor_t Cols() const { return GenericMapAccessor<transposed_map_t>(transposed_); }
 
   GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
     const auto cit = forward_.find(row);
