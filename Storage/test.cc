@@ -2338,54 +2338,83 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           "composite_m2m\",\"i\":0,\"n\":6,\"total\":6,\"url_next_page\":null,\"url_previous_page\":null,"
           "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!3/2\",\"url_full\":\"/data/composite_m2m/"
           "!3/2\",\"url_brief\":\"/data/composite_m2m/!3/2?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"!3\",\"col\":2}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m/!3/1\",\"url_full\":\"/data/composite_m2m/!3/1\",\"url_brief\":\"/data/composite_m2m/"
-          "!3/1?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"!3\",\"col\":1}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m/!1/3\",\"url_full\":\"/data/composite_m2m/!1/3\",\"url_brief\":\"/data/composite_m2m/"
-          "!1/3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m/!2/1\",\"url_full\":\"/data/composite_m2m/!2/1\",\"url_brief\":\"/data/composite_m2m/"
-          "!2/1?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m/!1/2\",\"url_full\":\"/data/composite_m2m/!1/2\",\"url_brief\":\"/data/composite_m2m/"
-          "!1/2?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"!1\",\"col\":2}},{\"success\":null,\"url\":\"/data/"
-          "composite_m2m/!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/"
-          "!2/3?fields=brief\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!3/1\",\"url_full\":\"/data/composite_m2m/!3/1\",\"url_brief\":\"/data/composite_m2m/!3/"
+          "1?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!1/3\",\"url_full\":\"/data/composite_m2m/!1/3\",\"url_brief\":\"/data/composite_m2m/!1/"
+          "3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!2/1\",\"url_full\":\"/data/composite_m2m/!2/1\",\"url_brief\":\"/data/composite_m2m/!2/"
+          "1?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!1/2\",\"url_full\":\"/data/composite_m2m/!1/2\",\"url_brief\":\"/data/composite_m2m/!1/"
+          "2?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/!2/"
+          "3?fields=brief\",\"url_directory\":\"/data/composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
           response.body);
     }
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.row\",\"data\":[\"/"
-          "data/composite_m2m.row/!1\",\"/data/composite_m2m.row/!2\",\"/data/composite_m2m.row/!3\"]}\n",
+          "{\"success\":true,\"url\":\"/data/composite_m2m.row?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.row/!1\",\"url_full\":\"/data/"
+          "composite_m2m.row/!1\",\"url_brief\":\"/data/composite_m2m.row/"
+          "!1?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m.row/!2\",\"url_full\":\"/data/composite_m2m.row/!2\",\"url_brief\":\"/data/"
+          "composite_m2m.row/!2?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m.row/!3\",\"url_full\":\"/data/composite_m2m.row/!3\",\"url_brief\":\"/data/"
+          "composite_m2m.row/!3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m.row\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
           response.body);
     }
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.col\",\"data\":[\"/"
-          "data/composite_m2m.col/1\",\"/data/composite_m2m.col/2\",\"/data/composite_m2m.col/3\"]}\n",
+          "{\"success\":true,\"url\":\"/data/composite_m2m.col?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m.col\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.col/1\",\"url_full\":\"/data/"
+          "composite_m2m.col/1\",\"url_brief\":\"/data/composite_m2m.col/1?fields=brief\",\"url_directory\":\"/"
+          "data/composite_m2m.col\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m.col/2\",\"url_full\":\"/data/composite_m2m.col/2\",\"url_brief\":\"/data/"
+          "composite_m2m.col/2?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m.col\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m.col/3\",\"url_full\":\"/data/composite_m2m.col/3\",\"url_brief\":\"/data/"
+          "composite_m2m.col/3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m.col\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
           response.body);
     }
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
-          "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
+          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!2/1\",\"url_full\":\"/data/composite_m2m/"
+          "!2/1\",\"url_brief\":\"/data/composite_m2m/!2/1?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/!2/"
+          "3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
           response.body);
     }
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
-          "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
+          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!1/3\",\"url_full\":\"/data/composite_m2m/"
+          "!1/3\",\"url_brief\":\"/data/composite_m2m/!1/3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}},{\"success\":null,\"url\":\"/data/composite_m2m/"
+          "!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/!2/"
+          "3?fields=brief\",\"url_directory\":\"/data/composite_m2m\",\"data\":{\"row\":\"\",\"col\":0}}]}\n",
           response.body);
     }
   }
