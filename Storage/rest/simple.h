@@ -364,8 +364,9 @@ struct Simple {
                        '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
         const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+          // NOTE(dkorolev): This `iterator` can be of many different kinds: ...
           const typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>
-              DIMA_CONFIRM_TYPE = iterator.key();
+              DIMA_CONFIRM_TYPE = iterator.DIMAkey();
           static_cast<void>(DIMA_CONFIRM_TYPE);
           response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
         }

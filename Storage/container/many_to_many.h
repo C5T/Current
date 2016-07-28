@@ -161,6 +161,7 @@ class GenericManyToMany {
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
       sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
+      sfinae::CF<OUTER_KEY> DIMAkey() const { return iterator->first; }
       GenericMapAccessor<INNER_MAP> operator*() const {
         return GenericMapAccessor<INNER_MAP>(iterator->second);
       }

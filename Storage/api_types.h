@@ -473,6 +473,19 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   }
 };
 
+// A RESTful way to look at the slice of a container, such as matrix row or matrix col.
+CURRENT_STRUCT_T(HypermediaSliceKeyAndSize) {
+  CURRENT_FIELD(key, T);
+  CURRENT_FIELD(resources, uint64_t, 0u);
+
+  CURRENT_DEFAULT_CONSTRUCTOR_T(HypermediaSliceKeyAndSize) {}
+  CURRENT_CONSTRUCTOR_T(HypermediaSliceKeyAndSize)(const T& key, const size_t size)
+      : key(key), resources(static_cast<uint64_t>(size)) {}
+
+  // Used to dump a number in `Plain` REST format.
+  size_t Size() const { return static_cast<size_t>(resources); }
+};
+
 template <typename, typename>
 struct GenericMatrixIteratorImplSelector;
 
@@ -527,7 +540,11 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
       current::copy_free<OUTER_KEY> key() const { return iterator.key(); }
-      InnerAccessor<ENTRY> operator*() const { return InnerAccessor<ENTRY>(*iterator); }
+      current::copy_free<OUTER_KEY> DIMAkey() const { return iterator.key(); }
+      const HypermediaSliceKeyAndSize<OUTER_KEY> operator*() const {
+        // TODO(dkorolev): DIMA: Fix this 42u.
+        return HypermediaSliceKeyAndSize<OUTER_KEY>(iterator.key(), 42u);
+      }
     };
     OuterIterator begin() const { return OuterIterator(accessor.begin()); }
     OuterIterator end() const { return OuterIterator(accessor.end()); }

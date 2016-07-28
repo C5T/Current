@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// #define STORAGE_ONLY_RUN_RESTFUL_TESTS
+#define STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 #define CURRENT_MOCK_TIME
 
