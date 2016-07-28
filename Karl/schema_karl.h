@@ -180,7 +180,7 @@ CURRENT_STRUCT(ServerInfo) {
   CURRENT_FIELD_DESCRIPTION(ip, "The IP address of the server.");
   CURRENT_USE_FIELD_AS_KEY(ip);
 
-  CURRENT_FIELD(behind_this_by, std::chrono::microseconds);
+  CURRENT_FIELD(behind_this_by, std::chrono::microseconds, std::chrono::microseconds(0));
   CURRENT_FIELD_DESCRIPTION(behind_this_by,
                             "How much this server is behind the server that generated this report "
                             "local-time-wise.");
