@@ -515,6 +515,7 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
     bool Empty() const { return !Exists(entry); }
     size_t Size() const { return Exists(entry) ? 1u : 0u; }
     struct SingleElementInnerIterator {
+      using value_t = ENTRY;
       const Optional<ENTRY>& entry;
       size_t i;
       SingleElementInnerIterator(const Optional<ENTRY>& entry, size_t i) : entry(entry), i(i) {}
@@ -543,6 +544,8 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
       bool operator==(const SingleElementOuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const SingleElementOuterIterator& rhs) const { return !operator==(rhs); }
       current::copy_free<OUTER_KEY> key() const { return iterator.key(); }
+//      current::copy_free<OUTER_KEY> DIMA_WTF_KEY() const { return iterator.DIMA_WTF_KEY(); }
+      using value_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
       void has_range_element_t() {}
       using range_element_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
       const range_element_t operator*() const {

@@ -42,6 +42,7 @@ struct GenericMapIterator final {
   bool operator==(const GenericMapIterator& rhs) const { return iterator_ == rhs.iterator_; }
   bool operator!=(const GenericMapIterator& rhs) const { return !operator==(rhs); }
   copy_free<key_t> key() const { return iterator_->first; }
+  copy_free<key_t> DIMA_WTF_KEY() const { return iterator_->first; }
 
   const value_t& operator*() const { return is_unique_ptr<mapped_t>::extract(iterator_->second); }
   const value_t* operator->() const { return is_unique_ptr<mapped_t>::pointer(iterator_->second); }
