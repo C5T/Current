@@ -1902,26 +1902,33 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
 };
 
 // Test RESTful compilation with different `row` and `col` types.
-CURRENT_STRUCT(SimpleComplex) {
-  CURRENT_FIELD(row, uint64_t);
+CURRENT_STRUCT(SimpleComposite) {
+  CURRENT_FIELD(row, std::string);
   CURRENT_FIELD(col, std::chrono::microseconds);
+  CURRENT_CONSTRUCTOR(SimpleComposite)(const std::string& row = "",
+                                       const std::chrono::microseconds col = std::chrono::microseconds(0))
+      : row(row), col(col) {}
+
+  // Without this line, POST is not allowed in RESTful access to this container.
+  // TODO(dkorolev): We may want to revisit POST for matrix containers this one day.
+  void InitializeOwnKey() {}
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLikePersisted);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedOne, SimpleComplex, SimpleComplexO2OPersisted);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedMany, SimpleComplex, SimpleComplexO2MPersisted);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleComplex, SimpleComplexM2MPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedOne, SimpleComposite, SimpleCompositeO2OPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedMany, SimpleComposite, SimpleCompositeO2MPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToOrderedMany, SimpleComposite, SimpleCompositeM2MPersisted);
 // Perhaps ordered matrix containers are to be tested too. Although a load test should suffuce. -- D.K.
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
   CURRENT_STORAGE_FIELD(post, SimplePostPersisted);
   CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
-  CURRENT_STORAGE_FIELD(complex_o2o, SimpleComplexO2OPersisted);
-  CURRENT_STORAGE_FIELD(complex_o2m, SimpleComplexO2MPersisted);
-  CURRENT_STORAGE_FIELD(complex_m2m, SimpleComplexM2MPersisted);
+  CURRENT_STORAGE_FIELD(composite_o2o, SimpleCompositeO2OPersisted);
+  CURRENT_STORAGE_FIELD(composite_o2m, SimpleCompositeO2MPersisted);
+  CURRENT_STORAGE_FIELD(composite_m2m, SimpleCompositeM2MPersisted);
 };
 
 }  // namespace transactional_storage_test
@@ -2194,6 +2201,130 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   EXPECT_EQ(20u, persisted_transactions.size());
 }
 
+TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using namespace current::storage::rest;
+  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  const auto rest1 = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/basic", "");
+  const auto rest2 = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
+      storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
+
+  {
+    // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal. Alternate Basic and Hypermedia.
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
+                                         SimpleComposite("!1", std::chrono::microseconds(2)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
+                                         SimpleComposite("!1", std::chrono::microseconds(3)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
+                                         SimpleComposite("!2", std::chrono::microseconds(1)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
+                                         SimpleComposite("!2", std::chrono::microseconds(3)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
+                                         SimpleComposite("!3", std::chrono::microseconds(1)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
+                                         SimpleComposite("!3", std::chrono::microseconds(2)))).code));
+  }
+
+  {
+    // Browse the collection in various ways using the `Basic` API.
+    {
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "!3\t2\t{\"row\":\"!3\",\"col\":2}\n"
+          "!3\t1\t{\"row\":\"!3\",\"col\":1}\n"
+          "!1\t3\t{\"row\":\"!1\",\"col\":3}\n"
+          "!2\t1\t{\"row\":\"!2\",\"col\":1}\n"
+          "!1\t2\t{\"row\":\"!1\",\"col\":2}\n"
+          "!2\t3\t{\"row\":\"!2\",\"col\":3}\n"
+          "",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.row"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("!1\t2\n!2\t2\n!3\t2\n", response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.col"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("1\t2\n2\t2\n3\t2\n", response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.row/!2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("{\"row\":\"!2\",\"col\":1}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.col/3"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("{\"row\":\"!1\",\"col\":3}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
+    }
+  }
+
+  {
+    // Browse the collection in various ways using the `Hypermedia` API.
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":["
+          "\"/data/composite_m2m/!3/2\","
+          "\"/data/composite_m2m/!3/1\","
+          "\"/data/composite_m2m/!1/3\","
+          "\"/data/composite_m2m/!2/1\","
+          "\"/data/composite_m2m/!1/2\","
+          "\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.row\",\"data\":[\"/"
+          "data/composite_m2m.row/!1\",\"/data/composite_m2m.row/!2\",\"/data/composite_m2m.row/!3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.col\",\"data\":[\"/"
+          "data/composite_m2m.col/1\",\"/data/composite_m2m.col/2\",\"/data/composite_m2m.col/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row/!2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col/3"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+  }
+}
+
 // LCOV_EXCL_START
 // Test the `CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(field)` macro.
 namespace transactional_storage_test {
@@ -2203,9 +2334,9 @@ CURRENT_STORAGE(PartiallyExposedStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersistedExposed);
   CURRENT_STORAGE_FIELD(post, SimplePostPersistedNotExposed);
   CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
-  CURRENT_STORAGE_FIELD(complex_o2o, SimpleComplexO2OPersisted);
-  CURRENT_STORAGE_FIELD(complex_o2m, SimpleComplexO2MPersisted);
-  CURRENT_STORAGE_FIELD(complex_m2m, SimpleComplexM2MPersisted);
+  CURRENT_STORAGE_FIELD(composite_o2o, SimpleCompositeO2OPersisted);
+  CURRENT_STORAGE_FIELD(composite_o2m, SimpleCompositeO2MPersisted);
+  CURRENT_STORAGE_FIELD(composite_m2m, SimpleCompositeM2MPersisted);
 };
 }  // namespace transactional_storage_test
 // LCOV_EXCL_STOP
