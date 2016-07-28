@@ -473,17 +473,20 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   }
 };
 
-// A RESTful way to look at the slice of a container, such as matrix row or matrix col.
-CURRENT_STRUCT_T(HypermediaSliceKeyAndSize) {
-  CURRENT_FIELD(key, T);
-  CURRENT_FIELD(resources, uint64_t, 0u);
-
-  CURRENT_DEFAULT_CONSTRUCTOR_T(HypermediaSliceKeyAndSize) {}
-  CURRENT_CONSTRUCTOR_T(HypermediaSliceKeyAndSize)(const T& key, const size_t size)
-      : key(key), resources(static_cast<uint64_t>(size)) {}
-
-  // Used to dump a number in `Plain` REST format.
-  size_t Size() const { return static_cast<size_t>(resources); }
+// TODO(dkorolev): DIMA SIMPLIFY THIS
+// A special type to wrap the iterator passed into matrix row/col metadata rendering.
+// The `OUTER_KEY` type is the type of the row or col respectively, when browsing rows or cols.
+// Its value is accessible as `iterator.key()`.
+template <typename OUTER_KEY, typename ITERATOR>
+struct SingleElementContainer {
+  using outer_key_t = OUTER_KEY;
+  using iterator_t = ITERATOR;
+  outer_key_t outer_key;
+  iterator_t iterator;
+  SingleElementContainer() = default;
+  SingleElementContainer(current::copy_free<outer_key_t> outer_key, iterator_t iterator)
+      : outer_key(outer_key), iterator(iterator) {}
+  size_t Size() const { return 1u; }
 };
 
 template <typename, typename>
@@ -499,11 +502,11 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
   using Proxy = MatrixContainerProxy<PARTIAL_KEY_TYPE>;
 
   template <typename ENTRY>
-  struct InnerAccessor {
+  struct SingleElementInnerAccessor {
     // This magic as ImmutableOptional<> can't be copied over, and I'm too lazy
     // to get into introducing move constructors everywhere here. -- D.K.
     Optional<ENTRY> entry;
-    InnerAccessor(const ImmutableOptional<ENTRY> input_entry) {
+    SingleElementInnerAccessor(const ImmutableOptional<ENTRY> input_entry) {
       if (Exists(input_entry)) {
         entry = Value(input_entry);
       }
@@ -511,68 +514,69 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
 
     bool Empty() const { return !Exists(entry); }
     size_t Size() const { return Exists(entry) ? 1u : 0u; }
-    struct InnerIterator {
+    struct SingleElementInnerIterator {
       const Optional<ENTRY>& entry;
       size_t i;
-      InnerIterator(const Optional<ENTRY>& entry, size_t i) : entry(entry), i(i) {}
+      SingleElementInnerIterator(const Optional<ENTRY>& entry, size_t i) : entry(entry), i(i) {}
       ENTRY operator*() const { return Value(entry); }
-      bool operator==(const InnerIterator& rhs) { return i == rhs.i; }
-      bool operator!=(const InnerIterator& rhs) { return !operator==(rhs); }
+      bool operator==(const SingleElementInnerIterator& rhs) { return i == rhs.i; }
+      bool operator!=(const SingleElementInnerIterator& rhs) { return !operator==(rhs); }
       void operator++() { ++i; }
     };
 
-    InnerIterator begin() const { return InnerIterator(entry, 0u); }
-    InnerIterator end() const { return InnerIterator(entry, Size()); }
+    SingleElementInnerIterator begin() const { return SingleElementInnerIterator(entry, 0u); }
+    SingleElementInnerIterator end() const { return SingleElementInnerIterator(entry, Size()); }
   };
 
   template <typename FIELD, typename OUTER_KEY, typename ENTRY>
-  struct OuterAccessor {
+  struct SingleElementOuterAccessor {
     using outer_accessor_t = typename MatrixContainerProxy<PARTIAL_KEY_TYPE>::template outer_accessor_t<FIELD>;
     using outer_iterator_t = typename outer_accessor_t::const_iterator;
     outer_accessor_t accessor;
-    OuterAccessor(outer_accessor_t accessor) : accessor(accessor) {}
+    SingleElementOuterAccessor(outer_accessor_t accessor) : accessor(accessor) {}
     bool Empty() const { return accessor.Empty(); }
     size_t Size() const { return accessor.Size(); }
-    struct OuterIterator final {
+    struct SingleElementOuterIterator final {
       outer_iterator_t iterator;
-      OuterIterator(outer_iterator_t iterator) : iterator(iterator) {}
+      SingleElementOuterIterator(outer_iterator_t iterator) : iterator(iterator) {}
       void operator++() { ++iterator; }
-      bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
-      bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
+      bool operator==(const SingleElementOuterIterator& rhs) const { return iterator == rhs.iterator; }
+      bool operator!=(const SingleElementOuterIterator& rhs) const { return !operator==(rhs); }
       current::copy_free<OUTER_KEY> key() const { return iterator.key(); }
       void has_range_element_t() {}
-      using range_element_t = HypermediaSliceKeyAndSize<OUTER_KEY>;
-      const HypermediaSliceKeyAndSize<OUTER_KEY> operator*() const {
-        // TODO(dkorolev): DIMA: Fix this 42u.
-        return HypermediaSliceKeyAndSize<OUTER_KEY>(iterator.key(), 42u);
+      using range_element_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
+      const range_element_t operator*() const {
+        // TODO(dkorolev): Fix this. Use `ENTRY`.
+        return range_element_t(iterator.key(), iterator);
       }
     };
-    OuterIterator begin() const { return OuterIterator(accessor.begin()); }
-    OuterIterator end() const { return OuterIterator(accessor.end()); }
+    SingleElementOuterIterator begin() const { return SingleElementOuterIterator(accessor.begin()); }
+    SingleElementOuterIterator end() const { return SingleElementOuterIterator(accessor.end()); }
   };
 
   struct Impl {
     template <typename FIELD, typename ROW_OR_COL>
-    static InnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(FIELD&& field,
-                                                                           ROW_OR_COL&& row_or_col) {
-      return InnerAccessor<typename current::decay<FIELD>::entry_t>(
+    static SingleElementInnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(
+        FIELD&& field, ROW_OR_COL&& row_or_col) {
+      return SingleElementInnerAccessor<typename current::decay<FIELD>::entry_t>(
           MatrixContainerProxy<PARTIAL_KEY_TYPE>::GetEntryFromRowOrCol(std::forward<FIELD>(field),
                                                                        std::forward<ROW_OR_COL>(row_or_col)));
     }
 
     template <typename FIELD>
-    using outer_accessor_t = OuterAccessor<current::decay<FIELD>,
-                                           typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
-                                           typename current::decay<FIELD>::entry_t>;
+    using outer_accessor_t =
+        SingleElementOuterAccessor<current::decay<FIELD>,
+                                   typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
+                                   typename current::decay<FIELD>::entry_t>;
 
     template <typename FIELD>
-    static OuterAccessor<current::decay<FIELD>,
-                         typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
-                         typename current::decay<current::decay<FIELD>>::entry_t>
+    static SingleElementOuterAccessor<current::decay<FIELD>,
+                                      typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
+                                      typename current::decay<current::decay<FIELD>>::entry_t>
     RowsOrCols(FIELD&& field) {
-      return OuterAccessor<current::decay<FIELD>,
-                           typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
-                           typename current::decay<current::decay<FIELD>>::entry_t>(
+      return SingleElementOuterAccessor<current::decay<FIELD>,
+                                        typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
+                                        typename current::decay<current::decay<FIELD>>::entry_t>(
           MatrixContainerProxy<PARTIAL_KEY_TYPE>::RowsOrCols(field));
     }
   };

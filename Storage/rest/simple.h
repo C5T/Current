@@ -183,7 +183,7 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
                               {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
-template<typename RECORD_OUTPUT_POLICY>
+template <typename RECORD_OUTPUT_POLICY>
 struct SimpleImpl {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
@@ -368,13 +368,14 @@ struct SimpleImpl {
                                            FIELD_SEMANTICS>::template outer_accessor_t<PARTICULAR_FIELD>;
         outer_accessor_t iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
-        for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+         // TODO(dkorolev): DIMA SIMPLIFY THIS.
+         // It would be a specializable call to RenderElement or RenderCollection. -- D.K.
+         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
           // NOTE(dkorolev): This `iterator` can be of three different kinds:
           // 1) api_types.h, GenericMatrixIteratorImplSelector<*, SingleElement>::OuterAccessor::OuterIterator
           // 2) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
           // 3) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
           // To have Hypermedia pagination generic, they are accessed in the same way.
-          iterator.has_range_element_t();
           response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
         }
         return Response(response);
@@ -547,8 +548,7 @@ struct SimpleImpl {
   }
 };
 
-struct SimpleHypermediaRecordOutputPolicy {
-};
+struct SimpleHypermediaRecordOutputPolicy {};
 
 using Simple = SimpleImpl<SimpleHypermediaRecordOutputPolicy>;
 
