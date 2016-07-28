@@ -62,28 +62,97 @@ CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(data, std::vector<T>);
 };
 
-template <typename T, typename INPUT, typename TT>
-inline ExtendedHypermediaRESTRecordResponse<T> FormatAsExtendedHypermediaRecord(TT& record,
-                                                                                const INPUT& input,
-                                                                                bool set_success = true) {
-  using particular_field_t = current::decay<decltype(input.field)>;
-
+template <typename PARTICULAR_FIELD, typename ENTRY, typename T, typename ITERATOR>
+inline ExtendedHypermediaRESTRecordResponse<T> FormatAsExtendedHypermediaRecord(
+    const std::string& url_directory, ITERATOR&& iterator, bool set_success = true) {
   ExtendedHypermediaRESTRecordResponse<T> response;
-  const std::string key_as_url_string = field_type_dependent_t<particular_field_t>::ComposeURLKey(
-      field_type_dependent_t<particular_field_t>::ExtractOrComposeKey(record));
+  const std::string key_as_url_string = ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
   if (set_success) {
     response.success = true;
   }
-  response.url_directory = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+  response.url_directory = url_directory;
   response.url = response.url_directory + '/' + key_as_url_string;
   response.url_full = response.url;
+
+  // TODO(dkorolev): `url_brief` should be conditional.
   response.url_brief = response.url + "?fields=brief";
-  response.data = static_cast<const T&>(record);
+
+  // TODO(dkorolev): Add the actual record FFS.
+  // response.data = static_cast<const T&>(*iterator);
+
   return response;
 }
 
-struct Hypermedia : Simple {
-  using SUPER_HYPERMEDIA = Simple;
+struct HypermediaResponseFormatter {
+  // TODO(dkorolev): We could move to per-HTTP-VERB context type as it's high performance time.
+  struct Context {
+    // For per-record view, whether a full or brief format should be used.
+    bool brief = false;
+
+    // For poor man's pagination when viewing the collection.
+    mutable uint64_t query_i = 0u;
+    mutable uint64_t query_n = 10u;  // Default page size.
+  };
+
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERABLE>
+  static Response BuildResponseWithCollection(const Context& context, const std::string& url, ITERABLE&& span) {
+    using brief_entry_t = sfinae::brief_of_t<ENTRY>;
+    using data_entry_t = ExtendedHypermediaRESTRecordResponse<brief_entry_t>;
+
+    const auto GenPageURL = [&url](uint64_t url_i, uint64_t url_n) {
+      return url + "?i=" + current::ToString(url_i) + "&n=" + current::ToString(url_n);
+    };
+
+    ExtendedHypermediaRESTContainerResponse<data_entry_t> response;
+    response.url_directory = url;
+
+    // Poor man's pagination.
+    const size_t total = span.Size();
+    bool has_previous_page = false;
+    bool has_next_page = false;
+    uint64_t current_index = 0;
+    for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
+      // NOTE(dkorolev): This `iterator` can be of more than three different kinds, among which are:
+      // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
+      // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
+      // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
+      //    where SE stands for SingleElement.
+      // 4) GenericMapAccessor<>.
+      // To have Hypermedia pagination generic, they are accessed in the same way.
+      if (current_index >= context.query_i && current_index < context.query_i + context.query_n) {
+        response.data.push_back(
+            FormatAsExtendedHypermediaRecord<PARTICULAR_FIELD, ENTRY, brief_entry_t>(url, iterator, false));
+      } else if (current_index < context.query_i) {
+        has_previous_page = true;
+      } else if (current_index >= context.query_i + context.query_n) {
+        has_next_page = true;
+        break;
+      }
+      ++current_index;
+    }
+    if (context.query_i > total) {
+      context.query_i = total;
+    }
+    response.url = GenPageURL(context.query_i, context.query_n);
+    response.i = context.query_i;
+    response.n = std::min(context.query_n, total - context.query_i);
+    response.total = total;
+    if (has_previous_page) {
+      response.url_previous_page = GenPageURL(
+          context.query_i >= context.query_n ? context.query_i - context.query_n : 0, context.query_n);
+    }
+    if (has_next_page) {
+      response.url_next_page =
+          GenPageURL(context.query_i + context.query_n * 2 > total ? total - context.query_n
+                                                                   : context.query_i + context.query_n,
+                     context.query_n);
+    }
+    return Response(response, HTTPResponseCode.OK);
+  }
+};
+
+struct Hypermedia : SimpleImpl<HypermediaResponseFormatter> {
+  using SUPER_HYPERMEDIA = SimpleImpl<HypermediaResponseFormatter>;
 
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator
@@ -98,140 +167,16 @@ struct Hypermedia : Simple {
     using SUPER_GET_HANDLER =
         SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
 
-    using brief_entry_t = sfinae::brief_of_t<ENTRY>;
-
-    // For per-record view, whether a full or brief format should be used.
-    bool brief = false;
-
-    // For poor man's pagination when viewing the collection.
-    mutable uint64_t query_i = 0u;
-    mutable uint64_t query_n = 10u;  // Default page size.
-
     template <typename F>
     void Enter(Request request, F&& next) {
+      auto& context = SUPER_GET_HANDLER::context;
+
       const auto& q = request.url.query;
-      brief = (q["fields"] == "brief");
-      query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
-      query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
+      context.brief = (q["fields"] == "brief");
+      context.query_i = current::FromString<uint64_t>(q.get("i", current::ToString(context.query_i)));
+      context.query_n = current::FromString<uint64_t>(q.get("n", current::ToString(context.query_n)));
+
       SUPER_GET_HANDLER::Enter(std::move(request), std::forward<F>(next));
-    }
-
-    template <class INPUT, typename FIELD_SEMANTICS>
-    Response RunForFullOrPartialKey(const INPUT& input,
-                                    semantics::key_completeness::FullKey,
-                                    FIELD_SEMANTICS,
-                                    semantics::key_completeness::DictionaryOrMatrixCompleteKey) const {
-      if (Exists(input.get_url_key)) {
-        // Single record view.
-        const auto url_key_value = Value(input.get_url_key);
-        const auto entry_key =
-            field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
-        const ImmutableOptional<ENTRY> result = input.field[entry_key];
-        if (Exists(result)) {
-          const auto& value = Value(result);
-          if (!input.export_requested) {
-            auto response =
-                (brief ? Response(FormatAsExtendedHypermediaRecord<brief_entry_t>(value, input),
-                                  HTTPResponseCode.OK)
-                       : Response(FormatAsExtendedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
-            const auto last_modified = input.field.LastModified(entry_key);
-            if (Exists(last_modified)) {
-              response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
-            }
-            return response;
-          } else {
-            // Export requested via `?export`, dump the raw JSON record.
-            return value;
-          }
-        } else {
-          return ErrorResponse(
-              ResourceNotFoundError(
-                  "The resource with the requested key has found been.",
-                  {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
-              HTTPResponseCode.NotFound);
-        }
-      } else {
-        // Collection view.
-        if (!input.export_requested) {
-          // Default, paginated, collection view.
-          // `data` is an array of `ExtendedHypermediaRESTRecordResponse<brief_entry_t>`.
-          using data_entry_t = ExtendedHypermediaRESTRecordResponse<brief_entry_t>;
-          ExtendedHypermediaRESTContainerResponse<data_entry_t> response;
-          response.url_directory =
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
-          const auto GenPageURL = [&](uint64_t i, uint64_t n) {
-            return input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + "?i=" +
-                   current::ToString(i) + "&n=" + current::ToString(n);
-          };
-          // Poor man's pagination.
-          uint64_t i = 0;
-          bool has_previous_page = false;
-          bool has_next_page = false;
-          for (const auto& element : input.field) {
-            if (i >= query_i && i < query_i + query_n) {
-              response.data.push_back(FormatAsExtendedHypermediaRecord<brief_entry_t>(element, input, false));
-            } else if (i < query_i) {
-              has_previous_page = true;
-            } else if (i >= query_i + query_n) {
-              has_next_page = true;
-              break;
-            }
-            ++i;
-          }
-          if (query_i > i) {
-            query_i = i;
-          }
-          response.url = GenPageURL(query_i, query_n);
-          response.i = query_i;
-          response.n = std::min(query_n, i - query_i);
-          response.total = i;
-          if (has_previous_page) {
-            response.url_previous_page = GenPageURL(query_i >= query_n ? query_i - query_n : 0, query_n);
-          }
-          if (has_next_page) {
-            response.url_next_page =
-                GenPageURL(query_i + query_n * 2 > i ? i - query_n : query_i + query_n, query_n);
-          }
-          return Response(response, HTTPResponseCode.OK);
-        } else {
-#ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
-          // Export requested via `?export`, dump all the records.
-          // Slow. Only available off the followers.
-          if (input.role != StorageRole::Follower) {
-            return ErrorResponse(
-                HypermediaRESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
-                HTTPResponseCode.Forbidden);
-          } else
-#endif  // CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
-          {
-            // Sadly, the `Response` must be returned.
-            // Have to create it in memory for now. -- D.K.
-            // TODO(dkorolev): Migrate to a better way.
-            std::ostringstream result;
-            for (const auto& element : input.field) {
-              result << JSON<JSONFormat::Minimalistic>(element) << '\n';
-            }
-            return result.str();
-          }
-        }
-      }
-    }
-
-    template <class INPUT, typename FIELD_SEMANTICS, typename KEY_COMPLETENESS>
-    Response RunForFullOrPartialKey(const INPUT& input,
-                                    KEY_COMPLETENESS,
-                                    FIELD_SEMANTICS,
-                                    semantics::key_completeness::MatrixHalfKey) const {
-      return SUPER_GET_HANDLER::RunForFullOrPartialKey(
-          input, KEY_COMPLETENESS(), FIELD_SEMANTICS(), semantics::key_completeness::MatrixHalfKey());
-    }
-
-    template <class INPUT>
-    Response Run(const INPUT& input) const {
-      return RunForFullOrPartialKey(input,
-                                    typename INPUT::key_completeness_t(),
-                                    typename INPUT::field_t::semantics_t(),
-                                    typename INPUT::key_completeness_t::completeness_family_t());
     }
   };
 };

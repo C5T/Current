@@ -219,6 +219,8 @@ struct SimpleImpl {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
+  using context_t = typename HYPERMEDIA_RESPONSE_FORMATTER::Context;
+
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
     input.scope +=
@@ -263,6 +265,8 @@ struct SimpleImpl {
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    context_t context;
+
     template <typename F>
     void EnterByKeyCompletenessFamily(Request request,
                                       semantics::key_completeness::FullKey,
@@ -326,7 +330,9 @@ struct SimpleImpl {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
           return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, input.field);
+              context,
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
+              input.field);
         } else {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
@@ -365,7 +371,9 @@ struct SimpleImpl {
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
           return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, iterable);
+              context,
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
+              iterable);
         } else {
           return ErrorResponse(ResourceNotFoundError("The requested key has was not found.",
                                                      {{"key", Value(input.rowcol_get_url_key)}}),
@@ -374,6 +382,7 @@ struct SimpleImpl {
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
         return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
+            context,
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
                 MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
@@ -391,6 +400,8 @@ struct SimpleImpl {
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<POST, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    context_t context;
+
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -440,6 +451,8 @@ struct SimpleImpl {
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<PUT, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    context_t context;
+
     Optional<std::chrono::microseconds> if_unmodified_since;
 
     template <typename F>
@@ -497,6 +510,8 @@ struct SimpleImpl {
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator<DELETE, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    context_t context;
+
     Optional<std::chrono::microseconds> if_unmodified_since;
 
     template <typename F>
@@ -547,16 +562,19 @@ struct SimpleImpl {
 };
 
 struct SimpleHypermediaResponseFormatter {
+  struct Context {};
+
   template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERABLE>
-  static Response BuildResponseWithCollection(const std::string& url, ITERABLE&& span) {
+  static Response BuildResponseWithCollection(const Context&, const std::string& url, ITERABLE&& span) {
     HypermediaRESTContainerResponse payload;
     payload.url = url;
     for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
-      // NOTE(dkorolev): This `iterator` can be of three different kinds:
+      // NOTE(dkorolev): This `iterator` can be of more than three different kinds, among which are:
       // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
       // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
       // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
       //    where SE stands for SingleElement.
+      // 4) GenericMapAccessor<>.
       // To have Hypermedia pagination generic, they are accessed in the same way.
       payload.data.emplace_back(url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
     }
