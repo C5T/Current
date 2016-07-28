@@ -2309,20 +2309,20 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.row"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.row\",\"data\":[\"/"
-          "data/composite_m2m.row/!1\",\"/data/composite_m2m.row/!2\",\"/data/composite_m2m.row/!3\"]}\n",
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1\",\"data\":[\"/"
+          "data/composite_m2m.1/!1\",\"/data/composite_m2m.1/!2\",\"/data/composite_m2m.1/!3\"]}\n",
           response.body);
     }
     {
       const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.col"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.col\",\"data\":[\"/"
-          "data/composite_m2m.col/1\",\"/data/composite_m2m.col/2\",\"/data/composite_m2m.col/3\"]}\n",
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2\",\"data\":[\"/"
+          "data/composite_m2m.2/1\",\"/data/composite_m2m.2/2\",\"/data/composite_m2m.2/3\"]}\n",
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.row/!2"));
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.1/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
@@ -2330,7 +2330,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.col/3"));
+      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.2/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
@@ -2354,43 +2354,43 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       std::sort(strings.begin(), strings.end());
     }
     {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row"));
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.row?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.row/"
+          "{\"success\":true,\"url\":\"/data/composite_m2m.1?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m.1\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.1/"
           "!1\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!1\","
-          "\"col\":3}]}},{\"success\":null,\"url\":\"/data/composite_m2m.row/"
+          "composite_m2m.1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!1\","
+          "\"col\":3}]}},{\"success\":null,\"url\":\"/data/composite_m2m.1/"
           "!2\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!2\","
-          "\"col\":3}]}},{\"success\":null,\"url\":\"/data/composite_m2m.row/"
+          "composite_m2m.1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!2\","
+          "\"col\":3}]}},{\"success\":null,\"url\":\"/data/composite_m2m.1/"
           "!3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
-          "composite_m2m.row\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!3\",\"col\":1},{\"row\":\"!3\","
+          "composite_m2m.1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!3\",\"col\":1},{\"row\":\"!3\","
           "\"col\":2}]}}]}\n",
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col"));
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.col?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m.col\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.col/"
+          "{\"success\":true,\"url\":\"/data/composite_m2m.2?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m.2\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m.2/"
           "1\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
-          "composite_m2m.col\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!3\","
-          "\"col\":1}]}},{\"success\":null,\"url\":\"/data/composite_m2m.col/"
+          "composite_m2m.2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!3\","
+          "\"col\":1}]}},{\"success\":null,\"url\":\"/data/composite_m2m.2/"
           "2\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
-          "composite_m2m.col\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!3\","
-          "\"col\":2}]}},{\"success\":null,\"url\":\"/data/composite_m2m.col/"
+          "composite_m2m.2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!3\","
+          "\"col\":2}]}},{\"success\":null,\"url\":\"/data/composite_m2m.2/"
           "3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
-          "composite_m2m.col\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":3},{\"row\":\"!2\","
+          "composite_m2m.2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":3},{\"row\":\"!2\","
           "\"col\":3}]}}]}\n",
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.row/!2"));
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
@@ -2403,7 +2403,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col/3"));
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"

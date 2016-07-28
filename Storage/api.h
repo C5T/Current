@@ -300,9 +300,11 @@ struct PerFieldRESTfulHandlerGenerator {
                                            semantics::rest::RESTWithSingleKey,
                                            GENERIC_HANDLER generic_data_handler) {
     // TODO(dkorolev): `".$KEY_NAME"` alongside `".key"`.
-    registerer(storage_handlers_map_entry_t(
-        field_name,
-        RESTfulRoute(kRESTfulDataURLComponent, ".key", URLPathArgs::CountMask::Any, generic_data_handler)));
+    for (const auto dot_key : {".key"}) {
+      registerer(storage_handlers_map_entry_t(
+          field_name,
+          RESTfulRoute(kRESTfulDataURLComponent, dot_key, URLPathArgs::CountMask::Any, generic_data_handler)));
+    }
   }
 
   template <typename ENTRY_TYPE_WRAPPER, typename PARTIAL_KEY_OPERATION>
@@ -354,21 +356,26 @@ struct PerFieldRESTfulHandlerGenerator {
                                            GENERIC_HANDLER unused_generic_data_handler) {
     static_cast<void>(unused_generic_data_handler);
 
-    // TODO(dkorolev): `".${ROW,COL}_NAME"` alongside `".row/etc."` and `".col/etc."`.
-    registerer(storage_handlers_map_entry_t(
-        field_name,
-        RESTfulRoute(
-            kRESTfulDataURLComponent,
-            ".row",
-            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-            GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixRow>(field_name))));
-    registerer(storage_handlers_map_entry_t(
-        field_name,
-        RESTfulRoute(
-            kRESTfulDataURLComponent,
-            ".col",
-            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-            GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixCol>(field_name))));
+    const auto row_handler =
+        GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixRow>(field_name);
+    const auto col_handler =
+        GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixCol>(field_name);
+    for (const auto dot_row : {".row", ".1", ".left", ".l", "L"}) {
+      registerer(
+          storage_handlers_map_entry_t(field_name,
+                                       RESTfulRoute(kRESTfulDataURLComponent,
+                                                    dot_row,
+                                                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                                    row_handler)));
+    }
+    for (const auto dot_col : {".col", ".2", ".right", "r", "R"}) {
+      registerer(
+          storage_handlers_map_entry_t(field_name,
+                                       RESTfulRoute(kRESTfulDataURLComponent,
+                                                    dot_col,
+                                                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                                    col_handler)));
+    }
   }
 };
 

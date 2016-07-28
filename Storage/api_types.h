@@ -91,6 +91,8 @@ struct FieldTypeDependentImpl<semantics::primary_key::RowCol> {
     } else if (request_rref.url.query.has("row") && request_rref.url.query.has("col")) {
       with(std::move(request_rref),
            std::make_pair(request_rref.url.query["row"], request_rref.url.query["col"]));
+    } else if (request_rref.url.query.has("1") && request_rref.url.query.has("2")) {
+      with(std::move(request_rref), std::make_pair(request_rref.url.query["1"], request_rref.url.query["2"]));
     } else {
       without(std::move(request_rref));
     }
@@ -431,7 +433,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
   }
 
   static const std::string& PartialKeySuffix() {
-    static std::string suffix = "row";
+    static std::string suffix = "1";
     return suffix;
   }
 };
@@ -468,7 +470,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   }
 
   static const std::string& PartialKeySuffix() {
-    static std::string suffix = "col";
+    static std::string suffix = "2";
     return suffix;
   }
 };
