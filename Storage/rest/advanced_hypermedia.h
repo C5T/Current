@@ -107,33 +107,12 @@ struct AdvancedHypermedia : Hypermedia {
     mutable uint64_t query_n = 10u;  // Default page size.
 
     template <typename F>
-    void EnterByKeyCompletenessFamily(Request request,
-                                      semantics::key_completeness::FullKey,
-                                      semantics::key_completeness::DictionaryOrMatrixCompleteKey,
-                                      F&& next) {
-      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
-                                                                           std::forward<F>(next));
-    }
-
-    template <typename F, typename KEY_COMPLETENESS>
-    void EnterByKeyCompletenessFamily(Request request,
-                                      KEY_COMPLETENESS,
-                                      semantics::key_completeness::MatrixHalfKey,
-                                      F&& next) {
-      key_type_dependent_t<semantics::primary_key::Key>::CallWithOptionalKeyFromURL(std::move(request),
-                                                                                    std::forward<F>(next));
-    }
-
-    template <typename F>
     void Enter(Request request, F&& next) {
       const auto& q = request.url.query;
       brief = (q["fields"] == "brief");
       query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
       query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
-      EnterByKeyCompletenessFamily(std::move(request),
-                                   typename OPERATION::key_completeness_t(),
-                                   typename OPERATION::key_completeness_t::completeness_family_t(),
-                                   std::forward<F>(next));
+      SUPER_GET_HANDLER::Enter(std::move(request), std::forward<F>(next));
     }
 
     template <class INPUT, typename FIELD_SEMANTICS>
