@@ -704,6 +704,17 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
               generator.Claire().GetKarlLocator().address_port_route);
   }
 
+  // Check that `generator`'s Claire reports new Karl URL.
+  {
+    const std::string generator_claire_url =
+        Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port);
+    const auto response = HTTP(GET(generator_claire_url));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    current::karl::ClaireStatus status;
+    ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireStatus>(response.body));
+    EXPECT_EQ(secondary_karl_locator.address_port_route, status.reporting_to);
+  }
+
   while (secondary_karl.ActiveServicesCount() == 0u) {
     std::this_thread::yield();  // Spin lock.
   }
@@ -892,6 +903,12 @@ TEST(Karl, EndToEndTest) {
     EXPECT_EQ("filter", per_ip_services[filter.ClaireCodename()].service);
     EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
     EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
+  }
+
+  {
+    const auto ips = karl.LocalIPs();
+    ASSERT_EQ(1u, ips.size());
+    EXPECT_EQ("127.0.0.1", *ips.begin());
   }
 
   if (FLAGS_karl_run_test_forever) {

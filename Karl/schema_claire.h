@@ -113,6 +113,10 @@ CURRENT_STRUCT(ClaireStatus) {
       dependencies,
       "The list of dependencies for this service. Will become arrows as the fleet is being visualized.");
 
+  // The `address_port_route` of the currently configured Karl Locator.
+  CURRENT_FIELD(reporting_to, std::string);
+  CURRENT_FIELD_DESCRIPTION(reporting_to, "The address is used to report keepalives to.");
+
   CURRENT_FIELD(now, std::chrono::microseconds);  // To calculated time skew as well.
   CURRENT_FIELD_DESCRIPTION(now,
                             "Unix epoch microseconds, local time the keepalive was generated on the machine "
