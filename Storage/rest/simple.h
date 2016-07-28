@@ -214,7 +214,7 @@ std::string ComposeRESTfulKey(const T& iterator) {
   return ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, typename T::value_t>::DoIt(iterator);
 };
 
-template <typename HTML_OUTPUT_FORMATTER>
+template <typename HYPERMEDIA_RESPONSE_FORMATTER>
 struct SimpleImpl {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
@@ -325,13 +325,8 @@ struct SimpleImpl {
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
-          auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name);
-          const auto& iterable = input.field;
-          for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-            payload.data.emplace_back(payload.url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
-          }
-          return Response(payload);
+          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, input.field);
         } else {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
@@ -369,12 +364,8 @@ struct SimpleImpl {
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
-          auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name);
-          for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-            payload.data.emplace_back(payload.url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
-          }
-          return Response(payload);
+          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, iterable);
         } else {
           return ErrorResponse(ResourceNotFoundError("The requested key has was not found.",
                                                      {{"key", Value(input.rowcol_get_url_key)}}),
@@ -382,24 +373,10 @@ struct SimpleImpl {
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
-        auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
+        return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY>(
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
-            MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix());
-        using outer_accessor_t =
-            typename GenericMatrixIterator<KEY_COMPLETENESS,
-                                           FIELD_SEMANTICS>::template outer_accessor_t<PARTICULAR_FIELD>;
-        outer_accessor_t iterable =
-            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
-        for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-          // NOTE(dkorolev): This `iterator` can be of three different kinds:
-          // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
-          // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
-          // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
-          //    where SE stands for SingleElement.
-          // To have Hypermedia pagination generic, they are accessed in the same way.
-          payload.data.emplace_back(payload.url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
-        }
-        return Response(payload);
+                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
+            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
       }
     }
 
@@ -569,16 +546,25 @@ struct SimpleImpl {
   }
 };
 
-struct SimpleHTMLOutputFormatter {
-  template <typename ENTRY_TYPE_FOR_HYPERMEDIA>
-  static HypermediaRESTContainerResponse BeginContainerPayload(const std::string& url) {
+struct SimpleHypermediaResponseFormatter {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERABLE>
+  static Response BuildResponseWithCollection(const std::string& url, ITERABLE&& span) {
     HypermediaRESTContainerResponse payload;
     payload.url = url;
-    return payload;
+    for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
+      // NOTE(dkorolev): This `iterator` can be of three different kinds:
+      // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
+      // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
+      // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
+      //    where SE stands for SingleElement.
+      // To have Hypermedia pagination generic, they are accessed in the same way.
+      payload.data.emplace_back(url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
+    }
+    return Response(payload);
   }
 };
 
-using Simple = SimpleImpl<SimpleHTMLOutputFormatter>;
+using Simple = SimpleImpl<SimpleHypermediaResponseFormatter>;
 
 }  // namespace rest
 }  // namespace storage
