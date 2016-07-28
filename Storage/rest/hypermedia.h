@@ -317,13 +317,14 @@ struct Hypermedia {
           }
           return Response(response);
         } else {
-          return ErrorResponse(ResourceNotFoundError("The requested resource not found.",
+          return ErrorResponse(ResourceNotFoundError("The requested key has was not found.",
                                                      {{"key", Value(input.rowcol_get_url_key)}}),
                                HTTPResponseCode.NotFound);
         }
       } else {
         HypermediaRESTContainerResponse response;
-        response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+        response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
+                       '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
         const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
           response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
