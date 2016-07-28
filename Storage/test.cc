@@ -39,6 +39,7 @@ SOFTWARE.
 #include "persister/sherlock.h"
 
 #include "rest/hypermedia.h"
+#include "rest/advanced_hypermedia.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -2215,9 +2216,11 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
   const auto rest1 = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/basic", "");
   const auto rest2 = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
       storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
+  const auto rest3 = RESTfulStorage<Storage, current::storage::rest::AdvancedHypermedia>(
+      storage, FLAGS_transactional_storage_test_port, "/paginated", "");
 
   {
-    // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal. Alternate Basic and Hypermedia.
+    // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
     EXPECT_EQ(201,
               static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
                                          SimpleComposite("!1", std::chrono::microseconds(2)))).code));
@@ -2225,16 +2228,16 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
               static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
                                          SimpleComposite("!1", std::chrono::microseconds(3)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
+              static_cast<int>(HTTP(POST(base_url + "/paginated/data/composite_m2m",
                                          SimpleComposite("!2", std::chrono::microseconds(1)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
+              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
                                          SimpleComposite("!2", std::chrono::microseconds(3)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
+              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
                                          SimpleComposite("!3", std::chrono::microseconds(1)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
+              static_cast<int>(HTTP(POST(base_url + "/paginated/data/composite_m2m",
                                          SimpleComposite("!3", std::chrono::microseconds(2)))).code));
   }
 
@@ -2316,6 +2319,67 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     }
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.col/3"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+  }
+  {
+    // Browse the collection in various ways using the `Paginaged` API.
+    {
+      const auto response = HTTP(GET(base_url + "/paginated/data/composite_m2m"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":6,\"total\":6,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"success\":null,\"url\":\"/data/composite_m2m/!3/2\",\"url_full\":\"/data/composite_m2m/"
+          "!3/2\",\"url_brief\":\"/data/composite_m2m/!3/2?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!3\",\"col\":2}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!3/1\",\"url_full\":\"/data/composite_m2m/!3/1\",\"url_brief\":\"/data/composite_m2m/"
+          "!3/1?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!3\",\"col\":1}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!1/3\",\"url_full\":\"/data/composite_m2m/!1/3\",\"url_brief\":\"/data/composite_m2m/"
+          "!1/3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!2/1\",\"url_full\":\"/data/composite_m2m/!2/1\",\"url_brief\":\"/data/composite_m2m/"
+          "!2/1?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!1/2\",\"url_full\":\"/data/composite_m2m/!1/2\",\"url_brief\":\"/data/composite_m2m/"
+          "!1/2?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!1\",\"col\":2}},{\"success\":null,\"url\":\"/data/"
+          "composite_m2m/!2/3\",\"url_full\":\"/data/composite_m2m/!2/3\",\"url_brief\":\"/data/composite_m2m/"
+          "!2/3?fields=brief\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/paginated/data/composite_m2m.row"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.row\",\"data\":[\"/"
+          "data/composite_m2m.row/!1\",\"/data/composite_m2m.row/!2\",\"/data/composite_m2m.row/!3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/paginated/data/composite_m2m.col"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.col\",\"data\":[\"/"
+          "data/composite_m2m.col/1\",\"/data/composite_m2m.col/2\",\"/data/composite_m2m.col/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/paginated/data/composite_m2m.row/!2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/paginated/data/composite_m2m.col/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
