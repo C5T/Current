@@ -188,7 +188,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
     ForceSendKeepalive();
-   }
+  }
 
   ClaireStatus& BoilerplateStatus() { return boilerplate_status_; }
 
@@ -229,6 +229,7 @@ class GenericClaire final : private DummyClaireNotifiable {
 
     status.local_port = port_;
     status.dependencies.assign(dependencies_.begin(), dependencies_.end());
+    status.reporting_to = karl_.address_port_route;
 
     status.now = now;
 

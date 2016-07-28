@@ -331,6 +331,11 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     return services_keepalive_time_cache_.size();
   }
 
+  std::set<std::string> LocalIPs() const {
+    std::lock_guard<std::mutex> lock(local_ips_mutex_);
+    return local_ips_;
+  }
+
   const storage_t& InternalExposeStorage() const { return storage_; }
 
  private:
@@ -399,8 +404,13 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
     const auto& qs = r.url.query;
 
+    {
+      std::lock_guard<std::mutex> lock(local_ips_mutex_);
+      local_ips_.insert(r.connection.LocalIPAndPort().ip);
+    }
+    const std::string remote_ip = r.connection.RemoteIPAndPort().ip;
+
     if (r.method == "DELETE") {
-      const std::string ip = r.connection.RemoteIPAndPort().ip;
       if (qs.has("codename")) {
         const std::string codename = qs["codename"];
         const auto now = current::time::Now();
@@ -435,14 +445,12 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     } else {
       // Accepting keepalives as either POST or GET now, no harm in this. -- D.K.
       try {
-        const std::string ip = r.connection.RemoteIPAndPort().ip;
-        const std::string url = "http://" + ip + ':' + qs["port"] + "/.current";
-
         // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
         // via the URL from the inbound request and the port the service has provided,
         // to confirm two-way communication.
         const std::string json = [&]() -> std::string {
           if (qs.has("confirm") && qs.has("port")) {
+            const std::string url = "http://" + remote_ip + ':' + qs["port"] + "/.current";
             // Send a GET request, with a random component in the URL to prevent caching.
             return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
                 .body;
@@ -455,7 +463,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         if ((!qs.has("codename") || parsed_status.codename == qs["codename"]) &&
             (!qs.has("port") || parsed_status.local_port == current::FromString<uint16_t>(qs["port"]))) {
           ClaireServiceKey location;
-          location.ip = ip;
+          location.ip = remote_ip;
           location.port = parsed_status.local_port;
           location.prefix = "/";  // TODO(dkorolev) + TODO(mzhurovich): Add support for `qs["prefix"]`.
 
@@ -943,6 +951,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
   std::condition_variable update_thread_condition_variable_;
+  std::set<std::string> local_ips_;  // The list of local IPs used ti receive keepalives.
+  mutable std::mutex local_ips_mutex_;
 
   // codename -> stream index of the most recent keepalive from this codename.
   std::mutex latest_keepalive_index_mutex_;
