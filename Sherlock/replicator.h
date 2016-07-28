@@ -48,10 +48,39 @@ class SubscribableRemoteStream final {
  public:
   using entry_t = STREAM_ENTRY;
 
-  struct RemoteStream final {
-    RemoteStream(const std::string& url) : url_(url) {}
+  class RemoteStream final {
+   public:
+    RemoteStream(const std::string& url)
+        : url_(url),
+          schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
+                  sherlock::constants::kDefaultTopLevelName,
+                  sherlock::constants::kDefaultNamespaceName) {}
+    RemoteStream(const std::string& url, const std::string& top_level_name, const std::string& namespace_name)
+        : url_(url),
+          schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
+                  top_level_name,
+                  namespace_name) {}
+    void CheckSchema() const {
+      const auto response = HTTP(GET(url_ + "/schema.simple"));
+      if (static_cast<int>(response.code) == 200) {
+        SubscribableSherlockSchema remote_schema = ParseJSON<SubscribableSherlockSchema>(response.body);
+        if (remote_schema != schema_) {
+          CURRENT_THROW(RemoteStreamInvalidSchemaException());
+        }
+      } else {
+        CURRENT_THROW(RemoteStreamDoesNotRespondException());
+      }
+    }
+    const std::string GetURLToSubscribe(uint64_t index) const {
+      return url_ + "?i=" + current::ToString(index);
+    }
+    const std::string GetURLToTerminate(const std::string& subscription_id) {
+      return url_ + "?terminate=" + subscription_id;
+    }
 
+   private:
     const std::string url_;
+    const SubscribableSherlockSchema schema_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
@@ -102,7 +131,7 @@ class SubscribableRemoteStream final {
     }
 
     void ThreadImpl() {
-      const std::string url = remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_;
+      const RemoteStream& bare_stream = remote_stream_.ObjectAccessorDespitePossiblyDestructing();
       bool terminate_sent = false;
       while (!internal_stop_) {
         if (!terminate_sent && external_stop_) {
@@ -112,8 +141,9 @@ class SubscribableRemoteStream final {
           }
         }
         try {
+          bare_stream.CheckSchema();
           HTTP(ChunkedGET(
-              url + "?i=" + current::ToString(index_),
+              bare_stream.GetURLToSubscribe(index_),
               [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
               [this](const std::string& chunk_body) { OnChunk(chunk_body); },
               [this]() {}));
@@ -153,7 +183,7 @@ class SubscribableRemoteStream final {
       external_stop_ = true;
       if (!subscription_id_.empty()) {
         const std::string terminate_url =
-            remote_stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "?terminate=" + subscription_id_;
+            remote_stream_.ObjectAccessorDespitePossiblyDestructing().GetURLToTerminate(subscription_id_);
         try {
           const auto result = HTTP(GET(terminate_url));
         } catch (current::net::NetworkException&) {
@@ -192,24 +222,16 @@ class SubscribableRemoteStream final {
               std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
   };
 
-  explicit SubscribableRemoteStream(const std::string& remote_stream_url)
-      : stream_(remote_stream_url),
-        schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
-                sherlock::constants::kDefaultTopLevelName,
-                sherlock::constants::kDefaultNamespaceName) {
-    CheckRemoteSchema();
+  explicit SubscribableRemoteStream(const std::string& remote_stream_url) : stream_(remote_stream_url) {
+    stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
   }
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url,
                                     const std::string& top_level_name,
                                     const std::string& namespace_name)
-      : stream_(remote_stream_url),
-        schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
-                top_level_name,
-                namespace_name) {
-    CheckRemoteSchema();
+      : stream_(remote_stream_url, top_level_name, namespace_name) {
+    stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
   }
-  ~SubscribableRemoteStream() {}
 
   template <typename F>
   RemoteSubscriberScope<F, entry_t> Subscribe(F& subscriber,
@@ -224,20 +246,7 @@ class SubscribableRemoteStream final {
   }
 
  private:
-  void CheckRemoteSchema() {
-    const auto response = HTTP(GET(stream_.ObjectAccessorDespitePossiblyDestructing().url_ + "/schema.simple"));
-    if (static_cast<int>(response.code) == 200) {
-      SubscribableSherlockSchema remote_schema = ParseJSON<SubscribableSherlockSchema>(response.body);
-      if (remote_schema != schema_) {
-        CURRENT_THROW(RemoteStreamInvalidSchemaException());
-      }
-    } else {
-      CURRENT_THROW(RemoteStreamDoesNotRespondException());
-    }
-  }
-
   ScopeOwnedByMe<RemoteStream> stream_;
-  SubscribableSherlockSchema schema_;
 };
 
 template <typename STREAM>
