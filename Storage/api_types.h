@@ -486,17 +486,30 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
   using Proxy = MatrixContainerProxy<PARTIAL_KEY_TYPE>;
 
   template <typename ENTRY>
-  struct DummyInnerAccessor {
-    bool Empty() const { return true; }
-    size_t Size() const { return 0u; }
-    struct DummyInnerIterator {
-      ENTRY operator*() const { return ENTRY(); }
-      bool operator==(const DummyInnerIterator&) { return true; }
-      bool operator!=(const DummyInnerIterator& rhs) { return !operator==(rhs); }
-      void operator++() {}
+  struct InnerAccessor {
+    // This magic as ImmutableOptional<> can't be copied over, and I'm too lazy
+    // to get into introducing move constructors everywhere here. -- D.K.
+    Optional<ENTRY> entry;
+    InnerAccessor(const ImmutableOptional<ENTRY> input_entry) {
+      if (Exists(input_entry)) {
+        entry = Value(input_entry);
+      }
+    }
+
+    bool Empty() const { return !Exists(entry); }
+    size_t Size() const { return Exists(entry) ? 1u : 0u; }
+    struct InnerIterator {
+      const Optional<ENTRY>& entry;
+      size_t i;
+      InnerIterator(const Optional<ENTRY>& entry, size_t i) : entry(entry), i(i) {}
+      ENTRY operator*() const { return Value(entry); }
+      bool operator==(const InnerIterator& rhs) { return i == rhs.i; }
+      bool operator!=(const InnerIterator& rhs) { return !operator==(rhs); }
+      void operator++() { ++i; }
     };
-    DummyInnerIterator begin() const { return DummyInnerIterator(); }
-    DummyInnerIterator end() const { return DummyInnerIterator(); }
+
+    InnerIterator begin() const { return InnerIterator(entry, 0u); }
+    InnerIterator end() const { return InnerIterator(entry, Size()); }
   };
 
   template <typename FIELD, typename OUTER_KEY, typename ENTRY>
@@ -514,7 +527,7 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
       current::copy_free<OUTER_KEY> key() const { return iterator.key(); }
-      DummyInnerAccessor<ENTRY> operator*() const { return DummyInnerAccessor<ENTRY>(); }
+      InnerAccessor<ENTRY> operator*() const { return InnerAccessor<ENTRY>(*iterator); }
     };
     OuterIterator begin() const { return OuterIterator(accessor.begin()); }
     OuterIterator end() const { return OuterIterator(accessor.end()); }
@@ -522,11 +535,11 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
 
   struct Impl {
     template <typename FIELD, typename ROW_OR_COL>
-    static DummyInnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(FIELD&& field,
-                                                                                ROW_OR_COL&& row_or_col) {
-      static_cast<void>(field);
-      static_cast<void>(row_or_col);
-      return DummyInnerAccessor<typename current::decay<FIELD>::entry_t>();
+    static InnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(FIELD&& field,
+                                                                           ROW_OR_COL&& row_or_col) {
+      return InnerAccessor<typename current::decay<FIELD>::entry_t>(
+          MatrixContainerProxy<PARTIAL_KEY_TYPE>::GetEntryFromRowOrCol(std::forward<FIELD>(field),
+                                                                       std::forward<ROW_OR_COL>(row_or_col)));
     }
 
     template <typename FIELD>
