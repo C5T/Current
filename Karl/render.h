@@ -217,13 +217,13 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
   // Group services by machines.
   for (const auto& machine : status.machines) {
     const auto& m = machine.second;
-    const bool is_local = machine.first == "127.0.0.1";
+    const bool is_localhost = (machine.first == "127.0.0.1");
     auto group =
         Group()
-            .Label((is_local ? "local" : machine.first) + '\n' +
+            .Label((is_localhost ? "localhost" : machine.first) + '\n' +
                    (Exists(m.cloud_instance_name) ? Value(m.cloud_instance_name) + '\n' : "") +
                    (Exists(m.cloud_availability_group) ? Value(m.cloud_availability_group) + '\n' : "") +
-                   (is_local ? "" : machine.second.time_skew))
+                   (is_localhost ? "" : machine.second.time_skew))
             .LabelLoc("t")
             .FontName("Courier")
             .FontSize("32")
