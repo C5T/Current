@@ -291,11 +291,13 @@ struct Simple {
               HTTPResponseCode.NotFound);
         }
       } else {
-        // Top-level collection view.
         if (!input.export_requested) {
+          // Top-level field view, identical for dictionaries and matrices.
           HypermediaRESTContainerResponse response;
           response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           for (const auto& element : input.field) {
+            const ENTRY DIMA_CONFIRM_TYPE = element;
+            static_cast<void>(DIMA_CONFIRM_TYPE);
             response.data.emplace_back(
                 response.url + '/' +
                 field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
@@ -333,14 +335,17 @@ struct Simple {
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
         const auto row_or_col_key = current::FromString<
-            typename MatrixContainerProxy<KEY_COMPLETENESS>::template sfinae_based_outer_key_t<ENTRY>>(
+            typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
             Value(input.rowcol_get_url_key));
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
+          // Outer-level matrix collection view by rows or cols.
           HypermediaRESTContainerResponse response;
           response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           for (const auto& element : iterable) {
+            const ENTRY DIMA_CONFIRM_TYPE = element;
+            static_cast<void>(DIMA_CONFIRM_TYPE);
             response.data.emplace_back(
                 response.url + '/' +
                 field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
@@ -353,11 +358,15 @@ struct Simple {
                                HTTPResponseCode.NotFound);
         }
       } else {
+        // Inner-level matrix collection view, within a row or a col.
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
                        '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
         const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+          const typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>
+              DIMA_CONFIRM_TYPE = iterator.key();
+          static_cast<void>(DIMA_CONFIRM_TYPE);
           response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
         }
         return Response(response);

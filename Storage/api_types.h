@@ -402,16 +402,16 @@ struct MatrixContainerProxy;
 template <>
 struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
   template <typename FIELD>
-  using outer_key_t = typename current::decay<FIELD>::row_t;
+  using field_outer_key_t = typename current::decay<FIELD>::row_t;
 
   template <typename FIELD>
-  using inner_key_t = typename current::decay<FIELD>::col_t;
+  using field_inner_key_t = typename current::decay<FIELD>::col_t;
+
+  template <typename ENTRY>
+  using entry_outer_key_t = current::storage::sfinae::entry_row_t<ENTRY>;
 
   template <typename FIELD>
   using outer_accessor_t = typename current::decay<FIELD>::rows_outer_accessor_t;
-
-  template <typename ENTRY>
-  using sfinae_based_outer_key_t = current::storage::sfinae::entry_row_t<ENTRY>;
 
   template <typename FIELD, typename ROW>
   static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
@@ -439,16 +439,16 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
 template <>
 struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   template <typename FIELD>
-  using outer_key_t = typename current::decay<FIELD>::col_t;
+  using field_outer_key_t = typename current::decay<FIELD>::col_t;
 
   template <typename FIELD>
-  using inner_key_t = typename current::decay<FIELD>::row_t;
+  using field_inner_key_t = typename current::decay<FIELD>::row_t;
+
+  template <typename ENTRY>
+  using entry_outer_key_t = current::storage::sfinae::entry_col_t<ENTRY>;
 
   template <typename FIELD>
   using outer_accessor_t = typename current::decay<FIELD>::cols_outer_accessor_t;
-
-  template <typename ENTRY>
-  using sfinae_based_outer_key_t = current::storage::sfinae::entry_col_t<ENTRY>;
 
   template <typename FIELD, typename COL>
   static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,
@@ -544,11 +544,11 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
 
     template <typename FIELD>
     static OuterAccessor<FIELD,
-                         typename Proxy::template outer_key_t<FIELD>,
+                         typename Proxy::template field_outer_key_t<FIELD>,
                          typename current::decay<FIELD>::entry_t>
     RowsOrCols(FIELD&& field) {
       return OuterAccessor<FIELD,
-                           typename Proxy::template outer_key_t<FIELD>,
+                           typename Proxy::template field_outer_key_t<FIELD>,
                            typename current::decay<FIELD>::entry_t>(
           MatrixContainerProxy<PARTIAL_KEY_TYPE>::RowsOrCols(field));
     }

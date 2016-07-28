@@ -124,7 +124,7 @@ struct Plain {
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
         const auto row_or_col_key = current::FromString<
-            typename MatrixContainerProxy<KEY_COMPLETENESS>::template sfinae_based_outer_key_t<ENTRY>>(
+            typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
             Value(input.rowcol_get_url_key));
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
