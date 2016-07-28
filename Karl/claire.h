@@ -122,8 +122,11 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   virtual ~GenericClaire() {
     if (keepalive_thread_.joinable()) {
-      keepalive_thread_terminating_ = true;
-      keepalive_condition_variable_.notify_one();
+      {
+        std::lock_guard<std::mutex> lock(keepalive_mutex_);
+        keepalive_thread_terminating_ = true;
+        keepalive_condition_variable_.notify_one();
+      }
       keepalive_thread_.join();
       // Deregister self from Karl.
       try {
@@ -185,7 +188,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
     ForceSendKeepalive();
-   }
+  }
 
   ClaireStatus& BoilerplateStatus() { return boilerplate_status_; }
 
@@ -226,6 +229,7 @@ class GenericClaire final : private DummyClaireNotifiable {
 
     status.local_port = port_;
     status.dependencies.assign(dependencies_.begin(), dependencies_.end());
+    status.reporting_to = karl_.address_port_route;
 
     status.now = now;
 
