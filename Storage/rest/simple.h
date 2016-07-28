@@ -183,7 +183,8 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
                               {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
-struct Simple {
+template<typename RECORD_OUTPUT_POLICY>
+struct SimpleImpl {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
@@ -340,7 +341,7 @@ struct Simple {
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
-          // Outer-level matrix collection view by rows or cols.
+          // Outer-level matrix collection view, browse the list of rows of cols.
           HypermediaRESTContainerResponse response;
           response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           for (const auto& element : iterable) {
@@ -358,16 +359,22 @@ struct Simple {
                                HTTPResponseCode.NotFound);
         }
       } else {
-        // Inner-level matrix collection view, within a row or a col.
+        // Inner-level matrix collection view, browse a specific row or specific col.
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
                        '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
-        const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
+        using outer_accessor_t =
+            typename GenericMatrixIterator<KEY_COMPLETENESS,
+                                           FIELD_SEMANTICS>::template outer_accessor_t<PARTICULAR_FIELD>;
+        outer_accessor_t iterable =
+            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
-          // NOTE(dkorolev): This `iterator` can be of many different kinds: ...
-          const typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>
-              DIMA_CONFIRM_TYPE = iterator.DIMAkey();
-          static_cast<void>(DIMA_CONFIRM_TYPE);
+          // NOTE(dkorolev): This `iterator` can be of three different kinds:
+          // 1) api_types.h, GenericMatrixIteratorImplSelector<*, SingleElement>::OuterAccessor::OuterIterator
+          // 2) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
+          // 3) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
+          // To have Hypermedia pagination generic, they are accessed in the same way.
+          iterator.has_range_element_t();
           response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
         }
         return Response(response);
@@ -400,7 +407,7 @@ struct Simple {
     }
     template <class INPUT, bool B>
     ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
-      return Simple::ErrorMethodNotAllowed("POST");
+      return SimpleImpl::ErrorMethodNotAllowed("POST");
     }
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
@@ -539,6 +546,11 @@ struct Simple {
                          HTTPResponseCode.MethodNotAllowed);
   }
 };
+
+struct SimpleHypermediaRecordOutputPolicy {
+};
+
+using Simple = SimpleImpl<SimpleHypermediaRecordOutputPolicy>;
 
 }  // namespace rest
 }  // namespace storage

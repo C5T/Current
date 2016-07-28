@@ -540,7 +540,8 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
       current::copy_free<OUTER_KEY> key() const { return iterator.key(); }
-      current::copy_free<OUTER_KEY> DIMAkey() const { return iterator.key(); }
+      void has_range_element_t() {}
+      using range_element_t = HypermediaSliceKeyAndSize<OUTER_KEY>;
       const HypermediaSliceKeyAndSize<OUTER_KEY> operator*() const {
         // TODO(dkorolev): DIMA: Fix this 42u.
         return HypermediaSliceKeyAndSize<OUTER_KEY>(iterator.key(), 42u);
@@ -560,13 +561,18 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
     }
 
     template <typename FIELD>
-    static OuterAccessor<FIELD,
-                         typename Proxy::template field_outer_key_t<FIELD>,
-                         typename current::decay<FIELD>::entry_t>
+    using outer_accessor_t = OuterAccessor<current::decay<FIELD>,
+                                           typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
+                                           typename current::decay<FIELD>::entry_t>;
+
+    template <typename FIELD>
+    static OuterAccessor<current::decay<FIELD>,
+                         typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
+                         typename current::decay<current::decay<FIELD>>::entry_t>
     RowsOrCols(FIELD&& field) {
-      return OuterAccessor<FIELD,
-                           typename Proxy::template field_outer_key_t<FIELD>,
-                           typename current::decay<FIELD>::entry_t>(
+      return OuterAccessor<current::decay<FIELD>,
+                           typename Proxy::template field_outer_key_t<current::decay<FIELD>>,
+                           typename current::decay<current::decay<FIELD>>::entry_t>(
           MatrixContainerProxy<PARTIAL_KEY_TYPE>::RowsOrCols(field));
     }
   };

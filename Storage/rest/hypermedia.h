@@ -53,6 +53,7 @@ CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_directory, std::string);
+  // TODO(dkorolev): `url_full_directory` for half-matrices?
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(n, uint64_t);
   CURRENT_FIELD(total, uint64_t);

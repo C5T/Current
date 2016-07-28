@@ -209,7 +209,8 @@ class GenericOneToMany {
       bool operator==(const RowsIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const RowsIterator& rhs) const { return !operator==(rhs); }
       sfinae::CF<key_t> key() const { return iterator->first; }
-      sfinae::CF<key_t> DIMAkey() const { return iterator->first; }
+      void has_range_element_t() {}
+      using range_element_t = GenericMapAccessor<elements_map_t>;
       GenericMapAccessor<elements_map_t> operator*() const {
         return GenericMapAccessor<elements_map_t>(iterator->second);
       }
