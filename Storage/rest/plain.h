@@ -23,11 +23,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// `Basic` is a boilerplate example of how to customize RESTful access to Current Storage.
+// `Plain` is a boilerplate example of how to customize RESTful access to Current Storage.
 // This basic implementation supports GET, POST, and DELETE, with rudimentary text-only messages on errors.
 
-#ifndef CURRENT_STORAGE_REST_BASIC_H
-#define CURRENT_STORAGE_REST_BASIC_H
+#ifndef CURRENT_STORAGE_REST_PLAIN_H
+#define CURRENT_STORAGE_REST_PLAIN_H
 
 #include "sfinae.h"
 
@@ -41,7 +41,7 @@ namespace current {
 namespace storage {
 namespace rest {
 
-struct Basic {
+struct Plain {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
@@ -80,7 +80,7 @@ struct Basic {
     std::string RunIterate(const FIELD& field, semantics::primary_key::Key) const {
       std::ostringstream result;
       for (const auto& element : field) {
-        // Basic REST, mostly for unit testing purposes. No need to URL-ify plain text output.
+        // In plain "REST", which is mostly here for unit testing purposes, no URL-ifying is performed.
         result << current::ToString(current::storage::sfinae::GetKey(element)) << '\t' << JSON(element) << '\n';
       }
       return result.str();
@@ -173,7 +173,7 @@ struct Basic {
     }
     template <class INPUT, bool B>
     ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
-      return Basic::ErrorMethodNotAllowed("POST");
+      return Plain::ErrorMethodNotAllowed("POST");
     }
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
@@ -276,4 +276,4 @@ struct Basic {
 }  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_STORAGE_REST_BASIC_H
+#endif  // CURRENT_STORAGE_REST_PLAIN_H

@@ -32,8 +32,9 @@ SOFTWARE.
 
 #include "../storage.h"
 #include "../api.h"
+#include "../rest/plain.h"
+#include "../rest/simple.h"
 #include "../rest/hypermedia.h"
-#include "../rest/advanced_hypermedia.h"
 #include "../persister/sherlock.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -99,12 +100,12 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
       storage,
       FLAGS_client_storage_test_port,
       "/api1", "http://example.current.ai/api1");
-  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
       storage,
       FLAGS_client_storage_test_port,
       "/api2",
       "http://example.current.ai/api2");
-  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia>(
+  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
       storage,
       FLAGS_client_storage_test_port,
       "/api3",
@@ -119,7 +120,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(404, static_cast<int>(result.code));
   }
   {
-    // Exposed by `Hypermedia`.
+    // Exposed by `Simple`.
     {
       const auto result = HTTP(GET(base_url + "/api2"));
       EXPECT_EQ(200, static_cast<int>(result.code));
@@ -430,7 +431,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
 
   const auto basic_rest = RESTfulStorage<TestStorage>(
       storage, FLAGS_client_storage_test_port, "/api_basic", "http://example.current.ai/api_basic");
-  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
       storage, FLAGS_client_storage_test_port, "/api", "http://example.current.ai/api");
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
@@ -511,8 +512,8 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
 namespace storage_docu {
 
 // Example of custom REST implementation that annotates transactions.
-struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
-  using SUPER = current::storage::rest::AdvancedHypermedia;
+struct RESTWithMeta : current::storage::rest::Hypermedia {
+  using SUPER = current::storage::rest::Hypermedia;
 
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator :

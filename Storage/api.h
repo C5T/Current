@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "api_types.h"
 
-#include "rest/basic.h"
+#include "rest/plain.h"
 
 #include "../TypeSystem/Schema/schema.h"
 #include "../Blocks/HTTP/api.h"
@@ -380,7 +380,7 @@ void GenerateRESTfulHandler(registerer_t registerer, STORAGE& storage, const std
 
 }  // namespace current::storage::impl
 
-template <class STORAGE_IMPL, class REST_IMPL = Basic>
+template <class STORAGE_IMPL, class REST_IMPL = Plain>
 class RESTfulStorage {
  public:
   RESTfulStorage(STORAGE_IMPL& storage,
