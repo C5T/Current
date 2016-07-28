@@ -170,7 +170,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"error\":"
                    "{"
                    "\"name\":\"ResourceNotFound\","
-                   "\"message\":\"The requested resource not found.\","
+                   "\"message\":\"The requested resource was not found.\","
                    "\"details\":{\"key\":\"42\"}"
                    "}"
         "}\n",

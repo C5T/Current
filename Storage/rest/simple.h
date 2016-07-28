@@ -263,35 +263,66 @@ struct Simple {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::DictionaryOrMatrixCompleteKey) const {
       if (Exists(input.get_url_key)) {
+        // View a resource under a specific, complete, key.
         const auto url_key_value = Value(input.get_url_key);
         const auto key = field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(url_key_value);
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
-          const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' +
-                                  input.field_name + '/' +
-                                  field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
-          auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, Value(result)));
-          const auto last_modified = input.field.LastModified(key);
-          if (Exists(last_modified)) {
-            response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+          const auto& value = Value(result);
+          if (!input.export_requested) {
+            const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' +
+                                    input.field_name + '/' +
+                                    field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
+            auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, value));
+            const auto last_modified = input.field.LastModified(key);
+            if (Exists(last_modified)) {
+              response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+            }
+            return response;
+          } else {
+            // Export requested via `?export`, dump the raw JSON record.
+            return value;
           }
-          return response;
         } else {
           return ErrorResponse(
               ResourceNotFoundError(
-                  "The requested resource not found.",
+                  "The requested resource was not found.",
                   {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
               HTTPResponseCode.NotFound);
         }
       } else {
-        HypermediaRESTContainerResponse response;
-        response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
-        for (const auto& element : input.field) {
-          response.data.emplace_back(
-              response.url + '/' + field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
-                                       field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
+        // Top-level collection view.
+        if (!input.export_requested) {
+          HypermediaRESTContainerResponse response;
+          response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+          for (const auto& element : input.field) {
+            response.data.emplace_back(
+                response.url + '/' +
+                field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
+                    field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
+          }
+          return Response(response);
+        } else {
+#ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
+          // Export requested via `?export`, dump all the records.
+          // Slow. Only available off the followers.
+          if (input.role != StorageRole::Follower) {
+            return ErrorResponse(
+                HypermediaRESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
+                HTTPResponseCode.Forbidden);
+          } else
+#endif  // CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
+          {
+            // Sadly, the `Response` must be returned.
+            // Have to create it in memory for now. -- D.K.
+            // TODO(dkorolev): Migrate to a better way.
+            std::ostringstream result;
+            for (const auto& element : input.field) {
+              result << JSON<JSONFormat::Minimalistic>(element) << '\n';
+            }
+            return result.str();
+          }
         }
-        return Response(response);
       }
     }
 
