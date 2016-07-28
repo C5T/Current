@@ -183,7 +183,7 @@ inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
                               {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
-template <typename RECORD_OUTPUT_POLICY>
+template <typename HTML_OUTPUT_FORMATTER>
 struct SimpleImpl {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
@@ -294,17 +294,17 @@ struct SimpleImpl {
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
-          HypermediaRESTContainerResponse response;
-          response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+          auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name);
           for (const auto& element : input.field) {
             const ENTRY DIMA_CONFIRM_TYPE = element;
             static_cast<void>(DIMA_CONFIRM_TYPE);
-            response.data.emplace_back(
-                response.url + '/' +
+            payload.data.emplace_back(
+                payload.url + '/' +
                 field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
                     field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
           }
-          return Response(response);
+          return Response(payload);
         } else {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
@@ -342,8 +342,9 @@ struct SimpleImpl {
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
-          HypermediaRESTContainerResponse response;
-          response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+          auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name);
+          /*
           for (const auto& element : iterable) {
             const ENTRY DIMA_CONFIRM_TYPE = element;
             static_cast<void>(DIMA_CONFIRM_TYPE);
@@ -352,7 +353,16 @@ struct SimpleImpl {
                 field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
                     field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
           }
-          return Response(response);
+          */
+          for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+            //            const ENTRY DIMA_CONFIRM_TYPE = element;
+            //            static_cast<void>(DIMA_CONFIRM_TYPE);
+            payload.data.emplace_back(
+                payload.url + '/' +
+                field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
+                    field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(*iterator)));
+          }
+          return Response(payload);
         } else {
           return ErrorResponse(ResourceNotFoundError("The requested key has was not found.",
                                                      {{"key", Value(input.rowcol_get_url_key)}}),
@@ -360,25 +370,26 @@ struct SimpleImpl {
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
-        HypermediaRESTContainerResponse response;
-        response.url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
-                       '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
+        auto payload = HTML_OUTPUT_FORMATTER::template BeginContainerPayload<ENTRY>(
+            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
+            MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix());
         using outer_accessor_t =
             typename GenericMatrixIterator<KEY_COMPLETENESS,
                                            FIELD_SEMANTICS>::template outer_accessor_t<PARTICULAR_FIELD>;
         outer_accessor_t iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
-         // TODO(dkorolev): DIMA SIMPLIFY THIS.
-         // It would be a specializable call to RenderElement or RenderCollection. -- D.K.
-         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
+        // TODO(dkorolev): DIMA SIMPLIFY THIS.
+        // It would be a specializable call to RenderElement or RenderCollection. -- D.K.
+        for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
           // NOTE(dkorolev): This `iterator` can be of three different kinds:
-          // 1) api_types.h, GenericMatrixIteratorImplSelector<*, SingleElement>::OuterAccessor::OuterIterator
-          // 2) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
-          // 3) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
+          // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
+          // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
+          // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
+          //    where SE stands for SingleElement.
           // To have Hypermedia pagination generic, they are accessed in the same way.
-          response.data.emplace_back(response.url + '/' + current::ToString(iterator.key()));
+          payload.data.emplace_back(payload.url + '/' + current::ToString(iterator.key()));
         }
-        return Response(response);
+        return Response(payload);
       }
     }
 
@@ -548,9 +559,16 @@ struct SimpleImpl {
   }
 };
 
-struct SimpleHypermediaRecordOutputPolicy {};
+struct SimpleHTMLOutputFormatter {
+  template <typename ENTRY_TYPE_FOR_HYPERMEDIA>
+  static HypermediaRESTContainerResponse BeginContainerPayload(const std::string& url) {
+    HypermediaRESTContainerResponse payload;
+    payload.url = url;
+    return payload;
+  }
+};
 
-using Simple = SimpleImpl<SimpleHypermediaRecordOutputPolicy>;
+using Simple = SimpleImpl<SimpleHTMLOutputFormatter>;
 
 }  // namespace rest
 }  // namespace storage
