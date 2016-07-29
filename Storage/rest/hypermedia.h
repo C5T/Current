@@ -32,9 +32,6 @@ SOFTWARE.
 #define CURRENT_STORAGE_REST_HYPERMEDIA_H
 
 #include "simple.h"
-#include "sfinae.h"
-
-#include "../api_types.h"
 
 namespace current {
 namespace storage {
@@ -189,32 +186,32 @@ struct HypermediaResponseFormatter {
 
 }  // namespace current::storage::rest::hypermedia
 
-struct Hypermedia : GenericImpl<hypermedia::HypermediaResponseFormatter> {
-  using SUPER_HYPERMEDIA = GenericImpl<hypermedia::HypermediaResponseFormatter>;
+struct Hypermedia : generic::Structured<hypermedia::HypermediaResponseFormatter> {
+  using STRUCTURED = generic::Structured<hypermedia::HypermediaResponseFormatter>;
 
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator
-      : SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {};
+  struct RESTfulDataHandler
+      : STRUCTURED::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {};
 
   template <typename STORAGE, typename ENTRY>
-  using RESTfulSchemaHandlerGenerator = SUPER_HYPERMEDIA::RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
+  using RESTfulSchemaHandler = STRUCTURED::RESTfulSchemaHandler<STORAGE, ENTRY>;
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>
-      : SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
-    using SUPER_GET_HANDLER =
-        SUPER_HYPERMEDIA::RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
+  struct RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>
+      : STRUCTURED::RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    using SUPER_GET_HANDLER_GENERATOR =
+        STRUCTURED::RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
 
     template <typename F>
     void Enter(Request request, F&& next) {
-      auto& context = SUPER_GET_HANDLER::context;
+      auto& context = SUPER_GET_HANDLER_GENERATOR::context;
 
       const auto& q = request.url.query;
       context.brief = ((q["fields"] == "brief") || q.has("brief")) && !q.has("full");
       context.query_i = current::FromString<uint64_t>(q.get("i", current::ToString(context.query_i)));
       context.query_n = current::FromString<uint64_t>(q.get("n", current::ToString(context.query_n)));
 
-      SUPER_GET_HANDLER::Enter(std::move(request), std::forward<F>(next));
+      SUPER_GET_HANDLER_GENERATOR::Enter(std::move(request), std::forward<F>(next));
     }
   };
 };

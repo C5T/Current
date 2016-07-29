@@ -105,10 +105,10 @@ struct PerFieldRESTfulHandlerGenerator {
 
   template <class HTTP_VERB, typename OPERATION, typename FIELD, typename ENTRY, typename KEY>
   using DataHandlerImpl =
-      typename REST_IMPL::template RESTfulDataHandlerGenerator<HTTP_VERB, OPERATION, FIELD, ENTRY, KEY>;
+      typename REST_IMPL::template RESTfulDataHandler<HTTP_VERB, OPERATION, FIELD, ENTRY, KEY>;
 
   template <typename ENTRY>
-  using SchemaHandlerImpl = typename REST_IMPL::template RESTfulSchemaHandlerGenerator<STORAGE, ENTRY>;
+  using SchemaHandlerImpl = typename REST_IMPL::template RESTfulSchemaHandler<STORAGE, ENTRY>;
 
   using field_rest_endpoints_schema_t = typename specific_field_t::semantics_t::rest_endpoints_schema_t;
 
@@ -368,7 +368,7 @@ void GenerateRESTfulHandler(registerer_t registerer, STORAGE& storage, const std
 
 }  // namespace current::storage::impl
 
-template <class STORAGE_IMPL, class REST_IMPL = Plain>
+template <class STORAGE_IMPL, class REST_IMPL = plain::Plain>
 class RESTfulStorage {
  public:
   RESTfulStorage(STORAGE_IMPL& storage,

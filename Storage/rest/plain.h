@@ -24,7 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // `Plain` is a boilerplate example of how to customize RESTful access to Current Storage.
-// This basic implementation supports GET, POST, and DELETE, with rudimentary text-only messages on errors.
+// This basic implementation supports GET, POST, and DELETE, with rudimentary text-only error messages.
 
 #ifndef CURRENT_STORAGE_REST_PLAIN_H
 #define CURRENT_STORAGE_REST_PLAIN_H
@@ -40,16 +40,17 @@ SOFTWARE.
 namespace current {
 namespace storage {
 namespace rest {
+namespace plain {
 
 struct Plain {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator;
+  struct RESTfulDataHandler;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT&) {}
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void EnterByKeyCompletenessFamily(Request request,
                                       semantics::key_completeness::FullKey,
@@ -161,7 +162,7 @@ struct Plain {
   };
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<POST, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandler<POST, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithOrWithoutKeyFromURL(
@@ -197,7 +198,7 @@ struct Plain {
   };
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<PUT, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandler<PUT, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -224,7 +225,7 @@ struct Plain {
   };
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator<DELETE, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTfulDataHandler<DELETE, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -237,7 +238,7 @@ struct Plain {
   };
 
   template <typename STORAGE, typename ENTRY>
-  struct RESTfulSchemaHandlerGenerator {
+  struct RESTfulSchemaHandler {
     using storage_t = STORAGE;
     using entry_t = ENTRY;
 
@@ -276,8 +277,9 @@ struct Plain {
   // LCOV_EXCL_STOP
 };
 
-}  // namespace rest
-}  // namespace storage
+}  // namespace current::storage::rest::plain
+}  // namespace current::storage::rest
+}  // namespace current::storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_REST_PLAIN_H

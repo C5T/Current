@@ -175,11 +175,14 @@ CURRENT_STRUCT_T(HypermediaRESTCollectionResponse) {
   CURRENT_FIELD(data, std::vector<T>);
 };
 
+using HypermediaRESTGenericResponse = generic::RESTGenericResponse;
+
 }  // namespace current::storage::rest:hypermedia
 
 using HypermediaRESTError = hypermedia::HypermediaRESTError;
 using HypermediaRESTStatus = hypermedia::HypermediaRESTStatus;
 using HypermediaRESTTopLevel = hypermedia::HypermediaRESTTopLevel;
+using HypermediaRESTGenericResponse = hypermedia::HypermediaRESTGenericResponse;
 
 // These functions are used externally, so keep them in `current::storage::rest`.
 // TODO(dkorolev) #DIMA_FIXME: Put them into `generic::` and add `using`-s.
