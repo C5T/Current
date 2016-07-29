@@ -40,28 +40,42 @@ namespace current {
 namespace storage {
 namespace rest {
 
-CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponse) {
-  CURRENT_FIELD(success, Optional<bool>);
-  CURRENT_FIELD(url, std::string);
-  CURRENT_FIELD(url_full, std::string);
-  CURRENT_FIELD(url_brief, std::string);
-  CURRENT_FIELD(url_directory, std::string);
-  CURRENT_FIELD(data, T);
-  CURRENT_DEFAULT_CONSTRUCTOR_T(ExtendedHypermediaRESTRecordResponse) {}
-  CURRENT_CONSTRUCTOR_T(ExtendedHypermediaRESTRecordResponse)(
-      const std::string& url, const std::string& url_directory, const T& data, bool set_success = false)
-      : url(url), url_full(url + "?full"), url_brief(url + "?brief"), url_directory(url_directory), data(data) {
-    if (set_success) {
-      success = true;
-    }
+#ifdef MACRO_STRUCT_BODY
+#error "`MACRO_STRUCT_BODY` should not be defined."
+#endif
+
+#define MACRO_STRUCT_BODY(struct_name) \
+  CURRENT_FIELD(url, std::string); \
+  CURRENT_FIELD(url_full, std::string); \
+  CURRENT_FIELD(url_brief, std::string); \
+  CURRENT_FIELD(url_directory, std::string); \
+  CURRENT_FIELD(data, T); \
+  CURRENT_DEFAULT_CONSTRUCTOR_T(struct_name) {} \
+  CURRENT_CONSTRUCTOR_T(struct_name)( \
+      const std::string& url, const std::string& url_directory, const T& data) \
+      : url(url), \
+        url_full(url + "?full"), \
+        url_brief(url + "?brief"), \
+        url_directory(url_directory), \
+        data(data) { \
   }
+
+CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponse) {
+  MACRO_STRUCT_BODY(ExtendedHypermediaRESTRecordResponse);
 };
+
+CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponseWithSuccessTrue) {
+  CURRENT_FIELD(success, bool, true);
+  MACRO_STRUCT_BODY(ExtendedHypermediaRESTRecordResponseWithSuccessTrue);
+};
+
+#undef MACRO_STRUCT_BODY
 
 CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_directory, std::string);
-  // TODO(dkorolev): `url_full_directory` for half-matrices?
+  // TODO(dkorolev): `url_full_directory` for half-matrices? Tagging with #DIMA_FIXME.
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(n, uint64_t);
   CURRENT_FIELD(total, uint64_t);
@@ -115,16 +129,13 @@ template <typename PARTICULAR_FIELD,
           bool HAS_BRIEF,
           typename ITERATOR>
 inline ExtendedHypermediaRESTRecordResponse<T> FormatAsExtendedHypermediaRecord(
-    const std::string& url_directory, ITERATOR&& iterator, bool set_success = true) {
+    const std::string& url_directory, ITERATOR&& iterator) {
   static_assert(std::is_same<T, INNER_HYPERMEDIA_TYPE>::value ||
                     std::is_same<T, sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>>::value,
                 "");
 
   ExtendedHypermediaRESTRecordResponse<T> response;
   const std::string key_as_url_string = ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
-  if (set_success) {
-    response.success = true;
-  }
   response.url = url_directory + '/' + key_as_url_string;
   response.url_directory = url_directory;
 
@@ -157,12 +168,12 @@ struct HypermediaResponseFormatter {
                                            const ENTRY& entry) {
     using brief_t = sfinae::brief_of_t<ENTRY>;
     if (std::is_same<ENTRY, brief_t>::value) {
-      return Response(HypermediaRESTRecordResponse<ENTRY>(url, entry));
+      return Response(ExtendedHypermediaRESTRecordResponseWithSuccessTrue<ENTRY>(url, url_collection, entry));
     } else {
       if (!context.brief) {
-        return Response(ExtendedHypermediaRESTRecordResponse<ENTRY>(url, url_collection, entry));
+        return Response(ExtendedHypermediaRESTRecordResponseWithSuccessTrue<ENTRY>(url, url_collection, entry));
       } else {
-        return Response(ExtendedHypermediaRESTRecordResponse<brief_t>(
+        return Response(ExtendedHypermediaRESTRecordResponseWithSuccessTrue<brief_t>(
             url, url_collection, static_cast<const brief_t&>(entry)));
       }
     }
@@ -204,7 +215,7 @@ struct HypermediaResponseFormatter {
                                                                  ENTRY,
                                                                  INNER_HYPERMEDIA_TYPE,
                                                                  inner_element_t,
-                                                                 HAS_BRIEF>(url, iterator, false));
+                                                                 HAS_BRIEF>(url, iterator));
       } else if (current_index < context.query_i) {
         has_previous_page = true;
       } else if (current_index >= context.query_i + context.query_n) {
