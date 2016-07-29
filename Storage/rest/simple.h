@@ -40,12 +40,12 @@ namespace current {
 namespace storage {
 namespace rest {
 
-template <typename HYPERMEDIA_RESPONSE_FORMATTER>
-struct API {
+template <typename RESPONSE_FORMATTER>
+struct GenericImpl {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
-  using context_t = typename HYPERMEDIA_RESPONSE_FORMATTER::Context;
+  using context_t = typename RESPONSE_FORMATTER::Context;
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
@@ -54,7 +54,7 @@ struct API {
             .Register(input.route_prefix,
                       [input](Request request) {
                         const bool up = input.up_status;
-                        HypermediaRESTTopLevel response(input.restful_url_prefix, up);
+                        generic::RESTTopLevel response(input.restful_url_prefix, up);
                         for (const auto& f : input.field_names) {
                           response.url_data[f] =
                               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
@@ -65,7 +65,7 @@ struct API {
                        .Register(input.route_prefix == "/" ? "/status" : input.route_prefix + "/status",
                                  [input](Request request) {
                                    const bool up = input.up_status;
-                                   request(HypermediaRESTStatus(up),
+                                   request(generic::RESTStatus(up),
                                            up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                                  });
   }
@@ -137,7 +137,7 @@ struct API {
             const std::string url =
                 url_collection + '/' + field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
             Response response =
-                HYPERMEDIA_RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
+                RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
             const auto last_modified = input.field.LastModified(key);
             if (Exists(last_modified)) {
               response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
@@ -157,9 +157,7 @@ struct API {
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
-          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
-                                                                                     ENTRY,
-                                                                                     ENTRY>(
+          return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
               context,
               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
               input.field);
@@ -169,7 +167,7 @@ struct API {
           // Slow. Only available off the followers.
           if (input.role != StorageRole::Follower) {
             return ErrorResponse(
-                HypermediaRESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
+                generic::RESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
                 HTTPResponseCode.Forbidden);
           } else
 #endif  // CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
@@ -200,9 +198,7 @@ struct API {
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
-          return HYPERMEDIA_RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
-                                                                                     ENTRY,
-                                                                                     ENTRY>(
+          return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
               context,
               input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
               iterable);
@@ -213,12 +209,13 @@ struct API {
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
-        return HYPERMEDIA_RESPONSE_FORMATTER::
-            template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, HypermediaRESTSubCollection<ENTRY>>(
-                context,
-                input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
-                    MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
-                GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
+        return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
+                                                                        ENTRY,
+                                                                        generic::RESTSubCollection<ENTRY>>(
+            context,
+            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
+                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
+            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
       }
     }
 
@@ -250,7 +247,7 @@ struct API {
     }
     template <class INPUT, bool B>
     ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
-      return API::ErrorMethodNotAllowed("POST");
+      return GenericImpl::ErrorMethodNotAllowed("POST");
     }
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
@@ -261,7 +258,7 @@ struct API {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + key;
-        auto response = Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
+        auto response = Response(generic::RESTResourceUpdateResponse(true, "Resource created.", url),
                                  HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
         if (Exists(last_modified)) {
@@ -269,7 +266,7 @@ struct API {
         }
         return response;
       } else {
-        return Response(HypermediaRESTResourceUpdateResponse(
+        return Response(generic::RESTResourceUpdateResponse(
                             false,
                             "Resource creation failed.",
                             {ResourceAlreadyExistsError("The resource already exists", {{"key", key}})}),
@@ -313,7 +310,7 @@ struct API {
         const std::string url =
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + url_key;
         Response response;
-        HypermediaRESTResourceUpdateResponse hypermedia_response(true);
+        generic::RESTResourceUpdateResponse hypermedia_response(true);
         hypermedia_response.resource_url = url;
         if (exists) {
           hypermedia_response.message = "Resource updated.";
@@ -374,7 +371,7 @@ struct API {
         message = "Resource didn't exist.";
       }
       input.field.Erase(input.delete_key);
-      auto response = Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
+      auto response = Response(generic::RESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
       if (existed) {
         const auto last_modified = input.field.LastModified(input.delete_key);
         if (Exists(last_modified)) {
@@ -396,29 +393,6 @@ struct API {
 
 namespace simple {
 
-CURRENT_STRUCT_T(SimpleRESTRecordResponse) {
-  CURRENT_FIELD(success, bool, true);
-  CURRENT_FIELD(url, std::string, "");
-  CURRENT_FIELD(data, T);
-
-  CURRENT_DEFAULT_CONSTRUCTOR_T(SimpleRESTRecordResponse) {}
-  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, const T& data)
-      : url(url), data(data) {}
-  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, T&& data)
-      : url(url), data(std::move(data)) {}
-};
-
-CURRENT_STRUCT(SimpleRESTContainerResponse, HypermediaRESTGenericResponse) {
-  CURRENT_FIELD(url, std::string, "");
-  CURRENT_FIELD(data, std::vector<std::string>);
-
-  CURRENT_DEFAULT_CONSTRUCTOR(SimpleRESTContainerResponse) : SUPER(true) {}
-  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)(const std::string& url, const std::vector<std::string>& data)
-      : SUPER(true), url(url), data(data) {}
-  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)(const std::string& url, std::vector<std::string>&& data)
-      : SUPER(true), url(url), data(std::move(data)) {}
-};
-
 struct SimpleResponseFormatter {
   struct Context {};
 
@@ -427,7 +401,7 @@ struct SimpleResponseFormatter {
                                            const std::string& url,
                                            const std::string& url_collection,
                                            const ENTRY& entry) {
-    static_cast<void>(url_collection);  // Used by `current::storage::rest::Hypermedia`.
+    static_cast<void>(url_collection);  // Unused here, included for signature compatibility with hypermedia.
     return Response(SimpleRESTRecordResponse<ENTRY>(url, entry));
   }
 
@@ -436,13 +410,6 @@ struct SimpleResponseFormatter {
     SimpleRESTContainerResponse payload;
     payload.url = url;
     for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
-      // NOTE(dkorolev): This `iterator` can be of more than three different kinds, among which are:
-      // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
-      // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
-      // 3) api_types.h, GenericMatrixIteratorImplSelector<*, SE>::SWEOuterAccessor::SEOuterIterator,
-      //    where SE stands for SingleElement.
-      // 4) GenericMapAccessor<>.
-      // To have Hypermedia pagination generic, they are accessed in the same way.
       payload.data.emplace_back(url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
     }
     return Response(payload);
@@ -451,7 +418,7 @@ struct SimpleResponseFormatter {
 
 }  // namespace current::storage::rest::simple
 
-using Simple = API<simple::SimpleResponseFormatter>;
+using Simple = GenericImpl<simple::SimpleResponseFormatter>;
 
 }  // namespace current::storage::rest
 }  // namespace current::storage
