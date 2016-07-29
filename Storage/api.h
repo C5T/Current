@@ -155,13 +155,13 @@ struct PerFieldRESTfulHandlerGenerator {
                        [&storage, handler, generic_input, &field, url_key, field_name, export_requested](
                            immutable_fields_t fields) -> Response {
                          using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
-                         GETInput input(std::move(generic_input),
-                                        fields,
-                                        field,
-                                        field_name,
-                                        url_key,
-                                        storage.GetRole(),
-                                        export_requested);
+                         const GETInput input(std::move(generic_input),
+                                              fields,
+                                              field,
+                                              field_name,
+                                              url_key,
+                                              storage.GetRole(),
+                                              export_requested);
                          return handler.Run(input);
                        },
                        std::move(request))
@@ -183,11 +183,11 @@ struct PerFieldRESTfulHandlerGenerator {
                                               mutable_fields_t fields) mutable -> Response {
                                             using POSTInput =
                                                 RESTfulPOSTInput<STORAGE, specific_field_t, entry_t>;
-                                            POSTInput input(std::move(generic_input),
-                                                            fields,
-                                                            field,
-                                                            field_name,
-                                                            mutable_entry);
+                                            const POSTInput input(std::move(generic_input),
+                                                                  fields,
+                                                                  field,
+                                                                  field_name,
+                                                                  mutable_entry);
                                             return handler.Run(input);
                                           },
                                           std::move(request)).Detach();
@@ -216,7 +216,7 @@ struct PerFieldRESTfulHandlerGenerator {
                          [handler, generic_input, &field, url_key, entry, entry_key, field_name](
                              mutable_fields_t fields) -> Response {
                            using PUTInput = RESTfulPUTInput<STORAGE, specific_field_t, entry_t, key_t>;
-                           PUTInput input(
+                           const PUTInput input(
                                std::move(generic_input), fields, field, field_name, url_key, entry, entry_key);
                            return handler.Run(input);
                          },
@@ -243,7 +243,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                             mutable_fields_t fields) -> Response {
                                           using DELETEInput =
                                               RESTfulDELETEInput<STORAGE, specific_field_t, key_t>;
-                                          DELETEInput input(
+                                          const DELETEInput input(
                                               std::move(generic_input), fields, field, field_name, url_key);
                                           return handler.Run(input);
                                         },
@@ -311,11 +311,11 @@ struct PerFieldRESTfulHandlerGenerator {
                                  // Capture local variables by value for safe async transactions.
                                  [&storage, handler, generic_input, &field, url_key, field_name](
                                      immutable_fields_t fields) -> Response {
-                                   using RowGETInput =
+                                   using RowColGETInput =
                                        RESTfulGETRowColInput<STORAGE,
                                                              typename PARTIAL_KEY_OPERATION::key_completeness_t,
                                                              specific_field_t>;
-                                   RowGETInput input(
+                                   const RowColGETInput input(
                                        std::move(generic_input), fields, field, field_name, url_key);
                                    return handler.Run(input);
                                  },

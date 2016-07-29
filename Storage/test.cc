@@ -2247,9 +2247,9 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
-  const auto rest1 = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/text", "");
+  const auto rest1 = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/plain", "");
   const auto rest2 = RESTfulStorage<Storage, current::storage::rest::Simple>(
-      storage, FLAGS_transactional_storage_test_port, "/basic", "");
+      storage, FLAGS_transactional_storage_test_port, "/simple", "");
   const auto rest3 = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
       storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
 
@@ -2257,19 +2257,19 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
     // Try all three REST implementations, as well as both POST and PUT.
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/text/data/composite_m2m",
+              static_cast<int>(HTTP(POST(base_url + "/plain/data/composite_m2m",
                                          SimpleComposite("!1", std::chrono::microseconds(2)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(POST(base_url + "/basic/data/composite_m2m",
+              static_cast<int>(HTTP(POST(base_url + "/simple/data/composite_m2m",
                                          SimpleComposite("!1", std::chrono::microseconds(3)))).code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
                                          SimpleComposite("!2", std::chrono::microseconds(1)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(PUT(base_url + "/text/data/composite_m2m/!2/3",
+              static_cast<int>(HTTP(PUT(base_url + "/plain/data/composite_m2m/!2/3",
                                         SimpleComposite("!2", std::chrono::microseconds(3)))).code));
     EXPECT_EQ(201,
-              static_cast<int>(HTTP(PUT(base_url + "/basic/data/composite_m2m/!3/1",
+              static_cast<int>(HTTP(PUT(base_url + "/simple/data/composite_m2m/!3/1",
                                         SimpleComposite("!3", std::chrono::microseconds(1)))).code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(PUT(base_url + "/hypermedia/data/composite_m2m/!3/2",
@@ -2277,9 +2277,9 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
   }
 
   {
-    // Browse the collection in various ways using the `Text` API.
+    // Browse the collection in various ways using the `Plain` API.
     {
-      const auto response = HTTP(GET(base_url + "/text/data/composite_m2m"));
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       // The top-level container is still unordered, so meh.
       std::vector<std::string> elements = current::strings::Split<current::strings::ByLines>(response.body);
@@ -2294,36 +2294,36 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           current::strings::Join(elements, '\n'));
     }
     {
-      const auto response = HTTP(GET(base_url + "/text/data/composite_m2m.row"));
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ("!1\t2\n!2\t2\n!3\t2\n", response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/text/data/composite_m2m.col"));
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ("1\t2\n2\t2\n3\t2\n", response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/text/data/composite_m2m.row/!2"));
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ("{\"row\":\"!2\",\"col\":1}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/text/data/composite_m2m.col/3"));
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ("{\"row\":\"!1\",\"col\":3}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
     }
   }
 
   {
-    // Browse the collection in various ways using the `Hypermedia` API.
+    // Browse the collection in various ways using the `Simple` API.
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m"));
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       using parsed_t = current::storage::rest::simple::SimpleRESTContainerResponse;
       parsed_t parsed;
       ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
-      // Don't test the body of `"/basic/data/composite_m2m"`, it's unordered and machine-dependent.
+      // Don't test the body of `"/simple/data/composite_m2m"`, it's unordered and machine-dependent.
       std::vector<std::string> strings;
       for (const auto& resource : parsed.data) {
         strings.push_back(JSON(resource));
@@ -2339,7 +2339,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           current::strings::Join(strings, '\n'));
     }
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.row"));
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.row"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1\",\"data\":[\"/"
@@ -2347,7 +2347,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.col"));
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.col"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2\",\"data\":[\"/"
@@ -2355,7 +2355,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.1/!2"));
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.1/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
@@ -2363,7 +2363,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           response.body);
     }
     {
-      const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m.2/3"));
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.2/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
           "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
@@ -2440,14 +2440,14 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
   {
     // Test DELETE too.
     {
-      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/text/data/composite_m2m/!1/2")).code));
-      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/text/data/composite_m2m/!1/2")).code));
-      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/text/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/plain/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
     }
     {
-      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/basic/data/composite_m2m/!2/3")).code));
-      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/basic/data/composite_m2m/!2/3")).code));
-      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/basic/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/simple/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
     }
     {
       EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
