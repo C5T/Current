@@ -498,6 +498,37 @@ struct SingleElementContainer {
   size_t TotalElementsForHypermediaCollectionView() const { return 1u; }
 };
 
+// The magic to compose URL key or subkey, be it dictionary or matrix, full or partial.
+template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERATOR_VALUE_TYPE>
+struct ComposeRESTfulKeyImpl {
+  template <typename T>
+  static std::string DoIt(const T& iterator) {
+    return current::ToString(iterator.OuterKeyForPartialHypermediaCollectionView());
+  }
+};
+
+template <typename PARTICULAR_FIELD, typename ENTRY>
+struct ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, ENTRY> {
+  template <typename T>
+  static std::string DoIt(const T& iterator) {
+    return field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
+        field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(*iterator));
+  }
+};
+
+template <typename PARTICULAR_FIELD, typename ENTRY, typename K, typename I>
+struct ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, SingleElementContainer<K, I>> {
+  template <typename T>
+  static std::string DoIt(const T& t) {
+    return current::ToString((*t).outer_key);
+  }
+};
+
+template <typename PARTICULAR_FIELD, typename ENTRY, typename T>
+std::string ComposeRESTfulKey(const T& iterator) {
+  return ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, typename T::value_t>::DoIt(iterator);
+};
+
 template <typename, typename>
 struct GenericMatrixIteratorImplSelector;
 

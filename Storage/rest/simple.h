@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_SIMPLE_H
 #define CURRENT_STORAGE_REST_SIMPLE_H
 
+#include "types.h"
 #include "plain.h"
 #include "sfinae.h"
 
@@ -39,188 +40,8 @@ namespace current {
 namespace storage {
 namespace rest {
 
-CURRENT_STRUCT(HypermediaRESTTopLevel) {
-  CURRENT_FIELD(url, std::string);
-  CURRENT_FIELD(url_status, std::string);
-  CURRENT_FIELD(url_data, (std::map<std::string, std::string>));
-  CURRENT_FIELD(up, bool);
-
-  CURRENT_CONSTRUCTOR(HypermediaRESTTopLevel)(const std::string& url_prefix = "", bool up = false)
-      : url(url_prefix), url_status(url_prefix + "/status"), up(up) {}
-};
-
-CURRENT_STRUCT(HypermediaRESTStatus) {
-  CURRENT_FIELD(up, bool);
-
-  CURRENT_CONSTRUCTOR(HypermediaRESTStatus)(bool up = false) : up(up) {}
-};
-
-CURRENT_STRUCT(HypermediaRESTError) {
-  using details_t = std::map<std::string, std::string>;
-  CURRENT_FIELD(name, std::string, "");
-  CURRENT_FIELD(message, std::string, "");
-  CURRENT_FIELD(details, Optional<details_t>);
-
-  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTError) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& name, const std::string& message)
-      : name(name), message(message) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTError)(
-      const std::string& name, const std::string& message, const details_t& details)
-      : name(name), message(message), details(details) {}
-};
-
-CURRENT_STRUCT(HypermediaRESTGenericResponse) {
-  CURRENT_FIELD(success, bool, true);
-  CURRENT_FIELD(message, Optional<std::string>);
-  CURRENT_FIELD(error, Optional<HypermediaRESTError>);
-
-  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTGenericResponse) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success) : success(success) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success, const std::string& message)
-      : success(success), message(message) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(
-      bool success, const std::string& message, const HypermediaRESTError& error)
-      : success(success), message(message), error(error) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success, const HypermediaRESTError& error)
-      : success(success), error(error) {}
-};
-
-CURRENT_STRUCT_T(HypermediaRESTRecordResponse) {
-  CURRENT_FIELD(success, bool, true);  // No nested template structs yet :(
-  CURRENT_FIELD(url, std::string, "");
-  CURRENT_FIELD(data, T);
-
-  CURRENT_DEFAULT_CONSTRUCTOR_T(HypermediaRESTRecordResponse) {}
-  CURRENT_CONSTRUCTOR_T(HypermediaRESTRecordResponse)(const std::string& url, const T& data)
-      : url(url), data(data) {}
-  CURRENT_CONSTRUCTOR_T(HypermediaRESTRecordResponse)(const std::string& url, T&& data)
-      : url(url), data(std::move(data)) {}
-};
-
-CURRENT_STRUCT(HypermediaRESTContainerResponse, HypermediaRESTGenericResponse) {
-  CURRENT_FIELD(url, std::string, "");
-  CURRENT_FIELD(data, std::vector<std::string>);
-
-  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTContainerResponse) : SUPER(true) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTContainerResponse)(const std::string& url,
-                                                       const std::vector<std::string>& data)
-      : SUPER(true), url(url), data(data) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTContainerResponse)(const std::string& url, std::vector<std::string>&& data)
-      : SUPER(true), url(url), data(std::move(data)) {}
-};
-
-CURRENT_STRUCT(HypermediaRESTResourceUpdateResponse, HypermediaRESTGenericResponse) {
-  CURRENT_FIELD(resource_url, Optional<std::string>);
-
-  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(bool success) : SUPER(success) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(bool success, const std::string& message)
-      : SUPER(success, message) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(
-      bool success, const std::string& message, const std::string& resource_url)
-      : SUPER(success, message), resource_url(resource_url) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(
-      bool success, const std::string& message, const HypermediaRESTError& error)
-      : SUPER(success, message, error) {}
-};
-
-inline HypermediaRESTGenericResponse ErrorResponseObject(const std::string& message,
-                                                         const HypermediaRESTError& error) {
-  return HypermediaRESTGenericResponse(false, message, error);
-}
-
-inline HypermediaRESTGenericResponse ErrorResponseObject(const HypermediaRESTError& error) {
-  return HypermediaRESTGenericResponse(false, error);
-}
-
-inline Response ErrorResponse(const HypermediaRESTError& error_object, net::HTTPResponseCodeValue code) {
-  return Response(ErrorResponseObject(error_object), code);
-}
-
-inline HypermediaRESTError MethodNotAllowedError(const std::string& message,
-                                                 const std::string& requested_method) {
-  return HypermediaRESTError("MethodNotAllowed", message, {{"requested_method", requested_method}});
-}
-
-inline HypermediaRESTError InvalidHeaderError(const std::string& message,
-                                              const std::string& header,
-                                              const std::string& value) {
-  return HypermediaRESTError("InvalidHeader", message, {{"header", header}, {"header_value", value}});
-}
-
-inline HypermediaRESTError ParseJSONError(const std::string& message, const std::string& error_details) {
-  return HypermediaRESTError("ParseJSONError", message, {{"error_details", error_details}});
-};
-
-inline HypermediaRESTError RequiredKeyIsMissingError(const std::string& message) {
-  return HypermediaRESTError("RequiredKeyIsMissing", message);
-}
-
-inline HypermediaRESTError InvalidKeyError(const std::string& message) {
-  return HypermediaRESTError("InvalidKey", message);
-}
-
-inline HypermediaRESTError InvalidKeyError(const std::string& message,
-                                           const std::map<std::string, std::string>& details) {
-  return HypermediaRESTError("InvalidKey", message, details);
-}
-
-inline HypermediaRESTError ResourceNotFoundError(const std::string& message,
-                                                 const std::map<std::string, std::string>& details) {
-  return HypermediaRESTError("ResourceNotFound", message, details);
-}
-
-inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& message,
-                                                      const std::map<std::string, std::string>& details) {
-  return HypermediaRESTError("ResourceAlreadyExists", message, details);
-}
-
-inline HypermediaRESTError ResourceWasModifiedError(const std::string& message,
-                                                    std::chrono::microseconds requested,
-                                                    std::chrono::microseconds last_modified) {
-  return HypermediaRESTError("ResourceWasModifiedError",
-                             message,
-                             {{"requested_date", FormatDateTimeAsIMFFix(requested)},
-                              {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
-}
-
-CURRENT_STRUCT_T(HypermediaSubCollection) {
-  CURRENT_FIELD(total, int64_t, 0);
-  CURRENT_FIELD(preview, std::vector<T>);
-};
-
-// The magic to compose URL key or subkey, be it dictionary or matrix, full or partial.
-template <typename PARTICULAR_FIELD, typename ENTRY, typename ITERATOR_VALUE_TYPE>
-struct ComposeRESTfulKeyImpl {
-  template <typename T>
-  static std::string DoIt(const T& iterator) {
-    return current::ToString(iterator.OuterKeyForPartialHypermediaCollectionView());
-  }
-};
-
-template <typename PARTICULAR_FIELD, typename ENTRY>
-struct ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, ENTRY> {
-  template <typename T>
-  static std::string DoIt(const T& iterator) {
-    return field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(
-        field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(*iterator));
-  }
-};
-
-template <typename PARTICULAR_FIELD, typename ENTRY, typename K, typename I>
-struct ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, SingleElementContainer<K, I>> {
-  template <typename T>
-  static std::string DoIt(const T& t) {
-    return current::ToString((*t).outer_key);
-  }
-};
-
-template <typename PARTICULAR_FIELD, typename ENTRY, typename T>
-std::string ComposeRESTfulKey(const T& iterator) {
-  return ComposeRESTfulKeyImpl<PARTICULAR_FIELD, ENTRY, typename T::value_t>::DoIt(iterator);
-};
-
 template <typename HYPERMEDIA_RESPONSE_FORMATTER>
-struct SimpleImpl {
+struct API {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator;
 
@@ -393,7 +214,7 @@ struct SimpleImpl {
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
         return HYPERMEDIA_RESPONSE_FORMATTER::
-            template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, HypermediaSubCollection<ENTRY>>(
+            template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, HypermediaRESTSubCollection<ENTRY>>(
                 context,
                 input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
                     MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
@@ -429,7 +250,7 @@ struct SimpleImpl {
     }
     template <class INPUT, bool B>
     ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
-      return SimpleImpl::ErrorMethodNotAllowed("POST");
+      return API::ErrorMethodNotAllowed("POST");
     }
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
@@ -573,7 +394,32 @@ struct SimpleImpl {
   }
 };
 
-struct SimpleHypermediaResponseFormatter {
+namespace simple {
+
+CURRENT_STRUCT_T(SimpleRESTRecordResponse) {
+  CURRENT_FIELD(success, bool, true);
+  CURRENT_FIELD(url, std::string, "");
+  CURRENT_FIELD(data, T);
+
+  CURRENT_DEFAULT_CONSTRUCTOR_T(SimpleRESTRecordResponse) {}
+  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, const T& data)
+      : url(url), data(data) {}
+  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, T&& data)
+      : url(url), data(std::move(data)) {}
+};
+
+CURRENT_STRUCT(SimpleRESTContainerResponse, HypermediaRESTGenericResponse) {
+  CURRENT_FIELD(url, std::string, "");
+  CURRENT_FIELD(data, std::vector<std::string>);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(SimpleRESTContainerResponse) : SUPER(true) {}
+  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)(const std::string& url, const std::vector<std::string>& data)
+      : SUPER(true), url(url), data(data) {}
+  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)(const std::string& url, std::vector<std::string>&& data)
+      : SUPER(true), url(url), data(std::move(data)) {}
+};
+
+struct SimpleResponseFormatter {
   struct Context {};
 
   template <typename ENTRY>
@@ -582,12 +428,12 @@ struct SimpleHypermediaResponseFormatter {
                                            const std::string& url_collection,
                                            const ENTRY& entry) {
     static_cast<void>(url_collection);  // Used by `current::storage::rest::Hypermedia`.
-    return Response(HypermediaRESTRecordResponse<ENTRY>(url, entry));
+    return Response(SimpleRESTRecordResponse<ENTRY>(url, entry));
   }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context&, const std::string& url, ITERABLE&& span) {
-    HypermediaRESTContainerResponse payload;
+    SimpleRESTContainerResponse payload;
     payload.url = url;
     for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
       // NOTE(dkorolev): This `iterator` can be of more than three different kinds, among which are:
@@ -603,10 +449,12 @@ struct SimpleHypermediaResponseFormatter {
   }
 };
 
-using Simple = SimpleImpl<SimpleHypermediaResponseFormatter>;
+}  // namespace current::storage::rest::simple
 
-}  // namespace rest
-}  // namespace storage
+using Simple = API<simple::SimpleResponseFormatter>;
+
+}  // namespace current::storage::rest
+}  // namespace current::storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_REST_SIMPLE_H

@@ -2320,7 +2320,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     {
       const auto response = HTTP(GET(base_url + "/basic/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
-      using parsed_t = HypermediaRESTContainerResponse;
+      using parsed_t = current::storage::rest::simple::SimpleRESTContainerResponse;
       parsed_t parsed;
       ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
       // Don't test the body of `"/basic/data/composite_m2m"`, it's unordered and machine-dependent.
@@ -2376,8 +2376,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
-      using parsed_t =
-          ExtendedHypermediaRESTContainerResponse<ExtendedHypermediaRESTRecordResponse<SimpleComposite>>;
+      using parsed_t = HypermediaRESTContainerResponse<HypermediaRESTRecordResponse<SimpleComposite>>;
       parsed_t parsed;
       ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
       std::vector<std::string> strings;

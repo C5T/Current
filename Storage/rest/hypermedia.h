@@ -40,11 +40,11 @@ namespace current {
 namespace storage {
 namespace rest {
 
-#ifdef MACRO_STRUCT_BODY
-#error "`MACRO_STRUCT_BODY` should not be defined."
+#ifdef REST_RESPONSE_STRUCT_BODY
+#error "`REST_RESPONSE_STRUCT_BODY` should not be defined."
 #endif
 
-#define MACRO_STRUCT_BODY(struct_name)                                                                        \
+#define REST_RESPONSE_STRUCT_BODY(struct_name)                                                                \
   CURRENT_FIELD(url, std::string);                                                                            \
   CURRENT_FIELD(url_full, std::string);                                                                       \
   CURRENT_FIELD(url_brief, std::string);                                                                      \
@@ -58,18 +58,16 @@ namespace rest {
         url_directory(url_directory),                                                                         \
         data(data) {}
 
-CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponse) {
-  MACRO_STRUCT_BODY(ExtendedHypermediaRESTRecordResponse);
-};
+CURRENT_STRUCT_T(HypermediaRESTRecordResponse) { REST_RESPONSE_STRUCT_BODY(HypermediaRESTRecordResponse); };
 
-CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponseWithSuccessTrue) {
+CURRENT_STRUCT_T(HypermediaRESTRecordResponseWithSuccessTrue) {
   CURRENT_FIELD(success, bool, true);
-  MACRO_STRUCT_BODY(ExtendedHypermediaRESTRecordResponseWithSuccessTrue);
+  REST_RESPONSE_STRUCT_BODY(HypermediaRESTRecordResponseWithSuccessTrue);
 };
 
-#undef MACRO_STRUCT_BODY
+#undef REST_RESPONSE_STRUCT_BODY
 
-CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
+CURRENT_STRUCT_T(HypermediaRESTContainerResponse) {
   CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_directory, std::string);
@@ -81,6 +79,8 @@ CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(url_previous_page, Optional<std::string>);
   CURRENT_FIELD(data, std::vector<T>);
 };
+
+namespace hypermedia {
 
 template <typename ENTRY, typename VALUE>
 struct PopulateHypermediaRecord;  // Intentionally left empty to make sure each case is covered. -- D.K.
@@ -126,13 +126,13 @@ template <typename PARTICULAR_FIELD,
           typename T,
           bool HAS_BRIEF,
           typename ITERATOR>
-inline ExtendedHypermediaRESTRecordResponse<T> FormatAsExtendedHypermediaRecord(
-    const std::string& url_directory, ITERATOR&& iterator) {
+inline HypermediaRESTRecordResponse<T> FormatAsHypermediaRecord(const std::string& url_directory,
+                                                                ITERATOR&& iterator) {
   static_assert(std::is_same<T, INNER_HYPERMEDIA_TYPE>::value ||
                     std::is_same<T, sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>>::value,
                 "");
 
-  ExtendedHypermediaRESTRecordResponse<T> response;
+  HypermediaRESTRecordResponse<T> response;
   const std::string key_as_url_string = ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
   response.url = url_directory + '/' + key_as_url_string;
   response.url_directory = url_directory;
@@ -166,12 +166,12 @@ struct HypermediaResponseFormatter {
                                            const ENTRY& entry) {
     using brief_t = sfinae::brief_of_t<ENTRY>;
     if (std::is_same<ENTRY, brief_t>::value) {
-      return Response(ExtendedHypermediaRESTRecordResponseWithSuccessTrue<ENTRY>(url, url_collection, entry));
+      return Response(HypermediaRESTRecordResponseWithSuccessTrue<ENTRY>(url, url_collection, entry));
     } else {
       if (!context.brief) {
-        return Response(ExtendedHypermediaRESTRecordResponseWithSuccessTrue<ENTRY>(url, url_collection, entry));
+        return Response(HypermediaRESTRecordResponseWithSuccessTrue<ENTRY>(url, url_collection, entry));
       } else {
-        return Response(ExtendedHypermediaRESTRecordResponseWithSuccessTrue<brief_t>(
+        return Response(HypermediaRESTRecordResponseWithSuccessTrue<brief_t>(
             url, url_collection, static_cast<const brief_t&>(entry)));
       }
     }
@@ -186,13 +186,13 @@ struct HypermediaResponseFormatter {
                                                   const std::string& url,
                                                   ITERABLE&& span) {
     using inner_element_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
-    using hypermedia_element_t = ExtendedHypermediaRESTRecordResponse<inner_element_t>;
+    using hypermedia_element_t = HypermediaRESTRecordResponse<inner_element_t>;
 
     const auto GenPageURL = [&url](uint64_t url_i, uint64_t url_n) {
       return url + "?i=" + current::ToString(url_i) + "&n=" + current::ToString(url_n);
     };
 
-    ExtendedHypermediaRESTContainerResponse<hypermedia_element_t> response;
+    HypermediaRESTContainerResponse<hypermedia_element_t> response;
     response.url_directory = url;
 
     // Poor man's pagination.
@@ -209,11 +209,11 @@ struct HypermediaResponseFormatter {
       // 4) GenericMapAccessor<>.
       // To have Hypermedia pagination generic, they are accessed in the same way.
       if (current_index >= context.query_i && current_index < context.query_i + context.query_n) {
-        response.data.push_back(FormatAsExtendedHypermediaRecord<PARTICULAR_FIELD,
-                                                                 ENTRY,
-                                                                 INNER_HYPERMEDIA_TYPE,
-                                                                 inner_element_t,
-                                                                 HAS_BRIEF>(url, iterator));
+        response.data.push_back(FormatAsHypermediaRecord<PARTICULAR_FIELD,
+                                                         ENTRY,
+                                                         INNER_HYPERMEDIA_TYPE,
+                                                         inner_element_t,
+                                                         HAS_BRIEF>(url, iterator));
       } else if (current_index < context.query_i) {
         has_previous_page = true;
       } else if (current_index >= context.query_i + context.query_n) {
@@ -244,28 +244,15 @@ struct HypermediaResponseFormatter {
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context& context, const std::string& url, ITERABLE&& span) {
-#if 0
-    DIMA_FIXME: This or similar code is to be enabled to support `?brief`.
-    DIMA_FIXME: Collection output should always be "brief".
-    DIMA_FIXME: This should be unit-tested as well.
-    
-    using brief_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
-    constexpr bool has_brief = !std::is_same<INNER_HYPERMEDIA_TYPE, brief_t>::value;
-    if (!context.brief) {
-      return BuildResponseWithCollectionImpl<PARTICULAR_FIELD, ENTRY, INNER_HYPERMEDIA_TYPE, has_brief>(
-          context, url, std::forward<ITERABLE>(span));
-    } else {
-      return BuildResponseWithCollectionImpl<PARTICULAR_FIELD, ENTRY, brief_t, has_brief>(
-          context, url, std::forward<ITERABLE>(span));
-    }
-#endif
     return BuildResponseWithCollectionImpl<PARTICULAR_FIELD, ENTRY, INNER_HYPERMEDIA_TYPE, false>(
         context, url, std::forward<ITERABLE>(span));
   }
 };
 
-struct Hypermedia : SimpleImpl<HypermediaResponseFormatter> {
-  using SUPER_HYPERMEDIA = SimpleImpl<HypermediaResponseFormatter>;
+}  // namespace current::storage::rest::hypermedia
+
+struct Hypermedia : API<hypermedia::HypermediaResponseFormatter> {
+  using SUPER_HYPERMEDIA = API<hypermedia::HypermediaResponseFormatter>;
 
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandlerGenerator
@@ -294,8 +281,8 @@ struct Hypermedia : SimpleImpl<HypermediaResponseFormatter> {
   };
 };
 
-}  // namespace rest
-}  // namespace storage
+}  // namespace current::storage::rest
+}  // namespace current::storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_REST_HYPERMEDIA_H
