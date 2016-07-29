@@ -895,9 +895,6 @@
     <ClInclude Include="Sherlock\sherlock.h">
       <Filter>Header Files\Sherlock</Filter>
     </ClInclude>
-    <ClInclude Include="Storage\base.h">
-      <Filter>Header Files\Storage</Filter>
-    </ClInclude>
     <ClInclude Include="Storage\exceptions.h">
       <Filter>Header Files\Storage</Filter>
     </ClInclude>

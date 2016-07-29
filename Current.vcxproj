@@ -341,7 +341,6 @@
     <ClInclude Include="Sherlock\pubsub.h" />
     <ClInclude Include="Sherlock\sherlock.h" />
     <ClInclude Include="Sherlock\stream_data.h" />
-    <ClInclude Include="Storage\base.h" />
     <ClInclude Include="Storage\api.h" />
     <ClInclude Include="Storage\api_types.h" />
     <ClInclude Include="Storage\base.h" />
