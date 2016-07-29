@@ -2033,6 +2033,9 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Register RESTful HTTP endpoints, in a scoped way.
     auto rest = RESTfulStorage<Storage>(
         storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+    const auto hypermedia_rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
+        storage, FLAGS_transactional_storage_test_port, "/hypermedia", "http://unittest.current.ai");
+
     // Confirm the schema is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user")).code));
     EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user")).body);
@@ -2124,19 +2127,44 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
 
+    // Confirm the likes went through.
     EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
               HTTP(GET(base_url + "/api/data/like/dima/beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like?row=max&col=beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like?key1=max&key2=beer")).body);
-    // DIMA_FIXME
-    // Meh, this test is not for the real Hypermedia. -- D.K.
-    // TODO(dkorolev: Make it so?
-    // EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\"}\n",
-    //           HTTP(GET(base_url + "/api/data/like/max-beer?fields=brief")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like/max/beer")).body);
+
+    // Confirm the likes are returned correctly both in brief and full formats.
+    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?full")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?brief")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+    EXPECT_NE(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+
+    EXPECT_EQ(
+        "{\"success\":null,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
+        "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
+        "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}}\n",
+        HTTP(GET(base_url + "/hypermedia/data/like/max/beer")).body);
+    EXPECT_EQ(
+        "{\"success\":null,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
+        "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
+        "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}}\n",
+        HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(
+        "{\"success\":null,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
+        "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
+        "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"row\":\"max\"}}\n",
+        HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
 
     // GET matrix as the collection, all records.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));

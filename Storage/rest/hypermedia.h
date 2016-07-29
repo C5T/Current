@@ -25,7 +25,7 @@ SOFTWARE.
 
 // Hypermedia: A rather hacky solution for Hypermedia REST API supporting:
 // * Rich JSON format (top-level `url_*` fields, and actual data in `data`.)
-// * Poor man's stateless "pagination" through collections.
+// * Poor man's stateless "pagination" through collections and collection "slices" (rows/cols of matrices).
 // * Full and brief fields sets.
 
 #ifndef CURRENT_STORAGE_REST_HYPERMEDIA_H
@@ -47,6 +47,14 @@ CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponse) {
   CURRENT_FIELD(url_brief, std::string);
   CURRENT_FIELD(url_directory, std::string);
   CURRENT_FIELD(data, T);
+  CURRENT_DEFAULT_CONSTRUCTOR_T(ExtendedHypermediaRESTRecordResponse) {}
+  CURRENT_CONSTRUCTOR_T(ExtendedHypermediaRESTRecordResponse)(
+      const std::string& url, const std::string& url_directory, const T& data, bool set_success = false)
+      : url(url), url_full(url + "?full"), url_brief(url + "?brief"), url_directory(url_directory), data(data) {
+    if (set_success) {
+      success = true;
+    }
+  }
 };
 
 CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
@@ -121,8 +129,8 @@ inline ExtendedHypermediaRESTRecordResponse<T> FormatAsExtendedHypermediaRecord(
   response.url_directory = url_directory;
 
   if (HAS_BRIEF) {
-    response.url_full = response.url;
-    response.url_brief = response.url + "?fields=brief";
+    response.url_full = response.url + "?full";
+    response.url_brief = response.url + "?brief";
   }
 
   PopulateHypermediaRecord<ENTRY, typename current::decay<typename current::decay<ITERATOR>::value_t>>::DoIt(
@@ -141,6 +149,24 @@ struct HypermediaResponseFormatter {
     mutable uint64_t query_i = 0u;
     mutable uint64_t query_n = 10u;  // Default page size.
   };
+
+  template <typename ENTRY>
+  static Response BuildResponseForResource(const Context& context,
+                                           const std::string& url,
+                                           const std::string& url_collection,
+                                           const ENTRY& entry) {
+    using brief_t = sfinae::brief_of_t<ENTRY>;
+    if (std::is_same<ENTRY, brief_t>::value) {
+      return Response(HypermediaRESTRecordResponse<ENTRY>(url, entry));
+    } else {
+      if (!context.brief) {
+        return Response(ExtendedHypermediaRESTRecordResponse<ENTRY>(url, url_collection, entry));
+      } else {
+        return Response(ExtendedHypermediaRESTRecordResponse<brief_t>(
+            url, url_collection, static_cast<const brief_t&>(entry)));
+      }
+    }
+  }
 
   template <typename PARTICULAR_FIELD,
             typename ENTRY,
@@ -250,7 +276,7 @@ struct Hypermedia : SimpleImpl<HypermediaResponseFormatter> {
       auto& context = SUPER_GET_HANDLER::context;
 
       const auto& q = request.url.query;
-      context.brief = (q["fields"] == "brief");
+      context.brief = ((q["fields"] == "brief") || q.has("brief")) && !q.has("full");
       context.query_i = current::FromString<uint64_t>(q.get("i", current::ToString(context.query_i)));
       context.query_n = current::FromString<uint64_t>(q.get("n", current::ToString(context.query_n)));
 

@@ -311,10 +311,12 @@ struct SimpleImpl {
         if (Exists(result)) {
           const auto& value = Value(result);
           if (!input.export_requested) {
-            const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' +
-                                    input.field_name + '/' +
-                                    field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
-            auto response = Response(HypermediaRESTRecordResponse<ENTRY>(url, value));
+            const std::string url_collection =
+                input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
+            const std::string url =
+                url_collection + '/' + field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
+            Response response =
+                HYPERMEDIA_RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
             const auto last_modified = input.field.LastModified(key);
             if (Exists(last_modified)) {
               response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
@@ -573,6 +575,15 @@ struct SimpleImpl {
 
 struct SimpleHypermediaResponseFormatter {
   struct Context {};
+
+  template <typename ENTRY>
+  static Response BuildResponseForResource(const Context&,
+                                           const std::string& url,
+                                           const std::string& url_collection,
+                                           const ENTRY& entry) {
+    static_cast<void>(url_collection);  // Used by `current::storage::rest::Hypermedia`.
+    return Response(HypermediaRESTRecordResponse<ENTRY>(url, entry));
+  }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context&, const std::string& url, ITERABLE&& span) {
