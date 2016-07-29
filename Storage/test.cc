@@ -2377,7 +2377,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       using parsed_t = hypermedia::HypermediaRESTCollectionResponse<
-          hypermedia::HypermediaRESTCollectionRecord<SimpleComposite>>;
+          hypermedia::HypermediaRESTFullCollectionRecord<SimpleComposite>>;
       parsed_t parsed;
       ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
       std::vector<std::string> strings;

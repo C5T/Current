@@ -77,24 +77,6 @@ struct PopulateCollectionRecord<ENTRY, current::GenericMapAccessor<MAP>> {
   }
 };
 
-template <typename PARTICULAR_FIELD,
-          typename ENTRY,
-          typename INNER_HYPERMEDIA_TYPE,
-          typename T,
-          typename ITERATOR>
-inline HypermediaRESTCollectionRecord<T> PrepareCollectionRecord(const std::string& url_directory,
-                                                                 ITERATOR&& iterator) {
-  HypermediaRESTCollectionRecord<T> record;
-
-  const std::string key_as_url_string = ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
-  record.url = url_directory + '/' + key_as_url_string;
-
-  PopulateCollectionRecord<ENTRY, typename current::decay<typename current::decay<ITERATOR>::value_t>>::DoIt(
-      record.data, std::forward<ITERATOR>(iterator));
-
-  return record;
-}
-
 struct HypermediaResponseFormatter {
   // TODO(dkorolev): We could move to per-HTTP-VERB context type as it's high performance time.
   struct Context {
@@ -127,11 +109,10 @@ struct HypermediaResponseFormatter {
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context& context, const std::string& url, ITERABLE&& span) {
     using inner_element_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
-    using collection_element_t = HypermediaRESTCollectionRecord<inner_element_t>;
-
-    const auto GenPageURL = [&url](uint64_t url_i, uint64_t url_n) {
-      return url + "?i=" + current::ToString(url_i) + "&n=" + current::ToString(url_n);
-    };
+    using collection_element_t =
+        typename std::conditional<std::is_same<INNER_HYPERMEDIA_TYPE, inner_element_t>::value,
+                                  HypermediaRESTFullCollectionRecord<inner_element_t>,
+                                  HypermediaRESTBriefCollectionRecord<inner_element_t>>::type;
 
     HypermediaRESTCollectionResponse<collection_element_t> response;
     response.url_directory = url;
@@ -141,7 +122,9 @@ struct HypermediaResponseFormatter {
     bool has_previous_page = false;
     bool has_next_page = false;
     uint64_t current_index = 0;
+    response.data.reserve(context.query_n);
     for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
+      using iterator_t = decltype(iterator);
       // NOTE(dkorolev): This `iterator` can be of more than three different kinds, among which are:
       // 1) container/many_to_many.h. ManyToMany::OuterAccessor::OuterIterator
       // 2) container/one_to_many.h, OneToMany::RowsAccessor::RowsIterator
@@ -150,9 +133,12 @@ struct HypermediaResponseFormatter {
       // 4) GenericMapAccessor<>.
       // To keep the generic code generic, it's accesses as `iterator`, not via a range-based loop.
       if (current_index >= context.query_i && current_index < context.query_i + context.query_n) {
-        response.data.push_back(
-            PrepareCollectionRecord<PARTICULAR_FIELD, ENTRY, INNER_HYPERMEDIA_TYPE, inner_element_t>(url,
-                                                                                                     iterator));
+        response.data.resize(response.data.size() + 1);
+        collection_element_t& record = response.data.back();
+
+        record.url = url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
+        PopulateCollectionRecord<ENTRY, typename current::decay<typename iterator_t::value_t>>::DoIt(
+            record.DataOrBriefByRef(), iterator);
       } else if (current_index < context.query_i) {
         has_previous_page = true;
       } else if (current_index >= context.query_i + context.query_n) {
@@ -162,22 +148,26 @@ struct HypermediaResponseFormatter {
       ++current_index;
     }
 
+    const auto gen_page_url = [&url](uint64_t url_i, uint64_t url_n) {
+      return url + "?i=" + current::ToString(url_i) + "&n=" + current::ToString(url_n);
+    };
+
     if (context.query_i > total) {
       context.query_i = total;
     }
-    response.url = GenPageURL(context.query_i, context.query_n);
+    response.url = gen_page_url(context.query_i, context.query_n);
     response.i = context.query_i;
     response.n = std::min(context.query_n, total - context.query_i);
     response.total = total;
     if (has_previous_page) {
-      response.url_previous_page = GenPageURL(
+      response.url_previous_page = gen_page_url(
           context.query_i >= context.query_n ? context.query_i - context.query_n : 0, context.query_n);
     }
     if (has_next_page) {
       response.url_next_page =
-          GenPageURL(context.query_i + context.query_n * 2 > total ? total - context.query_n
-                                                                   : context.query_i + context.query_n,
-                     context.query_n);
+          gen_page_url(context.query_i + context.query_n * 2 > total ? total - context.query_n
+                                                                     : context.query_i + context.query_n,
+                       context.query_n);
     }
 
     return Response(response, HTTPResponseCode.OK);

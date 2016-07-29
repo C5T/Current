@@ -164,7 +164,6 @@ inline generic::RESTError ResourceWasModifiedError(const std::string& message,
                              {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
 }
 
-
 }  // namespace current::storage::rest::helpers
 
 namespace simple {
@@ -222,9 +221,16 @@ CURRENT_STRUCT_T(HypermediaRESTSingleRecordResponse) {
         data(data) {}
 };
 
-CURRENT_STRUCT_T(HypermediaRESTCollectionRecord) {
+CURRENT_STRUCT_T(HypermediaRESTFullCollectionRecord) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(data, T);
+  T& DataOrBriefByRef() { return data; }
+};
+
+CURRENT_STRUCT_T(HypermediaRESTBriefCollectionRecord) {
+  CURRENT_FIELD(url, std::string);
+  CURRENT_FIELD(brief, T);
+  T& DataOrBriefByRef() { return brief; }
 };
 
 CURRENT_STRUCT_T(HypermediaRESTCollectionResponse) {
