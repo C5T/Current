@@ -102,6 +102,71 @@ CURRENT_STRUCT(RESTResourceUpdateResponse, RESTGenericResponse) {
 
 }  // namespace current::storage::rest::generic
 
+namespace helpers {
+
+inline generic::RESTGenericResponse ErrorResponseObject(const std::string& message,
+                                                        const generic::RESTError& error) {
+  return generic::RESTGenericResponse(false, message, error);
+}
+
+inline generic::RESTGenericResponse ErrorResponseObject(const generic::RESTError& error) {
+  return generic::RESTGenericResponse(false, error);
+}
+
+inline Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
+  return Response(ErrorResponseObject(error_object), code);
+}
+
+inline generic::RESTError MethodNotAllowedError(const std::string& message,
+                                                const std::string& requested_method) {
+  return generic::RESTError("MethodNotAllowed", message, {{"requested_method", requested_method}});
+}
+
+inline generic::RESTError InvalidHeaderError(const std::string& message,
+                                             const std::string& header,
+                                             const std::string& value) {
+  return generic::RESTError("InvalidHeader", message, {{"header", header}, {"header_value", value}});
+}
+
+inline generic::RESTError ParseJSONError(const std::string& message, const std::string& error_details) {
+  return generic::RESTError("ParseJSONError", message, {{"error_details", error_details}});
+};
+
+inline generic::RESTError RequiredKeyIsMissingError(const std::string& message) {
+  return generic::RESTError("RequiredKeyIsMissing", message);
+}
+
+inline generic::RESTError InvalidKeyError(const std::string& message) {
+  return generic::RESTError("InvalidKey", message);
+}
+
+inline generic::RESTError InvalidKeyError(const std::string& message,
+                                          const std::map<std::string, std::string>& details) {
+  return generic::RESTError("InvalidKey", message, details);
+}
+
+inline generic::RESTError ResourceNotFoundError(const std::string& message,
+                                                const std::map<std::string, std::string>& details) {
+  return generic::RESTError("ResourceNotFound", message, details);
+}
+
+inline generic::RESTError ResourceAlreadyExistsError(const std::string& message,
+                                                     const std::map<std::string, std::string>& details) {
+  return generic::RESTError("ResourceAlreadyExists", message, details);
+}
+
+inline generic::RESTError ResourceWasModifiedError(const std::string& message,
+                                                   std::chrono::microseconds requested,
+                                                   std::chrono::microseconds last_modified) {
+  return generic::RESTError("ResourceWasModifiedError",
+                            message,
+                            {{"requested_date", FormatDateTimeAsIMFFix(requested)},
+                             {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
+}
+
+
+}  // namespace current::storage::rest::helpers
+
 namespace simple {
 
 CURRENT_STRUCT_T(SimpleRESTRecordResponse) {
@@ -184,67 +249,8 @@ using HypermediaRESTStatus = hypermedia::HypermediaRESTStatus;
 using HypermediaRESTTopLevel = hypermedia::HypermediaRESTTopLevel;
 using HypermediaRESTGenericResponse = hypermedia::HypermediaRESTGenericResponse;
 
-// These functions are used externally, so keep them in `current::storage::rest`.
-// TODO(dkorolev) #DIMA_FIXME: Put them into `generic::` and add `using`-s.
-inline generic::RESTGenericResponse ErrorResponseObject(const std::string& message,
-                                                        const generic::RESTError& error) {
-  return generic::RESTGenericResponse(false, message, error);
-}
-
-inline generic::RESTGenericResponse ErrorResponseObject(const generic::RESTError& error) {
-  return generic::RESTGenericResponse(false, error);
-}
-
-inline Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
-  return Response(ErrorResponseObject(error_object), code);
-}
-
-inline generic::RESTError MethodNotAllowedError(const std::string& message,
-                                                const std::string& requested_method) {
-  return generic::RESTError("MethodNotAllowed", message, {{"requested_method", requested_method}});
-}
-
-inline generic::RESTError InvalidHeaderError(const std::string& message,
-                                             const std::string& header,
-                                             const std::string& value) {
-  return generic::RESTError("InvalidHeader", message, {{"header", header}, {"header_value", value}});
-}
-
-inline generic::RESTError ParseJSONError(const std::string& message, const std::string& error_details) {
-  return generic::RESTError("ParseJSONError", message, {{"error_details", error_details}});
-};
-
-inline generic::RESTError RequiredKeyIsMissingError(const std::string& message) {
-  return generic::RESTError("RequiredKeyIsMissing", message);
-}
-
-inline generic::RESTError InvalidKeyError(const std::string& message) {
-  return generic::RESTError("InvalidKey", message);
-}
-
-inline generic::RESTError InvalidKeyError(const std::string& message,
-                                          const std::map<std::string, std::string>& details) {
-  return generic::RESTError("InvalidKey", message, details);
-}
-
-inline generic::RESTError ResourceNotFoundError(const std::string& message,
-                                                const std::map<std::string, std::string>& details) {
-  return generic::RESTError("ResourceNotFound", message, details);
-}
-
-inline generic::RESTError ResourceAlreadyExistsError(const std::string& message,
-                                                     const std::map<std::string, std::string>& details) {
-  return generic::RESTError("ResourceAlreadyExists", message, details);
-}
-
-inline generic::RESTError ResourceWasModifiedError(const std::string& message,
-                                                   std::chrono::microseconds requested,
-                                                   std::chrono::microseconds last_modified) {
-  return generic::RESTError("ResourceWasModifiedError",
-                            message,
-                            {{"requested_date", FormatDateTimeAsIMFFix(requested)},
-                             {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
-}
+// Expose helper functions into `current::storage::rest` as well for now. #DIMA_FIXME
+using namespace helpers;
 
 }  // namespace rest
 }  // namespace storage
