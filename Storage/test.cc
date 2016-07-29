@@ -1922,7 +1922,6 @@ CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLike
 CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedOne, SimpleComposite, SimpleCompositeO2OPersisted);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedMany, SimpleComposite, SimpleCompositeO2MPersisted);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToOrderedMany, SimpleComposite, SimpleCompositeM2MPersisted);
-// Perhaps ordered matrix containers are to be tested too. Although a load test should suffuce. -- D.K.
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
