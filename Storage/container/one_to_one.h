@@ -46,13 +46,14 @@ template <typename T,
           template <typename...> class COL_MAP>
 class GenericOneToOne {
  public:
+  using entry_t = T;
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
   using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
   using forward_map_t = ROW_MAP<row_t, const T*>;
   using transposed_map_t = COL_MAP<col_t, const T*>;
-  using rest_behavior_t = rest::behavior::Matrix;
+  using semantics_t = storage::semantics::OneToOne;
 
   GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
 
@@ -249,13 +250,14 @@ class GenericOneToOne {
     DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
   }
 
-  const GenericMapAccessor<forward_map_t> Rows() const { return GenericMapAccessor<forward_map_t>(forward_); }
+  using rows_outer_accessor_t = GenericMapAccessor<forward_map_t>;
+  rows_outer_accessor_t Rows() const { return GenericMapAccessor<forward_map_t>(forward_); }
 
-  const GenericMapAccessor<transposed_map_t> Cols() const {
-    return GenericMapAccessor<transposed_map_t>(transposed_);
-  }
+  using cols_outer_accessor_t = GenericMapAccessor<transposed_map_t>;
+  cols_outer_accessor_t Cols() const { return GenericMapAccessor<transposed_map_t>(transposed_); }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
+  // TODO(dkorolev): Revisit whether this semantics is the right one.
   using iterator_t = GenericMapIterator<elements_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }

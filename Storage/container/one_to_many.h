@@ -47,6 +47,7 @@ template <typename T,
           template <typename...> class COL_MAP>
 class GenericOneToMany {
  public:
+  using entry_t = T;
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
@@ -54,7 +55,7 @@ class GenericOneToMany {
   using row_elements_map_t = COL_MAP<col_t, const T*>;
   using forward_map_t = ROW_MAP<row_t, row_elements_map_t>;
   using transposed_map_t = row_elements_map_t;
-  using rest_behavior_t = rest::behavior::Matrix;
+  using semantics_t = storage::semantics::OneToMany;
 
   GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
 
@@ -207,7 +208,11 @@ class GenericOneToMany {
       void operator++() { ++iterator; }
       bool operator==(const RowsIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const RowsIterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<key_t> key() const { return iterator->first; }
+      sfinae::CF<key_t> OuterKeyForPartialHypermediaCollectionView() const { return iterator->first; }
+      size_t TotalElementsForHypermediaCollectionView() const { return iterator->second.size(); }
+      using value_t = GenericMapAccessor<elements_map_t>;
+      void has_range_element_t() {}
+      using range_element_t = GenericMapAccessor<elements_map_t>;
       GenericMapAccessor<elements_map_t> operator*() const {
         return GenericMapAccessor<elements_map_t>(iterator->second);
       }
@@ -233,11 +238,11 @@ class GenericOneToMany {
     RowsIterator end() const { return RowsIterator(map_.cend()); }
   };
 
-  RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
+  using rows_outer_accessor_t = RowsAccessor<forward_map_t>;
+  rows_outer_accessor_t Rows() const { return RowsAccessor<forward_map_t>(forward_); }
 
-  GenericMapAccessor<transposed_map_t> Cols() const {
-    return GenericMapAccessor<transposed_map_t>(transposed_);
-  }
+  using cols_outer_accessor_t = GenericMapAccessor<transposed_map_t>;
+  cols_outer_accessor_t Cols() const { return GenericMapAccessor<transposed_map_t>(transposed_); }
 
   GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
     const auto cit = forward_.find(row);
@@ -246,6 +251,7 @@ class GenericOneToMany {
   }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
+  // TODO(dkorolev): Revisit whether this semantics is the right one.
   using iterator_t = GenericMapIterator<elements_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }

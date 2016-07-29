@@ -842,7 +842,12 @@ TEST(Karl, ModifiedClaireBoilerplateStatus) {
 }
 
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
-TEST(Karl, EndToEndTest) {
+#ifndef CURRENT_CI
+TEST(Karl, EndToEndTest)
+#else
+TEST(Karl, DISABLED_EndToEndTest)
+#endif
+{
   current::time::ResetToZero();
 
   if (FLAGS_karl_run_test_forever) {
@@ -919,7 +924,12 @@ TEST(Karl, EndToEndTest) {
   }
 }
 
-TEST(Karl, KarlNotifiesUserObject) {
+#ifndef CURRENT_CI
+TEST(Karl, KarlNotifiesUserObject)
+#else
+TEST(Karl, DISABLED_KarlNotifiesUserObject)
+#endif
+{
   current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);

@@ -42,7 +42,7 @@ class GenericDictionary {
  public:
   using key_t = sfinae::ENTRY_KEY_TYPE<T>;
   using map_t = MAP<key_t, T>;
-  using rest_behavior_t = rest::behavior::Dictionary;
+  using semantics_t = storage::semantics::Dictionary;
 
   GenericDictionary(MutationJournal& journal) : journal_(journal) {}
 
@@ -131,12 +131,13 @@ class GenericDictionary {
 
   struct Iterator final {
     using iterator_t = typename map_t::const_iterator;
+    using value_t = sfinae::CF<T>;
     iterator_t iterator;
     explicit Iterator(iterator_t iterator) : iterator(std::move(iterator)) {}
     void operator++() { ++iterator; }
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    sfinae::CF<key_t> key() const { return iterator->first; }
+    key_t OuterKeyForPartialHypermediaCollectionView() const { return iterator->first; }
     const T& operator*() const { return iterator->second; }
     const T* operator->() const { return &iterator->second; }
   };

@@ -165,7 +165,7 @@ template <typename ENTRY>
 struct impl_col_accessor_t<ENTRY, false> {
   typedef decltype(std::declval<ENTRY>().col) col_t;
   static CF<col_t> GetCol(const ENTRY& entry) { return entry.col; }
-  static void SetCol(ENTRY& entry, col_t col) { entry.col = col; }
+  static void SetCol(ENTRY& entry, CF<col_t> col) { entry.col = col; }
 };
 
 template <typename ENTRY>
@@ -179,8 +179,8 @@ struct impl_col_accessor_t<ENTRY, true> {
 template <typename ROW, typename COL>
 struct impl_col_accessor_t<std::pair<ROW, COL>, false> {
   typedef COL col_t;
-  static CF<col_t> GetCol(const std::pair<COL, COL>& entry) { return entry.second; }
-  static void SetCol(std::pair<COL, COL>& entry, CF<col_t> col) { entry.second = col; }
+  static CF<col_t> GetCol(const std::pair<ROW, COL>& entry) { return entry.second; }
+  static void SetCol(std::pair<ROW, COL>& entry, CF<col_t> col) { entry.second = col; }
 };
 
 template <typename ENTRY>

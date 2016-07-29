@@ -32,8 +32,9 @@ SOFTWARE.
 
 #include "../storage.h"
 #include "../api.h"
+#include "../rest/plain.h"
+#include "../rest/simple.h"
 #include "../rest/hypermedia.h"
-#include "../rest/advanced_hypermedia.h"
 #include "../persister/sherlock.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -99,12 +100,12 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
       storage,
       FLAGS_client_storage_test_port,
       "/api1", "http://example.current.ai/api1");
-  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
       storage,
       FLAGS_client_storage_test_port,
       "/api2",
       "http://example.current.ai/api2");
-  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia>(
+  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
       storage,
       FLAGS_client_storage_test_port,
       "/api3",
@@ -119,7 +120,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(404, static_cast<int>(result.code));
   }
   {
-    // Exposed by `Hypermedia`.
+    // Exposed by `Simple`.
     {
       const auto result = HTTP(GET(base_url + "/api2"));
       EXPECT_EQ(200, static_cast<int>(result.code));
@@ -169,7 +170,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"error\":"
                    "{"
                    "\"name\":\"ResourceNotFound\","
-                   "\"message\":\"The requested resource not found.\","
+                   "\"message\":\"The requested resource was not found.\","
                    "\"details\":{\"key\":\"42\"}"
                    "}"
         "}\n",
@@ -309,18 +310,22 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ(client1_key_str + '\n', result.body);
+    EXPECT_EQ(client1_key_str + '\t' + JSON(updated_client1) + '\n', result.body);
   }
 
   // PUT two more records and GET the collection again.
+  const auto client1 = Client(ClientID(101));
+  const auto client2 = Client(ClientID(102));
   current::time::SetNow(std::chrono::microseconds(112));
-  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/101", Client(ClientID(101)))).code));
+  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/101", client1)).code));
   current::time::SetNow(std::chrono::microseconds(113));
-  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/102", Client(ClientID(102)))).code));
+  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/102", client2)).code));
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("101\n102\n" + client1_key_str + '\n', result.body);
+    EXPECT_EQ("101\t" + JSON(client1) + "\n102\t" + JSON(client2) + '\n' +
+              client1_key_str + '\t' + JSON(updated_client1) + '\n',
+              result.body);
   }
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client"));
@@ -342,7 +347,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api3/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    // Shamelessly copy-pasted from the output. -- D.K.
+    // clang-format off
     EXPECT_EQ(
         "{"
         "\"success\":true,"
@@ -355,40 +360,29 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"url_previous_page\":null,"
         "\"data\":["
                   "{"
-                  "\"success\":null,"
                   "\"url\":\"http://example.current.ai/api3/data/client/101\","
-                  "\"url_full\":\"http://example.current.ai/api3/data/client/101\","
-                  "\"url_brief\":\"http://example.current.ai/api3/data/client/101?fields=brief\","
-                  "\"url_directory\":\"http://example.current.ai/api3/data/client\","
-                  "\"data\":{"
+                  "\"brief\":{"
                             "\"key\":101,"
                             "\"name\":\"John Doe\""
                             "}"
                   "},"
                   "{"
-                  "\"success\":null,"
                   "\"url\":\"http://example.current.ai/api3/data/client/102\","
-                  "\"url_full\":\"http://example.current.ai/api3/data/client/102\","
-                  "\"url_brief\":\"http://example.current.ai/api3/data/client/102?fields=brief\","
-                  "\"url_directory\":\"http://example.current.ai/api3/data/client\","
-                  "\"data\":{"
+                  "\"brief\":{"
                             "\"key\":102,"
                             "\"name\":\"John Doe\""
                             "}"
                   "},"
                   "{"
-                  "\"success\":null,"
                   "\"url\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
-                  "\"url_full\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
-                  "\"url_brief\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "?fields=brief\","
-                  "\"url_directory\":\"http://example.current.ai/api3/data/client\","
-                  "\"data\":{"
+                  "\"brief\":{"
                             "\"key\":" + client1_key_str + ","
                             "\"name\":\"Jane Doe\""
                             "}"
                   "}]"
         "}\n",
         result.body);
+    // clang-format on
   }
 
   // DELETE non-existing record.
@@ -410,7 +404,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("101\n102\n", result.body);
+    EXPECT_EQ("101\t" + JSON(client1) + "\n102\t" + JSON(client2) + '\n', result.body);
   }
 
 }
@@ -426,7 +420,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
 
   const auto basic_rest = RESTfulStorage<TestStorage>(
       storage, FLAGS_client_storage_test_port, "/api_basic", "http://example.current.ai/api_basic");
-  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
       storage, FLAGS_client_storage_test_port, "/api", "http://example.current.ai/api");
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
@@ -507,12 +501,12 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
 namespace storage_docu {
 
 // Example of custom REST implementation that annotates transactions.
-struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
-  using SUPER = current::storage::rest::AdvancedHypermedia;
+struct RESTWithMeta : current::storage::rest::Hypermedia {
+  using SUPER = current::storage::rest::Hypermedia;
 
-  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandlerGenerator : SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {
-    using ACTUAL_SUPER = SUPER::RESTfulDataHandlerGenerator<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
+  template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandler : SUPER::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    using ACTUAL_SUPER = SUPER::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
 
     template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
     std::enable_if_t<!IS_GET, Response> Run(const INPUT& input) const {

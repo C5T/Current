@@ -23,17 +23,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// Uncomment the next line for faster Storage REST development iterations. DIMA_FIXME: Remove it.
+// #define STORAGE_ONLY_RUN_RESTFUL_TESTS
+
 #define CURRENT_MOCK_TIME
 
 #include <set>
 
+#ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 #include "docu/docu_2_code.cc"
 #include "docu/docu_3_code.cc"
+#endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 #include "storage.h"
 #include "api.h"
 #include "persister/sherlock.h"
 
+#include "rest/plain.h"
+#include "rest/simple.h"
 #include "rest/hypermedia.h"
 
 #include "../Blocks/HTTP/api.h"
@@ -57,8 +64,6 @@ DEFINE_int32(transactional_storage_test_port,
              PickPortForUnitTest(),
              "Local port to run [REST] API tests against.");
 
-#define USE_KEY_METHODS
-
 namespace transactional_storage_test {
 
 CURRENT_STRUCT(Element) {
@@ -67,48 +72,24 @@ CURRENT_STRUCT(Element) {
 };
 
 CURRENT_STRUCT(Record) {
-#ifdef USE_KEY_METHODS
   CURRENT_FIELD(lhs, std::string);
-  const std::string& key() const { return lhs; }
-  void set_key(const std::string& key) { lhs = key; }
-#else
-  CURRENT_FIELD(key, std::string);
-#endif
   CURRENT_FIELD(rhs, int32_t);
 
-#ifdef USE_KEY_METHODS
+  CURRENT_USE_FIELD_AS_KEY(lhs);
+
   CURRENT_CONSTRUCTOR(Record)(const std::string& lhs = "", int32_t rhs = 0) : lhs(lhs), rhs(rhs) {}
-#else
-  CURRENT_CONSTRUCTOR(Record)(const std::string& key = "", int32_t rhs = 0) : key(key), rhs(rhs) {}
-#endif
 };
 
 CURRENT_STRUCT(Cell) {
-#ifdef USE_KEY_METHODS
   CURRENT_FIELD(foo, int32_t);
-  int32_t row() const { return foo; }
-  void set_row(int32_t row) { foo = row; }
-#else
-  CURRENT_FIELD(row, int32_t);
-#endif
-
-#ifdef USE_KEY_METHODS
   CURRENT_FIELD(bar, std::string);
-  const std::string& col() const { return bar; }
-  void set_col(const std::string& col) { bar = col; }
-#else
-  CURRENT_FIELD(col, std::string);
-#endif
-
   CURRENT_FIELD(phew, int32_t);
 
-#ifdef USE_KEY_METHODS
+  CURRENT_USE_FIELD_AS_ROW(foo);
+  CURRENT_USE_FIELD_AS_COL(bar);
+
   CURRENT_CONSTRUCTOR(Cell)(int32_t foo = 0, const std::string& bar = "", int32_t phew = 0)
       : foo(foo), bar(bar), phew(phew) {}
-#else
-  CURRENT_CONSTRUCTOR(Cell)(int32_t row = 0, const std::string& bar = "", int32_t phew = 0)
-      : row(row), bar(bar), phew(phew) {}
-#endif
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
@@ -142,6 +123,8 @@ CURRENT_STORAGE(TestStorage) {
 };
 
 }  // namespace transactional_storage_test
+
+#ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 TEST(TransactionalStorage, SmokeTest) {
   current::time::ResetToZero();
@@ -1235,10 +1218,13 @@ TEST(TransactionalStorage, TransactionMetaFields) {
           throw current::Exception();
           return 0;
         },
+        // LCOV_EXCL_START
         [&second_step_executed](int v) {
           EXPECT_EQ(0, v);
           second_step_executed = true;
-        });
+        }
+        // LCOV_EXCL_STOP
+        );
     EXPECT_THROW(future.Go(), current::Exception);
     EXPECT_FALSE(second_step_executed);
   }
@@ -1811,9 +1797,9 @@ class StorageSherlockTestProcessorImpl {
 
   TerminationResponse Terminate() const {
     if (allow_terminate_) {
-      return TerminationResponse::Terminate;  // LCOV_EXCL_LINE
+      return TerminationResponse::Terminate;
     } else {
-      return TerminationResponse::Wait;
+      return TerminationResponse::Wait;  // LCOV_EXCL_LINE
     }
   }
 
@@ -1885,6 +1871,8 @@ TEST(TransactionalStorage, GracefulShutdown) {
   ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
 }
 
+#endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS
+
 namespace transactional_storage_test {
 
 CURRENT_STRUCT(SimpleUser) {
@@ -1919,15 +1907,33 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
       : SUPER(who, what), details(details) {}
 };
 
+// Test RESTful compilation with different `row` and `col` types.
+CURRENT_STRUCT(SimpleComposite) {
+  CURRENT_FIELD(row, std::string);
+  CURRENT_FIELD(col, std::chrono::microseconds);
+  CURRENT_CONSTRUCTOR(SimpleComposite)(const std::string& row = "",
+                                       const std::chrono::microseconds col = std::chrono::microseconds(0))
+      : row(row), col(col) {}
+
+  // Without this line, POST is not allowed in RESTful access to this container.
+  // TODO(dkorolev): We may want to revisit POST for matrix containers this one day.
+  void InitializeOwnKey() {}
+};
+
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
-// TODO(dkorolev): Ordered `ManyToMany` too.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLikePersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedOne, SimpleComposite, SimpleCompositeO2OPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedMany, SimpleComposite, SimpleCompositeO2MPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToOrderedMany, SimpleComposite, SimpleCompositeM2MPersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
   CURRENT_STORAGE_FIELD(post, SimplePostPersisted);
   CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
+  CURRENT_STORAGE_FIELD(composite_o2o, SimpleCompositeO2OPersisted);
+  CURRENT_STORAGE_FIELD(composite_o2m, SimpleCompositeO2MPersisted);
+  CURRENT_STORAGE_FIELD(composite_m2m, SimpleCompositeM2MPersisted);
 };
 
 }  // namespace transactional_storage_test
@@ -1944,7 +1950,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  EXPECT_EQ(3u, Storage::FIELDS_COUNT);
+  EXPECT_EQ(6u, Storage::FIELDS_COUNT);
   Storage storage(persistence_file_name);
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
@@ -2030,6 +2036,9 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Register RESTful HTTP endpoints, in a scoped way.
     auto rest = RESTfulStorage<Storage>(
         storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+    const auto hypermedia_rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
+        storage, FLAGS_transactional_storage_test_port, "/hypermedia", "http://unittest.current.ai");
+
     // Confirm the schema is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user")).code));
     EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user")).body);
@@ -2050,9 +2059,14 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
     EXPECT_EQ("", HTTP(GET(base_url + "/api/data/user")).body);
 
-    const auto post_user1_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
+    // Begin POST-ing data.
+    auto user1 = SimpleUser("max", "MZ");
+    auto user2 = SimpleUser("dima", "DK");
+
+    const auto post_user1_response = HTTP(POST(base_url + "/api/data/user", user1));
     EXPECT_EQ(201, static_cast<int>(post_user1_response.code));
     const auto user1_key = post_user1_response.body;
+    user1.key = user1_key;  // Assigned by the server, save for the purposes of this test.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).code));
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).body).name);
 
@@ -2064,14 +2078,23 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     // Confirm a collection of one element is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
-    EXPECT_EQ(user1_key + '\n', HTTP(GET(base_url + "/api/data/user")).body);
+    EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n', HTTP(GET(base_url + "/api/data/user")).body);
 
     // Test collection retrieval.
-    const auto post_user2_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("dima", "DK")));
+    const auto post_user2_response = HTTP(POST(base_url + "/api/data/user", user2));
     EXPECT_EQ(201, static_cast<int>(post_user2_response.code));
     const auto user2_key = post_user2_response.body;
+    user2.key = user2_key;  // Assigned by the server, save for the purposes of this test.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
-    EXPECT_EQ(user1_key + '\n' + user2_key + '\n', HTTP(GET(base_url + "/api/data/user")).body);
+    EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n' + user2_key + '\t' + JSON(user2) + '\n',
+              HTTP(GET(base_url + "/api/data/user")).body);
+
+    // Confirm matrix collection retrieval.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user.key")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/user.row")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.key")).code));
 
     // Delete the users.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user1_key)).code));
@@ -2107,21 +2130,75 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
 
+    // Confirm the likes went through.
     EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
               HTTP(GET(base_url + "/api/data/like/dima/beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like?row=max&col=beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like?key1=max&key2=beer")).body);
-    // Meh, this test is not for `AdvancedHypermedia`. -- D.K.
-    // EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\"}\n",
-    //           HTTP(GET(base_url + "/api/data/like/max-beer?fields=brief")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like/max/beer")).body);
 
-    // GET matrix as the collection.
+    // Confirm the likes are returned correctly both in brief and full formats.
+    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?full")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?brief")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+    EXPECT_NE(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body,
+              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+
+    EXPECT_EQ(
+        "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
+        "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
+        "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}}\n",
+        HTTP(GET(base_url + "/hypermedia/data/like/max/beer")).body);
+    EXPECT_EQ(
+        "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
+        "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
+        "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}}\n",
+        HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(
+        "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
+        "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
+        "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"row\":\"max\"}}\n",
+        HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+
+    // GET matrix as the collection, all records.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
-    EXPECT_EQ("max/beer\ndima/beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+    EXPECT_EQ(
+        "max\tbeer\t{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
+        "dima\tbeer\t{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+        HTTP(GET(base_url + "/api/data/like")).body);
+
+    // GET matrix as the collection, per rows.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
+    EXPECT_EQ("max\t1\ndima\t1\n", HTTP(GET(base_url + "/api/data/like.row")).body);
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row/foo")).code));
+    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api/data/like.row/foo")).body);
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row/dima")).code));
+    EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+              HTTP(GET(base_url + "/api/data/like.row/dima")).body);
+
+    // GET matrix as the collection, per cols.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
+    EXPECT_EQ("beer\t2\n", HTTP(GET(base_url + "/api/data/like.col")).body);
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col/foo")).code));
+    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api/data/like.col/foo")).body);
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col/beer")).code));
+    EXPECT_EQ(
+        "{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
+        "{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+        HTTP(GET(base_url + "/api/data/like.col/beer")).body);
 
     // Clean up the likes.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima/beer")).code));
@@ -2159,6 +2236,227 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   EXPECT_EQ(20u, persisted_transactions.size());
 }
 
+TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using namespace current::storage::rest;
+  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  const auto rest1 = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/plain", "");
+  const auto rest2 = RESTfulStorage<Storage, current::storage::rest::Simple>(
+      storage, FLAGS_transactional_storage_test_port, "/simple", "");
+  const auto rest3 = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
+      storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
+
+  {
+    // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
+    // Try all three REST implementations, as well as both POST and PUT.
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/plain/data/composite_m2m",
+                                         SimpleComposite("!1", std::chrono::microseconds(2)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/simple/data/composite_m2m",
+                                         SimpleComposite("!1", std::chrono::microseconds(3)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
+                                         SimpleComposite("!2", std::chrono::microseconds(1)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(PUT(base_url + "/plain/data/composite_m2m/!2/3",
+                                        SimpleComposite("!2", std::chrono::microseconds(3)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(PUT(base_url + "/simple/data/composite_m2m/!3/1",
+                                        SimpleComposite("!3", std::chrono::microseconds(1)))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(PUT(base_url + "/hypermedia/data/composite_m2m/!3/2",
+                                        SimpleComposite("!3", std::chrono::microseconds(2)))).code));
+  }
+
+  {
+    // Browse the collection in various ways using the `Plain` API.
+    {
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      // The top-level container is still unordered, so meh.
+      std::vector<std::string> elements = current::strings::Split<current::strings::ByLines>(response.body);
+      std::sort(elements.begin(), elements.end());
+      EXPECT_EQ(
+          "!1\t2\t{\"row\":\"!1\",\"col\":2}\n"
+          "!1\t3\t{\"row\":\"!1\",\"col\":3}\n"
+          "!2\t1\t{\"row\":\"!2\",\"col\":1}\n"
+          "!2\t3\t{\"row\":\"!2\",\"col\":3}\n"
+          "!3\t1\t{\"row\":\"!3\",\"col\":1}\n"
+          "!3\t2\t{\"row\":\"!3\",\"col\":2}",
+          current::strings::Join(elements, '\n'));
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("!1\t2\n!2\t2\n!3\t2\n", response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("1\t2\n2\t2\n3\t2\n", response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row/!2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("{\"row\":\"!2\",\"col\":1}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col/3"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ("{\"row\":\"!1\",\"col\":3}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
+    }
+  }
+
+  {
+    // Browse the collection in various ways using the `Simple` API.
+    {
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      using parsed_t = current::storage::rest::simple::SimpleRESTContainerResponse;
+      parsed_t parsed;
+      ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
+      // Don't test the body of `"/simple/data/composite_m2m"`, it's unordered and machine-dependent.
+      std::vector<std::string> strings;
+      for (const auto& resource : parsed.data) {
+        strings.push_back(JSON(resource));
+      }
+      std::sort(strings.begin(), strings.end());
+      EXPECT_EQ(
+          "\"/data/composite_m2m/!1/2\"\n"
+          "\"/data/composite_m2m/!1/3\"\n"
+          "\"/data/composite_m2m/!2/1\"\n"
+          "\"/data/composite_m2m/!2/3\"\n"
+          "\"/data/composite_m2m/!3/1\"\n"
+          "\"/data/composite_m2m/!3/2\"",
+          current::strings::Join(strings, '\n'));
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.row"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1\",\"data\":[\"/"
+          "data/composite_m2m.1/!1\",\"/data/composite_m2m.1/!2\",\"/data/composite_m2m.1/!3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.col"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2\",\"data\":[\"/"
+          "data/composite_m2m.2/1\",\"/data/composite_m2m.2/2\",\"/data/composite_m2m.2/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.1/!2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.2/3"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
+          response.body);
+    }
+  }
+  {
+    // Browse the collection in various ways using the `Hypermedia` API.
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      using parsed_t = hypermedia::HypermediaRESTCollectionResponse<
+          hypermedia::HypermediaRESTFullCollectionRecord<SimpleComposite>>;
+      parsed_t parsed;
+      ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
+      std::vector<std::string> strings;
+      for (const auto& resource : parsed.data) {
+        strings.push_back(JSON(resource.data));
+      }
+      std::sort(strings.begin(), strings.end());
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m.1?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m.1\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"url\":\"/data/composite_m2m.1/"
+          "!1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!1\",\"col\":3}]}},{"
+          "\"url\":\"/data/composite_m2m.1/"
+          "!2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!2\",\"col\":3}]}},{"
+          "\"url\":\"/data/composite_m2m.1/"
+          "!3\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!3\",\"col\":1},{\"row\":\"!3\",\"col\":2}]}}]}"
+          "\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m.2?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m.2\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"url\":\"/data/composite_m2m.2/"
+          "1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!3\",\"col\":1}]}},{"
+          "\"url\":\"/data/composite_m2m.2/"
+          "2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!3\",\"col\":2}]}},{"
+          "\"url\":\"/data/composite_m2m.2/"
+          "3\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":3},{\"row\":\"!2\",\"col\":3}]}}]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"url\":\"/data/composite_m2m/!2/1\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"url\":\"/"
+          "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
+          "\"data\":[{\"url\":\"/data/composite_m2m/!1/3\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"url\":\"/"
+          "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+          response.body);
+    }
+  }
+
+  {
+    // Test DELETE too.
+    {
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/plain/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
+    }
+    {
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/simple/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
+    }
+    {
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+    }
+  }
+}
+
 // LCOV_EXCL_START
 // Test the `CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(field)` macro.
 namespace transactional_storage_test {
@@ -2168,11 +2466,16 @@ CURRENT_STORAGE(PartiallyExposedStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersistedExposed);
   CURRENT_STORAGE_FIELD(post, SimplePostPersistedNotExposed);
   CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
+  CURRENT_STORAGE_FIELD(composite_o2o, SimpleCompositeO2OPersisted);
+  CURRENT_STORAGE_FIELD(composite_o2m, SimpleCompositeO2MPersisted);
+  CURRENT_STORAGE_FIELD(composite_m2m, SimpleCompositeM2MPersisted);
 };
 }  // namespace transactional_storage_test
 // LCOV_EXCL_STOP
 
 CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(transactional_storage_test::SimplePostPersistedNotExposed);
+
+#ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   current::time::ResetToZero();
@@ -2183,8 +2486,8 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
   using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
 
-  EXPECT_EQ(3u, Storage1::FIELDS_COUNT);
-  EXPECT_EQ(3u, Storage2::FIELDS_COUNT);
+  EXPECT_EQ(6u, Storage1::FIELDS_COUNT);
+  EXPECT_EQ(6u, Storage2::FIELDS_COUNT);
 
   Storage1 storage1;
   Storage2 storage2;
@@ -2209,12 +2512,12 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   EXPECT_TRUE(fields1.url_data.count("user") == 1);
   EXPECT_TRUE(fields1.url_data.count("post") == 1);
   EXPECT_TRUE(fields1.url_data.count("like") == 1);
-  EXPECT_EQ(3u, fields1.url_data.size());
+  EXPECT_EQ(6u, fields1.url_data.size());
 
   EXPECT_TRUE(fields2.url_data.count("user") == 1);
   EXPECT_TRUE(fields2.url_data.count("post") == 0);
   EXPECT_TRUE(fields2.url_data.count("like") == 1);
-  EXPECT_EQ(2u, fields2.url_data.size());
+  EXPECT_EQ(5u, fields2.url_data.size());
 
   // Confirms the status returns proper URL prefix.
   EXPECT_EQ("http://unittest.current.ai/api1", fields1.url);
@@ -2479,10 +2782,12 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     }
 
     // Attempt to run read-write transaction in `Follower` mode throws an exception.
+    // LCOV_EXCL_START
     EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) {}),
                  current::storage::ReadWriteTransactionInFollowerStorageException);
     EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) { return 42; }, [](int) {}),
                  current::storage::ReadWriteTransactionInFollowerStorageException);
+    // LCOV_EXCL_STOP
 
     // At this moment the content of both persisted files must be identical.
     EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
@@ -2528,3 +2833,5 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     EXPECT_TRUE(WasCommitted(result));
   }
 }
+
+#endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS

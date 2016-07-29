@@ -31,6 +31,7 @@ SOFTWARE.
 #include <cassert>
 #include <functional>
 
+#include "semantics.h"
 #include "transaction.h"
 
 #include "../TypeSystem/struct.h"
@@ -219,14 +220,6 @@ struct FieldsBase : BASE {
 namespace persister {
 struct NoCustomPersisterParam {};
 }  // namespace current::storage::persister
-
-// Field tags for REST calls dispatching.
-namespace rest {
-namespace behavior {
-struct Dictionary {};
-struct Matrix {};
-}  // namespace rest::behavior
-}  // namespace rest
 
 }  // namespace storage
 }  // namespace current
