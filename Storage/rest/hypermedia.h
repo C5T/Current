@@ -44,21 +44,19 @@ namespace rest {
 #error "`MACRO_STRUCT_BODY` should not be defined."
 #endif
 
-#define MACRO_STRUCT_BODY(struct_name) \
-  CURRENT_FIELD(url, std::string); \
-  CURRENT_FIELD(url_full, std::string); \
-  CURRENT_FIELD(url_brief, std::string); \
-  CURRENT_FIELD(url_directory, std::string); \
-  CURRENT_FIELD(data, T); \
-  CURRENT_DEFAULT_CONSTRUCTOR_T(struct_name) {} \
-  CURRENT_CONSTRUCTOR_T(struct_name)( \
-      const std::string& url, const std::string& url_directory, const T& data) \
-      : url(url), \
-        url_full(url + "?full"), \
-        url_brief(url + "?brief"), \
-        url_directory(url_directory), \
-        data(data) { \
-  }
+#define MACRO_STRUCT_BODY(struct_name)                                                                        \
+  CURRENT_FIELD(url, std::string);                                                                            \
+  CURRENT_FIELD(url_full, std::string);                                                                       \
+  CURRENT_FIELD(url_brief, std::string);                                                                      \
+  CURRENT_FIELD(url_directory, std::string);                                                                  \
+  CURRENT_FIELD(data, T);                                                                                     \
+  CURRENT_DEFAULT_CONSTRUCTOR_T(struct_name) {}                                                               \
+  CURRENT_CONSTRUCTOR_T(struct_name)(const std::string& url, const std::string& url_directory, const T& data) \
+      : url(url),                                                                                             \
+        url_full(url + "?full"),                                                                              \
+        url_brief(url + "?brief"),                                                                            \
+        url_directory(url_directory),                                                                         \
+        data(data) {}
 
 CURRENT_STRUCT_T(ExtendedHypermediaRESTRecordResponse) {
   MACRO_STRUCT_BODY(ExtendedHypermediaRESTRecordResponse);

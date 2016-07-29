@@ -143,7 +143,9 @@ class Synchronous final {
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     if (destructing_) {
+      // LCOV_EXCL_START
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
+      // LCOV_EXCL_STOP
     } else {
       bool successful = false;
       try {

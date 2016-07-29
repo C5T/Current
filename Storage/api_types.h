@@ -92,7 +92,9 @@ struct FieldTypeDependentImpl<semantics::primary_key::RowCol> {
       with(std::move(request_rref),
            std::make_pair(request_rref.url.query["row"], request_rref.url.query["col"]));
     } else if (request_rref.url.query.has("1") && request_rref.url.query.has("2")) {
+      // LCOV_EXCL_START
       with(std::move(request_rref), std::make_pair(request_rref.url.query["1"], request_rref.url.query["2"]));
+      // LCOV_EXCL_STOP
     } else {
       without(std::move(request_rref));
     }
@@ -128,9 +130,12 @@ struct FieldTypeDependent : FieldTypeDependentImpl<PRIMARY_KEY_TYPE> {
     FieldTypeDependentImpl<PRIMARY_KEY_TYPE>::CallWithOrWithoutKeyFromURL(
         std::move(request_rref),
         std::forward<F>(next_with_key),
+        // LCOV_EXCL_START
         [](Request&& proxied_request_rref) {
           proxied_request_rref("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
-        });
+        }
+        // LCOV_EXCL_STOP
+        );
   }
 
   template <typename F>
@@ -478,6 +483,8 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
 // A special type to wrap the iterator passed into matrix row/col metadata rendering.
 // The `OUTER_KEY` type is the type of the row or col respectively, when browsing rows or cols.
 // Its value is accessible as `iterator.key()`.
+// TODO(dkorolev) #DIMA_FIXME: Add OneToMany tests,
+// and confirm `SingleElementContainer` and `SingleElementInnerAccessor` are not red in LCOV.
 template <typename OUTER_KEY, typename ITERATOR>
 struct SingleElementContainer {
   using outer_key_t = OUTER_KEY;

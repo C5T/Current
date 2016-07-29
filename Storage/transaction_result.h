@@ -124,10 +124,13 @@ bool WasCommitted(const TransactionResult<T>& x) {
   return x.WasCommittedImpl();
 }
 
+#if 0
+// TODO(dkorolev): #DIMA_FIXME: Remove this method, excluded by LCOV.
 template <typename T>
 bool WasCommitted(TransactionResult<T>&& x) {
   return x.WasCommittedImpl();
 }
+#endif
 
 }  // namespace storage
 }  // namespace current

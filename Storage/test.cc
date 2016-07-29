@@ -1218,10 +1218,13 @@ TEST(TransactionalStorage, TransactionMetaFields) {
           throw current::Exception();
           return 0;
         },
+        // LCOV_EXCL_START
         [&second_step_executed](int v) {
           EXPECT_EQ(0, v);
           second_step_executed = true;
-        });
+        }
+        // LCOV_EXCL_STOP
+        );
     EXPECT_THROW(future.Go(), current::Exception);
     EXPECT_FALSE(second_step_executed);
   }
@@ -1794,9 +1797,9 @@ class StorageSherlockTestProcessorImpl {
 
   TerminationResponse Terminate() const {
     if (allow_terminate_) {
-      return TerminationResponse::Terminate;  // LCOV_EXCL_LINE
+      return TerminationResponse::Terminate;
     } else {
-      return TerminationResponse::Wait;
+      return TerminationResponse::Wait;  // LCOV_EXCL_LINE
     }
   }
 
@@ -2792,10 +2795,12 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     }
 
     // Attempt to run read-write transaction in `Follower` mode throws an exception.
+    // LCOV_EXCL_START
     EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) {}),
                  current::storage::ReadWriteTransactionInFollowerStorageException);
     EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) { return 42; }, [](int) {}),
                  current::storage::ReadWriteTransactionInFollowerStorageException);
+    // LCOV_EXCL_STOP
 
     // At this moment the content of both persisted files must be identical.
     EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
