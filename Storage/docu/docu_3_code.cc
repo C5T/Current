@@ -347,13 +347,8 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api3/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    // Shamelessly copy-pasted from the output. -- D.K.
-    EXPECT_EQ(
     // clang-format off
-"{\"success\":true,\"url\":\"http://example.current.ai/api3/data/client?i=0&n=10\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"success\":null,\"url\":\"http://example.current.ai/api3/data/client/101\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"success\":null,\"url\":\"http://example.current.ai/api3/data/client/102\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"success\":null,\"url\":\"http://example.current.ai/api3/data/client/14429384856179124916\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":14429384856179124916,\"name\":\"Jane Doe\"}}]}\n",
-    // clang-format on
-    /*
-        TODO(dkorolev): I know right?
+    EXPECT_EQ(
         "{"
         "\"success\":true,"
         "\"url\":\"http://example.current.ai/api3/data/client?i=0&n=10\","
@@ -367,8 +362,8 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
                   "{"
                   "\"success\":null,"
                   "\"url\":\"http://example.current.ai/api3/data/client/101\","
-                  "\"url_full\":\"http://example.current.ai/api3/data/client/101\","
-                  "\"url_brief\":\"http://example.current.ai/api3/data/client/101?fields=brief\","
+                  "\"url_full\":\"\","  // \"http://example.current.ai/api3/data/client/101\","
+                  "\"url_brief\":\"\","  // \"http://example.current.ai/api3/data/client/101?fields=brief\","
                   "\"url_directory\":\"http://example.current.ai/api3/data/client\","
                   "\"data\":{"
                             "\"key\":101,"
@@ -378,8 +373,8 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
                   "{"
                   "\"success\":null,"
                   "\"url\":\"http://example.current.ai/api3/data/client/102\","
-                  "\"url_full\":\"http://example.current.ai/api3/data/client/102\","
-                  "\"url_brief\":\"http://example.current.ai/api3/data/client/102?fields=brief\","
+                  "\"url_full\":\"\","  // \"http://example.current.ai/api3/data/client/102\","
+                  "\"url_brief\":\"\","  // \"http://example.current.ai/api3/data/client/102?fields=brief\","
                   "\"url_directory\":\"http://example.current.ai/api3/data/client\","
                   "\"data\":{"
                             "\"key\":102,"
@@ -389,8 +384,8 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
                   "{"
                   "\"success\":null,"
                   "\"url\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
-                  "\"url_full\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
-                  "\"url_brief\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "?fields=brief\","
+                  "\"url_full\":\"\","  // \"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
+                  "\"url_brief\":\"\","  // \"http://example.current.ai/api3/data/client/" + client1_key_str + "?fields=brief\","
                   "\"url_directory\":\"http://example.current.ai/api3/data/client\","
                   "\"data\":{"
                             "\"key\":" + client1_key_str + ","
@@ -398,10 +393,8 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
                             "}"
                   "}]"
         "}\n",
-    */
-    // clang-format on
-
         result.body);
+    // clang-format on
   }
 
   // DELETE non-existing record.
