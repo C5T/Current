@@ -1066,22 +1066,31 @@
     <ClInclude Include="Storage\persister\common.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Storage\rest\advanced_hypermedia.h">
+    <ClInclude Include="Storage\rest\sfinae.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Storage\rest\basic.h">
+    <ClInclude Include="Storage\rest\types.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\plain.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\structured.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\simple.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="Storage\rest\hypermedia.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Storage\rest\sfinae.h">
+    <ClInclude Include="Storage\base.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="Storage\api.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Storage\api_base.h">
+    <ClInclude Include="Storage\api_types.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="Storage\transaction.h">
