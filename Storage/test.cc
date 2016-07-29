@@ -2224,6 +2224,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
 
   {
     // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
+    // Try all three REST implementations, as well as both POST and PUT.
     EXPECT_EQ(201,
               static_cast<int>(HTTP(POST(base_url + "/text/data/composite_m2m",
                                          SimpleComposite("!1", std::chrono::microseconds(2)))).code));
@@ -2415,6 +2416,25 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
           "composite_m2m/!2/3\",\"url_full\":\"\",\"url_brief\":\"\",\"url_directory\":\"/data/"
           "composite_m2m\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
           response.body);
+    }
+  }
+
+  {
+    // Test DELETE too.
+    {
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/text/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/text/data/composite_m2m/!1/2")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/text/data/composite_m2m/!1/2")).code));
+    }
+    {
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/basic/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/basic/data/composite_m2m/!2/3")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/basic/data/composite_m2m/!2/3")).code));
+    }
+    {
+      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
     }
   }
 }
