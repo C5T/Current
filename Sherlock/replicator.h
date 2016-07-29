@@ -50,20 +50,16 @@ class SubscribableRemoteStream final {
 
   class RemoteStream final {
    public:
-    RemoteStream(const std::string& url)
-        : url_(url),
-          schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
-                  sherlock::constants::kDefaultTopLevelName,
-                  sherlock::constants::kDefaultNamespaceName) {}
     RemoteStream(const std::string& url, const std::string& top_level_name, const std::string& namespace_name)
         : url_(url),
           schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
                   top_level_name,
                   namespace_name) {}
+
     void CheckSchema() const {
       const auto response = HTTP(GET(url_ + "/schema.simple"));
       if (static_cast<int>(response.code) == 200) {
-        SubscribableSherlockSchema remote_schema = ParseJSON<SubscribableSherlockSchema>(response.body);
+        const auto remote_schema = ParseJSON<SubscribableSherlockSchema>(response.body);
         if (remote_schema != schema_) {
           CURRENT_THROW(RemoteStreamInvalidSchemaException());
         }
@@ -71,9 +67,11 @@ class SubscribableRemoteStream final {
         CURRENT_THROW(RemoteStreamDoesNotRespondException());
       }
     }
+
     const std::string GetURLToSubscribe(uint64_t index) const {
       return url_ + "?i=" + current::ToString(index);
     }
+
     const std::string GetURLToTerminate(const std::string& subscription_id) {
       return url_ + "?terminate=" + subscription_id;
     }
@@ -222,7 +220,10 @@ class SubscribableRemoteStream final {
               std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
   };
 
-  explicit SubscribableRemoteStream(const std::string& remote_stream_url) : stream_(remote_stream_url) {
+  explicit SubscribableRemoteStream(const std::string& remote_stream_url)
+      : stream_(remote_stream_url,
+                sherlock::constants::kDefaultTopLevelName,
+                sherlock::constants::kDefaultNamespaceName) {
     stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
   }
 
