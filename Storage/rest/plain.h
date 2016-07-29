@@ -140,8 +140,9 @@ struct Plain {
       } else {
         std::ostringstream result;
         const auto iterable = GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field);
-        // Must use `begin()/end()` here, as `GenericMapAccessor` doesn't have the `key` exposed. -- D.K.
-        // TODO(dkorolev): DIMA SIMPLIFY THIS
+        // Must use `begin()/end()` here, can not use a range-based for-loop, as
+        // `OuterKeyForPartialHypermediaCollectionView` (or .key() FWIW -- D.K.) if only available
+        // on the top-level iterator, not on its deferenced type.
         for (auto iterator = iterable.begin(); iterator != iterable.end(); ++iterator) {
           result << current::ToString(iterator.OuterKeyForPartialHypermediaCollectionView()) << '\t'
                  << (*iterator).TotalElementsForHypermediaCollectionView() << '\n';

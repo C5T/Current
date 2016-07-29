@@ -32,6 +32,7 @@ namespace current {
 
 template <typename MAP>
 struct GenericMapIterator final {
+  // DIMA_FIXME: Naming.
   using inner_iterator_t = typename MAP::const_iterator;
   using key_t = typename MAP::key_type;
   using mapped_t = typename std::remove_pointer<typename MAP::mapped_type>::type;
@@ -50,6 +51,7 @@ struct GenericMapIterator final {
 template <typename MAP>
 struct GenericMapAccessor final {
   using const_iterator = GenericMapIterator<MAP>;
+  // DIMA_FIXME: Naming.
   using iterator_t = const_iterator;
   using key_t = typename MAP::key_type;
   const MAP& map_;

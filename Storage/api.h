@@ -136,143 +136,121 @@ struct PerFieldRESTfulHandlerGenerator {
     using PUTHandler = DataHandlerImpl<PUT, top_level_operation_t, specific_field_t, entry_t, key_t>;
     using DELETEHandler = DataHandlerImpl<DELETE, top_level_operation_t, specific_field_t, entry_t, key_t>;
 
-    using SchemaRoutesGenerator = SchemaHandlerImpl<entry_t>;
-
     const auto generic_data_handler = [&storage, restful_url_prefix, field_name](Request request) {
-      {        // This is temporary
-        {      // to have GitHub diff
-          {    // look manageable
-            {  // with respect to this function being a lambda now.
-              auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix);
-              if (request.method == "GET") {
-                GETHandler handler;
-                const bool export_requested = request.url.query.has("export");
-                handler.Enter(
-                    std::move(request),
-                    // Capture by reference since this lambda is run synchronously.
-                    [&storage, &handler, &generic_input, &field_name, export_requested](
-                        Request request,
-                        const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
-                      const specific_field_t& field =
-                          generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
-                      generic_input.storage.ReadOnlyTransaction(
-                                                // Capture local variables by value for safe async transactions.
-                                                [&storage,
-                                                 handler,
-                                                 generic_input,
-                                                 &field,
-                                                 url_key,
-                                                 field_name,
-                                                 export_requested](immutable_fields_t fields) -> Response {
-                                                  using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
-                                                  GETInput input(std::move(generic_input),
-                                                                 fields,
-                                                                 field,
-                                                                 field_name,
-                                                                 url_key,
-                                                                 storage.GetRole(),
-                                                                 export_requested);
-                                                  return handler.Run(input);
-                                                },
-                                                std::move(request)).Detach();
-                    });
-              } else if (request.method == "POST" && storage.GetRole() == StorageRole::Master) {
-                POSTHandler handler;
-                handler.Enter(
-                    std::move(request),
-                    // Capture by reference since this lambda is run synchronously.
-                    [&handler, &generic_input, &field_name](Request request) {
-                      try {
-                        auto mutable_entry = ParseJSON<entry_t>(request.body);
-                        specific_field_t& field =
-                            generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
-                        generic_input.storage
-                            .ReadWriteTransaction(
-                                 // Capture local variables by value for safe async transactions.
-                                 [handler, generic_input, &field, mutable_entry, field_name](
-                                     mutable_fields_t fields) mutable -> Response {
-                                   using POSTInput = RESTfulPOSTInput<STORAGE, specific_field_t, entry_t>;
-                                   POSTInput input(
-                                       std::move(generic_input), fields, field, field_name, mutable_entry);
-                                   return handler.Run(input);
-                                 },
-                                 std::move(request))
-                            .Detach();
-                      } catch (const TypeSystemParseJSONException& e) {
-                        request(handler.ErrorBadJSON(e.What()));
-                      }
-                    });
-              } else if (request.method == "PUT" && storage.GetRole() == StorageRole::Master) {
-                PUTHandler handler;
-                handler.Enter(
-                    std::move(request),
-                    // Capture by reference since this lambda is run synchronously.
-                    [&handler, &generic_input, &field_name](
-                        Request request,
-                        const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
-                      try {
-                        const auto url_key =
-                            field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(
-                                input_url_key);
-                        const auto entry = ParseJSON<entry_t>(request.body);
-                        const auto entry_key =
-                            field_type_dependent_t<specific_field_t>::ExtractOrComposeKey(entry);
-                        specific_field_t& field =
-                            generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
-                        generic_input.storage
-                            .ReadWriteTransaction(
-                                 // Capture local variables by value for safe async transactions.
-                                 [handler, generic_input, &field, url_key, entry, entry_key, field_name](
-                                     mutable_fields_t fields) -> Response {
-                                   using PUTInput = RESTfulPUTInput<STORAGE, specific_field_t, entry_t, key_t>;
-                                   PUTInput input(std::move(generic_input),
-                                                  fields,
-                                                  field,
-                                                  field_name,
-                                                  url_key,
-                                                  entry,
-                                                  entry_key);
-                                   return handler.Run(input);
-                                 },
-                                 std::move(request))
-                            .Detach();
-                      } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
-                        request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
-                      }
-                    });
-              } else if (request.method == "DELETE" && storage.GetRole() == StorageRole::Master) {
-                DELETEHandler handler;
-                handler.Enter(
-                    std::move(request),
-                    // Capture by reference since this lambda is run synchronously.
-                    [&handler, &generic_input, &field_name](
-                        Request request,
-                        const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
-                      const auto url_key =
-                          field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(input_url_key);
-                      specific_field_t& field =
-                          generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
-                      generic_input.storage.ReadWriteTransaction(
-                                                // Capture local variables by value for safe async transactions.
-                                                [handler, generic_input, &field, url_key, field_name](
-                                                    mutable_fields_t fields) -> Response {
-                                                  using DELETEInput =
-                                                      RESTfulDELETEInput<STORAGE, specific_field_t, key_t>;
-                                                  DELETEInput input(std::move(generic_input),
-                                                                    fields,
-                                                                    field,
-                                                                    field_name,
-                                                                    url_key);
-                                                  return handler.Run(input);
-                                                },
-                                                std::move(request)).Detach();
-                    });
-              } else {
-                request(REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
+      auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix);
+      if (request.method == "GET") {
+        GETHandler handler;
+        const bool export_requested = request.url.query.has("export");
+        handler.Enter(
+            std::move(request),
+            // Capture by reference since this lambda is run synchronously.
+            [&storage, &handler, &generic_input, &field_name, export_requested](
+                Request request,
+                const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
+              const specific_field_t& field =
+                  generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
+              generic_input.storage
+                  .ReadOnlyTransaction(
+                       // Capture local variables by value for safe async transactions.
+                       [&storage, handler, generic_input, &field, url_key, field_name, export_requested](
+                           immutable_fields_t fields) -> Response {
+                         using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
+                         GETInput input(std::move(generic_input),
+                                        fields,
+                                        field,
+                                        field_name,
+                                        url_key,
+                                        storage.GetRole(),
+                                        export_requested);
+                         return handler.Run(input);
+                       },
+                       std::move(request))
+                  .Detach();
+            });
+      } else if (request.method == "POST" && storage.GetRole() == StorageRole::Master) {
+        POSTHandler handler;
+        handler.Enter(
+            std::move(request),
+            // Capture by reference since this lambda is run synchronously.
+            [&handler, &generic_input, &field_name](Request request) {
+              try {
+                auto mutable_entry = ParseJSON<entry_t>(request.body);
+                specific_field_t& field =
+                    generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+                generic_input.storage.ReadWriteTransaction(
+                                          // Capture local variables by value for safe async transactions.
+                                          [handler, generic_input, &field, mutable_entry, field_name](
+                                              mutable_fields_t fields) mutable -> Response {
+                                            using POSTInput =
+                                                RESTfulPOSTInput<STORAGE, specific_field_t, entry_t>;
+                                            POSTInput input(std::move(generic_input),
+                                                            fields,
+                                                            field,
+                                                            field_name,
+                                                            mutable_entry);
+                                            return handler.Run(input);
+                                          },
+                                          std::move(request)).Detach();
+              } catch (const TypeSystemParseJSONException& e) {
+                request(handler.ErrorBadJSON(e.What()));
               }
-            }
-          }
-        }
+            });
+      } else if (request.method == "PUT" && storage.GetRole() == StorageRole::Master) {
+        PUTHandler handler;
+        handler.Enter(
+            std::move(request),
+            // Capture by reference since this lambda is run synchronously.
+            [&handler, &generic_input, &field_name](
+                Request request,
+                const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
+              try {
+                const auto url_key =
+                    field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(input_url_key);
+                const auto entry = ParseJSON<entry_t>(request.body);
+                const auto entry_key = field_type_dependent_t<specific_field_t>::ExtractOrComposeKey(entry);
+                specific_field_t& field =
+                    generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+                generic_input.storage
+                    .ReadWriteTransaction(
+                         // Capture local variables by value for safe async transactions.
+                         [handler, generic_input, &field, url_key, entry, entry_key, field_name](
+                             mutable_fields_t fields) -> Response {
+                           using PUTInput = RESTfulPUTInput<STORAGE, specific_field_t, entry_t, key_t>;
+                           PUTInput input(
+                               std::move(generic_input), fields, field, field_name, url_key, entry, entry_key);
+                           return handler.Run(input);
+                         },
+                         std::move(request))
+                    .Detach();
+              } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
+                request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
+              }
+            });
+      } else if (request.method == "DELETE" && storage.GetRole() == StorageRole::Master) {
+        DELETEHandler handler;
+        handler.Enter(
+            std::move(request),
+            // Capture by reference since this lambda is run synchronously.
+            [&handler, &generic_input, &field_name](
+                Request request,
+                const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
+              const auto url_key =
+                  field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(input_url_key);
+              specific_field_t& field = generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+              generic_input.storage.ReadWriteTransaction(
+                                        // Capture local variables by value for safe async transactions.
+                                        [handler, generic_input, &field, url_key, field_name](
+                                            mutable_fields_t fields) -> Response {
+                                          using DELETEInput =
+                                              RESTfulDELETEInput<STORAGE, specific_field_t, key_t>;
+                                          DELETEInput input(
+                                              std::move(generic_input), fields, field, field_name, url_key);
+                                          return handler.Run(input);
+                                        },
+                                        std::move(request)).Detach();
+            });
+      } else {
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
       }
     };
 
@@ -285,8 +263,7 @@ struct PerFieldRESTfulHandlerGenerator {
 
     // Schema handlers.
 
-    SchemaRoutesGenerator schema_routes_generator;
-    schema_routes_generator.RegisterRoutes(
+    SchemaHandlerImpl<entry_t>().RegisterRoutes(
         storage,
         [&](const std::string& route_suffix, const std::function<void(Request)> handler) {
           registerer(storage_handlers_map_entry_t(
@@ -299,11 +276,12 @@ struct PerFieldRESTfulHandlerGenerator {
   void RegisterAdditionalFieldDataHandlers(const std::string& field_name,
                                            semantics::rest::RESTWithSingleKey,
                                            GENERIC_HANDLER generic_data_handler) {
-    // TODO(dkorolev): `".$KEY_NAME"` alongside `".key"`.
-    for (const auto dot_key : {".key", ".0", ".K"}) {
-      registerer(storage_handlers_map_entry_t(
-          field_name,
-          RESTfulRoute(kRESTfulDataURLComponent, dot_key, URLPathArgs::CountMask::Any, generic_data_handler)));
+    for (const auto& alternate_primary_key_suffix : {".key", ".0", ".K"}) {
+      registerer(storage_handlers_map_entry_t(field_name,
+                                              RESTfulRoute(kRESTfulDataURLComponent,
+                                                           alternate_primary_key_suffix,
+                                                           URLPathArgs::CountMask::Any,
+                                                           generic_data_handler)));
     }
   }
 
@@ -356,23 +334,26 @@ struct PerFieldRESTfulHandlerGenerator {
                                            GENERIC_HANDLER unused_generic_data_handler) {
     static_cast<void>(unused_generic_data_handler);
 
+    const std::string dot = ".";
+
     const auto row_handler =
         GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixRow>(field_name);
     const auto col_handler =
         GenerateRowOrColHandler<ENTRY_TYPE_WRAPPER, semantics::rest::operation::OnMatrixCol>(field_name);
-    for (const auto dot_row : {".row", ".1", ".left", ".l", ".L"}) {
+
+    for (const auto& row_key_route_suffix : {"1", "row", "left", "l", "L"}) {
       registerer(
           storage_handlers_map_entry_t(field_name,
                                        RESTfulRoute(kRESTfulDataURLComponent,
-                                                    dot_row,
+                                                    dot + row_key_route_suffix,
                                                     URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                                     row_handler)));
     }
-    for (const auto dot_col : {".col", ".2", ".right", "r", ".R"}) {
+    for (const auto& col_key_route_suffix : {"2", "col", "right", "r", "R"}) {
       registerer(
           storage_handlers_map_entry_t(field_name,
                                        RESTfulRoute(kRESTfulDataURLComponent,
-                                                    dot_col,
+                                                    dot + col_key_route_suffix,
                                                     URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                                     col_handler)));
     }

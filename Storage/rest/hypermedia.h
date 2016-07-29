@@ -63,10 +63,10 @@ CURRENT_STRUCT_T(ExtendedHypermediaRESTContainerResponse) {
 };
 
 template <typename ENTRY, typename VALUE>
-struct DIMAImpl;  // Intentionally left empty to make sure each case is covered. -- D.K.
+struct PopulateHypermediaRecord;  // Intentionally left empty to make sure each case is covered. -- D.K.
 
 template <typename ENTRY>
-struct DIMAImpl<ENTRY, ENTRY> {
+struct PopulateHypermediaRecord<ENTRY, ENTRY> {
   template <typename OUTPUT, typename ITERATOR>
   static void DoIt(OUTPUT& output, ITERATOR&& iterator) {
     output = *iterator;
@@ -74,7 +74,7 @@ struct DIMAImpl<ENTRY, ENTRY> {
 };
 
 template <typename ENTRY, typename K, typename I>
-struct DIMAImpl<ENTRY, SingleElementContainer<K, I>> {
+struct PopulateHypermediaRecord<ENTRY, SingleElementContainer<K, I>> {
   template <typename OUTPUT, typename ITERATOR>
   static void DoIt(OUTPUT& output, ITERATOR&& iterator) {
     const auto& collection = *iterator;
@@ -85,7 +85,7 @@ struct DIMAImpl<ENTRY, SingleElementContainer<K, I>> {
 };
 
 template <typename ENTRY, typename MAP>
-struct DIMAImpl<ENTRY, current::GenericMapAccessor<MAP>> {
+struct PopulateHypermediaRecord<ENTRY, current::GenericMapAccessor<MAP>> {
   template <typename OUTPUT, typename ITERATOR>
   static void DoIt(OUTPUT& output, ITERATOR&& iterator) {
     output.total = static_cast<int64_t>(iterator.TotalElementsForHypermediaCollectionView());
@@ -125,11 +125,8 @@ inline ExtendedHypermediaRESTRecordResponse<T> FormatAsExtendedHypermediaRecord(
     response.url_brief = response.url + "?fields=brief";
   }
 
-  DIMAImpl<ENTRY, typename current::decay<typename current::decay<ITERATOR>::value_t>>::DoIt(
+  PopulateHypermediaRecord<ENTRY, typename current::decay<typename current::decay<ITERATOR>::value_t>>::DoIt(
       response.data, std::forward<ITERATOR>(iterator));
-
-  // TODO(dkorolev): Add the actual record FFS.
-  // response.data = static_cast<const T&>(*iterator);
 
   return response;
 }
@@ -212,8 +209,11 @@ struct HypermediaResponseFormatter {
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context& context, const std::string& url, ITERABLE&& span) {
-    /*
-    DIMA: To enable this.
+#if 0
+    DIMA_FIXME: This or similar code is to be enabled to support `?brief`.
+    DIMA_FIXME: Collection output should always be "brief".
+    DIMA_FIXME: This should be unit-tested as well.
+    
     using brief_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
     constexpr bool has_brief = !std::is_same<INNER_HYPERMEDIA_TYPE, brief_t>::value;
     if (!context.brief) {
@@ -223,7 +223,7 @@ struct HypermediaResponseFormatter {
       return BuildResponseWithCollectionImpl<PARTICULAR_FIELD, ENTRY, brief_t, has_brief>(
           context, url, std::forward<ITERABLE>(span));
     }
-    */
+#endif
     return BuildResponseWithCollectionImpl<PARTICULAR_FIELD, ENTRY, INNER_HYPERMEDIA_TYPE, false>(
         context, url, std::forward<ITERABLE>(span));
   }

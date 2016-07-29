@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// Uncomment the next line for faster Storage REST development iterations. DIMA_FIXME: Remove it.
 // #define STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 #define CURRENT_MOCK_TIME
@@ -2129,8 +2130,9 @@ TEST(TransactionalStorage, RESTfulAPITest) {
               HTTP(GET(base_url + "/api/data/like?row=max&col=beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
               HTTP(GET(base_url + "/api/data/like?key1=max&key2=beer")).body);
+    // DIMA_FIXME
     // Meh, this test is not for the real Hypermedia. -- D.K.
-    // TODO(dkorolev: Make is so?
+    // TODO(dkorolev: Make it so?
     // EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\"}\n",
     //           HTTP(GET(base_url + "/api/data/like/max-beer?fields=brief")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",

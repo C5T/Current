@@ -475,7 +475,6 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   }
 };
 
-// TODO(dkorolev): DIMA SIMPLIFY THIS
 // A special type to wrap the iterator passed into matrix row/col metadata rendering.
 // The `OUTER_KEY` type is the type of the row or col respectively, when browsing rows or cols.
 // Its value is accessible as `iterator.key()`.
@@ -550,10 +549,12 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
         return iterator.key();
       }
       using value_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
+      // DIMA_FIXME: Remove all `has_range_element_t`, and likely remove/rename all `range_element_t`.
+      // DIMA_FIXME: Remove all `value_t`, or change them into some `c5t_value_t` to eliminate ambiguity.
       void has_range_element_t() {}
       using range_element_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
       const range_element_t operator*() const {
-        // TODO(dkorolev): Fix this. Use `ENTRY`.
+        // TODO(dkorolev): DIMA_FIXME: There's no reason the 2nd parameter can't be `*iterator`.
         return range_element_t(iterator.key(), iterator);
       }
     };

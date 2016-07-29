@@ -34,6 +34,9 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
+// DIMA_FIXME, TODO(dkorolev): Many of these helper empty structs should be enum classes instead.
+// DIMA_FIXME, ref. https://dimakorolev.quora.com/C++-Template-Metaprogramming
+
 // Helper empty classes for call dispatching, REST and generic cross-container access.
 namespace semantics {
 
