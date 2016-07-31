@@ -263,7 +263,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         notifiable_ref_(notifiable),
         keepalives_stream_(parameters_.stream_persistence_file),
         state_update_thread_running_(false),
-        state_update_thread_([this]() { state_update_thread_running_ = true; StateUpdateThread(); }),
+        state_update_thread_([this]() {
+          state_update_thread_running_ = true;
+          StateUpdateThread();
+        }),
         http_scope_(HTTP(parameters_.keepalives_port)
                         .Register(parameters_.keepalives_url,
                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,

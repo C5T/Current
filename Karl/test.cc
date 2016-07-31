@@ -1036,12 +1036,12 @@ TEST(Karl, KarlNotifiesUserObject) {
     current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
                           std::chrono::microseconds(101 * 1000 * 1000));
     while (Value(karl.InternalExposeStorage()
-                    .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
-                      EXPECT_TRUE(Exists(fields.claires[claire.codename]));
-                      return Value(fields.claires[claire.codename]).registered_state ==
-                             current::karl::ClaireRegisteredState::DisconnectedByTimeout;
-                    })
-                    .Go())) {
+                     .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                       EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                       return Value(fields.claires[claire.codename]).registered_state ==
+                              current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                     })
+                     .Go())) {
       std::this_thread::yield();
     }
 

@@ -301,7 +301,10 @@ class GenericClaire final : private DummyClaireNotifiable {
       return;
     }
     if (!keepalive_thread_running_) {
-      keepalive_thread_ = std::thread([this]() { keepalive_thread_running_ = true; KeepaliveThread(); });
+      keepalive_thread_ = std::thread([this]() {
+        keepalive_thread_running_ = true;
+        KeepaliveThread();
+      });
       while (!keepalive_thread_running_) {
         std::this_thread::yield();
       }
