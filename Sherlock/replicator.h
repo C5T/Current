@@ -59,7 +59,7 @@ class SubscribableRemoteStream final {
 
     void CheckSchema() const {
       const auto response = HTTP(GET(url_ + "/schema.simple"));
-      if (static_cast<int>(response.code) == 200) {
+      if (response.code == HTTPResponseCode.OK) {
         const auto remote_schema = ParseJSON<SubscribableSherlockSchema>(response.body);
         if (remote_schema != schema_) {
           CURRENT_THROW(RemoteStreamInvalidSchemaException());
@@ -73,7 +73,7 @@ class SubscribableRemoteStream final {
       return url_ + "?i=" + current::ToString(index);
     }
 
-    const std::string GetURLToTerminate(const std::string& subscription_id) {
+    const std::string GetURLToTerminate(const std::string& subscription_id) const {
       return url_ + "?terminate=" + subscription_id;
     }
 
@@ -84,6 +84,8 @@ class SubscribableRemoteStream final {
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
   class RemoteSubscriberThread final : public current::sherlock::SubscriberScope::SubscriberThread {
+    static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+
    public:
     RemoteSubscriberThread(ScopeOwned<RemoteStream>& remote_stream,
                            F& subscriber,
@@ -101,9 +103,7 @@ class SubscribableRemoteStream final {
 
     ~RemoteSubscriberThread() {
       if (valid_) {
-        if (!subscriber_thread_done_) {
-          TerminateSubscription();
-        }
+        TerminateSubscription();
         thread_.join();
       } else {
         if (done_callback_) {
@@ -113,7 +113,6 @@ class SubscribableRemoteStream final {
     }
 
    private:
-    static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     RemoteSubscriberThread() = delete;
     RemoteSubscriberThread(const RemoteSubscriberThread&) = delete;
     RemoteSubscriberThread(RemoteSubscriberThread&&) = delete;
@@ -188,15 +187,15 @@ class SubscribableRemoteStream final {
         const std::string terminate_url =
             remote_stream_.ObjectAccessorDespitePossiblyDestructing().GetURLToTerminate(subscription_id_);
         try {
-          const auto result = HTTP(GET(terminate_url));
-        } catch (current::net::NetworkException&) {
+          HTTP(GET(terminate_url));
+        } catch (current::Exception&) {
         }
       }
     }
 
    private:
     bool valid_;
-    std::function<void()> done_callback_;
+    const std::function<void()> done_callback_;
     std::atomic_bool external_stop_;
     ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
     F& subscriber_;
