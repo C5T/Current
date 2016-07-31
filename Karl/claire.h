@@ -109,8 +109,9 @@ class GenericClaire final : private DummyClaireNotifiable {
         notifiable_ref_(notifiable),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
-        keepalive_thread_terminating_(false),
-        keepalive_thread_force_wakeup_(false) {}
+        destructing_(false),
+        keepalive_thread_force_wakeup_(false),
+        keepalive_thread_running_(false) {}
 
   GenericClaire(Locator karl,
                 const std::string& service,
@@ -121,17 +122,29 @@ class GenericClaire final : private DummyClaireNotifiable {
   GenericClaire() = delete;
 
   virtual ~GenericClaire() {
-    if (keepalive_thread_.joinable()) {
-      {
-        std::lock_guard<std::mutex> lock(keepalive_mutex_);
-        keepalive_thread_terminating_ = true;
-        keepalive_condition_variable_.notify_one();
-      }
-      keepalive_thread_.join();
-      // Deregister self from Karl.
-      try {
-        HTTP(DELETE(karl_keepalive_route_));
-      } catch (net::NetworkException&) {
+    std::unique_lock<std::mutex> lock(keepalive_thread_running_status_mutex_);
+
+    // Signal the keepalive thread to shut down if running, and prevent the one one from starting.
+    destructing_ = true;
+
+    if (keepalive_thread_running_) {
+      if (keepalive_thread_.joinable()) {
+        {
+          std::lock_guard<std::mutex> lock(keepalive_mutex_);
+          keepalive_condition_variable_.notify_one();
+        }
+        lock.unlock();
+
+        keepalive_thread_.join();
+        // Deregister self from Karl.
+        try {
+          HTTP(DELETE(karl_keepalive_route_));
+        } catch (net::NetworkException&) {
+        }
+      } else {
+        // TODO(dkorolev), #FIXME_DIMA: This should not happen.
+        std::cerr << "!keepalive_thread_.joinable()\n";
+        std::exit(-1);
       }
     }
   }
@@ -172,7 +185,10 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   void ForceSendKeepalive() {
     keepalive_thread_force_wakeup_ = true;
-    keepalive_condition_variable_.notify_one();
+    {
+      std::lock_guard<std::mutex> lock(keepalive_mutex_);
+      keepalive_condition_variable_.notify_one();
+    }
   }
 
   Locator GetKarlLocator() const {
@@ -280,7 +296,20 @@ class GenericClaire final : private DummyClaireNotifiable {
   }
 
   void StartKeepaliveThread() {
-    keepalive_thread_ = std::thread([this]() { KeepaliveThread(); });
+    std::lock_guard<std::mutex> lock(keepalive_thread_running_status_mutex_);
+    if (destructing_) {
+      return;
+    }
+    if (!keepalive_thread_running_) {
+      keepalive_thread_ = std::thread([this]() { keepalive_thread_running_ = true; KeepaliveThread(); });
+      while (!keepalive_thread_running_) {
+        std::this_thread::yield();
+      }
+    } else {
+      // TODO(dkorolev), #FIXME_DIMA: This should not happen.
+      std::cerr << "Already have `keepalive_thread_running_` in Claire::StartKeepaliveThread().\n";
+      std::exit(-1);
+    }
   }
 
   // Sends a keepalive message to Karl.
@@ -331,7 +360,7 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   // The thread sends periodic keepalive messages.
   void KeepaliveThread() {
-    while (!keepalive_thread_terminating_) {
+    while (!destructing_) {
       std::unique_lock<std::mutex> lock(keepalive_mutex_);
 
       // Have the interval normalized a bit.
@@ -346,10 +375,10 @@ class GenericClaire final : private DummyClaireNotifiable {
         keepalive_condition_variable_.wait_for(
             lock,
             projected_next_keepalive - now,
-            [this]() { return keepalive_thread_terminating_.load() || keepalive_thread_force_wakeup_.load(); });
+            [this]() { return destructing_.load() || keepalive_thread_force_wakeup_.load(); });
       }
 
-      if (keepalive_thread_terminating_) {
+      if (destructing_) {
         return;
       }
 
@@ -362,6 +391,14 @@ class GenericClaire final : private DummyClaireNotifiable {
       } catch (const ClaireRegistrationException&) {
         // Ignore exceptions if there's a problem talking to Karl. He'll come back. He's Karl.
       }
+    }
+    {
+      // Yes, it's an `atomic_bool`, but still lock the mutex to make sure
+      // the change from `true` to `false` doesn't interfere with:
+      // a) StartKeeepaliveThread, and
+      // b) Claire's destructor.
+      std::lock_guard<std::mutex> lock(keepalive_thread_running_status_mutex_);
+      keepalive_thread_running_ = false;
     }
   }
 
@@ -441,10 +478,13 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   const HTTPRoutesScope http_scope_;
 
-  std::atomic_bool keepalive_thread_terminating_;
+  std::atomic_bool destructing_;
+
   std::atomic_bool keepalive_thread_force_wakeup_;
   mutable std::mutex keepalive_mutex_;
   std::condition_variable keepalive_condition_variable_;
+  std::mutex keepalive_thread_running_status_mutex_;
+  std::atomic_bool keepalive_thread_running_;
   std::thread keepalive_thread_;
 };
 

@@ -71,7 +71,10 @@ class ServiceGenerator final {
 
   ~ServiceGenerator() {
     destructing_ = true;
-    condition_variable_.notify_one();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      condition_variable_.notify_one();
+    }
     thread_.join();
   }
 

@@ -38,7 +38,14 @@ class HTTPStreamSubscriber {
         callback_(callback),
         destructing_(false),
         index_(0u),
-        thread_([this]() { Thread(); }) {}
+        has_terminate_id_(false),
+        thread_([this]() { Thread(); }) {
+    while (!has_terminate_id_) {
+      // Note: This will hang forever is the local Karl is not responsing.
+      // OK and desired for the test, obviously not how it should be in production.
+      std::this_thread::yield();
+    }
+  }
 
   virtual ~HTTPStreamSubscriber() {
     destructing_ = true;
@@ -70,6 +77,7 @@ class HTTPStreamSubscriber {
   void OnHeader(const std::string& header, const std::string& value) {
     if (header == "X-Current-Stream-Subscription-Id") {
       terminate_id_ = value;
+      has_terminate_id_ = true;
     }
   }
   void OnChunk(const std::string& chunk) {
@@ -96,6 +104,7 @@ class HTTPStreamSubscriber {
   callback_t callback_;
   std::atomic_bool destructing_;
   uint64_t index_;
+  std::atomic_bool has_terminate_id_;
   std::thread thread_;
   std::string terminate_id_;
 };

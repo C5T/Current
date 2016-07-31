@@ -728,6 +728,9 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   keep_publishing = false;
   slow_publisher.join();
 
+  while (!chunks_done) {
+    std::this_thread::yield();
+  }
   EXPECT_TRUE(chunks_done);
 
   EXPECT_GE(chunks_count, 100u);
