@@ -41,7 +41,7 @@ class HTTPStreamSubscriber {
         has_terminate_id_(false),
         thread_([this]() { Thread(); }) {
     while (!has_terminate_id_) {
-      // Note: This will hang forever is the local Karl is not responsing.
+      // Note: This will hang forever if the local Karl is not responsing.
       // OK and desired for the test, obviously not how it should be in production.
       std::this_thread::yield();
     }
