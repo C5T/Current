@@ -130,7 +130,7 @@ class GenericClaire final : private DummyClaireNotifiable {
     if (keepalive_thread_running_) {
       if (keepalive_thread_.joinable()) {
         {
-          std::lock_guard<std::mutex> lock(keepalive_mutex_);
+          std::lock_guard<std::mutex> keepalive_mutex_lock(keepalive_mutex_);
           keepalive_condition_variable_.notify_one();
         }
         lock.unlock();
