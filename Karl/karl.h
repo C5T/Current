@@ -290,7 +290,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                     HTTP(parameters_.fleet_view_port)
                         .Register(parameters_.fleet_view_url + "favicon.png", http::CurrentFaviconHandler())) {
     while (!state_update_thread_running_) {
-      std::this_thread::yield();
+      // Starting Karl is a rare operation, and it may take a while on an overloaded CPU.
+      // Thus, `std::this_thread::yield()` would be an overkill, we want this code to behave on a busy system.
+      // A condition variable or a `WaitableAtomic` is a cleaner solution here; for now, just sleep.
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     if (parameters_.keepalives_port == parameters_.fleet_view_port) {
       std::cerr << "It's advised to start Karl with two different ports: "
