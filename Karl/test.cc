@@ -995,14 +995,23 @@ TEST(Karl, KarlNotifiesUserObject) {
                   current::strings::Join(karl_notifications_receiver.events, ", "));
         expected.push_back("Deregistered: " + filter.ClaireCodename());
       }
+      while (karl_notifications_receiver.events.size() != expected.size()) {
+        std::this_thread::yield();
+      }
       EXPECT_EQ(current::strings::Join(expected, ", "),
                 current::strings::Join(karl_notifications_receiver.events, ", "));
       expected.push_back("Deregistered: " + annotator.ClaireCodename());
+    }
+    while (karl_notifications_receiver.events.size() != expected.size()) {
+      std::this_thread::yield();
     }
     EXPECT_EQ(current::strings::Join(expected, ", "),
               current::strings::Join(karl_notifications_receiver.events, ", "));
     expected.push_back("Deregistered: " + is_prime.ClaireCodename());
     expected.push_back("Deregistered: " + generator.ClaireCodename());
+  }
+  while (karl_notifications_receiver.events.size() != expected.size()) {
+    std::this_thread::yield();
   }
   EXPECT_EQ(current::strings::Join(expected, ", "),
             current::strings::Join(karl_notifications_receiver.events, ", "));
