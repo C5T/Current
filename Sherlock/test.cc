@@ -90,11 +90,12 @@ struct SherlockTestProcessorImpl {
   const bool with_idx_ts_;      // Initialized in constructor.
   static std::string kTerminateStr;
   size_t max_to_process_ = static_cast<size_t>(-1);
+  std::atomic_bool wait_;
 
   SherlockTestProcessorImpl() = delete;
 
   explicit SherlockTestProcessorImpl(Data& data, bool allow_terminate, bool with_idx_ts = false)
-      : data_(data), allow_terminate_(allow_terminate), with_idx_ts_(with_idx_ts) {
+      : data_(data), allow_terminate_(allow_terminate), with_idx_ts_(with_idx_ts), wait_(false) {
     assert(!data_.subscriber_alive_);
     data_.subscriber_alive_ = true;
   }
@@ -105,8 +106,12 @@ struct SherlockTestProcessorImpl {
   }
 
   void SetMax(size_t cap) { max_to_process_ = cap; }
+  void SetWait(bool wait = true) { wait_ = wait; }
 
   EntryResponse operator()(const Record& entry, idxts_t current, idxts_t last) {
+    while (wait_) {
+      ;  // Spin lock.
+    }
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
@@ -127,6 +132,9 @@ struct SherlockTestProcessorImpl {
   static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::Done; }
 
   TerminationResponse Terminate() {
+    while (wait_) {
+      ;  // Spin lock.
+    }
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
@@ -264,12 +272,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   }
 }
 
-#ifndef CURRENT_CI
-TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
-#else
-TEST(Sherlock, DISABLED_SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
-#endif
-{
+TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   current::time::ResetToZero();
 
   using namespace sherlock_unittest;
@@ -283,6 +286,7 @@ TEST(Sherlock, DISABLED_SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
   meh_stream.Publish(12);
   Data d;
   SherlockTestProcessor p(d, true);
+  p.SetWait();
   {
     auto scope1 = meh_stream.Subscribe(p);
     EXPECT_TRUE(scope1);
@@ -299,6 +303,8 @@ TEST(Sherlock, DISABLED_SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope)
           EXPECT_TRUE(scope3);
           EXPECT_FALSE(scope2);
           p.SetMax(3u);
+          EXPECT_EQ(0u, d.seen_);
+          p.SetWait(false);
           while (d.seen_ < 3u) {
             ;  // Spin lock.
           }
