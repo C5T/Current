@@ -318,12 +318,6 @@ class StreamImpl {
     }
 
     ~SubscriberThreadInstance() {
-      // Confirmed the below check passes all our tests repeatedly; not pushing it, of course. -- D.K.
-      // Assuming the safer version of Owned<>/Borrowed<> would eliminate the need for this check altogether.
-      // if (!this_is_valid_) {
-      //   std::cerr << "!this_is_valid_ in Sherlock's ~SubscriberThreadInstance()\n";
-      //   std::exit(-1);
-      // }
       if (this_is_valid_) {
         // The constructor has completed successfully. The thread has started, and `data_` is valid.
         assert(thread_.joinable());
