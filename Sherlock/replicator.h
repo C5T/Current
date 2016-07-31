@@ -37,6 +37,7 @@ SOFTWARE.
 #include "../Blocks/SS/ss.h"
 
 #include "../Bricks/sync/scope_owned.h"
+#include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 #include "../TypeSystem/Reflection/types.h"
 
