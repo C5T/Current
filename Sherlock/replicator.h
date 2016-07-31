@@ -155,12 +155,12 @@ class SubscribableRemoteStream final {
       if (header == "X-Current-Stream-Subscription-Id") {
         std::unique_lock<std::mutex> lock(mutex_);
         subscription_id_ = value;
-        event_.notify_one();
+        *subscription_established_.MutableScopedAccessor() = true;
       }
     }
 
     void OnChunk(const std::string& chunk) {
-      if (external_stop_ ) {
+      if (external_stop_) {
         return;
       }
 
@@ -180,7 +180,8 @@ class SubscribableRemoteStream final {
 
     void TerminateSubscription() {
       std::unique_lock<std::mutex> lock(mutex_);
-      event_.wait(lock, [this]() { return !subscription_id_.empty() || subscriber_thread_done_; });
+      subscription_established_.Wait(
+          [this](bool established) { return established || subscriber_thread_done_; });
       external_stop_ = true;
       if (!subscription_id_.empty()) {
         const std::string terminate_url =
@@ -201,7 +202,7 @@ class SubscribableRemoteStream final {
     uint64_t index_;
     std::thread thread_;
     std::mutex mutex_;
-    std::condition_variable event_;
+    current::WaitableAtomic<bool> subscription_established_;
     std::string subscription_id_;
   };
 
