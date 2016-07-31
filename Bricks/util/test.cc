@@ -36,6 +36,7 @@ SOFTWARE.
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
+#include "object_interface.h"
 
 #include "../exception.h"
 #include "../file/file.h"
@@ -693,4 +694,103 @@ TEST(CustomHashFunction, Smoke) {
 
   EXPECT_EQ(1u, CurrentHashFunction<WithoutHashFunctionTestStruct>()(WithoutHashFunctionTestStruct()));
   EXPECT_EQ(2u, CurrentHashFunction<WithHashFunctionTestStruct>()(WithHashFunctionTestStruct()));
+}
+
+struct ObjectWithInterface {
+  int calls = 0;
+  int total_calls() { return ++calls; }
+  int add(int a, int b) const { return a + b; }  // `static` won't work with the inner `std::result_of`. -- D.K.
+};
+
+CURRENT_OBJECT_INTERFACE(ObjectWithInterface) {
+  CURRENT_FORWARD_METHOD(total_calls);
+  CURRENT_FORWARD_METHOD(add);
+};
+
+template <typename T>
+struct ObjectContainer {
+  T object;
+  template <typename... ARGS>
+  ObjectContainer(ARGS&&... args)
+      : object(std::forward<ARGS>(args)...) {}
+};
+
+template <typename T>
+struct ExampleObjectInterface : private ObjectContainer<T>, public CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<T> {
+  using object_container_t = ObjectContainer<T>;
+  using methods_wrapper_t = CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<T>;
+
+  template <typename... ARGS>
+  ExampleObjectInterface(ARGS&&... args)
+      : object_container_t(std::forward<ARGS>(args)...) {
+    methods_wrapper_t::CURRENT_IMPLEMENTATION_POINTER = &(object_container_t::object);
+  }
+};
+
+namespace object_with_interface_test_namespace {
+
+struct NamespacedObjectWithInterface {
+  int calls = 0;
+  int total_calls() { return ++calls; }
+  int add(int a, int b) const { return a + b; }  // `static` won't work with the inner `std::result_of`. -- D.K.
+};
+
+CURRENT_OBJECT_INTERFACE(NamespacedObjectWithInterface) {
+  CURRENT_FORWARD_METHOD(total_calls);
+  CURRENT_FORWARD_METHOD(add);
+};
+
+template <typename T>
+struct NamespacedObjectContainer {
+  T object;
+  template <typename... ARGS>
+  NamespacedObjectContainer(ARGS&&... args)
+      : object(std::forward<ARGS>(args)...) {}
+};
+
+template <typename T>
+struct NamespacedExampleObjectInterface : private NamespacedObjectContainer<T>,
+                                          public CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<T> {
+  using object_container_t = NamespacedObjectContainer<T>;
+  using methods_wrapper_t = CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<T>;
+
+  template <typename... ARGS>
+  NamespacedExampleObjectInterface(ARGS&&... args)
+      : object_container_t(std::forward<ARGS>(args)...) {
+    methods_wrapper_t::CURRENT_IMPLEMENTATION_POINTER = &(object_container_t::object);
+  }
+};
+
+}  // namespace object_with_interface_test_namespace
+
+TEST(ObjectInterface, Smoke) {
+  {
+    ObjectWithInterface o;
+    EXPECT_EQ(1, o.total_calls());
+    EXPECT_EQ(2, o.total_calls());
+    EXPECT_EQ(3, o.total_calls());
+    EXPECT_EQ(1001, o.add(1000, 1));
+  }
+  {
+    ExampleObjectInterface<ObjectWithInterface> o;
+    EXPECT_EQ(1, o.total_calls());
+    EXPECT_EQ(2, o.total_calls());
+    EXPECT_EQ(3, o.total_calls());
+    EXPECT_EQ(1001, o.add(1000, 1));
+  }
+  {
+    object_with_interface_test_namespace::NamespacedObjectWithInterface o;
+    EXPECT_EQ(1, o.total_calls());
+    EXPECT_EQ(2, o.total_calls());
+    EXPECT_EQ(3, o.total_calls());
+    EXPECT_EQ(1001, o.add(1000, 1));
+  }
+  {
+    object_with_interface_test_namespace::NamespacedExampleObjectInterface<
+        object_with_interface_test_namespace::NamespacedObjectWithInterface> o;
+    EXPECT_EQ(1, o.total_calls());
+    EXPECT_EQ(2, o.total_calls());
+    EXPECT_EQ(3, o.total_calls());
+    EXPECT_EQ(1001, o.add(1000, 1));
+  }
 }
