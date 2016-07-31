@@ -91,7 +91,6 @@ class SubscribableRemoteStream final {
         : valid_(false),
           done_callback_(done_callback),
           external_stop_(false),
-          internal_stop_(false),
           remote_stream_(remote_stream, [this]() { TerminateSubscription(); }),
           subscriber_(subscriber),
           index_(start_idx),
@@ -131,7 +130,7 @@ class SubscribableRemoteStream final {
     void ThreadImpl() {
       const RemoteStream& bare_stream = remote_stream_.ObjectAccessorDespitePossiblyDestructing();
       bool terminate_sent = false;
-      while (!internal_stop_) {
+      while (true) {
         if (!terminate_sent && external_stop_) {
           terminate_sent = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
@@ -145,6 +144,8 @@ class SubscribableRemoteStream final {
               [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
               [this](const std::string& chunk_body) { OnChunk(chunk_body); },
               [this]() {}));
+        } catch (StreamTerminatedBySubscriber&) {
+          break;
         } catch (current::Exception&) {
         }
       }
@@ -159,7 +160,7 @@ class SubscribableRemoteStream final {
     }
 
     void OnChunk(const std::string& chunk) {
-      if (external_stop_ || internal_stop_) {
+      if (external_stop_ ) {
         return;
       }
 
@@ -171,8 +172,10 @@ class SubscribableRemoteStream final {
       assert(idxts.index == index_);
       auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
       const idxts_t unused_idxts;
-      internal_stop_ = (subscriber_(std::move(entry), idxts, unused_idxts) == ss::EntryResponse::Done);
       ++index_;
+      if (subscriber_(std::move(entry), idxts, unused_idxts) == ss::EntryResponse::Done) {
+        CURRENT_THROW(StreamTerminatedBySubscriber());
+      }
     }
 
     void TerminateSubscription() {
@@ -193,7 +196,6 @@ class SubscribableRemoteStream final {
     bool valid_;
     std::function<void()> done_callback_;
     std::atomic_bool external_stop_;
-    std::atomic_bool internal_stop_;
     ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
     F& subscriber_;
     uint64_t index_;
