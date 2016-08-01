@@ -262,7 +262,11 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                 : parameters_.public_url),
         notifiable_ref_(notifiable),
         keepalives_stream_(parameters_.stream_persistence_file),
-        state_update_thread_([this]() { StateUpdateThread(); }),
+        state_update_thread_running_(false),
+        state_update_thread_([this]() {
+          state_update_thread_running_ = true;
+          StateUpdateThread();
+        }),
         http_scope_(HTTP(parameters_.keepalives_port)
                         .Register(parameters_.keepalives_url,
                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
@@ -285,6 +289,12 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                                   [this](Request r) { ServeSnapshot(std::move(r)); }) +
                     HTTP(parameters_.fleet_view_port)
                         .Register(parameters_.fleet_view_url + "favicon.png", http::CurrentFaviconHandler())) {
+    while (!state_update_thread_running_) {
+      // Starting Karl is a rare operation, and it may take a while on an overloaded CPU.
+      // Thus, `std::this_thread::yield()` would be an overkill, we want this code to behave on a busy system.
+      // A condition variable or a `WaitableAtomic` is a cleaner solution here; for now, just sleep.
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
     if (parameters_.keepalives_port == parameters_.fleet_view_port) {
       std::cerr << "It's advised to start Karl with two different ports: "
                 << "one to accept keepalives and one to serve status. "
@@ -323,6 +333,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     if (state_update_thread_.joinable()) {
       update_thread_condition_variable_.notify_one();
       state_update_thread_.join();
+    } else {
+      // TODO(dkorolev), #FIXME_DIMA: This should not happen.
+      std::cerr << "!state_update_thread_.joinable()\n";
+      std::exit(-1);
     }
   }
 
@@ -436,8 +450,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           // Delete this `codename` from cache.
           std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
           services_keepalive_time_cache_.erase(codename);
+          update_thread_condition_variable_.notify_one();
         }
-        update_thread_condition_variable_.notify_one();
       } else {
         // Respond with "200 OK" in any case.
         r("NOP\n");
@@ -960,6 +974,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   std::unordered_map<std::string, uint64_t> latest_keepalive_index_plus_one_;
 
   stream_t keepalives_stream_;
+  std::atomic_bool state_update_thread_running_;
   std::thread state_update_thread_;
   const HTTPRoutesScope http_scope_;
 };

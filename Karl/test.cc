@@ -842,12 +842,7 @@ TEST(Karl, ModifiedClaireBoilerplateStatus) {
 }
 
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
-#ifndef CURRENT_CI
-TEST(Karl, EndToEndTest)
-#else
-TEST(Karl, DISABLED_EndToEndTest)
-#endif
-{
+TEST(Karl, EndToEndTest) {
   current::time::ResetToZero();
 
   if (FLAGS_karl_run_test_forever) {
@@ -924,12 +919,7 @@ TEST(Karl, DISABLED_EndToEndTest)
   }
 }
 
-#ifndef CURRENT_CI
-TEST(Karl, KarlNotifiesUserObject)
-#else
-TEST(Karl, DISABLED_KarlNotifiesUserObject)
-#endif
-{
+TEST(Karl, KarlNotifiesUserObject) {
   current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
@@ -1005,14 +995,23 @@ TEST(Karl, DISABLED_KarlNotifiesUserObject)
                   current::strings::Join(karl_notifications_receiver.events, ", "));
         expected.push_back("Deregistered: " + filter.ClaireCodename());
       }
+      while (karl_notifications_receiver.events.size() != expected.size()) {
+        std::this_thread::yield();
+      }
       EXPECT_EQ(current::strings::Join(expected, ", "),
                 current::strings::Join(karl_notifications_receiver.events, ", "));
       expected.push_back("Deregistered: " + annotator.ClaireCodename());
+    }
+    while (karl_notifications_receiver.events.size() != expected.size()) {
+      std::this_thread::yield();
     }
     EXPECT_EQ(current::strings::Join(expected, ", "),
               current::strings::Join(karl_notifications_receiver.events, ", "));
     expected.push_back("Deregistered: " + is_prime.ClaireCodename());
     expected.push_back("Deregistered: " + generator.ClaireCodename());
+  }
+  while (karl_notifications_receiver.events.size() != expected.size()) {
+    std::this_thread::yield();
   }
   EXPECT_EQ(current::strings::Join(expected, ", "),
             current::strings::Join(karl_notifications_receiver.events, ", "));
@@ -1045,19 +1044,21 @@ TEST(Karl, DISABLED_KarlNotifiesUserObject)
 
     current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
                           std::chrono::microseconds(101 * 1000 * 1000));
-    bool is_timeouted_persisted = false;
-    while (!is_timeouted_persisted) {
-      is_timeouted_persisted =
-          Value(karl.InternalExposeStorage()
-                    .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
-                      EXPECT_TRUE(Exists(fields.claires[claire.codename]));
-                      return Value(fields.claires[claire.codename]).registered_state ==
-                             current::karl::ClaireRegisteredState::DisconnectedByTimeout;
-                    })
-                    .Go());
+    while (Value(karl.InternalExposeStorage()
+                     .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                       EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                       return Value(fields.claires[claire.codename]).registered_state ==
+                              current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                     })
+                     .Go())) {
+      std::this_thread::yield();
     }
 
     expected.push_back("TimedOut: ABCDEF");
+    while (karl_notifications_receiver.events.size() != expected.size()) {
+      std::this_thread::yield();
+    }
+
     EXPECT_EQ(current::strings::Join(expected, ", "),
               current::strings::Join(karl_notifications_receiver.events, ", "));
   }
