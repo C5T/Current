@@ -130,7 +130,7 @@ Data from streams can be replicated. Replication can be thought of as a simple u
 
 (`TODO(dkorolev): Security and authentication.`)
 
-The recommended usecase of Sherlock is to replicate each data stream locally before working with it. This ensures that between re-runs of the binary, only the newly added entries are read by the master transferred over the netwoe
+The recommended usecase of Sherlock is to replicate each data stream locally before working with it. This ensures that between re-runs of the binary, only the newly added entries are read by the master transferred over the network
 
 ## HEAD Pointer
 

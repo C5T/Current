@@ -48,6 +48,8 @@ SOFTWARE.
 #include "../Bricks/file/file.h"
 #include "../Bricks/dflags/dflags.h"
 
+#include "../Sherlock/replicator.h"
+
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #ifndef CURRENT_WINDOWS
@@ -1708,57 +1710,35 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(replicated_stream_file_name);
   using transaction_t = typename Storage::transaction_t;
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+  using RemoteStreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
   sherlock_t replicated_stream(replicated_stream_file_name);
 
-  struct StreamPublisherOwner {
-    sherlock_t& stream_;
-    std::unique_ptr<sherlock_t::publisher_t> publisher_;
-    explicit StreamPublisherOwner(sherlock_t& stream) : stream_(stream) {}
-    ~StreamPublisherOwner() { EXPECT_FALSE(static_cast<bool>(publisher_)); }
-    void AcceptPublisher(std::unique_ptr<sherlock_t::publisher_t> publisher) {
-      publisher_ = std::move(publisher);
-    }
-    void ReturnPublisherToStream() { stream_.AcquirePublisher(std::move(publisher_)); }
-  };
-  // Move the data authority of the stream to a `StreamPublisherOwner` instance.
-  StreamPublisherOwner stream_publisher_owner(replicated_stream);
-  replicated_stream.MovePublisherTo(stream_publisher_owner);
+  // Replicate data via subscription to master storage raw log.
+  current::sherlock::SubscribableRemoteStream<transaction_t> remote_stream(
+      Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
+  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
 
   // Create storage using following stream.
   Storage replicated_storage(replicated_stream);
+  EXPECT_EQ(current::storage::StorageRole::Follower, replicated_storage.GetRole());
 
-  // Replicate data via subscription to master storage raw log.
-  const auto response = HTTP(GET(base_url + "?cap=1000&nowait"));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  std::istringstream body(response.body);
-  std::string line;
-  uint64_t expected_index = 0u;
-  while (std::getline(body, line)) {
-    const size_t tab_pos = line.find('\t');
-    ASSERT_FALSE(tab_pos == std::string::npos);
-    const auto idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
-    EXPECT_EQ(expected_index, idx_ts.index);
-    auto transaction = ParseJSON<Storage::transaction_t>(line.substr(tab_pos + 1));
-    ASSERT_NO_THROW(stream_publisher_owner.publisher_->Publish(std::move(transaction), idx_ts.us));
-    ++expected_index;
+  {
+    const auto subscriber_scope = remote_stream.Subscribe(*replicator);
+    while (replicated_stream.InternalExposePersister().Size() < 2u) {
+      std::this_thread::yield();
+    }
   }
 
   // Return data authority to the stream as we completed the replication process.
-  stream_publisher_owner.ReturnPublisherToStream();
+  replicator = nullptr;
 
   // Check that persisted files are the same.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
             current::FileSystem::ReadFileAsString(replicated_stream_file_name));
 
   // Wait until the we can see the mutation made in the last transaction.
-  bool last_added_entry_exists;
-  do {
-    const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
-      return Exists(fields.d["three"]);
-    }).Go();
-    EXPECT_TRUE(WasCommitted(result));
-    last_added_entry_exists = Value(result);
-  } while (!last_added_entry_exists);
+  replicated_storage.WaitForTransactionsCount(4u);
+  EXPECT_EQ(4u, replicated_storage.TransactionsCount());
 
   // Test data consistency performing a transaction in the replicated storage.
   const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
@@ -1768,6 +1748,10 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     EXPECT_FALSE(Exists(fields.d["two"]));
   }).Go();
   EXPECT_TRUE(WasCommitted(result));
+
+  // Check that the `Storage` could be flipped to master after the `RemoteStreamReplicator` destruction.
+  ASSERT_NO_THROW(replicated_storage.FlipToMaster());
+  EXPECT_EQ(current::storage::StorageRole::Master, replicated_storage.GetRole());
 }
 
 namespace transactional_storage_test {
@@ -2672,32 +2656,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   using Storage = SimpleStorage<SherlockStreamPersister>;
   using transaction_t = typename Storage::transaction_t;
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-
-  // Class performing stream-level replication.
-  struct StreamReplicatorImpl {
-    using EntryResponse = current::ss::EntryResponse;
-    using TerminationResponse = current::ss::TerminationResponse;
-    using publisher_t = typename sherlock_t::publisher_t;
-
-    StreamReplicatorImpl(sherlock_t& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
-    ~StreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
-
-    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
-
-    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
-      assert(publisher_);
-      publisher_->Publish(transaction, current.us);
-      return EntryResponse::More;
-    }
-
-    EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
-    TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
-
-   private:
-    sherlock_t& stream_;
-    std::unique_ptr<publisher_t> publisher_;
-  };
-  using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl, transaction_t>;
+  using StreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
 
   const std::string master_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
