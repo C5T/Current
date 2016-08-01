@@ -52,19 +52,19 @@ const size_t image_dim = e ? 800 : 112;
   const size_t image_dim = 800;
 #endif
   const std::string result = GNUPlot()
-    .Title("Imagine all the people ...")
+    .Title("отпусти меня")
     .NoKey()
     .Grid("back")
-    .XLabel("... living life in peace")
-    .YLabel("John Lennon, \"Imagine\"")
+    .YLabel("чудо")
+    .XLabel("трава")
     .Plot(WithMeta([](Plotter p) {
-      const size_t N = 1000;
+      const size_t N = 100001;
       for (size_t i = 0; i < N; ++i) {
-        const double t = M_PI * 2 * i / (N - 1);
-        p(16 * pow(sin(t), 3),
-          -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
+        const double phi = M_PI * 2 * i / (N - 1);
+        const double r = (1+sin(phi)) * (1+0.9 * cos(8*phi)) * (1+0.1*cos(24*phi));
+        p(r * cos(phi), r * sin(phi));
       }
-    }).LineWidth(5).Color("rgb '#FF0080'"))
+    }).LineWidth(5).Color("rgb '#168000'"))
     .ImageSize(image_dim)
 #if 1      
 .OutputFormat(formats[e]);
