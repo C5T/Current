@@ -90,11 +90,12 @@ class SubscribableRemoteStream final {
                            uint64_t start_idx,
                            std::function<void()> done_callback)
         : valid_(false),
-          done_callback_(done_callback),
-          terminate_subscription_requested_(false),
           remote_stream_(remote_stream, [this]() { TerminateSubscription(); }),
+          done_callback_(done_callback),
           subscriber_(subscriber),
           index_(start_idx),
+          unused_idxts_(),
+          terminate_subscription_requested_(false),
           thread_([this]() { Thread(); }) {
       valid_ = true;
     }
@@ -169,9 +170,8 @@ class SubscribableRemoteStream final {
       const auto idxts = ParseJSON<idxts_t>(split[0]);
       assert(idxts.index == index_);
       auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-      const idxts_t unused_idxts;
       ++index_;
-      if (subscriber_(std::move(entry), idxts, unused_idxts) == ss::EntryResponse::Done) {
+      if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
         CURRENT_THROW(StreamTerminatedBySubscriber());
       }
     }
@@ -195,13 +195,14 @@ class SubscribableRemoteStream final {
 
    private:
     bool valid_;
-    const std::function<void()> done_callback_;
-    std::atomic_bool terminate_subscription_requested_;
     ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
+    const std::function<void()> done_callback_;
     F& subscriber_;
     uint64_t index_;
-    std::thread thread_;
+    const idxts_t unused_idxts_;
     current::WaitableAtomic<std::string> subscription_id_;
+    std::atomic_bool terminate_subscription_requested_;
+    std::thread thread_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
