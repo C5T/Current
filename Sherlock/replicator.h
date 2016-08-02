@@ -69,11 +69,9 @@ class SubscribableRemoteStream final {
       }
     }
 
-    const std::string GetURLToSubscribe(uint64_t index) const {
-      return url_ + "?i=" + current::ToString(index);
-    }
+    std::string GetURLToSubscribe(uint64_t index) const { return url_ + "?i=" + current::ToString(index); }
 
-    const std::string GetURLToTerminate(const std::string& subscription_id) const {
+    std::string GetURLToTerminate(const std::string& subscription_id) const {
       return url_ + "?terminate=" + subscription_id;
     }
 
@@ -92,11 +90,12 @@ class SubscribableRemoteStream final {
                            uint64_t start_idx,
                            std::function<void()> done_callback)
         : valid_(false),
-          done_callback_(done_callback),
-          external_stop_(false),
           remote_stream_(remote_stream, [this]() { TerminateSubscription(); }),
+          done_callback_(done_callback),
           subscriber_(subscriber),
           index_(start_idx),
+          unused_idxts_(),
+          terminate_subscription_requested_(false),
           thread_([this]() { Thread(); }) {
       valid_ = true;
     }
@@ -122,6 +121,7 @@ class SubscribableRemoteStream final {
     void Thread() {
       ThreadImpl();
       subscriber_thread_done_ = true;
+      subscription_id_.MutableScopedAccessor()->clear();
       if (done_callback_) {
         done_callback_();
       }
@@ -131,7 +131,7 @@ class SubscribableRemoteStream final {
       const RemoteStream& bare_stream = remote_stream_.ObjectAccessorDespitePossiblyDestructing();
       bool terminate_sent = false;
       while (true) {
-        if (!terminate_sent && external_stop_) {
+        if (!terminate_sent && terminate_subscription_requested_) {
           terminate_sent = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return;
@@ -148,19 +148,18 @@ class SubscribableRemoteStream final {
           break;
         } catch (current::Exception&) {
         }
+        subscription_id_.MutableScopedAccessor()->clear();
       }
     }
 
     void OnHeader(const std::string& header, const std::string& value) {
       if (header == "X-Current-Stream-Subscription-Id") {
-        std::unique_lock<std::mutex> lock(mutex_);
-        subscription_id_ = value;
-        *subscription_established_.MutableScopedAccessor() = true;
+        subscription_id_.SetValue(value);
       }
     }
 
     void OnChunk(const std::string& chunk) {
-      if (external_stop_) {
+      if (terminate_subscription_requested_) {
         return;
       }
 
@@ -171,39 +170,39 @@ class SubscribableRemoteStream final {
       const auto idxts = ParseJSON<idxts_t>(split[0]);
       assert(idxts.index == index_);
       auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-      const idxts_t unused_idxts;
       ++index_;
-      if (subscriber_(std::move(entry), idxts, unused_idxts) == ss::EntryResponse::Done) {
+      if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
         CURRENT_THROW(StreamTerminatedBySubscriber());
       }
     }
 
     void TerminateSubscription() {
-      std::unique_lock<std::mutex> lock(mutex_);
-      subscription_established_.Wait(
-          [this](bool established) { return established || subscriber_thread_done_; });
-      external_stop_ = true;
-      if (!subscription_id_.empty()) {
-        const std::string terminate_url =
-            remote_stream_.ObjectAccessorDespitePossiblyDestructing().GetURLToTerminate(subscription_id_);
-        try {
-          HTTP(GET(terminate_url));
-        } catch (current::Exception&) {
+      subscription_id_.Wait([this](const std::string& id) { return !id.empty() || subscriber_thread_done_; });
+      bool already_terminated = false;
+      if (terminate_subscription_requested_.compare_exchange_weak(already_terminated, true)) {
+        auto subscription_id_scope = subscription_id_.ImmutableScopedAccessor();
+        const std::string& subscription_id = *subscription_id_scope;
+        if (!subscription_id.empty()) {
+          const std::string terminate_url =
+              remote_stream_.ObjectAccessorDespitePossiblyDestructing().GetURLToTerminate(subscription_id);
+          try {
+            HTTP(GET(terminate_url));
+          } catch (current::Exception&) {
+          }
         }
       }
     }
 
    private:
     bool valid_;
-    const std::function<void()> done_callback_;
-    std::atomic_bool external_stop_;
     ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
+    const std::function<void()> done_callback_;
     F& subscriber_;
     uint64_t index_;
+    const idxts_t unused_idxts_;
+    current::WaitableAtomic<std::string> subscription_id_;
+    std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
-    std::mutex mutex_;
-    current::WaitableAtomic<bool> subscription_established_;
-    std::string subscription_id_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
