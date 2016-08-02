@@ -80,7 +80,7 @@ struct ToStringImpl<bool, false, false> {
   static std::string DoIt(bool b) { return b ? "true" : "false"; }
 };
 
-// Types that implement `ToString()` method.
+// Types that implement the `ToString()` method.
 template <typename DECAYED_T>
 struct ToStringImpl<DECAYED_T, true, false> {
   static std::string DoIt(const DECAYED_T& x) { return x.ToString(); }

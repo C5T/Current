@@ -128,7 +128,7 @@ struct impl_row_accessor_t<ENTRY, false> {
 template <typename ENTRY>
 struct impl_row_accessor_t<ENTRY, true> {
   using cf_row_t = decltype(std::declval<ENTRY>().row());
-  using row_t = current::decay<decltype(std::declval<ENTRY>().row())>;
+  using row_t = current::decay<cf_row_t>;
   static_assert(std::is_same<cf_row_t, CF<row_t>>::value, "");
 
   static cf_row_t GetRow(const ENTRY& entry) { return entry.row(); }
@@ -138,6 +138,7 @@ struct impl_row_accessor_t<ENTRY, true> {
 template <typename ROW, typename COL>
 struct impl_row_accessor_t<std::pair<ROW, COL>, false> {
   static_assert(std::is_same<ROW, current::decay<ROW>>::value, "");
+  static_assert(std::is_same<COL, current::decay<COL>>::value, "");
   using pair_t = std::pair<ROW, COL>;
   using row_t = ROW;
   using cf_row_t = CF<ROW>;
@@ -187,7 +188,7 @@ struct impl_col_accessor_t<ENTRY, false> {
 template <typename ENTRY>
 struct impl_col_accessor_t<ENTRY, true> {
   using cf_col_t = decltype(std::declval<ENTRY>().col());
-  using col_t = current::decay<decltype(std::declval<ENTRY>().col())>;
+  using col_t = current::decay<cf_col_t>;
   static_assert(std::is_same<cf_col_t, CF<col_t>>::value, "");
 
   static cf_col_t GetCol(const ENTRY& entry) { return entry.col(); }
@@ -196,6 +197,7 @@ struct impl_col_accessor_t<ENTRY, true> {
 
 template <typename ROW, typename COL>
 struct impl_col_accessor_t<std::pair<ROW, COL>, false> {
+  static_assert(std::is_same<ROW, current::decay<ROW>>::value, "");
   static_assert(std::is_same<COL, current::decay<COL>>::value, "");
   using pair_t = std::pair<ROW, COL>;
   using col_t = COL;
