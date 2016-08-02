@@ -71,7 +71,6 @@ struct impl_key_accessor_t<ENTRY, true> {
   static void SetKey(ENTRY& entry, cf_key_t key) { entry.set_key(key); }
 };
 
-// TODO: Check if it is still needed on VS.
 #ifndef CURRENT_WINDOWS
 template <typename ENTRY>
 using key_accessor_t = impl_key_accessor_t<ENTRY, HasKeyMethod<ENTRY>(0)>;
@@ -104,12 +103,12 @@ void SetKey(ENTRY& entry, typename key_accessor_t<ENTRY>::cf_key_t key) {
 // - `.row / .col` data members,
 // - `.row() / set_row() / .col() / .set_col()` methods.
 template <typename ENTRY>
-constexpr bool HasRowFunction(char) {
+constexpr bool HasRowMethod(char) {
   return false;
 }
 
 template <typename ENTRY>
-constexpr auto HasRowFunction(int) -> decltype(std::declval<const ENTRY>().row(), bool()) {
+constexpr auto HasRowMethod(int) -> decltype(std::declval<const ENTRY>().row(), bool()) {
   return true;
 }
 
@@ -147,8 +146,19 @@ struct impl_row_accessor_t<std::pair<ROW, COL>, false> {
   static void SetRow(pair_t& entry, cf_row_t row) { entry.first = row; }
 };
 
+#ifndef CURRENT_WINDOWS
 template <typename ENTRY>
-using row_accessor_t = impl_row_accessor_t<ENTRY, HasRowFunction<ENTRY>(0)>;
+using row_accessor_t = impl_row_accessor_t<ENTRY, HasRowMethod<ENTRY>(0)>;
+#else
+// Visual C++ [Enterprise 2015, 00322-8000-00000-AA343] is not friendly with a `constexpr` "call" from "using".
+// Work around it by introducing another `struct`. -- D.K.
+template <typename ENTRY>
+struct vs_impl_row_accessor_t {
+	typedef impl_row_accessor_t<ENTRY, HasRowMethod<ENTRY>(0)> type;
+};
+template <typename ENTRY>
+using row_accessor_t = typename vs_impl_row_accessor_t<ENTRY>::type;
+#endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
 typename row_accessor_t<ENTRY>::cf_row_t GetRow(const ENTRY& entry) {
@@ -164,12 +174,12 @@ void SetRow(ENTRY& entry, typename row_accessor_t<ENTRY>::cf_row_t row) {
 }
 
 template <typename ENTRY>
-constexpr bool HasColFunction(char) {
+constexpr bool HasColMethod(char) {
   return false;
 }
 
 template <typename ENTRY>
-constexpr auto HasColFunction(int) -> decltype(std::declval<const ENTRY>().col(), bool()) {
+constexpr auto HasColMethod(int) -> decltype(std::declval<const ENTRY>().col(), bool()) {
   return true;
 }
 
@@ -207,8 +217,19 @@ struct impl_col_accessor_t<std::pair<ROW, COL>, false> {
   static void SetCol(pair_t& entry, cf_col_t col) { entry.second = col; }
 };
 
+#ifndef CURRENT_WINDOWS
 template <typename ENTRY>
-using col_accessor_t = impl_col_accessor_t<ENTRY, HasColFunction<ENTRY>(0)>;
+using col_accessor_t = impl_col_accessor_t<ENTRY, HasColMethod<ENTRY>(0)>;
+#else
+// Visual C++ [Enterprise 2015, 00322-8000-00000-AA343] is not friendly with a `constexpr` "call" from "using".
+// Work around it by introducing another `struct`. -- D.K.
+template <typename ENTRY>
+struct vs_impl_col_accessor_t {
+	typedef impl_col_accessor_t<ENTRY, HasColMethod<ENTRY>(0)> type;
+};
+template <typename ENTRY>
+using col_accessor_t = typename vs_impl_col_accessor_t<ENTRY>::type;
+#endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
 typename col_accessor_t<ENTRY>::cf_col_t GetCol(const ENTRY& entry) {
