@@ -92,8 +92,8 @@ struct ToStringImpl<DECAYED_T, true, B> {
 template <>
 struct ToStringImpl<std::string, false, false> {
   template <typename T>
-  static std::string DoIt(T&& string) {
-    return string;
+  static std::string DoIt(T&& s) {
+    return std::string(s);
   }
 };
 
@@ -131,9 +131,9 @@ struct ToStringImpl<bool, false, false> {
 
 template <typename T>
 inline std::string ToString(T&& something) {
-  using DECAYED_T = current::decay<T>;
-  return ToStringImpl<DECAYED_T, sfinae::HasMemberToString<T>(0), std::is_enum<DECAYED_T>::value>::DoIt(
-      something);
+  using decayed_t = current::decay<T>;
+  return ToStringImpl<decayed_t, sfinae::HasMemberToString<T>(0), std::is_enum<decayed_t>::value>::DoIt(
+      std::forward<T>(something));
 }
 
 template <typename INPUT, typename OUTPUT, bool HAS_MEMBER_FROM_STRING, bool IS_ENUM>
@@ -150,7 +150,7 @@ struct FromStringImpl<INPUT, OUTPUT, true, false> {
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, false, false> {
   static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
-    std::istringstream is(input);
+    std::istringstream is(std::forward<INPUT>(input));
     if (!(is >> output)) {
       // Default initializer, zero for primitive types.
       output = OUTPUT();
@@ -162,7 +162,7 @@ struct FromStringImpl<INPUT, OUTPUT, false, false> {
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, false, true> {
   static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
-    std::istringstream is(input);
+    std::istringstream is(std::forward<INPUT>(input));
     using underlying_output_t = typename std::underlying_type<OUTPUT>::type;
     underlying_output_t underlying_output;
     if (!(is >> underlying_output)) {
@@ -186,7 +186,7 @@ struct FromStringImpl<INPUT, bool, false, false> {
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
   static const std::chrono::milliseconds& Go(INPUT&& input, std::chrono::milliseconds& output) {
-    std::istringstream is(input);
+    std::istringstream is(std::forward<INPUT>(input));
     int64_t underlying_output;
     if (!(is >> underlying_output)) {
       underlying_output = 0ll;
@@ -199,7 +199,7 @@ struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
   static const std::chrono::microseconds& Go(INPUT&& input, std::chrono::microseconds& output) {
-    std::istringstream is(input);
+    std::istringstream is(std::forward<INPUT>(input));
     int64_t underlying_output;
     if (!(is >> underlying_output)) {
       underlying_output = 0ll;
@@ -211,7 +211,7 @@ struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
 
 template <typename INPUT>
 inline const std::string& FromString(INPUT&& input, std::string& output) {
-  output = input;
+  output = std::forward<INPUT>(input);
   return output;
 }
 

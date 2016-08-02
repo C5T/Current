@@ -81,7 +81,7 @@ using key_accessor_t = typename vs_impl_key_accessor_t<ENTRY>::type;
 #endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
-typename key_accessor_t<ENTRY>::key_t GetKey(const ENTRY& entry) {
+decltype(key_accessor_t<ENTRY>::GetKey(std::declval<const ENTRY&>())) GetKey(const ENTRY& entry) {
   return key_accessor_t<ENTRY>::GetKey(entry);
 }
 
@@ -136,7 +136,7 @@ template <typename ENTRY>
 using row_accessor_t = impl_row_accessor_t<ENTRY, HasRowFunction<ENTRY>(0)>;
 
 template <typename ENTRY>
-typename row_accessor_t<ENTRY>::row_t GetRow(const ENTRY& entry) {
+decltype(row_accessor_t<ENTRY>::GetRow(std::declval<const ENTRY&>())) GetRow(const ENTRY& entry) {
   return row_accessor_t<ENTRY>::GetRow(entry);
 }
 
@@ -187,7 +187,7 @@ template <typename ENTRY>
 using col_accessor_t = impl_col_accessor_t<ENTRY, HasColFunction<ENTRY>(0)>;
 
 template <typename ENTRY>
-typename col_accessor_t<ENTRY>::col_t GetCol(const ENTRY& entry) {
+decltype(col_accessor_t<ENTRY>::GetCol(std::declval<const ENTRY&>())) GetCol(const ENTRY& entry) {
   return col_accessor_t<ENTRY>::GetCol(entry);
 }
 
