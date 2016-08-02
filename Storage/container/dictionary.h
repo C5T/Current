@@ -40,7 +40,7 @@ namespace container {
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, template <typename...> class MAP>
 class GenericDictionary {
  public:
-  using key_t = sfinae::ENTRY_KEY_TYPE<T>;
+  using key_t = sfinae::entry_key_t<T>;
   using map_t = MAP<key_t, T>;
   using semantics_t = storage::semantics::Dictionary;
 

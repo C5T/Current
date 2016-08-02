@@ -114,11 +114,9 @@ struct FieldTypeDependentImpl<semantics::primary_key::RowCol> {
                                        current::ToString(current::storage::sfinae::GetCol(key))));
   }
 
-  // TODO(dkorolev): `RECORD` -> `ENTRY` and `decltype` -> `key_t` or `sfinae::...`?
-  template <typename RECORD>
-  static auto ExtractOrComposeKey(const RECORD& entry)
-      -> std::pair<decltype(current::storage::sfinae::GetRow(std::declval<RECORD>())),
-                   decltype(current::storage::sfinae::GetCol(std::declval<RECORD>()))> {
+  template <typename ENTRY>
+  static std::pair<current::storage::sfinae::entry_row_t<ENTRY>, current::storage::sfinae::entry_col_t<ENTRY>>
+  ExtractOrComposeKey(const ENTRY& entry) {
     return std::make_pair(current::storage::sfinae::GetRow(entry), current::storage::sfinae::GetCol(entry));
   }
 };

@@ -53,19 +53,25 @@ struct impl_key_accessor_t {};
 
 template <typename ENTRY>
 struct impl_key_accessor_t<ENTRY, false> {
-  typedef decltype(std::declval<ENTRY>().key) key_t;
-  static CF<key_t> GetKey(const ENTRY& entry) { return entry.key; }
-  static void SetKey(ENTRY& entry, key_t key) { entry.key = key; }
+  using key_t = decltype(ENTRY::key);
+  using cf_key_t = CF<key_t>;
+
+  static cf_key_t GetKey(const ENTRY& entry) { return entry.key; }
+  static void SetKey(ENTRY& entry, cf_key_t key) { entry.key = key; }
 };
 
 template <typename ENTRY>
 struct impl_key_accessor_t<ENTRY, true> {
-  typedef decltype(std::declval<ENTRY>().key()) key_t;
-  // Can not return a reference to a temporary.
-  static const key_t GetKey(const ENTRY& entry) { return entry.key(); }
-  static void SetKey(ENTRY& entry, CF<key_t> key) { entry.set_key(key); }
+  // CF return type by design.
+  using cf_key_t = decltype(std::declval<ENTRY>().key());
+  using key_t = current::decay<cf_key_t>;
+  static_assert(std::is_same<cf_key_t, CF<key_t>>::value, "");
+
+  static cf_key_t GetKey(const ENTRY& entry) { return entry.key(); }
+  static void SetKey(ENTRY& entry, cf_key_t key) { entry.set_key(key); }
 };
 
+// TODO: Check if it is still needed on VS.
 #ifndef CURRENT_WINDOWS
 template <typename ENTRY>
 using key_accessor_t = impl_key_accessor_t<ENTRY, HasKeyMethod<ENTRY>(0)>;
@@ -81,15 +87,15 @@ using key_accessor_t = typename vs_impl_key_accessor_t<ENTRY>::type;
 #endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
-typename key_accessor_t<ENTRY>::key_t GetKey(const ENTRY& entry) {
+using entry_key_t = typename key_accessor_t<ENTRY>::key_t;
+
+template <typename ENTRY>
+typename key_accessor_t<ENTRY>::cf_key_t GetKey(const ENTRY& entry) {
   return key_accessor_t<ENTRY>::GetKey(entry);
 }
 
 template <typename ENTRY>
-using ENTRY_KEY_TYPE = current::decay<typename key_accessor_t<ENTRY>::key_t>;
-
-template <typename ENTRY>
-void SetKey(ENTRY& entry, CF<ENTRY_KEY_TYPE<ENTRY>> key) {
+void SetKey(ENTRY& entry, typename key_accessor_t<ENTRY>::cf_key_t key) {
   key_accessor_t<ENTRY>::SetKey(entry, key);
 }
 
@@ -112,39 +118,47 @@ struct impl_row_accessor_t {};
 
 template <typename ENTRY>
 struct impl_row_accessor_t<ENTRY, false> {
-  typedef decltype(std::declval<ENTRY>().row) row_t;
-  static CF<row_t> GetRow(const ENTRY& entry) { return entry.row; }
-  static void SetRow(ENTRY& entry, CF<row_t> row) { entry.row = row; }
+  using row_t = decltype(ENTRY::row);
+  using cf_row_t = CF<row_t>;
+
+  static cf_row_t GetRow(const ENTRY& entry) { return entry.row; }
+  static void SetRow(ENTRY& entry, cf_row_t row) { entry.row = row; }
 };
 
 template <typename ENTRY>
 struct impl_row_accessor_t<ENTRY, true> {
-  typedef decltype(std::declval<ENTRY>().row()) row_t;
-  // Can not return a reference to a temporary.
-  static const row_t GetRow(const ENTRY& entry) { return entry.row(); }
-  static void SetRow(ENTRY& entry, CF<row_t> row) { entry.set_row(row); }
+  using cf_row_t = decltype(std::declval<ENTRY>().row());
+  using row_t = current::decay<decltype(std::declval<ENTRY>().row())>;
+  static_assert(std::is_same<cf_row_t, CF<row_t>>::value, "");
+
+  static cf_row_t GetRow(const ENTRY& entry) { return entry.row(); }
+  static void SetRow(ENTRY& entry, cf_row_t row) { entry.set_row(row); }
 };
 
 template <typename ROW, typename COL>
 struct impl_row_accessor_t<std::pair<ROW, COL>, false> {
-  typedef ROW row_t;
-  static CF<row_t> GetRow(const std::pair<ROW, COL>& entry) { return entry.first; }
-  static void SetRow(std::pair<ROW, COL>& entry, CF<row_t> row) { entry.first = row; }
+  static_assert(std::is_same<ROW, current::decay<ROW>>::value, "");
+  using pair_t = std::pair<ROW, COL>;
+  using row_t = ROW;
+  using cf_row_t = CF<ROW>;
+
+  static cf_row_t GetRow(const pair_t& entry) { return entry.first; }
+  static void SetRow(pair_t& entry, cf_row_t row) { entry.first = row; }
 };
 
 template <typename ENTRY>
 using row_accessor_t = impl_row_accessor_t<ENTRY, HasRowFunction<ENTRY>(0)>;
 
 template <typename ENTRY>
-typename row_accessor_t<ENTRY>::row_t GetRow(const ENTRY& entry) {
+typename row_accessor_t<ENTRY>::cf_row_t GetRow(const ENTRY& entry) {
   return row_accessor_t<ENTRY>::GetRow(entry);
 }
 
 template <typename ENTRY>
-using entry_row_t = current::decay<typename row_accessor_t<ENTRY>::row_t>;
+using entry_row_t = typename row_accessor_t<ENTRY>::row_t;
 
 template <typename ENTRY>
-void SetRow(ENTRY& entry, CF<entry_row_t<ENTRY>> row) {
+void SetRow(ENTRY& entry, typename row_accessor_t<ENTRY>::cf_row_t row) {
   row_accessor_t<ENTRY>::SetRow(entry, row);
 }
 
@@ -163,39 +177,47 @@ struct impl_col_accessor_t {};
 
 template <typename ENTRY>
 struct impl_col_accessor_t<ENTRY, false> {
-  typedef decltype(std::declval<ENTRY>().col) col_t;
-  static CF<col_t> GetCol(const ENTRY& entry) { return entry.col; }
-  static void SetCol(ENTRY& entry, CF<col_t> col) { entry.col = col; }
+  using col_t = decltype(ENTRY::col);
+  using cf_col_t = CF<col_t>;
+
+  static cf_col_t GetCol(const ENTRY& entry) { return entry.col; }
+  static void SetCol(ENTRY& entry, cf_col_t col) { entry.col = col; }
 };
 
 template <typename ENTRY>
 struct impl_col_accessor_t<ENTRY, true> {
-  typedef decltype(std::declval<ENTRY>().col()) col_t;
-  // Can not return a reference to a temporary.
-  static const col_t GetCol(const ENTRY& entry) { return entry.col(); }
-  static void SetCol(ENTRY& entry, CF<col_t> col) { entry.set_col(col); }
+  using cf_col_t = decltype(std::declval<ENTRY>().col());
+  using col_t = current::decay<decltype(std::declval<ENTRY>().col())>;
+  static_assert(std::is_same<cf_col_t, CF<col_t>>::value, "");
+
+  static cf_col_t GetCol(const ENTRY& entry) { return entry.col(); }
+  static void SetCol(ENTRY& entry, cf_col_t col) { entry.set_col(col); }
 };
 
 template <typename ROW, typename COL>
 struct impl_col_accessor_t<std::pair<ROW, COL>, false> {
-  typedef COL col_t;
-  static CF<col_t> GetCol(const std::pair<ROW, COL>& entry) { return entry.second; }
-  static void SetCol(std::pair<ROW, COL>& entry, CF<col_t> col) { entry.second = col; }
+  static_assert(std::is_same<COL, current::decay<COL>>::value, "");
+  using pair_t = std::pair<ROW, COL>;
+  using col_t = COL;
+  using cf_col_t = CF<COL>;
+
+  static cf_col_t GetCol(const pair_t& entry) { return entry.second; }
+  static void SetCol(pair_t& entry, cf_col_t col) { entry.second = col; }
 };
 
 template <typename ENTRY>
 using col_accessor_t = impl_col_accessor_t<ENTRY, HasColFunction<ENTRY>(0)>;
 
 template <typename ENTRY>
-typename col_accessor_t<ENTRY>::col_t GetCol(const ENTRY& entry) {
+typename col_accessor_t<ENTRY>::cf_col_t GetCol(const ENTRY& entry) {
   return col_accessor_t<ENTRY>::GetCol(entry);
 }
 
 template <typename ENTRY>
-using entry_col_t = current::decay<typename col_accessor_t<ENTRY>::col_t>;
+using entry_col_t = typename col_accessor_t<ENTRY>::col_t;
 
 template <typename ENTRY>
-void SetCol(ENTRY& entry, CF<entry_col_t<ENTRY>> col) {
+void SetCol(ENTRY& entry, typename col_accessor_t<ENTRY>::cf_col_t col) {
   col_accessor_t<ENTRY>::SetCol(entry, col);
 }
 
