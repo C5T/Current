@@ -240,7 +240,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   }
 
   // The implementation of the subscriber in `PubSubHTTPEndpointImpl` is an example of using:
-  // * `curent` as the second parameter,
+  // * `current` as the second parameter,
   // * `last` as the third parameter, and
   // * `EntryResponse` as the return value.
   // It does so to respect the URL parameters of the range of entries to subscribe to.

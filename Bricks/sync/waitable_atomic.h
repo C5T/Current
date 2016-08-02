@@ -53,8 +53,7 @@ class CustomWaitableAtomicDestructor {
 class ScopedUniqueLock {
  public:
   explicit ScopedUniqueLock(std::mutex& mutex) : lock_(mutex) {}
-  ~ScopedUniqueLock() {}
-  ScopedUniqueLock(ScopedUniqueLock&& rhs) { lock_ = std::move(rhs.lock_); }
+  ScopedUniqueLock(ScopedUniqueLock&& rhs) : lock_(std::move(rhs.lock_)) {}
 
  private:
   std::unique_lock<std::mutex> lock_;
@@ -121,6 +120,7 @@ class WaitableAtomicImpl {
        public:
         explicit ImmutableAccessorDoesNotNotify(POINTER*) {}
       };
+
       class MutableAccessorDoesNotify {
        public:
         explicit MutableAccessorDoesNotify(POINTER* parent) : parent_(parent), mark_as_unmodified_(false) {}
@@ -135,21 +135,21 @@ class WaitableAtomicImpl {
         POINTER* parent_;
         bool mark_as_unmodified_;
       };
-      typedef typename std::conditional<std::is_const<POINTER>::value,
-                                        ImmutableAccessorDoesNotNotify,
-                                        MutableAccessorDoesNotify>::type type;
+
+      using impl_t = typename std::conditional<std::is_const<POINTER>::value,
+                                               ImmutableAccessorDoesNotNotify,
+                                               MutableAccessorDoesNotify>::type;
     };
 
     // A generic implementation for both mutable and immutable scoped accessors.
     template <class PARENT>
-    class ScopedAccessorImpl : private ScopedUniqueLock, public NotifyIfMutable<PARENT>::type {
+    class ScopedAccessorImpl : private ScopedUniqueLock, public NotifyIfMutable<PARENT>::impl_t {
      public:
-      typedef PARENT parent_t;
-      typedef typename NotifyIfMutable<PARENT>::type optional_notifier_t;
-
-      typedef typename std::conditional<std::is_const<parent_t>::value,
-                                        const typename parent_t::data_t,
-                                        typename parent_t::data_t>::type data_t;
+      using parent_t = PARENT;
+      using optional_notifier_t = typename NotifyIfMutable<PARENT>::impl_t;
+      using data_t = typename std::conditional<std::is_const<parent_t>::value,
+                                               const typename parent_t::data_t,
+                                               typename parent_t::data_t>::type;
 
       explicit ScopedAccessorImpl(parent_t* parent)
           : ScopedUniqueLock(parent->data_mutex_), optional_notifier_t(parent), pdata_(&parent->data_) {}
@@ -163,15 +163,15 @@ class WaitableAtomicImpl {
       ScopedAccessorImpl(const ScopedAccessorImpl&) = delete;
       void operator=(const ScopedAccessorImpl&) = delete;
 
-      data_t* operator->() { return pdata_; }
-      data_t& operator*() { return *pdata_; }
+      data_t* operator->() const { return pdata_; }
+      data_t& operator*() const { return *pdata_; }
 
      private:
       data_t* pdata_;
     };
 
-    typedef ScopedAccessorImpl<BasicImpl> MutableAccessor;
-    typedef ScopedAccessorImpl<const BasicImpl> ImmutableAccessor;
+    using MutableAccessor = ScopedAccessorImpl<BasicImpl>;
+    using ImmutableAccessor = ScopedAccessorImpl<const BasicImpl>;
 
     friend class ScopedAccessorImpl<BasicImpl>;
     friend class ScopedAccessorImpl<const BasicImpl>;

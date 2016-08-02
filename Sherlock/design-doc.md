@@ -130,7 +130,7 @@ Data from streams can be replicated. Replication can be thought of as a simple u
 
 (`TODO(dkorolev): Security and authentication.`)
 
-The recommended usecase of Sherlock is to replicate each data stream locally before working with it. This ensures that between re-runs of the binary, only the newly added entries are read by the master transferred over the netwoe
+The recommended usecase of Sherlock is to replicate each data stream locally before working with it. This ensures that between re-runs of the binary, only the newly added entries are read by the master transferred over the network
 
 ## HEAD Pointer
 
@@ -145,7 +145,7 @@ TBD: A way to notify that the order key has updated without new entries being ad
 
 ## Background
 
-The reader of this design doc is expected to be familiar with `Current`, most notably, the TypeSystem part of it (`"TypeSystem/"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Bricks/mq/inmemory"`) and WaitableAtomic (`"Bricks/waitable_atomic"`).
+The reader of this design doc is expected to be familiar with `Current`, most notably, the TypeSystem part of it (`"TypeSystem/"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Blocks/MMQ"`) and WaitableAtomic (`"Bricks/sync/waitable_atomic.h"`).
 
 ## Naming
 
