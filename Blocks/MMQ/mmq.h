@@ -73,19 +73,25 @@ class MMQImpl {
   using consumer_t = CONSUMER;
 
   MMQImpl(consumer_t& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : consumer_(consumer),
+      : consumer_thread_created_(false),
+        consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
-        consumer_thread_(&MMQImpl::ConsumerThread, this) {}
+        consumer_thread_(&MMQImpl::ConsumerThread, this) {
+    consumer_thread_created_ = true;
+  }
 
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
   ~MMQImpl() {
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      destructing_ = true;
+    if (consumer_thread_created_) {
+      assert(consumer_thread_.joinable());
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        destructing_ = true;
+        condition_variable_.notify_all();
+      }
+      consumer_thread_.join();
     }
-    condition_variable_.notify_all();
-    consumer_thread_.join();
   }
 
  protected:
@@ -151,13 +157,8 @@ class MMQImpl {
         // Get the next message, which is `READY` to be exported.
         // MUTEX-LOCKED, except for the condition variable part.
         std::unique_lock<std::mutex> lock(mutex_);
-        while (circular_buffer_[tail].status != Entry::READY) {
-          if (destructing_) {
-            return;
-          }
-          condition_variable_.wait(
-              lock, [this, tail] { return (circular_buffer_[tail].status == Entry::READY) || destructing_; });
-        }
+        condition_variable_.wait(
+            lock, [this, tail] { return (circular_buffer_[tail].status == Entry::READY) || destructing_; });
         if (destructing_) {
           return;  // LCOV_EXCL_LINE
         }
@@ -244,6 +245,8 @@ class MMQImpl {
     circular_buffer_[index].status = Entry::READY;
     condition_variable_.notify_all();
   }
+
+  bool consumer_thread_created_;
 
   // The instance of the consuming side of the FIFO buffer.
   consumer_t& consumer_;
