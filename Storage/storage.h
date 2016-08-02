@@ -64,7 +64,7 @@ SOFTWARE.
 #include "../Bricks/exception.h"
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/waitable_atomic/waitable_atomic.h"
+#include "../Bricks/sync/waitable_atomic.h"
 
 namespace current {
 namespace storage {
