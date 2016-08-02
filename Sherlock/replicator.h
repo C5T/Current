@@ -180,7 +180,7 @@ class SubscribableRemoteStream final {
       subscription_id_.Wait([this](const std::string& id) { return !id.empty() || subscriber_thread_done_; });
       bool already_terminated = false;
       if (terminate_subscription_requested_.compare_exchange_weak(already_terminated, true)) {
-        auto subscription_id_scope = subscription_id_.ImmutableScopedAccessor();
+        const auto subscription_id_scope = subscription_id_.ImmutableScopedAccessor();
         const std::string& subscription_id = *subscription_id_scope;
         if (!subscription_id.empty()) {
           const std::string terminate_url =
