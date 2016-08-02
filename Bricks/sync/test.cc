@@ -269,5 +269,5 @@ TEST(WaitableAtomic, IntrusiveClientsCanBeTransferred) {
 
   WaitableAtomic<bool, true> object;
   auto f = [](IntrusiveClient& c) { static_cast<void>(c); };
-  thread([&f](IntrusiveClient c) { f(c); }, object.RegisterScopedClient()).detach();
+  std::thread([&f](IntrusiveClient c) { f(c); }, object.RegisterScopedClient()).detach();
 }
