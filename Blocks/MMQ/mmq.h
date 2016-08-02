@@ -73,7 +73,8 @@ class MMQImpl {
   using consumer_t = CONSUMER;
 
   MMQImpl(consumer_t& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : consumer_(consumer),
+      : consumer_thread_created_(false),
+        consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
         consumer_thread_(&MMQImpl::ConsumerThread, this) {
@@ -245,6 +246,8 @@ class MMQImpl {
     condition_variable_.notify_all();
   }
 
+  bool consumer_thread_created_;
+
   // The instance of the consuming side of the FIFO buffer.
   consumer_t& consumer_;
 
@@ -273,7 +276,6 @@ class MMQImpl {
 
   // The thread in which the consuming process is running.
   std::thread consumer_thread_;
-  bool consumer_thread_created_ = false;
 };
 
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
