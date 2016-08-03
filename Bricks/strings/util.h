@@ -65,53 +65,48 @@ constexpr auto HasMemberFromString(int)
 
 }  // namespace sfinae
 
+// Default implepentation for arithmetic types calling `std::to_string`.
 template <typename DECAYED_T, bool HAS_MEMBER_TO_STRING, bool IS_ENUM>
 struct ToStringImpl {
-  template <bool B = std::is_pod<DECAYED_T>::value>
+  template <bool B = std::is_arithmetic<DECAYED_T>::value>
   static ENABLE_IF<B, std::string> DoIt(DECAYED_T value) {
     return std::to_string(value);
   }
 };
 
+// `bool`.
+template <>
+struct ToStringImpl<bool, false, false> {
+  static std::string DoIt(bool b) { return b ? "true" : "false"; }
+};
+
+// Types that implement the `ToString()` method.
+template <typename DECAYED_T>
+struct ToStringImpl<DECAYED_T, true, false> {
+  static std::string DoIt(const DECAYED_T& x) { return x.ToString(); }
+};
+
+// Enums.
 template <typename DECAYED_T>
 struct ToStringImpl<DECAYED_T, false, true> {
-  template <bool B = std::is_pod<DECAYED_T>::value>
-  static ENABLE_IF<B, std::string> DoIt(DECAYED_T value) {
+  static std::string DoIt(DECAYED_T value) {
     return std::to_string(static_cast<typename std::underlying_type<DECAYED_T>::type>(value));
   }
 };
 
-template <typename DECAYED_T, bool B>
-struct ToStringImpl<DECAYED_T, true, B> {
-  template <typename T>
-  static std::string DoIt(T&& x) {
-    return x.ToString();
-  }
-};
-
+// `std::string`.
 template <>
 struct ToStringImpl<std::string, false, false> {
-  template <typename T>
-  static std::string DoIt(T&& s) {
-    return std::string(s);
-  }
+  static std::string DoIt(const std::string& s) { return s; }
 };
 
-template <>
-struct ToStringImpl<std::chrono::milliseconds, false, false> {
-  static std::string DoIt(std::chrono::milliseconds t) { return std::to_string(t.count()); }
-};
-
-template <>
-struct ToStringImpl<std::chrono::microseconds, false, false> {
-  static std::string DoIt(std::chrono::microseconds t) { return std::to_string(t.count()); }
-};
-
+// `const char*`.
 template <>
 struct ToStringImpl<char*, false, false> {  // Decayed type in template parameters list.
   static std::string DoIt(const char* string) { return string; }
 };
 
+// `const char[]`.
 template <int N>
 struct ToStringImpl<char[N], false, false> {  // Decayed type in template parameters list.
   static std::string DoIt(const char string[N]) {
@@ -119,20 +114,28 @@ struct ToStringImpl<char[N], false, false> {  // Decayed type in template parame
   }
 };
 
+// `char`.
 template <>
 struct ToStringImpl<char, false, false> {
   static std::string DoIt(char c) { return std::string(1u, c); }
 };
 
+// `std::chrono::milliseconds`.
 template <>
-struct ToStringImpl<bool, false, false> {
-  static std::string DoIt(bool b) { return b ? "true" : "false"; }
+struct ToStringImpl<std::chrono::milliseconds, false, false> {
+  static std::string DoIt(std::chrono::milliseconds t) { return std::to_string(t.count()); }
+};
+
+// `std::chrono::microseconds`.
+template <>
+struct ToStringImpl<std::chrono::microseconds, false, false> {
+  static std::string DoIt(std::chrono::microseconds t) { return std::to_string(t.count()); }
 };
 
 template <typename T>
 inline std::string ToString(T&& something) {
   using decayed_t = current::decay<T>;
-  return ToStringImpl<decayed_t, sfinae::HasMemberToString<T>(0), std::is_enum<decayed_t>::value>::DoIt(
+  return ToStringImpl<decayed_t, sfinae::HasMemberToString<decayed_t>(0), std::is_enum<decayed_t>::value>::DoIt(
       std::forward<T>(something));
 }
 
@@ -150,7 +153,7 @@ struct FromStringImpl<INPUT, OUTPUT, true, false> {
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, false, false> {
   static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
-    std::istringstream is(std::forward<INPUT>(input));
+    std::istringstream is(input);
     if (!(is >> output)) {
       // Default initializer, zero for primitive types.
       output = OUTPUT();
@@ -162,7 +165,7 @@ struct FromStringImpl<INPUT, OUTPUT, false, false> {
 template <typename INPUT, typename OUTPUT>
 struct FromStringImpl<INPUT, OUTPUT, false, true> {
   static const OUTPUT& Go(INPUT&& input, OUTPUT& output) {
-    std::istringstream is(std::forward<INPUT>(input));
+    std::istringstream is(input);
     using underlying_output_t = typename std::underlying_type<OUTPUT>::type;
     underlying_output_t underlying_output;
     if (!(is >> underlying_output)) {
@@ -186,7 +189,7 @@ struct FromStringImpl<INPUT, bool, false, false> {
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
   static const std::chrono::milliseconds& Go(INPUT&& input, std::chrono::milliseconds& output) {
-    std::istringstream is(std::forward<INPUT>(input));
+    std::istringstream is(input);
     int64_t underlying_output;
     if (!(is >> underlying_output)) {
       underlying_output = 0ll;
@@ -199,7 +202,7 @@ struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
   static const std::chrono::microseconds& Go(INPUT&& input, std::chrono::microseconds& output) {
-    std::istringstream is(std::forward<INPUT>(input));
+    std::istringstream is(input);
     int64_t underlying_output;
     if (!(is >> underlying_output)) {
       underlying_output = 0ll;
@@ -211,7 +214,7 @@ struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
 
 template <typename INPUT>
 inline const std::string& FromString(INPUT&& input, std::string& output) {
-  output = std::forward<INPUT>(input);
+  output = input;
   return output;
 }
 
