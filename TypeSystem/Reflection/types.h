@@ -172,7 +172,7 @@ CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
     if (Exists(template_id)) {
       // TODO(dkorolev): This code relies on `<>` at the end of the names of `CURRENT_STRUCT_T`-s. Fix it.
       assert(native_name.length() > 2);
-      assert(native_name.substr(native_name.length() - 2) == "<>");
+      assert(native_name.substr(native_name.length() - 2) == "_Z");
       return native_name.substr(0, native_name.length() - 2) + "_T" + current::ToString(Value(template_id));
     } else {
       return native_name;

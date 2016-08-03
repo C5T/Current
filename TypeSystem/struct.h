@@ -197,7 +197,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <>                                                                                               \
   struct CURRENT_REFLECTION_T_HELPER<s> {                                                                   \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                    \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                  \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }                                  \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT;  \
     using FIELD_INDEX_BASE = ::current::reflection::FIELD_INDEX_BASE_IMPL<CURRENT_REFLECTION_T_HELPER<s>>;  \
   };                                                                                                        \
@@ -237,7 +237,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <>                                                                                              \
   struct CURRENT_REFLECTION_T_HELPER<s> {                                                                  \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                   \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }                                 \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
     using FIELD_INDEX_BASE = ::current::reflection::FIELD_INDEX_BASE_IMPL<CURRENT_REFLECTION_T_HELPER<s>>; \
   }
