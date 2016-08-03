@@ -83,7 +83,8 @@ template <typename TEST, typename T>
 struct ExistsImplCaller {
   template <typename TT = T>
   static bool CallExistsImpl(TT&& x) {
-    return ExistsImplCallerRespectingVariant<TEST, T, IS_VARIANT(TT)>::CallExistsImpl(std::forward<TT>(x));
+    return ExistsImplCallerRespectingVariant<TEST, T, IS_CURRENT_VARIANT(TT)>::CallExistsImpl(
+        std::forward<TT>(x));
   }
 };
 

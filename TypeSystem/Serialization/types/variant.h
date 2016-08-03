@@ -54,7 +54,7 @@ namespace save {
 using current::ThreadLocalSingleton;
 
 template <typename T, JSONFormat J>
-struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
+struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
   class SaveVariantCurrentOrMinimalistic {
    public:
     SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination,
@@ -105,7 +105,7 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
                              rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
                              allocator_);
 
-      if (IS_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
+      if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
         rapidjson::Value fields_as_array;
         fields_as_array.SetArray();
         fields_as_array.PushBack(serialized_object.Move(), allocator_);
@@ -394,7 +394,7 @@ using LoadVariantPicker =
                                                         LoadVariantFSharp<T>>::type>::type;
 
 template <typename T, JSONFormat J>
-struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
+struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
   static void Load(rapidjson::Value* source, T& value, const std::string& path) {
     if (!source || source->IsNull()) {
       if (J != JSONFormat::Minimalistic) {
