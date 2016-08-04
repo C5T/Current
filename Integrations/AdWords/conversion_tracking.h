@@ -57,6 +57,7 @@ class AdWordsMobileConversionEventsSender final {
             params.label.c_str(),
             params.bundleid.c_str(),
             params.idtype.c_str())) {
+#ifndef CURRENT_CI
     const std::string url = strings::Printf("localhost:%d/.current/googleadservices", port);
     const std::string golden = "https://www.googleadservices.com/\n";
     std::string actual;
@@ -90,16 +91,22 @@ server {
           golden.c_str(),
           actual.c_str()));
     }
+#endif  // CURRENT_CI
   }
 
   // Sends one conversion event. Returns `true` on success.
   // The `rdid` parameter is the advertising ID on iOS.
   // Doc: https://developers.google.com/app-conversion-tracking/ios/conversion-tracking-server
   bool SendConversionEvent(const std::string& rdid) const {
+#ifdef CURRENT_CI
+    static_cast<void>(rdid);
+    return true;
+#else
     // TODO: Look into "instant confirmation of app conversions" (*), where 302 is OK too.
     // (*) https://developers.google.com/app-conversion-tracking/ios/install-confirm)
     const auto response = HTTP(GET(get_url_ + rdid));
     return response.code == HTTPResponseCode.OK;
+#endif  // CURRENT_CI
   }
 
  private:

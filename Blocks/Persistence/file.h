@@ -110,7 +110,7 @@ class FilePersister {
   static_assert(sizeof(end_t) == 16, "");
 
  private:
-  struct FilePersisterImpl {
+  struct FilePersisterImpl final {
     const std::string filename;
     std::ofstream appender;
 
@@ -125,6 +125,11 @@ class FilePersister {
     current::atomic_that_works<end_t> end;
 
     FilePersisterImpl() = delete;
+    FilePersisterImpl(const FilePersisterImpl&) = delete;
+    FilePersisterImpl(FilePersisterImpl&&) = delete;
+    FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
+    FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
+
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
@@ -164,7 +169,13 @@ class FilePersister {
   };
 
  public:
-  FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
+  FilePersister() = delete;
+  FilePersister(const FilePersister&) = delete;
+  FilePersister(FilePersister&&) = delete;
+  FilePersister& operator=(const FilePersister&) = delete;
+  FilePersister& operator=(FilePersister&&) = delete;
+
+  explicit FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
 
   class IterableRange {
    public:
@@ -182,8 +193,14 @@ class FilePersister {
       ENTRY entry;
     };
 
-    class Iterator {
+    class Iterator final {
      public:
+      Iterator() = delete;
+      Iterator(const Iterator&) = delete;
+      Iterator(Iterator&&) = default;
+      Iterator& operator=(const Iterator&) = delete;
+      Iterator& operator=(Iterator&&) = default;
+
       Iterator(ScopeOwned<FilePersisterImpl>& file_persister_impl,
                const std::string& filename,
                uint64_t i,
