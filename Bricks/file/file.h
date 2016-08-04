@@ -79,7 +79,7 @@ struct FileSystem {
       const size_t size = static_cast<size_t>(fi.tellg());
       std::string buffer(size, '\0');
       fi.seekg(0);
-      if (fi.read(&buffer[0], size).good()) {
+      if (!fi.read(&buffer[0], size).bad()) {
         return buffer;
       } else {
         CURRENT_THROW(FileException());  // LCOV_EXCL_LINE: This line not unit tested.

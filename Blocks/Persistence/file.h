@@ -56,7 +56,7 @@ class IteratorOverFileOfPersistedEntries {
  public:
   explicit IteratorOverFileOfPersistedEntries(std::istream& fi, std::streampos offset, uint64_t index_at_offset)
       : fi_(fi), next_(index_at_offset, std::chrono::microseconds(0)) {
-    assert(fi_.good());
+    assert(!fi_.bad());
     if (offset) {
       fi_.seekg(offset, std::ios_base::beg);
     }
@@ -129,7 +129,7 @@ class FilePersister {
         : filename(filename),
           appender(filename, std::ofstream::app),
           end(ValidateFileAndInitializeNext(filename, offset, timestamp)) {
-      if (!appender.good()) {
+      if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
@@ -139,7 +139,7 @@ class FilePersister {
                                                std::vector<std::streampos>& offset,
                                                std::vector<std::chrono::microseconds>& timestamp) {
       std::ifstream fi(filename);
-      if (fi.good()) {
+      if (!fi.bad()) {
         // Read through all the lines.
         // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
         // While reading the file, record the offset of each record and store it in `offset`.
@@ -296,6 +296,7 @@ class FilePersister {
     {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
       assert(file_persister_impl_->offset.size() == iterator.index);
+      assert(file_persister_impl_->timestamp.size() == iterator.index);
       file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
       file_persister_impl_->timestamp.push_back(timestamp);
     }

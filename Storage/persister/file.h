@@ -57,8 +57,8 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
       std::ofstream os(filename_, std::fstream::app);
-      if (!os.good()) {
-        throw StorageCannotAppendToFileException(filename_);  // LCOV_EXCL_LINE
+      if (os.bad()) {
+        CURRENT_THROW(StorageCannotAppendToFileException(filename_));  // LCOV_EXCL_LINE
       }
       for (auto&& entry : journal.commit_log) {
         os << JSON(variant_t(std::move(entry))) << '\n';
@@ -75,7 +75,7 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
   template <typename F>
   void Replay(F&& f) {
     std::ifstream is(filename_);
-    if (is.good()) {
+    if (!is.bad()) {
       for (std::string line; std::getline(is, line);) {
         f(std::move(ParseJSON<variant_t>(line)));
       }

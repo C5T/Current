@@ -154,7 +154,7 @@ using row_accessor_t = impl_row_accessor_t<ENTRY, HasRowMethod<ENTRY>(0)>;
 // Work around it by introducing another `struct`. -- D.K.
 template <typename ENTRY>
 struct vs_impl_row_accessor_t {
-	typedef impl_row_accessor_t<ENTRY, HasRowMethod<ENTRY>(0)> type;
+  typedef impl_row_accessor_t<ENTRY, HasRowMethod<ENTRY>(0)> type;
 };
 template <typename ENTRY>
 using row_accessor_t = typename vs_impl_row_accessor_t<ENTRY>::type;
@@ -225,7 +225,7 @@ using col_accessor_t = impl_col_accessor_t<ENTRY, HasColMethod<ENTRY>(0)>;
 // Work around it by introducing another `struct`. -- D.K.
 template <typename ENTRY>
 struct vs_impl_col_accessor_t {
-	typedef impl_col_accessor_t<ENTRY, HasColMethod<ENTRY>(0)> type;
+  typedef impl_col_accessor_t<ENTRY, HasColMethod<ENTRY>(0)> type;
 };
 template <typename ENTRY>
 using col_accessor_t = typename vs_impl_col_accessor_t<ENTRY>::type;
