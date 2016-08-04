@@ -72,6 +72,7 @@ class IOSPushNotificationsSender final {
  public:
   IOSPushNotificationsSender(const std::string& app_id, uint16_t port = kDefaultOneSignalIntegrationPort)
       : app_id_(app_id), post_url_(strings::Printf("localhost:%d", port)) {
+#ifndef CURRENT_CI
     const std::string url = strings::Printf("localhost:%d/.current", port);
     const std::string golden = "https://onesignal.com/api/v1/notifications\n";
     std::string actual;
@@ -102,6 +103,7 @@ server {
           golden.c_str(),
           actual.c_str()));
     }
+#endif
   }
 
   // Send one iOS push notification.
@@ -111,6 +113,12 @@ server {
   bool Push(const std::string& recipient_player_id,
             const std::string& message = "",
             int32_t increase_counter = 0) const {
+#ifdef CURRENT_CI
+    static_cast<void>(recipient_player_id);
+    static_cast<void>(message);
+    static_cast<void>(increase_counter);
+    return true;
+#else
     if (message.empty() && !increase_counter) {
       return true;
     } else {
@@ -164,6 +172,7 @@ server {
         return false;
       }
     }
+#endif  // CURRENT_CI
   }
 
   bool Push(const std::string& recipient_player_id, int32_t increase_counter) const {
