@@ -177,20 +177,21 @@ class SubscribableRemoteStream final {
     }
 
     void TerminateSubscription() {
-      subscription_id_.Wait([this](const std::string& id) { return !id.empty() || subscriber_thread_done_; });
-      bool already_terminated = false;
-      if (terminate_subscription_requested_.compare_exchange_weak(already_terminated, true)) {
-        auto subscription_id_scope = subscription_id_.ImmutableScopedAccessor();
-        const std::string& subscription_id = *subscription_id_scope;
-        if (!subscription_id.empty()) {
+      subscription_id_.Wait([this](const std::string& subscription_id) {
+        if (subscriber_thread_done_ || terminate_subscription_requested_) {
+          return true;
+        } else if (!subscription_id.empty()) {
+          terminate_subscription_requested_ = true;
           const std::string terminate_url =
               remote_stream_.ObjectAccessorDespitePossiblyDestructing().GetURLToTerminate(subscription_id);
           try {
             HTTP(GET(terminate_url));
           } catch (current::Exception&) {
           }
+          return true;
         }
-      }
+        return false;
+      });
     }
 
    private:
