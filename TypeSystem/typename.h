@@ -52,7 +52,7 @@ struct CurrentTypeNameImpl<T, false, true> {
 
 template <typename T>
 inline std::string CurrentTypeName() {
-  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_VARIANT(T)>::GetCurrentTypeName();
+  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T)>::GetCurrentTypeName();
 }
 
 // For JSON serialization and other repetitive operations, enable returning type name as a `const char*`.

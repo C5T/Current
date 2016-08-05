@@ -56,7 +56,7 @@ class IteratorOverFileOfPersistedEntries {
  public:
   explicit IteratorOverFileOfPersistedEntries(std::istream& fi, std::streampos offset, uint64_t index_at_offset)
       : fi_(fi), next_(index_at_offset, std::chrono::microseconds(0)) {
-    assert(fi_.good());
+    assert(!fi_.bad());
     if (offset) {
       fi_.seekg(offset, std::ios_base::beg);
     }
@@ -110,7 +110,7 @@ class FilePersister {
   static_assert(sizeof(end_t) == 16, "");
 
  private:
-  struct FilePersisterImpl {
+  struct FilePersisterImpl final {
     const std::string filename;
     std::ofstream appender;
 
@@ -125,11 +125,16 @@ class FilePersister {
     current::atomic_that_works<end_t> end;
 
     FilePersisterImpl() = delete;
+    FilePersisterImpl(const FilePersisterImpl&) = delete;
+    FilePersisterImpl(FilePersisterImpl&&) = delete;
+    FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
+    FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
+
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           end(ValidateFileAndInitializeNext(filename, offset, timestamp)) {
-      if (!appender.good()) {
+      if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
@@ -139,7 +144,7 @@ class FilePersister {
                                                std::vector<std::streampos>& offset,
                                                std::vector<std::chrono::microseconds>& timestamp) {
       std::ifstream fi(filename);
-      if (fi.good()) {
+      if (!fi.bad()) {
         // Read through all the lines.
         // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
         // While reading the file, record the offset of each record and store it in `offset`.
@@ -164,7 +169,13 @@ class FilePersister {
   };
 
  public:
-  FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
+  FilePersister() = delete;
+  FilePersister(const FilePersister&) = delete;
+  FilePersister(FilePersister&&) = delete;
+  FilePersister& operator=(const FilePersister&) = delete;
+  FilePersister& operator=(FilePersister&&) = delete;
+
+  explicit FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
 
   class IterableRange {
    public:
@@ -182,8 +193,14 @@ class FilePersister {
       ENTRY entry;
     };
 
-    class Iterator {
+    class Iterator final {
      public:
+      Iterator() = delete;
+      Iterator(const Iterator&) = delete;
+      Iterator(Iterator&&) = default;
+      Iterator& operator=(const Iterator&) = delete;
+      Iterator& operator=(Iterator&&) = default;
+
       Iterator(ScopeOwned<FilePersisterImpl>& file_persister_impl,
                const std::string& filename,
                uint64_t i,
@@ -296,6 +313,7 @@ class FilePersister {
     {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
       assert(file_persister_impl_->offset.size() == iterator.index);
+      assert(file_persister_impl_->timestamp.size() == iterator.index);
       file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
       file_persister_impl_->timestamp.push_back(timestamp);
     }

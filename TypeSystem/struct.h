@@ -197,7 +197,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <>                                                                                               \
   struct CURRENT_REFLECTION_T_HELPER<s> {                                                                   \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                    \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                  \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }                                  \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT;  \
     using FIELD_INDEX_BASE = ::current::reflection::FIELD_INDEX_BASE_IMPL<CURRENT_REFLECTION_T_HELPER<s>>;  \
   };                                                                                                        \
@@ -237,7 +237,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <>                                                                                              \
   struct CURRENT_REFLECTION_T_HELPER<s> {                                                                  \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;                                   \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }                                 \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
     using FIELD_INDEX_BASE = ::current::reflection::FIELD_INDEX_BASE_IMPL<CURRENT_REFLECTION_T_HELPER<s>>; \
   }
@@ -363,22 +363,22 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     return description;                                                 \
   }
 
-#define CURRENT_USE_FIELD_AS_KEY(field)                                       \
-  using cf_key_t = current::copy_free<decltype(field)>;                       \
-  const cf_key_t key() const { return field; }                                \
-  void set_key(const cf_key_t new_key_value) const { field = new_key_value; } \
+#define CURRENT_USE_FIELD_AS_KEY(field)                                 \
+  using cf_key_t = current::copy_free<decltype(field)>;                 \
+  cf_key_t key() const { return field; }                                \
+  void set_key(cf_key_t new_key_value) const { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_ROW(field)                                       \
-  using cf_row_t = current::copy_free<decltype(field)>;                       \
-  const cf_row_t row() const { return field; }                                \
-  void set_row(const cf_row_t new_row_value) const { field = new_row_value; } \
+#define CURRENT_USE_FIELD_AS_ROW(field)                                 \
+  using cf_row_t = current::copy_free<decltype(field)>;                 \
+  cf_row_t row() const { return field; }                                \
+  void set_row(cf_row_t new_row_value) const { field = new_row_value; } \
   using CURRENT_USE_FIELD_AS_ROW_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_COL(field)                                       \
-  using cf_col_t = current::copy_free<decltype(field)>;                       \
-  const cf_col_t col() const { return field; }                                \
-  void set_col(const cf_col_t new_col_value) const { field = new_col_value; } \
+#define CURRENT_USE_FIELD_AS_COL(field)                                 \
+  using cf_col_t = current::copy_free<decltype(field)>;                 \
+  cf_col_t col() const { return field; }                                \
+  void set_col(cf_col_t new_col_value) const { field = new_col_value; } \
   using CURRENT_USE_FIELD_AS_COL_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_TIMESTAMP(field) \

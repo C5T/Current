@@ -1758,10 +1758,10 @@ namespace transactional_storage_test {
 
 template <typename SHERLOCK_ENTRY>
 class StorageSherlockTestProcessorImpl {
+ public:
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
 
- public:
   StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
 
   void SetAllowTerminate() { allow_terminate_ = true; }

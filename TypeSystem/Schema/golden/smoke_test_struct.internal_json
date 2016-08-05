@@ -262,7 +262,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9200915781714511302",
-          "native_name": "Templated<>",
+          "native_name": "Templated_Z",
           "super_id": "T1",
           "template_id": "T9209626390174323094",
           "fields": [
@@ -286,7 +286,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9201673071807149456",
-          "native_name": "Templated<>",
+          "native_name": "Templated_Z",
           "super_id": "T1",
           "template_id": "T9200000002835747520",
           "fields": [
@@ -388,7 +388,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9206651538007828258",
-          "native_name": "TemplatedInheriting<>",
+          "native_name": "TemplatedInheriting_Z",
           "super_id": "T9206911749438269255",
           "template_id": "T9201673071807149456",
           "fields": [
@@ -520,7 +520,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9207402181572240291",
-          "native_name": "TemplatedInheriting<>",
+          "native_name": "TemplatedInheriting_Z",
           "super_id": "T9206911749438269255",
           "template_id": "T9209980946934124423",
           "fields": [
@@ -563,7 +563,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9209454265127716773",
-          "native_name": "Templated<>",
+          "native_name": "Templated_Z",
           "super_id": "T1",
           "template_id": "T9209980946934124423",
           "fields": [
@@ -587,7 +587,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9209503190895787129",
-          "native_name": "TemplatedInheriting<>",
+          "native_name": "TemplatedInheriting_Z",
           "super_id": "T9206911749438269255",
           "template_id": "T9227782344077896555",
           "fields": [
@@ -611,7 +611,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9209626390174323094",
-          "native_name": "TemplatedInheriting<>",
+          "native_name": "TemplatedInheriting_Z",
           "super_id": "T9206911749438269255",
           "template_id": "T9200000002835747520",
           "fields": [
@@ -648,7 +648,7 @@
       {
         "ReflectedType_Struct": {
           "type_id": "T9209980087718877311",
-          "native_name": "Templated<>",
+          "native_name": "Templated_Z",
           "super_id": "T1",
           "template_id": "T9227782344077896555",
           "fields": [

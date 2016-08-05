@@ -64,7 +64,7 @@ SOFTWARE.
 #include "../Bricks/exception.h"
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/waitable_atomic/waitable_atomic.h"
+#include "../Bricks/sync/waitable_atomic.h"
 
 namespace current {
 namespace storage {
@@ -79,7 +79,7 @@ namespace storage {
   };                                                                                                \
   CURRENT_STRUCT(entry_name##Deleted) {                                                             \
     CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
-    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>);                     \
+    CURRENT_FIELD(key, ::current::storage::sfinae::entry_key_t<entry_type>);                        \
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                             \
     CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value) \
         : us(us), key(::current::storage::sfinae::GetKey(value)) {}                                 \
@@ -88,7 +88,7 @@ namespace storage {
     template <typename T, typename E1, typename E2>                                                 \
     using field_t = dictionary_type<T, E1, E2>;                                                     \
     using entry_t = entry_type;                                                                     \
-    using key_t = ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>;                           \
+    using key_t = ::current::storage::sfinae::entry_key_t<entry_type>;                              \
     using update_event_t = entry_name##Updated;                                                     \
     using delete_event_t = entry_name##Deleted;                                                     \
     using persisted_event_1_t = entry_name##Updated;                                                \

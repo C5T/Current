@@ -779,13 +779,13 @@ TEST(Serialization, NamedVariantAsJSON) {
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(Q), "");
 
     static_assert(IS_CURRENT_STRUCT(X), "");
-    static_assert(!IS_VARIANT(X), "");
+    static_assert(!IS_CURRENT_VARIANT(X), "");
 
     static_assert(!IS_CURRENT_STRUCT(A), "");
-    static_assert(IS_VARIANT(A), "");
+    static_assert(IS_CURRENT_VARIANT(A), "");
 
     static_assert(!IS_CURRENT_STRUCT(Q), "");
-    static_assert(IS_VARIANT(Q), "");
+    static_assert(IS_CURRENT_VARIANT(Q), "");
 
     const auto json = JSON(q);
     EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880156980845091\"}", json);
