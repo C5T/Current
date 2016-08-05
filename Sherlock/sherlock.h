@@ -491,8 +491,6 @@ class StreamImpl {
           }
         }
       } else {
-        // NOTE: "Smart" start from the certain point in the stream is supported only for `n` and `tail`.
-        // TODO(dk+mz): Add iteration over timestamps in our persisters as well?
         uint64_t begin_idx = 0u;
         std::chrono::microseconds from_timestamp(0);
         if (request_params.tail > 0u) {
