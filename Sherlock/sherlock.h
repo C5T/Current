@@ -342,8 +342,8 @@ class StreamImpl {
     }
 
     void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
-      size_t index = begin_idx;
-      size_t size = 0;
+      uint64_t index = begin_idx;
+      uint64_t size = 0;
       bool terminate_sent = false;
       while (true) {
         // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
@@ -493,14 +493,27 @@ class StreamImpl {
       } else {
         // NOTE: "Smart" start from the certain point in the stream is supported only for `n` and `tail`.
         // TODO(dk+mz): Add iteration over timestamps in our persisters as well?
-        uint64_t begin_idx;
+        uint64_t begin_idx = 0u;
+        std::chrono::microseconds from_timestamp(0);
         if (request_params.tail > 0u) {
           const uint64_t idx_by_tail =
               request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
           begin_idx = std::max(request_params.i, idx_by_tail);
+        } else if (request_params.recent.count() > 0) {
+          from_timestamp = r.timestamp - request_params.recent;
+        } else if (request_params.since.count() > 0) {
+          from_timestamp = request_params.since;
         } else {
           begin_idx = request_params.i;
         }
+
+        if (from_timestamp.count() > 0) {
+          const auto idx_by_timestamp = std::min(
+              data.persistence.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
+              stream_size);
+          begin_idx = std::max(begin_idx, idx_by_timestamp);
+        }
+
         if (request_params.no_wait && begin_idx >= stream_size) {
           // Return "200 OK" if there is nothing to return now and we were asked to not wait for new entries.
           r("", HTTPResponseCode.OK);
