@@ -126,6 +126,7 @@ CURRENT_STRUCT(TopLevel) {
 }  // namespace current_userspace
 
 #ifndef CURRENT_NAMESPACE_From_DEFINED
+#define CURRENT_NAMESPACE_From_DEFINED
 CURRENT_NAMESPACE(From) {
   CURRENT_NAMESPACE_TYPE(WithExpandingVariant, current_userspace::t9201009161779005289::WithExpandingVariant);
   CURRENT_NAMESPACE_TYPE(FullName, current_userspace::t9201952458119363219::FullName);

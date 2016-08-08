@@ -76,6 +76,7 @@ CURRENT_STRUCT(Transaction_T9221660456409416796) {
 }  // namespace current_userspace
 
 #ifndef CURRENT_NAMESPACE_SchemaModifiedStorage_DEFINED
+#define CURRENT_NAMESPACE_SchemaModifiedStorage_DEFINED
 CURRENT_NAMESPACE(SchemaModifiedStorage) {
   CURRENT_NAMESPACE_TYPE(PersistedUserDeleted, current_userspace::t9200749442651087763::PersistedUserDeleted);
   CURRENT_NAMESPACE_TYPE(Name, current_userspace::t9202335020894922996::Name);
