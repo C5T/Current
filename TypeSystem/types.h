@@ -71,6 +71,11 @@ constexpr auto HasExistsImplMethod(int) -> decltype(std::declval<const ENTRY>().
   return true;
 }
 
+template <typename ENTRY>
+struct ExistsImplMethodTest {
+  static constexpr bool value = HasExistsImplMethod<ENTRY>(0);
+};
+
 // Whether a `ValueImpl()` method is defined for a type.
 template <typename ENTRY>
 constexpr bool HasValueImplMethod(char) {
@@ -81,6 +86,11 @@ template <typename ENTRY>
 constexpr auto HasValueImplMethod(int) -> decltype(std::declval<const ENTRY>().ValueImpl(), bool()) {
   return true;
 }
+
+template <typename ENTRY>
+struct ValueImplMethodTest {
+  static constexpr bool value = HasValueImplMethod<ENTRY>(0);
+};
 
 // Whether a `SuccessfulImpl()` method is defined for a type.
 template <typename ENTRY>
@@ -93,6 +103,11 @@ constexpr auto HasSuccessfulImplMethod(int) -> decltype(std::declval<const ENTRY
   return true;
 }
 
+template <typename ENTRY>
+struct SuccessfulImplMethodTest {
+  static constexpr bool value = HasSuccessfulImplMethod<ENTRY>(0);
+};
+
 // Whether an `CheckIntegrityImpl()` method is defined for a type.
 template <typename ENTRY>
 constexpr bool HasCheckIntegrityImplMethod(char) {
@@ -104,6 +119,11 @@ constexpr auto HasCheckIntegrityImplMethod(int)
     -> decltype(std::declval<const ENTRY>().CheckIntegrityImpl(), bool()) {
   return true;
 }
+
+template <typename ENTRY>
+struct CheckIntegrityImplMethodTest {
+  static constexpr bool value = HasCheckIntegrityImplMethod<ENTRY>(0);
+};
 
 }  // namespace sfinae
 }  // namespace current
