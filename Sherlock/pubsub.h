@@ -154,6 +154,8 @@ struct ParsedHTTPRequestParams {
   // If set, stop serving after the response size reached/exceeded the value.
   // Controlled by `stop_after_bytes` URL parameter.
   uint64_t stop_after_bytes = 0u;
+  // If set, do not prepend each entry with its index and timestamp followed by a '\t', return data JSONs only.
+  bool data = false;
 };
 
 inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
@@ -203,6 +205,9 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   }
   if (r.url.query.has("nowait")) {
     result.no_wait = true;
+  }
+  if (r.url.query.has("data")) {
+    result.data = true;
   }
 
   return result;
@@ -269,7 +274,13 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       if (to_timestamp_.count() && current.us > to_timestamp_) {
         return ss::EntryResponse::Done;
       }
-      const std::string entry_json(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
+      const std::string entry_json = [this, &current, &entry]() {
+        if (params_.data) {
+          return JSON<J>(entry) + '\n';
+        } else {
+          return JSON<J>(current) + '\t' + JSON<J>(entry) + '\n';
+        }
+      }();
       current_response_size_ += entry_json.length();
       try {
         http_response_(std::move(entry_json));

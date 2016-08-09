@@ -416,7 +416,7 @@ class StreamImpl {
   }
 
   // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
-  template <JSONFormat J = JSONFormat::Current>
+  template <JSONFormat J>
   void ServeDataViaHTTP(Request r) {
     try {
       // Prevent `own_data_` from being destroyed between the entry into this function
@@ -547,7 +547,21 @@ class StreamImpl {
     }
   }
 
-  void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
+  void operator()(Request r) {
+    if (r.url.query.has("json")) {
+      const auto& json = r.url.query["json"];
+      if (json == "js") {
+        ServeDataViaHTTP<JSONFormat::Minimalistic>(std::move(r));
+      } else if (json == "fs") {
+        ServeDataViaHTTP<JSONFormat::NewtonsoftFSharp>(std::move(r));
+      } else {
+        r("The `?json` parameter is invalid, legal values are `js`, `fs`, or omit the parameter.\n",
+          HTTPResponseCode.NotFound);
+      }
+    } else {
+      ServeDataViaHTTP<JSONFormat::Current>(std::move(r));
+    }
+  }
 
   persistence_layer_t& InternalExposePersister() {
     return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
