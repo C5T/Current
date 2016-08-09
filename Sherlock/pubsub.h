@@ -155,7 +155,7 @@ struct ParsedHTTPRequestParams {
   // Controlled by `stop_after_bytes` URL parameter.
   uint64_t stop_after_bytes = 0u;
   // If set, do not prepend each entry with its index and timestamp followed by a '\t', return data JSONs only.
-  bool data = false;
+  bool entries_only = false;
 };
 
 inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
@@ -206,8 +206,8 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   if (r.url.query.has("nowait")) {
     result.no_wait = true;
   }
-  if (r.url.query.has("data")) {
-    result.data = true;
+  if (r.url.query.has("entries_only")) {
+    result.entries_only = true;
   }
 
   return result;
@@ -275,7 +275,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         return ss::EntryResponse::Done;
       }
       const std::string entry_json = [this, &current, &entry]() {
-        if (params_.data) {
+        if (params_.entries_only) {
           return JSON<J>(entry) + '\n';
         } else {
           return JSON<J>(current) + '\t' + JSON<J>(entry) + '\n';
