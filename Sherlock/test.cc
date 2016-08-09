@@ -414,6 +414,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "}  // namespace current_userspace\n"
         "\n"
         "#ifndef CURRENT_NAMESPACE_Sherlock_DEFINED\n"
+        "#define CURRENT_NAMESPACE_Sherlock_DEFINED\n"
         "CURRENT_NAMESPACE(Sherlock) {\n"
         "  CURRENT_NAMESPACE_TYPE(RecordWithTimestamp, "
         "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"

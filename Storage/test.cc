@@ -1962,6 +1962,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "}  // namespace current_userspace\n"
       "\n"
       "#ifndef CURRENT_NAMESPACE_USERSPACE_C546BDBF8F3A5614_DEFINED\n"
+      "#define CURRENT_NAMESPACE_USERSPACE_C546BDBF8F3A5614_DEFINED\n"
       "CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614) {\n"
       "  CURRENT_NAMESPACE_TYPE(SimpleUser, current_userspace::t9204302787243580577::SimpleUser);\n"
       "};  // CURRENT_NAMESPACE(USERSPACE_C546BDBF8F3A5614)\n"

@@ -373,6 +373,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
 
         // Thing one: the `CURRENT_NAMESPACE` for all the types.
         os_ << "#ifndef CURRENT_NAMESPACE_" << nmspc << "_DEFINED\n";
+        os_ << "#define CURRENT_NAMESPACE_" << nmspc << "_DEFINED\n";
         os_ << "CURRENT_NAMESPACE(" << nmspc << ") {\n";
         for (const auto& input_type : types_) {
           const auto& type_substance = input_type.second;
