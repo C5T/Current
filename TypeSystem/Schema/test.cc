@@ -350,8 +350,7 @@ TEST(Schema, FSharpSanitization) {
       "  ``type`` : string\n"
       "  ``method`` : int64\n"
       "  foo : bool\n"
-      "}\n"
-      "",
+      "}\n",
       schema.Describe<Language::FSharp>(false));
 }
 
