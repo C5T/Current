@@ -245,6 +245,7 @@ CURRENT_STRUCT(FullTest) {
 }  // namespace current_userspace
 
 #ifndef CURRENT_NAMESPACE_ExposedNamespace_DEFINED
+#define CURRENT_NAMESPACE_ExposedNamespace_DEFINED
 CURRENT_NAMESPACE(ExposedNamespace) {
   CURRENT_NAMESPACE_TYPE(E, current_userspace::t9010000003568589458::E);
   CURRENT_NAMESPACE_TYPE(Empty, current_userspace::t9200000002835747520::Empty);
