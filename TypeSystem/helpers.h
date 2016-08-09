@@ -155,11 +155,11 @@ template <typename OUTPUT = DefaultValueInvokation, typename INPUT>
 auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
     typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
     INPUT,
-    current::sfinae::HasValueImplMethod<INPUT>(0)>::AccessValue(std::declval<INPUT>())) {
+    current::sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::declval<INPUT>())) {
   return PowerfulValueImplCaller<
       typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
       INPUT,
-      current::sfinae::HasValueImplMethod<INPUT>(0)>::AccessValue(std::forward<INPUT>(x));
+      current::sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::forward<INPUT>(x));
 }
 
 // MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
