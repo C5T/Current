@@ -80,31 +80,11 @@ CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, VariantType); };
 
 CURRENT_STRUCT(DerivedSerializable, Serializable) { CURRENT_FIELD(d, double); };
 
-#ifndef CURRENT_WINDOWS
-
 CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
 CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
 
 CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
-
-#else
-
-CURRENT_STRUCT(WithVectorOfPairs) {
-  typedef std::vector<std::pair<int32_t, std::string>> t_v;
-  CURRENT_FIELD(v, t_v);
-};
-CURRENT_STRUCT(WithTrivialMap) {
-  typedef std::map<std::string, std::string> t_m;
-  CURRENT_FIELD(m, t_m);
-};
-
-CURRENT_STRUCT(WithNontrivialMap) {
-  typedef std::map<Serializable, std::string> t_m;
-  CURRENT_FIELD(q, t_m);
-};
-
-#endif
 
 CURRENT_STRUCT(WithOptional) {
   CURRENT_FIELD(i, Optional<int>);
