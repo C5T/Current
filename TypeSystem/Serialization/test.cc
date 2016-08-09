@@ -844,7 +844,7 @@ TEST(Serialization, PairsInNewtonsoftJSONFSharpFormat) {
             JSON(ParseJSON<decltype(a), JSONFormat::NewtonsoftFSharp>(JSON<JSONFormat::NewtonsoftFSharp>(a))));
 };
 
-TEST(Serialization, OptionalNullOmittedInMinimalisticFormat) {
+TEST(Serialization, OptionalInVariousFormats) {
   using namespace serialization_test;
 
   WithOptional object;
@@ -857,6 +857,28 @@ TEST(Serialization, OptionalNullOmittedInMinimalisticFormat) {
   EXPECT_TRUE(Exists(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{\"i\":42}").i));
   EXPECT_EQ(42, Value(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{\"i\":42}").i));
   EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{}").b));
+
+  object.i = 100;
+  const std::string fsharp = "{\"i\":{\"Case\":\"Some\",\"Fields\":[100]}}";
+  EXPECT_EQ(fsharp, JSON<JSONFormat::NewtonsoftFSharp>(object));
+  EXPECT_TRUE(Exists(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>(fsharp).i));
+  EXPECT_EQ(100, Value(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>(fsharp).i));
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>("{}").b));
+}
+
+TEST(Serialization, LiberalOptionalForFSharp) {
+  using serialization_test::WithOptional;
+
+  EXPECT_FALSE(Exists(ParseJSON<Optional<bool>, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"None\"}")));
+
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>("{}").i));
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>("{\"i\":null}").i));
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>("{\"i\":{\"Case\":\"None\"}}").i));
+
+  ASSERT_THROW((ParseJSON<Optional<bool>, JSONFormat::NewtonsoftFSharp>("{\"Whatever\":\"None\"}")),
+               JSONSchemaException);
+  ASSERT_THROW((ParseJSON<Optional<bool>, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Whatever\"}")),
+               JSONSchemaException);
 }
 
 TEST(Serialization, VariantNullOmittedInMinimalisticFormat) {
