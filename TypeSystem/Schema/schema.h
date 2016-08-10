@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -644,6 +645,11 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
 
   static std::string Footer(const std::string&) { return ""; }
 
+  static std::string SanitizeFSharpSymbol(const std::string& unsanitized_name) {
+    static std::set<std::string> fsharp_reserved_symbols{"type", "method"};
+    return fsharp_reserved_symbols.count(unsanitized_name) ? "``" + unsanitized_name + "``" : unsanitized_name;
+  }
+
   struct FullSchemaPrinter final {
     const std::map<TypeID, ReflectedType>& types_;
     std::ostream& os_;
@@ -672,22 +678,25 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
-          void operator()(const ReflectedType_Enum& e) const { oss_ << e.name; }
+          void operator()(const ReflectedType_Enum& e) const { oss_ << SanitizeFSharpSymbol(e.name); }
           void operator()(const ReflectedType_Vector& v) const {
-            oss_ << self_.TypeName(v.element_type) << " array";
+            oss_ << SanitizeFSharpSymbol(self_.TypeName(v.element_type)) << " array";
           }
           void operator()(const ReflectedType_Map& m) const {
-            oss_ << "System.Collections.Generic.Dictionary<" << self_.TypeName(m.key_type) << ", "
-                 << self_.TypeName(m.value_type) << '>';
+            oss_ << "System.Collections.Generic.Dictionary<" << SanitizeFSharpSymbol(self_.TypeName(m.key_type))
+                 << ", " << self_.TypeName(m.value_type) << '>';
           }
           void operator()(const ReflectedType_Pair& p) const {
-            oss_ << self_.TypeName(p.first_type) << " * " << self_.TypeName(p.second_type);
+            oss_ << SanitizeFSharpSymbol(self_.TypeName(p.first_type)) << " * "
+                 << SanitizeFSharpSymbol(self_.TypeName(p.second_type));
           }
           void operator()(const ReflectedType_Optional& o) const {
-            oss_ << self_.TypeName(o.optional_type) << " option";
+            oss_ << SanitizeFSharpSymbol(self_.TypeName(o.optional_type)) << " option";
           }
-          void operator()(const ReflectedType_Variant& v) const { oss_ << v.name; }
-          void operator()(const ReflectedType_Struct& s) const { oss_ << s.CanonicalName(); }
+          void operator()(const ReflectedType_Variant& v) const { oss_ << SanitizeFSharpSymbol(v.name); }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << SanitizeFSharpSymbol(s.CanonicalName());
+          }
         };
 
         std::ostringstream oss;
@@ -706,14 +715,14 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     // The types that require complete declarations in F# are records and discriminated unions.
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum& e) const {
-      os_ << "\ntype " << e.name << " = " << TypeName(e.underlying_type) << '\n';
+      os_ << "\ntype " << SanitizeFSharpSymbol(e.name) << " = " << TypeName(e.underlying_type) << '\n';
     }
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant& v) const {
-      os_ << "\ntype " << v.name << " =\n";
+      os_ << "\ntype " << SanitizeFSharpSymbol(v.name) << " =\n";
       for (TypeID c : v.cases) {
         const auto name = TypeName(c);
         os_ << "| " << name;
@@ -740,7 +749,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
           }
           AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
         }
-        os << "  " << f.name << " : " << TypeName(f.type_id) << '\n';
+        os << "  " << SanitizeFSharpSymbol(f.name) << " : " << TypeName(f.type_id) << '\n';
         first_field = false;
       }
     }
@@ -749,7 +758,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       RecursivelyListStructFieldsForFSharp(os, s);
       const std::string fields = os.str();
       if (!fields.empty()) {
-        os_ << "\ntype " << s.CanonicalName() << " = {\n" << fields << "}\n";
+        os_ << "\ntype " << SanitizeFSharpSymbol(s.CanonicalName()) << " = {\n" << fields << "}\n";
       } else {
         empty_structs_.insert(s.type_id);
       }

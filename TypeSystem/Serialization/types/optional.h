@@ -68,6 +68,30 @@ struct SaveIntoJSONImpl<Optional<T>, JSONFormat::Minimalistic> {
   }
 };
 
+// In F#, `'T option` is an alias for `Optional<'T>`, which, in its turn, is a DU / Variant
+// type with the signature `Optional<'T> = | Some 'T | None`.
+// Thus, yeah, for a non-null `Optional` in F#, we need "Case" and "Fields".
+template <typename T>
+struct SaveIntoJSONImpl<Optional<T>, JSONFormat::NewtonsoftFSharp> {
+  static bool Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const Optional<T>& value) {
+    if (Exists(value)) {
+      rapidjson::Value ultimate_destination;
+      SaveIntoJSONImpl<T, JSONFormat::Minimalistic>::Save(ultimate_destination, allocator, Value(value));
+      rapidjson::Value array_of_one_element_containing_value;
+      array_of_one_element_containing_value.SetArray();
+      array_of_one_element_containing_value.PushBack(ultimate_destination.Move(), allocator);
+      destination.SetObject();
+      destination.AddMember("Case", "Some", allocator);
+      destination.AddMember("Fields", array_of_one_element_containing_value, allocator);
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
 }  // namespace save
 
 namespace load {
@@ -80,6 +104,40 @@ struct LoadFromJSONImpl<Optional<T>, J> {
     } else {
       destination = T();
       LoadFromJSONImpl<T, J>::Load(source, Value(destination), path);
+    }
+  }
+};
+
+template <typename T>
+struct LoadFromJSONImpl<Optional<T>, JSONFormat::NewtonsoftFSharp> {
+  static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
+    if (!source || source->IsNull()) {
+      destination = nullptr;
+    } else {
+      bool ok = false;
+      if (source->IsObject() && source->HasMember("Case")) {
+        const auto& case_field = (*source)["Case"];
+        if (case_field.IsString()) {
+          const char* case_field_value = case_field.GetString();
+          if (!strcmp(case_field_value, "None")) {
+            // Unnecessary, but to be safe. -- D.K.
+            destination = nullptr;
+            ok = true;
+          } else if (!strcmp(case_field_value, "Some") && source->HasMember("Fields")) {
+            auto& fields_field = (*source)["Fields"];
+            if (fields_field.IsArray() && fields_field.Size() == 1u) {
+              destination = T();
+              LoadFromJSONImpl<T, JSONFormat::NewtonsoftFSharp>::Load(
+                  &fields_field[0u], Value(destination), path);
+              ok = true;
+            }
+          }
+        }
+      }
+      if (!ok) {
+        throw JSONSchemaException(
+            "optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`", source, path);
+      }
     }
   }
 };
