@@ -26,9 +26,11 @@ for i in `seq 1 $STRUCT_COUNT`; do
 
 	echo "schema.AddType<Struct$i>();" >> $CURRENT_STRUCT_TEST
 
+	echo "namespace current_userspace {" >> $CURRENT_STRUCT_GOLDEN
 	echo "struct Struct$i {" >> $CURRENT_STRUCT_GOLDEN
 	echo "  uint32_t x$i;" >> $CURRENT_STRUCT_GOLDEN
 	echo "};" >> $CURRENT_STRUCT_GOLDEN
+	echo "}  // namespace current_userspace" >> $CURRENT_STRUCT_GOLDEN
 done
 
 # 'struct_fields.cc' test.
@@ -36,6 +38,7 @@ STRUCT_FIELDS_HEADER="$INCLUDE_DIR/struct_fields.h"
 STRUCT_FIELDS_GOLDEN="$GOLDEN_DIR/struct_fields.cc"
 
 echo "CURRENT_STRUCT(StructWithManyFields) {" >> $STRUCT_FIELDS_HEADER
+echo "namespace current_userspace {" >> $STRUCT_FIELDS_GOLDEN
 echo "struct StructWithManyFields {" >> $STRUCT_FIELDS_GOLDEN
 for i in `seq 1 $STRUCT_COUNT`; do
 	echo "  CURRENT_FIELD(z$i, uint32_t);" >> $STRUCT_FIELDS_HEADER
@@ -43,6 +46,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "};" >> $STRUCT_FIELDS_HEADER
 echo "};" >> $STRUCT_FIELDS_GOLDEN
+echo "}  // namespace current_userspace" >> $STRUCT_FIELDS_GOLDEN
 
 # 'typelist.cc' test.
 TYPELIST_HEADER="$INCLUDE_DIR/typelist.h"
