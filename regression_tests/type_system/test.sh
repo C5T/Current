@@ -1,5 +1,5 @@
 #!/bin/bash
-COUNT_LIST=${1:-10 25 100 500}
+COUNT_LIST=${*:-10 25 100 500}
 TEST_LIST=(
     '.current/current_struct'
     '.current/struct_fields'

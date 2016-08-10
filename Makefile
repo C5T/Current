@@ -1,4 +1,4 @@
-.PHONY: all test individual_tests check
+.PHONY: all test individual_tests storage_perftest typesystem_compilation_test check wc clean
 
 all: test check
 
@@ -10,6 +10,9 @@ individual_tests:
 
 storage_perftest:
 	(cd examples/Benchmark/generic ; ./run_storage_tests.sh)
+
+typesystem_compilation_test:
+	(cd regression_tests/type_system ; ./test.sh 10 50)
 
 check:
 	./scripts/check-headers.sh

@@ -19,6 +19,7 @@ CURRENT_STRUCT_HEADER="$INCLUDE_DIR/current_struct.h"
 CURRENT_STRUCT_TEST="$INCLUDE_DIR/current_struct.cc"
 CURRENT_STRUCT_GOLDEN="$GOLDEN_DIR/current_struct.cc"
 
+echo "namespace current_userspace {" >> $CURRENT_STRUCT_GOLDEN
 for i in `seq 1 $STRUCT_COUNT`; do
 	echo "CURRENT_STRUCT(Struct$i) {" >> $CURRENT_STRUCT_HEADER
 	echo "  CURRENT_FIELD(x$i, uint32_t);" >> $CURRENT_STRUCT_HEADER
@@ -26,12 +27,11 @@ for i in `seq 1 $STRUCT_COUNT`; do
 
 	echo "schema.AddType<Struct$i>();" >> $CURRENT_STRUCT_TEST
 
-	echo "namespace current_userspace {" >> $CURRENT_STRUCT_GOLDEN
 	echo "struct Struct$i {" >> $CURRENT_STRUCT_GOLDEN
 	echo "  uint32_t x$i;" >> $CURRENT_STRUCT_GOLDEN
 	echo "};" >> $CURRENT_STRUCT_GOLDEN
-	echo "}  // namespace current_userspace" >> $CURRENT_STRUCT_GOLDEN
 done
+echo "}  // namespace current_userspace" >> $CURRENT_STRUCT_GOLDEN
 
 # 'struct_fields.cc' test.
 STRUCT_FIELDS_HEADER="$INCLUDE_DIR/struct_fields.h"
