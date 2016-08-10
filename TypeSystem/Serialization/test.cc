@@ -74,37 +74,17 @@ CURRENT_STRUCT(ComplexSerializable) {
   }
 };
 
-using VariantType = Variant<Empty, AlternativeEmpty, Serializable, ComplexSerializable>;
+using simple_variant_t = Variant<Empty, AlternativeEmpty, Serializable, ComplexSerializable>;
 
-CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, VariantType); };
+CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, simple_variant_t); };
 
 CURRENT_STRUCT(DerivedSerializable, Serializable) { CURRENT_FIELD(d, double); };
-
-#ifndef CURRENT_WINDOWS
 
 CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
 CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
 
 CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
-
-#else
-
-CURRENT_STRUCT(WithVectorOfPairs) {
-  typedef std::vector<std::pair<int32_t, std::string>> t_v;
-  CURRENT_FIELD(v, t_v);
-};
-CURRENT_STRUCT(WithTrivialMap) {
-  typedef std::map<std::string, std::string> t_m;
-  CURRENT_FIELD(m, t_m);
-};
-
-CURRENT_STRUCT(WithNontrivialMap) {
-  typedef std::map<Serializable, std::string> t_m;
-  CURRENT_FIELD(q, t_m);
-};
-
-#endif
 
 CURRENT_STRUCT(WithOptional) {
   CURRENT_FIELD(i, Optional<int>);
@@ -668,32 +648,34 @@ TEST(Serialization, VariantAsJSON) {
   using namespace serialization_test;
   {
     try {
-      ParseJSON<VariantType>("null");
+      ParseJSON<simple_variant_t>("null");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (JSONUninitializedVariantObjectException) {
     }
   }
   {
-    const VariantType object(std::make_unique<Empty>());
+    const simple_variant_t object(std::make_unique<Empty>());
     const std::string json = "{\"Empty\":{},\"\":\"T9200000002835747520\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<VariantType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<simple_variant_t>(json)));
   }
   {
-    const VariantType object(std::make_unique<Empty>());
+    const simple_variant_t object(std::make_unique<Empty>());
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
   }
   {
-    const VariantType object(std::make_unique<Empty>());
+    const simple_variant_t object(std::make_unique<Empty>());
     const std::string json = "{\"Case\":\"Empty\"}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(
+        json,
+        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
     static_assert(IS_CURRENT_STRUCT(Empty), "");
@@ -701,64 +683,68 @@ TEST(Serialization, VariantAsJSON) {
 
     static_assert(IS_EMPTY_CURRENT_STRUCT(Empty), "");
 
-    static_assert(!IS_EMPTY_CURRENT_STRUCT(VariantType), "");
+    static_assert(!IS_EMPTY_CURRENT_STRUCT(simple_variant_t), "");
     static_assert(!IS_EMPTY_CURRENT_STRUCT(Serializable), "");
 
-    const auto empty1 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Empty\"}");
+    const auto empty1 = ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Empty\"}");
     EXPECT_TRUE(Exists<Empty>(empty1));
     EXPECT_FALSE(Exists<AlternativeEmpty>(empty1));
 
-    const auto empty2 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"AlternativeEmpty\"}");
+    const auto empty2 =
+        ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"AlternativeEmpty\"}");
     EXPECT_FALSE(Exists<Empty>(empty2));
     EXPECT_TRUE(Exists<AlternativeEmpty>(empty2));
   }
   {
-    const VariantType object(std::make_unique<Serializable>(42));
+    const simple_variant_t object(std::make_unique<Serializable>(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<VariantType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<simple_variant_t>(json)));
   }
   {
-    const VariantType object(std::make_unique<Serializable>(42));
+    const simple_variant_t object(std::make_unique<Serializable>(42));
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
 
     // An extra test that `Minimalistic` parser accepts the standard `Current` JSON format.
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
     const std::string ok2 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":false}";
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(ok2)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(ok2)));
     const std::string ok3 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":42}";
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(ok3)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(ok3)));
   }
   {
-    const VariantType object(std::make_unique<Serializable>(42));
+    const simple_variant_t object(std::make_unique<Serializable>(42));
     const std::string json =
         "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(
+        json,
+        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
   {
-    using OtherVariantType = Variant<WithVectorOfPairs, WithOptional>;
-    using WeHaveToGoDeeper = Variant<VariantType, OtherVariantType>;
+    using other_variant_t = Variant<WithVectorOfPairs, WithOptional>;
+    using we_have_to_go_deeper_t = Variant<simple_variant_t, other_variant_t>;
+
     WithOptional with_optional;
     with_optional.i = 42;
-    OtherVariantType inner_variant(with_optional);
-    WeHaveToGoDeeper outer_variant(inner_variant);
+    other_variant_t inner_variant(with_optional);
+    we_have_to_go_deeper_t outer_variant(inner_variant);
     const std::string json = JSON(outer_variant);
     EXPECT_EQ(
         "{\"Variant_B_WithVectorOfPairs_WithOptional_E\":"
         "{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
         "\"T9227628134042111965\"}",
         json);
-    const WeHaveToGoDeeper parsed_object = ParseJSON<WeHaveToGoDeeper>(json);
-    const WithOptional& inner_parsed_object = Value<WithOptional>(Value<OtherVariantType>(parsed_object));
+    const we_have_to_go_deeper_t parsed_object = ParseJSON<we_have_to_go_deeper_t>(json);
+    const WithOptional& inner_parsed_object = Value<WithOptional>(Value<other_variant_t>(parsed_object));
     EXPECT_EQ(42, Value(inner_parsed_object.i));
     EXPECT_FALSE(Exists(inner_parsed_object.b));
   }
@@ -1041,6 +1027,50 @@ TEST(Serialization, ComplexTemplatedUsage) {
     const auto result = ParseJSON<ComplexTemplatedUsage<std::string>>("{\"a\":\"z\",\"b\":{\"value\":\"t\"}}");
     EXPECT_EQ("z", result.a);
     EXPECT_EQ("t", result.b.value);
+  }
+}
+
+TEST(Serialization, VariantWithTemplatedStructs) {
+  using namespace serialization_test;
+  using complex_variant_t = Variant<ComplexTemplatedUsage<int32_t>, ComplexTemplatedUsage<std::string>>;
+
+  {
+    using inner_object_t = ComplexTemplatedUsage<int32_t>;
+    complex_variant_t object;
+    inner_object_t contents;
+    contents.a = 1;
+    contents.b.value = 2;
+    object = contents;
+    EXPECT_EQ("{\"ComplexTemplatedUsage_Z\":{\"a\":1,\"b\":{\"value\":2}},\"\":\"T9203223964691052963\"}",
+              JSON(object));
+
+    const auto result = ParseJSON<complex_variant_t>(
+        "{\"ComplexTemplatedUsage_Z\":{\"a\":1,\"b\":{\"value\":2}},"
+        "\"\":\"T9203223964691052963\"}");
+    ASSERT_TRUE(Exists<inner_object_t>(result));
+    const auto& parsed_object = Value<inner_object_t>(result);
+    EXPECT_EQ(1, parsed_object.a);
+    EXPECT_EQ(2, parsed_object.b.value);
+  }
+
+  {
+    using inner_object_t = ComplexTemplatedUsage<std::string>;
+    complex_variant_t object;
+    inner_object_t contents;
+    contents.a = "yes";
+    contents.b.value = "no";
+    object = contents;
+    EXPECT_EQ(
+        "{\"ComplexTemplatedUsage_Z\":{\"a\":\"yes\",\"b\":{\"value\":\"no\"}},\"\":\"T9203187966977056754\"}",
+        JSON(object));
+
+    const auto result = ParseJSON<complex_variant_t>(
+        "{\"ComplexTemplatedUsage_Z\":{\"a\":\"yes\",\"b\":{\"value\":\"no\"}},"
+        "\"\":\"T9203187966977056754\"}");
+    ASSERT_TRUE(Exists<inner_object_t>(result));
+    const auto& parsed_object = Value<inner_object_t>(result);
+    EXPECT_EQ("yes", parsed_object.a);
+    EXPECT_EQ("no", parsed_object.b.value);
   }
 }
 
