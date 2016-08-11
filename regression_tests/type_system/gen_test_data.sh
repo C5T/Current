@@ -164,7 +164,7 @@ done
 STORAGE_HEADER="$INCLUDE_DIR/storage.h"
 STORAGE_TEST="$INCLUDE_DIR/storage.cc"
 
-echo "storage.ReadWriteTransaction([](MutableFields<TestStorage> fields) {" >> $STORAGE_TEST
+echo "storage.ReadWriteTransaction([](MutableFields<storage_t> fields) {" >> $STORAGE_TEST
 for i in `seq 1 $STRUCT_COUNT`; do
 	echo "CURRENT_STRUCT(Struct$i) {" >> $STORAGE_HEADER
 	echo "  CURRENT_FIELD(x$i, uint32_t);" >> $STORAGE_HEADER
@@ -177,7 +177,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "}).Wait();" >> $STORAGE_TEST
 
-echo "storage.ReadOnlyTransaction([](ImmutableFields<TestStorage> fields) {" >> $STORAGE_TEST
+echo "storage.ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {" >> $STORAGE_TEST
 echo "CURRENT_STORAGE(Storage) {" >> $STORAGE_HEADER
 for i in `seq 1 $STRUCT_COUNT`; do
 	echo "  CURRENT_STORAGE_FIELD(v$i, StorageStruct$i);" >> $STORAGE_HEADER
