@@ -66,15 +66,13 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   VariantImpl(VariantImpl&& rhs) : object_(std::move(rhs.object_)) {}
 
-  template <typename X,
-            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
   VariantImpl(X&& input) {
     using decayed_t = current::decay<X>;
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
   }
 
-  template <typename X,
-            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
   VariantImpl(std::unique_ptr<X> input) {
     object_ = std::move(input);
   }
@@ -91,16 +89,14 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     return *this;
   }
 
-  template <typename X,
-            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
   VariantImpl& operator=(X&& input) {
     using decayed_t = current::decay<X>;
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
     return *this;
   }
 
-  template <typename X,
-            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
   VariantImpl& operator=(std::unique_ptr<X> input) {
     object_ = std::move(input);
     return *this;
