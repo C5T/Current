@@ -60,12 +60,16 @@ template <typename... TS>
 using UninitializedVariantOfType =
     typename UninitializedVariantOfTypeExceptionWrapper<TS...>::const_reference_type;
 
+template <typename T>
+struct IncompatibleVariantTypeException : Exception {};
+
 }  // namespace current
 
 using current::NoValueException;
 using current::NoValueOfTypeException;
 using current::UninitializedVariantException;
 using current::UninitializedVariantOfTypeException;
+using current::IncompatibleVariantTypeException;
 
 using current::NoValue;               // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
 using current::NoValueOfType;         // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.

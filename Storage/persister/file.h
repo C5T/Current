@@ -40,10 +40,10 @@ namespace persister {
 template <typename, typename>
 class JSONFilePersister;
 
-template <typename... TS>
-class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
+template <typename TYPELIST>
+class JSONFilePersister<TYPELIST, NoCustomPersisterParam> {
  public:
-  using variant_t = Variant<TS...>;
+  using variant_t = Variant<TYPELIST>;
   using transaction_t = std::vector<variant_t>;  // Mock to make it compile.
   using fields_update_function_t = std::function<void(const variant_t&)>;
 
@@ -61,7 +61,7 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
         CURRENT_THROW(StorageCannotAppendToFileException(filename_));  // LCOV_EXCL_LINE
       }
       for (auto&& entry : journal.commit_log) {
-        os << JSON(variant_t(std::move(entry))) << '\n';
+        os << JSON(variant_t(BypassVariantTypeCheck(), std::move(entry))) << '\n';
       }
     }
     journal.Clear();

@@ -650,106 +650,198 @@ TEST(TypeSystemTest, VariantStaticAsserts) {
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>::typelist_t, TypeListImpl<Foo, Bar>>::value, "");
 }
 
-TEST(TypeSystemTest, VariantCreateAndCopy) {
+TEST(TypeSystemTest, EqualTypelistVariantsCopyAndMove) {
   using namespace struct_definition_test;
-
-  // Move empty.
-  {
-    Variant<Foo, Bar> empty;
-    Variant<Foo, Bar> moved(std::move(empty));
-    EXPECT_FALSE(moved.ExistsImpl());
-    EXPECT_FALSE(Exists(moved));
-    EXPECT_FALSE(Exists<Foo>(moved));
-    EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
-  }
-  {
-    Variant<Foo, Bar> empty;
-    Variant<Foo, Bar> moved;
-    moved = std::move(empty);
-    EXPECT_FALSE(moved.ExistsImpl());
-    EXPECT_FALSE(Exists(moved));
-    EXPECT_FALSE(Exists<Foo>(moved));
-    EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
-  }
 
   // Copy empty.
   {
-    Variant<Foo, Bar> empty;
-    Variant<Foo, Bar> copied(empty);
-    EXPECT_FALSE(copied.ExistsImpl());
-    EXPECT_FALSE(Exists(copied));
-    EXPECT_FALSE(Exists<Foo>(copied));
-    EXPECT_FALSE(Exists<Bar>(copied));
-    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(copied)));
+    Variant<Foo, Bar> empty_source;
+    Variant<Foo, Bar> destination(empty_source);
+    EXPECT_FALSE(destination.ExistsImpl());
+    EXPECT_FALSE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(destination)));
   }
   {
-    Variant<Foo, Bar> empty;
-    Variant<Foo, Bar> copied;
-    copied = empty;
-    EXPECT_FALSE(copied.ExistsImpl());
-    EXPECT_FALSE(Exists(copied));
-    EXPECT_FALSE(Exists<Foo>(copied));
-    EXPECT_FALSE(Exists<Bar>(copied));
-    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(copied)));
+    Variant<Foo, Bar> empty_source;
+    Variant<Foo, Bar> destination;
+    destination = empty_source;
+    EXPECT_FALSE(destination.ExistsImpl());
+    EXPECT_FALSE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(destination)));
   }
 
-  // Move non-empty.
+  // Move empty.
   {
-    Variant<Foo, Bar> foo(Foo(100u));
-    EXPECT_TRUE(Exists(foo));
-    EXPECT_TRUE(Exists<Foo>(foo));
-    EXPECT_FALSE(Exists<Bar>(foo));
-    Variant<Foo, Bar> moved(std::move(foo));
-    EXPECT_TRUE(Exists(moved));
-    EXPECT_TRUE(Exists<Foo>(moved));
-    EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_EQ(100u, Value<Foo>(moved).i);
-    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
-    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
+    Variant<Foo, Bar> empty_source;
+    Variant<Foo, Bar> destination(std::move(empty_source));
+    EXPECT_FALSE(destination.ExistsImpl());
+    EXPECT_FALSE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(destination)));
   }
   {
-    Variant<Foo, Bar> foo(Foo(101u));
-    Variant<Foo, Bar> moved;
-    moved = std::move(foo);
-    EXPECT_TRUE(Exists(moved));
-    EXPECT_FALSE(Exists(foo));
-    EXPECT_TRUE(Exists<Foo>(moved));
-    EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_EQ(101u, Value<Foo>(moved).i);
-    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
-    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
+    Variant<Foo, Bar> empty_source;
+    Variant<Foo, Bar> destination;
+    destination = std::move(empty_source);
+    EXPECT_FALSE(destination.ExistsImpl());
+    EXPECT_FALSE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(destination)));
   }
 
   // Copy non-empty.
   {
-    Variant<Foo, Bar> foo(Foo(100u));
-    Variant<Foo, Bar> copied(foo);
-    Value<Foo>(foo).i = 101u;
-    EXPECT_TRUE(Exists(copied));
-    EXPECT_TRUE(Exists<Foo>(copied));
-    EXPECT_FALSE(Exists<Bar>(copied));
-    EXPECT_EQ(100u, Value<Foo>(copied).i);
-    EXPECT_EQ(100u, Value<Foo>(copied).i);
-    EXPECT_EQ(101u, Value<Foo>(foo).i);
-    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(copied)));
-    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(copied)).i));
-    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(foo)).i));
+    Variant<Foo, Bar> source(Foo(100u));
+    Variant<Foo, Bar> destination(source);
+    Value<Foo>(source).i = 101u;
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_TRUE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_EQ(100u, Value<Foo>(destination).i);
+    EXPECT_EQ(101u, Value<Foo>(source).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(destination)));
+    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(destination)).i));
+    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(source)).i));
   }
   {
-    Variant<Foo, Bar> bar(Bar(100u));
-    Variant<Foo, Bar> copied;
-    copied = bar;
-    EXPECT_TRUE(Exists(copied));
-    EXPECT_FALSE(Exists<Foo>(copied));
-    EXPECT_TRUE(Exists<Bar>(copied));
-    Value<Bar>(bar).j = 101u;
-    EXPECT_EQ(100u, Value<Bar>(copied).j);
-    EXPECT_EQ(101u, Value<Bar>(bar).j);
-    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(copied)));
-    EXPECT_EQ(100u, (Value<Bar>(Value<Variant<Foo, Bar>>(copied)).j));
-    EXPECT_EQ(101u, (Value<Bar>(Value<Variant<Foo, Bar>>(bar)).j));
+    Variant<Foo, Bar> source(Bar(100u));
+    Variant<Foo, Bar> destination;
+    destination = source;
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_TRUE(Exists<Bar>(destination));
+    Value<Bar>(source).j = 101u;
+    EXPECT_EQ(100u, Value<Bar>(destination).j);
+    EXPECT_EQ(101u, Value<Bar>(source).j);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(destination)));
+    EXPECT_EQ(100u, (Value<Bar>(Value<Variant<Foo, Bar>>(destination)).j));
+    EXPECT_EQ(101u, (Value<Bar>(Value<Variant<Foo, Bar>>(source)).j));
+  }
+
+  // Move non-empty.
+  {
+    Variant<Foo, Bar> source(Foo(100u));
+    EXPECT_TRUE(Exists(source));
+    EXPECT_TRUE(Exists<Foo>(source));
+    EXPECT_FALSE(Exists<Bar>(source));
+    Variant<Foo, Bar> destination(std::move(source));
+    EXPECT_FALSE(Exists(source));
+    EXPECT_FALSE(Exists<Foo>(source));
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_TRUE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_EQ(100u, Value<Foo>(destination).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(destination)));
+    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(destination)).i));
+  }
+  {
+    Variant<Foo, Bar> source(Foo(101u));
+    Variant<Foo, Bar> destination;
+    destination = std::move(source);
+    EXPECT_FALSE(Exists(source));
+    EXPECT_FALSE(Exists<Foo>(source));
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_FALSE(Exists(source));
+    EXPECT_TRUE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_EQ(101u, Value<Foo>(destination).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(destination)));
+    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(destination)).i));
+  }
+}
+
+TEST(TypeSystemTest, IntersectingTypelistVariantsCopyAndMove) {
+  using namespace struct_definition_test;
+
+  // Copy.
+  {
+    Variant<Foo, Bar> source(Foo(100u));
+    Variant<Baz, Foo> destination(source);
+    Value<Foo>(source).i = 101u;
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_TRUE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_EQ(100u, Value<Foo>(destination).i);
+    EXPECT_EQ(101u, Value<Foo>(source).i);
+    EXPECT_TRUE((Exists<Variant<Baz, Foo>>(destination)));
+    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Baz, Foo>>(destination)).i));
+    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(source)).i));
+  }
+  {
+    Variant<Foo, Bar> source(Bar(100u));
+    Variant<Bar> destination;
+    destination = source;
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_TRUE(Exists<Bar>(destination));
+    Value<Bar>(source).j = 101u;
+    EXPECT_EQ(100u, Value<Bar>(destination).j);
+    EXPECT_EQ(101u, Value<Bar>(source).j);
+    EXPECT_TRUE((Exists<Variant<Bar>>(destination)));
+    EXPECT_EQ(100u, (Value<Bar>(Value<Variant<Bar>>(destination)).j));
+    EXPECT_EQ(101u, (Value<Bar>(Value<Variant<Foo, Bar>>(source)).j));
+  }
+  {
+    Variant<Bar> source(Bar(100u));
+    Variant<Foo, Bar> destination;
+    destination = source;
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_FALSE(Exists<Foo>(destination));
+    EXPECT_TRUE(Exists<Bar>(destination));
+    Value<Bar>(source).j = 101u;
+    EXPECT_EQ(100u, Value<Bar>(destination).j);
+    EXPECT_EQ(101u, Value<Bar>(source).j);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(destination)));
+    EXPECT_EQ(100u, (Value<Bar>(Value<Variant<Foo, Bar>>(destination)).j));
+    EXPECT_EQ(101u, (Value<Bar>(Value<Variant<Bar>>(source)).j));
+  }
+  {
+    Variant<Bar> source(Bar(100u));
+    Variant<Foo, Baz> destination;
+    EXPECT_THROW(destination = source, IncompatibleVariantTypeException<Bar>);
+  }
+
+  // Move.
+  {
+    Variant<Foo, Bar> source(Foo(100u));
+    Variant<Baz, Foo> destination(std::move(source));
+    EXPECT_FALSE(Exists(source));
+    EXPECT_FALSE(Exists<Foo>(source));
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_TRUE(Exists<Foo>(destination));
+    EXPECT_FALSE(Exists<Bar>(destination));
+    EXPECT_EQ(100u, Value<Foo>(destination).i);
+  }
+  {
+    Variant<Foo, Bar> source(Bar(100u));
+    Variant<Bar> destination;
+    destination = std::move(source);
+    EXPECT_FALSE(Exists(source));
+    EXPECT_FALSE(Exists<Bar>(source));
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_TRUE(Exists<Bar>(destination));
+    EXPECT_EQ(100u, Value<Bar>(destination).j);
+  }
+  {
+    Variant<Bar> source(Bar(100u));
+    Variant<Foo, Bar> destination;
+    destination = std::move(source);
+    EXPECT_FALSE(Exists(source));
+    EXPECT_FALSE(Exists<Bar>(source));
+    EXPECT_TRUE(Exists(destination));
+    EXPECT_TRUE(Exists<Bar>(destination));
+    EXPECT_EQ(100u, Value<Bar>(destination).j);
+  }
+  {
+    Variant<Bar> source(Bar(100u));
+    Variant<Foo, Baz> destination;
+    EXPECT_THROW(destination = std::move(source), IncompatibleVariantTypeException<Bar>);
   }
 }
 
