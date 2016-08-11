@@ -37,25 +37,8 @@ namespace metaprogramming {
 // `TypeListImpl<...>` is the underlying class for type list.
 // This type is `returned` by `TypeList<...>`, as the latter `call` does flattening and deduplication.
 template <typename... TS>
-struct TypeListImpl {};
-
-// Get the number of types in a type list.
-template <typename... TS>
-struct TypeListSizeImpl {};
-
-template <>
-struct TypeListSizeImpl<> {
-  enum { N = 0 };
-};
-
-template <typename T>
-struct TypeListSizeImpl<T> {
-  enum { N = 1 };
-};
-
-template <typename T, typename... TS>
-struct TypeListSizeImpl<T, TS...> {
-  enum { N = 1 + TypeListSizeImpl<TS...>::N };
+struct TypeListImpl {
+  constexpr static size_t size = sizeof...(TS);
 };
 
 // `TypeListSizeExtractor<>` makes sure the top-level `TypeListSize<>` below
@@ -65,7 +48,7 @@ struct TypeListSizeExtractor {};
 
 template <typename... TS>
 struct TypeListSizeExtractor<TypeListImpl<TS...>> {
-  enum { value = TypeListSizeImpl<TS...>::N };
+  constexpr static size_t value = TypeListImpl<TS...>::size;
 };
 
 // `TypeListSize<TypeListImpl<TS...>>::value` is the number of types in `TS...`.
