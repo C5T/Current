@@ -61,7 +61,7 @@ class JSONFilePersister<TYPELIST, NoCustomPersisterParam> {
         CURRENT_THROW(StorageCannotAppendToFileException(filename_));  // LCOV_EXCL_LINE
       }
       for (auto&& entry : journal.commit_log) {
-        os << JSON(variant_t(std::move(entry))) << '\n';
+        os << JSON(variant_t(BypassVariantTypeCheck(), std::move(entry))) << '\n';
       }
     }
     journal.Clear();

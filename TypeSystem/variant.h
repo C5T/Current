@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +41,8 @@ SOFTWARE.
 
 namespace current {
 
+struct BypassVariantTypeCheck {};
+
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -58,13 +61,28 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   static constexpr size_t typelist_size = typelist_t::size;
 
+  template <typename OTHER_NAME, typename OTHER_TYPE_LIST>
+  friend struct VariantImpl;
+
   VariantImpl() {}
 
-  VariantImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+  VariantImpl(BypassVariantTypeCheck, std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
+  // Use deep copy helper for all Variant types, including our own.
   VariantImpl(const VariantImpl& rhs) { CopyFrom(rhs); }
+  template <typename... RHS>
+  VariantImpl(const VariantImpl<RHS...>& rhs) {
+    CopyFrom(rhs);
+  }
 
-  VariantImpl(VariantImpl&& rhs) : object_(std::move(rhs.object_)) {}
+  // Default move constructor for the same Variant type as ours.
+  VariantImpl(VariantImpl&& rhs) = default;
+
+  // Other Variants are processed using a type-aware move helper.
+  template <typename... RHS>
+  VariantImpl(VariantImpl<RHS...>&& rhs) {
+    MoveFrom(std::forward<VariantImpl<RHS...>>(rhs));
+  }
 
   template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
   VariantImpl(X&& input) {
@@ -130,19 +148,20 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
+  // TODO(dk+mz): What should be in the`enable_if_t`-s below? `CurrentStruct`, `CurrentSuper`, or both?
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentStruct>::value, bool> VariantExistsImpl() const {
+  std::enable_if_t<!std::is_same<X, CurrentStruct>::value, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
   // Variant `Exists<>` when queried for its own top-level `Variant` type.
   template <typename X>
-  ENABLE_IF<std::is_same<X, VariantImpl>::value, bool> VariantExistsImpl() const {
+  std::enable_if_t<std::is_same<X, VariantImpl>::value, bool> VariantExistsImpl() const {
     return ExistsImpl();
   }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentStruct>::value, X&> VariantValueImpl() {
+  std::enable_if_t<!std::is_same<X, CurrentStruct>::value, X&> VariantValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -152,7 +171,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, const X&> VariantValueImpl() const {
+  std::enable_if_t<!std::is_same<X, CurrentSuper>::value, const X&> VariantValueImpl() const {
     const X* ptr = dynamic_cast<const X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -163,7 +182,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   // Variant returns itself when `Value<>`-queried for its own top-level `Variant` type.
   template <typename X>
-  ENABLE_IF<std::is_same<X, VariantImpl>::value, VariantImpl&> VariantValueImpl() {
+  std::enable_if_t<std::is_same<X, VariantImpl>::value, VariantImpl&> VariantValueImpl() {
     if (ExistsImpl()) {
       return *this;
     } else {
@@ -172,7 +191,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
   template <typename X>
-  ENABLE_IF<std::is_same<X, VariantImpl>::value, const VariantImpl&> VariantValueImpl() const {
+  std::enable_if_t<std::is_same<X, VariantImpl>::value, const VariantImpl&> VariantValueImpl() const {
     if (ExistsImpl()) {
       return *this;
     } else {
@@ -182,20 +201,52 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
  private:
   struct TypeAwareClone {
-    VariantImpl& result;
-    TypeAwareClone(VariantImpl& result) : result(result) {}
+    std::unique_ptr<CurrentSuper>& destination;
+    TypeAwareClone(std::unique_ptr<CurrentSuper>& destination) : destination(destination) {}
 
-    template <typename TT>
-    void operator()(const TT& instance) {
-      result = instance;
+    template <typename U>
+    std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U& instance) {
+      destination = std::make_unique<current::decay<U>>(instance);
+    }
+
+    template <typename U>
+    std::enable_if_t<!TypeListContains<typelist_t, U>::value> operator()(const U&) {
+      throw IncompatibleVariantTypeException<current::decay<U>>();
+    }
+  };
+
+  struct TypeAwareMove {
+    std::unique_ptr<CurrentSuper>& source;
+    std::unique_ptr<CurrentSuper>& destination;
+    TypeAwareMove(std::unique_ptr<CurrentSuper>& source, std::unique_ptr<CurrentSuper>& destination)
+        : source(source), destination(destination) {}
+
+    template <typename U>
+    std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
+      destination = std::move(source);
+    }
+
+    template <typename U>
+    std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
+      throw IncompatibleVariantTypeException<current::decay<U>>();
     }
   };
 
   template <typename... RHS>
   void CopyFrom(const VariantImpl<RHS...>& rhs) {
     if (rhs.object_) {
-      TypeAwareClone cloner(*this);
+      TypeAwareClone cloner(this->object_);
       rhs.Call(cloner);
+    } else {
+      object_ = nullptr;
+    }
+  }
+
+  template <typename... RHS>
+  void MoveFrom(VariantImpl<RHS...>&& rhs) {
+    if (rhs.object_) {
+      TypeAwareMove mover(rhs.object_, this->object_);
+      rhs.Call(mover);
     } else {
       object_ = nullptr;
     }

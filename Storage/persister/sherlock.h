@@ -116,7 +116,7 @@ class SherlockStreamPersisterImpl {
 #endif
       transaction_t transaction;
       for (auto&& entry : journal.commit_log) {
-        transaction.mutations.emplace_back(std::move(entry));
+        transaction.mutations.emplace_back(BypassVariantTypeCheck(), std::move(entry));
       }
       std::swap(transaction.meta, journal.transaction_meta);
       stream_used_.Publish(std::move(transaction));
