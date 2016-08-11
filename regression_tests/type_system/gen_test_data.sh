@@ -19,6 +19,7 @@ CURRENT_STRUCT_HEADER="$INCLUDE_DIR/current_struct.h"
 CURRENT_STRUCT_TEST="$INCLUDE_DIR/current_struct.cc"
 CURRENT_STRUCT_GOLDEN="$GOLDEN_DIR/current_struct.cc"
 
+echo "namespace current_userspace {" >> $CURRENT_STRUCT_GOLDEN
 for i in `seq 1 $STRUCT_COUNT`; do
 	echo "CURRENT_STRUCT(Struct$i) {" >> $CURRENT_STRUCT_HEADER
 	echo "  CURRENT_FIELD(x$i, uint32_t);" >> $CURRENT_STRUCT_HEADER
@@ -30,12 +31,14 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "  uint32_t x$i;" >> $CURRENT_STRUCT_GOLDEN
 	echo "};" >> $CURRENT_STRUCT_GOLDEN
 done
+echo "}  // namespace current_userspace" >> $CURRENT_STRUCT_GOLDEN
 
 # 'struct_fields.cc' test.
 STRUCT_FIELDS_HEADER="$INCLUDE_DIR/struct_fields.h"
 STRUCT_FIELDS_GOLDEN="$GOLDEN_DIR/struct_fields.cc"
 
 echo "CURRENT_STRUCT(StructWithManyFields) {" >> $STRUCT_FIELDS_HEADER
+echo "namespace current_userspace {" >> $STRUCT_FIELDS_GOLDEN
 echo "struct StructWithManyFields {" >> $STRUCT_FIELDS_GOLDEN
 for i in `seq 1 $STRUCT_COUNT`; do
 	echo "  CURRENT_FIELD(z$i, uint32_t);" >> $STRUCT_FIELDS_HEADER
@@ -43,6 +46,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "};" >> $STRUCT_FIELDS_HEADER
 echo "};" >> $STRUCT_FIELDS_GOLDEN
+echo "}  // namespace current_userspace" >> $STRUCT_FIELDS_GOLDEN
 
 # 'typelist.cc' test.
 TYPELIST_HEADER="$INCLUDE_DIR/typelist.h"
