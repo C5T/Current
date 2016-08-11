@@ -23,6 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "../../Storage/storage.h"
+#include "../../Storage/persister/sherlock.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -37,11 +38,34 @@ namespace type_test {
 TEST(TypeTest, Storage) {
   using namespace type_test;
 
-  using storage_t = Storage<JSONFilePersister>;
+  using storage_t = Storage<SherlockStreamPersister>;
+  using transaction_t = typename storage_t::transaction_t;
 
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
 
   storage_t storage("data");
 
 #include "include/storage.cc"
+
+  struct Subscriber {
+    size_t number_of_mutations = 0u;
+
+    current::ss::EntryResponse operator()(const transaction_t& transaction, idxts_t, idxts_t) {
+      assert(!number_of_mutations);
+      assert(!transaction.mutations.empty());
+      number_of_mutations = transaction.mutations.size();
+      return current::ss::EntryResponse::Done;
+    }
+
+    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
+      return current::ss::EntryResponse::More;
+    }
+
+    current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Wait; }
+  };
+
+  current::ss::StreamSubscriber<Subscriber, transaction_t> subscriber;
+  storage.InternalExposeStream().Subscribe(subscriber);
+
+  EXPECT_EQ(static_cast<size_t>(storage_t::FIELDS_COUNT), subscriber.number_of_mutations);
 }

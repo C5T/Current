@@ -9,6 +9,7 @@ TEST_LIST=(
     '.current/rtti_dynamic_call'
     '.current/variant'
     '.current/storage'
+    '.current/storage_with_subscriber'
 )
 
 for c in ${COUNT_LIST[@]}; do
