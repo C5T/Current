@@ -39,12 +39,9 @@ namespace storage {
 namespace persister {
 
 template <typename TYPELIST, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
-class SherlockStreamPersisterImpl;
-
-template <template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE, typename... TS>
-class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_RECORD_TYPE> {
+class SherlockStreamPersisterImpl {
  public:
-  using variant_t = Variant<TS...>;
+  using variant_t = Variant<TYPELIST>;
   using transaction_t = Transaction<variant_t>;
   using sherlock_entry_t =
       typename std::conditional<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value,
