@@ -40,38 +40,6 @@ SOFTWARE.
 
 namespace current {
 
-// A high-octane version of `current::metaprogramming::combine.
-namespace variant_high_octane_tmp {
-
-using current::metaprogramming::EvensOnly;
-
-template <typename T>
-struct fast_combine;
-
-template <typename T, typename... TS>
-struct fast_combine<TypeListImpl<T, TS...>> : fast_combine<EvensOnly<TypeListImpl<T, TS...>>>,
-                                              fast_combine<EvensOnly<TypeListImpl<TS...>>> {
-  using fast_combine<EvensOnly<TypeListImpl<T, TS...>>>::operator();
-  using fast_combine<EvensOnly<TypeListImpl<TS...>>>::operator();
-};
-
-template <typename T>
-struct fast_combine<TypeListImpl<T>> {
-  T instance;
-
-  template <typename PARAM>
-  void operator()(typename T::first_parameter_1 first, PARAM&& param, typename T::third_parameter& third) {
-    instance.operator()(first, std::forward<PARAM>(param), third);
-  }
-
-  template <typename PARAM>
-  void operator()(typename T::first_parameter_2 first, PARAM&& param, typename T::third_parameter& third) {
-    instance.operator()(first, std::forward<PARAM>(param), third);
-  }
-};
-
-}  // namespace variant_high_octane_tmp
-
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -81,60 +49,6 @@ struct fast_combine<TypeListImpl<T>> {
 // The input object could be an object itself (in which case it's copied),
 // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
 // or a bare pointer (in which case it's captured).
-// TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
-template <typename TYPELIST>
-struct VariantTypeCheckedAssignment;
-
-template <typename... TS>
-struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
-  template <typename Z>
-  struct DerivedTypesDifferentiator {};
-
-  template <typename X>
-  struct Impl {
-    // Legal parameter types, for high-octane metaprogramming.
-    using first_parameter_1 = DerivedTypesDifferentiator<X>;
-    using first_parameter_2 = DerivedTypesDifferentiator<std::unique_ptr<X>>;
-    using third_parameter = std::unique_ptr<CurrentSuper>;
-
-    // Copy `X`.
-    void operator()(DerivedTypesDifferentiator<X>,
-                    const X& source,
-                    std::unique_ptr<CurrentSuper>& destination) {
-      if (!destination || !dynamic_cast<X*>(destination.get())) {
-        destination = std::make_unique<X>();
-      }
-      // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
-      dynamic_cast<X&>(*destination.get()) = source;
-    }
-    // Move `X`.
-    void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
-      if (!destination || !dynamic_cast<X*>(destination.get())) {
-        destination = std::make_unique<X>();
-      }
-      // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
-      dynamic_cast<X&>(*destination.get()) = std::move(source);
-    }
-    // Move `std::unique_ptr`.
-    void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
-                    std::unique_ptr<X>&& source,
-                    std::unique_ptr<CurrentSuper>& destination) {
-      if (!source) {
-        throw NoValueOfTypeException<X>();  // LCOV_EXCL_LINE
-      }
-      destination = std::move(source);
-    }
-  };
-
-  using Instance = variant_high_octane_tmp::fast_combine<TypeListImpl<Impl<TS>...>>;
-
-  template <typename Q>
-  static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
-    Instance instance;
-    instance(DerivedTypesDifferentiator<current::decay<Q>>(), std::forward<Q>(source), destination);
-  }
-};
-
 template <typename NAME, typename TYPE_LIST>
 struct VariantImpl;
 
@@ -142,71 +56,74 @@ template <typename NAME, typename... TYPES>
 struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   using typelist_t = TypeListImpl<TYPES...>;
 
-  using variant_impl_t = VariantImpl<NAME, typelist_t>;
-
-  enum { typelist_size = TypeListSize<typelist_t>::value };
-
-  std::unique_ptr<CurrentSuper> object_;
+  static constexpr size_t typelist_size = typelist_t::size;
 
   VariantImpl() {}
 
-  operator bool() const { return object_ ? true : false; }
-
   VariantImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
-  VariantImpl(const variant_impl_t& rhs) { CopyFrom(rhs); }
+  VariantImpl(const VariantImpl& rhs) { CopyFrom(rhs); }
 
-  VariantImpl(variant_impl_t&& rhs) : object_(std::move(rhs.object_)) {}
+  VariantImpl(VariantImpl&& rhs) : object_(std::move(rhs.object_)) {}
 
-  VariantImpl& operator=(const variant_impl_t& rhs) {
+  template <typename X,
+            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  VariantImpl(X&& input) {
+    using decayed_t = current::decay<X>;
+    object_ = std::make_unique<decayed_t>(std::forward<X>(input));
+  }
+
+  template <typename X,
+            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  VariantImpl(std::unique_ptr<X> input) {
+    object_ = std::move(input);
+  }
+
+  void operator=(std::nullptr_t) { object_ = nullptr; }
+
+  VariantImpl& operator=(const VariantImpl& rhs) {
     CopyFrom(rhs);
     return *this;
   }
 
-  VariantImpl& operator=(variant_impl_t&& rhs) {
+  VariantImpl& operator=(VariantImpl&& rhs) {
     object_ = std::move(rhs.object_);
     return *this;
   }
 
   template <typename X,
-            bool ENABLE = !std::is_same<current::decay<X>, variant_impl_t>::value,
-            class SFINAE = ENABLE_IF<ENABLE>>
-  void operator=(X&& input) {
-    VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
-  }
-
-  template <typename... TS>
-  void operator=(VariantImpl<TS...>&& rhs) {
-    TypeAwareMove mover(*this);
-    rhs.Call(mover);
+            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  VariantImpl& operator=(X&& input) {
+    using decayed_t = current::decay<X>;
+    object_ = std::make_unique<decayed_t>(std::forward<X>(input));
+    return *this;
   }
 
   template <typename X,
-            bool ENABLE = !std::is_same<current::decay<X>, variant_impl_t>::value,
-            class SFINAE = ENABLE_IF<ENABLE>>
-  VariantImpl(X&& input) {
-    VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
-    CheckIntegrityImpl();
+            class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  VariantImpl& operator=(std::unique_ptr<X> input) {
+    object_ = std::move(input);
+    return *this;
   }
 
-  template <typename... TS>
-  VariantImpl(VariantImpl<TS...>&& rhs) {
-    TypeAwareMove mover(*this);
-    rhs.Call(mover);
-  }
-
-  void operator=(std::nullptr_t) { object_ = nullptr; }
+  operator bool() const { return object_ ? true : false; }
 
   template <typename F>
   void Call(F&& f) {
-    CheckIntegrityImpl();
-    current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
+    if (object_) {
+      current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
+    } else {
+      throw UninitializedVariantOfTypeException<TYPES...>();
+    }
   }
 
   template <typename F>
   void Call(F&& f) const {
-    CheckIntegrityImpl();
-    current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
+    if (object_) {
+      current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
+    } else {
+      throw UninitializedVariantOfTypeException<TYPES...>();
+    }
   }
 
   // By design, `VariantExistsImpl<T>()` and `VariantValueImpl<T>()` do not check
@@ -267,18 +184,10 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     }
   }
 
-  void CheckIntegrityImpl() const {
-    // NOTE by @dkorolev on 5/1/16: Should we be OK to have an uninitialized `Variant<>`?
-    // TODO(dkorolev) + TODO(mzhurovich): Revisit this.
-    if (!object_) {
-      throw UninitializedVariantOfTypeException<TYPES...>();  // LCOV_EXCL_LINE
-    }
-  }
-
  private:
   struct TypeAwareClone {
-    variant_impl_t& result;
-    TypeAwareClone(variant_impl_t& result) : result(result) {}
+    VariantImpl& result;
+    TypeAwareClone(VariantImpl& result) : result(result) {}
 
     template <typename TT>
     void operator()(const TT& instance) {
@@ -286,25 +195,18 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     }
   };
 
-  struct TypeAwareMove {
-    variant_impl_t& result;
-    TypeAwareMove(variant_impl_t& result) : result(result) {}
-
-    template <typename TT>
-    void operator()(TT&& instance) {
-      result = std::move(instance);
-    }
-  };
-
-  void CopyFrom(const variant_impl_t& rhs) {
+  template <typename... RHS>
+  void CopyFrom(const VariantImpl<RHS...>& rhs) {
     if (rhs.object_) {
       TypeAwareClone cloner(*this);
       rhs.Call(cloner);
-      CheckIntegrityImpl();
     } else {
       object_ = nullptr;
     }
   }
+
+ private:
+  std::unique_ptr<CurrentSuper> object_;
 };
 
 // `Variant<...>` can accept either a list of types, or a `TypeList<...>`.

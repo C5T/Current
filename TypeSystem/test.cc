@@ -650,29 +650,8 @@ TEST(TypeSystemTest, VariantStaticAsserts) {
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>::typelist_t, TypeListImpl<Foo, Bar>>::value, "");
 }
 
-TEST(TypeSystemTest, VariantCreateAndCopy) {
+TEST(TypeSystemTest, EqualTypelistVariantsCopyAndMove) {
   using namespace struct_definition_test;
-
-  // Move empty.
-  {
-    Variant<Foo, Bar> empty;
-    Variant<Foo, Bar> moved(std::move(empty));
-    EXPECT_FALSE(moved.ExistsImpl());
-    EXPECT_FALSE(Exists(moved));
-    EXPECT_FALSE(Exists<Foo>(moved));
-    EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
-  }
-  {
-    Variant<Foo, Bar> empty;
-    Variant<Foo, Bar> moved;
-    moved = std::move(empty);
-    EXPECT_FALSE(moved.ExistsImpl());
-    EXPECT_FALSE(Exists(moved));
-    EXPECT_FALSE(Exists<Foo>(moved));
-    EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
-  }
 
   // Copy empty.
   {
@@ -695,31 +674,25 @@ TEST(TypeSystemTest, VariantCreateAndCopy) {
     EXPECT_FALSE((Exists<Variant<Foo, Bar>>(copied)));
   }
 
-  // Move non-empty.
+  // Move empty.
   {
-    Variant<Foo, Bar> foo(Foo(100u));
-    EXPECT_TRUE(Exists(foo));
-    EXPECT_TRUE(Exists<Foo>(foo));
-    EXPECT_FALSE(Exists<Bar>(foo));
-    Variant<Foo, Bar> moved(std::move(foo));
-    EXPECT_TRUE(Exists(moved));
-    EXPECT_TRUE(Exists<Foo>(moved));
+    Variant<Foo, Bar> empty;
+    Variant<Foo, Bar> moved(std::move(empty));
+    EXPECT_FALSE(moved.ExistsImpl());
+    EXPECT_FALSE(Exists(moved));
+    EXPECT_FALSE(Exists<Foo>(moved));
     EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_EQ(100u, Value<Foo>(moved).i);
-    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
-    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
   }
   {
-    Variant<Foo, Bar> foo(Foo(101u));
+    Variant<Foo, Bar> empty;
     Variant<Foo, Bar> moved;
-    moved = std::move(foo);
-    EXPECT_TRUE(Exists(moved));
-    EXPECT_FALSE(Exists(foo));
-    EXPECT_TRUE(Exists<Foo>(moved));
+    moved = std::move(empty);
+    EXPECT_FALSE(moved.ExistsImpl());
+    EXPECT_FALSE(Exists(moved));
+    EXPECT_FALSE(Exists<Foo>(moved));
     EXPECT_FALSE(Exists<Bar>(moved));
-    EXPECT_EQ(101u, Value<Foo>(moved).i);
-    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
-    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
   }
 
   // Copy non-empty.
@@ -750,6 +723,33 @@ TEST(TypeSystemTest, VariantCreateAndCopy) {
     EXPECT_TRUE((Exists<Variant<Foo, Bar>>(copied)));
     EXPECT_EQ(100u, (Value<Bar>(Value<Variant<Foo, Bar>>(copied)).j));
     EXPECT_EQ(101u, (Value<Bar>(Value<Variant<Foo, Bar>>(bar)).j));
+  }
+
+  // Move non-empty.
+  {
+    Variant<Foo, Bar> foo(Foo(100u));
+    EXPECT_TRUE(Exists(foo));
+    EXPECT_TRUE(Exists<Foo>(foo));
+    EXPECT_FALSE(Exists<Bar>(foo));
+    Variant<Foo, Bar> moved(std::move(foo));
+    EXPECT_TRUE(Exists(moved));
+    EXPECT_TRUE(Exists<Foo>(moved));
+    EXPECT_FALSE(Exists<Bar>(moved));
+    EXPECT_EQ(100u, Value<Foo>(moved).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
+    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
+  }
+  {
+    Variant<Foo, Bar> foo(Foo(101u));
+    Variant<Foo, Bar> moved;
+    moved = std::move(foo);
+    EXPECT_TRUE(Exists(moved));
+    EXPECT_FALSE(Exists(foo));
+    EXPECT_TRUE(Exists<Foo>(moved));
+    EXPECT_FALSE(Exists<Bar>(moved));
+    EXPECT_EQ(101u, Value<Foo>(moved).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
+    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
   }
 }
 
