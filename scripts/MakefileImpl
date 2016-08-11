@@ -23,7 +23,7 @@ LOCAL_HEADERS_LIST=$(shell find . -maxdepth 1 -name '*.h' -exec echo '"{}"' ';' 
 
 CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
-CPPFLAGS+= -ftemplate-backtrace-limit=0  # Doesn't seem to increase compilation time, yet useful. -- D.K.
+CPPFLAGS+= -ftemplate-backtrace-limit=0  -ftemplate-depth=10000
 ifeq ($(NDEBUG),1)
   CPPFLAGS+= -O3
 else
