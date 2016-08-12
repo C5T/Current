@@ -127,7 +127,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     if (object_) {
       current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
     } else {
-      throw UninitializedVariantOfTypeException<TYPES...>();
+      CURRENT_THROW(UninitializedVariantOfTypeException<TYPES...>());
     }
   }
 
@@ -136,7 +136,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     if (object_) {
       current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
     } else {
-      throw UninitializedVariantOfTypeException<TYPES...>();
+      CURRENT_THROW(UninitializedVariantOfTypeException<TYPES...>());
     }
   }
 
@@ -166,7 +166,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     if (ptr) {
       return *ptr;
     } else {
-      throw NoValueOfTypeException<X>();
+      CURRENT_THROW(NoValueOfTypeException<X>());
     }
   }
 
@@ -176,7 +176,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     if (ptr) {
       return *ptr;
     } else {
-      throw NoValueOfTypeException<X>();
+      CURRENT_THROW(NoValueOfTypeException<X>());
     }
   }
 
@@ -186,7 +186,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     if (ExistsImpl()) {
       return *this;
     } else {
-      throw NoValueOfTypeException<VariantImpl>();
+      CURRENT_THROW(NoValueOfTypeException<VariantImpl>());
     }
   }
 
@@ -195,47 +195,47 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     if (ExistsImpl()) {
       return *this;
     } else {
-      throw NoValueOfTypeException<VariantImpl>();
+      CURRENT_THROW(NoValueOfTypeException<VariantImpl>());
     }
   }
 
  private:
   struct TypeAwareClone {
-    std::unique_ptr<CurrentSuper>& destination;
-    TypeAwareClone(std::unique_ptr<CurrentSuper>& destination) : destination(destination) {}
+    std::unique_ptr<CurrentSuper>& into;
+    TypeAwareClone(std::unique_ptr<CurrentSuper>& into) : into(into) {}
 
     template <typename U>
     std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U& instance) {
-      destination = std::make_unique<current::decay<U>>(instance);
+      into = std::make_unique<current::decay<U>>(instance);
     }
 
     template <typename U>
-    std::enable_if_t<!TypeListContains<typelist_t, U>::value> operator()(const U&) {
-      throw IncompatibleVariantTypeException<current::decay<U>>();
+    std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U&) {
+      CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
     }
   };
 
   struct TypeAwareMove {
-    std::unique_ptr<CurrentSuper>& source;
-    std::unique_ptr<CurrentSuper>& destination;
-    TypeAwareMove(std::unique_ptr<CurrentSuper>& source, std::unique_ptr<CurrentSuper>& destination)
-        : source(source), destination(destination) {}
+    std::unique_ptr<CurrentSuper>&& from;
+    std::unique_ptr<CurrentSuper>& into;
+    TypeAwareMove(std::unique_ptr<CurrentSuper>&& from, std::unique_ptr<CurrentSuper>& into)
+        : from(std::move(from)), into(into) {}
 
     template <typename U>
     std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
-      destination = std::move(source);
+      into = std::move(from);
     }
 
     template <typename U>
     std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
-      throw IncompatibleVariantTypeException<current::decay<U>>();
+      CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
     }
   };
 
   template <typename... RHS>
   void CopyFrom(const VariantImpl<RHS...>& rhs) {
     if (rhs.object_) {
-      TypeAwareClone cloner(this->object_);
+      TypeAwareClone cloner(object_);
       rhs.Call(cloner);
     } else {
       object_ = nullptr;
@@ -245,7 +245,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   template <typename... RHS>
   void MoveFrom(VariantImpl<RHS...>&& rhs) {
     if (rhs.object_) {
-      TypeAwareMove mover(rhs.object_, this->object_);
+      TypeAwareMove mover(std::move(rhs.object_), object_);
       rhs.Call(mover);
     } else {
       object_ = nullptr;
