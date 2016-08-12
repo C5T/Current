@@ -221,6 +221,8 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
   fprintf(stderr, "Current assertion failed:\n\t%s\n\t%s : %d\n", text, file, line);
 }
 
+#ifndef CURRENT_ASSERT
 #define CURRENT_ASSERT(expr) ((expr) ? static_cast<void>(0) : CURRENT_ASSERTION_FAILED(#expr, __FILE__, __LINE__))
+#endif
 
 #endif
