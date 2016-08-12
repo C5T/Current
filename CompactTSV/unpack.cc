@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include <cassert>
 #include <iostream>
 #include <string>
 
@@ -37,7 +36,7 @@ DEFINE_string(input, "", "Input file to parse.");
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  assert(!FLAGS_input.empty());
+  CURRENT_ASSERT(!FLAGS_input.empty());
   const auto contents = current::FileSystem::ReadFileAsString(FLAGS_input);
 
   CompactTSV::Unpack([](const std::vector<std::string>& v) {

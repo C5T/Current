@@ -217,4 +217,10 @@ inline const char* strptime(const char* input_string, const char* input_format, 
 using namespace enable_strptime_on_windows;
 #endif  // CURRENT_WINDOWS
 
+inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int line) {
+  fprintf(stderr, "Current assertion failed:\n\t%s\n\t%s : %d\n", text, file, line);
+}
+
+#define CURRENT_ASSERT(expr) ((expr) ? static_cast<void>(0) : CURRENT_ASSERTION_FAILED(#expr, __FILE__, __LINE__))
+
 #endif

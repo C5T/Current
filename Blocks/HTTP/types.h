@@ -236,7 +236,7 @@ struct HTTPImpl {
 
   // TODO(dkorolev): Deprecate the below some time in the future. And perhaps add an `http_port_t`.
   server_impl_t& operator()(int port) {
-    assert(port > 0 && port < 65536);
+    CURRENT_ASSERT(port > 0 && port < 65536);
     return operator()(static_cast<uint16_t>(port));
   }
 

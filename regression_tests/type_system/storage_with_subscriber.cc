@@ -51,8 +51,8 @@ TEST(TypeTest, Storage) {
     size_t number_of_mutations = 0u;
 
     current::ss::EntryResponse operator()(const transaction_t& transaction, idxts_t, idxts_t) {
-      assert(!number_of_mutations);
-      assert(!transaction.mutations.empty());
+      CURRENT_ASSERT(!number_of_mutations);
+      CURRENT_ASSERT(!transaction.mutations.empty());
       number_of_mutations = transaction.mutations.size();
       return current::ss::EntryResponse::Done;
     }

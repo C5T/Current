@@ -26,6 +26,8 @@
 #ifndef FNCAS_H
 #define FNCAS_H
 
+#include "../../port.h"
+
 #include "base.h"
 #include "node.h"
 #include "differentiate.h"

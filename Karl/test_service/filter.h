@@ -65,7 +65,7 @@ class ServiceFilter final {
  private:
   void OnNumber(Number&& value) {
     const Number number(std::move(value));
-    assert(Exists(number.is_prime));
+    CURRENT_ASSERT(Exists(number.is_prime));
     (Value(number.is_prime) ? stream_primes_ : stream_composites_).Publish(std::move(number));
   }
 

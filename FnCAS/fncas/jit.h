@@ -68,11 +68,11 @@ struct compiled_expression : noncopyable {
   const std::string lib_filename_;
   explicit compiled_expression(const std::string& lib_filename) : lib_filename_(lib_filename) {
     lib_ = dlopen(lib_filename.c_str(), RTLD_LAZY);
-    assert(lib_);
+    CURRENT_ASSERT(lib_);
     dim_ = reinterpret_cast<DIM>(dlsym(lib_, "dim"));
     eval_ = reinterpret_cast<EVAL>(dlsym(lib_, "eval"));
-    assert(dim_);
-    assert(eval_);
+    CURRENT_ASSERT(dim_);
+    CURRENT_ASSERT(eval_);
   }
   ~compiled_expression() {
     if (lib_) {
@@ -139,7 +139,7 @@ inline void generate_c_code_for_node(node_index_type index, FILE* f) {
         stack.push(~i);
         stack.push(node.argument_index());
       } else {
-        assert(false);
+        CURRENT_ASSERT(false);
       }
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
@@ -157,7 +157,7 @@ inline void generate_c_code_for_node(node_index_type index, FILE* f) {
                 function_as_string(node.function()),
                 static_cast<long long>(node.argument_index()));
       } else {
-        assert(false);
+        CURRENT_ASSERT(false);
       }
     }
   }
@@ -215,7 +215,7 @@ inline void generate_asm_code_for_node(node_index_type index, FILE* f) {
         stack.push(~i);
         stack.push(node.argument_index());
       } else {
-        assert(false);
+        CURRENT_ASSERT(false);
       }
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
@@ -244,7 +244,7 @@ inline void generate_asm_code_for_node(node_index_type index, FILE* f) {
         fprintf(f, "  pop rdi\n");
         fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
       } else {
-        assert(false);
+        CURRENT_ASSERT(false);
       }
     }
   }
@@ -267,7 +267,7 @@ struct compile_impl {
   struct NASM {
     static void compile(const std::string& filebase, node_index_type index) {
       FILE* f = fopen((filebase + ".asm").c_str(), "w");
-      assert(f);
+      CURRENT_ASSERT(f);
       generate_asm_code_for_node(index, f);
       fclose(f);
 
@@ -281,7 +281,7 @@ struct compile_impl {
   struct CLANG {
     static void compile(const std::string& filebase, node_index_type index) {
       FILE* f = fopen((filebase + ".c").c_str(), "w");
-      assert(f);
+      CURRENT_ASSERT(f);
       generate_c_code_for_node(index, f);
       fclose(f);
 

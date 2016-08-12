@@ -195,7 +195,7 @@ struct ReflectorImpl {
           type_index;
     }
     const auto& result = reflected_cpp_types_.at(type_index);
-    assert(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
+    CURRENT_ASSERT(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
     return result;
   }
 
@@ -209,7 +209,7 @@ struct ReflectorImpl {
           type_index;
     }
     const auto& result = reflected_cpp_types_.at(type_index);
-    assert(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
+    CURRENT_ASSERT(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
     return result;
   }
 

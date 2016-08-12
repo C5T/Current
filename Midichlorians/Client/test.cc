@@ -57,7 +57,7 @@ class Server {
   using events_variant_t = Variant<ios_events_t>;
 
   Server(int http_port, const std::string& http_route)
-      :  routes_(HTTP(http_port).Register(http_route,
+      : routes_(HTTP(http_port).Register(http_route,
                                          [this](Request r) {
                                            events_variant_t event;
                                            try {

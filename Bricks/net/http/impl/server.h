@@ -156,7 +156,7 @@ class GenericHTTPRequestData : public HELPER {
       size_t chunk;
       size_t read_count;
       // Use `- offset - 1` instead of just `- offset` to leave room for the '\0'.
-      assert(buffer_.size() > offset + 1);
+      CURRENT_ASSERT(buffer_.size() > offset + 1);
       // NOTE: This `if` should not be made a `while`, as it may so happen that the boundary between two
       // consecutively received packets lays right on the final size, but instead of parsing the received body,
       // the server would wait forever for more data to arrive from the client.
@@ -218,7 +218,8 @@ class GenericHTTPRequestData : public HELPER {
                 //    during the next iteration of the outer loop.
                 // The original version of this code was only adding one to `next_offset`.
                 // This had a bug, which got revealed as the `while` loop above has been corrected into `if`.
-                // Upon changing the `while` to an `if`, the `assert (buffer_.size() > offset + 1);` check above
+                // Upon changing the `while` to an `if`, the `CURRENT_ASSERT(buffer_.size() > offset + 1);`
+                // check above
                 // would fail on a chunked HTTP body of several large chunks. Thus, `next_offset + 2` is it.
                 // Note that the actual `resize()` would always allocate more room than the extra two bytes.
                 // The `std::max()` condition is kept just in case we compile Current for a device
@@ -319,7 +320,7 @@ class GenericHTTPRequestData : public HELPER {
 
   inline size_t BodyLength() const {
     if (body_buffer_begin_) {
-      assert(body_buffer_end_);
+      CURRENT_ASSERT(body_buffer_end_);
       return body_buffer_end_ - body_buffer_begin_;
     } else {
       return 0u;

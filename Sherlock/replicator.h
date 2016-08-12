@@ -166,9 +166,9 @@ class SubscribableRemoteStream final {
       // Expected one entire entry in each chunk,
       // won't work in case of partial or multiple entries per chunk
       const auto split = current::strings::Split(chunk, '\t');
-      assert(split.size() == 2u);
+      CURRENT_ASSERT(split.size() == 2u);
       const auto idxts = ParseJSON<idxts_t>(split[0]);
-      assert(idxts.index == index_);
+      CURRENT_ASSERT(idxts.index == index_);
       auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
       ++index_;
       if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
@@ -267,13 +267,13 @@ struct StreamReplicatorImpl {
   void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
 
   EntryResponse operator()(entry_t&& entry, idxts_t current, idxts_t) {
-    assert(publisher_);
+    CURRENT_ASSERT(publisher_);
     publisher_->Publish(std::move(entry), current.us);
     return EntryResponse::More;
   }
 
   EntryResponse operator()(const entry_t& entry, idxts_t current, idxts_t) {
-    assert(publisher_);
+    CURRENT_ASSERT(publisher_);
     publisher_->Publish(entry, current.us);
     return EntryResponse::More;
   }

@@ -122,7 +122,7 @@ TEST(Util, MakeScopeGuard) {
           story_ += "helper_end\n";
           called_ = true;
         } else {
-          assert(false);  // LCOV_EXCL_LINE
+          CURRENT_ASSERT(false);  // LCOV_EXCL_LINE
         }
       }
 

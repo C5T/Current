@@ -29,7 +29,6 @@ SOFTWARE.
 // TODO(dkorolev): Move to fast strings.
 // TODO(batman): Exceptions.
 
-#include <cassert>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -116,19 +115,19 @@ class CompactTSV {
  public:
   // `dim_` can be initialized at construction time or later.
   CompactTSV(size_t dim = 0u) : dim_(dim) {
-    assert(dim <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
+    CURRENT_ASSERT(dim <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
     current_.resize(dim_);
   }
 
   void operator()(const std::vector<std::string>& row) {
-    assert(!done_);        // TODO(batman): Exception.
-    assert(!row.empty());  // TODO(batman): Exception.
+    CURRENT_ASSERT(!done_);        // TODO(batman): Exception.
+    CURRENT_ASSERT(!row.empty());  // TODO(batman): Exception.
     if (!dim_) {
       dim_ = row.size();
-      assert(dim_ <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
+      CURRENT_ASSERT(dim_ <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
       current_.resize(dim_);
     } else {
-      assert(row.size() == dim_);  // TODO(batman): Exception.
+      CURRENT_ASSERT(row.size() == dim_);  // TODO(batman): Exception.
     }
     for (index_type i = 0; i < row.size(); ++i) {
       if (row[i] != current_[i] || first_) {
@@ -144,12 +143,12 @@ class CompactTSV {
   }
 
   void Finalize() {
-    assert(!done_);  // TODO(batman): Exception.
+    CURRENT_ASSERT(!done_);  // TODO(batman): Exception.
     done_ = true;
   }
 
   const std::string& GetPackedString() const {
-    assert(done_);  // TODO(batman): Exception.
+    CURRENT_ASSERT(done_);  // TODO(batman): Exception.
     return data_;
   }
 
@@ -161,22 +160,22 @@ class CompactTSV {
     const uint8_t* end = data + length;
     size_t total = 0u;
     while (p != end) {
-      assert(p < end);  // TODO(batman): Exception.
+      CURRENT_ASSERT(p < end);  // TODO(batman): Exception.
       const index_type index = *reinterpret_cast<const index_type*>(p);
       p += sizeof(index_type);
-      assert(p <= end);  // TODO(batman): Exception.
+      CURRENT_ASSERT(p <= end);  // TODO(batman): Exception.
       if (index == markers().storage) {
         const length_type length = *reinterpret_cast<const length_type*>(p);
         p += sizeof(length_type);
         p += length;
         ++p;
-        assert(p <= end);  // TODO(batman): Exception.
+        CURRENT_ASSERT(p <= end);  // TODO(batman): Exception.
       } else if (index == markers().row_done) {
-        assert(!dispatcher.Empty());
+        CURRENT_ASSERT(!dispatcher.Empty());
         if (!dim) {
           dim = dispatcher.Dim();
         } else {
-          assert(dim == dispatcher.Dim());  // TODO(batman): Exception.
+          CURRENT_ASSERT(dim == dispatcher.Dim());  // TODO(batman): Exception.
         }
         dispatcher.Emit(std::forward<F>(f));
         ++total;
@@ -186,7 +185,7 @@ class CompactTSV {
         dispatcher.Update(index,
                           reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
                           *reinterpret_cast<const length_type*>(data + offset));
-        assert(p <= end);  // TODO(batman): Exception.
+        CURRENT_ASSERT(p <= end);  // TODO(batman): Exception.
       }
     }
     return total;
@@ -231,12 +230,12 @@ class CompactTSV {
 
   void AssertStillSmall() {
     const offset_type offset = static_cast<offset_type>(data_.size());
-    assert(static_cast<size_t>(offset) == data_.size());  // TODO(batman): Exception.
+    CURRENT_ASSERT(static_cast<size_t>(offset) == data_.size());  // TODO(batman): Exception.
   }
 
   offset_type StoreString(const std::string& s) {
     const length_type length = static_cast<length_type>(s.length());
-    assert(static_cast<size_t>(length) == s.length());  // TODO(batman): Exception.
+    CURRENT_ASSERT(static_cast<size_t>(length) == s.length());  // TODO(batman): Exception.
     data_.append(reinterpret_cast<const char*>(&markers().storage), sizeof(index_type));
     const offset_type result = static_cast<offset_type>(data_.size());
     data_.append(reinterpret_cast<const char*>(&length), sizeof(length_type));

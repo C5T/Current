@@ -62,7 +62,7 @@ SCENARIO(current_http_server, "Use Current's HTTP stack for simple HTTP client-s
   }
 
   void RunOneQuery() override {
-    assert(HTTP(GET(urls[rand() % urls.size()])).body == FLAGS_simple_http_test_body);
+    CURRENT_ASSERT(HTTP(GET(urls[rand() % urls.size()])).body == FLAGS_simple_http_test_body);
   }
 };
 

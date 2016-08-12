@@ -25,19 +25,20 @@ SOFTWARE.
 #ifndef BRICKS_STRINGS_ROUNDING_H
 #define BRICKS_STRINGS_ROUNDING_H
 
+#include "../../port.h"
+
 #include <cstring>
 #include <string>
 #include <sstream>
 #include <cmath>
-#include <cassert>
 
 namespace current {
 namespace strings {
 
 // Rounds the number to have `n_digits` significant digits.
 inline std::string RoundDoubleToString(double value, size_t n_digits) {
-  assert(n_digits >= 1);
-  assert(n_digits <= 100);
+  CURRENT_ASSERT(n_digits >= 1);
+  CURRENT_ASSERT(n_digits <= 100);
   // `value` will be between `10^dim` and `10^(dim+1)`.
   const int dim = static_cast<int>(std::floor((std::log(value) / std::log(10.0)) + 1e-6));
   const double k = std::pow(10.0, static_cast<double>(dim - static_cast<int>(n_digits) + 1));

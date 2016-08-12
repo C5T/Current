@@ -26,7 +26,6 @@ SOFTWARE.
 #define BRICKS_UTIL_WAITABLE_TERMINATE_SIGNAL_H
 
 #include <atomic>
-#include <cassert>
 #include <condition_variable>
 #include <mutex>
 #include <unordered_set>

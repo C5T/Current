@@ -36,7 +36,7 @@ class F {
   size_t dim() const { return p_.size(); }
 
   void gen(std::vector<double>& x) {
-    assert(x.size() == p_.size());
+    CURRENT_ASSERT(x.size() == p_.size());
     for (size_t i = 0; i < p_.size(); ++i) {
       x[i] = p_[i](rng_);
     }

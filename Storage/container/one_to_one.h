@@ -72,7 +72,7 @@ class GenericOneToOne {
     const auto lm_cit = last_modified_.find(key);
     if (map_cit != map_.end()) {
       const T& previous_object = *(map_cit->second);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -88,11 +88,11 @@ class GenericOneToOne {
         const T& conflicting_object_same_col = *(cit_col->second);
         const auto key_same_row = std::make_pair(row, sfinae::GetCol(conflicting_object_same_row));
         const auto lm_same_row_cit = last_modified_.find(key_same_row);
-        assert(lm_same_row_cit != last_modified_.end());
+        CURRENT_ASSERT(lm_same_row_cit != last_modified_.end());
         const auto timestamp_same_row = lm_same_row_cit->second;
         const auto key_same_col = std::make_pair(sfinae::GetRow(conflicting_object_same_col), col);
         const auto lm_same_col_cit = last_modified_.find(key_same_col);
-        assert(lm_same_col_cit != last_modified_.end());
+        CURRENT_ASSERT(lm_same_col_cit != last_modified_.end());
         const auto timestamp_same_col = lm_same_col_cit->second;
         journal_.LogMutation(DELETE_EVENT(now, conflicting_object_same_row),
                              [this, key_same_row, conflicting_object_same_row, timestamp_same_row]() {
@@ -113,7 +113,7 @@ class GenericOneToOne {
         const auto conflicting_object_key =
             std::make_pair(sfinae::GetRow(conflicting_object), sfinae::GetCol(conflicting_object));
         const auto conflicting_object_lm_cit = last_modified_.find(conflicting_object_key);
-        assert(conflicting_object_lm_cit != last_modified_.end());
+        CURRENT_ASSERT(conflicting_object_lm_cit != last_modified_.end());
         const auto conflicting_object_timestamp = conflicting_object_lm_cit->second;
         journal_.LogMutation(
             DELETE_EVENT(now, conflicting_object),
@@ -148,7 +148,7 @@ class GenericOneToOne {
     if (map_cit != map_.end()) {
       const T& previous_object = *(map_cit->second);
       const auto lm_cit = last_modified_.find(key);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -166,7 +166,7 @@ class GenericOneToOne {
       const T& previous_object = *(forward_cit->second);
       const auto key = std::make_pair(row, sfinae::GetCol(previous_object));
       const auto lm_cit = last_modified_.find(key);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -183,7 +183,7 @@ class GenericOneToOne {
       const T& previous_object = *(transposed_cit->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
       const auto lm_cit = last_modified_.find(key);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {

@@ -75,7 +75,7 @@ TEST(Iris, Demo) {
                                for (auto flower_definition_line : Split<ByLines>(body)) {
                                  std::vector<std::string> flower_definition_fields =
                                      Split(flower_definition_line, '\t');
-                                 assert(flower_definition_fields.size() == 5u);
+                                 CURRENT_ASSERT(flower_definition_fields.size() == 5u);
                                  if (first_line && flower_definition_fields.back() == "Label") {
                                    // For this example, just overwrite the labels on each `/import`.
                                    dimension_names.clear();

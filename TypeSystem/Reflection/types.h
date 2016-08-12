@@ -26,7 +26,6 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 
-#include <cassert>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -171,8 +170,8 @@ CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
   std::string CanonicalName() const {
     if (Exists(template_id)) {
       // TODO(dkorolev): This code relies on `<>` at the end of the names of `CURRENT_STRUCT_T`-s. Fix it.
-      assert(native_name.length() > 2);
-      assert(native_name.substr(native_name.length() - 2) == "_Z");
+      CURRENT_ASSERT(native_name.length() > 2);
+      CURRENT_ASSERT(native_name.substr(native_name.length() - 2) == "_Z");
       return native_name.substr(0, native_name.length() - 2) + "_T" + current::ToString(Value(template_id));
     } else {
       return native_name;
@@ -200,7 +199,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
       static_cast<TypeID>(static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct)),
       7u);
   for (const auto& f : s.fields) {
-    assert(f.type_id != TypeID::UninitializedType);
+    CURRENT_ASSERT(f.type_id != TypeID::UninitializedType);
     hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);
     ++i;
   }
@@ -208,26 +207,26 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  assert(v.element_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(v.element_type != TypeID::UninitializedType);
   return static_cast<TypeID>(TYPEID_VECTOR_TYPE + ROL64(v.element_type, 3u) % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Pair& p) {
-  assert(p.first_type != TypeID::UninitializedType);
-  assert(p.second_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(p.first_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(p.second_type != TypeID::UninitializedType);
   uint64_t hash = ROL64(p.first_type, 5u) ^ ROL64(p.second_type, 11u);
   return static_cast<TypeID>(TYPEID_PAIR_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Map& m) {
-  assert(m.key_type != TypeID::UninitializedType);
-  assert(m.value_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(m.key_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(m.value_type != TypeID::UninitializedType);
   uint64_t hash = ROL64(m.key_type, 5u) ^ ROL64(m.value_type, 11u);
   return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
-  assert(o.optional_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(o.optional_type != TypeID::UninitializedType);
   return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE + ROL64(o.optional_type, 5u) % TYPEID_TYPE_RANGE);
 }
 

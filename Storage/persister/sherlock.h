@@ -110,9 +110,9 @@ class SherlockStreamPersisterImpl {
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
 #ifndef CURRENT_MOCK_TIME
-      assert(journal.transaction_meta.begin_us < journal.transaction_meta.end_us);
+      CURRENT_ASSERT(journal.transaction_meta.begin_us < journal.transaction_meta.end_us);
 #else
-      assert(journal.transaction_meta.begin_us <= journal.transaction_meta.end_us);
+      CURRENT_ASSERT(journal.transaction_meta.begin_us <= journal.transaction_meta.end_us);
 #endif
       transaction_t transaction;
       for (auto&& entry : journal.commit_log) {
@@ -163,8 +163,8 @@ class SherlockStreamPersisterImpl {
   }
 
   void SubscribeToStream() {
-    assert(!subscriber_scope_);
-    assert(subscriber_);
+    CURRENT_ASSERT(!subscriber_scope_);
+    CURRENT_ASSERT(subscriber_);
     subscriber_scope_ = std::move(stream_used_.template Subscribe<transaction_t>(*subscriber_));
   }
 

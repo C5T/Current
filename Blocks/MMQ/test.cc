@@ -44,12 +44,12 @@ TEST(InMemoryMQ, SmokeTest) {
     std::atomic_size_t processed_messages_;
     ConsumerImpl() : processed_messages_(0u) {}
     EntryResponse operator()(const std::string& s, idxts_t current, idxts_t) {
-      assert(current.index >= expected_next_message_index_);
+      CURRENT_ASSERT(current.index >= expected_next_message_index_);
       dropped_messages_ += (current.index - expected_next_message_index_);
       expected_next_message_index_ = (current.index + 1);
       messages_ += s + '\n';
       ++processed_messages_;
-      assert(expected_next_message_index_ - processed_messages_ - 1 == dropped_messages_);
+      CURRENT_ASSERT(expected_next_message_index_ - processed_messages_ - 1 == dropped_messages_);
       return EntryResponse::More;
     }
   };
@@ -82,7 +82,7 @@ struct SuspendableConsumerImpl {
       ;  // Spin lock.
     }
     messages_.push_back(s);
-    assert(last.index >= total_messages_accepted_by_the_queue_);
+    CURRENT_ASSERT(last.index >= total_messages_accepted_by_the_queue_);
     total_messages_accepted_by_the_queue_ = last.index;
     if (processing_delay_ms_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(processing_delay_ms_));

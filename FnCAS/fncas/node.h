@@ -26,7 +26,6 @@
 #ifndef FNCAS_NODE_H
 #define FNCAS_NODE_H
 
-#include <cassert>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -121,31 +120,31 @@ struct node_impl {
   uint8_t data_[18];
   type_t& type() { return *reinterpret_cast<type_t*>(&data_[0]); }
   int32_t& variable() {
-    assert(type() == type_t::variable);
+    CURRENT_ASSERT(type() == type_t::variable);
     return *reinterpret_cast<int32_t*>(&data_[2]);
   }
   fncas_value_type& value() {
-    assert(type() == type_t::value);
+    CURRENT_ASSERT(type() == type_t::value);
     return *reinterpret_cast<fncas_value_type*>(&data_[2]);
   }
   operation_t& operation() {
-    assert(type() == type_t::operation);
+    CURRENT_ASSERT(type() == type_t::operation);
     return *reinterpret_cast<operation_t*>(&data_[1]);
   }
   node_index_type& lhs_index() {
-    assert(type() == type_t::operation);
+    CURRENT_ASSERT(type() == type_t::operation);
     return *reinterpret_cast<node_index_type*>(&data_[2]);
   }
   node_index_type& rhs_index() {
-    assert(type() == type_t::operation);
+    CURRENT_ASSERT(type() == type_t::operation);
     return *reinterpret_cast<node_index_type*>(&data_[10]);
   }
   function_t& function() {
-    assert(type() == type_t::function);
+    CURRENT_ASSERT(type() == type_t::function);
     return *reinterpret_cast<function_t*>(&data_[1]);
   }
   node_index_type& argument_index() {
-    assert(type() == type_t::function);
+    CURRENT_ASSERT(type() == type_t::function);
     return *reinterpret_cast<node_index_type*>(&data_[2]);
   }
 };
@@ -174,7 +173,7 @@ inline fncas_value_type eval_node(node_index_type index,
         node_impl& f = node_vector_singleton()[i];
         if (f.type() == type_t::variable) {
           int32_t v = f.variable();
-          assert(v >= 0 && v < static_cast<int32_t>(x.size()));
+          CURRENT_ASSERT(v >= 0 && v < static_cast<int32_t>(x.size()));
           growing_vector_access(V, i, 0.0) = x[v];
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
 
@@ -189,7 +188,7 @@ inline fncas_value_type eval_node(node_index_type index,
           stack.push(~i);
           stack.push(f.argument_index());
         } else {
-          assert(false);
+          CURRENT_ASSERT(false);
           return std::numeric_limits<fncas_value_type>::quiet_NaN();
         }
       }
@@ -204,12 +203,12 @@ inline fncas_value_type eval_node(node_index_type index,
             apply_function<fncas_value_type>(f.function(), V[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
-        assert(false);
+        CURRENT_ASSERT(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
       }
     }
   }
-  assert(B[index]);
+  CURRENT_ASSERT(B[index]);
   return V[index];
 }
 
@@ -302,12 +301,12 @@ static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_type)
 
 struct X : noncopyable {
   explicit X(int32_t dim) {
-    assert(dim > 0);
+    CURRENT_ASSERT(dim > 0);
     auto& meta = internals_singleton();
     if (meta.x_ptr_) {
       throw FNCASConcurrentEvaluationAttemptException();
     }
-    assert(!meta.dim_);
+    CURRENT_ASSERT(!meta.dim_);
     // Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
     meta.reset();
     meta.x_ptr_ = this;
@@ -322,13 +321,13 @@ struct X : noncopyable {
     }
   }
   V operator[](int32_t i) const {
-    assert(i >= 0);
-    assert(i < internals_singleton().dim_);
+    CURRENT_ASSERT(i >= 0);
+    CURRENT_ASSERT(i < internals_singleton().dim_);
     return V(V::variable(i));
   }
   size_t size() const {
     auto& meta = internals_singleton();
-    assert(meta.x_ptr_ == this);
+    CURRENT_ASSERT(meta.x_ptr_ == this);
     return static_cast<size_t>(meta.dim_);
   }
 };
@@ -356,7 +355,7 @@ struct f_intermediate : f {
   f_intermediate(const V& f) : f_(f) {}
   f_intermediate(f_intermediate&& rhs) : f_(rhs.f_) {}
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
-    assert(static_cast<int32_t>(x.size()) == dim());
+    CURRENT_ASSERT(static_cast<int32_t>(x.size()) == dim());
     return f_(x);
   }
   std::string debug_as_string() const { return f_.debug_as_string(); }
@@ -365,9 +364,9 @@ struct f_intermediate : f {
   V differentiate(const TX& x_ref, int32_t variable_index) const {
     static_assert(std::is_same<TX, X>::value,
                   "f_intermediate::differentiate(const x& x, int32_t variable_index);");
-    assert(&x_ref == internals_singleton().x_ptr_);
-    assert(variable_index >= 0);
-    assert(variable_index < dim());
+    CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
+    CURRENT_ASSERT(variable_index >= 0);
+    CURRENT_ASSERT(variable_index < dim());
     return f_.template differentiate<X>(x_ref, variable_index);
   }
   virtual int32_t dim() const { return internals_singleton().dim_; }

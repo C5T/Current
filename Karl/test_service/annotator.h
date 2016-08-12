@@ -65,7 +65,7 @@ class ServiceAnnotator final {
   void OnNumber(Number&& value) {
     Number number(std::move(value));
     const auto prime_result = HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
-    assert(prime_result == "YES\n" || prime_result == "NO\n");
+    CURRENT_ASSERT(prime_result == "YES\n" || prime_result == "NO\n");
     number.is_prime = (prime_result == "YES\n");
     stream_.Publish(std::move(number));
   }

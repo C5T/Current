@@ -72,7 +72,7 @@ class GenericManyToMany {
     const auto lm_cit = last_modified_.find(key);
     if (map_cit != map_.end()) {
       const T& previous_object = *(map_cit->second);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -102,7 +102,7 @@ class GenericManyToMany {
     if (map_cit != map_.end()) {
       const T& previous_object = *(map_cit->second);
       const auto lm_cit = last_modified_.find(key);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
