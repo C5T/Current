@@ -134,10 +134,10 @@ class LazilyInstantiated {
   T& InstantiateAsSharedPtr(std::shared_ptr<T>& shared_instance,
                             LazyInstantiationStrategy strategy = LazyInstantiationStrategy::Flexible) const {
     if (strategy == LazyInstantiationStrategy::ShouldNotBeInitialized) {
-      assert(!shared_instance);
+      CURRENT_ASSERT(!shared_instance);
     }
     if (strategy == LazyInstantiationStrategy::ShouldAlreadyBeInitialized) {
-      assert(shared_instance);
+      CURRENT_ASSERT(shared_instance);
     }
     if (!shared_instance) {
       shared_instance = InstantiateAsSharedPtr();

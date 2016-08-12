@@ -34,7 +34,6 @@ SOFTWARE.
 #include "../../../util/singleton.h"
 #include "../../../template/enable_if.h"
 
-#include <cassert>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -374,7 +373,7 @@ class Connection : public SocketHandle {
 #if defined(CURRENT_APPLE) || defined(CURRENT_WINDOWS)
     static_cast<void>(more);  // Supress the 'unused parameter' warning.
 #endif
-    assert(buffer);
+    CURRENT_ASSERT(buffer);
     BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
 #if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
@@ -397,7 +396,7 @@ class Connection : public SocketHandle {
   }
 
   inline Connection& BlockingWrite(const char* s, bool more) {
-    assert(s);
+    CURRENT_ASSERT(s);
     return BlockingWrite(s, strlen(s), more);
   }
 

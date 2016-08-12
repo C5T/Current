@@ -27,7 +27,6 @@ SOFTWARE.
 #define BLOCKS_SS_PUBSUB_H
 
 #include "../../port.h"
-#include <cassert>
 
 #include "idx_ts.h"
 
@@ -168,7 +167,7 @@ struct PassEntryToSubscriberIfTypeMatchesImpl {
     if (Exists<TYPE_SUBSCRIBED_TO>(entry_cref)) {
       return f(Value<TYPE_SUBSCRIBED_TO>(std::forward<E>(entry)), current, last);
     } else {
-      assert(current.index <= last.index);
+      CURRENT_ASSERT(current.index <= last.index);
       if (current.index < last.index) {
         return EntryResponse::More;
       } else {

@@ -48,7 +48,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <cassert>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -287,11 +286,11 @@ class RipCurrentRunContext {
   explicit RipCurrentRunContext(const std::string& error_message)
       : sync_called_(false), error_message_(error_message) {}
   RipCurrentRunContext(RipCurrentRunContext&& rhs) : error_message_(rhs.error_message_) {
-    assert(!rhs.sync_called_);
+    CURRENT_ASSERT(!rhs.sync_called_);
     rhs.sync_called_ = true;
   }
   void Sync() {
-    assert(!sync_called_);
+    CURRENT_ASSERT(!sync_called_);
     sync_called_ = true;
   }
   ~RipCurrentRunContext() {

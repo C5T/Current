@@ -28,7 +28,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <cassert>
 #include <functional>
 
 #include "semantics.h"
@@ -191,11 +190,11 @@ struct MutationJournal {
   }
 
   void AssertEmpty() const {
-    assert(transaction_meta.begin_us.count() == 0);
-    assert(transaction_meta.end_us.count() == 0);
-    assert(transaction_meta.fields.empty());
-    assert(commit_log.empty());
-    assert(rollback_log.empty());
+    CURRENT_ASSERT(transaction_meta.begin_us.count() == 0);
+    CURRENT_ASSERT(transaction_meta.end_us.count() == 0);
+    CURRENT_ASSERT(transaction_meta.fields.empty());
+    CURRENT_ASSERT(commit_log.empty());
+    CURRENT_ASSERT(rollback_log.empty());
   }
 };
 

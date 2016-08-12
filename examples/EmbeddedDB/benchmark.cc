@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
       const double timestamp_end = timestamp_begin + seconds_;
       double timestamp_now;
       while ((timestamp_now = NowInSeconds()) < timestamp_end) {
-        assert(HTTP(POST(url_, body)).code == HTTPResponseCode.NoContent);
+        CURRENT_ASSERT(HTTP(POST(url_, body)).code == HTTPResponseCode.NoContent);
         ++queries_;
       }
     }

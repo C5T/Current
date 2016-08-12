@@ -74,7 +74,7 @@ class GenericOneToMany {
     const auto lm_cit = last_modified_.find(key);
     if (map_cit != map_.end()) {
       const T& previous_object = *(map_cit->second);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -86,7 +86,7 @@ class GenericOneToMany {
         const T& conflicting_object = *(transposed_cit->second);
         const auto conflicting_object_key = std::make_pair(sfinae::GetRow(conflicting_object), col);
         const auto conflicting_object_lm_cit = last_modified_.find(conflicting_object_key);
-        assert(conflicting_object_lm_cit != last_modified_.end());
+        CURRENT_ASSERT(conflicting_object_lm_cit != last_modified_.end());
         const auto conflicting_object_timestamp = conflicting_object_lm_cit->second;
         journal_.LogMutation(
             DELETE_EVENT(now, conflicting_object),
@@ -120,7 +120,7 @@ class GenericOneToMany {
     if (map_cit != map_.end()) {
       const T& previous_object = *(map_cit->second);
       const auto lm_cit = last_modified_.find(key);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -138,7 +138,7 @@ class GenericOneToMany {
       const T& previous_object = *(map_cit->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
       const auto lm_cit = last_modified_.find(key);
-      assert(lm_cit != last_modified_.end());
+      CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {

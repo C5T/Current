@@ -87,13 +87,13 @@ class HTTPStreamSubscriber {
     const auto split = current::strings::Split(chunk, '\t');
     if (split.size() != 2u) {
       std::cerr << "HTTPStreamSubscriber got malformed chunk: '" << chunk << "'." << std::endl;
-      assert(false);
+      CURRENT_ASSERT(false);
     }
     const idxts_t idxts = ParseJSON<idxts_t>(split[0]);
     if (idxts.index != index_) {
       std::cerr << "HTTPStreamSubscriber expected index " << index_ << ", got " << idxts.index << '.'
                 << std::endl;
-      assert(false);
+      CURRENT_ASSERT(false);
     }
     callback_(idxts, ParseJSON<ENTRY>(split[1]));
     ++index_;

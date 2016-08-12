@@ -5,7 +5,7 @@
 # clang: warning: treating 'c-header' input as 'c++-header' when in C++ mode, this behavior is deprecated
 # clang: warning: -ldl: 'linker' input unused
 
-include ../../scripts/Makefile
+include ../../scripts/MakefileImpl
 
 CCFLAGS=--std=c++11 -Wall -O3 -fno-strict-aliasing
 CCPOSTFLAGS=-ldl

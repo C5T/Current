@@ -61,7 +61,6 @@ SOFTWARE.
 #include "../port.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <unordered_map>
@@ -73,13 +72,13 @@ namespace strings {
 class Chunk {
  public:
   Chunk() : S(""), N(0u) {}
-  Chunk(const char* s, size_t n) : S(s), N(n) { assert(S[N] == '\0'); }
+  Chunk(const char* s, size_t n) : S(s), N(n) { CURRENT_ASSERT(S[N] == '\0'); }
   Chunk(const char* s) : S(s), N(strlen(s)) {}
   template <int L>
   Chunk(const char s[L])
       : S(s), N(L - 1) {
     // The above line break is `clang-format`, not me. -- D.K.
-    assert(S[N] == '\0');
+    CURRENT_ASSERT(S[N] == '\0');
   }
   Chunk(const std::string& s) : S(s.data()), N(s.size()) {}
   // Copyable and assignable by design.
@@ -92,7 +91,7 @@ class Chunk {
   void assign(const char* s, size_t n) {
     S = s;
     N = n;
-    assert(S[N] == '\0');
+    CURRENT_ASSERT(S[N] == '\0');
   }
 
   void clear() {
@@ -100,7 +99,7 @@ class Chunk {
     N = 0u;
   }
 
-  void CheckPrivilege(size_t i) const { assert(i <= N); }
+  void CheckPrivilege(size_t i) const { CURRENT_ASSERT(i <= N); }
 
   char operator[](size_t i) const {
     CheckPrivilege(i);  // Once is enough.
