@@ -219,11 +219,11 @@ class GenericHTTPRequestData : public HELPER {
                 // The original version of this code was only adding one to `next_offset`.
                 // This had a bug, which got revealed as the `while` loop above has been corrected into `if`.
                 // Upon changing the `while` to an `if`, the `CURRENT_ASSERT(buffer_.size() > offset + 1);`
-                // check above
-                // would fail on a chunked HTTP body of several large chunks. Thus, `next_offset + 2` is it.
-                // Note that the actual `resize()` would always allocate more room than the extra two bytes.
-                // The `std::max()` condition is kept just in case we compile Current for a device
-                // that is extremely short on memory, for which `buffer_growth_k` could be some 1.0001. -- D.K.
+                // check above would fail on a chunked HTTP body of several large chunks. Thus,
+                // `next_offset + 2` is it. Note that the actual `resize()` would always allocate more room
+                // than the extra two bytes. The `std::max()` condition is kept just in case we
+                // compile Current for a device that is extremely short on memory, for which `buffer_growth_k`
+                // could be some 1.0001. -- D.K.
                 if (buffer_.size() < next_offset + 2) {
                   // LCOV_EXCL_START
                   // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.

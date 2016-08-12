@@ -227,8 +227,8 @@ struct Headers final {
     Header::ThrowIfHeaderIsCookie(header);
     const auto rhs = map.find(header);
     if (rhs != map.end()) {
-      CURRENT_ASSERT(
-          rhs->second);  // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      CURRENT_ASSERT(rhs->second);
       return rhs->second->value;
     } else {
       CURRENT_THROW(HeaderNotFoundException(header));
@@ -239,8 +239,8 @@ struct Headers final {
     Header::ThrowIfHeaderIsCookie(header);
     const auto rhs = map.find(header);
     if (rhs != map.end()) {
-      CURRENT_ASSERT(
-          rhs->second);  // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      CURRENT_ASSERT(rhs->second);
       return rhs->second->value;
     } else {
       return value_if_not_found;
@@ -254,8 +254,8 @@ struct Headers final {
     Header::ThrowIfHeaderIsCookie(header);
     const auto rhs = map.find(header);
     if (rhs != map.end()) {
-      CURRENT_ASSERT(
-          rhs->second);  // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      CURRENT_ASSERT(rhs->second);
       return *rhs->second;
     } else {
       CURRENT_THROW(HeaderNotFoundException(header));
