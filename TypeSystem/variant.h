@@ -216,10 +216,11 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   };
 
   struct TypeAwareMove {
-    std::unique_ptr<CurrentSuper>&& from;
+    // `from` should not be an rvalue reference, as the move operation in `operator()` may still throw.
+    std::unique_ptr<CurrentSuper>& from;
     std::unique_ptr<CurrentSuper>& into;
-    TypeAwareMove(std::unique_ptr<CurrentSuper>&& from, std::unique_ptr<CurrentSuper>& into)
-        : from(std::move(from)), into(into) {}
+    TypeAwareMove(std::unique_ptr<CurrentSuper>& from, std::unique_ptr<CurrentSuper>& into)
+        : from(from), into(into) {}
 
     template <typename U>
     std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
@@ -245,7 +246,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   template <typename... RHS>
   void MoveFrom(VariantImpl<RHS...>&& rhs) {
     if (rhs.object_) {
-      TypeAwareMove mover(std::move(rhs.object_), object_);
+      TypeAwareMove mover(rhs.object_, object_);
       rhs.Call(mover);
     } else {
       object_ = nullptr;
