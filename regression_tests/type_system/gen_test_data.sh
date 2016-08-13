@@ -128,7 +128,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "> DATA_TYPES;" >> $TYPELIST_DYNAMIC_TEST
 
-#`variant.cc` test
+#`variant.cc` test.
 VARIANT_HEADER="$INCLUDE_DIR/variant.h"
 VARIANT_TEST="$INCLUDE_DIR/variant.cc"
 VARIANT_GOLDEN="$GOLDEN_DIR/variant.output"
@@ -160,7 +160,52 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "v$i.Call(call_struct);" >> $VARIANT_TEST
 done
 
-# 'storage.cc' test.
+# `json_variant.cc` test.
+JSON_VARIANT_HEADER="$INCLUDE_DIR/json_variant.h"
+JSON_VARIANT_TEST="$INCLUDE_DIR/json_variant.cc"
+
+echo "using variant_t = Variant<" >> $JSON_VARIANT_TEST
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "CURRENT_STRUCT(Struct$i) {" >> $JSON_VARIANT_HEADER
+	echo "  CURRENT_FIELD(x$i, int32_t, $i);" >> $JSON_VARIANT_HEADER
+	echo "};" >> $JSON_VARIANT_HEADER
+
+	echo -n "Struct$i" >> $JSON_VARIANT_TEST
+	if [[ $i -ne $STRUCT_COUNT ]]; then
+		echo "," >> $JSON_VARIANT_TEST
+	fi
+done
+echo ">;" >> $JSON_VARIANT_TEST
+
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "variant_t v$i((Struct$i()));" >> $JSON_VARIANT_TEST
+done
+
+# `sherlock_*.cc` tests.
+SHERLOCK_HEADER="$INCLUDE_DIR/sherlock.h"
+SHERLOCK_TEST="$INCLUDE_DIR/sherlock.cc"
+
+echo "const size_t entries_count = $STRUCT_COUNT;" >> $SHERLOCK_HEADER
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "CURRENT_STRUCT(Struct$i) {" >> $SHERLOCK_HEADER
+	echo "  CURRENT_FIELD(x$i, uint32_t);" >> $SHERLOCK_HEADER
+	echo "  CURRENT_USE_FIELD_AS_KEY(x$i);" >> $SHERLOCK_HEADER
+	echo "  CURRENT_CONSTRUCTOR(Struct$i)(uint32_t i = 0u) : x$i(i) {}" >> $SHERLOCK_HEADER
+	echo "};" >> $SHERLOCK_HEADER
+
+	echo "stream.Publish(Struct$i(${i}u));" >> $SHERLOCK_TEST
+done
+
+echo "using stream_variant_t = Variant<" >> $SHERLOCK_HEADER;
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo -n "Struct$i" >> $SHERLOCK_HEADER
+	if [[ $i -ne $STRUCT_COUNT ]]; then
+		echo "," >> $SHERLOCK_HEADER
+	fi
+done
+echo ">;" >> $SHERLOCK_HEADER
+
+# `storage_*.cc` tests.
 STORAGE_HEADER="$INCLUDE_DIR/storage.h"
 STORAGE_TEST="$INCLUDE_DIR/storage.cc"
 
