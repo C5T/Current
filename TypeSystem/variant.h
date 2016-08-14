@@ -237,7 +237,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
   template <typename X>
-  std::enable_if_t<!std::is_same<X, CurrentSuper>::value, const X&> VariantValueImpl() const {
+  const X& VariantValueImpl() const {
     const X* ptr = dynamic_cast<const X*>(object_.get());
     if (ptr) {
       return *ptr;
