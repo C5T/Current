@@ -1019,26 +1019,6 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
   }
 }
 
-#if 0
-// NOTE(dkorolev): We officially no longer allow variants in variants.
-// TODO(dkorolev): Make sure this test does not compile.
-TEST(TypeSystemTest, NestedVariants) {
-  using namespace struct_definition_test;
-
-  using V_FOO_DERIVED = Variant<Foo, DerivedFromFoo>;
-  using V_BAR_BAZ = Variant<Bar, Baz>;
-  using V_NESTED = Variant<V_FOO_DERIVED, V_BAR_BAZ>;
-
-  V_FOO_DERIVED foo(Foo(1u));
-  V_NESTED nested_foo(foo);
-  EXPECT_EQ(1u, Value<Foo>(Value<V_FOO_DERIVED>(nested_foo)).i);
-
-  V_BAR_BAZ bar(Bar(2u));
-  V_NESTED nested_bar(bar);
-  EXPECT_EQ(2u, Value<Bar>(Value<V_BAR_BAZ>(nested_bar)).j);
-}
-#endif
-
 namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampUS) {
   CURRENT_FIELD(t, std::chrono::microseconds);

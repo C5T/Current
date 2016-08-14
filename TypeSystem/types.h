@@ -129,6 +129,7 @@ struct CheckIntegrityImplMethodTest {
 }  // namespace crnt
 
 namespace current {
+using ::crnt::CurrentSuper;
 using ::crnt::CurrentStruct;
 using ::crnt::CurrentVariant;
 using ::crnt::CurrentVariantImpl;
