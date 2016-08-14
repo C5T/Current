@@ -14,7 +14,7 @@ if [[ $# -gt 0 ]]; then
 fi
 echo -e "\033[1m\033[33mGenerating data for $STRUCT_COUNT structures.\033[0m\033[39m"
 
-# 'current_struct.cc' test.
+# `current_struct.cc` test.
 CURRENT_STRUCT_HEADER="$INCLUDE_DIR/current_struct.h"
 CURRENT_STRUCT_TEST="$INCLUDE_DIR/current_struct.cc"
 CURRENT_STRUCT_GOLDEN="$GOLDEN_DIR/current_struct.cc"
@@ -33,7 +33,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "}  // namespace current_userspace" >> $CURRENT_STRUCT_GOLDEN
 
-# 'struct_fields.cc' test.
+# `struct_fields.cc` test.
 STRUCT_FIELDS_HEADER="$INCLUDE_DIR/struct_fields.h"
 STRUCT_FIELDS_GOLDEN="$GOLDEN_DIR/struct_fields.cc"
 
@@ -48,7 +48,7 @@ echo "};" >> $STRUCT_FIELDS_HEADER
 echo "};" >> $STRUCT_FIELDS_GOLDEN
 echo "}  // namespace current_userspace" >> $STRUCT_FIELDS_GOLDEN
 
-# 'typelist.cc' test.
+# `typelist.cc` test.
 TYPELIST_HEADER="$INCLUDE_DIR/typelist.h"
 TYPELIST_TEST="$INCLUDE_DIR/typelist.cc"
 echo "typedef TypeList<" >> $TYPELIST_TEST
@@ -64,7 +64,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "EXPECT_EQ($i, (TypeListElement<$(($i - 1)), TYPELIST>::x));" >> $TYPELIST_TEST
 done
 
-# 'typelist_impl.cc' test.
+# `typelist_impl.cc` test.
 TYPELIST_IMPL_HEADER="$INCLUDE_DIR/typelist_impl.h"
 TYPELIST_IMPL_TEST="$INCLUDE_DIR/typelist_impl.cc"
 echo "typedef TypeListImpl<" >> $TYPELIST_IMPL_TEST
@@ -80,7 +80,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "EXPECT_EQ($i, (TypeListElement<$(($i - 1)), TYPELIST_IMPL>::x));" >> $TYPELIST_IMPL_TEST
 done
 
-# 'rtti_dynamic_call.cc' test.
+# `rtti_dynamic_call.cc` test.
 RTTI_DYNAMIC_CALL_HEADER="$INCLUDE_DIR/rtti_dynamic_call.h"
 RTTI_DYNAMIC_CALL_TEST="$INCLUDE_DIR/rtti_dynamic_call.cc"
 RTTI_DYNAMIC_CALL_GOLDEN="$GOLDEN_DIR/rtti_dynamic_call.output"
@@ -113,7 +113,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "RTTIDynamicCall<TYPELIST>(p$i, call_struct);" >> $RTTI_DYNAMIC_CALL_TEST
 done
 
-# 'typelist_dynamic.cc' test.
+# `typelist_dynamic.cc` test.
 TYPELIST_DYNAMIC_HEADER="$INCLUDE_DIR/typelist_dynamic.h"
 TYPELIST_DYNAMIC_TEST="$INCLUDE_DIR/typelist_dynamic.cc"
 echo "typedef TypeListImpl<" >> $TYPELIST_DYNAMIC_TEST
@@ -128,7 +128,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "> DATA_TYPES;" >> $TYPELIST_DYNAMIC_TEST
 
-#`variant.cc` test.
+# `variant.cc` test.
 VARIANT_HEADER="$INCLUDE_DIR/variant.h"
 VARIANT_TEST="$INCLUDE_DIR/variant.cc"
 VARIANT_GOLDEN="$GOLDEN_DIR/variant.output"

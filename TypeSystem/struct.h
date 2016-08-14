@@ -621,8 +621,6 @@ namespace reflection {
 
 using ::crnt::r::Field;
 using ::crnt::r::CurrentStructFieldsConsistency;
-//using ::crnt::r::SuperType;
-//using ::crnt::r::VisitAllFields;
 
 }  // namespace current::reflection
 }  // namespace current

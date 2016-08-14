@@ -34,9 +34,9 @@ for c in ${COUNT_LIST[@]}; do
 		echo $t
 		echo -e -n "\033[1m\033[91m"
 		TIMEFORMAT='Compile: %R seconds'
-    time $CPLUSPLUS $CPPFLAGS -c -o .current/$t.o $t.cc >/dev/null
+		time $CPLUSPLUS $CPPFLAGS -c -o .current/$t.o $t.cc >/dev/null
 		TIMEFORMAT='Link:    %R seconds'
-    time $CPLUSPLUS $LDFLAGS -o .current/$t .current/$t.o >/dev/null
+		time $CPLUSPLUS $LDFLAGS -o .current/$t .current/$t.o >/dev/null
 		echo -e -n "\033[1m\033[39mRunning\033[0m: "
 		./.current/$t >/dev/null
 		if [[ $? -eq 0 ]]; then

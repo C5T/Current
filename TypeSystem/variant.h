@@ -55,7 +55,6 @@ struct BypassVariantTypeCheck {};
 namespace variant {
 
 #ifdef FEWER_COMPILE_TIME_CHECKS
-// Debug mode: extra runtime checks.
 template<typename... TS> struct PopulateForAllTypes;
 template<> struct PopulateForAllTypes<> {
   static void DoIt(std::unordered_map<std::type_index, const char*>&) {}
