@@ -173,7 +173,7 @@ class GenericConsumer {
   }
 
   void AppendToLastEvent(const std::string& what) {
-    assert(events_.size());
+    CURRENT_ASSERT(events_.size());
     std::string& last = events_.back();
     last += what;
   }

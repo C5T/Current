@@ -80,7 +80,7 @@ SCENARIO(simple_nginx_client, "Use Current's HTTP client to access an nginx-cont
   }
 
   void RunOneQuery() override {
-    assert(HTTP(GET(urls[rand() % urls.size()])).body == FLAGS_nginx_client_test_body);
+    CURRENT_ASSERT(HTTP(GET(urls[rand() % urls.size()])).body == FLAGS_nginx_client_test_body);
   }
 };
 

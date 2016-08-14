@@ -74,7 +74,7 @@ class GenericDictionary {
     const auto lm_iterator = last_modified_.find(key);
     if (map_iterator != map_.end()) {
       const T& previous_object = map_iterator->second;
-      assert(lm_iterator != last_modified_.end());
+      CURRENT_ASSERT(lm_iterator != last_modified_.end());
       const auto previous_timestamp = lm_iterator->second;
       journal_.LogMutation(UPDATE_EVENT(now, object),
                            [this, key, previous_object, previous_timestamp]() {
@@ -107,7 +107,7 @@ class GenericDictionary {
     if (map_iterator != map_.end()) {
       const T& previous_object = map_iterator->second;
       const auto lm_iterator = last_modified_.find(key);
-      assert(lm_iterator != last_modified_.end());
+      CURRENT_ASSERT(lm_iterator != last_modified_.end());
       const auto previous_timestamp = lm_iterator->second;
       journal_.LogMutation(DELETE_EVENT(now, previous_object),
                            [this, key, previous_object, previous_timestamp]() {

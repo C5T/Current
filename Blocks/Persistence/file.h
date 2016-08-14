@@ -56,7 +56,7 @@ class IteratorOverFileOfPersistedEntries {
  public:
   explicit IteratorOverFileOfPersistedEntries(std::istream& fi, std::streampos offset, uint64_t index_at_offset)
       : fi_(fi), next_(index_at_offset, std::chrono::microseconds(0)) {
-    assert(!fi_.bad());
+    CURRENT_ASSERT(!fi_.bad());
     if (offset) {
       fi_.seekg(offset, std::ios_base::beg);
     }
@@ -152,8 +152,8 @@ class FilePersister {
         std::streampos current_offset(0);
         while (cit.ProcessNextEntry(
             [&fi, &offset, &timestamp, &current_offset](const idxts_t& current, const char*) {
-              assert(current.index == offset.size());
-              assert(current.index == timestamp.size());
+              CURRENT_ASSERT(current.index == offset.size());
+              CURRENT_ASSERT(current.index == timestamp.size());
               offset.push_back(current_offset);
               timestamp.push_back(current.us);
               current_offset = fi.tellg();
@@ -312,8 +312,8 @@ class FilePersister {
     const auto current = idxts_t(iterator.index, iterator.us);
     {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-      assert(file_persister_impl_->offset.size() == iterator.index);
-      assert(file_persister_impl_->timestamp.size() == iterator.index);
+      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.index);
+      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.index);
       file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
       file_persister_impl_->timestamp.push_back(timestamp);
     }
@@ -377,8 +377,8 @@ class FilePersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-    assert(file_persister_impl_->offset.size() >=
-           current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
+    CURRENT_ASSERT(file_persister_impl_->offset.size() >=
+                   current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
     return IterableRange(
         file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
   }

@@ -83,7 +83,6 @@ SCENARIO(storage, "Storage transactions test.") {
         {{"size"},
          [this]() {
            db.ReadOnlyTransaction([this](ImmutableFields<storage_t> fields) {
-             // Don't use `assert()`, as it may end up optimized away. -- D.K.
              if (fields.hashmap_uint32.Size() != actual_size_uint32 ||
                  fields.hashmap_string.Size() != actual_size_string) {
                std::cerr << "Test failed." << std::endl;
@@ -122,7 +121,7 @@ SCENARIO(storage, "Storage transactions test.") {
       }
       std::cerr << "The `--storage_transaction` flag must be " << current::strings::Join(valid, ", or ") << '.'
                 << std::endl;
-      assert(false);
+      CURRENT_ASSERT(false);
     }
 
     const auto pair = Value(db.ReadWriteTransaction([](MutableFields<storage_t> fields) {
@@ -135,13 +134,13 @@ SCENARIO(storage, "Storage transactions test.") {
     actual_size_uint32 = pair.first;
     actual_size_string = pair.second;
 
-    assert(actual_size_uint32 <= FLAGS_storage_initial_size);
+    CURRENT_ASSERT(actual_size_uint32 <= FLAGS_storage_initial_size);
     if (FLAGS_storage_initial_size > 0u) {
-      assert(actual_size_uint32 > 0u);
+      CURRENT_ASSERT(actual_size_uint32 > 0u);
     }
-    assert(actual_size_string <= FLAGS_storage_initial_size);
+    CURRENT_ASSERT(actual_size_string <= FLAGS_storage_initial_size);
     if (FLAGS_storage_initial_size > 0u) {
-      assert(actual_size_string > 0u);
+      CURRENT_ASSERT(actual_size_string > 0u);
     }
   }
 

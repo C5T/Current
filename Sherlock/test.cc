@@ -96,12 +96,12 @@ struct SherlockTestProcessorImpl {
 
   explicit SherlockTestProcessorImpl(Data& data, bool allow_terminate, bool with_idx_ts = false)
       : data_(data), allow_terminate_(allow_terminate), with_idx_ts_(with_idx_ts), wait_(false) {
-    assert(!data_.subscriber_alive_);
+    CURRENT_ASSERT(!data_.subscriber_alive_);
     data_.subscriber_alive_ = true;
   }
 
   ~SherlockTestProcessorImpl() {
-    assert(data_.subscriber_alive_);
+    CURRENT_ASSERT(data_.subscriber_alive_);
     data_.subscriber_alive_ = false;
   }
 

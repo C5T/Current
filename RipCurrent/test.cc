@@ -84,7 +84,7 @@ CURRENT_RHS(RCBaz) {
   RCBaz() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   RCBaz(std::vector<int>& ref) : ptr(&ref) {}
   void f(Integer x) {
-    assert(ptr);
+    CURRENT_ASSERT(ptr);
     ptr->push_back(x);
   }
 };

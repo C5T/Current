@@ -15,7 +15,6 @@
 #error "FNCAS_JIT should be set to build eval.cc."
 #endif
 
-#include <cassert>
 #include <ctime>
 #include <functional>
 #include <iomanip>
@@ -183,7 +182,7 @@ struct action_test_gradient : generic_action {
     f->gen(x);
     std::vector<double> ra = ga(x);
     std::vector<double> ri = gi(x);
-    assert(ra.size() == ri.size());
+    CURRENT_ASSERT(ra.size() == ri.size());
     for (size_t i = 0; i < ra.size(); ++i) {
       errors.push_back(error_between(ra[i], ri[i]));
     }

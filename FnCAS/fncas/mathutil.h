@@ -26,8 +26,9 @@
 #ifndef FNCAS_MATHUTIL_H
 #define FNCAS_MATHUTIL_H
 
+#include "base.h"
+
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <functional>
 #include <numeric>
@@ -41,7 +42,7 @@ template <typename T>
 inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
     std::vector<T> a, const std::vector<T>& b) {
 #ifndef NDEBUG
-  assert(a.size() == b.size());
+  CURRENT_ASSERT(a.size() == b.size());
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] += b[i];
@@ -53,7 +54,7 @@ template <typename T>
 inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
     std::vector<T> a, const std::vector<T>& b, double kb) {
 #ifndef NDEBUG
-  assert(a.size() == b.size());
+  CURRENT_ASSERT(a.size() == b.size());
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] += kb * b[i];
@@ -65,7 +66,7 @@ template <typename T>
 inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
     std::vector<T> a, const std::vector<T>& b, double ka, double kb) {
 #ifndef NDEBUG
-  assert(a.size() == b.size());
+  CURRENT_ASSERT(a.size() == b.size());
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] = ka * a[i] + kb * b[i];
@@ -77,7 +78,7 @@ template <typename T>
 inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
                                                                                  const std::vector<T>& v2) {
 #ifndef NDEBUG
-  assert(v1.size() == v2.size());
+  CURRENT_ASSERT(v1.size() == v2.size());
 #endif
   return std::inner_product(std::begin(v1), std::end(v1), std::begin(v2), static_cast<T>(0));
 }

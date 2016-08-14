@@ -163,7 +163,7 @@ inline void PerformReplayBenchmark(const std::string& file,
       for (auto& t : threads) {
         t = std::thread([&]() {
           for (const auto& e : persister.Iterate(0, stream_size)) {
-            assert(e.entry.mutations.size() == 1u);
+            CURRENT_ASSERT(e.entry.mutations.size() == 1u);
           }
         });
       }
@@ -188,7 +188,7 @@ inline void PerformReplayBenchmark(const std::string& file,
               ++lines;
             }
           }
-          assert(lines == stream_size);
+          CURRENT_ASSERT(lines == stream_size);
         });
       }
       for (auto& t : threads) {
@@ -211,13 +211,13 @@ inline void PerformReplayBenchmark(const std::string& file,
             std::vector<std::string> pieces;
             while (std::getline(fi, line)) {
               pieces = current::strings::Split(line, '\t');
-              assert(pieces.size() == 2u);
-              assert(ParseJSON<idxts_t>(pieces[0]).us.count() > 0);
-              assert(ParseJSON<transaction_t>(pieces[1]).mutations.size() == 1u);
+              CURRENT_ASSERT(pieces.size() == 2u);
+              CURRENT_ASSERT(ParseJSON<idxts_t>(pieces[0]).us.count() > 0);
+              CURRENT_ASSERT(ParseJSON<transaction_t>(pieces[1]).mutations.size() == 1u);
               ++lines;
             }
           }
-          assert(lines == stream_size);
+          CURRENT_ASSERT(lines == stream_size);
         });
       }
       for (auto& t : threads) {
@@ -247,36 +247,51 @@ int main(int argc, char** argv) {
       if (!FLAGS_png.empty()) {
         using namespace current::gnuplot;
         const std::string png = GNUPlot()
-          .Title("Subscribers benchmark")
-          .XLabel("Subscribers")
-          .YLabel("Seconds")
-          .ImageSize(1000)
-          .OutputFormat("pngcairo")
-          .Plot(WithMeta([&report](Plotter p) {
-            for (size_t i = 0; i < report.subs.size(); ++i) {
-              p(report.subs[i], 1e-3 * report.owning_storage_replay_ms[i]);
-            }
-          }).LineWidth(5).Color("rgb '#B90000'").Name("Owning storage"))
-          .Plot(WithMeta([&report](Plotter p) {
-            for (size_t i = 0; i < report.subs.size(); ++i) {
-              p(report.subs[i], 1e-3 * report.following_storage_replay_ms[i]);
-            }
-          }).LineWidth(5).Color("rgb '#0000B9'").Name("Following storage"))
-          .Plot(WithMeta([&report](Plotter p) {
-            for (size_t i = 0; i < report.subs.size(); ++i) {
-              p(report.subs[i], 1e-3 * report.raw_persister_replay_ms[i]);
-            }
-          }).LineWidth(5).Color("rgb '#008080'").Name("Persister iterators"))
-          .Plot(WithMeta([&report](Plotter p) {
-            for (size_t i = 0; i < report.subs.size(); ++i) {
-              p(report.subs[i], 1e-3 * report.raw_file_scan_ms[i]);
-            }
-          }).LineWidth(5).Color("rgb '#404040'").Name("File scan w/o parsing"))
-          .Plot(WithMeta([&report](Plotter p) {
-            for (size_t i = 0; i < report.subs.size(); ++i) {
-              p(report.subs[i], 1e-3 * report.parsing_file_scan_ms[i]);
-            }
-          }).LineWidth(5).Color("rgb '#00B900'").Name("File scan with parsing"));
+                                    .Title("Subscribers benchmark")
+                                    .XLabel("Subscribers")
+                                    .YLabel("Seconds")
+                                    .ImageSize(1000)
+                                    .OutputFormat("pngcairo")
+                                    .Plot(WithMeta([&report](Plotter p) {
+                                      for (size_t i = 0; i < report.subs.size(); ++i) {
+                                        p(report.subs[i], 1e-3 * report.owning_storage_replay_ms[i]);
+                                      }
+                                    })
+                                              .LineWidth(5)
+                                              .Color("rgb '#B90000'")
+                                              .Name("Owning storage"))
+                                    .Plot(WithMeta([&report](Plotter p) {
+                                      for (size_t i = 0; i < report.subs.size(); ++i) {
+                                        p(report.subs[i], 1e-3 * report.following_storage_replay_ms[i]);
+                                      }
+                                    })
+                                              .LineWidth(5)
+                                              .Color("rgb '#0000B9'")
+                                              .Name("Following storage"))
+                                    .Plot(WithMeta([&report](Plotter p) {
+                                      for (size_t i = 0; i < report.subs.size(); ++i) {
+                                        p(report.subs[i], 1e-3 * report.raw_persister_replay_ms[i]);
+                                      }
+                                    })
+                                              .LineWidth(5)
+                                              .Color("rgb '#008080'")
+                                              .Name("Persister iterators"))
+                                    .Plot(WithMeta([&report](Plotter p) {
+                                      for (size_t i = 0; i < report.subs.size(); ++i) {
+                                        p(report.subs[i], 1e-3 * report.raw_file_scan_ms[i]);
+                                      }
+                                    })
+                                              .LineWidth(5)
+                                              .Color("rgb '#404040'")
+                                              .Name("File scan w/o parsing"))
+                                    .Plot(WithMeta([&report](Plotter p) {
+                                      for (size_t i = 0; i < report.subs.size(); ++i) {
+                                        p(report.subs[i], 1e-3 * report.parsing_file_scan_ms[i]);
+                                      }
+                                    })
+                                              .LineWidth(5)
+                                              .Color("rgb '#00B900'")
+                                              .Name("File scan with parsing"));
         current::FileSystem::WriteStringToFile(png, FLAGS_png.c_str());
       }
     }

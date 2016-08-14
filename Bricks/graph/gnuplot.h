@@ -27,7 +27,6 @@ SOFTWARE.
 #ifndef BRICKS_GRAPH_GNUPLOT_H
 #define BRICKS_GRAPH_GNUPLOT_H
 
-#include <cassert>
 #include <vector>
 #include <string>
 #include <map>
@@ -204,7 +203,7 @@ struct GNUPlot {
   }
 
   operator std::string() const {
-    assert(!plots_.empty());  // TODO(dkorolev): Exception?
+    CURRENT_ASSERT(!plots_.empty());  // TODO(dkorolev): Exception?
 
     const std::string input_file_name = current::FileSystem::GenTmpFileName();
     const std::string output_file_name = current::FileSystem::GenTmpFileName();
@@ -231,8 +230,9 @@ struct GNUPlot {
       }
     }
     if (output_format_ != "gnuplot") {
-      assert(!::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str())
-                           .c_str()));
+      CURRENT_ASSERT(
+          !::system(
+              strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
       return current::FileSystem::ReadFileAsString(output_file_name.c_str());
     } else {
       // For unit tests, just compare the inputs.

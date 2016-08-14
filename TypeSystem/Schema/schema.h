@@ -727,7 +727,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
         const auto name = TypeName(c);
         os_ << "| " << name;
         const auto& t = types_.at(c);
-        assert(Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t));  // Must be one of.
+        CURRENT_ASSERT(Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t));  // Must be one of.
         if (!empty_structs_.count(Value<ReflectedTypeBase>(t).type_id)) {
           os_ << " of " << name;
         }
@@ -993,7 +993,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
         JSONTypeExtractor extractor(*this, schema_object_);
         cit->second.Call(extractor);
-        assert(Exists(extractor.result_));  // Must be initialized by the above `.Call`.
+        CURRENT_ASSERT(Exists(extractor.result_));  // Must be initialized by the above `.Call`.
         return extractor.result_;
       }
     }

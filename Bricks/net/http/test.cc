@@ -345,7 +345,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
 struct HTTPClientImplCURL {
   static string Syscall(const string& cmdline) {
     FILE* pipe = ::popen(cmdline.c_str(), "r");
-    assert(pipe);
+    CURRENT_ASSERT(pipe);
     char s[1024];
     const auto warn_unused_result_catch_warning = ::fgets(s, sizeof(s), pipe);
     static_cast<void>(warn_unused_result_catch_warning);
@@ -404,7 +404,7 @@ class HTTPClientImplPOSIX {
       connection.BlockingWrite("\r\n", false);
     }
     HTTPRequestData http_request(connection);
-    assert(!http_request.Body().empty());
+    CURRENT_ASSERT(!http_request.Body().empty());
     const string body = http_request.Body();
     server_thread.join();
     return body;

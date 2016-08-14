@@ -64,7 +64,7 @@ struct Profiler {
           std::map<const char*, Trie> children;  // Sub-scopes within this scope, if any.
           uint64_t ComputeTotalMilliseconds(uint64_t now) const {
             if (ms_entered) {
-              assert(now >= ms_entered);
+              CURRENT_ASSERT(now >= ms_entered);
               return ms_total + (now - ms_entered);
             } else {
               return ms_total;
@@ -142,7 +142,7 @@ struct Profiler {
               const PerThread::Trie& input, uint64_t total_ms, PerThreadReporting& output, const char* stack) {
             output.scope = stack;
             output.entries = input.entries;
-            assert(output.entries);
+            CURRENT_ASSERT(output.entries);
             output.ms = input.ComputeTotalMilliseconds(now);
             output.ms_per_entry = 1.0 * output.ms / output.entries;
             output.absolute_best_possible_qps = output.ms ? (1000.0 / output.ms_per_entry) : 1e9;
@@ -152,12 +152,12 @@ struct Profiler {
               output.subscope.resize(output.subscope.size() + 1);
               recursive_fill(scope.second, output.ms, output.subscope.back(), scope.first);
             }
-            assert(output.subscope.size() == input.children.size());
+            CURRENT_ASSERT(output.subscope.size() == input.children.size());
             uint64_t subscope_total = 0;
             for (const auto& subscope : output.subscope) {
               subscope_total += subscope.ms;
             }
-            assert(subscope_total <= output.ms);
+            CURRENT_ASSERT(subscope_total <= output.ms);
             output.subscope_total_ratio_of_parent = output.ms ? (1.0 * subscope_total / output.ms) : 1.0;
             std::sort(output.subscope.begin(), output.subscope.end());
           };
@@ -169,7 +169,7 @@ struct Profiler {
                          thread.back(),
                          thread_id_as_string.str().c_str());
         }
-        assert(thread.size() == per_thread.size());
+        CURRENT_ASSERT(thread.size() == per_thread.size());
         ar(CEREAL_NVP(thread),
            CEREAL_NVP(profiling_overhead),
            CEREAL_NVP(profiling_mutex_overhead),
@@ -179,11 +179,11 @@ struct Profiler {
 
    public:
     void EnterScope(const char* scope) {
-      assert(scope);
-      assert(*scope);
+      CURRENT_ASSERT(scope);
+      CURRENT_ASSERT(*scope);
       Guarded([scope](uint64_t now, State::PerThread& per_thread) {
-        assert(now);
-        assert(!per_thread.stack.empty());
+        CURRENT_ASSERT(now);
+        CURRENT_ASSERT(!per_thread.stack.empty());
         State::PerThread::Trie& node = (*per_thread.stack.top().second).children[scope];
         node.ms_entered = now;
         ++node.entries;
@@ -192,18 +192,18 @@ struct Profiler {
     }
 
     void LeaveScope(const char* scope) {
-      assert(scope);
-      assert(*scope);
+      CURRENT_ASSERT(scope);
+      CURRENT_ASSERT(*scope);
       Guarded([scope](uint64_t now, State::PerThread& per_thread) {
-        assert(now);
-        assert(!per_thread.stack.empty());
-        assert(scope == per_thread.stack.top().first);
+        CURRENT_ASSERT(now);
+        CURRENT_ASSERT(!per_thread.stack.empty());
+        CURRENT_ASSERT(scope == per_thread.stack.top().first);
         State::PerThread::Trie& node = (*per_thread.stack.top().second);
-        assert(node.ms_entered <= now);
+        CURRENT_ASSERT(node.ms_entered <= now);
         node.ms_total += (now - node.ms_entered);
         node.ms_entered = 0;
         per_thread.stack.pop();
-        assert(!per_thread.stack.empty());  // Should have at least the root trie node left in the stack.
+        CURRENT_ASSERT(!per_thread.stack.empty());  // Should have at least the root trie node left in the stack.
       });
     }
 
@@ -249,8 +249,8 @@ struct Profiler {
   class ScopedStateMaintainer {
    public:
     explicit ScopedStateMaintainer(const char* scope) : scope_(scope) {
-      assert(scope);
-      assert(*scope);
+      CURRENT_ASSERT(scope);
+      CURRENT_ASSERT(*scope);
       current::Singleton<StateMaintainer>().EnterScope(scope_);
     }
     ~ScopedStateMaintainer() { current::Singleton<StateMaintainer>().LeaveScope(scope_); }

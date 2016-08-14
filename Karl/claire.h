@@ -236,7 +236,7 @@ class GenericClaire final : private DummyClaireNotifiable {
 
 #ifndef CURRENT_MOCK_TIME
     // With mock time, can result in trouble. -- D.K.
-    assert(now >= us_start_);
+    CURRENT_ASSERT(now >= us_start_);
 #endif
 
     status.service = service_;

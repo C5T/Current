@@ -176,7 +176,7 @@ SCENARIO(json, "JSON performance test.") {
     if (test_object_json.length() != test_object_json_golden_length) {
       std::cerr << "Actual JSON length: " << test_object_json.length() << ", expected "
                 << test_object_json_golden_length << std::endl;
-      assert(false);
+      CURRENT_ASSERT(false);
     }
     if (FLAGS_json == "gen") {
       f = [this]() { JSON(test_object); };
@@ -186,7 +186,7 @@ SCENARIO(json, "JSON performance test.") {
       f = [this]() { ParseJSON<TopLevel>(JSON(test_object)); };
     } else {
       std::cerr << "The `--json` flag must be 'gen', 'parse', or 'both'." << std::endl;
-      assert(false);
+      CURRENT_ASSERT(false);
     }
   }
 

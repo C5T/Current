@@ -25,7 +25,7 @@ CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
 CPPFLAGS+= -ftemplate-backtrace-limit=0  -ftemplate-depth=10000
 ifeq ($(NDEBUG),1)
-  CPPFLAGS+= -O3
+  CPPFLAGS+= -O3 -DNDEBUG
 else
   # Commented out by @dkorolev -- this flag makes compilation slower for no good reason.
   # CPPFLAGS+= -g

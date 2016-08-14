@@ -84,7 +84,7 @@ class MMQImpl {
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
   ~MMQImpl() {
     if (consumer_thread_created_) {
-      assert(consumer_thread_.joinable());
+      CURRENT_ASSERT(consumer_thread_.joinable());
       {
         std::lock_guard<std::mutex> lock(mutex_);
         destructing_ = true;

@@ -29,7 +29,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <cassert>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -108,12 +107,12 @@ struct FileSystem {
   static inline std::string GenTmpFileName() {
     char buffer[L_tmpnam];
 #if defined(CURRENT_WINDOWS)
-    assert(!(::tmpnam_s(buffer)));
+    CURRENT_ASSERT(!(::tmpnam_s(buffer)));
 #elif defined(CURRENT_APPLE)
     // TODO(dkorolev): Fix temporary file names generation.
     return strings::Printf("/tmp/.current-tmp-%08x", rand());
 #else
-    assert(buffer == ::tmpnam(buffer));
+    CURRENT_ASSERT(buffer == ::tmpnam(buffer));
 #endif
     return buffer;
   }

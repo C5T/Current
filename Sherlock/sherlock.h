@@ -314,7 +314,7 @@ class StreamImpl {
     ~SubscriberThreadInstance() {
       if (this_is_valid_) {
         // The constructor has completed successfully. The thread has started, and `data_` is valid.
-        assert(thread_.joinable());
+        CURRENT_ASSERT(thread_.joinable());
         if (!subscriber_thread_done_) {
           std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
           terminate_signal_.SignalExternalTermination();

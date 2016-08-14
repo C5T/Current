@@ -112,12 +112,12 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
 inline node_index_type differentiate_node(node_index_type index,
                                           int32_t var_index,
                                           int32_t number_of_variables) {
-  assert(var_index < number_of_variables);
+  CURRENT_ASSERT(var_index < number_of_variables);
   std::vector<std::vector<node_index_type>>& df_container = internals_singleton().df_;
   if (df_container.empty()) {
     df_container.resize(number_of_variables);
   }
-  assert(static_cast<int32_t>(df_container.size()) == number_of_variables);
+  CURRENT_ASSERT(static_cast<int32_t>(df_container.size()) == number_of_variables);
   std::vector<node_index_type>& df = df_container[var_index];
   if (growing_vector_access(df, index, static_cast<node_index_type>(-1)) == -1) {
     const node_index_type zero_index = V(0.0).index();
@@ -142,7 +142,7 @@ inline node_index_type differentiate_node(node_index_type index,
           stack.push(~i);
           stack.push(f.argument_index());
         } else {
-          assert(false);
+          CURRENT_ASSERT(false);
           return 0;
         }
       } else {
@@ -152,25 +152,25 @@ inline node_index_type differentiate_node(node_index_type index,
           const node_index_type b = f.rhs_index();
           const node_index_type da = growing_vector_access(df, a, static_cast<node_index_type>(-1));
           const node_index_type db = growing_vector_access(df, b, static_cast<node_index_type>(-1));
-          assert(da != -1);
-          assert(db != -1);
+          CURRENT_ASSERT(da != -1);
+          CURRENT_ASSERT(db != -1);
           growing_vector_access(df, dependent_i, static_cast<node_index_type>(-1)) =
               d_op(f.operation(), from_index(a), from_index(b), from_index(da), from_index(db));
         } else if (f.type() == type_t::function) {
           const node_index_type x = f.argument_index();
           const node_index_type dx = growing_vector_access(df, x, static_cast<node_index_type>(-1));
-          assert(dx != -1);
+          CURRENT_ASSERT(dx != -1);
           growing_vector_access(df, dependent_i, static_cast<node_index_type>(-1)) =
               d_f(f.function(), from_index(dependent_i), from_index(x), from_index(dx));
         } else {
-          assert(false);
+          CURRENT_ASSERT(false);
           return 0;
         }
       }
     }
   }
   const node_index_type result = growing_vector_access(df, index, static_cast<node_index_type>(-1));
-  assert(result != -1);
+  CURRENT_ASSERT(result != -1);
   return result;
 }
 
@@ -202,7 +202,7 @@ struct g_intermediate : g {
   V f_;
   std::vector<V> g_;
   g_intermediate(const X& x_ref, const V& f) : f_(f) {
-    assert(&x_ref == internals_singleton().x_ptr_);
+    CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
     const int32_t dim = internals_singleton().dim_;
     g_.resize(dim);
     for (int32_t i = 0; i < dim; ++i) {
@@ -232,8 +232,8 @@ struct g_intermediate : g {
 template <>
 struct node_differentiate_impl<X> {
   static V differentiate(const X& x_ref, node_index_type node_index, int32_t variable_index) {
-    assert(&x_ref == internals_singleton().x_ptr_);
-    assert(variable_index < internals_singleton().dim_);
+    CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
+    CURRENT_ASSERT(variable_index < internals_singleton().dim_);
     return from_index(differentiate_node(node_index, variable_index, internals_singleton().dim_));
   }
 };
