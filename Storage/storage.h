@@ -333,7 +333,7 @@ class NullStoragePersisterImpl {
   // using fields_update_function_t = std::function<void(const variant_t&)>;
   // NullStoragePersisterImpl(std::mutex&, fields_update_function_t) {}
 
-  template<typename T>
+  template <typename T>
   NullStoragePersisterImpl(std::mutex&, T) {}
 
   void InternalExposeStream() {}

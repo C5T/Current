@@ -55,11 +55,14 @@ struct BypassVariantTypeCheck {};
 namespace variant {
 
 #ifdef FEWER_COMPILE_TIME_CHECKS
-template<typename... TS> struct PopulateForAllTypes;
-template<> struct PopulateForAllTypes<> {
+template <typename... TS>
+struct PopulateForAllTypes;
+template <>
+struct PopulateForAllTypes<> {
   static void DoIt(std::unordered_map<std::type_index, const char*>&) {}
 };
-template<typename T, typename... TS> struct PopulateForAllTypes<T, TS...> {
+template <typename T, typename... TS>
+struct PopulateForAllTypes<T, TS...> {
   static void DoIt(std::unordered_map<std::type_index, const char*>& result) {
     const std::type_index ti = typeid(T);
     CURRENT_ASSERT(!result.count(ti));
@@ -67,7 +70,7 @@ template<typename T, typename... TS> struct PopulateForAllTypes<T, TS...> {
     PopulateForAllTypes<TS...>::DoIt(result);
   }
 };
-template<typename... TS>
+template <typename... TS>
 struct RuntimeTypeListHelpersImpl {
   using map_t = std::unordered_map<std::type_index, const char*>;
   const map_t types_;
@@ -77,9 +80,11 @@ struct RuntimeTypeListHelpersImpl {
     return result;
   }
   RuntimeTypeListHelpersImpl() : types_(PopulateTypes()) {}
-  template<typename T> void AssertContains() const {
+  template <typename T>
+  void AssertContains() const {
     if (types_.find(std::type_index(typeid(T))) == types_.end()) {
-      std::cerr << "Variant type mismatch.\n\tType: " << reflection::CurrentTypeNameAsConstCharPtr<T>() << "\nIs not among:";
+      std::cerr << "Variant type mismatch.\n\tType: " << reflection::CurrentTypeNameAsConstCharPtr<T>()
+                << "\nIs not among:";
       for (const auto& type : types_) {
         std::cerr << ' ' << type.second;
       }
@@ -88,11 +93,12 @@ struct RuntimeTypeListHelpersImpl {
     }
   }
 };
-template<typename T>
+template <typename T>
 struct RuntimeTypeListHelpers;
-template<typename... TS>
+template <typename... TS>
 struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
-  template<typename U> static void AssertContains() {
+  template <typename U>
+  static void AssertContains() {
     Singleton<RuntimeTypeListHelpersImpl<TS...>>().template AssertContains<U>();
   }
 };
@@ -179,9 +185,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     return *this;
   }
 
-  void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct> input) {
-    object_ = std::move(input);
-  }
+  void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct> input) { object_ = std::move(input); }
 
   operator bool() const { return object_ ? true : false; }
 
