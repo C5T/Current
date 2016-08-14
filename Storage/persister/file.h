@@ -40,10 +40,10 @@ namespace persister {
 template <typename, typename>
 class JSONFilePersister;
 
-template <typename TYPELIST>
-class JSONFilePersister<TYPELIST, NoCustomPersisterParam> {
+template <typename MUTATIONS_VARIANT>
+class JSONFilePersister<MUTATIONS_VARIANT, NoCustomPersisterParam> {
  public:
-  using variant_t = Variant<TYPELIST>;
+  using variant_t = MUTATIONS_VARIANT;
   using transaction_t = std::vector<variant_t>;  // Mock to make it compile.
   using fields_update_function_t = std::function<void(const variant_t&)>;
 

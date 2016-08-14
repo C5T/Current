@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../Bricks/template/pod.h"
 #include "../Bricks/template/enable_if.h"
 
-namespace current {
+namespace crnt {
 
 // The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
 struct CurrentSuper {
@@ -52,11 +52,11 @@ struct CurrentVariantImpl : CurrentVariant {
   static std::string VariantName() { return NAME::VariantNameImpl(); }
 };
 
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, ::current::decay<T>>::value)
-#define IS_CURRENT_VARIANT(T) (std::is_base_of<::current::CurrentVariant, ::current::decay<T>>::value)
-#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of<::current::CurrentSuper, ::current::decay<T>>::value)
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::crnt::CurrentStruct, ::current::decay<T>>::value)
+#define IS_CURRENT_VARIANT(T) (std::is_base_of<::crnt::CurrentVariant, ::current::decay<T>>::value)
+#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of<::crnt::CurrentSuper, ::current::decay<T>>::value)
 
-#define IS_EMPTY_CURRENT_STRUCT(T) ::current::reflection::IsEmptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value
+#define IS_EMPTY_CURRENT_STRUCT(T) (::current::reflection::IsEmptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value)
 
 namespace sfinae {
 
@@ -125,7 +125,18 @@ struct CheckIntegrityImplMethodTest {
   static constexpr bool value = HasCheckIntegrityImplMethod<ENTRY>(0);
 };
 
-}  // namespace sfinae
+}  // namespace crnt::sfinae
+}  // namespace crnt
+
+namespace current {
+using ::crnt::CurrentStruct;
+using ::crnt::CurrentVariant;
+using ::crnt::CurrentVariantImpl;
+namespace sfinae {
+using ::crnt::sfinae::HasExistsImplMethod;
+using ::crnt::sfinae::ValueImplMethodTest;
+using ::crnt::sfinae::HasCheckIntegrityImplMethod;
+}  // namespace current::sfinae
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SFINAE_H

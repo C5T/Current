@@ -51,8 +51,6 @@ namespace serialization {
 namespace json {
 namespace save {
 
-using current::ThreadLocalSingleton;
-
 template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
   class SaveVariantCurrentOrMinimalistic {
@@ -187,9 +185,10 @@ struct LoadVariantCurrent {
 
       void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
         if (source->HasMember(key_name_)) {
-          destination = std::make_unique<X>();
+          auto result = std::make_unique<X>();
           LoadFromJSONImpl<X, JSONFormat::Current>::Load(
-              &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
+              &(*source)[key_name_], *result, path + "[\"" + key_name_ + "\"]");
+          destination.UncheckedMoveFromUniquePtr(std::move(result));
         } else {
           // LCOV_EXCL_START
           throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
@@ -217,7 +216,10 @@ struct LoadVariantCurrent {
     };
   };
 
-  static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
+  static const Impl& Instance() {
+    static Impl impl;
+    return impl;
+  }
 };
 
 template <typename VARIANT>
@@ -279,8 +281,9 @@ struct LoadVariantMinimalistic {
     template <typename X>
     struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
       void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
-        destination = std::make_unique<X>();
-        LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, Value<X>(destination), path);
+        auto result = std::make_unique<X>();
+        LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, *result, path);
+        destination.UncheckedMoveFromUniquePtr(std::move(result));
       }
     };
 
@@ -299,7 +302,10 @@ struct LoadVariantMinimalistic {
     };
   };
 
-  static const ImplMinimalistic& Instance() { return ThreadLocalSingleton<ImplMinimalistic>(); }
+  static const ImplMinimalistic& Instance() {
+    static ImplMinimalistic impl;
+    return impl;
+  }
 };
 
 template <typename VARIANT>
@@ -347,9 +353,10 @@ struct LoadVariantFSharp {
         if (source->HasMember("Fields")) {
           rapidjson::Value* fields = &(*source)["Fields"];
           if (fields && fields->IsArray() && fields->Size() == 1u) {
-            destination = std::make_unique<X>();
+            auto result = std::make_unique<X>();
             LoadFromJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Load(
-                &(*fields)[static_cast<rapidjson::SizeType>(0)], Value<X>(destination), path + ".[\"Fields\"]");
+                &(*fields)[static_cast<rapidjson::SizeType>(0)], *result, path + ".[\"Fields\"]");
+            destination.UncheckedMoveFromUniquePtr(std::move(result));
           } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
@@ -358,7 +365,7 @@ struct LoadVariantFSharp {
         } else {
           if (IS_EMPTY_CURRENT_STRUCT(X)) {
             // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
-            destination = std::make_unique<X>();
+            destination = X();
           } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
@@ -382,7 +389,10 @@ struct LoadVariantFSharp {
     };
   };
 
-  static const ImplFSharp& Instance() { return ThreadLocalSingleton<ImplFSharp>(); }
+  static const ImplFSharp& Instance() {
+    static ImplFSharp impl;
+    return impl;
+  }
 };
 
 template <JSONFormat J, typename T>

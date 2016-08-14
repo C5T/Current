@@ -41,6 +41,10 @@ SOFTWARE.
 
 namespace current {
 
+using crnt::CurrentStruct;
+using crnt::CurrentSuper;
+using crnt::CurrentVariantImpl;
+
 struct BypassVariantTypeCheck {};
 
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
@@ -48,7 +52,7 @@ struct BypassVariantTypeCheck {};
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
 // instead of a `TypeListImpl<...>` in such a case, to ensure type de-duplication takes place.
 
-// Initializes an `std::unique_ptr<CurrentSuper>` given the object of the right type.
+// Initializes an `std::unique_ptr<CurrentStruct>` given the object of the right type.
 // The input object could be an object itself (in which case it's copied),
 // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
 // or a bare pointer (in which case it's captured).
@@ -66,7 +70,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   VariantImpl() {}
 
-  VariantImpl(BypassVariantTypeCheck, std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+  VariantImpl(BypassVariantTypeCheck, std::unique_ptr<CurrentStruct>&& rhs) : object_(std::move(rhs)) {}
 
   // Use deep copy helper for all Variant types, including our own.
   VariantImpl(const VariantImpl& rhs) { CopyFrom(rhs); }
@@ -120,6 +124,10 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     return *this;
   }
 
+  void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct> input) {
+    object_ = std::move(input);
+  }
+
   operator bool() const { return object_ ? true : false; }
 
   template <typename F>
@@ -148,7 +156,6 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
-  // TODO(dk+mz): What should be in the`enable_if_t`-s below? `CurrentStruct`, `CurrentSuper`, or both?
   template <typename X>
   std::enable_if_t<!std::is_same<X, CurrentStruct>::value, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
@@ -201,8 +208,8 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
  private:
   struct TypeAwareClone {
-    std::unique_ptr<CurrentSuper>& into;
-    TypeAwareClone(std::unique_ptr<CurrentSuper>& into) : into(into) {}
+    std::unique_ptr<CurrentStruct>& into;
+    TypeAwareClone(std::unique_ptr<CurrentStruct>& into) : into(into) {}
 
     template <typename U>
     std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U& instance) {
@@ -217,9 +224,9 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   struct TypeAwareMove {
     // `from` should not be an rvalue reference, as the move operation in `operator()` may still throw.
-    std::unique_ptr<CurrentSuper>& from;
-    std::unique_ptr<CurrentSuper>& into;
-    TypeAwareMove(std::unique_ptr<CurrentSuper>& from, std::unique_ptr<CurrentSuper>& into)
+    std::unique_ptr<CurrentStruct>& from;
+    std::unique_ptr<CurrentStruct>& into;
+    TypeAwareMove(std::unique_ptr<CurrentStruct>& from, std::unique_ptr<CurrentStruct>& into)
         : from(from), into(into) {}
 
     template <typename U>
@@ -254,7 +261,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
  private:
-  std::unique_ptr<CurrentSuper> object_;
+  std::unique_ptr<CurrentStruct> object_;
 };
 
 // `Variant<...>` can accept either a list of types, or a `TypeList<...>`.

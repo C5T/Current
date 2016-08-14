@@ -847,9 +847,10 @@ TEST(TypeSystemTest, IntersectingTypelistVariantsCopyAndMove) {
 
 TEST(TypeSystemTest, VariantSmokeTestOneType) {
   using namespace struct_definition_test;
+  using current::BypassVariantTypeCheck;
 
   {
-    Variant<Foo> p(std::make_unique<Foo>());
+    Variant<Foo> p(BypassVariantTypeCheck(), std::make_unique<Foo>());
     const Variant<Foo>& cp(p);
 
     {
@@ -890,7 +891,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
     EXPECT_EQ(102u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(102u, cp.VariantValueImpl<Foo>().i);
 
-    p = std::make_unique<Foo>(103u);
+    p.UncheckedMoveFromUniquePtr(std::make_unique<Foo>(103u));
     EXPECT_EQ(103u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(103u, cp.VariantValueImpl<Foo>().i);
   }
@@ -993,7 +994,7 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
     } catch (NoValueOfType<Bar>) {
     }
 
-    p = std::make_unique<DerivedFromFoo>();
+    p = DerivedFromFoo();
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
     cp.Call(v);
@@ -1018,6 +1019,9 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
   }
 }
 
+#if 0
+// NOTE(dkorolev): We officially no longer allow variants in variants.
+// TODO(dkorolev): Make sure this test does not compile.
 TEST(TypeSystemTest, NestedVariants) {
   using namespace struct_definition_test;
 
@@ -1033,6 +1037,7 @@ TEST(TypeSystemTest, NestedVariants) {
   V_NESTED nested_bar(bar);
   EXPECT_EQ(2u, Value<Bar>(Value<V_BAR_BAZ>(nested_bar)).j);
 }
+#endif
 
 namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampUS) {
@@ -1047,6 +1052,7 @@ CURRENT_STRUCT(WithTimestampUInt64) {
 
 TEST(TypeSystemTest, TimestampSimple) {
   using namespace struct_definition_test;
+  using current::MicroTimestampOf;
   {
     WithTimestampUS a;
     a.t = std::chrono::microseconds(42ull);
@@ -1072,6 +1078,7 @@ CURRENT_STRUCT(WithTimestampVariant) {
 
 TEST(TypeSystemTest, TimestampVariant) {
   using namespace struct_definition_test;
+  using current::MicroTimestampOf;
 
   WithTimestampUS a;
   a.t = std::chrono::microseconds(101);

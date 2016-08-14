@@ -106,9 +106,16 @@ CURRENT_STRUCT(Z) { CURRENT_FIELD(z, int32_t, 3); };
 
 CURRENT_STRUCT(T) { CURRENT_FIELD(t, int32_t, 4); };
 
-CURRENT_VARIANT(A, X, Y);
-CURRENT_VARIANT(B, Z, T);
-CURRENT_VARIANT(Q, A, B);
+CURRENT_VARIANT(InnerA, X, Y);
+CURRENT_VARIANT(InnerB, Z, T);
+
+CURRENT_STRUCT(OuterA) { CURRENT_FIELD(a, InnerA); };
+CURRENT_STRUCT(OuterB) { CURRENT_FIELD(b, InnerB); };
+
+CURRENT_VARIANT(Q, OuterA, OuterB);
+
+CURRENT_VARIANT(InnerVariant, WithVectorOfPairs, WithOptional);
+CURRENT_STRUCT(WithInnerVariant) { CURRENT_FIELD(v, InnerVariant); };
 
 }  // namespace serialization_test::named_variant
 }  // namespace serialization_test
@@ -646,6 +653,8 @@ TEST(Serialization, OptionalAsJSON) {
 
 TEST(Serialization, VariantAsJSON) {
   using namespace serialization_test;
+  using namespace serialization_test::named_variant;
+
   {
     try {
       ParseJSON<simple_variant_t>("null");
@@ -654,14 +663,14 @@ TEST(Serialization, VariantAsJSON) {
     }
   }
   {
-    const simple_variant_t object(std::make_unique<Empty>());
+    const simple_variant_t object = Empty();
     const std::string json = "{\"Empty\":{},\"\":\"T9200000002835747520\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<simple_variant_t>(json)));
   }
   {
-    const simple_variant_t object(std::make_unique<Empty>());
+    const simple_variant_t object = Empty();
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
@@ -669,7 +678,7 @@ TEST(Serialization, VariantAsJSON) {
               JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
   }
   {
-    const simple_variant_t object(std::make_unique<Empty>());
+    const simple_variant_t object = Empty();
     const std::string json = "{\"Case\":\"Empty\"}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
@@ -696,7 +705,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_TRUE(Exists<AlternativeEmpty>(empty2));
   }
   {
-    const simple_variant_t object(std::make_unique<Serializable>(42));
+    const simple_variant_t object(Serializable(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
@@ -704,7 +713,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_EQ(json, JSON(ParseJSON<simple_variant_t>(json)));
   }
   {
-    const simple_variant_t object(std::make_unique<Serializable>(42));
+    const simple_variant_t object(Serializable(42));
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
@@ -719,7 +728,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_EQ(JSON(object), JSON(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(ok3)));
   }
   {
-    const simple_variant_t object(std::make_unique<Serializable>(42));
+    const simple_variant_t object(Serializable(42));
     const std::string json =
         "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
@@ -730,21 +739,15 @@ TEST(Serialization, VariantAsJSON) {
   }
 
   {
-    using other_variant_t = Variant<WithVectorOfPairs, WithOptional>;
-    using we_have_to_go_deeper_t = Variant<simple_variant_t, other_variant_t>;
-
     WithOptional with_optional;
     with_optional.i = 42;
-    other_variant_t inner_variant(with_optional);
-    we_have_to_go_deeper_t outer_variant(inner_variant);
+    InnerVariant inner_variant(with_optional);
+    WithInnerVariant outer_variant;
+    outer_variant.v = inner_variant;
     const std::string json = JSON(outer_variant);
-    EXPECT_EQ(
-        "{\"Variant_B_WithVectorOfPairs_WithOptional_E\":"
-        "{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
-        "\"T9227628134042111965\"}",
-        json);
-    const we_have_to_go_deeper_t parsed_object = ParseJSON<we_have_to_go_deeper_t>(json);
-    const WithOptional& inner_parsed_object = Value<WithOptional>(Value<other_variant_t>(parsed_object));
+    EXPECT_EQ("{\"v\":{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"}}", json);
+    const WithInnerVariant parsed_object = ParseJSON<WithInnerVariant>(json);
+    const WithOptional& inner_parsed_object = Value<WithOptional>(parsed_object.v);
     EXPECT_EQ(42, Value(inner_parsed_object.i));
     EXPECT_FALSE(Exists(inner_parsed_object.b));
   }
@@ -755,69 +758,80 @@ TEST(Serialization, NamedVariantAsJSON) {
 
   {
     Q q;
-    A a;
+    InnerA a;
     X x;
-    a = x;
-    q = a;
+    OuterA aa;
+    aa.a = x;
+    q = aa;
 
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(X), "");
-    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(A), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(InnerA), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(InnerB), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(OuterA), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(OuterB), "");
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(Q), "");
 
     static_assert(IS_CURRENT_STRUCT(X), "");
     static_assert(!IS_CURRENT_VARIANT(X), "");
 
-    static_assert(!IS_CURRENT_STRUCT(A), "");
-    static_assert(IS_CURRENT_VARIANT(A), "");
+    static_assert(!IS_CURRENT_STRUCT(InnerA), "");
+    static_assert(IS_CURRENT_VARIANT(InnerA), "");
+
+    static_assert(IS_CURRENT_STRUCT(OuterA), "");
+    static_assert(!IS_CURRENT_VARIANT(OuterA), "");
 
     static_assert(!IS_CURRENT_STRUCT(Q), "");
     static_assert(IS_CURRENT_VARIANT(Q), "");
 
     const auto json = JSON(q);
-    EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880156980845091\"}", json);
+    EXPECT_EQ(
+        "{\"OuterA\":{\"a\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"}},\"\":\"T9204184145839071965\"}",
+        json);
 
     const auto result = ParseJSON<Q>(json);
-    ASSERT_TRUE(Exists<A>(result));
-    EXPECT_FALSE(Exists<B>(result));
-    ASSERT_TRUE(Exists<X>(Value<A>(result)));
-    EXPECT_FALSE(Exists<Y>(Value<A>(result)));
-    EXPECT_EQ(1, Value<X>(Value<A>(result)).x);
+    ASSERT_TRUE(Exists<OuterA>(result));
+    EXPECT_FALSE(Exists<OuterB>(result));
+    ASSERT_TRUE(Exists<X>(Value<OuterA>(result).a));
+    EXPECT_FALSE(Exists<Y>(Value<OuterA>(result).a));
+    EXPECT_EQ(1, Value<X>(Value<OuterA>(result).a).x);
   }
 
   {
     Q q;
-    A a;
+    InnerA a;
     Y y;
-    a = y;
-    q = a;
+    OuterA aa;
+    aa.a = y;
+    q = aa;
 
     const auto json = JSON<JSONFormat::Minimalistic>(q);
-    EXPECT_EQ("{\"A\":{\"Y\":{\"y\":2}}}", json);
+    EXPECT_EQ("{\"OuterA\":{\"a\":{\"Y\":{\"y\":2}}}}", json);
 
     const auto result = ParseJSON<Q, JSONFormat::Minimalistic>(json);
-    ASSERT_TRUE(Exists<A>(result));
-    EXPECT_FALSE(Exists<B>(result));
-    ASSERT_TRUE(Exists<Y>(Value<A>(result)));
-    EXPECT_FALSE(Exists<X>(Value<A>(result)));
-    EXPECT_EQ(2, Value<Y>(Value<A>(result)).y);
+    ASSERT_TRUE(Exists<OuterA>(result));
+    EXPECT_FALSE(Exists<OuterB>(result));
+    ASSERT_TRUE(Exists<Y>(Value<OuterA>(result).a));
+    EXPECT_FALSE(Exists<X>(Value<OuterA>(result).a));
+    EXPECT_EQ(2, Value<Y>(Value<OuterA>(result).a).y);
   }
 
   {
     Q q;
-    B b;
+    InnerB b;
     Z z;
-    b = z;
-    q = b;
+    OuterB bb;
+    bb.b = z;
+    q = bb;
 
     const auto json = JSON<JSONFormat::NewtonsoftFSharp>(q);
-    EXPECT_EQ("{\"Case\":\"B\",\"Fields\":[{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}]}", json);
+    EXPECT_EQ("{\"Case\":\"OuterB\",\"Fields\":[{\"b\":{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}}]}", json);
 
     const auto result = ParseJSON<Q, JSONFormat::NewtonsoftFSharp>(json);
-    ASSERT_FALSE(Exists<A>(result));
-    EXPECT_TRUE(Exists<B>(result));
-    ASSERT_TRUE(Exists<Z>(Value<B>(result)));
-    EXPECT_FALSE(Exists<T>(Value<B>(result)));
-    EXPECT_EQ(3, Value<Z>(Value<B>(result)).z);
+    ASSERT_FALSE(Exists<OuterA>(result));
+    EXPECT_TRUE(Exists<OuterB>(result));
+    ASSERT_TRUE(Exists<Z>(Value<OuterB>(result).b));
+    EXPECT_FALSE(Exists<T>(Value<OuterB>(result).b));
+    EXPECT_EQ(3, Value<Z>(Value<OuterB>(result).b).z);
   }
 }
 

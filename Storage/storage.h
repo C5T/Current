@@ -198,7 +198,7 @@ class GenericStorageImpl {
   enum { FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value };
   using fields_type_list_t = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;
   using fields_variant_t = Variant<fields_type_list_t>;
-  using persister_t = PERSISTER<fields_type_list_t, CUSTOM_PERSISTER_PARAM>;
+  using persister_t = PERSISTER<fields_variant_t, CUSTOM_PERSISTER_PARAM>;
 
  private:
   std::mutex mutex_;
@@ -321,23 +321,33 @@ class GenericStorageImpl {
 // Used for the sole purpose of extracting the underlying `transaction_t` type without extra template magic.
 namespace persister {
 
-template <typename TYPELIST, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
-class NullStoragePersisterImpl;
-
-template <template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE, typename... TS>
-class NullStoragePersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_RECORD_TYPE> {
+template <typename MUTATIONS_VARIANT,
+          template <typename> class UNDERLYING_PERSISTER,
+          typename STREAM_RECORD_TYPE>
+class NullStoragePersisterImpl {
  public:
-  using variant_t = Variant<TS...>;
+  using variant_t = MUTATIONS_VARIANT;
   using transaction_t = Transaction<variant_t>;
 
+  // NOTE(dkorolev): Commented out to not make the compiler match the type.
+  // using fields_update_function_t = std::function<void(const variant_t&)>;
+  // NullStoragePersisterImpl(std::mutex&, fields_update_function_t) {}
+
+  template<typename T>
+  NullStoragePersisterImpl(std::mutex&, T) {}
+
   void InternalExposeStream() {}
+
+  void PersistJournal(MutationJournal& journal) { journal.Clear(); }
+
+  PersisterDataAuthority DataAuthority() const { return PersisterDataAuthority::Own; }
 };
 
 template <typename>
 struct NullPersister {};
 
-template <typename TYPELIST, typename STREAM_RECORD_TYPE = CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>
-using NullStoragePersister = NullStoragePersisterImpl<TYPELIST, NullPersister, STREAM_RECORD_TYPE>;
+template <typename MUTATIONS_VARIANT, typename STREAM_RECORD_TYPE = CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>
+using NullStoragePersister = NullStoragePersisterImpl<MUTATIONS_VARIANT, NullPersister, STREAM_RECORD_TYPE>;
 
 }  // namespace current::storage::persister
 

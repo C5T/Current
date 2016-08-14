@@ -25,20 +25,35 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_VARIADIC_INDEXES_H
 #define BRICKS_TEMPLATE_VARIADIC_INDEXES_H
 
-namespace current {
-namespace variadic_indexes {
+namespace crnt {
+namespace vi {
 
 template <int...>
-struct indexes {};
+struct is {};
 template <int X, int... XS>
-struct indexes_generator : indexes_generator<X - 1, X - 1, XS...> {};
+struct ig : ig<X - 1, X - 1, XS...> {};
 template <int... XS>
-struct indexes_generator<0, XS...> {
-  typedef indexes<XS...> type;
+struct ig<0, XS...> {
+  typedef is<XS...> type;
 };
 
 template <int N>
-using generate_indexes = typename indexes_generator<N>::type;
+using gi = typename ig<N>::type;
+
+}  // namespace vi
+}  // namespace crnt
+
+namespace current {
+namespace variadic_indexes {
+
+template <int... XS>
+using indexes = ::crnt::vi::is<XS...>;
+
+template <int... XS>
+using indexes_generator = ::crnt::vi::ig<XS...>;
+
+template <int N>
+using generate_indexes = ::crnt::vi::gi<N>;
 
 }  // namespace variadic_indexes
 }  // namespace current
