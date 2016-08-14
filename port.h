@@ -228,6 +228,6 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 // The `FEWER_COMPILE_TIME_CHECKS` macro, when set, moves more checks from compile time to run time.
 // Pro: Faster and less RAM-demanding compilation. Con: Some type errors may go unnoticed.
 // TODO(dkorolev)+TODO(mzhurovich): We'd like to bind this to `!NDEBUG`, but let's keep it on by default for now.
-// #define FEWER_COMPILE_TIME_CHECKS
+#define FEWER_COMPILE_TIME_CHECKS
 
 #endif
