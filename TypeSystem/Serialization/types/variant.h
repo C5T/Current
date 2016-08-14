@@ -51,80 +51,82 @@ namespace serialization {
 namespace json {
 namespace save {
 
+template <JSONFormat J>
+class SaveVariantCurrentOrMinimalistic {
+ public:
+  SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination,
+                                   rapidjson::Document::AllocatorType& allocator)
+      : destination_(destination), allocator_(allocator) {}
+
+  template <typename X>
+  ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
+    rapidjson::Value serialized_object;
+    SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
+
+    using namespace ::current::reflection;
+    rapidjson::Value serialized_type_id;
+    SaveIntoJSONImpl<TypeID, J>::Save(
+        serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
+
+    destination_.SetObject();
+
+    destination_.AddMember(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
+                           serialized_object,
+                           allocator_);
+
+    if (J == JSONFormat::Current) {
+      destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+    }
+  }
+
+ private:
+  rapidjson::Value& destination_;
+  rapidjson::Document::AllocatorType& allocator_;
+};
+
+class SaveVariantFSharp {
+ public:
+  SaveVariantFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+      : destination_(destination), allocator_(allocator) {}
+
+  template <typename X>
+  ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
+    rapidjson::Value serialized_object;
+
+    SaveIntoJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Save(serialized_object, allocator_, object);
+
+    using namespace ::current::reflection;
+
+    destination_.SetObject();
+    destination_.AddMember(rapidjson::Value("Case", allocator_).Move(),
+                           rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
+                           allocator_);
+
+    if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
+      rapidjson::Value fields_as_array;
+      fields_as_array.SetArray();
+      fields_as_array.PushBack(serialized_object.Move(), allocator_);
+
+      destination_.AddMember(
+          rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+    }
+  }
+
+ private:
+  rapidjson::Value& destination_;
+  rapidjson::Document::AllocatorType& allocator_;
+};
+
 template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
-  class SaveVariantCurrentOrMinimalistic {
-   public:
-    SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination,
-                                     rapidjson::Document::AllocatorType& allocator)
-        : destination_(destination), allocator_(allocator) {}
-
-    template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
-      rapidjson::Value serialized_object;
-      SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
-
-      using namespace ::current::reflection;
-      rapidjson::Value serialized_type_id;
-      SaveIntoJSONImpl<TypeID, J>::Save(
-          serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
-
-      destination_.SetObject();
-
-      destination_.AddMember(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
-                             serialized_object,
-                             allocator_);
-
-      if (J == JSONFormat::Current) {
-        destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
-      }
-    }
-
-   private:
-    rapidjson::Value& destination_;
-    rapidjson::Document::AllocatorType& allocator_;
-  };
-
   // Variant objects are serialized in a different way for F#.
-  class SaveVariantFSharp {
-   public:
-    SaveVariantFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
-        : destination_(destination), allocator_(allocator) {}
-
-    template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
-      rapidjson::Value serialized_object;
-      SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
-
-      using namespace ::current::reflection;
-
-      destination_.SetObject();
-      destination_.AddMember(rapidjson::Value("Case", allocator_).Move(),
-                             rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
-                             allocator_);
-
-      if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
-        rapidjson::Value fields_as_array;
-        fields_as_array.SetArray();
-        fields_as_array.PushBack(serialized_object.Move(), allocator_);
-
-        destination_.AddMember(
-            rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
-      }
-    }
-
-   private:
-    rapidjson::Value& destination_;
-    rapidjson::Document::AllocatorType& allocator_;
-  };
-
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const T& value) {
     // TODO(dkorolev): This call might be worth splitting into two, with and without REQUIRED. Later.
     if (Exists(value)) {
       typename std::conditional<J == JSONFormat::Current || J == JSONFormat::Minimalistic,
-                                SaveVariantCurrentOrMinimalistic,
+                                SaveVariantCurrentOrMinimalistic<J>,
                                 SaveVariantFSharp>::type impl(destination, allocator);
       value.Call(impl);
       return true;
