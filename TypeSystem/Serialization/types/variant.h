@@ -142,6 +142,12 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
 
 namespace load {
 
+struct LoadVariantGenericDeserializer {
+  virtual void Deserialize(rapidjson::Value* source,
+                           IHasUncheckedMoveFromUniquePtr& destination,
+                           const std::string& path) = 0;
+};
+
 template <typename VARIANT>
 struct LoadVariantCurrent {
   class Impl {
@@ -174,16 +180,13 @@ struct LoadVariantCurrent {
     };
 
    private:
-    struct GenericDeserializer {
-      virtual ~GenericDeserializer() = default;
-      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
-    };
-
     template <typename X>
-    struct TypedDeserializer : GenericDeserializer {
+    struct TypedDeserializer : LoadVariantGenericDeserializer {
       explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
-      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
+      void Deserialize(rapidjson::Value* source,
+                       IHasUncheckedMoveFromUniquePtr& destination,
+                       const std::string& path) override {
         if (source->HasMember(key_name_)) {
           auto result = std::make_unique<X>();
           LoadFromJSONImpl<X, JSONFormat::Current>::Load(
@@ -201,7 +204,7 @@ struct LoadVariantCurrent {
 
     using deserializers_map_t =
         std::unordered_map<::current::reflection::TypeID,
-                           std::unique_ptr<GenericDeserializer>,
+                           std::unique_ptr<LoadVariantGenericDeserializer>,
                            ::current::CurrentHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
 
@@ -273,14 +276,11 @@ struct LoadVariantMinimalistic {
     };
 
    private:
-    struct GenericDeserializerMinimalistic {
-      virtual ~GenericDeserializerMinimalistic() = default;
-      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
-    };
-
     template <typename X>
-    struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
-      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
+    struct TypedDeserializerMinimalistic : LoadVariantGenericDeserializer {
+      void Deserialize(rapidjson::Value* source,
+                       IHasUncheckedMoveFromUniquePtr& destination,
+                       const std::string& path) override {
         auto result = std::make_unique<X>();
         LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, *result, path);
         destination.UncheckedMoveFromUniquePtr(std::move(result));
@@ -288,7 +288,7 @@ struct LoadVariantMinimalistic {
     };
 
     using deserializers_map_t =
-        std::unordered_map<std::string, std::unique_ptr<GenericDeserializerMinimalistic>>;
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -342,14 +342,11 @@ struct LoadVariantFSharp {
     };
 
    private:
-    struct GenericDeserializerFSharp {
-      virtual ~GenericDeserializerFSharp() = default;
-      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
-    };
-
     template <typename X>
-    struct TypedDeserializerFSharp : GenericDeserializerFSharp {
-      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
+    struct TypedDeserializerFSharp : LoadVariantGenericDeserializer {
+      void Deserialize(rapidjson::Value* source,
+                       IHasUncheckedMoveFromUniquePtr& destination,
+                       const std::string& path) override {
         if (source->HasMember("Fields")) {
           rapidjson::Value* fields = &(*source)["Fields"];
           if (fields && fields->IsArray() && fields->Size() == 1u) {
@@ -365,7 +362,7 @@ struct LoadVariantFSharp {
         } else {
           if (IS_EMPTY_CURRENT_STRUCT(X)) {
             // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
-            destination = X();
+            destination.UncheckedMoveFromUniquePtr(std::move(std::make_unique<X>()));
           } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
@@ -375,7 +372,8 @@ struct LoadVariantFSharp {
       }
     };
 
-    using deserializers_map_t = std::unordered_map<std::string, std::unique_ptr<GenericDeserializerFSharp>>;
+    using deserializers_map_t =
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
     deserializers_map_t deserializers_;
 
     template <typename X>

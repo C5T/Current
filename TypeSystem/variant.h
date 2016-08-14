@@ -106,6 +106,10 @@ struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
 
 }  // namespace current::variant
 
+struct IHasUncheckedMoveFromUniquePtr {
+  virtual void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct>) = 0;
+};
+
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -119,7 +123,7 @@ template <typename NAME, typename TYPE_LIST>
 struct VariantImpl;
 
 template <typename NAME, typename... TYPES>
-struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
+struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME>, IHasUncheckedMoveFromUniquePtr {
   using typelist_t = TypeListImpl<TYPES...>;
 
   static constexpr size_t typelist_size = typelist_t::size;
@@ -185,7 +189,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     return *this;
   }
 
-  void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct> input) { object_ = std::move(input); }
+  void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct> input) override { object_ = std::move(input); }
 
   operator bool() const { return object_ ? true : false; }
 
