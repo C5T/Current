@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,40 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_TEMPLATE_VARIADIC_INDEXES_H
-#define BRICKS_TEMPLATE_VARIADIC_INDEXES_H
+#include "../../TypeSystem/Serialization/json.h"
 
-namespace crnt {
-namespace vi {
+#include "../../3rdparty/gtest/gtest-main.h"
 
-template <int...>
-struct is {};
-template <int X, int... XS>
-struct ig : ig<X - 1, X - 1, XS...> {};
-template <int... XS>
-struct ig<0, XS...> {
-  typedef is<XS...> type;
-};
+namespace type_test {
 
-template <int N>
-using gi = typename ig<N>::type;
+#include "include/json_variant.h"
 
-}  // namespace vi
-}  // namespace crnt
+}  // namespace type_test
 
-namespace current {
-namespace variadic_indexes {
-
-template <int... XS>
-using indexes = ::crnt::vi::is<XS...>;
-
-template <int... XS>
-using indexes_generator = ::crnt::vi::ig<XS...>;
-
-template <int N>
-using generate_indexes = ::crnt::vi::gi<N>;
-
-}  // namespace variadic_indexes
-}  // namespace current
-
-#endif  // BRICKS_TEMPLATE_VARIADIC_INDEXES_H
+TEST(TypeTest, Variant) {
+  using namespace type_test;
+#include "include/json_variant.cc"
+  ParseJSON<variant_t>(JSON(v1));
+}

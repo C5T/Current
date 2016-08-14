@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,40 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_TEMPLATE_VARIADIC_INDEXES_H
-#define BRICKS_TEMPLATE_VARIADIC_INDEXES_H
+#include "../../Storage/storage.h"
 
-namespace crnt {
-namespace vi {
+#include "../../Bricks/file/file.h"
 
-template <int...>
-struct is {};
-template <int X, int... XS>
-struct ig : ig<X - 1, X - 1, XS...> {};
-template <int... XS>
-struct ig<0, XS...> {
-  typedef is<XS...> type;
-};
+#include "../../3rdparty/gtest/gtest-main.h"
 
-template <int N>
-using gi = typename ig<N>::type;
+namespace type_test {
 
-}  // namespace vi
-}  // namespace crnt
+#include "include/storage.h"
 
-namespace current {
-namespace variadic_indexes {
+}  // namespace type_test
 
-template <int... XS>
-using indexes = ::crnt::vi::is<XS...>;
+TEST(TypeTest, Storage) {
+  using namespace type_test;
 
-template <int... XS>
-using indexes_generator = ::crnt::vi::ig<XS...>;
+  using storage_t = Storage<JSONFilePersister>;
 
-template <int N>
-using generate_indexes = ::crnt::vi::gi<N>;
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
 
-}  // namespace variadic_indexes
-}  // namespace current
+  storage_t storage("data");
 
-#endif  // BRICKS_TEMPLATE_VARIADIC_INDEXES_H
+#include "include/storage.cc"
+}

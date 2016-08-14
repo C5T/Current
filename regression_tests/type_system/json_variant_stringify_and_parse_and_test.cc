@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,26 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../Storage/storage.h"
-
-#include "../../Bricks/file/file.h"
+#include "../../TypeSystem/Serialization/json.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace type_test {
 
-#include "include/storage.h"
+#include "include/json_variant.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, Storage) {
+TEST(TypeTest, Variant) {
   using namespace type_test;
-
-  using storage_t = Storage<JSONFilePersister>;
-
-  const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
-
-  storage_t storage("data");
-
-#include "include/storage.cc"
+#include "include/json_variant.cc"
+  EXPECT_EQ(1, Value<Struct1>(ParseJSON<variant_t>(JSON(v1))).x1);
 }

@@ -23,12 +23,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// NOTE: Each type witin a `Variant` must be a `CURRENT_STRUCT`. No nesting is allowed.
+
 #ifndef CURRENT_TYPE_SYSTEM_VARIANT_H
 #define CURRENT_TYPE_SYSTEM_VARIANT_H
 
 #include "../port.h"  // `make_unique`.
 
 #include <memory>
+
+#ifdef FEWER_COMPILE_TIME_CHECKS
+// For runtime, not compile-time, extra checks.
+#include <iostream>
+#include <typeindex>
+#include <unordered_map>
+#endif
 
 #include "base.h"
 #include "helpers.h"
@@ -43,12 +52,66 @@ namespace current {
 
 struct BypassVariantTypeCheck {};
 
+namespace variant {
+
+#ifdef FEWER_COMPILE_TIME_CHECKS
+template <typename... TS>
+struct PopulateForAllTypes;
+template <>
+struct PopulateForAllTypes<> {
+  static void DoIt(std::unordered_map<std::type_index, const char*>&) {}
+};
+template <typename T, typename... TS>
+struct PopulateForAllTypes<T, TS...> {
+  static void DoIt(std::unordered_map<std::type_index, const char*>& result) {
+    const std::type_index ti = typeid(T);
+    CURRENT_ASSERT(!result.count(ti));
+    result[ti] = reflection::CurrentTypeNameAsConstCharPtr<T>();
+    PopulateForAllTypes<TS...>::DoIt(result);
+  }
+};
+template <typename... TS>
+struct RuntimeTypeListHelpersImpl {
+  using map_t = std::unordered_map<std::type_index, const char*>;
+  const map_t types_;
+  static map_t PopulateTypes() {
+    map_t result;
+    PopulateForAllTypes<TS...>::DoIt(result);
+    return result;
+  }
+  RuntimeTypeListHelpersImpl() : types_(PopulateTypes()) {}
+  template <typename T>
+  void AssertContains() const {
+    if (types_.find(std::type_index(typeid(T))) == types_.end()) {
+      std::cerr << "Variant type mismatch.\n\tType: " << reflection::CurrentTypeNameAsConstCharPtr<T>()
+                << "\nIs not among:";
+      for (const auto& type : types_) {
+        std::cerr << ' ' << type.second;
+      }
+      std::cerr << '\n';
+      CURRENT_THROW(IncompatibleVariantTypeException<T>());
+    }
+  }
+};
+template <typename T>
+struct RuntimeTypeListHelpers;
+template <typename... TS>
+struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
+  template <typename U>
+  static void AssertContains() {
+    Singleton<RuntimeTypeListHelpersImpl<TS...>>().template AssertContains<U>();
+  }
+};
+#endif  // FEWER_COMPILE_TIME_CHECKS
+
+}  // namespace current::variant
+
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
 // instead of a `TypeListImpl<...>` in such a case, to ensure type de-duplication takes place.
 
-// Initializes an `std::unique_ptr<CurrentSuper>` given the object of the right type.
+// Initializes an `std::unique_ptr<CurrentStruct>` given the object of the right type.
 // The input object could be an object itself (in which case it's copied),
 // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
 // or a bare pointer (in which case it's captured).
@@ -66,7 +129,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   VariantImpl() {}
 
-  VariantImpl(BypassVariantTypeCheck, std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+  VariantImpl(BypassVariantTypeCheck, std::unique_ptr<CurrentStruct>&& rhs) : object_(std::move(rhs)) {}
 
   // Use deep copy helper for all Variant types, including our own.
   VariantImpl(const VariantImpl& rhs) { CopyFrom(rhs); }
@@ -84,16 +147,20 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     MoveFrom(std::forward<VariantImpl<RHS...>>(rhs));
   }
 
+#ifdef FEWER_COMPILE_TIME_CHECKS
+  template <typename X, class ENABLE_IF = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
+  VariantImpl(X&& input) {
+    using decayed_x = current::decay<X>;
+    variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_x>();
+    object_ = std::make_unique<decayed_x>(std::forward<X>(input));
+  }
+#else
   template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
   VariantImpl(X&& input) {
     using decayed_t = current::decay<X>;
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
   }
-
-  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
-  VariantImpl(std::unique_ptr<X> input) {
-    object_ = std::move(input);
-  }
+#endif  // FEWER_COMPILE_TIME_CHECKS
 
   void operator=(std::nullptr_t) { object_ = nullptr; }
 
@@ -107,18 +174,18 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     return *this;
   }
 
+#ifdef FEWER_COMPILE_TIME_CHECKS
+  template <typename X, class ENABLE = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
+#else
   template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+#endif  // FEWER_COMPILE_TIME_CHECKS
   VariantImpl& operator=(X&& input) {
     using decayed_t = current::decay<X>;
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
     return *this;
   }
 
-  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
-  VariantImpl& operator=(std::unique_ptr<X> input) {
-    object_ = std::move(input);
-    return *this;
-  }
+  void UncheckedMoveFromUniquePtr(std::unique_ptr<CurrentStruct> input) { object_ = std::move(input); }
 
   operator bool() const { return object_ ? true : false; }
 
@@ -148,7 +215,6 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
-  // TODO(dk+mz): What should be in the`enable_if_t`-s below? `CurrentStruct`, `CurrentSuper`, or both?
   template <typename X>
   std::enable_if_t<!std::is_same<X, CurrentStruct>::value, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
@@ -171,7 +237,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
   template <typename X>
-  std::enable_if_t<!std::is_same<X, CurrentSuper>::value, const X&> VariantValueImpl() const {
+  const X& VariantValueImpl() const {
     const X* ptr = dynamic_cast<const X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -201,9 +267,17 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
  private:
   struct TypeAwareClone {
-    std::unique_ptr<CurrentSuper>& into;
-    TypeAwareClone(std::unique_ptr<CurrentSuper>& into) : into(into) {}
+    std::unique_ptr<CurrentStruct>& into;
+    TypeAwareClone(std::unique_ptr<CurrentStruct>& into) : into(into) {}
 
+#ifdef FEWER_COMPILE_TIME_CHECKS
+    template <typename U>
+    void operator()(const U& instance) {
+      using decayed_u = current::decay<U>;
+      variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_u>();
+      into = std::make_unique<decayed_u>(instance);
+    }
+#else
     template <typename U>
     std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U& instance) {
       into = std::make_unique<current::decay<U>>(instance);
@@ -213,15 +287,24 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U&) {
       CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
     }
+#endif  // FEWER_COMPILE_TIME_CHECKS
   };
 
   struct TypeAwareMove {
     // `from` should not be an rvalue reference, as the move operation in `operator()` may still throw.
-    std::unique_ptr<CurrentSuper>& from;
-    std::unique_ptr<CurrentSuper>& into;
-    TypeAwareMove(std::unique_ptr<CurrentSuper>& from, std::unique_ptr<CurrentSuper>& into)
+    std::unique_ptr<CurrentStruct>& from;
+    std::unique_ptr<CurrentStruct>& into;
+    TypeAwareMove(std::unique_ptr<CurrentStruct>& from, std::unique_ptr<CurrentStruct>& into)
         : from(from), into(into) {}
 
+#ifdef FEWER_COMPILE_TIME_CHECKS
+    template <typename U>
+    void operator()(U&&) {
+      using decayed_u = current::decay<U>;
+      variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_u>();
+      into = std::move(from);
+    }
+#else
     template <typename U>
     std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
       into = std::move(from);
@@ -231,6 +314,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
       CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
     }
+#endif  // FEWER_COMPILE_TIME_CHECKS
   };
 
   template <typename... RHS>
@@ -254,7 +338,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
  private:
-  std::unique_ptr<CurrentSuper> object_;
+  std::unique_ptr<CurrentStruct> object_;
 };
 
 // `Variant<...>` can accept either a list of types, or a `TypeList<...>`.

@@ -26,19 +26,14 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_BASE_H
 #define CURRENT_TYPE_SYSTEM_BASE_H
 
-namespace current {
-
-namespace reflection {
+namespace crnt {
+namespace r {
 
 // Instantiation types.
-struct DeclareFields {};
-struct CountFields {};
+struct DF {};
+struct FC {};
 
-}  // namespace reflection
-
-namespace reflection {
-
-// Dummy type for `CountFields` instantiation type.
+// Dummy type for `FC` instantiation type.
 struct CountFieldsImplementationType {
   template <typename... T>
   CountFieldsImplementationType(T&&...) {}
@@ -67,7 +62,23 @@ struct Index {};
 template <typename T>
 struct TypeSelector {};
 
-}  // namespace reflection
+}  // namespace crnt::r
+}  // namespace crnt
+
+namespace current {
+namespace reflection {
+using DeclareFields = ::crnt::r::DF;
+using CountFields = ::crnt::r::FC;
+using ::crnt::r::CountFieldsImplementationType;
+using ::crnt::r::FieldTypeAndName;
+using ::crnt::r::FieldTypeAndNameAndIndex;
+using ::crnt::r::FieldNameAndPtr;
+using ::crnt::r::FieldNameAndImmutableValue;
+using ::crnt::r::FieldNameAndMutableValue;
+using ::crnt::r::SimpleIndex;
+using ::crnt::r::Index;
+using ::crnt::r::TypeSelector;
+}  // namespace current::reflection
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_BASE_H

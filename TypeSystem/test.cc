@@ -847,9 +847,10 @@ TEST(TypeSystemTest, IntersectingTypelistVariantsCopyAndMove) {
 
 TEST(TypeSystemTest, VariantSmokeTestOneType) {
   using namespace struct_definition_test;
+  using current::BypassVariantTypeCheck;
 
   {
-    Variant<Foo> p(std::make_unique<Foo>());
+    Variant<Foo> p(BypassVariantTypeCheck(), std::make_unique<Foo>());
     const Variant<Foo>& cp(p);
 
     {
@@ -890,7 +891,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
     EXPECT_EQ(102u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(102u, cp.VariantValueImpl<Foo>().i);
 
-    p = std::make_unique<Foo>(103u);
+    p.UncheckedMoveFromUniquePtr(std::make_unique<Foo>(103u));
     EXPECT_EQ(103u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(103u, cp.VariantValueImpl<Foo>().i);
   }
@@ -993,7 +994,7 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
     } catch (NoValueOfType<Bar>) {
     }
 
-    p = std::make_unique<DerivedFromFoo>();
+    p = DerivedFromFoo();
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
     cp.Call(v);
@@ -1018,22 +1019,6 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
   }
 }
 
-TEST(TypeSystemTest, NestedVariants) {
-  using namespace struct_definition_test;
-
-  using V_FOO_DERIVED = Variant<Foo, DerivedFromFoo>;
-  using V_BAR_BAZ = Variant<Bar, Baz>;
-  using V_NESTED = Variant<V_FOO_DERIVED, V_BAR_BAZ>;
-
-  V_FOO_DERIVED foo(Foo(1u));
-  V_NESTED nested_foo(foo);
-  EXPECT_EQ(1u, Value<Foo>(Value<V_FOO_DERIVED>(nested_foo)).i);
-
-  V_BAR_BAZ bar(Bar(2u));
-  V_NESTED nested_bar(bar);
-  EXPECT_EQ(2u, Value<Bar>(Value<V_BAR_BAZ>(nested_bar)).j);
-}
-
 namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampUS) {
   CURRENT_FIELD(t, std::chrono::microseconds);
@@ -1047,6 +1032,7 @@ CURRENT_STRUCT(WithTimestampUInt64) {
 
 TEST(TypeSystemTest, TimestampSimple) {
   using namespace struct_definition_test;
+  using current::MicroTimestampOf;
   {
     WithTimestampUS a;
     a.t = std::chrono::microseconds(42ull);
@@ -1072,6 +1058,7 @@ CURRENT_STRUCT(WithTimestampVariant) {
 
 TEST(TypeSystemTest, TimestampVariant) {
   using namespace struct_definition_test;
+  using current::MicroTimestampOf;
 
   WithTimestampUS a;
   a.t = std::chrono::microseconds(101);
