@@ -44,6 +44,10 @@ for c in ${COUNT_LIST[@]}; do
 		else
 			echo -e "\033[31mFAILED\033[39m"
 		fi
+		# echo -n "Number of lines in the output of objdump -t:           "
+		# objdump -t .current/$t | wc -l
+		# echo -n "Average length of the longest 100 lines of objdump -t: "
+		# objdump -t .current/$t | awk '{ print length }' | sort -gr | head -n 100 | awk '{ sum += $1 } END { print sum * 0.01 }'
 	done
 	echo
 done
