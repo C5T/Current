@@ -603,7 +603,10 @@ struct is_same_or_base_of<C, C> {
 namespace current {
 namespace reflection {
 
-using ::crnt::r::Field;
+// Required by Visual Studio 2015 Community. -- D.K.
+template<typename INSTANTIATION_TYPE, typename T>
+using Field = ::crnt::r::Field<INSTANTIATION_TYPE, T>;
+
 using ::crnt::r::CurrentStructFieldsConsistency;
 
 }  // namespace current::reflection

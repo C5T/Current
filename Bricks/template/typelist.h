@@ -297,7 +297,8 @@ struct TLE : E<0, TS...> {};
 // `TypeListElementImpl`.
 template <size_t N, typename TYPE_LIST_IMPL>
 struct Q {
-  using type = typename decltype((std::declval<TLE<TYPE_LIST_IMPL>>()).F(TI<N>()))::type;
+  using type_wrapper = decltype((std::declval<TLE<TYPE_LIST_IMPL>>()).F(TI<N>()));
+  using type = typename type_wrapper::type;
 };
 
 }  // namespace crnt::tle
