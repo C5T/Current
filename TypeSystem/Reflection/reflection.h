@@ -51,11 +51,11 @@ struct TypeReflector;
 struct ReflectorImpl {
   static ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
 
-  template <typename TOP_LEVEL, bool GO_DEEP>
+  template <typename TOP_LEVEL>
   struct StructFieldReflector {
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    explicit StructFieldReflector(fields_list_t& fields) : fields_(fields) { fields_.clear(); }
+    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) { fields_.clear(); }
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -64,7 +64,7 @@ struct ReflectorImpl {
       if (retrieved_description) {
         description = retrieved_description;
       }
-      if (GO_DEEP) {
+      if (go_deep_) {
         fields_.emplace_back(Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id, name, description);
       } else {
         fields_.emplace_back(TypeID::NotYetReadyButYouGuysHangInThere, name, description);
@@ -73,6 +73,7 @@ struct ReflectorImpl {
 
    private:
     fields_list_t& fields_;
+    const bool go_deep_;
   };
 
   struct TypeReflector {
@@ -153,12 +154,12 @@ struct ReflectorImpl {
 
         // Mark this structure as being visited, to make sure self-referring structs are correctly supported.
         // The `incomplete_id` can really be anything as long as it's unique and different per type.
-        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldReflector<T, false>(s.fields));
+        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldReflector<T>(s.fields, false));
         const TypeID incomplete_id = CalculateTypeID(s);
         s.type_id = incomplete_id;
 
         // After all the fields have been visited, compute the final type ID for this structure.
-        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldReflector<T, true>(s.fields));
+        VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldReflector<T>(s.fields, true));
         s.type_id = CalculateTypeID(s);
         Reflector().FixIncompleteTypeIDs(incomplete_id, s.type_id);
       }
