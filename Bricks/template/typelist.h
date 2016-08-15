@@ -60,27 +60,6 @@ static_assert(TypeListSize<TypeListImpl<int>>::value == 1, "");
 static_assert(TypeListSize<TypeListImpl<int, int>>::value == 2, "");
 static_assert(TypeListSize<TypeListImpl<int, int, int>>::value == 3, "");
 
-// `TypeListElement<N, TypeListImpl<TS....>>` evaluates to the N-th (0-based) type of `TS...`.
-template <size_t N, typename TYPE_LIST_IMPL>
-struct TypeListElementImpl;
-
-template <typename T, typename... TS>
-struct TypeListElementImpl<0, TypeListImpl<T, TS...>> {
-  typedef T type;
-};
-
-template <size_t N, typename T, typename... TS>
-struct TypeListElementImpl<N, TypeListImpl<T, TS...>> {
-  typedef typename TypeListElementImpl<N - 1, TypeListImpl<TS...>>::type type;
-};
-
-template <size_t N, typename TYPE_LIST_IMPL>
-using TypeListElement = typename TypeListElementImpl<N, TYPE_LIST_IMPL>::type;
-
-static_assert(std::is_same<int, TypeListElement<0, TypeListImpl<int>>>::value, "");
-static_assert(std::is_same<long, TypeListElement<0, TypeListImpl<long, char>>>::value, "");
-static_assert(std::is_same<char, TypeListElement<1, TypeListImpl<long, char>>>::value, "");
-
 // `TypeListContains<TypeListImpl<TS...>, T>::value` is true iff `T` is contained in `TS...`.
 template <typename TYPE_LIST_IMPL, typename TYPE>
 struct TypeListContains {};
@@ -274,6 +253,67 @@ struct EvensOnlyImpl<TypeListImpl<EVENS...>, TypeListImpl<GOOD, BAD, UGLY...>> {
 
 template <typename T>
 using EvensOnly = typename EvensOnlyImpl<TypeListImpl<>, T>::result;
+
+}  // namespace metaprogramming
+}  // namespace current
+
+namespace crnt {
+namespace tle {
+
+using ::current::metaprogramming::TypeListImpl;
+
+// `TypeIndex`.
+template<size_t>
+struct TI {};
+
+// `TypeWrapper`.
+template<typename T>
+struct TW {
+  using type = T;
+};
+
+// `EnumerateTypesInTypeList`.
+template<size_t I, typename TYPE_LIST_IMPL>
+struct E;
+
+template<size_t I>
+struct E<I, TypeListImpl<>> {
+  // ``TypeAtIndex`.
+  void F(TI<I>) {}
+};
+
+template<size_t I, typename T, typename... TS>
+struct E<I, TypeListImpl<T, TS...>> : E<I + 1u, TypeListImpl<TS...>> {
+  using E<I + 1u, TypeListImpl<TS...>>::F;
+  TW<T> F(TI<I>) {
+    return TW<T>();
+  }
+};
+
+// `TypeListEnumerator`.
+template<typename... TS>
+struct TLE : E<0, TS...> {};
+
+// `TypeListElementImpl`.
+template <size_t N, typename TYPE_LIST_IMPL>
+struct Q {
+  using type_wrapper = decltype((std::declval<TLE<TYPE_LIST_IMPL>>()).F(TI<N>()));
+  using type = typename type_wrapper::type;
+};
+
+}  // namespace crnt::tle
+}  // namespace crnt
+
+namespace current {
+namespace metaprogramming {
+
+// `TypeListElement<N, TypeListImpl<TS....>>` evaluates to the N-th (0-based) type of `TS...`.
+template <size_t N, typename TYPE_LIST_IMPL>
+using TypeListElement = typename ::crnt::tle::Q<N, TYPE_LIST_IMPL>::type;
+
+static_assert(std::is_same<int, TypeListElement<0, TypeListImpl<int>>>::value, "");
+static_assert(std::is_same<long, TypeListElement<0, TypeListImpl<long, char>>>::value, "");
+static_assert(std::is_same<char, TypeListElement<1, TypeListImpl<long, char>>>::value, "");
 
 }  // namespace metaprogramming
 }  // namespace current

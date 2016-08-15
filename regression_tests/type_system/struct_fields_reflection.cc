@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+              2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../Storage/storage.h"
+#include "../../TypeSystem/struct.h"
+#include "../../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/Reflection/reflection.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -30,18 +33,15 @@ SOFTWARE.
 
 namespace type_test {
 
-#include "include/storage.h"
+#include "include/struct_fields.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, Storage) {
+TEST(TypeTest, StructFields) {
   using namespace type_test;
 
-  using storage_t = Storage<JSONFilePersister>;
-
-  const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
-
-  storage_t storage("data");
-
-#include "include/storage.cc"
+  current::reflection::StructSchema schema;
+  schema.AddType<StructWithManyFields>();
+  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
+            schema.GetSchemaInfo().Describe<current::reflection::Language::CPP>(false));
 }

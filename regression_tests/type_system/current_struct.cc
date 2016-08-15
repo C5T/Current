@@ -22,9 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../TypeSystem/Schema/schema.h"
-
-#include "../../Bricks/file/file.h"
+#include "../../TypeSystem/struct.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
@@ -36,11 +34,8 @@ namespace type_test {
 
 TEST(TypeTest, CurrentStruct) {
   using namespace type_test;
-  using current::reflection::StructSchema;
-  using current::reflection::Language;
 
-  StructSchema schema;
-#include "include/current_struct.cc"
-  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/current_struct.cc"),
-            schema.GetSchemaInfo().Describe<Language::CPP>(false));
+  Struct1 s;
+  s.x1 = 42u;
+  EXPECT_EQ(42u, s.x1);
 }

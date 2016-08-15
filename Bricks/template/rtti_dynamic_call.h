@@ -146,10 +146,9 @@ struct RTTIPopulatedHandlers {
 template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
 const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info& type) {
   static_assert(is_std_tuple<TYPELIST>::value || IsTypeList<TYPELIST>::value, "");
-  const RTTIHandlersMap<BASE, F, ARGS...>& map =
-      ThreadLocalSingleton<RTTIPopulatedHandlers<TYPELIST, BASE, F, ARGS...>>().map;
-  const auto handler = map.find(std::type_index(type));
-  if (handler != map.end()) {
+  static RTTIPopulatedHandlers<TYPELIST, BASE, F, ARGS...> singleton;
+  const auto handler = singleton.map.find(std::type_index(type));
+  if (handler != singleton.map.end()) {
     return handler->second.get();
   } else {
     CURRENT_THROW(SpecificUnlistedTypeException<BASE>());  // LCOV_EXCL_LINE

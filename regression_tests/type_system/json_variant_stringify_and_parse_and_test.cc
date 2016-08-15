@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
-              2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,24 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../TypeSystem/Schema/schema.h"
-
-#include "../../Bricks/file/file.h"
+#include "../../TypeSystem/Serialization/json.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace type_test {
 
-#include "include/struct_fields.h"
+#include "include/json_variant.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, StructFields) {
+TEST(TypeTest, Variant) {
   using namespace type_test;
-  using current::reflection::StructSchema;
-  using current::reflection::Language;
-  
-  StructWithManyFields foo;
-  foo.z1 = 42u;
-  EXPECT_EQ(42u, foo.z1);
+#include "include/json_variant.cc"
+  EXPECT_EQ(1, Value<Struct1>(ParseJSON<variant_t>(JSON(v1))).x1);
 }

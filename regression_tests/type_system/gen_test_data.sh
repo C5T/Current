@@ -14,7 +14,7 @@ if [[ $# -gt 0 ]]; then
 fi
 echo -e "\033[1m\033[33mGenerating data for $STRUCT_COUNT structures.\033[0m\033[39m"
 
-# 'current_struct.cc' test.
+# `current_struct.cc` test.
 CURRENT_STRUCT_HEADER="$INCLUDE_DIR/current_struct.h"
 CURRENT_STRUCT_TEST="$INCLUDE_DIR/current_struct.cc"
 CURRENT_STRUCT_GOLDEN="$GOLDEN_DIR/current_struct.cc"
@@ -33,7 +33,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "}  // namespace current_userspace" >> $CURRENT_STRUCT_GOLDEN
 
-# 'struct_fields.cc' test.
+# `struct_fields.cc` test.
 STRUCT_FIELDS_HEADER="$INCLUDE_DIR/struct_fields.h"
 STRUCT_FIELDS_GOLDEN="$GOLDEN_DIR/struct_fields.cc"
 
@@ -48,7 +48,7 @@ echo "};" >> $STRUCT_FIELDS_HEADER
 echo "};" >> $STRUCT_FIELDS_GOLDEN
 echo "}  // namespace current_userspace" >> $STRUCT_FIELDS_GOLDEN
 
-# 'typelist.cc' test.
+# `typelist.cc` test.
 TYPELIST_HEADER="$INCLUDE_DIR/typelist.h"
 TYPELIST_TEST="$INCLUDE_DIR/typelist.cc"
 echo "typedef TypeList<" >> $TYPELIST_TEST
@@ -64,7 +64,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "EXPECT_EQ($i, (TypeListElement<$(($i - 1)), TYPELIST>::x));" >> $TYPELIST_TEST
 done
 
-# 'typelist_impl.cc' test.
+# `typelist_impl.cc` test.
 TYPELIST_IMPL_HEADER="$INCLUDE_DIR/typelist_impl.h"
 TYPELIST_IMPL_TEST="$INCLUDE_DIR/typelist_impl.cc"
 echo "typedef TypeListImpl<" >> $TYPELIST_IMPL_TEST
@@ -80,7 +80,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "EXPECT_EQ($i, (TypeListElement<$(($i - 1)), TYPELIST_IMPL>::x));" >> $TYPELIST_IMPL_TEST
 done
 
-# 'rtti_dynamic_call.cc' test.
+# `rtti_dynamic_call.cc` test.
 RTTI_DYNAMIC_CALL_HEADER="$INCLUDE_DIR/rtti_dynamic_call.h"
 RTTI_DYNAMIC_CALL_TEST="$INCLUDE_DIR/rtti_dynamic_call.cc"
 RTTI_DYNAMIC_CALL_GOLDEN="$GOLDEN_DIR/rtti_dynamic_call.output"
@@ -113,7 +113,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "RTTIDynamicCall<TYPELIST>(p$i, call_struct);" >> $RTTI_DYNAMIC_CALL_TEST
 done
 
-# 'typelist_dynamic.cc' test.
+# `typelist_dynamic.cc` test.
 TYPELIST_DYNAMIC_HEADER="$INCLUDE_DIR/typelist_dynamic.h"
 TYPELIST_DYNAMIC_TEST="$INCLUDE_DIR/typelist_dynamic.cc"
 echo "typedef TypeListImpl<" >> $TYPELIST_DYNAMIC_TEST
@@ -128,7 +128,7 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "> DATA_TYPES;" >> $TYPELIST_DYNAMIC_TEST
 
-#`variant.cc` test
+# `variant.cc` test.
 VARIANT_HEADER="$INCLUDE_DIR/variant.h"
 VARIANT_TEST="$INCLUDE_DIR/variant.cc"
 VARIANT_GOLDEN="$GOLDEN_DIR/variant.output"
@@ -160,7 +160,52 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "v$i.Call(call_struct);" >> $VARIANT_TEST
 done
 
-# 'storage.cc' test.
+# `json_variant.cc` test.
+JSON_VARIANT_HEADER="$INCLUDE_DIR/json_variant.h"
+JSON_VARIANT_TEST="$INCLUDE_DIR/json_variant.cc"
+
+echo "using variant_t = Variant<" >> $JSON_VARIANT_TEST
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "CURRENT_STRUCT(Struct$i) {" >> $JSON_VARIANT_HEADER
+	echo "  CURRENT_FIELD(x$i, int32_t, $i);" >> $JSON_VARIANT_HEADER
+	echo "};" >> $JSON_VARIANT_HEADER
+
+	echo -n "Struct$i" >> $JSON_VARIANT_TEST
+	if [[ $i -ne $STRUCT_COUNT ]]; then
+		echo "," >> $JSON_VARIANT_TEST
+	fi
+done
+echo ">;" >> $JSON_VARIANT_TEST
+
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "variant_t v$i((Struct$i()));" >> $JSON_VARIANT_TEST
+done
+
+# `sherlock_*.cc` tests.
+SHERLOCK_HEADER="$INCLUDE_DIR/sherlock.h"
+SHERLOCK_TEST="$INCLUDE_DIR/sherlock.cc"
+
+echo "const size_t entries_count = $STRUCT_COUNT;" >> $SHERLOCK_HEADER
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "CURRENT_STRUCT(Struct$i) {" >> $SHERLOCK_HEADER
+	echo "  CURRENT_FIELD(x$i, uint32_t);" >> $SHERLOCK_HEADER
+	echo "  CURRENT_USE_FIELD_AS_KEY(x$i);" >> $SHERLOCK_HEADER
+	echo "  CURRENT_CONSTRUCTOR(Struct$i)(uint32_t i = 0u) : x$i(i) {}" >> $SHERLOCK_HEADER
+	echo "};" >> $SHERLOCK_HEADER
+
+	echo "stream.Publish(Struct$i(${i}u));" >> $SHERLOCK_TEST
+done
+
+echo "using stream_variant_t = Variant<" >> $SHERLOCK_HEADER;
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo -n "Struct$i" >> $SHERLOCK_HEADER
+	if [[ $i -ne $STRUCT_COUNT ]]; then
+		echo "," >> $SHERLOCK_HEADER
+	fi
+done
+echo ">;" >> $SHERLOCK_HEADER
+
+# `storage_*.cc` tests.
 STORAGE_HEADER="$INCLUDE_DIR/storage.h"
 STORAGE_TEST="$INCLUDE_DIR/storage.cc"
 

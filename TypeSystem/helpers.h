@@ -92,14 +92,14 @@ struct ExistsImplCaller {
 template <typename T>
 struct ExistsImplCaller<T, T> {
   // Primitive types.
-  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasExistsImplMethod<TT>(0)>>
+  template <typename TT = T, class = ENABLE_IF<!sfinae::HasExistsImplMethod<TT>(0)>>
   static bool CallExistsImpl(TT&&) {
     return true;
   }
 
   // Special types.
-  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasExistsImplMethod<TT>(0)>>
-  static ENABLE_IF<current::sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
+  template <typename TT = T, class = ENABLE_IF<sfinae::HasExistsImplMethod<TT>(0)>>
+  static ENABLE_IF<sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
     return x.ExistsImpl();
   }
 };
@@ -155,21 +155,21 @@ template <typename OUTPUT = DefaultValueInvokation, typename INPUT>
 auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
     typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
     INPUT,
-    current::sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::declval<INPUT>())) {
+    sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::declval<INPUT>())) {
   return PowerfulValueImplCaller<
       typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
       INPUT,
-      current::sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::forward<INPUT>(x));
+      sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::forward<INPUT>(x));
 }
 
 // MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
 template <typename T>
 struct CheckIntegrityImplCaller {
-  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  template <typename TT = T, class = ENABLE_IF<!sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
   static void CallCheckIntegrityImpl(TT&&) {}
 
-  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
-  static ENABLE_IF<current::sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
+  template <typename TT = T, class = ENABLE_IF<sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  static ENABLE_IF<sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
     x.CheckIntegrityImpl();
   }
 };

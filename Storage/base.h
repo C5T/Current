@@ -161,7 +161,7 @@ using FieldsTypeList =
 // `MutationJournal` keeps all the changes made during one transaction, as well as the way to rollback them.
 struct MutationJournal {
   TransactionMeta transaction_meta;
-  std::vector<std::unique_ptr<current::CurrentSuper>> commit_log;
+  std::vector<std::unique_ptr<current::CurrentStruct>> commit_log;
   std::vector<std::function<void()>> rollback_log;
 
   template <typename T>

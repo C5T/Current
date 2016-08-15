@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
-              2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../TypeSystem/Schema/schema.h"
+#include "../../Storage/storage.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -31,16 +30,18 @@ SOFTWARE.
 
 namespace type_test {
 
-#include "include/struct_fields.h"
+#include "include/storage.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, StructFields) {
+TEST(TypeTest, Storage) {
   using namespace type_test;
-  using current::reflection::StructSchema;
-  using current::reflection::Language;
-  
-  StructWithManyFields foo;
-  foo.z1 = 42u;
-  EXPECT_EQ(42u, foo.z1);
+
+  using storage_t = Storage<current::storage::persister::NullStoragePersister>;
+
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
+
+  storage_t storage;
+
+#include "include/storage.cc"
 }

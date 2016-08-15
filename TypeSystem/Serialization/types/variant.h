@@ -51,82 +51,79 @@ namespace serialization {
 namespace json {
 namespace save {
 
-using current::ThreadLocalSingleton;
+template <JSONFormat J>
+class SaveVariantCurrentOrMinimalistic {
+ public:
+  SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+      : destination_(destination), allocator_(allocator) {}
+
+  template <typename X>
+  ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
+    rapidjson::Value serialized_object;
+    SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
+
+    using namespace ::current::reflection;
+    rapidjson::Value serialized_type_id;
+    SaveIntoJSONImpl<TypeID, J>::Save(
+        serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
+
+    destination_.SetObject();
+
+    destination_.AddMember(
+        rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(), serialized_object, allocator_);
+
+    if (J == JSONFormat::Current) {
+      destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+    }
+  }
+
+ private:
+  rapidjson::Value& destination_;
+  rapidjson::Document::AllocatorType& allocator_;
+};
+
+class SaveVariantFSharp {
+ public:
+  SaveVariantFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+      : destination_(destination), allocator_(allocator) {}
+
+  template <typename X>
+  ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
+    rapidjson::Value serialized_object;
+
+    SaveIntoJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Save(serialized_object, allocator_, object);
+
+    using namespace ::current::reflection;
+
+    destination_.SetObject();
+    destination_.AddMember(rapidjson::Value("Case", allocator_).Move(),
+                           rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
+                           allocator_);
+
+    if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
+      rapidjson::Value fields_as_array;
+      fields_as_array.SetArray();
+      fields_as_array.PushBack(serialized_object.Move(), allocator_);
+
+      destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+    }
+  }
+
+ private:
+  rapidjson::Value& destination_;
+  rapidjson::Document::AllocatorType& allocator_;
+};
 
 template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
-  class SaveVariantCurrentOrMinimalistic {
-   public:
-    SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination,
-                                     rapidjson::Document::AllocatorType& allocator)
-        : destination_(destination), allocator_(allocator) {}
-
-    template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
-      rapidjson::Value serialized_object;
-      SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
-
-      using namespace ::current::reflection;
-      rapidjson::Value serialized_type_id;
-      SaveIntoJSONImpl<TypeID, J>::Save(
-          serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
-
-      destination_.SetObject();
-
-      destination_.AddMember(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
-                             serialized_object,
-                             allocator_);
-
-      if (J == JSONFormat::Current) {
-        destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
-      }
-    }
-
-   private:
-    rapidjson::Value& destination_;
-    rapidjson::Document::AllocatorType& allocator_;
-  };
-
   // Variant objects are serialized in a different way for F#.
-  class SaveVariantFSharp {
-   public:
-    SaveVariantFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
-        : destination_(destination), allocator_(allocator) {}
-
-    template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
-      rapidjson::Value serialized_object;
-      SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
-
-      using namespace ::current::reflection;
-
-      destination_.SetObject();
-      destination_.AddMember(rapidjson::Value("Case", allocator_).Move(),
-                             rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
-                             allocator_);
-
-      if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
-        rapidjson::Value fields_as_array;
-        fields_as_array.SetArray();
-        fields_as_array.PushBack(serialized_object.Move(), allocator_);
-
-        destination_.AddMember(
-            rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
-      }
-    }
-
-   private:
-    rapidjson::Value& destination_;
-    rapidjson::Document::AllocatorType& allocator_;
-  };
-
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const T& value) {
     // TODO(dkorolev): This call might be worth splitting into two, with and without REQUIRED. Later.
     if (Exists(value)) {
       typename std::conditional<J == JSONFormat::Current || J == JSONFormat::Minimalistic,
-                                SaveVariantCurrentOrMinimalistic,
+                                SaveVariantCurrentOrMinimalistic<J>,
                                 SaveVariantFSharp>::type impl(destination, allocator);
       value.Call(impl);
       return true;
@@ -143,6 +140,12 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
 }  // namespace save
 
 namespace load {
+
+struct LoadVariantGenericDeserializer {
+  virtual void Deserialize(rapidjson::Value* source,
+                           IHasUncheckedMoveFromUniquePtr& destination,
+                           const std::string& path) = 0;
+};
 
 template <typename VARIANT>
 struct LoadVariantCurrent {
@@ -176,20 +179,18 @@ struct LoadVariantCurrent {
     };
 
    private:
-    struct GenericDeserializer {
-      virtual ~GenericDeserializer() = default;
-      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
-    };
-
     template <typename X>
-    struct TypedDeserializer : GenericDeserializer {
+    struct TypedDeserializer : LoadVariantGenericDeserializer {
       explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
-      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
+      void Deserialize(rapidjson::Value* source,
+                       IHasUncheckedMoveFromUniquePtr& destination,
+                       const std::string& path) override {
         if (source->HasMember(key_name_)) {
-          destination = std::make_unique<X>();
+          auto result = std::make_unique<X>();
           LoadFromJSONImpl<X, JSONFormat::Current>::Load(
-              &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
+              &(*source)[key_name_], *result, path + "[\"" + key_name_ + "\"]");
+          destination.UncheckedMoveFromUniquePtr(std::move(result));
         } else {
           // LCOV_EXCL_START
           throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
@@ -202,7 +203,7 @@ struct LoadVariantCurrent {
 
     using deserializers_map_t =
         std::unordered_map<::current::reflection::TypeID,
-                           std::unique_ptr<GenericDeserializer>,
+                           std::unique_ptr<LoadVariantGenericDeserializer>,
                            ::current::CurrentHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
 
@@ -217,7 +218,10 @@ struct LoadVariantCurrent {
     };
   };
 
-  static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
+  static const Impl& Instance() {
+    static Impl impl;
+    return impl;
+  }
 };
 
 template <typename VARIANT>
@@ -271,21 +275,19 @@ struct LoadVariantMinimalistic {
     };
 
    private:
-    struct GenericDeserializerMinimalistic {
-      virtual ~GenericDeserializerMinimalistic() = default;
-      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
-    };
-
     template <typename X>
-    struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
-      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
-        destination = std::make_unique<X>();
-        LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, Value<X>(destination), path);
+    struct TypedDeserializerMinimalistic : LoadVariantGenericDeserializer {
+      void Deserialize(rapidjson::Value* source,
+                       IHasUncheckedMoveFromUniquePtr& destination,
+                       const std::string& path) override {
+        auto result = std::make_unique<X>();
+        LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, *result, path);
+        destination.UncheckedMoveFromUniquePtr(std::move(result));
       }
     };
 
     using deserializers_map_t =
-        std::unordered_map<std::string, std::unique_ptr<GenericDeserializerMinimalistic>>;
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -299,7 +301,10 @@ struct LoadVariantMinimalistic {
     };
   };
 
-  static const ImplMinimalistic& Instance() { return ThreadLocalSingleton<ImplMinimalistic>(); }
+  static const ImplMinimalistic& Instance() {
+    static ImplMinimalistic impl;
+    return impl;
+  }
 };
 
 template <typename VARIANT>
@@ -336,20 +341,18 @@ struct LoadVariantFSharp {
     };
 
    private:
-    struct GenericDeserializerFSharp {
-      virtual ~GenericDeserializerFSharp() = default;
-      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
-    };
-
     template <typename X>
-    struct TypedDeserializerFSharp : GenericDeserializerFSharp {
-      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
+    struct TypedDeserializerFSharp : LoadVariantGenericDeserializer {
+      void Deserialize(rapidjson::Value* source,
+                       IHasUncheckedMoveFromUniquePtr& destination,
+                       const std::string& path) override {
         if (source->HasMember("Fields")) {
           rapidjson::Value* fields = &(*source)["Fields"];
           if (fields && fields->IsArray() && fields->Size() == 1u) {
-            destination = std::make_unique<X>();
+            auto result = std::make_unique<X>();
             LoadFromJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Load(
-                &(*fields)[static_cast<rapidjson::SizeType>(0)], Value<X>(destination), path + ".[\"Fields\"]");
+                &(*fields)[static_cast<rapidjson::SizeType>(0)], *result, path + ".[\"Fields\"]");
+            destination.UncheckedMoveFromUniquePtr(std::move(result));
           } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
@@ -358,7 +361,7 @@ struct LoadVariantFSharp {
         } else {
           if (IS_EMPTY_CURRENT_STRUCT(X)) {
             // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
-            destination = std::make_unique<X>();
+            destination.UncheckedMoveFromUniquePtr(std::move(std::make_unique<X>()));
           } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
@@ -368,7 +371,8 @@ struct LoadVariantFSharp {
       }
     };
 
-    using deserializers_map_t = std::unordered_map<std::string, std::unique_ptr<GenericDeserializerFSharp>>;
+    using deserializers_map_t =
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -382,7 +386,10 @@ struct LoadVariantFSharp {
     };
   };
 
-  static const ImplFSharp& Instance() { return ThreadLocalSingleton<ImplFSharp>(); }
+  static const ImplFSharp& Instance() {
+    static ImplFSharp impl;
+    return impl;
+  }
 };
 
 template <JSONFormat J, typename T>
