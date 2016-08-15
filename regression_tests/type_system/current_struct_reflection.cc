@@ -2,7 +2,6 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
-              2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,9 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Schema/schema.h"
-#include "../../TypeSystem/Reflection/reflection.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -33,15 +30,15 @@ SOFTWARE.
 
 namespace type_test {
 
-#include "include/struct_fields.h"
+#include "include/current_struct.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, StructFields) {
+TEST(TypeTest, CurrentStruct) {
   using namespace type_test;
 
   current::reflection::StructSchema schema;
-  schema.AddType<StructWithManyFields>();
-  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
+#include "include/current_struct.cc"
+  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/current_struct.cc"),
             schema.GetSchemaInfo().Describe<current::reflection::Language::CPP>(false));
 }

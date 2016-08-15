@@ -3,6 +3,7 @@ COUNT_LIST=${*:-10 25 100 500}
 TEST_LIST=(
     'current_struct'
     'struct_fields'
+    'current_struct_reflection'
     'struct_fields_reflection'
     'typelist'
     'typelist_dynamic'
