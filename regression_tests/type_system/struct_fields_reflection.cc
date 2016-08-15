@@ -23,7 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/Reflection/reflection.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -39,8 +41,9 @@ TEST(TypeTest, StructFields) {
   using namespace type_test;
   using current::reflection::StructSchema;
   using current::reflection::Language;
-  
-  StructWithManyFields foo;
-  foo.z1 = 42u;
-  EXPECT_EQ(42u, foo.z1);
+
+  StructSchema schema;
+  schema.AddType<StructWithManyFields>();
+  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
+            schema.GetSchemaInfo().Describe<Language::CPP>(false));
 }
