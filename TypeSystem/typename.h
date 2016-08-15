@@ -99,9 +99,11 @@ struct VariantFullNamePrinter {
 
 }  // namespace current::reflection::impl
 
-template <typename TYPELIST>
 struct CurrentVariantDefaultName final {
-  static std::string VariantNameImpl() { return impl::VariantFullNamePrinter<TYPELIST>::Value(); }
+  template <typename TYPELIST>
+  static std::string VariantNameImpl() {
+    return impl::VariantFullNamePrinter<TYPELIST>::Value();
+  }
 };
 
 }  // namespace current::reflection

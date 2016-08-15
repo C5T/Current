@@ -47,11 +47,6 @@ struct CurrentStruct : CurrentSuper {};
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
-template <typename NAME>
-struct CurrentVariantImpl : CurrentVariant {
-  static std::string VariantName() { return NAME::VariantNameImpl(); }
-};
-
 #define IS_CURRENT_STRUCT(T) (std::is_base_of<::crnt::CurrentStruct, ::current::decay<T>>::value)
 #define IS_CURRENT_VARIANT(T) (std::is_base_of<::crnt::CurrentVariant, ::current::decay<T>>::value)
 #define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of<::crnt::CurrentSuper, ::current::decay<T>>::value)
@@ -132,7 +127,6 @@ namespace current {
 using ::crnt::CurrentSuper;
 using ::crnt::CurrentStruct;
 using ::crnt::CurrentVariant;
-using ::crnt::CurrentVariantImpl;
 namespace sfinae {
 using ::crnt::sfinae::HasExistsImplMethod;
 using ::crnt::sfinae::ValueImplMethodTest;
