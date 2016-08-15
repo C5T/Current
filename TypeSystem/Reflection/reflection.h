@@ -55,7 +55,9 @@ struct ReflectorImpl {
   struct StructFieldReflector {
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) { fields_.clear(); }
+    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) {
+      fields_.clear();
+    }
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {

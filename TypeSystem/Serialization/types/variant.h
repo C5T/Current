@@ -54,8 +54,7 @@ namespace save {
 template <JSONFormat J>
 class SaveVariantCurrentOrMinimalistic {
  public:
-  SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination,
-                                   rapidjson::Document::AllocatorType& allocator)
+  SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
       : destination_(destination), allocator_(allocator) {}
 
   template <typename X>
@@ -70,9 +69,8 @@ class SaveVariantCurrentOrMinimalistic {
 
     destination_.SetObject();
 
-    destination_.AddMember(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
-                           serialized_object,
-                           allocator_);
+    destination_.AddMember(
+        rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(), serialized_object, allocator_);
 
     if (J == JSONFormat::Current) {
       destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
@@ -107,8 +105,7 @@ class SaveVariantFSharp {
       fields_as_array.SetArray();
       fields_as_array.PushBack(serialized_object.Move(), allocator_);
 
-      destination_.AddMember(
-          rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+      destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
     }
   }
 
