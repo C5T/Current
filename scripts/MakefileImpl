@@ -60,7 +60,8 @@ PERMSIGN= /
 OS=$(shell uname)
 ifeq ($(OS),Darwin)
   CPPFLAGS+= -stdlib=libc++ -x objective-c++ -fobjc-arc
-  LDFLAGS+= -framework Foundation
+  # Reset `LDFLAGS` with the new Darwin-specific value.
+  LDFLAGS= -framework Foundation
   PERMSIGN= +
 endif
 
