@@ -39,9 +39,10 @@ SOFTWARE.
 // clang-format off
 #pragma warning(disable:4503)  // "decorated name length exceeded ...", duh.
 // clang-format on
-#if !defined(_CRT_SECURE_NO_WARNINGS)
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_SET
 #define _CRT_SECURE_NO_WARNINGS
-#endif // !defined(_CRT_SECURE_NO_WARNINGS)
+#endif // !_CRT_SECURE_NO_WARNINGS
 #endif
 
 // TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
@@ -234,5 +235,10 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 // Pro: Faster and less RAM-demanding compilation. Con: Some type errors may go unnoticed.
 // TODO(dkorolev)+TODO(mzhurovich): We'd like to bind this to `!NDEBUG`, but let's keep it on by default for now.
 #define FEWER_COMPILE_TIME_CHECKS
+
+#ifdef CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_SET
+#undef _CRT_SECURE_NO_WARNINGS
+#undef CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_SET
+#endif // CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_SET
 
 #endif
