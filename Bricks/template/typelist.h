@@ -263,35 +263,33 @@ namespace tle {
 using ::current::metaprogramming::TypeListImpl;
 
 // `TypeIndex`.
-template<size_t>
+template <size_t>
 struct TI {};
 
 // `TypeWrapper`.
-template<typename T>
+template <typename T>
 struct TW {
   using type = T;
 };
 
 // `EnumerateTypesInTypeList`.
-template<size_t I, typename TYPE_LIST_IMPL>
+template <size_t I, typename TYPE_LIST_IMPL>
 struct E;
 
-template<size_t I>
+template <size_t I>
 struct E<I, TypeListImpl<>> {
   // ``TypeAtIndex`.
   void F(TI<I>) {}
 };
 
-template<size_t I, typename T, typename... TS>
+template <size_t I, typename T, typename... TS>
 struct E<I, TypeListImpl<T, TS...>> : E<I + 1u, TypeListImpl<TS...>> {
   using E<I + 1u, TypeListImpl<TS...>>::F;
-  TW<T> F(TI<I>) {
-    return TW<T>();
-  }
+  TW<T> F(TI<I>) { return TW<T>(); }
 };
 
 // `TypeListEnumerator`.
-template<typename... TS>
+template <typename... TS>
 struct TLE : E<0, TS...> {};
 
 // `TypeListElementImpl`.
