@@ -44,7 +44,8 @@ int main() {
   std::string row_as_string;
   while (std::getline(std::cin, row_as_string)) {
     if (!row_as_string.empty()) {
-      const std::vector<std::string> fields = current::strings::Split(row_as_string, '\t', current::strings::EmptyFields::Keep);
+      const std::vector<std::string> fields =
+          current::strings::Split(row_as_string, '\t', current::strings::EmptyFields::Keep);
       std::map<std::string, std::string> row;
       for (size_t i = 0; i < fields.size(); ++i) {
         row[ExcelColName(i)] = fields[i];
