@@ -86,7 +86,7 @@ inline bool IsValidCPPIdentifier(const std::string& s) {
     return false;  // LCOV_EXCL_LINE
   }
   for (size_t i = 1u; i < s.length(); ++i) {
-    if (!std::isalnum(s[i])) {
+    if (!(s[i] == '_' || std::isalnum(s[i]))) {
       return false;  // LCOV_EXCL_LINE
     }
   }
@@ -338,6 +338,10 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
     }
   } else if (value.IsString()) {
     return String(std::string(value.GetString(), value.GetStringLength()));
+#if 0  // Hack. -- D.K.
+  } else if (value.IsNumber()) {
+    return String(current::ToString(value.GetDouble()));
+#endif
   } else if (value.IsBool()) {
     Bool result;
     if (!value.IsTrue()) {
@@ -385,7 +389,7 @@ class SchemaToTSVPrinter {
       std::sort(sorted.begin(), sorted.end());
       std::vector<std::string> sorted_as_strings;
       for (const auto& e : sorted) {
-        sorted_as_strings.push_back(e.second + " : " + current::ToString(-e.first));
+        sorted_as_strings.push_back('`' + e.second + "` : " + current::ToString(-e.first));
       }
       os_ << '\t' << current::strings::Join(sorted_as_strings, ", ");
     }
