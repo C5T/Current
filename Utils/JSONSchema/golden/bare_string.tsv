@@ -1,2 +1,2 @@
 Field	Type	Set	Unset/Null	Values	Details
-Schema	String	1	0	1 distinct value	foo : 1
+Schema	String	1	0	1 distinct value	`foo` : 1
