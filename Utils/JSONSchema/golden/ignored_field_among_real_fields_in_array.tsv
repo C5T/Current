@@ -1,6 +1,6 @@
 Field	Type	Set	Unset/Null	Values	Details
 Schema	Array	1	0
 Schema[]	Object	3	0	3 fields	a, b, c
-Schema[].a	String	3	0	1 distinct value	foo : 3
+Schema[].a	String	3	0	1 distinct value	`foo` : 3
 Schema[].b	Null	3
-Schema[].c	String	3	0	1 distinct value	bar : 3
+Schema[].c	String	3	0	1 distinct value	`bar` : 3

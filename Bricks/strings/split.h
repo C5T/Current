@@ -88,16 +88,18 @@ struct MatchImpl<std::string> {
 template <size_t N>
 struct MatchImpl<const char[N]> {
   enum { valid_separator = true };
-  static ENABLE_IF<(N > 0), bool> Match(char c, const char s[N]) { return std::find(s, s + N, c) != (s + N); }
+  static std::enable_if_t<(N > 0), bool> Match(char c, const char s[N]) {
+    return std::find(s, s + N, c) != (s + N);
+  }
 };
 
 template <typename T>
-inline ENABLE_IF<!weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
+inline std::enable_if_t<!weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
   return MatchImpl<rmref<T>>::Match(a, std::forward<T>(b));
 }
 
 template <typename T>
-inline ENABLE_IF<weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
+inline std::enable_if_t<weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
   return !b(a);
 }
 
@@ -187,10 +189,11 @@ inline size_t Split(char* s,
 
 // `Split(std::string&, ...)` maps to `Split(char*, size_t, ...)`.
 template <typename SEPARATOR, typename PROCESSOR>
-inline size_t Split(std::string& string,
-                    SEPARATOR&& separator,
-                    PROCESSOR&& processor,
-                    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+    std::string& string,
+    SEPARATOR&& separator,
+    PROCESSOR&& processor,
+    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   return Split<SEPARATOR, PROCESSOR>(&string[0],
                                      string.length(),
                                      std::forward<SEPARATOR>(separator),
@@ -214,7 +217,7 @@ inline size_t Split(char* string,
 }
 
 template <typename SEPARATOR, typename PROCESSOR>
-inline ENABLE_IF<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
     const char* string,
     SEPARATOR&& separator,
     PROCESSOR&& processor,
@@ -228,10 +231,11 @@ inline ENABLE_IF<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
 // Special case for `Chunk`: Treat even the `const` Chunk-s as mutable.
 // We assume the users of `Chunk` a) expect performance, and b) know what they are doing.
 template <typename SEPARATOR, typename PROCESSOR>
-inline size_t Split(const Chunk& chunk,
-                    SEPARATOR&& separator,
-                    PROCESSOR&& processor,
-                    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+    const Chunk& chunk,
+    SEPARATOR&& separator,
+    PROCESSOR&& processor,
+    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   return Split<SEPARATOR, PROCESSOR>(const_cast<char*>(chunk.c_str()),
                                      chunk.length(),
                                      std::forward<SEPARATOR>(separator),
@@ -250,10 +254,12 @@ inline size_t Split(STRING&& s, PROCESSOR&& processor, EmptyFields empty_fields_
 
 // The versions returning an `std::vector<std::string>`, for those not caring about performance.
 template <typename SEPARATOR, typename STRING>
-inline ENABLE_IF<impl::IsValidSeparator<SEPARATOR>::value, std::vector<std::string>> Split(
-    STRING&& s,
-    SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
-    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value &&
+                            !std::is_same<SEPARATOR, EmptyFields>::value,
+                        std::vector<std::string>>
+Split(STRING&& s,
+      SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
+      EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   std::vector<std::string> result;
   Split(std::forward<STRING>(s),
         std::forward<SEPARATOR>(separator),

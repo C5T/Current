@@ -2,4 +2,4 @@ Field	Type	Set	Unset/Null	Values	Details
 Schema	Object	1	0	1 field	a
 Schema.a	Object	1	0	1 field	b
 Schema.a.b	Object	1	0	1 field	c
-Schema.a.b.c	String	1	0	1 distinct value	d : 1
+Schema.a.b.c	String	1	0	1 distinct value	`d` : 1
