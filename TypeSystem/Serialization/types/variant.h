@@ -29,7 +29,6 @@ SOFTWARE.
 #include <type_traits>
 
 #include "primitive.h"
-
 #include "current_typeid.h"
 
 #include "../../variant.h"
@@ -38,6 +37,8 @@ SOFTWARE.
 #include "../../../Bricks/template/combine.h"
 #include "../../../Bricks/template/enable_if.h"
 #include "../../../Bricks/template/mapreduce.h"
+
+#include "impl/variant.h"
 
 // JSON format for `Variant` objects:
 // * Contains TypeID.
@@ -141,12 +142,6 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
 
 namespace load {
 
-struct LoadVariantGenericDeserializer {
-  virtual void Deserialize(rapidjson::Value* source,
-                           IHasUncheckedMoveFromUniquePtr& destination,
-                           const std::string& path) = 0;
-};
-
 template <typename VARIANT>
 struct LoadVariantCurrent {
   class Impl {
@@ -179,28 +174,6 @@ struct LoadVariantCurrent {
     };
 
    private:
-    template <typename X>
-    struct TypedDeserializer : LoadVariantGenericDeserializer {
-      explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
-
-      void Deserialize(rapidjson::Value* source,
-                       IHasUncheckedMoveFromUniquePtr& destination,
-                       const std::string& path) override {
-        if (source->HasMember(key_name_)) {
-          auto result = std::make_unique<X>();
-          LoadFromJSONImpl<X, JSONFormat::Current>::Load(
-              &(*source)[key_name_], *result, path + "[\"" + key_name_ + "\"]");
-          destination.UncheckedMoveFromUniquePtr(std::move(result));
-        } else {
-          // LCOV_EXCL_START
-          throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
-          // LCOV_EXCL_STOP
-        }
-      }
-
-      const std::string key_name_;
-    };
-
     using deserializers_map_t =
         std::unordered_map<::current::reflection::TypeID,
                            std::unique_ptr<LoadVariantGenericDeserializer>,
@@ -275,17 +248,6 @@ struct LoadVariantMinimalistic {
     };
 
    private:
-    template <typename X>
-    struct TypedDeserializerMinimalistic : LoadVariantGenericDeserializer {
-      void Deserialize(rapidjson::Value* source,
-                       IHasUncheckedMoveFromUniquePtr& destination,
-                       const std::string& path) override {
-        auto result = std::make_unique<X>();
-        LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, *result, path);
-        destination.UncheckedMoveFromUniquePtr(std::move(result));
-      }
-    };
-
     using deserializers_map_t =
         std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
     deserializers_map_t deserializers_;
@@ -341,36 +303,6 @@ struct LoadVariantFSharp {
     };
 
    private:
-    template <typename X>
-    struct TypedDeserializerFSharp : LoadVariantGenericDeserializer {
-      void Deserialize(rapidjson::Value* source,
-                       IHasUncheckedMoveFromUniquePtr& destination,
-                       const std::string& path) override {
-        if (source->HasMember("Fields")) {
-          rapidjson::Value* fields = &(*source)["Fields"];
-          if (fields && fields->IsArray() && fields->Size() == 1u) {
-            auto result = std::make_unique<X>();
-            LoadFromJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Load(
-                &(*fields)[static_cast<rapidjson::SizeType>(0)], *result, path + ".[\"Fields\"]");
-            destination.UncheckedMoveFromUniquePtr(std::move(result));
-          } else {
-            // LCOV_EXCL_START
-            throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
-            // LCOV_EXCL_STOP
-          }
-        } else {
-          if (IS_EMPTY_CURRENT_STRUCT(X)) {
-            // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
-            destination.UncheckedMoveFromUniquePtr(std::move(std::make_unique<X>()));
-          } else {
-            // LCOV_EXCL_START
-            throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
-            // LCOV_EXCL_STOP
-          }
-        }
-      }
-    };
-
     using deserializers_map_t =
         std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
     deserializers_map_t deserializers_;
