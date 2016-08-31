@@ -156,6 +156,8 @@ struct ParsedHTTPRequestParams {
   uint64_t stop_after_bytes = 0u;
   // If set, do not prepend each entry with its index and timestamp followed by a '\t', return data JSONs only.
   bool entries_only = false;
+  // If set, wrap the entries into a large JSON array. Mostly to please JSON-beautifying browser extensions.
+  bool array = false;
 };
 
 inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
@@ -209,6 +211,10 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   if (r.url.query.has("entries_only")) {
     result.entries_only = true;
   }
+  if (r.url.query.has("array")) {
+    result.array = true;
+    result.entries_only = true;  // Obviously, `array` implies `entries_only`.
+  }
 
   return result;
 }
@@ -225,6 +231,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       : data_(data, [this]() { time_to_terminate_ = true; }),
         http_request_(std::move(r)),
         params_(std::move(params)),
+        output_started_(false),
         http_response_(http_request_.SendChunkedResponse(
             HTTPResponseCode.OK,
             current::net::constants::kDefaultJSONContentType,
@@ -250,60 +257,79 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // * `EntryResponse` as the return value.
   // It does so to respect the URL parameters of the range of entries to subscribe to.
   ss::EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
-    if (time_to_terminate_) {
-      return ss::EntryResponse::Done;
-    }
-    // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
-    if (!serving_) {
-      if (current.index >= params_.i &&                                           // Respect `i`.
-          (params_.tail == 0u || (last.index - current.index) < params_.tail) &&  // Respect `tail`.
-          (from_timestamp_.count() == 0u || current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
-        serving_ = true;
-      }
-      // Reached the end, didn't started serving and should not wait.
-      if (!serving_ && current.index == last.index && params_.no_wait) {
+    const ss::EntryResponse result = [&, this]() {
+      if (time_to_terminate_) {
         return ss::EntryResponse::Done;
       }
-    }
-    if (serving_) {
-      // If `period` is set, set the maximum possible timestamp.
-      if (params_.period.count() && to_timestamp_.count() == 0u) {
-        to_timestamp_ = current.us + params_.period;
-      }
-      // Stop serving if the limit on timestamp is exceeded.
-      if (to_timestamp_.count() && current.us > to_timestamp_) {
-        return ss::EntryResponse::Done;
-      }
-      const std::string entry_json = [this, &current, &entry]() {
-        if (params_.entries_only) {
-          return JSON<J>(entry) + '\n';
-        } else {
-          return JSON<J>(current) + '\t' + JSON<J>(entry) + '\n';
+      // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
+      if (!serving_) {
+        if (current.index >= params_.i &&                                           // Respect `i`.
+            (params_.tail == 0u || (last.index - current.index) < params_.tail) &&  // Respect `tail`.
+            (from_timestamp_.count() == 0u ||
+             current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
+          serving_ = true;
         }
-      }();
-      current_response_size_ += entry_json.length();
-      try {
-        http_response_(std::move(entry_json));
-      } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
-        return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
-      }
-      // Respect `stop_after_bytes`.
-      if (params_.stop_after_bytes && current_response_size_ >= params_.stop_after_bytes) {
-        return ss::EntryResponse::Done;
-      }
-      // Respect `n`.
-      if (n_) {
-        --n_;
-        if (!n_) {
+        // Reached the end, didn't started serving and should not wait.
+        if (!serving_ && current.index == last.index && params_.no_wait) {
           return ss::EntryResponse::Done;
         }
       }
-      // Respect `no_wait`.
-      if (current.index == last.index && params_.no_wait) {
-        return ss::EntryResponse::Done;
+      if (serving_) {
+        // If `period` is set, set the maximum possible timestamp.
+        if (params_.period.count() && to_timestamp_.count() == 0u) {
+          to_timestamp_ = current.us + params_.period;
+        }
+        // Stop serving if the limit on timestamp is exceeded.
+        if (to_timestamp_.count() && current.us > to_timestamp_) {
+          return ss::EntryResponse::Done;
+        }
+        const std::string entry_json = [this, &current, &entry]() {
+          if (params_.entries_only) {
+            return JSON<J>(entry) + '\n';
+          } else {
+            return JSON<J>(current) + '\t' + JSON<J>(entry) + '\n';
+          }
+        }();
+        current_response_size_ += entry_json.length();
+        try {
+          if (params_.array) {
+            if (!output_started_) {
+              http_response_("[\n");
+              output_started_ = true;
+            } else {
+              http_response_(",\n");
+            }
+          }
+          http_response_(std::move(entry_json));
+        } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
+          return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
+        }
+        // Respect `stop_after_bytes`.
+        if (params_.stop_after_bytes && current_response_size_ >= params_.stop_after_bytes) {
+          return ss::EntryResponse::Done;
+        }
+        // Respect `n`.
+        if (n_) {
+          --n_;
+          if (!n_) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        // Respect `no_wait`.
+        if (current.index == last.index && params_.no_wait) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      return ss::EntryResponse::More;
+    }();
+    if (result == ss::EntryResponse::Done && params_.array) {
+      if (!output_started_) {
+        http_response_("[]\n");
+      } else {
+        http_response_("]\n");
       }
     }
-    return ss::EntryResponse::More;
+    return result;
   }
 
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
@@ -314,7 +340,12 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
 
   // LCOV_EXCL_START
   ss::TerminationResponse Terminate() {
-    http_response_("{\"error\":\"The subscriber has terminated.\"}\n");
+    static const std::string message = "{\"error\":\"The subscriber has terminated.\"}\n";
+    if (params_.array && output_started_) {
+      http_response_(",\n" + message + "]\n");
+    } else {
+      http_response_(message);
+    }
     return ss::TerminationResponse::Terminate;
   }
   // LCOV_EXCL_STOP
@@ -327,6 +358,9 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
   Request http_request_;
   const ParsedHTTPRequestParams params_;
+  // `output_started_`: will change to `true` is `params_.array` is `true` as the first piece of data
+  // has already been sent, thus triggering the need to close the array at the end.
+  bool output_started_ = false;
   // `http_response_`: the instance of the chunked response object to use.
   current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
   // Current response size in bytes.

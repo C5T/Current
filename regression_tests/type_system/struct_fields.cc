@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../TypeSystem/Schema/schema.h"
 
 #include "../../Bricks/file/file.h"
@@ -44,3 +46,5 @@ TEST(TypeTest, StructFields) {
   foo.z1 = 42u;
   EXPECT_EQ(42u, foo.z1);
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

@@ -325,13 +325,16 @@ namespace sherlock_unittest {
 // Collector class for `SubscribeToStreamViaHTTP` test.
 struct RecordsCollectorImpl {
   std::atomic_size_t count_;
-  std::vector<std::string>& data_;
+  std::vector<std::string>& rows_;
+  std::vector<std::string>& entries_;
 
   RecordsCollectorImpl() = delete;
-  explicit RecordsCollectorImpl(std::vector<std::string>& data) : count_(0u), data_(data) {}
+  RecordsCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
+      : count_(0u), rows_(rows), entries_(entries) {}
 
   EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
-    data_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
+    rows_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
+    entries_.push_back(JSON(entry));
     ++count_;
     return EntryResponse::More;
   }
@@ -533,7 +536,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   current::time::SetNow(now);
 
   std::vector<std::string> s;
-  RecordsCollector collector(s);
+  std::vector<std::string> e;
+  RecordsCollector collector(s, e);
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
@@ -665,6 +669,21 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=84")).body);
   // Request with the capacity large enough to hold all the entries.
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait")).body);
+
+  // Test the `array` mode.
+  {
+    {
+      const std::string body = HTTP(GET(base_url + "?n=1&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "\n]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+    }
+    {
+      const std::string body = HTTP(GET(base_url + "?n=2&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]));
+    }
+  }
 
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...

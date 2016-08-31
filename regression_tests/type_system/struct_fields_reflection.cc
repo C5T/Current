@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Reflection/reflection.h"
@@ -45,3 +47,5 @@ TEST(TypeTest, StructFields) {
   EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
             schema.GetSchemaInfo().Describe<current::reflection::Language::CPP>(false));
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

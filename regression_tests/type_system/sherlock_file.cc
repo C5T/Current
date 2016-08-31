@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../Sherlock/sherlock.h"
 
 #include "../../Bricks/file/file.h"
@@ -47,3 +49,5 @@ TEST(TypeTest, Sherlock) {
 
   EXPECT_EQ(entries_count, stream.InternalExposePersister().Size());
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

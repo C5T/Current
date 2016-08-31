@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../TypeSystem/struct.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -39,3 +41,5 @@ TEST(TypeTest, CurrentStruct) {
   s.x1 = 42u;
   EXPECT_EQ(42u, s.x1);
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../Bricks/file/file.h"
 #include "../../TypeSystem/struct.h"
 
@@ -38,3 +40,5 @@ TEST(TypeTest, Variant) {
 #include "include/variant.cc"
   EXPECT_EQ(call_struct.oss.str(), current::FileSystem::ReadFileAsString("golden/variant.output"));
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE
