@@ -258,68 +258,69 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // It does so to respect the URL parameters of the range of entries to subscribe to.
   ss::EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
     const ss::EntryResponse result = [&, this]() {
-    if (time_to_terminate_) {
-      return ss::EntryResponse::Done;
-    }
-    // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
-    if (!serving_) {
-      if (current.index >= params_.i &&                                           // Respect `i`.
-          (params_.tail == 0u || (last.index - current.index) < params_.tail) &&  // Respect `tail`.
-          (from_timestamp_.count() == 0u || current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
-        serving_ = true;
-      }
-      // Reached the end, didn't started serving and should not wait.
-      if (!serving_ && current.index == last.index && params_.no_wait) {
+      if (time_to_terminate_) {
         return ss::EntryResponse::Done;
       }
-    }
-    if (serving_) {
-      // If `period` is set, set the maximum possible timestamp.
-      if (params_.period.count() && to_timestamp_.count() == 0u) {
-        to_timestamp_ = current.us + params_.period;
-      }
-      // Stop serving if the limit on timestamp is exceeded.
-      if (to_timestamp_.count() && current.us > to_timestamp_) {
-        return ss::EntryResponse::Done;
-      }
-      const std::string entry_json = [this, &current, &entry]() {
-        if (params_.entries_only) {
-          return JSON<J>(entry) + '\n';
-        } else {
-          return JSON<J>(current) + '\t' + JSON<J>(entry) + '\n';
+      // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
+      if (!serving_) {
+        if (current.index >= params_.i &&                                           // Respect `i`.
+            (params_.tail == 0u || (last.index - current.index) < params_.tail) &&  // Respect `tail`.
+            (from_timestamp_.count() == 0u ||
+             current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
+          serving_ = true;
         }
-      }();
-      current_response_size_ += entry_json.length();
-      try {
-        if (params_.array) {
-          if (!output_started_) {
-            http_response_("[\n");
-            output_started_ = true;
-          } else {
-            http_response_(",\n");
-          }
-        }
-        http_response_(std::move(entry_json));
-      } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
-        return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
-      }
-      // Respect `stop_after_bytes`.
-      if (params_.stop_after_bytes && current_response_size_ >= params_.stop_after_bytes) {
-        return ss::EntryResponse::Done;
-      }
-      // Respect `n`.
-      if (n_) {
-        --n_;
-        if (!n_) {
+        // Reached the end, didn't started serving and should not wait.
+        if (!serving_ && current.index == last.index && params_.no_wait) {
           return ss::EntryResponse::Done;
         }
       }
-      // Respect `no_wait`.
-      if (current.index == last.index && params_.no_wait) {
-        return ss::EntryResponse::Done;
+      if (serving_) {
+        // If `period` is set, set the maximum possible timestamp.
+        if (params_.period.count() && to_timestamp_.count() == 0u) {
+          to_timestamp_ = current.us + params_.period;
+        }
+        // Stop serving if the limit on timestamp is exceeded.
+        if (to_timestamp_.count() && current.us > to_timestamp_) {
+          return ss::EntryResponse::Done;
+        }
+        const std::string entry_json = [this, &current, &entry]() {
+          if (params_.entries_only) {
+            return JSON<J>(entry) + '\n';
+          } else {
+            return JSON<J>(current) + '\t' + JSON<J>(entry) + '\n';
+          }
+        }();
+        current_response_size_ += entry_json.length();
+        try {
+          if (params_.array) {
+            if (!output_started_) {
+              http_response_("[\n");
+              output_started_ = true;
+            } else {
+              http_response_(",\n");
+            }
+          }
+          http_response_(std::move(entry_json));
+        } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
+          return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
+        }
+        // Respect `stop_after_bytes`.
+        if (params_.stop_after_bytes && current_response_size_ >= params_.stop_after_bytes) {
+          return ss::EntryResponse::Done;
+        }
+        // Respect `n`.
+        if (n_) {
+          --n_;
+          if (!n_) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        // Respect `no_wait`.
+        if (current.index == last.index && params_.no_wait) {
+          return ss::EntryResponse::Done;
+        }
       }
-    }
-    return ss::EntryResponse::More;
+      return ss::EntryResponse::More;
     }();
     if (result == ss::EntryResponse::Done && params_.array) {
       if (!output_started_) {
