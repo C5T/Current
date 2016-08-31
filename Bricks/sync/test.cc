@@ -261,6 +261,10 @@ TEST(WaitableAtomic, Smoke) {
   EXPECT_LT(copy_of_object.x, 100u);
   EXPECT_GT(copy_of_object.y, 10u);
   EXPECT_LT(copy_of_object.y, 100u);
+
+  // Confirm `[Im]MutableUse(lambda)` proxies the return value of the lambda.
+  EXPECT_EQ(copy_of_object.x, object.ImmutableUse([](const Object& object) { return object.x; }));
+  EXPECT_EQ(copy_of_object.y + 1u, object.MutableUse([](Object& object) { return ++object.y; }));
 }
 
 TEST(WaitableAtomic, IntrusiveClientsCanBeTransferred) {
