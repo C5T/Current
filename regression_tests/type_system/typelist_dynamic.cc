@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../TypeSystem/struct.h"
 
 #include "../../Bricks/template/mapreduce.h"
@@ -48,3 +50,5 @@ TEST(TypeTest, TypeListImpl) {
 
   static_assert(TypeListSize<STORAGE_TYPES>::value == TypeListSize<DATA_TYPES>::value * 2, "");
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

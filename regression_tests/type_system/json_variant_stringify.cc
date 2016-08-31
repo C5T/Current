@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../TypeSystem/Serialization/json.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -37,3 +39,5 @@ TEST(TypeTest, Variant) {
 #include "include/json_variant.cc"
   JSON(v1);
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

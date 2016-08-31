@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
@@ -69,3 +71,5 @@ TEST(TypeTest, Storage) {
 
   EXPECT_EQ(static_cast<size_t>(storage_t::FIELDS_COUNT), subscriber.number_of_mutations);
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

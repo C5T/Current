@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../Bricks/file/file.h"
 #include "../../Bricks/template/rtti_dynamic_call.h"
 #include "../../Bricks/template/typelist.h"
@@ -40,3 +42,5 @@ TEST(TypeTest, RTTIDynamicCall) {
 #include "include/rtti_dynamic_call.cc"
   EXPECT_EQ(call_struct.oss.str(), current::FileSystem::ReadFileAsString("golden/rtti_dynamic_call.output"));
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE
