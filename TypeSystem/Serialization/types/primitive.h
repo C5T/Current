@@ -58,7 +58,7 @@ struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
 };
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, ignore_h, ignore_fs, ignore_md) \
-  template <JSONFormat J>                                                                             \
+  template <class J>                                                                                  \
   struct SaveIntoJSONImpl<cpp_type, J> {                                                              \
     static bool Save(rapidjson::Value& destination,                                                   \
                      rapidjson::Document::AllocatorType&,                                             \
@@ -75,7 +75,7 @@ struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
 namespace load {
 
 // `uint*_t`.
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T,
                         J,
                         ENABLE_IF<std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed &&
@@ -90,7 +90,7 @@ struct LoadFromJSONImpl<T,
 };
 
 // `int*_t`
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T,
                         J,
                         ENABLE_IF<std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed>> {
@@ -104,7 +104,7 @@ struct LoadFromJSONImpl<T,
 };
 
 // `float`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<float, J> {
   static void Load(rapidjson::Value* source, float& destination, const std::string& path) {
     if (source && source->IsNumber()) {
@@ -116,7 +116,7 @@ struct LoadFromJSONImpl<float, J> {
 };
 
 // `double`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<double, J> {
   static void Load(rapidjson::Value* source, double& destination, const std::string& path) {
     if (source && source->IsNumber()) {
@@ -128,7 +128,7 @@ struct LoadFromJSONImpl<double, J> {
 };
 
 // `std::string`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<std::string, J> {
   static void Load(rapidjson::Value* source, std::string& destination, const std::string& path) {
     if (source && source->IsString()) {
@@ -140,7 +140,7 @@ struct LoadFromJSONImpl<std::string, J> {
 };
 
 // `bool`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<bool, J> {
   static void Load(rapidjson::Value* source, bool& destination, const std::string& path) {
     if (source && (source->IsTrue() || source->IsFalse())) {
@@ -152,7 +152,7 @@ struct LoadFromJSONImpl<bool, J> {
 };
 
 // `std::chrono::milliseconds`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::milliseconds& destination, const std::string& path) {
     int64_t value_as_int64;
@@ -162,7 +162,7 @@ struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
 };
 
 // `std::chrono::microseconds`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<std::chrono::microseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
     int64_t value_as_int64;

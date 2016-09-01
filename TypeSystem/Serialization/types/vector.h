@@ -36,7 +36,7 @@ namespace json {
 
 namespace save {
 
-template <typename TT, typename TA, JSONFormat J>
+template <typename TT, typename TA, class J>
 struct SaveIntoJSONImpl<std::vector<TT, TA>, J> {
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
@@ -55,7 +55,7 @@ struct SaveIntoJSONImpl<std::vector<TT, TA>, J> {
 
 namespace load {
 
-template <typename TT, typename TA, JSONFormat J>
+template <typename TT, typename TA, class J>
 struct LoadFromJSONImpl<std::vector<TT, TA>, J> {
   static void Load(rapidjson::Value* source, std::vector<TT, TA>& destination, const std::string& path) {
     if (source && source->IsArray()) {

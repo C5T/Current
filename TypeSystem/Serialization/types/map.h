@@ -38,7 +38,7 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <typename TK, typename TV, typename TC, typename TA, JSONFormat J>
+template <typename TK, typename TV, typename TC, typename TA, class J>
 struct SaveIntoJSONImpl<std::map<TK, TV, TC, TA>, J> {
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
@@ -59,7 +59,7 @@ struct SaveIntoJSONImpl<std::map<TK, TV, TC, TA>, J> {
   }
 };
 
-template <typename TV, typename TC, typename TA, JSONFormat J>
+template <typename TV, typename TC, typename TA, class J>
 struct SaveIntoJSONImpl<std::map<std::string, TV, TC, TA>, J> {
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
@@ -78,7 +78,7 @@ struct SaveIntoJSONImpl<std::map<std::string, TV, TC, TA>, J> {
 
 namespace load {
 
-template <typename TK, typename TV, typename TC, typename TA, JSONFormat J>
+template <typename TK, typename TV, typename TC, typename TA, class J>
 struct LoadFromJSONImpl<std::map<TK, TV, TC, TA>, J> {
   template <typename K = TK>
   static ENABLE_IF<std::is_same<std::string, K>::value> Load(rapidjson::Value* source,

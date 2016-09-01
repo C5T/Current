@@ -676,6 +676,15 @@ TEST(Serialization, VariantAsJSON) {
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
               JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::JavaScript>(json)));
+  }
+  {
+    const simple_variant_t object = Empty();
+    const std::string json = "{\"Empty\":{},\"$\":\"Empty\"}";
+    EXPECT_EQ(json, JSON<JSONFormat::JavaScript>(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(json, JSON<JSONFormat::JavaScript>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::JavaScript>(ParseJSON<simple_variant_t, JSONFormat::JavaScript>(json)));
   }
   {
     const simple_variant_t object = Empty();

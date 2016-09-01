@@ -416,7 +416,7 @@ class StreamImpl {
   }
 
   // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
-  template <JSONFormat J>
+  template <class J>
   void ServeDataViaHTTP(Request r) {
     try {
       // Prevent `own_data_` from being destroyed between the entry into this function

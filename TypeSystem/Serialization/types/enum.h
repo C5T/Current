@@ -37,7 +37,7 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
   static bool Save(rapidjson::Value& destination, rapidjson::Document::AllocatorType&, const T& value) {
     AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
@@ -49,7 +49,7 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
 
 namespace load {
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
   static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
     if (source && source->IsNumber()) {

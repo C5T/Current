@@ -35,7 +35,7 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <typename TF, typename TS, JSONFormat J>
+template <typename TF, typename TS, class J>
 struct SaveIntoJSONImpl<std::pair<TF, TS>, J> {
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
@@ -71,7 +71,7 @@ struct SaveIntoJSONImpl<std::pair<TF, TS>, JSONFormat::NewtonsoftFSharp> {
 
 namespace load {
 
-template <typename TF, typename TS, JSONFormat J>
+template <typename TF, typename TS, class J>
 struct LoadFromJSONImpl<std::pair<TF, TS>, J> {
   static void Load(rapidjson::Value* source, std::pair<TF, TS>& destination, const std::string& path) {
     if (source && source->IsArray() && source->Size() == 2u) {
