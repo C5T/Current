@@ -84,7 +84,7 @@ struct LoadFromJSONImpl<T,
     if (source && source->IsUint64()) {
       destination = static_cast<T>(source->GetUint64());
     } else if (!JSONPatchMode<J>::value || (source && !source->IsUint64())) {
-      throw JSONSchemaException("number, uint64", source, path);  // LCOV_EXCL_LINE
+      throw JSONSchemaException("unsigned integer", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
@@ -98,7 +98,7 @@ struct LoadFromJSONImpl<T,
     if (source && source->IsInt64()) {
       destination = static_cast<T>(source->GetInt64());
     } else if (!JSONPatchMode<J>::value || (source && !source->IsInt64())) {
-      throw JSONSchemaException("number, int64", source, path);  // LCOV_EXCL_LINE
+      throw JSONSchemaException("integer", source, path);  // LCOV_EXCL_LINE
     }
   }
 };

@@ -55,9 +55,17 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
     // TODO(dkorolev): This `IsNumber` vs. `Get[U]Int64` part is scary.
     if (source && source->IsNumber()) {
       if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
-        destination = static_cast<T>(source->GetInt64());
+        if (source->IsInt64()) {
+          destination = static_cast<T>(source->GetInt64());
+        } else {
+          throw JSONSchemaException("enum as unsigned integer", source, path);  // LCOV_EXCL_LINE
+        }
       } else {
-        destination = static_cast<T>(source->GetUint64());
+        if (source->IsUint64()) {
+          destination = static_cast<T>(source->GetUint64());
+        } else {
+          throw JSONSchemaException("enum as signed integer", source, path);  // LCOV_EXCL_LINE
+        }
       }
     } else if (!JSONPatchMode<J>::value || (source && !source->IsNumber())) {
       throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE

@@ -368,28 +368,28 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<Serializable>("{}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `i`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: missing field."), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":\"boo\"}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `i`, got: \"boo\""), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: \"boo\""), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":[]}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `i`, got: []"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: []"), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":{}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `i`, got: {}"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: {}"), e.what());
   }
 
   try {
@@ -426,7 +426,7 @@ TEST(Serialization, JSONExceptions) {
         "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":\"error\",\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `z.i`, got: \"error\""), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: \"error\""), e.what());
   }
 
   try {
@@ -434,14 +434,14 @@ TEST(Serialization, JSONExceptions) {
         "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `z.i`, got: null"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: null"), e.what());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, uint64 for `z.i`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: missing field."), e.what());
   }
 
   try {
@@ -1118,7 +1118,7 @@ TEST(Serialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected number, int64 for `i`, got: 0.5"), e.what());
+      EXPECT_EQ(std::string("Expected integer for `i`, got: 0.5"), e.what());
     }
 #if 0
     catch (const RapidJSONAssertionFailedException& e) {
@@ -1133,7 +1133,7 @@ TEST(Serialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected number, int64 for `o`, got: 0.5"), e.what());
+      EXPECT_EQ(std::string("Expected integer for `o`, got: 0.5"), e.what());
     }
 #if 0
     catch (const RapidJSONAssertionFailedException& e) {
@@ -1147,8 +1147,8 @@ TEST(Serialization, JSONCrashTests) {
     try {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("data_.f.flags & kUint64Flag\tdata_.f.flags & kUint64Flag", e.What());
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected enum as signed integer for `e`, got: 0.5"), e.what());
     }
   }
 }
