@@ -64,7 +64,7 @@ struct LoadFromJSONImpl<std::vector<TT, TA>, J> {
       for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
         LoadFromJSONImpl<TT, J>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
       }
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsArray())) {
       throw JSONSchemaException("array", source, path);  // LCOV_EXCL_LINE
     }
   }

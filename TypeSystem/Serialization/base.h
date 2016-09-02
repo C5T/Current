@@ -79,6 +79,21 @@ struct JSONVariantTypeNameInDollarKey<JSONFormat::JavaScript> {
   constexpr static bool value = true;
 };
 
+template <class J>
+struct JSONPatcher {
+  using J::variant_style;
+};
+
+template <class J>
+struct JSONPatchMode {
+  constexpr static bool value = false;
+};
+
+template <class J>
+struct JSONPatchMode<JSONPatcher<J>> {
+  constexpr static bool value = true;
+};
+
 namespace save {
 
 template <typename T>

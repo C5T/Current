@@ -78,7 +78,7 @@ struct LoadFromJSONImpl<std::pair<TF, TS>, J> {
       LoadFromJSONImpl<TF, J>::Load(&((*source)[static_cast<rapidjson::SizeType>(0)]), destination.first, path);
       LoadFromJSONImpl<TS, J>::Load(
           &((*source)[static_cast<rapidjson::SizeType>(1)]), destination.second, path);
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !(source->IsArray() && source->Size() == 2u))) {
       throw JSONSchemaException("pair as array", source, path);  // LCOV_EXCL_LINE
     }
   }

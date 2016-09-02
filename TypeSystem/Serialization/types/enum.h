@@ -52,13 +52,14 @@ namespace load {
 template <typename T, class J>
 struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
   static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
+    // TODO(dkorolev): This `IsNumber` vs. `Get[U]Int64` part is scary.
     if (source && source->IsNumber()) {
       if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
         destination = static_cast<T>(source->GetInt64());
       } else {
         destination = static_cast<T>(source->GetUint64());
       }
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsNumber())) {
       throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
     }
   }

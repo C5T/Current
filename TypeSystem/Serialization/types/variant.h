@@ -80,10 +80,9 @@ class VariantSerializerImpl<JSONVariantStyle::Current, J> {
       destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
     }
     if (JSONVariantTypeNameInDollarKey<J>::value) {
-      destination_.AddMember(
-          rapidjson::Value("$", allocator_).Move(),
-          rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
-          allocator_);
+      destination_.AddMember(rapidjson::Value("$", allocator_).Move(),
+                             rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
+                             allocator_);
     }
   }
 
@@ -184,7 +183,7 @@ struct LoadVariantImpl<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
         } else {
           throw JSONSchemaException("type id as value for an empty string", source, path);  // LCOV_EXCL_LINE
         }
-      } else {
+      } else if (!JSONPatchMode<JSON_FORMAT>::value || (source && !source->IsObject())) {
         throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
       }
     };
@@ -192,7 +191,7 @@ struct LoadVariantImpl<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
    private:
     using deserializers_map_t =
         std::unordered_map<::current::reflection::TypeID,
-                           std::unique_ptr<LoadVariantGenericDeserializer>,
+                           std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>,
                            ::current::CurrentHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
 
@@ -202,7 +201,7 @@ struct LoadVariantImpl<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list. They would be deserialized correctly.
         deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
-            std::make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
+            std::make_unique<TypedDeserializer<X, JSON_FORMAT>>(CurrentTypeName<X>());
       }
     };
   };
@@ -258,14 +257,14 @@ struct LoadVariantImpl<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
             throw JSONSchemaException("the value for the variant type", value, path);  // LCOV_EXCL_LINE
           }
         }
-      } else {
+      } else if (!JSONPatchMode<JSON_FORMAT>::value || (source && !source->IsObject())) {
         throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
       }
     };
 
    private:
     using deserializers_map_t =
-        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -274,7 +273,7 @@ struct LoadVariantImpl<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X>>();
+        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X, JSON_FORMAT>>();
       }
     };
   };
@@ -312,14 +311,14 @@ struct LoadVariantImpl<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT>
         } else {
           throw JSONSchemaException("a type name in \"Case\"", source, path);  // LCOV_EXCL_LINE
         }
-      } else {
+      } else if (!JSONPatchMode<JSON_FORMAT>::value || (source && !source->IsObject())) {
         throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
       }
     };
 
    private:
     using deserializers_map_t =
-        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -328,7 +327,7 @@ struct LoadVariantImpl<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT>
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X>>();
+        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X, JSON_FORMAT>>();
       }
     };
   };

@@ -128,7 +128,7 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T,
       LoadFieldVisitor visitor(*source, path);
       current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndMutableValue>::WithObject(
           destination, visitor);
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsObject())) {
       throw JSONSchemaException("object", source, path);  // LCOV_EXCL_LINE
     }
   }

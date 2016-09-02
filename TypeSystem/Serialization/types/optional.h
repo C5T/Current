@@ -100,7 +100,9 @@ template <typename T, class J>
 struct LoadFromJSONImpl<Optional<T>, J> {
   static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
     if (!source || source->IsNull()) {
-      destination = nullptr;
+      if (source || !JSONPatchMode<J>::value) {
+        destination = nullptr;
+      }
     } else {
       destination = T();
       LoadFromJSONImpl<T, J>::Load(source, Value(destination), path);

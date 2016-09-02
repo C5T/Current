@@ -93,7 +93,7 @@ struct LoadFromJSONImpl<std::map<TK, TV, TC, TA>, J> {
         LoadFromJSONImpl<TV, J>::Load(&cit->value, v, path);
         destination.emplace(k, v);
       }
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsObject())) {
       throw JSONSchemaException("map as object", source, path);  // LCOV_EXCL_LINE
     }
   }
@@ -117,7 +117,7 @@ struct LoadFromJSONImpl<std::map<TK, TV, TC, TA>, J> {
         LoadFromJSONImpl<TV, J>::Load(&(*cit)[static_cast<rapidjson::SizeType>(1)], v, path);
         destination.emplace(k, v);
       }
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsArray())) {
       throw JSONSchemaException("map as array", source, path);  // LCOV_EXCL_LINE
     }
   }

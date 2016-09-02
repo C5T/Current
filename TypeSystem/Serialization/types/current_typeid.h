@@ -56,7 +56,7 @@ struct LoadFromJSONImpl<reflection::TypeID, J> {
   static void Load(rapidjson::Value* source, reflection::TypeID& destination, const std::string& path) {
     if (source && source->IsString() && *source->GetString() == 'T') {
       destination = static_cast<reflection::TypeID>(current::FromString<uint64_t>(source->GetString() + 1));
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !(source->IsString() && *source->GetString() == 'T'))) {
       throw JSONSchemaException("TypeID", source, path);  // LCOV_EXCL_LINE
     }
   }
