@@ -148,6 +148,7 @@ class SubscribableRemoteStream final {
           break;
         } catch (current::Exception&) {
         }
+        unprocessed_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();
       }
     }
@@ -163,17 +164,22 @@ class SubscribableRemoteStream final {
         return;
       }
 
-      // Expected one entire entry in each chunk,
-      // won't work in case of partial or multiple entries per chunk
-      const auto split = current::strings::Split(chunk, '\t');
-      CURRENT_ASSERT(split.size() == 2u);
-      const auto idxts = ParseJSON<idxts_t>(split[0]);
-      CURRENT_ASSERT(idxts.index == index_);
-      auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-      ++index_;
-      if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
-        CURRENT_THROW(StreamTerminatedBySubscriber());
+      const std::string combined_data = unprocessed_data_ + chunk;
+      const auto lines = current::strings::Split(combined_data, '\n');
+      size_t processed_bytes = 0;
+      for (size_t i = 0, sz = combined_data.back() == '\n' ? lines.size() : lines.size() - 1; i < sz; ++i) {
+        const auto split = current::strings::Split(lines[i], '\t');
+        CURRENT_ASSERT(split.size() == 2u);
+        const auto idxts = ParseJSON<idxts_t>(split[0]);
+        CURRENT_ASSERT(idxts.index == index_);
+        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+        ++index_;
+        processed_bytes += lines[i].length() + 1;
+        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
       }
+      unprocessed_data_ = combined_data.substr(processed_bytes);
     }
 
     void TerminateSubscription() {
@@ -204,6 +210,7 @@ class SubscribableRemoteStream final {
     current::WaitableAtomic<std::string> subscription_id_;
     std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
+    std::string unprocessed_data_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
