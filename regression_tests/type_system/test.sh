@@ -22,6 +22,7 @@ TEST_LIST=(
 
 CPLUSPLUS=${CPLUSPLUS:-g++}
 CPPFLAGS=${CPPFLAGS:- -std=c++11 -ftemplate-backtrace-limit=0  -ftemplate-depth=10000}
+LDFLAGS=${LDFLAGS:- -pthread}
 OS=$(uname)
 if [[ $OS -ne "Darwin" ]]; then
 	LDFLAGS=${LDFLAGS:- -pthread}
@@ -39,7 +40,7 @@ for c in ${COUNT_LIST[@]}; do
 		echo $t
 		echo -e -n "\033[1m\033[91m"
 		TIMEFORMAT='Compile: %R seconds'
-		time $CPLUSPLUS $CPPFLAGS -c -o .current/$t.o $t.cc >/dev/null
+		time $CPLUSPLUS $CPPFLAGS -c -o .current/$t.o $t.cc $LDFLAGS >/dev/null
 		TIMEFORMAT='Link:    %R seconds'
 		time $CPLUSPLUS $LDFLAGS -o .current/$t .current/$t.o >/dev/null
 		echo -e -n "\033[1m\033[39mRunning\033[0m: "
