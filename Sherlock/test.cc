@@ -845,7 +845,7 @@ TEST(Sherlock, ParsesFromFile) {
       << d.results_;
 }
 
-TEST(Sherlock, ParseArbitrarilySplittedChunks) {
+TEST(Sherlock, ParseArbitrarilySplitChunks) {
   using namespace sherlock_unittest;
 
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
