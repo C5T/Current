@@ -26,6 +26,7 @@ SOFTWARE.
 #define CURRENT_MOCK_TIME
 
 #include "sherlock.h"
+#include "replicator.h"
 
 #include <string>
 #include <atomic>
@@ -763,6 +764,12 @@ const std::string sherlock_golden_data =
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
     "{\"index\":2,\"us\":300}\t{\"x\":3}\n";
 
+const std::string sherlock_golden_data_chunks[] = {
+    "{\"index\":0,\"u",
+    "s\":100}\t{\"x\":1}\r",
+    "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n{\"index\":2,\"us\":300}\t{\"x",
+    "\":3}\n"};
+
 TEST(Sherlock, PersistsToFile) {
   current::time::ResetToZero();
 
@@ -836,6 +843,66 @@ TEST(Sherlock, ParsesFromFile) {
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
+}
+
+TEST(Sherlock, ParseArbitrarilySplitChunks) {
+  using namespace sherlock_unittest;
+
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  using sherlock_t = current::sherlock::Stream<Record, current::persistence::File>;
+  using RemoteStreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
+  sherlock_t replicated_stream(persistence_file_name);
+
+  // Simulate subscription to sherlock stream.
+  const auto scope =
+      HTTP(FLAGS_sherlock_http_test_port)
+          .Register(
+              "/log",
+              URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+              [](Request r) {
+                EXPECT_EQ("GET", r.method);
+                const std::string subscription_id = "fake_subscription";
+                if (r.url.query.has("terminate")) {
+                  EXPECT_EQ(r.url.query["terminate"], subscription_id);
+                } else if (r.url.query.has("i")) {
+                  const auto ind = current::FromString<uint64_t>(r.url.query["i"]);
+                  auto response = r.connection.SendChunkedHTTPResponse(
+                      HTTPResponseCode.OK,
+                      "text/plain",
+                      current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
+                  if (ind == 0u) {
+                    for (const auto& chunk : sherlock_golden_data_chunks) {
+                      response.Send(chunk);
+                    }
+                  } else {
+                    EXPECT_EQ(3u, ind);
+                  }
+                } else {
+                  EXPECT_EQ(1u, r.url_path_args.size());
+                  EXPECT_EQ("schema.simple", r.url_path_args[0]);
+                  r(current::sherlock::SubscribableSherlockSchema(
+                      Value<current::reflection::ReflectedTypeBase>(
+                          current::reflection::Reflector().ReflectType<Record>()).type_id,
+                      "Record",
+                      "Namespace"));
+                }
+              });
+
+  // Replicate data via subscription to the fake stream.
+  current::sherlock::SubscribableRemoteStream<Record> remote_stream(
+      Printf("http://localhost:%d/log", FLAGS_sherlock_http_test_port), "Record", "Namespace");
+  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
+
+  {
+    const auto subscriber_scope = remote_stream.Subscribe(*replicator);
+    while (replicated_stream.InternalExposePersister().Size() < 3u) {
+      std::this_thread::yield();
+    }
+  }
+
+  EXPECT_EQ(sherlock_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
 TEST(Sherlock, SubscribeWithFilterByType) {

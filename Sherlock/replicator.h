@@ -148,6 +148,7 @@ class SubscribableRemoteStream final {
           break;
         } catch (current::Exception&) {
         }
+        carried_over_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();
       }
     }
@@ -163,16 +164,26 @@ class SubscribableRemoteStream final {
         return;
       }
 
-      // Expected one entire entry in each chunk,
-      // won't work in case of partial or multiple entries per chunk
-      const auto split = current::strings::Split(chunk, '\t');
-      CURRENT_ASSERT(split.size() == 2u);
-      const auto idxts = ParseJSON<idxts_t>(split[0]);
-      CURRENT_ASSERT(idxts.index == index_);
-      auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-      ++index_;
-      if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
-        CURRENT_THROW(StreamTerminatedBySubscriber());
+      const std::string combined_data = carried_over_data_ + chunk;
+      const auto lines = current::strings::Split<current::strings::ByLines>(combined_data);
+      size_t whole_entries_count = lines.size();
+      CURRENT_ASSERT(!combined_data.empty());
+      if (combined_data.back() != '\n' && combined_data.back() != '\r') {
+        --whole_entries_count;
+        carried_over_data_ = lines.back();
+      } else {
+        carried_over_data_.clear();
+      }
+      for (size_t i = 0; i < whole_entries_count; ++i) {
+        const auto split = current::strings::Split(lines[i], '\t');
+        CURRENT_ASSERT(split.size() == 2u);
+        const auto idxts = ParseJSON<idxts_t>(split[0]);
+        CURRENT_ASSERT(idxts.index == index_);
+        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+        ++index_;
+        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
       }
     }
 
@@ -204,6 +215,7 @@ class SubscribableRemoteStream final {
     current::WaitableAtomic<std::string> subscription_id_;
     std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
+    std::string carried_over_data_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
