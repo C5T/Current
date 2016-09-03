@@ -867,13 +867,17 @@ TEST(Sherlock, ParseArbitrarilySplittedChunks) {
                 if (r.url.query.has("terminate")) {
                   EXPECT_EQ(r.url.query["terminate"], subscription_id);
                 } else if (r.url.query.has("i")) {
-                  EXPECT_EQ("0", r.url.query["i"]);
+                  const auto ind = current::FromString<uint64_t>(r.url.query["i"]);
                   auto response = r.connection.SendChunkedHTTPResponse(
                       HTTPResponseCode.OK,
                       "text/plain",
                       current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
-                  for (const auto& chunk : sherlock_golden_data_chunks) {
-                    response.Send(chunk);
+                  if (ind == 0u) {
+                    for (const auto& chunk : sherlock_golden_data_chunks) {
+                      response.Send(chunk);
+                    }
+                  } else {
+                    EXPECT_EQ(3u, ind);
                   }
                 } else {
                   EXPECT_EQ(1u, r.url_path_args.size());
