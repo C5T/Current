@@ -167,7 +167,8 @@ class SubscribableRemoteStream final {
       const std::string combined_data = carried_over_data_ + chunk;
       const auto lines = current::strings::Split<current::strings::ByLines>(combined_data);
       size_t whole_entries_count = lines.size();
-      if (combined_data.back() != '\n') {
+      CURRENT_ASSERT(!combined_data.empty());
+      if (combined_data.back() != '\n' && combined_data.back() != '\r') {
         --whole_entries_count;
         carried_over_data_ = lines.back();
       } else {
