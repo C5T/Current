@@ -219,7 +219,7 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   return result;
 }
 
-template <typename E, template <typename> class PERSISTENCE_LAYER, JSONFormat J>
+template <typename E, template <typename> class PERSISTENCE_LAYER, class J>
 class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
  public:
   using stream_data_t = StreamData<E, PERSISTENCE_LAYER>;
@@ -382,7 +382,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   void operator=(PubSubHTTPEndpointImpl&&) = delete;
 };
 
-template <typename E, template <typename> class PERSISTENCE_LAYER, JSONFormat J = JSONFormat::Current>
+template <typename E, template <typename> class PERSISTENCE_LAYER, class J = JSONFormat::Current>
 using PubSubHTTPEndpoint = current::ss::StreamSubscriber<PubSubHTTPEndpointImpl<E, PERSISTENCE_LAYER, J>, E>;
 
 }  // namespace sherlock

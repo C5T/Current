@@ -52,10 +52,13 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <JSONFormat J>
-class SaveVariantCurrentOrMinimalistic {
+template <JSONVariantStyle, class J>
+class VariantSerializerImpl;
+
+template <class J>
+class VariantSerializerImpl<JSONVariantStyle::Current, J> {
  public:
-  SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+  VariantSerializerImpl(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
       : destination_(destination), allocator_(allocator) {}
 
   template <typename X>
@@ -73,8 +76,13 @@ class SaveVariantCurrentOrMinimalistic {
     destination_.AddMember(
         rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(), serialized_object, allocator_);
 
-    if (J == JSONFormat::Current) {
+    if (JSONVariantTypeIDInEmptyKey<J>::value) {
       destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+    }
+    if (JSONVariantTypeNameInDollarKey<J>::value) {
+      destination_.AddMember(rapidjson::Value("$", allocator_).Move(),
+                             rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
+                             allocator_);
     }
   }
 
@@ -83,9 +91,16 @@ class SaveVariantCurrentOrMinimalistic {
   rapidjson::Document::AllocatorType& allocator_;
 };
 
-class SaveVariantFSharp {
+template <class J>
+class VariantSerializerImpl<JSONVariantStyle::Simple, J>
+    : public VariantSerializerImpl<JSONVariantStyle::Current, J> {
+  using VariantSerializerImpl<JSONVariantStyle::Current, J>::VariantSerializerImpl;
+};
+
+template <class J>
+class VariantSerializerImpl<JSONVariantStyle::NewtonsoftFSharp, J> {
  public:
-  SaveVariantFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+  VariantSerializerImpl(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
       : destination_(destination), allocator_(allocator) {}
 
   template <typename X>
@@ -115,21 +130,18 @@ class SaveVariantFSharp {
   rapidjson::Document::AllocatorType& allocator_;
 };
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
   // Variant objects are serialized in a different way for F#.
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const T& value) {
-    // TODO(dkorolev): This call might be worth splitting into two, with and without REQUIRED. Later.
     if (Exists(value)) {
-      typename std::conditional<J == JSONFormat::Current || J == JSONFormat::Minimalistic,
-                                SaveVariantCurrentOrMinimalistic<J>,
-                                SaveVariantFSharp>::type impl(destination, allocator);
+      VariantSerializerImpl<J::variant_style, J> impl(destination, allocator);
       value.Call(impl);
       return true;
     } else {
-      if (J != JSONFormat::Minimalistic) {
+      if (JSONVariantStyleUseNulls<J::variant_style>::value) {
         destination.SetNull();
         return true;
       } else {
@@ -142,8 +154,11 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
 
 namespace load {
 
-template <typename VARIANT>
-struct LoadVariantCurrent {
+template <JSONVariantStyle J, class JSON_FORMAT, typename VARIANT>
+struct LoadVariantImpl;
+
+template <class JSON_FORMAT, typename VARIANT>
+struct LoadVariantImpl<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
   class Impl {
    public:
     Impl() {
@@ -158,7 +173,7 @@ struct LoadVariantCurrent {
         TypeID type_id;
         if (source->HasMember("")) {
           rapidjson::Value* member = &(*source)[""];
-          LoadFromJSONImpl<TypeID, JSONFormat::Current>::Load(member, type_id, path + "[\"\"]");
+          LoadFromJSONImpl<TypeID, JSON_FORMAT>::Load(member, type_id, path + "[\"\"]");
           const auto cit = deserializers_.find(type_id);
           if (cit != deserializers_.end()) {
             cit->second->Deserialize(source, destination, path);
@@ -168,7 +183,7 @@ struct LoadVariantCurrent {
         } else {
           throw JSONSchemaException("type id as value for an empty string", source, path);  // LCOV_EXCL_LINE
         }
-      } else {
+      } else if (!JSONPatchMode<JSON_FORMAT>::value || (source && !source->IsObject())) {
         throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
       }
     };
@@ -176,7 +191,7 @@ struct LoadVariantCurrent {
    private:
     using deserializers_map_t =
         std::unordered_map<::current::reflection::TypeID,
-                           std::unique_ptr<LoadVariantGenericDeserializer>,
+                           std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>,
                            ::current::CurrentHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
 
@@ -186,7 +201,7 @@ struct LoadVariantCurrent {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list. They would be deserialized correctly.
         deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
-            std::make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
+            std::make_unique<TypedDeserializer<X, JSON_FORMAT>>(CurrentTypeName<X>());
       }
     };
   };
@@ -197,8 +212,8 @@ struct LoadVariantCurrent {
   }
 };
 
-template <typename VARIANT>
-struct LoadVariantMinimalistic {
+template <class JSON_FORMAT, typename VARIANT>
+struct LoadVariantImpl<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
   class ImplMinimalistic {
    public:
     ImplMinimalistic() {
@@ -219,8 +234,8 @@ struct LoadVariantMinimalistic {
             throw JSONSchemaException("key name as string", source, path);  // LCOV_EXCL_LINE
           }
           const std::string key = cit->name.GetString();
-          // Skip empty key for "backwards" compatibility with the "Current" format.
-          if (!key.empty()) {
+          // Skip keys "" and "$" for "backwards" compatibility with the "Current" format.
+          if (!key.empty() && key != "$") {
             if (!value) {
               case_name = key;
               value = &cit->value;
@@ -242,14 +257,14 @@ struct LoadVariantMinimalistic {
             throw JSONSchemaException("the value for the variant type", value, path);  // LCOV_EXCL_LINE
           }
         }
-      } else {
+      } else if (!JSONPatchMode<JSON_FORMAT>::value || (source && !source->IsObject())) {
         throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
       }
     };
 
    private:
     using deserializers_map_t =
-        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -258,7 +273,7 @@ struct LoadVariantMinimalistic {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X>>();
+        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X, JSON_FORMAT>>();
       }
     };
   };
@@ -269,8 +284,8 @@ struct LoadVariantMinimalistic {
   }
 };
 
-template <typename VARIANT>
-struct LoadVariantFSharp {
+template <class JSON_FORMAT, typename VARIANT>
+struct LoadVariantImpl<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT> {
   class ImplFSharp {
    public:
     ImplFSharp() {
@@ -286,8 +301,7 @@ struct LoadVariantFSharp {
         if (source->HasMember("Case")) {
           rapidjson::Value* member = &(*source)["Case"];
           std::string case_name;
-          LoadFromJSONImpl<std::string, JSONFormat::NewtonsoftFSharp>::Load(
-              member, case_name, path + ".[\"Case\"]");
+          LoadFromJSONImpl<std::string, JSON_FORMAT>::Load(member, case_name, path + ".[\"Case\"]");
           const auto cit = deserializers_.find(case_name);
           if (cit != deserializers_.end()) {
             cit->second->Deserialize(source, destination, path);
@@ -297,14 +311,14 @@ struct LoadVariantFSharp {
         } else {
           throw JSONSchemaException("a type name in \"Case\"", source, path);  // LCOV_EXCL_LINE
         }
-      } else {
+      } else if (!JSONPatchMode<JSON_FORMAT>::value || (source && !source->IsObject())) {
         throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
       }
     };
 
    private:
     using deserializers_map_t =
-        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer>>;
+        std::unordered_map<std::string, std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -313,7 +327,7 @@ struct LoadVariantFSharp {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X>>();
+        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X, JSON_FORMAT>>();
       }
     };
   };
@@ -324,24 +338,15 @@ struct LoadVariantFSharp {
   }
 };
 
-template <JSONFormat J, typename T>
-using LoadVariantPicker =
-    typename std::conditional<J == JSONFormat::Current,
-                              LoadVariantCurrent<T>,
-                              typename std::conditional<J == JSONFormat::Minimalistic,
-                                                        LoadVariantMinimalistic<T>,
-                                                        LoadVariantFSharp<T>>::type>::type;
-
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
   static void Load(rapidjson::Value* source, T& value, const std::string& path) {
     if (!source || source->IsNull()) {
-      if (J != JSONFormat::Minimalistic) {
+      if (JSONVariantStyleUseNulls<J::variant_style>::value) {
         throw JSONUninitializedVariantObjectException();
       }
     } else {
-      using LOADER = LoadVariantPicker<J, T>;
-      LOADER::Instance().DoLoadVariant(source, value, path);
+      LoadVariantImpl<J::variant_style, J, T>::Instance().DoLoadVariant(source, value, path);
     }
   }
 };

@@ -35,7 +35,64 @@ namespace current {
 namespace serialization {
 namespace json {
 
-enum class JSONFormat : int { Current, Minimalistic, NewtonsoftFSharp };
+enum class JSONVariantStyle : int { Current, Simple, NewtonsoftFSharp };
+
+template <JSONVariantStyle>
+struct JSONVariantStyleUseNulls {
+  constexpr static bool value = true;
+};
+template <>
+struct JSONVariantStyleUseNulls<JSONVariantStyle::Simple> {
+  constexpr static bool value = false;
+};
+
+struct JSONFormat {
+  struct Current {
+    constexpr static JSONVariantStyle variant_style = JSONVariantStyle::Current;
+  };
+  struct Minimalistic {
+    constexpr static JSONVariantStyle variant_style = JSONVariantStyle::Simple;
+  };
+  struct JavaScript {
+    constexpr static JSONVariantStyle variant_style = JSONVariantStyle::Simple;
+  };
+  struct NewtonsoftFSharp {
+    constexpr static JSONVariantStyle variant_style = JSONVariantStyle::NewtonsoftFSharp;
+  };
+};
+
+template <class>
+struct JSONVariantTypeIDInEmptyKey {
+  constexpr static bool value = false;
+};
+template <>
+struct JSONVariantTypeIDInEmptyKey<JSONFormat::Current> {
+  constexpr static bool value = true;
+};
+
+template <class>
+struct JSONVariantTypeNameInDollarKey {
+  constexpr static bool value = false;
+};
+template <>
+struct JSONVariantTypeNameInDollarKey<JSONFormat::JavaScript> {
+  constexpr static bool value = true;
+};
+
+template <class J>
+struct JSONPatcher {
+  using J::variant_style;
+};
+
+template <class J>
+struct JSONPatchMode {
+  constexpr static bool value = false;
+};
+
+template <class J>
+struct JSONPatchMode<JSONPatcher<J>> {
+  constexpr static bool value = true;
+};
 
 namespace save {
 
@@ -49,14 +106,14 @@ void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
   AssignToRapidJSONValueImpl<T>::WithDedicatedTreatment(destination, value);
 }
 
-template <typename, JSONFormat, typename Enable = void>
+template <typename, typename JSON_FORMAT, typename ENABLE = void>
 struct SaveIntoJSONImpl;
 
 }  // namespace save
 
 namespace load {
 
-template <typename, JSONFormat, typename Enable = void>
+template <typename, typename JSON_FORMAT, typename ENABLE = void>
 struct LoadFromJSONImpl;
 
 }  // namespace load

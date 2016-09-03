@@ -37,7 +37,7 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
   static bool Save(rapidjson::Value& destination, rapidjson::Document::AllocatorType&, const T& value) {
     AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
@@ -49,16 +49,25 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
 
 namespace load {
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
   static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
+    // TODO(dkorolev): This `IsNumber` vs. `Get[U]Int64` part is scary.
     if (source && source->IsNumber()) {
       if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
-        destination = static_cast<T>(source->GetInt64());
+        if (source->IsInt64()) {
+          destination = static_cast<T>(source->GetInt64());
+        } else {
+          throw JSONSchemaException("enum as unsigned integer", source, path);  // LCOV_EXCL_LINE
+        }
       } else {
-        destination = static_cast<T>(source->GetUint64());
+        if (source->IsUint64()) {
+          destination = static_cast<T>(source->GetUint64());
+        } else {
+          throw JSONSchemaException("enum as signed integer", source, path);  // LCOV_EXCL_LINE
+        }
       }
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsNumber())) {
       throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
     }
   }

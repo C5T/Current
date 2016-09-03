@@ -67,7 +67,7 @@ namespace current {
 namespace serialization {
 namespace json {
 
-template <JSONFormat J, typename T>
+template <class J, typename T>
 std::string CreateJSONViaRapidJSON(const T& value) {
   rapidjson::Document document;
   rapidjson::Value& destination = document;
@@ -80,7 +80,7 @@ std::string CreateJSONViaRapidJSON(const T& value) {
   return string_buffer.GetString();
 }
 
-template <JSONFormat J, typename T>
+template <class J, typename T>
 void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
   rapidjson::Document document;
 
@@ -91,17 +91,17 @@ void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
   load::LoadFromJSONImpl<T, J>::Load(&document, destination, "");
 }
 
-template <JSONFormat J = JSONFormat::Current, typename T>
+template <class J = JSONFormat::Current, typename T>
 inline std::string JSON(const T& source) {
   return CreateJSONViaRapidJSON<J>(source);
 }
 
-template <JSONFormat J = JSONFormat::Current>
+template <class J = JSONFormat::Current>
 inline std::string JSON(const char* special_case_bare_c_string) {
   return JSON<J>(std::string(special_case_bare_c_string));
 }
 
-template <typename T, JSONFormat J = JSONFormat::Current>
+template <typename T, class J = JSONFormat::Current>
 inline void ParseJSON(const std::string& source, T& destination) {
   try {
     ParseJSONViaRapidJSON<J>(source, destination);
@@ -111,16 +111,22 @@ inline void ParseJSON(const std::string& source, T& destination) {
   }
 }
 
-template <typename T, JSONFormat J = JSONFormat::Current>
-inline T ParseJSON(const std::string& source) {
+template <typename T, class J = JSONFormat::Current>
+inline void PatchJSON(T& object, const std::string& json) {
   try {
-    T result;
-    ParseJSONViaRapidJSON<J>(source, result);
-    CheckIntegrity(result);
-    return result;
+    CheckIntegrity(object);  // TODO(dkorolev): Different exception for "was uninitialized before"?
+    ParseJSONViaRapidJSON<JSONPatcher<J>>(json, object);
+    CheckIntegrity(object);
   } catch (UninitializedVariant) {
     throw JSONUninitializedVariantObjectException();
   }
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline T ParseJSON(const std::string& source) {
+  T result;
+  ParseJSON<T, J>(source, result);
+  return result;
 }
 
 }  // namespace json
@@ -129,6 +135,7 @@ inline T ParseJSON(const std::string& source) {
 // Keep top-level symbols both in `current::` and in global namespace.
 using serialization::json::JSON;
 using serialization::json::ParseJSON;
+using serialization::json::PatchJSON;
 using serialization::json::JSONFormat;
 using serialization::json::TypeSystemParseJSONException;
 using serialization::json::JSONSchemaException;
@@ -139,6 +146,7 @@ using serialization::json::JSONUninitializedVariantObjectException;
 
 using current::JSON;
 using current::ParseJSON;
+using current::PatchJSON;
 using current::JSONFormat;
 using current::TypeSystemParseJSONException;
 using current::JSONSchemaException;

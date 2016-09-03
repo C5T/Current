@@ -37,7 +37,7 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct SaveIntoJSONImpl<Optional<T>, J> {
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
@@ -96,14 +96,21 @@ struct SaveIntoJSONImpl<Optional<T>, JSONFormat::NewtonsoftFSharp> {
 
 namespace load {
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<Optional<T>, J> {
   static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
-    if (!source || source->IsNull()) {
-      destination = nullptr;
-    } else {
+    if (source && !source->IsNull()) {
       destination = T();
       LoadFromJSONImpl<T, J>::Load(source, Value(destination), path);
+    } else {
+      if (!JSONPatchMode<J>::value || source) {
+        // Nullify `destination` if at least one of two following conditions is true:
+        // 1) The input JSON contains an explicit `null` (the `source` check), OR
+        // 2) The logic invoked is `ParseJSON`, not `PatchJSON`.
+        // Effectively, always nullify the destination in `ParseJSON`, mode, and when in `PatchJSON` mode,
+        // take no action if the key is plain missing, yet treat explicit `null` as explicit nullification.
+        destination = nullptr;
+      }
     }
   }
 };

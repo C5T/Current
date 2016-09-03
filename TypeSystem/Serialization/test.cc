@@ -368,28 +368,28 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<Serializable>("{}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `i`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: missing field."), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":\"boo\"}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `i`, got: \"boo\""), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: \"boo\""), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":[]}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `i`, got: []"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: []"), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":{}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `i`, got: {}"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: {}"), e.what());
   }
 
   try {
@@ -426,7 +426,7 @@ TEST(Serialization, JSONExceptions) {
         "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":\"error\",\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `z.i`, got: \"error\""), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: \"error\""), e.what());
   }
 
   try {
@@ -434,14 +434,14 @@ TEST(Serialization, JSONExceptions) {
         "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `z.i`, got: null"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: null"), e.what());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number for `z.i`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: missing field."), e.what());
   }
 
   try {
@@ -676,6 +676,15 @@ TEST(Serialization, VariantAsJSON) {
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
               JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::JavaScript>(json)));
+  }
+  {
+    const simple_variant_t object = Empty();
+    const std::string json = "{\"Empty\":{},\"$\":\"Empty\"}";
+    EXPECT_EQ(json, JSON<JSONFormat::JavaScript>(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(json, JSON<JSONFormat::JavaScript>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::JavaScript>(ParseJSON<simple_variant_t, JSONFormat::JavaScript>(json)));
   }
   {
     const simple_variant_t object = Empty();
@@ -1108,9 +1117,14 @@ TEST(Serialization, JSONCrashTests) {
     try {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (const RapidJSONAssertionFailedException& e) {
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected integer for `i`, got: 0.5"), e.what());
+    }
+#if 0
+    catch (const RapidJSONAssertionFailedException& e) {
       ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.What());
     }
+#endif
   }
 
   {
@@ -1118,9 +1132,14 @@ TEST(Serialization, JSONCrashTests) {
     try {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (const RapidJSONAssertionFailedException& e) {
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected integer for `o`, got: 0.5"), e.what());
+    }
+#if 0
+    catch (const RapidJSONAssertionFailedException& e) {
       ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.What());
     }
+#endif
   }
 
   {
@@ -1128,10 +1147,55 @@ TEST(Serialization, JSONCrashTests) {
     try {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("data_.f.flags & kUint64Flag\tdata_.f.flags & kUint64Flag", e.What());
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected enum as signed integer for `e`, got: 0.5"), e.what());
     }
   }
+}
+
+namespace serialization_test {
+CURRENT_STRUCT(StructToPatch) {
+  CURRENT_FIELD(a, int64_t, 0);
+  CURRENT_FIELD(b, std::string);
+  CURRENT_FIELD(c, Optional<std::string>);
+};
+}  // namespace serialization_test
+
+TEST(Serialization, PatchJSON) {
+  using serialization_test::StructToPatch;
+
+  auto s = ParseJSON<StructToPatch>("{\"a\":1,\"b\":\"one\",\"c\":null}");
+  EXPECT_EQ(1, s.a);
+  EXPECT_EQ("one", s.b);
+  EXPECT_FALSE(Exists(s.c));
+
+  PatchJSON(s, "{}");
+  EXPECT_EQ(1, s.a);
+  EXPECT_EQ("one", s.b);
+  EXPECT_FALSE(Exists(s.c));
+
+  PatchJSON(s, "{\"a\":2}");
+  EXPECT_EQ(2, s.a);
+  EXPECT_EQ("one", s.b);
+  EXPECT_FALSE(Exists(s.c));
+
+  PatchJSON(s, "{\"b\":\"two\"}");
+  EXPECT_EQ(2, s.a);
+  EXPECT_EQ("two", s.b);
+  EXPECT_FALSE(Exists(s.c));
+
+  PatchJSON(s, "{\"c\":\"test\"}");
+  EXPECT_EQ(2, s.a);
+  EXPECT_EQ("two", s.b);
+  EXPECT_TRUE(Exists(s.c));
+  EXPECT_EQ("test", Value(s.c));
+
+  PatchJSON(s, "{}");
+  EXPECT_TRUE(Exists(s.c));
+  EXPECT_EQ("test", Value(s.c));
+
+  PatchJSON(s, "{\"c\":null}");
+  EXPECT_FALSE(Exists(s.c));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC

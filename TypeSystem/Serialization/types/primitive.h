@@ -58,7 +58,7 @@ struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
 };
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, ignore_h, ignore_fs, ignore_md) \
-  template <JSONFormat J>                                                                             \
+  template <class J>                                                                                  \
   struct SaveIntoJSONImpl<cpp_type, J> {                                                              \
     static bool Save(rapidjson::Value& destination,                                                   \
                      rapidjson::Document::AllocatorType&,                                             \
@@ -75,84 +75,84 @@ struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
 namespace load {
 
 // `uint*_t`.
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T,
                         J,
                         ENABLE_IF<std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed &&
                                   !std::is_same<T, bool>::value>> {
   static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
-    if (source && source->IsNumber()) {
+    if (source && source->IsUint64()) {
       destination = static_cast<T>(source->GetUint64());
-    } else {
-      throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsUint64())) {
+      throw JSONSchemaException("unsigned integer", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `int*_t`
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T,
                         J,
                         ENABLE_IF<std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed>> {
   static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
-    if (source && source->IsNumber()) {
+    if (source && source->IsInt64()) {
       destination = static_cast<T>(source->GetInt64());
-    } else {
-      throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsInt64())) {
+      throw JSONSchemaException("integer", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `float`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<float, J> {
   static void Load(rapidjson::Value* source, float& destination, const std::string& path) {
-    if (source && source->IsNumber()) {
+    if (source && source->IsDouble()) {
       destination = static_cast<float>(source->GetDouble());
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !(source->IsDouble()))) {
       throw JSONSchemaException("float", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `double`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<double, J> {
   static void Load(rapidjson::Value* source, double& destination, const std::string& path) {
-    if (source && source->IsNumber()) {
+    if (source && source->IsDouble()) {
       destination = source->GetDouble();
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsDouble())) {
       throw JSONSchemaException("double", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `std::string`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<std::string, J> {
   static void Load(rapidjson::Value* source, std::string& destination, const std::string& path) {
     if (source && source->IsString()) {
       destination.assign(source->GetString(), source->GetStringLength());
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsString())) {
       throw JSONSchemaException("string", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `bool`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<bool, J> {
   static void Load(rapidjson::Value* source, bool& destination, const std::string& path) {
     if (source && (source->IsTrue() || source->IsFalse())) {
       destination = source->IsTrue();
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !(source->IsTrue() || source->IsFalse()))) {
       throw JSONSchemaException("bool", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `std::chrono::milliseconds`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::milliseconds& destination, const std::string& path) {
     int64_t value_as_int64;
@@ -162,7 +162,7 @@ struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
 };
 
 // `std::chrono::microseconds`.
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<std::chrono::microseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
     int64_t value_as_int64;

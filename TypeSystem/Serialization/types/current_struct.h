@@ -40,14 +40,14 @@ namespace serialization {
 namespace json {
 namespace save {
 
-template <JSONFormat J>
+template <class J>
 struct SaveIntoJSONImpl<CurrentStruct, J> {
   static bool Save(rapidjson::Value&, rapidjson::Document::AllocatorType&, const CurrentStruct&, bool) {
     return false;
   }
 };
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
   struct SaveFieldVisitor {
     rapidjson::Value& destination_;
@@ -91,12 +91,12 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T,
 
 namespace load {
 
-template <JSONFormat J>
+template <class J>
 struct LoadFromJSONImpl<CurrentStruct, J> {
   static void Load(rapidjson::Value*, CurrentStruct&, const std::string&) {}
 };
 
-template <typename T, JSONFormat J>
+template <typename T, class J>
 struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
   struct LoadFieldVisitor {
     rapidjson::Value& source_;
@@ -128,7 +128,7 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T,
       LoadFieldVisitor visitor(*source, path);
       current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndMutableValue>::WithObject(
           destination, visitor);
-    } else {
+    } else if (!JSONPatchMode<J>::value || (source && !source->IsObject())) {
       throw JSONSchemaException("object", source, path);  // LCOV_EXCL_LINE
     }
   }

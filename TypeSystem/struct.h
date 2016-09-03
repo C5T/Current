@@ -604,7 +604,7 @@ namespace current {
 namespace reflection {
 
 // Required by Visual Studio 2015 Community. -- D.K.
-template<typename INSTANTIATION_TYPE, typename T>
+template <typename INSTANTIATION_TYPE, typename T>
 using Field = ::crnt::r::Field<INSTANTIATION_TYPE, T>;
 
 using ::crnt::r::CurrentStructFieldsConsistency;

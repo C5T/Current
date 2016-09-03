@@ -35,14 +35,15 @@ namespace serialization {
 namespace json {
 namespace load {
 
+template <class J>
 struct LoadVariantGenericDeserializer {
   virtual void Deserialize(rapidjson::Value* source,
                            IHasUncheckedMoveFromUniquePtr& destination,
                            const std::string& path) = 0;
 };
 
-template <typename T>
-struct TypedDeserializer : LoadVariantGenericDeserializer {
+template <typename T, typename J>
+struct TypedDeserializer : LoadVariantGenericDeserializer<J> {
   explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
   void Deserialize(rapidjson::Value* source,
@@ -53,7 +54,7 @@ struct TypedDeserializer : LoadVariantGenericDeserializer {
       LoadFromJSONImpl<T, JSONFormat::Current>::Load(
           &(*source)[key_name_], *result, path + "[\"" + key_name_ + "\"]");
       destination.UncheckedMoveFromUniquePtr(std::move(result));
-    } else {
+    } else if (!JSONPatchMode<J>::value) {
       // LCOV_EXCL_START
       throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
       // LCOV_EXCL_STOP
@@ -63,8 +64,8 @@ struct TypedDeserializer : LoadVariantGenericDeserializer {
   const std::string key_name_;
 };
 
-template <typename T>
-struct TypedDeserializerMinimalistic : LoadVariantGenericDeserializer {
+template <typename T, typename J>
+struct TypedDeserializerMinimalistic : LoadVariantGenericDeserializer<J> {
   void Deserialize(rapidjson::Value* source,
                    IHasUncheckedMoveFromUniquePtr& destination,
                    const std::string& path) override {
@@ -74,8 +75,8 @@ struct TypedDeserializerMinimalistic : LoadVariantGenericDeserializer {
   }
 };
 
-template <typename T>
-struct TypedDeserializerFSharp : LoadVariantGenericDeserializer {
+template <typename T, typename J>
+struct TypedDeserializerFSharp : LoadVariantGenericDeserializer<J> {
   void Deserialize(rapidjson::Value* source,
                    IHasUncheckedMoveFromUniquePtr& destination,
                    const std::string& path) override {
@@ -87,6 +88,7 @@ struct TypedDeserializerFSharp : LoadVariantGenericDeserializer {
             &(*fields)[static_cast<rapidjson::SizeType>(0)], *result, path + ".[\"Fields\"]");
         destination.UncheckedMoveFromUniquePtr(std::move(result));
       } else {
+        // No PATCH for F#. -- D.K.
         // LCOV_EXCL_START
         throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
         // LCOV_EXCL_STOP
@@ -96,6 +98,7 @@ struct TypedDeserializerFSharp : LoadVariantGenericDeserializer {
         // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
         destination.UncheckedMoveFromUniquePtr(std::move(std::make_unique<T>()));
       } else {
+        // No PATCH for F#. -- D.K.
         // LCOV_EXCL_START
         throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
         // LCOV_EXCL_STOP
