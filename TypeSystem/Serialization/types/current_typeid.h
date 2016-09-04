@@ -34,21 +34,15 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
-namespace save {
 
-template <class J>
-struct SaveIntoJSONImpl<reflection::TypeID, J> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   reflection::TypeID value) {
-    destination.SetString("T" + current::ToString(value), allocator);
-    return true;
+template <class JSON_FORMAT>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, reflection::TypeID> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, reflection::TypeID value) {
+    json_stringifier.Current().SetString("T" + current::ToString(value), json_stringifier.Allocator());
   }
 };
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 template <class J>

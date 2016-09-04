@@ -32,43 +32,36 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
-namespace save {
 
-template <typename TF, typename TS, class J>
-struct SaveIntoJSONImpl<std::pair<TF, TS>, J> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const std::pair<TF, TS>& value) {
-    destination.SetArray();
+template <class JSON_FORMAT, typename TF, typename TS>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::pair<TF, TS>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier,
+                          const std::pair<TF, TS>& value) {
     rapidjson::Value first_value;
     rapidjson::Value second_value;
-    SaveIntoJSONImpl<TF, J>::Save(first_value, allocator, value.first);
-    SaveIntoJSONImpl<TS, J>::Save(second_value, allocator, value.second);
-    destination.PushBack(first_value, allocator);
-    destination.PushBack(second_value, allocator);
-    return true;
+    json_stringifier.Inner(&first_value, value.first);
+    json_stringifier.Inner(&second_value, value.second);
+    json_stringifier.Current().SetArray();
+    json_stringifier.Current().PushBack(std::move(first_value.Move()), json_stringifier.Allocator());
+    json_stringifier.Current().PushBack(std::move(second_value.Move()), json_stringifier.Allocator());
   }
 };
 
 template <typename TF, typename TS>
-struct SaveIntoJSONImpl<std::pair<TF, TS>, JSONFormat::NewtonsoftFSharp> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const std::pair<TF, TS>& value) {
-    destination.SetObject();
+struct SerializeImpl<json::JSONStringifier<json::JSONFormat::NewtonsoftFSharp>, std::pair<TF, TS>> {
+  static void DoSerialize(json::JSONStringifier<json::JSONFormat::NewtonsoftFSharp>& json_stringifier,
+                          const std::pair<TF, TS>& value) {
     rapidjson::Value first_value;
     rapidjson::Value second_value;
-    SaveIntoJSONImpl<TF, JSONFormat::NewtonsoftFSharp>::Save(first_value, allocator, value.first);
-    SaveIntoJSONImpl<TS, JSONFormat::NewtonsoftFSharp>::Save(second_value, allocator, value.second);
-    destination.AddMember("Item1", first_value, allocator);
-    destination.AddMember("Item2", second_value, allocator);
-    return true;
+    json_stringifier.Inner(&first_value, value.first);
+    json_stringifier.Inner(&second_value, value.second);
+    json_stringifier.Current().SetObject();
+    json_stringifier.Current().AddMember("Item1", std::move(first_value.Move()), json_stringifier.Allocator());
+    json_stringifier.Current().AddMember("Item2", std::move(second_value.Move()), json_stringifier.Allocator());
   }
 };
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 template <typename TF, typename TS, class J>

@@ -34,19 +34,15 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
-namespace save {
 
-template <typename T, class J>
-struct SaveIntoJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
-  static bool Save(rapidjson::Value& destination, rapidjson::Document::AllocatorType&, const T& value) {
-    AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
-    return true;
+template <class JSON_FORMAT, typename T>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, T, std::enable_if_t<std::is_enum<T>::value>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const T enum_value) {
+    json_stringifier = static_cast<typename std::underlying_type<T>::type>(enum_value);
   }
 };
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 template <typename T, class J>

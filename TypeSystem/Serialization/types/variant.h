@@ -49,109 +49,109 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
+
 namespace json {
-namespace save {
+template <json::JSONVariantStyle, class JSON_FORMAT>
+class JSONVariantSerializer;
 
-template <JSONVariantStyle, class J>
-class VariantSerializerImpl;
-
-template <class J>
-class VariantSerializerImpl<JSONVariantStyle::Current, J> {
+template <class JSON_FORMAT>
+class JSONVariantSerializer<json::JSONVariantStyle::Current, JSON_FORMAT> {
  public:
-  VariantSerializerImpl(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
-      : destination_(destination), allocator_(allocator) {}
+  explicit JSONVariantSerializer(json::JSONStringifier<JSON_FORMAT>& json_stringifier)
+      : json_stringifier_(json_stringifier) {}
 
   template <typename X>
   ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
     rapidjson::Value serialized_object;
-    SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
+    json_stringifier_.Inner(&serialized_object, object);
 
     using namespace ::current::reflection;
     rapidjson::Value serialized_type_id;
-    SaveIntoJSONImpl<TypeID, J>::Save(
-        serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
+    json_stringifier_.Inner(&serialized_type_id,
+                            Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
 
-    destination_.SetObject();
+    json_stringifier_.Current().SetObject();
 
-    destination_.AddMember(
-        rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(), serialized_object, allocator_);
+    json_stringifier_.Current().AddMember(
+        std::move(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), json_stringifier_.Allocator()).Move()),
+        serialized_object,
+        json_stringifier_.Allocator());
 
-    if (JSONVariantTypeIDInEmptyKey<J>::value) {
-      destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+    if (json::JSONVariantTypeIDInEmptyKey<JSON_FORMAT>::value) {
+      json_stringifier_.Current().AddMember(
+          std::move(rapidjson::Value("", json_stringifier_.Allocator()).Move()),
+          serialized_type_id,
+          json_stringifier_.Allocator());
     }
-    if (JSONVariantTypeNameInDollarKey<J>::value) {
-      destination_.AddMember(rapidjson::Value("$", allocator_).Move(),
-                             rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
-                             allocator_);
+    if (json::JSONVariantTypeNameInDollarKey<JSON_FORMAT>::value) {
+      json_stringifier_.Current().AddMember(
+          std::move(rapidjson::Value("$", json_stringifier_.Allocator()).Move()),
+          std::move(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), json_stringifier_.Allocator()).Move()),
+          json_stringifier_.Allocator());
     }
   }
 
  private:
-  rapidjson::Value& destination_;
-  rapidjson::Document::AllocatorType& allocator_;
+  json::JSONStringifier<JSON_FORMAT>& json_stringifier_;
 };
 
-template <class J>
-class VariantSerializerImpl<JSONVariantStyle::Simple, J>
-    : public VariantSerializerImpl<JSONVariantStyle::Current, J> {
-  using VariantSerializerImpl<JSONVariantStyle::Current, J>::VariantSerializerImpl;
+template <class JSON_FORMAT>
+class JSONVariantSerializer<json::JSONVariantStyle::Simple, JSON_FORMAT>
+    : public JSONVariantSerializer<json::JSONVariantStyle::Current, JSON_FORMAT> {
+  using JSONVariantSerializer<json::JSONVariantStyle::Current, JSON_FORMAT>::JSONVariantSerializer;
 };
 
-template <class J>
-class VariantSerializerImpl<JSONVariantStyle::NewtonsoftFSharp, J> {
+template <class JSON_FORMAT>
+class JSONVariantSerializer<json::JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT> {
  public:
-  VariantSerializerImpl(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
-      : destination_(destination), allocator_(allocator) {}
+  explicit JSONVariantSerializer(json::JSONStringifier<JSON_FORMAT>& json_stringifier)
+      : json_stringifier_(json_stringifier) {}
 
   template <typename X>
   ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
     rapidjson::Value serialized_object;
+    json_stringifier_.Inner(&serialized_object, object);
 
-    SaveIntoJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Save(serialized_object, allocator_, object);
-
-    using namespace ::current::reflection;
-
-    destination_.SetObject();
-    destination_.AddMember(rapidjson::Value("Case", allocator_).Move(),
-                           rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
-                           allocator_);
+    json_stringifier_.Current().SetObject();
+    json_stringifier_.Current().AddMember(
+        std::move(rapidjson::Value("Case", json_stringifier_.Allocator()).Move()),
+        std::move(rapidjson::Value(reflection::CurrentTypeName<X>(), json_stringifier_.Allocator()).Move()),
+        json_stringifier_.Allocator());
 
     if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
       rapidjson::Value fields_as_array;
       fields_as_array.SetArray();
-      fields_as_array.PushBack(serialized_object.Move(), allocator_);
+      fields_as_array.PushBack(std::move(serialized_object.Move()), json_stringifier_.Allocator());
 
-      destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+      json_stringifier_.Current().AddMember(
+          std::move(rapidjson::Value("Fields", json_stringifier_.Allocator()).Move()),
+          std::move(fields_as_array.Move()),
+          json_stringifier_.Allocator());
     }
   }
 
  private:
-  rapidjson::Value& destination_;
-  rapidjson::Document::AllocatorType& allocator_;
+  json::JSONStringifier<JSON_FORMAT>& json_stringifier_;
 };
+}  // namespace current::serialize::json
 
-template <typename T, class J>
-struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
-  // Variant objects are serialized in a different way for F#.
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const T& value) {
+template <class JSON_FORMAT, typename T>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, T, std::enable_if_t<IS_CURRENT_VARIANT(T)>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const T& value) {
     if (Exists(value)) {
-      VariantSerializerImpl<J::variant_style, J> impl(destination, allocator);
+      json::JSONVariantSerializer<JSON_FORMAT::variant_style, JSON_FORMAT> impl(json_stringifier);
       value.Call(impl);
-      return true;
     } else {
-      if (JSONVariantStyleUseNulls<J::variant_style>::value) {
-        destination.SetNull();
-        return true;
+      if (json::JSONVariantStyleUseNulls<JSON_FORMAT::variant_style>::value) {
+        json_stringifier.Current().SetNull();
       } else {
-        return false;
+        json_stringifier.MarkAsAbsentValue();
       }
     }
   }
 };
-}  // namespace save
 
+namespace json {
 namespace load {
 
 template <JSONVariantStyle J, class JSON_FORMAT, typename VARIANT>
@@ -168,12 +168,11 @@ struct LoadVariantImpl<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
     }
 
     void DoLoadVariant(rapidjson::Value* source, VARIANT& destination, const std::string& path) const {
-      using namespace ::current::reflection;
       if (source && source->IsObject()) {
-        TypeID type_id;
+        reflection::TypeID type_id;
         if (source->HasMember("")) {
           rapidjson::Value* member = &(*source)[""];
-          LoadFromJSONImpl<TypeID, JSON_FORMAT>::Load(member, type_id, path + "[\"\"]");
+          LoadFromJSONImpl<reflection::TypeID, JSON_FORMAT>::Load(member, type_id, path + "[\"\"]");
           const auto cit = deserializers_.find(type_id);
           if (cit != deserializers_.end()) {
             cit->second->Deserialize(source, destination, path);
@@ -189,19 +188,17 @@ struct LoadVariantImpl<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
     };
 
    private:
-    using deserializers_map_t =
-        std::unordered_map<::current::reflection::TypeID,
-                           std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>,
-                           ::current::CurrentHashFunction<::current::reflection::TypeID>>;
+    using deserializers_map_t = std::unordered_map<reflection::TypeID,
+                                                   std::unique_ptr<LoadVariantGenericDeserializer<JSON_FORMAT>>,
+                                                   CurrentHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
     struct Registerer {
       void DispatchToAll(deserializers_map_t& deserializers) {
-        using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list. They would be deserialized correctly.
-        deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
-            std::make_unique<TypedDeserializer<X, JSON_FORMAT>>(CurrentTypeName<X>());
+        deserializers[Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<X>()).type_id] =
+            std::make_unique<TypedDeserializer<X, JSON_FORMAT>>(reflection::CurrentTypeName<X>());
       }
     };
   };
@@ -224,7 +221,6 @@ struct LoadVariantImpl<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
     }
 
     void DoLoadVariant(rapidjson::Value* source, VARIANT& destination, const std::string& path) const {
-      using namespace ::current::reflection;
       if (source && source->IsObject()) {
         std::string case_name = "";
         rapidjson::Value* value = nullptr;
@@ -270,10 +266,10 @@ struct LoadVariantImpl<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
     template <typename X>
     struct RegistererByName {
       void DispatchToAll(deserializers_map_t& deserializers) {
-        using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X, JSON_FORMAT>>();
+        deserializers[reflection::CurrentTypeName<X>()] =
+            std::make_unique<TypedDeserializerMinimalistic<X, JSON_FORMAT>>();
       }
     };
   };
@@ -296,7 +292,6 @@ struct LoadVariantImpl<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT>
     }
 
     void DoLoadVariant(rapidjson::Value* source, VARIANT& destination, const std::string& path) const {
-      using namespace ::current::reflection;
       if (source && source->IsObject()) {
         if (source->HasMember("Case")) {
           rapidjson::Value* member = &(*source)["Case"];
@@ -324,10 +319,10 @@ struct LoadVariantImpl<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT>
     template <typename X>
     struct RegistererByName {
       void DispatchToAll(deserializers_map_t& deserializers) {
-        using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X, JSON_FORMAT>>();
+        deserializers[reflection::CurrentTypeName<X>()] =
+            std::make_unique<TypedDeserializerFSharp<X, JSON_FORMAT>>();
       }
     };
   };

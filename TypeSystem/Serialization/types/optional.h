@@ -34,36 +34,28 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
-namespace save {
 
-template <typename T, class J>
-struct SaveIntoJSONImpl<Optional<T>, J> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const Optional<T>& value) {
+template <class JSON_FORMAT, typename T>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, Optional<T>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const Optional<T>& value) {
     if (Exists(value)) {
-      SaveIntoJSONImpl<T, J>::Save(destination, allocator, Value(value));
-      return true;
+      Serialize(json_stringifier, Value(value));
     } else {
       // Current's default JSON parser would accept a missing field as well for no value,
       // but output it as `null` nonetheless, for clarity.
-      destination.SetNull();
-      return true;
+      json_stringifier.Current().SetNull();
     }
   }
 };
 
 template <typename T>
-struct SaveIntoJSONImpl<Optional<T>, JSONFormat::Minimalistic> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const Optional<T>& value) {
+struct SerializeImpl<json::JSONStringifier<json::JSONFormat::Minimalistic>, Optional<T>> {
+  static void DoSerialize(json::JSONStringifier<json::JSONFormat::Minimalistic>& json_stringifier,
+                          const Optional<T>& value) {
     if (Exists(value)) {
-      SaveIntoJSONImpl<T, JSONFormat::Minimalistic>::Save(destination, allocator, Value(value));
-      return true;
+      Serialize(json_stringifier, Value(value));
     } else {
-      return false;
+      json_stringifier.MarkAsAbsentValue();
     }
   }
 };
@@ -72,28 +64,27 @@ struct SaveIntoJSONImpl<Optional<T>, JSONFormat::Minimalistic> {
 // type with the signature `Optional<'T> = | Some 'T | None`.
 // Thus, yeah, for a non-null `Optional` in F#, we need "Case" and "Fields".
 template <typename T>
-struct SaveIntoJSONImpl<Optional<T>, JSONFormat::NewtonsoftFSharp> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const Optional<T>& value) {
+struct SerializeImpl<json::JSONStringifier<json::JSONFormat::NewtonsoftFSharp>, Optional<T>> {
+  static void DoSerialize(json::JSONStringifier<json::JSONFormat::NewtonsoftFSharp>& json_stringifier,
+                          const Optional<T>& value) {
     if (Exists(value)) {
       rapidjson::Value ultimate_destination;
-      SaveIntoJSONImpl<T, JSONFormat::Minimalistic>::Save(ultimate_destination, allocator, Value(value));
+      json_stringifier.Inner(&ultimate_destination, Value(value));
       rapidjson::Value array_of_one_element_containing_value;
       array_of_one_element_containing_value.SetArray();
-      array_of_one_element_containing_value.PushBack(ultimate_destination.Move(), allocator);
-      destination.SetObject();
-      destination.AddMember("Case", "Some", allocator);
-      destination.AddMember("Fields", array_of_one_element_containing_value, allocator);
-      return true;
+      array_of_one_element_containing_value.PushBack(std::move(ultimate_destination.Move()),
+                                                     json_stringifier.Allocator());
+      json_stringifier.Current().SetObject();
+      json_stringifier.Current().AddMember("Case", "Some", json_stringifier.Allocator());
+      json_stringifier.Current().AddMember(
+          "Fields", std::move(array_of_one_element_containing_value.Move()), json_stringifier.Allocator());
     } else {
-      return false;
+      json_stringifier.MarkAsAbsentValue();
     }
   }
 };
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 template <typename T, class J>

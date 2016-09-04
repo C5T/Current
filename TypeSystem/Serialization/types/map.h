@@ -35,47 +35,41 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
-namespace save {
 
-template <typename TK, typename TV, typename TC, typename TA, class J>
-struct SaveIntoJSONImpl<std::map<TK, TV, TC, TA>, J> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const std::map<TK, TV, TC, TA>& value) {
-    destination.SetArray();
+template <class JSON_FORMAT, typename TK, typename TV, typename TC, typename TA>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::map<TK, TV, TC, TA>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier,
+                          const std::map<TK, TV, TC, TA>& value) {
+    json_stringifier.Current().SetArray();
     for (const auto& element : value) {
       rapidjson::Value key_value_as_array;
       key_value_as_array.SetArray();
       rapidjson::Value populated_key;
       rapidjson::Value populated_value;
-      SaveIntoJSONImpl<TK, J>::Save(populated_key, allocator, element.first);
-      SaveIntoJSONImpl<TV, J>::Save(populated_value, allocator, element.second);
-      key_value_as_array.PushBack(populated_key, allocator);
-      key_value_as_array.PushBack(populated_value, allocator);
-      destination.PushBack(key_value_as_array, allocator);
+      json_stringifier.Inner(&populated_key, element.first);
+      json_stringifier.Inner(&populated_value, element.second);
+      key_value_as_array.PushBack(std::move(populated_key.Move()), json_stringifier.Allocator());
+      key_value_as_array.PushBack(std::move(populated_value.Move()), json_stringifier.Allocator());
+      json_stringifier.Current().PushBack(std::move(key_value_as_array.Move()), json_stringifier.Allocator());
     }
-    return true;
   }
 };
 
-template <typename TV, typename TC, typename TA, class J>
-struct SaveIntoJSONImpl<std::map<std::string, TV, TC, TA>, J> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const std::map<std::string, TV, TC, TA>& value) {
-    destination.SetObject();
+template <class JSON_FORMAT, typename TV, typename TC, typename TA>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::map<std::string, TV, TC, TA>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier,
+                          const std::map<std::string, TV, TC, TA>& value) {
+    json_stringifier.Current().SetObject();
     for (const auto& element : value) {
       rapidjson::Value populated_value;
-      SaveIntoJSONImpl<TV, J>::Save(populated_value, allocator, element.second);
-      destination.AddMember(rapidjson::StringRef(element.first), populated_value, allocator);
+      json_stringifier.Inner(&populated_value, element.second);
+      json_stringifier.Current().AddMember(
+          rapidjson::StringRef(element.first), std::move(populated_value.Move()), json_stringifier.Allocator());
     }
-    return true;
   }
 };
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 template <typename TK, typename TV, typename TC, typename TA, class J>

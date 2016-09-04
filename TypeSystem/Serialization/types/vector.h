@@ -32,27 +32,20 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
 
-namespace save {
-
-template <typename TT, typename TA, class J>
-struct SaveIntoJSONImpl<std::vector<TT, TA>, J> {
-  static bool Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const std::vector<TT, TA>& value) {
-    destination.SetArray();
-    rapidjson::Value element_to_push;
+template <class JSON_FORMAT, typename T>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<T>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::vector<T>& value) {
+    json_stringifier.Current().SetArray();
     for (const auto& element : value) {
-      SaveIntoJSONImpl<TT, J>::Save(element_to_push, allocator, element);
-      destination.PushBack(element_to_push, allocator);
+      rapidjson::Value element_to_push;
+      json_stringifier.Inner(&element_to_push, element);
+      json_stringifier.Current().PushBack(std::move(element_to_push.Move()), json_stringifier.Allocator());
     }
-    return true;
   }
 };
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 template <typename TT, typename TA, class J>

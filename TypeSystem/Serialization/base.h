@@ -31,9 +31,78 @@ SOFTWARE.
 #include "exceptions.h"
 #include "rapidjson.h"
 
+#include "../../Bricks/template/pod.h"  // `current::copy_free`.
+
 namespace current {
 namespace serialization {
+
+template <class SERIALIZER, typename T, typename ENABLE = void>
+struct SerializeImpl;
+
+template <class SERIALIZER, typename T>
+inline void Serialize(SERIALIZER&& serializer, T&& x) {
+  SerializeImpl<current::decay<SERIALIZER>, current::decay<T>>::DoSerialize(
+      std::forward<SERIALIZER>(serializer), std::forward<T>(x));
+}
+
 namespace json {
+
+template <typename T>
+struct JSONValueAssignerImpl {
+  static void AssignValue(rapidjson::Value& destination, current::copy_free<T> value) { destination = value; }
+};
+
+template <class JSON_FORMAT>
+class JSONStringifier final {
+ public:
+  JSONStringifier() {
+    current_ = &document_;  // Can't assign in the initializer list, `current_` is the field before `document_`.
+  }
+
+  rapidjson::Value& Current() { return *current_; }
+  rapidjson::Document::AllocatorType& Allocator() { return document_.GetAllocator(); }
+
+  template <typename T>
+  void operator=(T&& x) {
+    JSONValueAssignerImpl<current::decay<T>>::AssignValue(*current_, std::forward<T>(x));
+  }
+
+  // Serialize another object, in an inner scope. The object is guaranteed to result in a valid value.
+  template <typename T>
+  void Inner(rapidjson::Value* inner_value, T&& x) {
+    std::swap(current_, inner_value);
+    Serialize(*this, std::forward<T>(x));
+    std::swap(current_, inner_value);
+  }
+
+  // Serialize another object, in an inner scope. The object may end up a no-op, which should be ignored.
+  // Example: A `Variant` or `Optional` in the `Minimalistic` format.
+  void MarkAsAbsentValue() { current_ = nullptr; }
+  template <typename T>
+  bool MaybeInner(rapidjson::Value* inner_value, T&& x) {
+    rapidjson::Value* previous = current_;
+    current_ = inner_value;
+    Serialize(*this, std::forward<T>(x));
+    if (current_) {
+      current_ = previous;
+      return true;
+    } else {
+      current_ = previous;
+      return false;
+    }
+  }
+
+  std::string ResultingJSON() const {
+    rapidjson::StringBuffer string_buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(string_buffer);
+    document_.Accept(writer);
+    return string_buffer.GetString();
+  }
+
+ private:
+  rapidjson::Value* current_;
+  rapidjson::Document document_;
+};
 
 enum class JSONVariantStyle : int { Current, Simple, NewtonsoftFSharp };
 
@@ -93,23 +162,6 @@ template <class J>
 struct JSONPatchMode<JSONPatcher<J>> {
   constexpr static bool value = true;
 };
-
-namespace save {
-
-template <typename T>
-struct AssignToRapidJSONValueImpl {
-  static void WithDedicatedTreatment(rapidjson::Value& destination, const T& value) { destination = value; }
-};
-
-template <typename T>
-void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
-  AssignToRapidJSONValueImpl<T>::WithDedicatedTreatment(destination, value);
-}
-
-template <typename, typename JSON_FORMAT, typename ENABLE = void>
-struct SaveIntoJSONImpl;
-
-}  // namespace save
 
 namespace load {
 

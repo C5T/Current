@@ -65,20 +65,8 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
+
 namespace json {
-
-template <class J, typename T>
-std::string CreateJSONViaRapidJSON(const T& value) {
-  rapidjson::Document document;
-  rapidjson::Value& destination = document;
-
-  save::SaveIntoJSONImpl<T, J>::Save(destination, document.GetAllocator(), value);
-
-  rapidjson::StringBuffer string_buffer;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(string_buffer);
-  document.Accept(writer);
-  return string_buffer.GetString();
-}
 
 template <class J, typename T>
 void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
@@ -93,7 +81,9 @@ void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
 
 template <class J = JSONFormat::Current, typename T>
 inline std::string JSON(const T& source) {
-  return CreateJSONViaRapidJSON<J>(source);
+  JSONStringifier<J> json_stringifier;
+  Serialize(json_stringifier, source);
+  return json_stringifier.ResultingJSON();
 }
 
 template <class J = JSONFormat::Current>

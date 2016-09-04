@@ -33,45 +33,42 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-namespace json {
-namespace save {
 
+namespace json {
 template <>
-struct AssignToRapidJSONValueImpl<std::string> {
-  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::string& value) {
+struct JSONValueAssignerImpl<std::string> {
+  static void AssignValue(rapidjson::Value& destination, const std::string& value) {
     destination = rapidjson::StringRef(value);
   }
 };
 
 template <>
-struct AssignToRapidJSONValueImpl<std::chrono::microseconds> {
-  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::chrono::microseconds& value) {
+struct JSONValueAssignerImpl<std::chrono::microseconds> {
+  static void AssignValue(rapidjson::Value& destination, std::chrono::microseconds value) {
     destination.SetInt64(value.count());
   }
 };
 
 template <>
-struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
-  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::chrono::milliseconds& value) {
+struct JSONValueAssignerImpl<std::chrono::milliseconds> {
+  static void AssignValue(rapidjson::Value& destination, std::chrono::milliseconds value) {
     destination.SetInt64(value.count());
   }
 };
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, ignore_h, ignore_fs, ignore_md) \
-  template <class J>                                                                                  \
-  struct SaveIntoJSONImpl<cpp_type, J> {                                                              \
-    static bool Save(rapidjson::Value& destination,                                                   \
-                     rapidjson::Document::AllocatorType&,                                             \
-                     const cpp_type& value) {                                                         \
-      AssignToRapidJSONValue(destination, value);                                                     \
-      return true;                                                                                    \
-    }                                                                                                 \
+}  // namespace current::serialization::json
+
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, ignore_h, ignore_fs, ignore_md)          \
+  template <class JSON_FORMAT>                                                                                 \
+  struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, cpp_type> {                                         \
+    static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, copy_free<cpp_type> value) { \
+      json_stringifier = value;                                                                                \
+    }                                                                                                          \
   };
 #include "../../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
-}  // namespace save
-
+namespace json {
 namespace load {
 
 // `uint*_t`.
