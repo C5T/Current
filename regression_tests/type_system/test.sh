@@ -22,9 +22,8 @@ TEST_LIST=(
 
 CPLUSPLUS=${CPLUSPLUS:-g++}
 CPPFLAGS=${CPPFLAGS:- -std=c++11 -ftemplate-backtrace-limit=0  -ftemplate-depth=10000}
-LDFLAGS=${LDFLAGS:- -pthread}
 OS=$(uname)
-if [[ $OS -ne "Darwin" ]]; then
+if [ $OS != "Darwin" ]; then
 	LDFLAGS=${LDFLAGS:- -pthread}
 fi
 
