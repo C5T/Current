@@ -23,15 +23,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_STRUCT_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_STRUCT_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_STRUCT_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_STRUCT_H
 
 #include <type_traits>
 
-#include "../base.h"
+#include "json.h"
 
-#include "../../struct.h"
-#include "../../types.h"
+#include "../../Reflection/reflection.h"
 
 #include "../../../Bricks/template/enable_if.h"
 
@@ -214,4 +213,4 @@ struct LoadFromBinaryImpl<T, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, 
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_STRUCT_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_STRUCT_H

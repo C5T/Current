@@ -23,13 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PRIMITIVE_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PRIMITIVE_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PRIMITIVES_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PRIMITIVES_H
 
 #include <string>
 #include <chrono>
 
-#include "../base.h"
+#include "json.h"
 
 namespace current {
 namespace serialization {
@@ -292,4 +292,4 @@ struct LoadPrimitiveTypeFromBinary {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PRIMITIVE_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PRIMITIVES_H

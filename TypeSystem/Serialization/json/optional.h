@@ -23,12 +23,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_OPTIONAL_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_OPTIONAL_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_OPTIONAL_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_OPTIONAL_H
 
 #include <type_traits>
 
-#include "primitive.h"
+#include "primitives.h"
 
 #include "../../optional.h"
 
@@ -180,4 +180,4 @@ struct LoadFromBinaryImpl<Optional<T>> {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_OPTIONAL_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_OPTIONAL_H

@@ -23,13 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VARIANT_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VARIANT_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VARIANT_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VARIANT_H
 
 #include <type_traits>
 
-#include "primitive.h"
-#include "current_typeid.h"
+#include "primitives.h"
+#include "typeid.h"
 
 #include "../../variant.h"
 #include "../../Reflection/reflection.h"
@@ -357,4 +357,4 @@ namespace binary {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VARIANT_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VARIANT_H

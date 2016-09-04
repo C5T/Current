@@ -23,12 +23,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PAIR_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PAIR_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PAIR_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PAIR_H
 
 #include <utility>
 
-#include "../base.h"
+#include "json.h"
 
 namespace current {
 namespace serialization {
@@ -120,4 +120,4 @@ struct LoadFromBinaryImpl<std::pair<TF, TS>> {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PAIR_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PAIR_H

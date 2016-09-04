@@ -27,22 +27,7 @@ SOFTWARE.
 
 #include <chrono>  // For the future use of "primitive_types.dsl.h".
 
-#include "base.h"
-
-// Basic types.
-#include "types/primitive.h"
-#include "types/enum.h"
-
-// STL containers.
-#include "types/vector.h"
-#include "types/pair.h"
-#include "types/map.h"
-
-// Current types.
-#include "types/current_typeid.h"
-#include "types/current_struct.h"
-#include "types/optional.h"
-#include "types/variant.h"
+#include "serialization.h"
 
 namespace current {
 namespace serialization {

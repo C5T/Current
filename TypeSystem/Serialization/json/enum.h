@@ -23,12 +23,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_ENUM_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_ENUM_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_ENUM_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_ENUM_H
 
 #include <type_traits>
 
-#include "primitive.h"
+#include "primitives.h"
 
 #include "../../../Bricks/template/enable_if.h"
 
@@ -103,4 +103,4 @@ struct LoadFromBinaryImpl<T, ENABLE_IF<std::is_enum<T>::value>> {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_ENUM_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_ENUM_H

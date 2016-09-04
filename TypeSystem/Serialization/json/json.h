@@ -23,29 +23,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_BASE_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_BASE_H
-
-#include <iostream>
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_JSON_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_JSON_H
 
 #include "exceptions.h"
 #include "rapidjson.h"
 
-#include "../../Bricks/template/pod.h"  // `current::copy_free`.
+#include "../serialization.h"
+
+#include "../../helpers.h"
+
+#include "../../../Bricks/template/pod.h"  // `current::copy_free`.
 
 namespace current {
 namespace serialization {
-
-template <class SERIALIZER, typename T, typename ENABLE = void>
-struct SerializeImpl;
-
-template <class SERIALIZER, typename T>
-inline void Serialize(SERIALIZER&& serializer, T&& x) {
-  SerializeImpl<current::decay<SERIALIZER>, current::decay<T>>::DoSerialize(
-      std::forward<SERIALIZER>(serializer), std::forward<T>(x));
-}
-
 namespace json {
+
+namespace load {
+template <typename, typename JSON_FORMAT, typename ENABLE = void>
+struct LoadFromJSONImpl;
+}  // namespace current::serialization::json::load
 
 template <typename T>
 struct JSONValueAssignerImpl {
@@ -56,7 +53,9 @@ template <class JSON_FORMAT>
 class JSONStringifier final {
  public:
   JSONStringifier() {
-    current_ = &document_;  // Can't assign in the initializer list, `current_` is the field before `document_`.
+    // Can't assign in the initializer list, `current_` is the field before `document_`.
+    // And I've confirmed keeping `document_` first results in performance degradation. -- D.K.
+    current_ = &document_;
   }
 
   rapidjson::Value& Current() { return *current_; }
@@ -163,55 +162,76 @@ struct JSONPatchMode<JSONPatcher<J>> {
   constexpr static bool value = true;
 };
 
-namespace load {
-
-template <typename, typename JSON_FORMAT, typename ENABLE = void>
-struct LoadFromJSONImpl;
-
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-
-// Using platform-independent size type for binary (de)serialization.
-typedef uint64_t BINARY_FORMAT_SIZE_TYPE;
-typedef uint8_t BINARY_FORMAT_BOOL_TYPE;
-
-namespace save {
-
-inline void SaveSizeIntoBinary(std::ostream& ostream, const size_t size) {
-  const BINARY_FORMAT_SIZE_TYPE save_size = size;
-  const size_t bytes_written =
-      ostream.rdbuf()->sputn(reinterpret_cast<const char*>(&save_size), sizeof(BINARY_FORMAT_SIZE_TYPE));
-  if (bytes_written != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
-    throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_written);  // LCOV_EXCL_LINE
+template <class J, typename T>
+void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
+  rapidjson::Document document;
+  if (document.Parse(json.c_str()).HasParseError()) {
+    throw InvalidJSONException(json);
   }
-};
+  load::LoadFromJSONImpl<T, J>::Load(&document, destination, "");
+}
 
-template <typename, typename Enable = void>
-struct SaveIntoBinaryImpl;
+template <class J = JSONFormat::Current, typename T>
+inline std::string JSON(const T& source) {
+  JSONStringifier<J> json_stringifier;
+  Serialize(json_stringifier, source);
+  return json_stringifier.ResultingJSON();
+}
 
-}  // namespace save
+template <class J = JSONFormat::Current>
+inline std::string JSON(const char* special_case_bare_c_string) {
+  return JSON<J>(std::string(special_case_bare_c_string));
+}
 
-namespace load {
-
-inline BINARY_FORMAT_SIZE_TYPE LoadSizeFromBinary(std::istream& istream) {
-  BINARY_FORMAT_SIZE_TYPE result;
-  const size_t bytes_read =
-      istream.rdbuf()->sgetn(reinterpret_cast<char*>(&result), sizeof(BINARY_FORMAT_SIZE_TYPE));
-  if (bytes_read != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
-    throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_read);  // LCOV_EXCL_LINE
+template <typename T, class J = JSONFormat::Current>
+inline void ParseJSON(const std::string& source, T& destination) {
+  try {
+    ParseJSONViaRapidJSON<J>(source, destination);
+    CheckIntegrity(destination);
+  } catch (UninitializedVariant) {
+    throw JSONUninitializedVariantObjectException();
   }
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline void PatchJSON(T& object, const std::string& json) {
+  try {
+    CheckIntegrity(object);  // TODO(dkorolev): Different exception for "was uninitialized before"?
+    ParseJSONViaRapidJSON<JSONPatcher<J>>(json, object);
+    CheckIntegrity(object);
+  } catch (UninitializedVariant) {
+    throw JSONUninitializedVariantObjectException();
+  }
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline T ParseJSON(const std::string& source) {
+  T result;
+  ParseJSON<T, J>(source, result);
   return result;
 }
 
-template <typename, typename Enable = void>
-struct LoadFromBinaryImpl;
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 
-}  // namespace load
-}  // namespace binary
-
-}  // namespace serialization
+// Keep top-level symbols both in `current::` and in global namespace.
+using serialization::json::JSON;
+using serialization::json::ParseJSON;
+using serialization::json::PatchJSON;
+using serialization::json::JSONFormat;
+using serialization::json::TypeSystemParseJSONException;
+using serialization::json::JSONSchemaException;
+using serialization::json::InvalidJSONException;
+using serialization::json::JSONUninitializedVariantObjectException;
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_BASE_H
+using current::JSON;
+using current::ParseJSON;
+using current::PatchJSON;
+using current::JSONFormat;
+using current::TypeSystemParseJSONException;
+using current::JSONSchemaException;
+using current::InvalidJSONException;
+using current::JSONUninitializedVariantObjectException;
+
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_JSON_H

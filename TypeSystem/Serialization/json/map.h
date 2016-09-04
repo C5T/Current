@@ -23,13 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_MAP_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_MAP_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H
 
 #include <type_traits>
 #include <map>
 
-#include "../base.h"
+#include "json.h"
 
 #include "../../../Bricks/template/enable_if.h"
 
@@ -157,4 +157,4 @@ struct LoadFromBinaryImpl<std::map<TK, TV, TC, TA>> {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_MAP_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H

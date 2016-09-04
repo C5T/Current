@@ -23,10 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_TYPEID_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_TYPEID_H
 
-#include "primitive.h"
+#include "primitives.h"
 
 #include "../../Reflection/types.h"
 
@@ -87,4 +87,4 @@ struct LoadFromBinaryImpl<reflection::TypeID> {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_TYPEID_H

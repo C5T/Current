@@ -26,7 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_IMPL_VARIANT_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_IMPL_VARIANT_H
 
-#include "../../base.h"
+#include "../json.h"
+
 #include "../../../struct.h"
 #include "../../../variant.h"
 

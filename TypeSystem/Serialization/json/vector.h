@@ -23,12 +23,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VECTOR_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VECTOR_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VECTOR_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VECTOR_H
 
 #include <vector>
 
-#include "../base.h"
+#include "json.h"
 
 namespace current {
 namespace serialization {
@@ -99,4 +99,4 @@ struct LoadFromBinaryImpl<std::vector<TT, TA>> {
 }  // namespace serialization
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VECTOR_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VECTOR_H

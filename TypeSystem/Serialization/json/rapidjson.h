@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_RAPIDJSON_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_RAPIDJSON_H
 
 // Keep all RapidJSON includes here, to make sure the right macros are defined. -- D.K.
 
-#include "exceptions_base.h"
+#include "../exceptions_base.h"
 
 inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
   current::serialization::json::RapidJSONAssertionFailedException e(text);
@@ -39,7 +39,7 @@ inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
 #define RAPIDJSON_HAS_STDSTRING 1
 #define RAPIDJSON_ASSERT(x) ((x) ? static_cast<void>(0) : RapidJSONAssertThrow(#x, __FILE__, __LINE__))
 
-#include "../../3rdparty/rapidjson/document.h"
-#include "../../3rdparty/rapidjson/prettywriter.h"
+#include "../../../3rdparty/rapidjson/document.h"
+#include "../../../3rdparty/rapidjson/prettywriter.h"
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_RAPIDJSON_H
