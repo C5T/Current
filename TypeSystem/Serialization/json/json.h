@@ -273,7 +273,7 @@ inline void ParseJSON(const std::string& source, T& destination) {
 }
 
 template <typename T, class J = JSONFormat::Current>
-inline void PatchJSON(T& object, const std::string& json) {
+inline void PatchObjectWithJSON(T& object, const std::string& json) {
   try {
     CheckIntegrity(object);  // TODO(dkorolev): Different exception for "was uninitialized before"?
     ParseJSONViaRapidJSON<JSONPatcher<J>>(json, object);
@@ -296,7 +296,7 @@ inline T ParseJSON(const std::string& source) {
 // Keep top-level symbols both in `current::` and in global namespace.
 using serialization::json::JSON;
 using serialization::json::ParseJSON;
-using serialization::json::PatchJSON;
+using serialization::json::PatchObjectWithJSON;
 using serialization::json::JSONFormat;
 using serialization::json::TypeSystemParseJSONException;
 using serialization::json::JSONSchemaException;
@@ -306,7 +306,7 @@ using serialization::json::JSONUninitializedVariantObjectException;
 
 using current::JSON;
 using current::ParseJSON;
-using current::PatchJSON;
+using current::PatchObjectWithJSON;
 using current::JSONFormat;
 using current::TypeSystemParseJSONException;
 using current::JSONSchemaException;

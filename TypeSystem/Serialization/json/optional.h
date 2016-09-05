@@ -94,9 +94,9 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, Optional<T>> {
       if (!json::JSONPatchMode<JSON_FORMAT>::value || json_parser) {
         // Nullify `destination` if at least one of two following conditions is true:
         // 1) The input JSON contains an explicit `null` (the `json_parser` check), OR
-        // 2) The logic invoked is `ParseJSON`, not `PatchJSON`.
-        // Effectively, always nullify the destination in `ParseJSON`, mode, and when in `PatchJSON` mode,
-        // take no action if the key is plain missing, yet treat the input `null` as explicit nullification.
+        // 2) The logic invoked is `ParseJSON`, not `PatchObjectWithJSON`.
+        // Effectively, always nullify the destination in `ParseJSON`, mode, and, when in `PatchObjectWithJSON`
+        // mode, take no action if the key is missing, yet treat the input `null` as explicit nullification.
         destination = nullptr;
       }
     }

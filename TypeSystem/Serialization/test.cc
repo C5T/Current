@@ -1170,7 +1170,7 @@ CURRENT_STRUCT(StructToPatch) {
 };
 }  // namespace serialization_test
 
-TEST(Serialization, PatchJSON) {
+TEST(Serialization, PatchObjectWithJSON) {
   using serialization_test::StructToPatch;
 
   auto s = ParseJSON<StructToPatch>("{\"a\":1,\"b\":\"one\",\"c\":null}");
@@ -1178,32 +1178,32 @@ TEST(Serialization, PatchJSON) {
   EXPECT_EQ("one", s.b);
   EXPECT_FALSE(Exists(s.c));
 
-  PatchJSON(s, "{}");
+  PatchObjectWithJSON(s, "{}");
   EXPECT_EQ(1, s.a);
   EXPECT_EQ("one", s.b);
   EXPECT_FALSE(Exists(s.c));
 
-  PatchJSON(s, "{\"a\":2}");
+  PatchObjectWithJSON(s, "{\"a\":2}");
   EXPECT_EQ(2, s.a);
   EXPECT_EQ("one", s.b);
   EXPECT_FALSE(Exists(s.c));
 
-  PatchJSON(s, "{\"b\":\"two\"}");
+  PatchObjectWithJSON(s, "{\"b\":\"two\"}");
   EXPECT_EQ(2, s.a);
   EXPECT_EQ("two", s.b);
   EXPECT_FALSE(Exists(s.c));
 
-  PatchJSON(s, "{\"c\":\"test\"}");
+  PatchObjectWithJSON(s, "{\"c\":\"test\"}");
   EXPECT_EQ(2, s.a);
   EXPECT_EQ("two", s.b);
   EXPECT_TRUE(Exists(s.c));
   EXPECT_EQ("test", Value(s.c));
 
-  PatchJSON(s, "{}");
+  PatchObjectWithJSON(s, "{}");
   EXPECT_TRUE(Exists(s.c));
   EXPECT_EQ("test", Value(s.c));
 
-  PatchJSON(s, "{\"c\":null}");
+  PatchObjectWithJSON(s, "{\"c\":null}");
   EXPECT_FALSE(Exists(s.c));
 }
 
