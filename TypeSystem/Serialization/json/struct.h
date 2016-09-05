@@ -90,54 +90,50 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>,
   }
 };
 
-namespace json {
-namespace load {
-
-template <class J>
-struct LoadFromJSONImpl<CurrentStruct, J> {
-  static void Load(rapidjson::Value*, CurrentStruct&, const std::string&) {}
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, CurrentStruct> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>&, CurrentStruct&) {}
 };
 
-template <typename T, class J>
-struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
-  struct LoadFieldVisitor {
-    rapidjson::Value& source_;
-    const std::string& path_;
+template <class JSON_FORMAT, typename T>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
+                       T,
+                       std::enable_if_t<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
+  class DeserializeSingleField {
+   public:
+    explicit DeserializeSingleField(json::JSONParser<JSON_FORMAT>& json_parser) : json_parser_(json_parser) {}
 
-    explicit LoadFieldVisitor(rapidjson::Value& source, const std::string& path)
-        : source_(source), path_(path) {}
-
-    // IMPORTANT: Pass in `const char* name`, as `const std::string& name`
+    // IMPORTANT: Must take `name` as `const char* name`, since `const std::string& name`
     // would fail memory-allocation-wise due to over-smartness of RapidJSON.
     template <typename U>
     void operator()(const char* name, U& value) const {
-      if (source_.HasMember(name)) {
-        LoadFromJSONImpl<U, J>::Load(&source_[name], value, path_ + '.' + name);
+      if (json_parser_.Current().HasMember(name)) {
+        json_parser_.Inner(&json_parser_.Current()[name], value, ".", name);
       } else {
-        LoadFromJSONImpl<U, J>::Load(nullptr, value, path_ + '.' + name);
+        json_parser_.Inner(nullptr, value, ".", name);
       }
     }
+
+   private:
+    json::JSONParser<JSON_FORMAT>& json_parser_;
   };
 
-  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
     using decayed_t = current::decay<T>;
     using super_t = current::reflection::SuperType<decayed_t>;
 
-    if (source && source->IsObject()) {
+    if (json_parser && json_parser.Current().IsObject()) {
       if (!std::is_same<super_t, CurrentStruct>::value) {
-        LoadFromJSONImpl<super_t, J>::Load(source, destination, path);
+        Deserialize(json_parser, static_cast<super_t&>(destination));
       }
-      LoadFieldVisitor visitor(*source, path);
       current::reflection::VisitAllFields<decayed_t, current::reflection::FieldNameAndMutableValue>::WithObject(
-          destination, visitor);
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsObject())) {
-      throw JSONSchemaException("object", source, path);  // LCOV_EXCL_LINE
+          destination, DeserializeSingleField(json_parser));
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsObject())) {
+      throw JSONSchemaException("object", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 

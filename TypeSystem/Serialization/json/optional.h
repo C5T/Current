@@ -84,22 +84,19 @@ struct SerializeImpl<json::JSONStringifier<json::JSONFormat::NewtonsoftFSharp>, 
   }
 };
 
-namespace json {
-namespace load {
-
-template <typename T, class J>
-struct LoadFromJSONImpl<Optional<T>, J> {
-  static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
-    if (source && !source->IsNull()) {
+template <class JSON_FORMAT, typename T>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, Optional<T>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, Optional<T>& destination) {
+    if (json_parser && !json_parser.Current().IsNull()) {
       destination = T();
-      LoadFromJSONImpl<T, J>::Load(source, Value(destination), path);
+      Deserialize(json_parser, Value(destination));
     } else {
-      if (!JSONPatchMode<J>::value || source) {
+      if (!json::JSONPatchMode<JSON_FORMAT>::value || json_parser) {
         // Nullify `destination` if at least one of two following conditions is true:
-        // 1) The input JSON contains an explicit `null` (the `source` check), OR
+        // 1) The input JSON contains an explicit `null` (the `json_parser` check), OR
         // 2) The logic invoked is `ParseJSON`, not `PatchJSON`.
         // Effectively, always nullify the destination in `ParseJSON`, mode, and when in `PatchJSON` mode,
-        // take no action if the key is plain missing, yet treat explicit `null` as explicit nullification.
+        // take no action if the key is plain missing, yet treat the input `null` as explicit nullification.
         destination = nullptr;
       }
     }
@@ -107,41 +104,39 @@ struct LoadFromJSONImpl<Optional<T>, J> {
 };
 
 template <typename T>
-struct LoadFromJSONImpl<Optional<T>, JSONFormat::NewtonsoftFSharp> {
-  static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
-    if (!source || source->IsNull()) {
+struct DeserializeImpl<json::JSONParser<JSONFormat::NewtonsoftFSharp>, Optional<T>> {
+  static void DoDeserialize(json::JSONParser<JSONFormat::NewtonsoftFSharp>& json_parser,
+                            Optional<T>& destination) {
+    if (!json_parser || json_parser.Current().IsNull()) {
       destination = nullptr;
     } else {
       bool ok = false;
-      if (source->IsObject() && source->HasMember("Case")) {
-        const auto& case_field = (*source)["Case"];
+      if (json_parser.Current().IsObject() && json_parser.Current().HasMember("Case")) {
+        const auto& case_field = json_parser.Current()["Case"];
         if (case_field.IsString()) {
           const char* case_field_value = case_field.GetString();
           if (!strcmp(case_field_value, "None")) {
             // Unnecessary, but to be safe. -- D.K.
             destination = nullptr;
             ok = true;
-          } else if (!strcmp(case_field_value, "Some") && source->HasMember("Fields")) {
-            auto& fields_field = (*source)["Fields"];
+          } else if (!strcmp(case_field_value, "Some") && json_parser.Current().HasMember("Fields")) {
+            auto& fields_field = json_parser.Current()["Fields"];
             if (fields_field.IsArray() && fields_field.Size() == 1u) {
               destination = T();
-              LoadFromJSONImpl<T, JSONFormat::NewtonsoftFSharp>::Load(
-                  &fields_field[0u], Value(destination), path);
+              json_parser.Inner(&fields_field[0u], Value(destination));
               ok = true;
             }
           }
         }
       }
       if (!ok) {
-        throw JSONSchemaException(
-            "optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`", source, path);
+        throw JSONSchemaException("optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`",
+                                  json_parser);
       }
     }
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 

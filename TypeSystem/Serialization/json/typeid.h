@@ -42,22 +42,20 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, reflection::TypeID> {
   }
 };
 
-namespace json {
-namespace load {
-
-template <class J>
-struct LoadFromJSONImpl<reflection::TypeID, J> {
-  static void Load(rapidjson::Value* source, reflection::TypeID& destination, const std::string& path) {
-    if (source && source->IsString() && *source->GetString() == 'T') {
-      destination = static_cast<reflection::TypeID>(current::FromString<uint64_t>(source->GetString() + 1));
-    } else if (!JSONPatchMode<J>::value || (source && !(source->IsString() && *source->GetString() == 'T'))) {
-      throw JSONSchemaException("TypeID", source, path);  // LCOV_EXCL_LINE
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, reflection::TypeID> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, reflection::TypeID& destination) {
+    if (json_parser && json_parser.Current().IsString() && *json_parser.Current().GetString() == 'T') {
+      destination =
+          static_cast<reflection::TypeID>(current::FromString<uint64_t>(json_parser.Current().GetString() + 1));
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
+               (json_parser &&
+                !(json_parser.Current().IsString() && *json_parser.Current().GetString() == 'T'))) {
+      throw JSONSchemaException("TypeID", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 

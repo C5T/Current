@@ -42,35 +42,29 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, T, std::enable_if_t<std
   }
 };
 
-namespace json {
-namespace load {
-
-template <typename T, class J>
-struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
-  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
-    // TODO(dkorolev): This `IsNumber` vs. `Get[U]Int64` part is scary.
-    if (source && source->IsNumber()) {
+template <class JSON_FORMAT, typename T>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<std::is_enum<T>::value>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
+    if (json_parser && json_parser.Current().IsNumber()) {
       if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
-        if (source->IsInt64()) {
-          destination = static_cast<T>(source->GetInt64());
+        if (json_parser.Current().IsInt64()) {
+          destination = static_cast<T>(json_parser.Current().GetInt64());
         } else {
-          throw JSONSchemaException("enum as unsigned integer", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("enum as unsigned integer", json_parser);  // LCOV_EXCL_LINE
         }
       } else {
-        if (source->IsUint64()) {
-          destination = static_cast<T>(source->GetUint64());
+        if (json_parser.Current().IsUint64()) {
+          destination = static_cast<T>(json_parser.Current().GetUint64());
         } else {
-          throw JSONSchemaException("enum as signed integer", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("enum as signed integer", json_parser);  // LCOV_EXCL_LINE
         }
       }
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsNumber())) {
-      throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsNumber())) {
+      throw JSONSchemaException("number", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 

@@ -481,7 +481,7 @@ TEST(Serialization, StructSchemaSerialization) {
       schema_json);
   // clang-format on
 
-  const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
+  const auto loaded_schema(ParseJSON<SchemaInfo>(schema_json));
 
   EXPECT_EQ(
       "namespace current_userspace {\n"

@@ -39,11 +39,7 @@ namespace current {
 namespace serialization {
 namespace json {
 
-namespace load {
-template <typename, typename JSON_FORMAT, typename ENABLE = void>
-struct LoadFromJSONImpl;
-}  // namespace current::serialization::json::load
-
+// For RapidJSON value assignments, specifically strings (use `SetString`, not `SetValue`) and `std::chrono::*`.
 template <typename T>
 struct JSONValueAssignerImpl {
   static void AssignValue(rapidjson::Value& destination, current::copy_free<T> value) { destination = value; }
@@ -149,7 +145,7 @@ struct JSONVariantTypeNameInDollarKey<JSONFormat::JavaScript> {
 
 template <class J>
 struct JSONPatcher {
-  using J::variant_style;
+  constexpr static JSONVariantStyle variant_style = J::variant_style;
 };
 
 template <class J>
@@ -162,13 +158,96 @@ struct JSONPatchMode<JSONPatcher<J>> {
   constexpr static bool value = true;
 };
 
+template <class JSON_FORMAT>
+class JSONParser final {
+ public:
+  explicit JSONParser(const char* json) {
+    if (document_.Parse(json).HasParseError()) {
+      throw InvalidJSONException(json);
+    }
+    current_ = &document_;
+  }
+  explicit JSONParser(const std::string& json) : JSONParser(json.c_str()) {}
+
+  operator bool() const { return current_; }
+  rapidjson::Value& Current() { return *current_; }
+  rapidjson::Value* CurrentAsPtr() { return current_; }
+
+  template <typename T>
+  void Inner(rapidjson::Value* inner_value, T&& x) {
+    std::swap(current_, inner_value);
+    Deserialize(*this, std::forward<T>(x));
+    std::swap(current_, inner_value);
+  }
+
+  template <typename T, typename P1>
+  void Inner(rapidjson::Value* inner_value, T&& x, P1 p1) {
+    path_.emplace_back(p1);
+    std::swap(current_, inner_value);
+    Deserialize(*this, std::forward<T>(x));
+    std::swap(current_, inner_value);
+    path_.pop_back();
+  }
+
+  // The `P1, P2, P3` and `CharPtrOrInt` magic are optimizations for fast JSON path construction. -- D.K.
+  template <typename T, typename P1, typename P2>
+  void Inner(rapidjson::Value* inner_value, T&& x, P1 p1, P2 p2) {
+    path_.emplace_back(p1);
+    path_.emplace_back(p2);
+    std::swap(current_, inner_value);
+    Deserialize(*this, std::forward<T>(x));
+    std::swap(current_, inner_value);
+    path_.pop_back();
+    path_.pop_back();
+  }
+
+  template <typename T, typename P1, typename P2, typename P3>
+  void Inner(rapidjson::Value* inner_value, T&& x, P1 p1, P2 p2, P3 p3) {
+    path_.emplace_back(p1);
+    path_.emplace_back(p2);
+    path_.emplace_back(p3);
+    std::swap(current_, inner_value);
+    Deserialize(*this, std::forward<T>(x));
+    std::swap(current_, inner_value);
+    path_.pop_back();
+    path_.pop_back();
+    path_.pop_back();
+  }
+
+  struct CharPtrOrInt {
+    const char* p;
+    int i;
+    CharPtrOrInt(const char* p) : p(p) {}
+    CharPtrOrInt(int i) : p(nullptr), i(i) {}
+    void AppendToString(std::string& s) const {
+      if (p) {
+        s.append(p);
+      } else {
+        s.append(current::ToString(i));
+      }
+    }
+  };
+
+  bool PathIsEmpty() const { return path_.empty(); }
+
+  std::string Path() const {
+    std::string path;
+    for (const CharPtrOrInt& p : path_) {
+      p.AppendToString(path);
+    }
+    return path[0] != '.' ? path : path.substr(1u);
+  }
+
+ private:
+  rapidjson::Value* current_;
+  std::vector<CharPtrOrInt> path_;
+  rapidjson::Document document_;
+};
+
 template <class J, typename T>
 void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
-  rapidjson::Document document;
-  if (document.Parse(json.c_str()).HasParseError()) {
-    throw InvalidJSONException(json);
-  }
-  load::LoadFromJSONImpl<T, J>::Load(&document, destination, "");
+  JSONParser<J> json_parser(json);
+  Deserialize(json_parser, destination);
 }
 
 template <class J = JSONFormat::Current, typename T>

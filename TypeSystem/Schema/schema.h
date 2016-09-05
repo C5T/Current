@@ -1203,10 +1203,10 @@ struct StructSchema final {
   StructSchema(SchemaInfo&& schema) : schema_(std::move(schema)) {}
 
   template <typename T>
-  ENABLE_IF<!IS_CURRENT_STRUCT_OR_VARIANT(T)> AddType() {}
+  std::enable_if_t<!IS_CURRENT_STRUCT_OR_VARIANT(T)> AddType() {}
 
   template <typename T>
-  ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(T)> AddType() {
+  std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(T)> AddType() {
     Reflector().ReflectType<T>().Call(TypeTraverser(schema_));
   }
 

@@ -45,26 +45,21 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<T>> {
   }
 };
 
-namespace json {
-namespace load {
-
-template <typename TT, typename TA, class J>
-struct LoadFromJSONImpl<std::vector<TT, TA>, J> {
-  static void Load(rapidjson::Value* source, std::vector<TT, TA>& destination, const std::string& path) {
-    if (source && source->IsArray()) {
-      const size_t size = source->Size();
+template <class JSON_FORMAT, typename TT, typename TA>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<TT, TA>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::vector<TT, TA>& destination) {
+    if (json_parser && json_parser.Current().IsArray()) {
+      const size_t size = json_parser.Current().Size();
       destination.resize(size);
       for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
-        LoadFromJSONImpl<TT, J>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
+        json_parser.Inner(&json_parser.Current()[i], destination[i], "[", static_cast<int>(i), "]");
       }
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsArray())) {
-      throw JSONSchemaException("array", source, path);  // LCOV_EXCL_LINE
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
+      throw JSONSchemaException("array", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 

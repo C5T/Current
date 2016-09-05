@@ -55,8 +55,7 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
     destination.SetInt64(value.count());
   }
 };
-
-}  // namespace current::serialization::json
+}  // namespace curent::serialization::json
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, ignore_h, ignore_fs, ignore_md)          \
   template <class JSON_FORMAT>                                                                                 \
@@ -68,108 +67,108 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
 #include "../../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
-namespace json {
-namespace load {
-
-// `uint*_t`.
-template <typename T, class J>
-struct LoadFromJSONImpl<T,
-                        J,
-                        ENABLE_IF<std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed &&
-                                  !std::is_same<T, bool>::value>> {
-  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
-    if (source && source->IsUint64()) {
-      destination = static_cast<T>(source->GetUint64());
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsUint64())) {
-      throw JSONSchemaException("unsigned integer", source, path);  // LCOV_EXCL_LINE
+// Parse `uint*_t`.
+template <class JSON_FORMAT, typename T>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
+                       T,
+                       std::enable_if_t<std::numeric_limits<T>::is_integer &&
+                                        !std::numeric_limits<T>::is_signed && !std::is_same<T, bool>::value>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
+    if (json_parser && json_parser.Current().IsUint64()) {
+      destination = static_cast<T>(json_parser.Current().GetUint64());
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsUint64())) {
+      throw JSONSchemaException("unsigned integer", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `int*_t`
-template <typename T, class J>
-struct LoadFromJSONImpl<T,
-                        J,
-                        ENABLE_IF<std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed>> {
-  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
-    if (source && source->IsInt64()) {
-      destination = static_cast<T>(source->GetInt64());
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsInt64())) {
-      throw JSONSchemaException("integer", source, path);  // LCOV_EXCL_LINE
+template <class JSON_FORMAT, typename T>
+struct DeserializeImpl<
+    json::JSONParser<JSON_FORMAT>,
+    T,
+    std::enable_if_t<std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
+    if (json_parser && json_parser.Current().IsInt64()) {
+      destination = static_cast<T>(json_parser.Current().GetInt64());
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsInt64())) {
+      throw JSONSchemaException("integer", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `float`.
-template <class J>
-struct LoadFromJSONImpl<float, J> {
-  static void Load(rapidjson::Value* source, float& destination, const std::string& path) {
-    if (source && source->IsDouble()) {
-      destination = static_cast<float>(source->GetDouble());
-    } else if (!JSONPatchMode<J>::value || (source && !(source->IsDouble()))) {
-      throw JSONSchemaException("float", source, path);  // LCOV_EXCL_LINE
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, float> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, float& destination) {
+    if (json_parser && json_parser.Current().IsDouble()) {
+      destination = static_cast<float>(json_parser.Current().GetDouble());
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
+               (json_parser && !(json_parser.Current().IsDouble()))) {
+      throw JSONSchemaException("float", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `double`.
-template <class J>
-struct LoadFromJSONImpl<double, J> {
-  static void Load(rapidjson::Value* source, double& destination, const std::string& path) {
-    if (source && source->IsDouble()) {
-      destination = source->GetDouble();
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsDouble())) {
-      throw JSONSchemaException("double", source, path);  // LCOV_EXCL_LINE
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, double> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, double& destination) {
+    if (json_parser && json_parser.Current().IsDouble()) {
+      destination = json_parser.Current().GetDouble();
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsDouble())) {
+      throw JSONSchemaException("double", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `std::string`.
-template <class J>
-struct LoadFromJSONImpl<std::string, J> {
-  static void Load(rapidjson::Value* source, std::string& destination, const std::string& path) {
-    if (source && source->IsString()) {
-      destination.assign(source->GetString(), source->GetStringLength());
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsString())) {
-      throw JSONSchemaException("string", source, path);  // LCOV_EXCL_LINE
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::string> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::string& destination) {
+    if (json_parser && json_parser.Current().IsString()) {
+      destination.assign(json_parser.Current().GetString(), json_parser.Current().GetStringLength());
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsString())) {
+      throw JSONSchemaException("string", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `bool`.
-template <class J>
-struct LoadFromJSONImpl<bool, J> {
-  static void Load(rapidjson::Value* source, bool& destination, const std::string& path) {
-    if (source && (source->IsTrue() || source->IsFalse())) {
-      destination = source->IsTrue();
-    } else if (!JSONPatchMode<J>::value || (source && !(source->IsTrue() || source->IsFalse()))) {
-      throw JSONSchemaException("bool", source, path);  // LCOV_EXCL_LINE
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, bool> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, bool& destination) {
+    if (json_parser && (json_parser.Current().IsTrue() || json_parser.Current().IsFalse())) {
+      destination = json_parser.Current().IsTrue();
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
+               (json_parser && !(json_parser.Current().IsTrue() || json_parser.Current().IsFalse()))) {
+      throw JSONSchemaException("bool", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
 // `std::chrono::milliseconds`.
-template <class J>
-struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
-  static void Load(rapidjson::Value* source, std::chrono::milliseconds& destination, const std::string& path) {
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::milliseconds> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
+                            std::chrono::milliseconds& destination) {
     int64_t value_as_int64;
-    LoadFromJSONImpl<int64_t, J>::Load(source, value_as_int64, path);
+    Deserialize(json_parser, value_as_int64);
     destination = std::chrono::milliseconds(value_as_int64);
   }
 };
 
 // `std::chrono::microseconds`.
-template <class J>
-struct LoadFromJSONImpl<std::chrono::microseconds, J> {
-  static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
+template <class JSON_FORMAT>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::microseconds> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
+                            std::chrono::microseconds& destination) {
     int64_t value_as_int64;
-    LoadFromJSONImpl<int64_t, J>::Load(source, value_as_int64, path);
+    Deserialize(json_parser, value_as_int64);
     destination = std::chrono::microseconds(value_as_int64);
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 

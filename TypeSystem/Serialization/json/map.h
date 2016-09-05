@@ -69,56 +69,53 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::map<std::string, T
   }
 };
 
-namespace json {
-namespace load {
-
-template <typename TK, typename TV, typename TC, typename TA, class J>
-struct LoadFromJSONImpl<std::map<TK, TV, TC, TA>, J> {
+template <class JSON_FORMAT, typename TK, typename TV, typename TC, typename TA, class J>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, J> {
   template <typename K = TK>
-  static ENABLE_IF<std::is_same<std::string, K>::value> Load(rapidjson::Value* source,
-                                                             std::map<TK, TV, TC, TA>& destination,
-                                                             const std::string& path) {
-    if (source && source->IsObject()) {
+  static std::enable_if_t<std::is_same<std::string, K>::value> DoDeserialize(
+      json::JSONParser<JSON_FORMAT>& json_parser, std::map<TK, TV, TC, TA>& destination) {
+    if (json_parser && json_parser.Current().IsObject()) {
       destination.clear();
       TK k;
       TV v;
-      for (rapidjson::Value::MemberIterator cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
-        LoadFromJSONImpl<TK, J>::Load(&cit->name, k, path);
-        LoadFromJSONImpl<TV, J>::Load(&cit->value, v, path);
-        destination.emplace(k, v);
+      for (rapidjson::Value::MemberIterator cit = json_parser.Current().MemberBegin();
+           cit != json_parser.Current().MemberEnd();
+           ++cit) {
+        json_parser.Inner(&cit->name, k);
+        json_parser.Inner(&cit->value, v);
+        destination.emplace(std::move(k), std::move(v));
       }
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsObject())) {
-      throw JSONSchemaException("map as object", source, path);  // LCOV_EXCL_LINE
+    } else if (!json::JSONPatchMode<J>::value || (json_parser && !json_parser.Current().IsObject())) {
+      throw JSONSchemaException("map as object", json_parser);  // LCOV_EXCL_LINE
     }
   }
 
   template <typename K = TK>
-  static ENABLE_IF<!std::is_same<std::string, K>::value> Load(rapidjson::Value* source,
-                                                              std::map<TK, TV, TC, TA>& destination,
-                                                              const std::string& path) {
-    if (source && source->IsArray()) {
+  static std::enable_if_t<!std::is_same<std::string, K>::value> DoDeserialize(
+      json::JSONParser<JSON_FORMAT>& json_parser, std::map<TK, TV, TC, TA>& destination) {
+    if (json_parser && json_parser.Current().IsArray()) {
       destination.clear();
-      for (rapidjson::Value::ValueIterator cit = source->Begin(); cit != source->End(); ++cit) {
+      for (rapidjson::Value::ValueIterator cit = json_parser.Current().Begin();
+           cit != json_parser.Current().End();
+           ++cit) {
         if (!cit->IsArray()) {
-          throw JSONSchemaException("map entry as array", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("map entry as array", json_parser);  // LCOV_EXCL_LINE
         }
         if (cit->Size() != 2u) {
-          throw JSONSchemaException("map entry as array of two elements", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("map entry as array of two elements", json_parser);  // LCOV_EXCL_LINE
         }
         TK k;
         TV v;
-        LoadFromJSONImpl<TK, J>::Load(&(*cit)[static_cast<rapidjson::SizeType>(0)], k, path);
-        LoadFromJSONImpl<TV, J>::Load(&(*cit)[static_cast<rapidjson::SizeType>(1)], v, path);
-        destination.emplace(k, v);
+        json_parser.Inner(&(*cit)[static_cast<rapidjson::SizeType>(0)], k);
+        json_parser.Inner(&(*cit)[static_cast<rapidjson::SizeType>(1)], v);
+        destination.emplace(std::move(k), std::move(v));
       }
-    } else if (!JSONPatchMode<J>::value || (source && !source->IsArray())) {
-      throw JSONSchemaException("map as array", source, path);  // LCOV_EXCL_LINE
+    } else if (!json::JSONPatchMode<J>::value || (json_parser && !json_parser.Current().IsArray())) {
+      throw JSONSchemaException("map as array", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
 
-}  // namespace current::serialization::json::load
-}  // namespace current::serialization::json
 }  // namespace current::serialization
 }  // namespace current
 
