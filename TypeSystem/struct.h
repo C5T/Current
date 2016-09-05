@@ -407,24 +407,24 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     CURRENT_CALL_F(#name, name);                                                                               \
   }
 
-#define CURRENT_CONSTRUCTOR(s)                                                                                 \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
-            class =                                                                                            \
-                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_CONSTRUCTOR(s)                                                                       \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                   \
+            class = std::enable_if_t<                                                                \
+                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSI_##s
 
-#define CURRENT_ASSIGN_OPER(s)                                                                                 \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
-            class =                                                                                            \
-                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_ASSIGN_OPER(s)                                                                       \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                   \
+            class = std::enable_if_t<                                                                \
+                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSI_##s& operator=
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
-#define CURRENT_CONSTRUCTOR_T(s)                                                                               \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
-            class =                                                                                            \
-                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_CONSTRUCTOR_T(s)                                                                     \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                   \
+            class = std::enable_if_t<                                                                \
+                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSTI_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR_T(s) CURRENT_CONSTRUCTOR_T(s)()

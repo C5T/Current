@@ -87,7 +87,7 @@ struct ReflectorImpl {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
     template <typename T>
-    ENABLE_IF<std::is_enum<T>::value, ReflectedType> operator()(TypeSelector<T>) {
+    std::enable_if_t<std::is_enum<T>::value, ReflectedType> operator()(TypeSelector<T>) {
       return ReflectedType(ReflectedType_Enum(
           EnumName<T>(),
           Value<ReflectedTypeBase>(Reflector().ReflectType<typename std::underlying_type<T>::type>()).type_id));
@@ -147,7 +147,7 @@ struct ReflectorImpl {
     }
 
     template <typename T>
-    ENABLE_IF<IS_CURRENT_STRUCT(T), void> operator()(TypeSelector<T>, ReflectedType_Struct& s) {
+    std::enable_if_t<IS_CURRENT_STRUCT(T), void> operator()(TypeSelector<T>, ReflectedType_Struct& s) {
       // Two step reflection is needed to support self-referring structs.
       if (TypePrefix(s.type_id) != TYPEID_INCOMPLETE_STRUCT_PREFIX) {
         s.native_name = CurrentTypeName<T>();
@@ -169,28 +169,30 @@ struct ReflectorImpl {
 
    private:
     template <typename T>
-    ENABLE_IF<std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
+    std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
       return TypeID::CurrentStruct;
     }
 
     template <typename T>
-    ENABLE_IF<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
+    std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<SuperType<T>>()).type_id;
     }
 
     template <typename T>
-    ENABLE_IF<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+    std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>>
+    ReflectTemplateInnerType() {
       return nullptr;
     }
 
     template <typename T>
-    ENABLE_IF<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+    std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>>
+    ReflectTemplateInnerType() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<TemplateInnerType<T>>()).type_id;
     }
   };
 
   template <typename T>
-  ENABLE_IF<!IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
+  std::enable_if_t<!IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
     const std::type_index type_index = std::type_index(typeid(T));
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.insert(std::make_pair(type_index, type_reflector_(TypeSelector<T>())));
@@ -203,7 +205,7 @@ struct ReflectorImpl {
   }
 
   template <typename T>
-  ENABLE_IF<IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
+  std::enable_if_t<IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
     const std::type_index type_index = std::type_index(typeid(T));
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.emplace(type_index, ReflectedType_Struct());

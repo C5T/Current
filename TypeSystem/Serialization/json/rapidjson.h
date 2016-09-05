@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,39 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_BASE_H
-#define TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_BASE_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_RAPIDJSON_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_RAPIDJSON_H
 
-#include "../exceptions.h"
-#include "../../Bricks/strings/strings.h"
+// Keep all RapidJSON includes here, to make sure the right macros are defined. -- D.K.
 
-namespace current {
-namespace serialization {
+#include "../exceptions_base.h"
 
-namespace json {
+inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
+  current::serialization::json::RapidJSONAssertionFailedException e(text);
+  e.SetCaller(text);
+  e.SetOrigin(file, line);
+  throw e;
+}
 
-struct TypeSystemParseJSONException : Exception {
-  using Exception::Exception;
-};
+#define RAPIDJSON_HAS_STDSTRING 1
+#define RAPIDJSON_ASSERT(x) ((x) ? static_cast<void>(0) : RapidJSONAssertThrow(#x, __FILE__, __LINE__))
 
-struct RapidJSONAssertionFailedException : TypeSystemParseJSONException {
-  using TypeSystemParseJSONException::TypeSystemParseJSONException;
-};
+#include "../../../3rdparty/rapidjson/document.h"
+#include "../../../3rdparty/rapidjson/prettywriter.h"
 
-struct InvalidJSONException : TypeSystemParseJSONException {
-  explicit InvalidJSONException(const std::string& json) : TypeSystemParseJSONException(json) {}
-};
-
-struct JSONUninitializedVariantObjectException : TypeSystemParseJSONException {};
-
-}  // namepsace current::serialization::json
-
-}  // namespace current::serialization
-}  // namespace current
-
-using current::serialization::json::InvalidJSONException;
-using current::serialization::json::TypeSystemParseJSONException;
-using current::serialization::json::RapidJSONAssertionFailedException;
-using current::serialization::json::JSONUninitializedVariantObjectException;
-
-#endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_BASE_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_RAPIDJSON_H

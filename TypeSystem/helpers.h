@@ -88,18 +88,18 @@ struct ExistsImplCaller {
   }
 };
 
-// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
+// MSVS is not friendly with `std::enable_if_t` as return type, but OK with it as a template parameter. -- D.K.
 template <typename T>
 struct ExistsImplCaller<T, T> {
   // Primitive types.
-  template <typename TT = T, class = ENABLE_IF<!sfinae::HasExistsImplMethod<TT>(0)>>
+  template <typename TT = T, class = std::enable_if_t<!sfinae::HasExistsImplMethod<TT>(0)>>
   static bool CallExistsImpl(TT&&) {
     return true;
   }
 
   // Special types.
-  template <typename TT = T, class = ENABLE_IF<sfinae::HasExistsImplMethod<TT>(0)>>
-  static ENABLE_IF<sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
+  template <typename TT = T, class = std::enable_if_t<sfinae::HasExistsImplMethod<TT>(0)>>
+  static std::enable_if_t<sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
     return x.ExistsImpl();
   }
 };
@@ -162,14 +162,14 @@ auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
       sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::forward<INPUT>(x));
 }
 
-// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
+// MSVS is not friendly with `std::enable_if_t` as return type, but OK with it as a template parameter. -- D.K.
 template <typename T>
 struct CheckIntegrityImplCaller {
-  template <typename TT = T, class = ENABLE_IF<!sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  template <typename TT = T, class = std::enable_if_t<!sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
   static void CallCheckIntegrityImpl(TT&&) {}
 
-  template <typename TT = T, class = ENABLE_IF<sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
-  static ENABLE_IF<sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
+  template <typename TT = T, class = std::enable_if_t<sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  static std::enable_if_t<sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
     x.CheckIntegrityImpl();
   }
 };

@@ -1,7 +1,8 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,24 +23,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_SERIALIZATION_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_SERIALIZATION_H
 
-// Keep all RapidJSON includes here, to make sure the right macros are defined. -- D.K.
+#include "exceptions.h"
 
-#include "exceptions_base.h"
+#include "../../Bricks/template/decay.h"
 
-inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
-  current::serialization::json::RapidJSONAssertionFailedException e(text);
-  e.SetCaller(text);
-  e.SetOrigin(file, line);
-  throw e;
+namespace current {
+namespace serialization {
+
+template <class SERIALIZER, typename T, typename ENABLE = void>
+struct SerializeImpl;
+
+template <class SERIALIZER, typename T, typename ENABLE = void>
+struct DeserializeImpl;
+
+template <class SERIALIZER, typename T>
+inline void Serialize(SERIALIZER&& serializer, T&& x) {
+  SerializeImpl<current::decay<SERIALIZER>, current::decay<T>>::DoSerialize(
+      std::forward<SERIALIZER>(serializer), std::forward<T>(x));
 }
 
-#define RAPIDJSON_HAS_STDSTRING 1
-#define RAPIDJSON_ASSERT(x) ((x) ? static_cast<void>(0) : RapidJSONAssertThrow(#x, __FILE__, __LINE__))
+template <class DESERIALIZER, typename T>
+inline void Deserialize(DESERIALIZER&& deserializer, T& x) {
+  DeserializeImpl<current::decay<DESERIALIZER>, T>::DoDeserialize(std::forward<DESERIALIZER>(deserializer), x);
+}
 
-#include "../../3rdparty/rapidjson/document.h"
-#include "../../3rdparty/rapidjson/prettywriter.h"
+}  // namespace serialization
+}  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_SERIALIZATION_H

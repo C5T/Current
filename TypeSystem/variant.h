@@ -165,7 +165,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
   }
 
 #ifdef FEWER_COMPILE_TIME_CHECKS
-  template <typename X, class ENABLE_IF = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
+  template <typename X, class = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
   VariantImpl(X&& input) {
     using decayed_x = current::decay<X>;
     variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_x>();
