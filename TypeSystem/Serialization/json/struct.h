@@ -136,81 +136,9 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T,
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <>
-struct SaveIntoBinaryImpl<CurrentStruct> {
-  static void Save(std::ostream&, const CurrentStruct&) {}
-};
-
-template <typename T>
-struct SaveIntoBinaryImpl<T, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
-  struct SerializeStructFieldVisitor {
-    std::ostream& ostream_;
-
-    explicit SerializeStructFieldVisitor(std::ostream& ostream) : ostream_(ostream) {}
-
-    template <typename U>
-    void operator()(const char*, const U& source) const {
-      SaveIntoBinaryImpl<U>::Save(ostream_, source);
-    }
-  };
-
-  static void Save(std::ostream& ostream, const T& source) {
-    using decayed_t = current::decay<T>;
-    using super_t = current::reflection::SuperType<decayed_t>;
-
-    SaveIntoBinaryImpl<super_t>::Save(ostream, source);
-
-    current::reflection::VisitAllFields<decayed_t, current::reflection::FieldNameAndImmutableValue>::WithObject(
-        source, SerializeStructFieldVisitor(ostream));
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <>
-struct LoadFromBinaryImpl<CurrentStruct> {
-  static void Load(std::istream&, CurrentStruct&) {}
-};
-
-template <typename T>
-struct LoadFromBinaryImpl<T, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
-  struct LoadFieldVisitor {
-    std::istream& istream_;
-
-    explicit LoadFieldVisitor(std::istream& istream) : istream_(istream) {}
-
-    template <typename U>
-    void operator()(const char*, U& value) const {
-      LoadFromBinaryImpl<U>::Load(istream_, value);
-    }
-  };
-
-  static void Load(std::istream& istream, T& destination) {
-    using decayed_t = current::decay<T>;
-    using super_t = current::reflection::SuperType<decayed_t>;
-
-    if (!std::is_same<super_t, CurrentStruct>::value) {
-      LoadFromBinaryImpl<super_t>::Load(istream, destination);
-    }
-
-    LoadFieldVisitor visitor(istream);
-    current::reflection::VisitAllFields<current::decay<T>,
-                                        current::reflection::FieldNameAndMutableValue>::WithObject(destination,
-                                                                                                   visitor);
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_STRUCT_H

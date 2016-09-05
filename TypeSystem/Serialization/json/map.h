@@ -117,44 +117,9 @@ struct LoadFromJSONImpl<std::map<TK, TV, TC, TA>, J> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <typename TK, typename TV, typename TC, typename TA>
-struct SaveIntoBinaryImpl<std::map<TK, TV, TC, TA>> {
-  static void Save(std::ostream& ostream, const std::map<TK, TV, TC, TA>& value) {
-    SaveSizeIntoBinary(ostream, value.size());
-    for (const auto& element : value) {
-      SaveIntoBinaryImpl<std::pair<TK, TV>>::Save(ostream, element);
-    }
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <typename TK, typename TV, typename TC, typename TA>
-struct LoadFromBinaryImpl<std::map<TK, TV, TC, TA>> {
-  static void Load(std::istream& istream, std::map<TK, TV, TC, TA>& destination) {
-    destination.clear();
-    BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
-    TK k;
-    TV v;
-    for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      LoadFromBinaryImpl<TK>::Load(istream, k);
-      LoadFromBinaryImpl<TV>::Load(istream, v);
-      destination.emplace(k, v);
-    }
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H

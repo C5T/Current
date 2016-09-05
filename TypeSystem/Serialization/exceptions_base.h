@@ -49,30 +49,6 @@ struct JSONUninitializedVariantObjectException : TypeSystemParseJSONException {}
 
 }  // namepsace current::serialization::json
 
-namespace binary {
-
-struct BinarySerializationException : Exception {
-  using Exception::Exception;
-};
-
-// LCOV_EXCL_START
-struct BinarySaveToStreamException : BinarySerializationException {
-  using BinarySerializationException::BinarySerializationException;
-  BinarySaveToStreamException(const size_t bytes_to_write, const size_t actually_wrote)
-      : BinarySerializationException("Failed to write " + current::ToString(bytes_to_write) +
-                                     " bytes, wrote only " + current::ToString(actually_wrote) + '.') {}
-};
-// LCOV_EXCL_STOP
-
-struct BinaryLoadFromStreamException : BinarySerializationException {
-  using BinarySerializationException::BinarySerializationException;
-  BinaryLoadFromStreamException(const size_t bytes_to_read, const size_t actually_read)
-      : BinarySerializationException("Failed to read " + current::ToString(bytes_to_read) +
-                                     " bytes, read only " + current::ToString(actually_read) + '.') {}
-};
-
-}  // namespace current::serialization::binary
-
 }  // namespace current::serialization
 }  // namespace current
 
@@ -80,8 +56,5 @@ using current::serialization::json::InvalidJSONException;
 using current::serialization::json::TypeSystemParseJSONException;
 using current::serialization::json::RapidJSONAssertionFailedException;
 using current::serialization::json::JSONUninitializedVariantObjectException;
-
-using current::serialization::binary::BinarySaveToStreamException;
-using current::serialization::binary::BinaryLoadFromStreamException;
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_BASE_H

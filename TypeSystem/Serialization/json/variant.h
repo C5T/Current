@@ -346,15 +346,9 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_VARIANT(T)>> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-
-// TODO(mzhurovich): Implement it.
-
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VARIANT_H

@@ -25,32 +25,6 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_BINARY_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_BINARY_H
 
-#include <chrono>  // For the future use of "primitive_types.dsl.h".
-
-#include "serialization.h"
-
-namespace current {
-namespace serialization {
-namespace binary {
-
-template <typename T>
-inline void SaveIntoBinary(std::ostream& ostream, const T& source) {
-  using DECAYED_T = current::decay<T>;
-  save::SaveIntoBinaryImpl<DECAYED_T>::Save(ostream, source);
-}
-
-template <typename T>
-inline T LoadFromBinary(std::istream& istream) {
-  T result;
-  load::LoadFromBinaryImpl<T>::Load(istream, result);
-  return result;
-}
-
-}  // namespace binary
-}  // namespace serialization
-}  // namespace current
-
-using current::serialization::binary::SaveIntoBinary;
-using current::serialization::binary::LoadFromBinary;
+// TBD.
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_BINARY_H

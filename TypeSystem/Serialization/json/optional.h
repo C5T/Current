@@ -140,44 +140,9 @@ struct LoadFromJSONImpl<Optional<T>, JSONFormat::NewtonsoftFSharp> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <typename T>
-struct SaveIntoBinaryImpl<Optional<T>> {
-  static void Save(std::ostream& ostream, const Optional<T>& value) {
-    const bool exists = Exists(value);
-    SaveIntoBinaryImpl<bool>::Save(ostream, exists);
-    if (exists) {
-      SaveIntoBinaryImpl<T>::Save(ostream, Value(value));
-    }
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <typename T>
-struct LoadFromBinaryImpl<Optional<T>> {
-  static void Load(std::istream& istream, Optional<T>& destination) {
-    bool exists;
-    LoadFromBinaryImpl<bool>::Load(istream, exists);
-    if (exists) {
-      destination = T();
-      LoadFromBinaryImpl<T>::Load(istream, Value(destination));
-    } else {
-      destination = nullptr;
-    }
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_OPTIONAL_H

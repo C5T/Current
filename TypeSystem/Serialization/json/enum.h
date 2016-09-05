@@ -69,38 +69,9 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <typename T>
-struct SaveIntoBinaryImpl<T, ENABLE_IF<std::is_enum<T>::value>> {
-  static void Save(std::ostream& ostream, const T& value) {
-    SavePrimitiveTypeIntoBinary::Save(ostream, static_cast<typename std::underlying_type<T>::type>(value));
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <typename T>
-struct LoadFromBinaryImpl<T, ENABLE_IF<std::is_enum<T>::value>> {
-  static void Load(std::istream& istream, T& destination) {
-    using underlying_t = typename std::underlying_type<T>::type;
-    const size_t bytes_read =
-        istream.rdbuf()->sgetn(reinterpret_cast<char*>(std::addressof(destination)), sizeof(underlying_t));
-    if (bytes_read != sizeof(underlying_t)) {
-      throw BinaryLoadFromStreamException(sizeof(underlying_t), bytes_read);  // LCOV_EXCL_LINE
-    }
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_ENUM_H

@@ -89,35 +89,9 @@ struct LoadFromJSONImpl<std::pair<TF, TS>, JSONFormat::NewtonsoftFSharp> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <typename TF, typename TS>
-struct SaveIntoBinaryImpl<std::pair<TF, TS>> {
-  static void Save(std::ostream& ostream, const std::pair<TF, TS>& value) {
-    SaveIntoBinaryImpl<TF>::Save(ostream, value.first);
-    SaveIntoBinaryImpl<TS>::Save(ostream, value.second);
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <typename TF, typename TS>
-struct LoadFromBinaryImpl<std::pair<TF, TS>> {
-  static void Load(std::istream& istream, std::pair<TF, TS>& destination) {
-    LoadFromBinaryImpl<TF>::Load(istream, destination.first);
-    LoadFromBinaryImpl<TS>::Load(istream, destination.second);
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PAIR_H

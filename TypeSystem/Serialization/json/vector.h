@@ -63,40 +63,9 @@ struct LoadFromJSONImpl<std::vector<TT, TA>, J> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <typename TT, typename TA>
-struct SaveIntoBinaryImpl<std::vector<TT, TA>> {
-  static void Save(std::ostream& ostream, const std::vector<TT, TA>& value) {
-    SaveSizeIntoBinary(ostream, value.size());
-    for (const auto& element : value) {
-      SaveIntoBinaryImpl<TT>::Save(ostream, element);
-    }
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <typename TT, typename TA>
-struct LoadFromBinaryImpl<std::vector<TT, TA>> {
-  static void Load(std::istream& istream, std::vector<TT, TA>& destination) {
-    BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
-    destination.resize(static_cast<size_t>(size));
-    for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      LoadFromBinaryImpl<TT>::Load(istream, destination[i]);
-    }
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VECTOR_H

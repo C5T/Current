@@ -56,35 +56,9 @@ struct LoadFromJSONImpl<reflection::TypeID, J> {
   }
 };
 
-}  // namespace load
-}  // namespace json
-
-namespace binary {
-namespace save {
-
-template <>
-struct SaveIntoBinaryImpl<reflection::TypeID> {
-  static void Save(std::ostream& ostream, reflection::TypeID value) {
-    SaveIntoBinaryImpl<uint64_t>::Save(ostream, static_cast<uint64_t>(value));
-  }
-};
-
-}  // namespace save
-
-namespace load {
-
-template <>
-struct LoadFromBinaryImpl<reflection::TypeID> {
-  static void Load(std::istream& istream, reflection::TypeID& destination) {
-    uint64_t value;
-    LoadFromBinaryImpl<uint64_t>::Load(istream, value);
-    destination = static_cast<reflection::TypeID>(value);
-  }
-};
-
-}  // namespace load
-}  // namespace binary
-}  // namespace serialization
+}  // namespace current::serialization::json::load
+}  // namespace current::serialization::json
+}  // namespace current::serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_TYPEID_H

@@ -44,46 +44,6 @@ inline void Serialize(SERIALIZER&& serializer, T&& x) {
       std::forward<SERIALIZER>(serializer), std::forward<T>(x));
 }
 
-namespace binary {
-
-// Using platform-independent size type for binary (de)serialization.
-typedef uint64_t BINARY_FORMAT_SIZE_TYPE;
-typedef uint8_t BINARY_FORMAT_BOOL_TYPE;
-
-namespace save {
-
-inline void SaveSizeIntoBinary(std::ostream& ostream, const size_t size) {
-  const BINARY_FORMAT_SIZE_TYPE save_size = size;
-  const size_t bytes_written =
-      ostream.rdbuf()->sputn(reinterpret_cast<const char*>(&save_size), sizeof(BINARY_FORMAT_SIZE_TYPE));
-  if (bytes_written != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
-    throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_written);  // LCOV_EXCL_LINE
-  }
-};
-
-template <typename, typename Enable = void>
-struct SaveIntoBinaryImpl;
-
-}  // namespace save
-
-namespace load {
-
-inline BINARY_FORMAT_SIZE_TYPE LoadSizeFromBinary(std::istream& istream) {
-  BINARY_FORMAT_SIZE_TYPE result;
-  const size_t bytes_read =
-      istream.rdbuf()->sgetn(reinterpret_cast<char*>(&result), sizeof(BINARY_FORMAT_SIZE_TYPE));
-  if (bytes_read != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
-    throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_read);  // LCOV_EXCL_LINE
-  }
-  return result;
-}
-
-template <typename, typename Enable = void>
-struct LoadFromBinaryImpl;
-
-}  // namespace load
-}  // namespace binary
-
 }  // namespace serialization
 }  // namespace current
 

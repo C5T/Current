@@ -41,9 +41,9 @@ struct JSONSchemaException : TypeSystemParseJSONException {
       : TypeSystemParseJSONException("Expected " +
                                      (expected + (path.empty() ? "" : " for `" + path.substr(1u) + "`")) +
                                      ", got: " + NonThrowingFormatRapidJSONValueAsString(value)) {}
-  static std::string NonThrowingFormatRapidJSONValueAsString(
-      rapidjson::Value* value) {  // Attempt to generate a human-readable description of the part of the JSON,
-    // that has been parsed but is of wrong schema.
+  // Attempt to generate a human-readable description of the part of the JSON,
+  // that has been parsed but is of wrong schema.
+  static std::string NonThrowingFormatRapidJSONValueAsString(rapidjson::Value* value) {
     if (value) {
       try {
         rapidjson::StringBuffer string_buffer;
