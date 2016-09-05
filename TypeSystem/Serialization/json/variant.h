@@ -127,20 +127,18 @@ class JSONVariantSerializer<json::JSONVariantStyle::NewtonsoftFSharp, JSON_FORMA
   json::JSONStringifier<JSON_FORMAT>& json_stringifier_;
 };
 
-// `VB`: variant base.
 template <class JSON_FORMAT>
-class VB {
+class JSONVariantCaseAbstractBase {
  public:
-  virtual ~VB() = default;
+  virtual ~JSONVariantCaseAbstractBase() = default;
   virtual void Deserialize(JSONParser<JSON_FORMAT>& json_parser,
                            IHasUncheckedMoveFromUniquePtr& destination) = 0;
 };
 
-// `VC1`: variant case implementation #1, generic.
 template <class JSON_FORMAT, typename T>
-class VC1 : public VB<JSON_FORMAT> {
+class JSONVariantCaseGeneric : public JSONVariantCaseAbstractBase<JSON_FORMAT> {
  public:
-  explicit VC1(const char* key_name) : key_name_(key_name) {}
+  explicit JSONVariantCaseGeneric(const char* key_name) : key_name_(key_name) {}
 
   void Deserialize(JSONParser<JSON_FORMAT>& json_parser, IHasUncheckedMoveFromUniquePtr& destination) override {
     if (json_parser && json_parser.Current().HasMember(key_name_)) {
@@ -158,11 +156,10 @@ class VC1 : public VB<JSON_FORMAT> {
   const char* key_name_;
 };
 
-// `VC2`: variant case implementation #2, minimalistic.
 template <typename T, typename JSON_FORMAT>
-class VC2 : public VB<JSON_FORMAT> {
+class JSONVariantCaseMinimalistic : public JSONVariantCaseAbstractBase<JSON_FORMAT> {
  public:
-  explicit VC2(const char* key_name) : key_name_(key_name) {}
+  explicit JSONVariantCaseMinimalistic(const char* key_name) : key_name_(key_name) {}
 
   void Deserialize(JSONParser<JSON_FORMAT>& json_parser, IHasUncheckedMoveFromUniquePtr& destination) override {
     auto result = std::make_unique<T>();
@@ -174,9 +171,8 @@ class VC2 : public VB<JSON_FORMAT> {
   const char* key_name_;
 };
 
-// `VC3`: variant case implementation #3, the F# way.
 template <typename T, typename JSON_FORMAT>
-class VC3 : public VB<JSON_FORMAT> {
+class JSONVariantCaseFSharp : public JSONVariantCaseAbstractBase<JSON_FORMAT> {
  public:
   void Deserialize(JSONParser<JSON_FORMAT>& json_parser, IHasUncheckedMoveFromUniquePtr& destination) override {
     if (json_parser.Current().HasMember("Fields")) {
@@ -205,12 +201,11 @@ class VC3 : public VB<JSON_FORMAT> {
   }
 };
 
-// `VS`: per variant style.
 template <JSONVariantStyle J, class JSON_FORMAT, typename VARIANT>
-class VS;
+class JSONVariantPerStyle;
 
 template <class JSON_FORMAT, typename VARIANT>
-class VS<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
+class JSONVariantPerStyle<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
  public:
   class Impl {
    public:
@@ -241,7 +236,7 @@ class VS<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
 
    private:
     using deserializers_map_t = std::unordered_map<reflection::TypeID,
-                                                   std::unique_ptr<VB<JSON_FORMAT>>,
+                                                   std::unique_ptr<JSONVariantCaseAbstractBase<JSON_FORMAT>>,
                                                    CurrentHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
 
@@ -250,7 +245,8 @@ class VS<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
       void DispatchToAll(deserializers_map_t& deserializers) {
         // Silently discard duplicate types in the input type list. They would be deserialized correctly.
         deserializers[Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<X>()).type_id] =
-            std::make_unique<VC1<JSON_FORMAT, X>>(reflection::CurrentTypeNameAsConstCharPtr<X>());
+            std::make_unique<JSONVariantCaseGeneric<JSON_FORMAT, X>>(
+                reflection::CurrentTypeNameAsConstCharPtr<X>());
       }
     };
   };
@@ -262,7 +258,7 @@ class VS<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
 };
 
 template <class JSON_FORMAT, typename VARIANT>
-class VS<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
+class JSONVariantPerStyle<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
  public:
   class ImplMinimalistic {
    public:
@@ -312,7 +308,8 @@ class VS<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
     };
 
    private:
-    using deserializers_map_t = std::unordered_map<std::string, std::unique_ptr<VB<JSON_FORMAT>>>;
+    using deserializers_map_t =
+        std::unordered_map<std::string, std::unique_ptr<JSONVariantCaseAbstractBase<JSON_FORMAT>>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -321,7 +318,7 @@ class VS<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
         const char* name = reflection::CurrentTypeNameAsConstCharPtr<X>();
-        deserializers[name] = std::make_unique<VC2<X, JSON_FORMAT>>(name);
+        deserializers[name] = std::make_unique<JSONVariantCaseMinimalistic<X, JSON_FORMAT>>(name);
       }
     };
   };
@@ -333,7 +330,7 @@ class VS<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
 };
 
 template <class JSON_FORMAT, typename VARIANT>
-class VS<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT> {
+class JSONVariantPerStyle<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT> {
  public:
   class ImplFSharp {
    public:
@@ -364,7 +361,8 @@ class VS<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT> {
     };
 
    private:
-    using deserializers_map_t = std::unordered_map<std::string, std::unique_ptr<VB<JSON_FORMAT>>>;
+    using deserializers_map_t =
+        std::unordered_map<std::string, std::unique_ptr<JSONVariantCaseAbstractBase<JSON_FORMAT>>>;
     deserializers_map_t deserializers_;
 
     template <typename X>
@@ -372,7 +370,8 @@ class VS<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIANT> {
       void DispatchToAll(deserializers_map_t& deserializers) {
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
-        deserializers[reflection::CurrentTypeNameAsConstCharPtr<X>()] = std::make_unique<VC3<X, JSON_FORMAT>>();
+        deserializers[reflection::CurrentTypeNameAsConstCharPtr<X>()] =
+            std::make_unique<JSONVariantCaseFSharp<X, JSON_FORMAT>>();
       }
     };
   };
@@ -409,7 +408,8 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<IS_CUR
         throw JSONUninitializedVariantObjectException();
       }
     } else {
-      json::VS<JSON_FORMAT::variant_style, JSON_FORMAT, T>::Instance().DoLoadVariant(json_parser, value);
+      json::JSONVariantPerStyle<JSON_FORMAT::variant_style, JSON_FORMAT, T>::Instance().DoLoadVariant(
+          json_parser, value);
     }
   }
 };
