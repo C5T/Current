@@ -43,6 +43,7 @@ SOFTWARE.
 #include "helpers.h"
 #include "exceptions.h"
 
+#include "../Bricks/template/call_all_constructors.h"
 #include "../Bricks/template/mapreduce.h"
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/template/rtti_dynamic_call.h"
@@ -76,16 +77,13 @@ struct RegisterType {
 };
 
 template <typename... TS>
-struct RegisterAllTypes : RegisterType<TS>... {
-  RegisterAllTypes(std::unordered_map<std::type_index, const char*>& types) : RegisterType<TS>(types)... {}
-};
-
-template <typename... TS>
 struct RuntimeTypeListHelpersImpl {
   using map_t = std::unordered_map<std::type_index, const char*>;
   map_t types_;
 
-  RuntimeTypeListHelpersImpl() { RegisterAllTypes<TS...> registerer(types_); }
+  RuntimeTypeListHelpersImpl() {
+    current::metaprogramming::call_all_constructors_with<RegisterType, map_t, TypeListImpl<TS...>>(types_);
+  }
 
   template <typename T>
   void AssertContains() const {
