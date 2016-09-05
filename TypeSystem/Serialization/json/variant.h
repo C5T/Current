@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../../variant.h"
 #include "../../Reflection/reflection.h"
 
-#include "../../../Bricks/template/combine.h"
+#include "../../../Bricks/template/call_all_constructors.h"
 #include "../../../Bricks/template/enable_if.h"
 #include "../../../Bricks/template/mapreduce.h"
 
@@ -210,9 +210,9 @@ class JSONVariantPerStyle<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
   class Impl {
    public:
     Impl() {
-      current::metaprogramming::combine<current::metaprogramming::map<Registerer, typename VARIANT::typelist_t>>
-          bulk_deserializers_registerer;
-      bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+      current::metaprogramming::call_all_constructors_with<Registerer,
+                                                           deserializers_map_t,
+                                                           typename VARIANT::typelist_t>(deserializers_);
     }
 
     void DoLoadVariant(JSONParser<JSON_FORMAT>& json_parser, VARIANT& destination) const {
@@ -242,7 +242,7 @@ class JSONVariantPerStyle<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
 
     template <typename X>
     struct Registerer {
-      void DispatchToAll(deserializers_map_t& deserializers) {
+      Registerer(deserializers_map_t& deserializers) {
         // Silently discard duplicate types in the input type list. They would be deserialized correctly.
         deserializers[Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<X>()).type_id] =
             std::make_unique<JSONVariantCaseGeneric<JSON_FORMAT, X>>(
@@ -263,10 +263,9 @@ class JSONVariantPerStyle<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
   class ImplMinimalistic {
    public:
     ImplMinimalistic() {
-      current::metaprogramming::combine<
-          current::metaprogramming::map<RegistererByName, typename VARIANT::typelist_t>>
-          bulk_deserializers_registerer;
-      bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+      current::metaprogramming::call_all_constructors_with<RegistererByName,
+                                                           deserializers_map_t,
+                                                           typename VARIANT::typelist_t>(deserializers_);
     }
 
     void DoLoadVariant(JSONParser<JSON_FORMAT>& json_parser, VARIANT& destination) const {
@@ -314,7 +313,7 @@ class JSONVariantPerStyle<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
 
     template <typename X>
     struct RegistererByName {
-      void DispatchToAll(deserializers_map_t& deserializers) {
+      RegistererByName(deserializers_map_t& deserializers) {
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
         const char* name = reflection::CurrentTypeNameAsConstCharPtr<X>();
@@ -335,10 +334,9 @@ class JSONVariantPerStyle<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIA
   class ImplFSharp {
    public:
     ImplFSharp() {
-      current::metaprogramming::combine<
-          current::metaprogramming::map<RegistererByName, typename VARIANT::typelist_t>>
-          bulk_deserializers_registerer;
-      bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+      current::metaprogramming::call_all_constructors_with<RegistererByName,
+                                                           deserializers_map_t,
+                                                           typename VARIANT::typelist_t>(deserializers_);
     }
 
     void DoLoadVariant(JSONParser<JSON_FORMAT>& json_parser, VARIANT& destination) const {
@@ -367,7 +365,7 @@ class JSONVariantPerStyle<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIA
 
     template <typename X>
     struct RegistererByName {
-      void DispatchToAll(deserializers_map_t& deserializers) {
+      RegistererByName(deserializers_map_t& deserializers) {
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
         deserializers[reflection::CurrentTypeNameAsConstCharPtr<X>()] =

@@ -43,7 +43,6 @@ SOFTWARE.
 #include "helpers.h"
 #include "exceptions.h"
 
-#include "../Bricks/template/combine.h"
 #include "../Bricks/template/mapreduce.h"
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/template/rtti_dynamic_call.h"
