@@ -37,6 +37,7 @@ SOFTWARE.
 #include "../struct.h"
 #include "../timestamp.h"
 
+#include "../../Bricks/template/call_all_constructors.h"
 #include "../../Bricks/util/comparators.h"
 #include "../../Bricks/util/singleton.h"
 
@@ -123,17 +124,10 @@ struct ReflectorImpl {
       return ReflectedType(std::move(result));
     }
 
-    template <typename... TS>
-    struct VisitAllVariantTypes {
-      template <typename X>
-      struct VisitImpl {
-        static void DispatchToAll(ReflectedType_Variant& destination) {
-          destination.cases.push_back(Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
-        }
-      };
-      static void Run(ReflectedType_Variant& destination) {
-        current::metaprogramming::combine<current::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
-        impl.DispatchToAll(destination);
+    template <typename CASE>
+    struct ReflectVariantCase {
+      ReflectVariantCase(ReflectedType_Variant& destination) {
+        destination.cases.push_back(Value<ReflectedTypeBase>(Reflector().ReflectType<CASE>()).type_id);
       }
     };
 
@@ -141,7 +135,9 @@ struct ReflectorImpl {
     ReflectedType operator()(TypeSelector<VariantImpl<NAME, TypeListImpl<TS...>>>) {
       ReflectedType_Variant result;
       result.name = VariantImpl<NAME, TypeListImpl<TS...>>::VariantName();
-      VisitAllVariantTypes<TS...>::Run(result);
+      current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
+                                                           ReflectedType_Variant,
+                                                           TypeListImpl<TS...>>(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
     }
