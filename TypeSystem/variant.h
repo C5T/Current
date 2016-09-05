@@ -67,31 +67,27 @@ struct CurrentVariantNameHelper<reflection::CurrentVariantDefaultName, TYPELIST>
 namespace variant {
 
 #ifdef FEWER_COMPILE_TIME_CHECKS
-template <typename... TS>
-struct PopulateForAllTypes;
-template <>
-struct PopulateForAllTypes<> {
-  static void DoIt(std::unordered_map<std::type_index, const char*>&) {}
-};
-template <typename T, typename... TS>
-struct PopulateForAllTypes<T, TS...> {
-  static void DoIt(std::unordered_map<std::type_index, const char*>& result) {
+template <typename T>
+struct RegisterType {
+  RegisterType(std::unordered_map<std::type_index, const char*>& types) {
     const std::type_index ti = typeid(T);
-    CURRENT_ASSERT(!result.count(ti));
-    result[ti] = reflection::CurrentTypeNameAsConstCharPtr<T>();
-    PopulateForAllTypes<TS...>::DoIt(result);
+    CURRENT_ASSERT(!types.count(ti));
+    types[ti] = reflection::CurrentTypeNameAsConstCharPtr<T>();
   }
 };
+
+template <typename... TS>
+struct RegisterAllTypes : RegisterType<TS>... {
+  RegisterAllTypes(std::unordered_map<std::type_index, const char*>& types) : RegisterType<TS>(types)... {}
+};
+
 template <typename... TS>
 struct RuntimeTypeListHelpersImpl {
   using map_t = std::unordered_map<std::type_index, const char*>;
-  const map_t types_;
-  static map_t PopulateTypes() {
-    map_t result;
-    PopulateForAllTypes<TS...>::DoIt(result);
-    return result;
-  }
-  RuntimeTypeListHelpersImpl() : types_(PopulateTypes()) {}
+  map_t types_;
+
+  RuntimeTypeListHelpersImpl() { RegisterAllTypes<TS...> registerer(types_); }
+
   template <typename T>
   void AssertContains() const {
     if (types_.find(std::type_index(typeid(T))) == types_.end()) {
@@ -105,8 +101,10 @@ struct RuntimeTypeListHelpersImpl {
     }
   }
 };
+
 template <typename T>
 struct RuntimeTypeListHelpers;
+
 template <typename... TS>
 struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
   template <typename U>
