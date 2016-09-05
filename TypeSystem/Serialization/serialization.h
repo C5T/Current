@@ -26,8 +26,6 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_SERIALIZATION_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_SERIALIZATION_H
 
-#include <iostream>  // TODO(dkorolev): DIMA FIXME! Remove as we're refactoring our `binary` format.
-
 #include "exceptions.h"
 
 #include "../../Bricks/template/decay.h"
