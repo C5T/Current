@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include "variadic_indexes.h"
 #include "call_if.h"
+#include "call_all_constructors.h"
 
 // The internal test uses `std::tuple<>`, and not a single `TypeList`.
 // The one that goes into the documentation uses `TypeList<>`, and not a single `std::tuple<>`.
@@ -172,4 +173,80 @@ TEST(TemplateMetaprogrammingInternalTest, CallIf) {
   EXPECT_EQ(1, i);
   CallIf<true>::With(lambda);
   EXPECT_EQ(2, i);
+}
+
+namespace metaprogramming_unittest {
+
+struct AddOneToInt {
+  constexpr static int value_to_add = 1;
+};
+struct AddTwoToInt {
+  constexpr static int value_to_add = 2;
+};
+
+struct SingletonAdderValue {
+  int value = 0;
+};
+
+template <typename T>
+struct AdderToSingleton {
+  AdderToSingleton() { current::Singleton<SingletonAdderValue>().value += T::value_to_add; }
+};
+
+template <typename T>
+struct AdderToInt {
+  AdderToInt(int& x) { x += T::value_to_add; }
+};
+
+}  // namespace metaprogramming_unittest
+
+TEST(TemplateMetaprogrammingInternalTest, CallAllConstructors) {
+  using namespace metaprogramming_unittest;
+  using current::metaprogramming::call_all_constructors;
+  {
+    current::Singleton<SingletonAdderValue>().value = 0;
+    call_all_constructors<AdderToSingleton, TypeListImpl<AddOneToInt>>();
+    EXPECT_EQ(1, current::Singleton<SingletonAdderValue>().value);
+  }
+  {
+    current::Singleton<SingletonAdderValue>().value = 0;
+    call_all_constructors<AdderToSingleton, TypeListImpl<AddTwoToInt>>();
+    EXPECT_EQ(2, current::Singleton<SingletonAdderValue>().value);
+  }
+  {
+    current::Singleton<SingletonAdderValue>().value = 0;
+    call_all_constructors<AdderToSingleton, TypeListImpl<AddOneToInt, AddTwoToInt>>();
+    EXPECT_EQ(3, current::Singleton<SingletonAdderValue>().value);
+  }
+  {
+    current::Singleton<SingletonAdderValue>().value = 0;
+    call_all_constructors<AdderToSingleton, TypeListImpl<AddTwoToInt, AddOneToInt>>();
+    EXPECT_EQ(3, current::Singleton<SingletonAdderValue>().value);
+  }
+}
+
+
+TEST(TemplateMetaprogrammingInternalTest, CallAllConstructorsWith) {
+  using namespace metaprogramming_unittest;
+  using current::metaprogramming::call_all_constructors_with;
+  {
+    int x = 0;
+    call_all_constructors_with<AdderToInt, int, TypeListImpl<AddOneToInt>>(x);
+    EXPECT_EQ(1, x);
+  }
+  {
+    int x = 0;
+    call_all_constructors_with<AdderToInt, int, TypeListImpl<AddTwoToInt>>(x);
+    EXPECT_EQ(2, x);
+  }
+  {
+    int x = 0;
+    call_all_constructors_with<AdderToInt, int, TypeListImpl<AddOneToInt, AddTwoToInt>>(x);
+    EXPECT_EQ(3, x);
+  }
+  {
+    int x = 0;
+    call_all_constructors_with<AdderToInt, int, TypeListImpl<AddTwoToInt, AddOneToInt>>(x);
+    EXPECT_EQ(3, x);
+  }
 }
