@@ -228,8 +228,8 @@ TEST(RipCurrent, TypeIntrospection) {
   using namespace ripcurrent_unittest;
 
   EXPECT_EQ("RCFoo() => { Integer } | ...", (RCFoo()).DescribeWithTypes());
-  EXPECT_EQ("... { Integer } => | RCBar() => { Integer } | ...", (RCBar()).DescribeWithTypes());
-  EXPECT_EQ("... { Integer } => | RCBaz()", (RCBaz()).DescribeWithTypes());
+  EXPECT_EQ("... | { Integer } => RCBar() => { Integer } | ...", (RCBar()).DescribeWithTypes());
+  EXPECT_EQ("... | { Integer } => RCBaz()", (RCBaz()).DescribeWithTypes());
 }
 
 TEST(RipCurrent, TypeSystemGuarantees) {
@@ -447,7 +447,7 @@ TEST(RipCurrent, CustomTypesIntrospection) {
   using namespace ripcurrent_unittest;
 
   EXPECT_EQ("RCFoo2() => { Integer, String } | ...", (RCFoo2()).DescribeWithTypes());
-  EXPECT_EQ("... { Integer, String } => | RCBaz2()", (RCBaz2()).DescribeWithTypes());
+  EXPECT_EQ("... | { Integer, String } => RCBaz2()", (RCBaz2()).DescribeWithTypes());
 }
 
 TEST(RipCurrent, CustomTypesFlow) {

@@ -233,7 +233,7 @@ class SharedUniqueDefinition<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>> {
       metaprogramming::call_all_constructors_with<AppendTypeName,
                                                   std::vector<std::string>,
                                                   TypeListImpl<LHS_TYPES...>>(types);
-      result.append("... { " + strings::Join(types, ", ") + " } => | ");
+      result.append("... | { " + strings::Join(types, ", ") + " } => ");
     }
     result.append(unique_definition_->statement);
     if (sizeof...(RHS_TYPES)) {
