@@ -51,10 +51,11 @@ SOFTWARE.
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 #include "../TypeSystem/struct.h"
 
@@ -258,51 +259,29 @@ class SharedUniqueDefinition<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>> {
   mutable std::shared_ptr<impl_t> unique_definition_;
 };
 
-// `DummyNoEntryType` and `ActualOrDummyEntryType<InputPolicy::*>` are to unify templates later on.
-// `DummyNoEntryType` is the type of the entry that will never be emitted, because the block
-// it is being "sent" to does not accept incoming entries.
-struct DummyNoEntryType {};
-
-template <class>
-struct ActualOrDummyEntryTypeImpl;
-
-template <>
-struct ActualOrDummyEntryTypeImpl<TypeListImpl<>> final {
-  using type = DummyNoEntryType;
+class GenericEntriesConsumer {
+ public:
+  virtual ~GenericEntriesConsumer() = default;
+  virtual void ConsumeEntry(const CurrentSuper&) = 0;
 };
-
-template <class T, class... TS>
-struct ActualOrDummyEntryTypeImpl<TypeListImpl<T, TS...>> final {
-  using type = const CurrentSuper&;
-};
-
-template <class TYPELIST>
-using ActualOrDummyEntryType = typename ActualOrDummyEntryTypeImpl<TYPELIST>::type;
 
 template <class LHS_TYPELIST>
 class EntriesConsumer;
 
-template <class... NEXT_TYPES>
-class EntriesConsumer<LHS<NEXT_TYPES...>> {
- public:
-  virtual ~EntriesConsumer() = default;
-  virtual void Accept(const ActualOrDummyEntryType<TypeListImpl<NEXT_TYPES...>>&) = 0;
-};
+template <class... LHS_XS>
+class EntriesConsumer<LHS<LHS_XS...>> : public GenericEntriesConsumer {};
 
-class DummyNoEntryTypeAcceptor : public EntriesConsumer<LHS<>> {
+class NoEntryShallPassFakeConsumer final : public EntriesConsumer<LHS<>> {
  public:
-  virtual ~DummyNoEntryTypeAcceptor() = default;
-  // LCOV_EXCL_START
-  void Accept(const DummyNoEntryType&) override {
-    current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
-        "Internal error: Attepmted to send entries into a non-accepting block.");
+  void ConsumeEntry(const CurrentSuper&) override {
+    std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
+    CURRENT_ASSERT(false);
   }
-  // LCOV_EXCL_STOP
 };
 
 // Run context for RipCurrent allows to run it in background, foreground, or scoped.
 // TODO(dkorolev): Only supports `.Sync()` now. Implement everything else.
-class RipCurrentRunContext {
+class RipCurrentRunContext final {
  public:
   explicit RipCurrentRunContext(const std::string& error_message)
       : sync_called_(false), error_message_(error_message) {}
@@ -379,8 +358,8 @@ class SharedCurrent<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>>
 
   // User-facing `RipCurrent()` method.
   template <int IN_N = sizeof...(LHS_TYPES), int OUT_N = sizeof...(RHS_TYPES)>
-  typename std::enable_if<IN_N == 0 && OUT_N == 0, RipCurrentRunContext>::type RipCurrent() {
-    SpawnAndRun(std::make_shared<DummyNoEntryTypeAcceptor>());
+  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentRunContext> RipCurrent() {
+    SpawnAndRun(std::make_shared<NoEntryShallPassFakeConsumer>());
 
     // TODO(dkorolev): Return proper run context. So far, just require `.Sync()` to be called on it.
     std::ostringstream os;
@@ -396,33 +375,83 @@ class SharedCurrent<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>>
 // Helper code to initialize the next handler in the chain before the user code is constructed.
 // TL;DR: The user should be able to use `emit()` from constructor, no strings attached. Thus,
 // the destination for this `emit()` should be initialized before the user code is.
+class NextHandlerContainerBase {
+ public:
+  virtual ~NextHandlerContainerBase() = default;
+};
+
+class NextHandlersCollection final {
+ public:
+  void Add(const NextHandlerContainerBase* key, GenericEntriesConsumer* value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    CURRENT_ASSERT(key);
+    CURRENT_ASSERT(value);
+    CURRENT_ASSERT(!map_.count(key));
+    map_[key] = value;
+  }
+  void Remove(const NextHandlerContainerBase* key, GenericEntriesConsumer* value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    CURRENT_ASSERT(key);
+    CURRENT_ASSERT(value);
+    CURRENT_ASSERT(map_.count(key));
+    CURRENT_ASSERT(map_[key] == value);
+    map_.erase(key);
+  }
+  template <typename T>
+  T* Get(const NextHandlerContainerBase* key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    CURRENT_ASSERT(key);
+    CURRENT_ASSERT(map_.count(key));
+    GenericEntriesConsumer* result = map_[key];
+    T* result2 = dynamic_cast<T*>(result);
+    CURRENT_ASSERT(result2);
+    return result2;
+  }
+
+  class Scope final {
+   public:
+    explicit Scope(const NextHandlerContainerBase* key, GenericEntriesConsumer* value)
+        : key(key), value(value) {
+      Singleton<NextHandlersCollection>().Add(key, value);
+    }
+    ~Scope() { Singleton<NextHandlersCollection>().Remove(key, value); }
+
+   private:
+    const NextHandlerContainerBase* const key;
+    GenericEntriesConsumer* const value;
+
+    Scope() = delete;
+    Scope(const Scope&) = delete;
+    Scope(Scope&&) = delete;
+    Scope& operator=(const Scope&) = delete;
+    Scope& operator=(Scope&&) = delete;
+  };
+
+ private:
+  std::mutex mutex_;
+  std::map<const NextHandlerContainerBase*, GenericEntriesConsumer*> map_;
+};
+
 template <class LHS_TYPELIST>
 class NextHandlerContainer;
 
 template <class... NEXT_TYPES>
-class NextHandlerContainer<LHS<NEXT_TYPES...>> {
+class NextHandlerContainer<LHS<NEXT_TYPES...>> : public NextHandlerContainerBase {
  public:
+  NextHandlerContainer()
+      : next_handler_(Singleton<NextHandlersCollection>().template Get<next_handler_t>(this)) {}
   virtual ~NextHandlerContainer() = default;
 
-  void SetNextHandler(std::shared_ptr<EntriesConsumer<LHS<NEXT_TYPES...>>> next) const {
-    next_handler_ = next.get();
+ protected:
+  template <typename T>
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(
+      const T& x) const {
+    next_handler_->ConsumeEntry(x);
   }
 
- protected:
-  void emit(const CurrentSuper& x) const { next_handler_->Accept(x); }
-
  private:
-  // NOTE(dkorolev): This field is pre-initialized by an instance of another helper class, which is
-  // constructed before the constuctor of the user code, derived indirectly from `NextHandlerContainer`,
-  // is run. This is done to enable user code to do `emit()` from within the constructor, or from callbacks
-  // initialized from within the constructor (for example, HTTP endpoints).
-  // Since such an initialization happens before the constructor has been properly called,
-  // the data field it has to be a POD. An `std::shared_ptr<>` would not work due to being uninitialized first
-  // (and re-initialized over later).
-  // Thus, we use a bare pointer here. Note that the `Instance` classes, that ultimately instantiate user code,
-  // do wrap the top-level `next` into its own `std::shared_ptr<>` and make sure to construct it before (and
-  // destruct it after) the user code itself.
-  mutable EntriesConsumer<LHS<NEXT_TYPES...>>* next_handler_;
+  using next_handler_t = EntriesConsumer<LHS<NEXT_TYPES...>>;
+  EntriesConsumer<LHS<NEXT_TYPES...>>* const next_handler_;
 };
 
 template <typename LHS_TYPELIST, typename RHS_TYPELIST, typename USER_CLASS>
@@ -433,7 +462,7 @@ class NextHandlerInitializer<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS> f
  public:
   template <typename... ARGS>
   NextHandlerInitializer(std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>> next, ARGS&&... args)
-      : early_initializer_(impl_, next), impl_(std::forward<ARGS>(args)...) {}
+      : scope_(&impl_, next.get()), impl_(std::forward<ARGS>(args)...) {}
 
   template <typename X>
   void operator()(const X& x) {
@@ -449,17 +478,9 @@ class NextHandlerInitializer<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS> f
   void Accept(const CurrentSuper& x) {
     current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(x, *this);
   }
-  void Accept(const DummyNoEntryType&) {}  // LCOV_EXCL_LINE
 
  private:
-  struct NextHandlerEarlyInitializer final {
-    NextHandlerEarlyInitializer(NextHandlerContainer<LHS<RHS_TYPES...>>& instance_to_initialize,
-                                std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>> next) {
-      instance_to_initialize.SetNextHandler(next);
-    }
-  };
-
-  NextHandlerEarlyInitializer early_initializer_;
+  const NextHandlersCollection::Scope scope_;
   USER_CLASS impl_;
 };
 
@@ -485,17 +506,21 @@ class UserClassBase<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>
 
 // Helper code to support the declaration and running of user-defined classes.
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class GenericUserClassInstantiator;
+class UserClassInstantiator;
 
 template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
-class GenericUserClassInstantiator<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>
+class UserClassInstantiator<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>
     : public AbstractCurrent<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>> {
  public:
+  static_assert(
+      std::is_base_of<UserClassTopLevelBase<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>>, USER_CLASS>::value,
+      "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
+
   using input_t = LHS<LHS_TYPES...>;
   using output_t = RHS<RHS_TYPES...>;
 
   template <class ARGS_AS_TUPLE>
-  GenericUserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
+  UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
       : AbstractCurrent<input_t, output_t>(definition),
         lazy_instance_(current::DelayedInstantiateWithExtraParameterFromTuple<
             NextHandlerInitializer<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>,
@@ -510,12 +535,9 @@ class GenericUserClassInstantiator<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CL
                           std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>>>& lazy_instance,
                       std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>> next)
         : next_(next),
-          spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(
-              std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>>(next_))) {}
+          spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
 
-    void Accept(const ActualOrDummyEntryType<TypeListImpl<LHS_TYPES...>>& x) override {
-      spawned_user_class_instance_->Accept(x);
-    }
+    void ConsumeEntry(const CurrentSuper& x) override { spawned_user_class_instance_->Accept(x); }
 
    private:
     std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>> next_;
@@ -531,57 +553,6 @@ class GenericUserClassInstantiator<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CL
  private:
   current::LazilyInstantiated<NextHandlerInitializer<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>,
                               std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>>> lazy_instance_;
-};
-
-template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class UserClassInstantiator;
-
-// Top-level class to wrap user-defined "LHS" code into a corresponding subflow.
-template <typename USER_CLASS, typename RHS_X, typename... RHS_XS>
-class UserClassInstantiator<LHS<>, RHS<RHS_X, RHS_XS...>, USER_CLASS>
-    : public GenericUserClassInstantiator<LHS<>, RHS<RHS_X, RHS_XS...>, USER_CLASS> {
- private:
-  static_assert(
-      std::is_base_of<UserClassTopLevelBase<LHS<>, RHS<RHS_X, RHS_XS...>>, USER_CLASS>::value,
-      "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
-
- public:
-  typedef GenericUserClassInstantiator<LHS<>, RHS<RHS_X, RHS_XS...>, USER_CLASS> super_t;
-  template <class ARGS_AS_TUPLE>
-  UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : super_t(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
-};
-
-// Top-level class to wrap user-defined "VIA" code into a corresponding subflow.
-template <typename USER_CLASS, typename LHS_X, typename... LHS_XS, typename RHS_X, typename... RHS_XS>
-class UserClassInstantiator<LHS<LHS_X, LHS_XS...>, RHS<RHS_X, RHS_XS...>, USER_CLASS>
-    : public GenericUserClassInstantiator<LHS<LHS_X, LHS_XS...>, RHS<RHS_X, RHS_XS...>, USER_CLASS> {
- private:
-  static_assert(
-      std::is_base_of<UserClassTopLevelBase<LHS<LHS_X, LHS_XS...>, RHS<RHS_X, RHS_XS...>>, USER_CLASS>::value,
-      "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
-
- public:
-  typedef GenericUserClassInstantiator<LHS<LHS_X, LHS_XS...>, RHS<RHS_X, RHS_XS...>, USER_CLASS> super_t;
-  template <class ARGS_AS_TUPLE>
-  UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : super_t(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
-};
-
-// Top-level class to wrap user-defined "RHS" code into a corresponding subflow.
-template <typename LHS_X, typename... LHS_XS, typename USER_CLASS>
-class UserClassInstantiator<LHS<LHS_X, LHS_XS...>, RHS<>, USER_CLASS>
-    : public GenericUserClassInstantiator<LHS<LHS_X, LHS_XS...>, RHS<>, USER_CLASS> {
- private:
-  static_assert(
-      std::is_base_of<UserClassTopLevelBase<LHS<LHS_X, LHS_XS...>, RHS<>>, USER_CLASS>::value,
-      "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
-
- public:
-  typedef GenericUserClassInstantiator<LHS<LHS_X, LHS_XS...>, RHS<>, USER_CLASS> super_t;
-  template <class ARGS_AS_TUPLE>
-  UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : super_t(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
 };
 
 // `SharedUserClassInstantiator` is the `shared_ptr<>` holder of the wrapper class
@@ -673,9 +644,7 @@ class GenericCurrentSequence<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, VIA<VIA_X, VI
       self->MarkAs(BlockUsageBit::Run);
     }
 
-    // Can be either a real entry or a dummy type. The former will be handled, the latter will be ignored.
-
-    void Accept(const ActualOrDummyEntryType<TypeListImpl<LHS_TYPES...>>& x) override { from_->Accept(x); }
+    void ConsumeEntry(const CurrentSuper& x) override { from_->ConsumeEntry(x); }
 
    private:
     // Construction / destruction order matters: { next, into, from }.
@@ -717,8 +686,12 @@ SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> operator|(SharedCurrent<LHS_TYPELIST, 
 
 // Macros to wrap user code into RipCurrent building blocks.
 
-#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST) \
-  struct USER_CLASS final : ::current::ripcurrent::UserClassBase<LHS_TYPELIST, RHS_TYPELIST, USER_CLASS>
+#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST)        \
+  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                          \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; } \
+  };                                                                   \
+  struct USER_CLASS final : USER_CLASS##_RIPCURRENT_CLASS_NAME,        \
+                            ::ripcurrent::UserClassBase<LHS_TYPELIST, RHS_TYPELIST, USER_CLASS>
 
 #define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                    \
   ::current::ripcurrent::UserClass<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \
@@ -732,6 +705,8 @@ SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> operator|(SharedCurrent<LHS_TYPELIST, 
 
 // Expose `ripcurrent::{LHS,RHS}` into a global `RipCurrent` namespace.
 namespace ripcurrent {
+template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
+using UserClassBase = current::ripcurrent::UserClassBase<LHS_TYPELIST, RHS_TYPELIST, USER_CLASS>;
 template <typename... TS>
 using LHS = current::ripcurrent::LHS<TS...>;
 template <typename... TS>

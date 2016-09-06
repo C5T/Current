@@ -84,7 +84,6 @@ RIPCURRENT_NODE(RCBaz, ripcurrent::LHS<Integer>, ripcurrent::RHS<>) {
 }  // namespace ripcurrent_unittest
 
 // clang-format on
-
 TEST(RipCurrent, SingleEdgeFlow) {
   using namespace ripcurrent_unittest;
 
@@ -415,8 +414,10 @@ RIPCURRENT_NODE(RCFoo2, ripcurrent::LHS<>, RHS_Integer_String) {
 #define RCFoo2(...) RIPCURRENT_MACRO(RCFoo2, __VA_ARGS__)
 
 RIPCURRENT_NODE(RCBar2, LHS_Integer_String, RHS_Integer_String) {
+  const int k;
+  RCBar2(int k = 101) : k(k) {}
   void f(Integer x) {
-    emit(Integer(x.value * 1001001));
+    emit(Integer(x.value * k));
   }
   void f(String x) {
     emit(String("Yo? " + x.value + " Yo!"));
@@ -456,15 +457,18 @@ TEST(RipCurrent, CustomTypesFlow) {
   {
     std::vector<std::string> result;
     (RCFoo2() | RCBaz2(std::ref(result))).RipCurrent().Sync();
-    EXPECT_EQ("'Answer',42", Join(result, ','));
+    EXPECT_EQ("'Answer', 42", Join(result, ", "));
   }
 
-#if 0
-// TODO(dkorolev): Make this work.
   {
     std::vector<std::string> result;
     (RCFoo2() | RCBar2() | RCBaz2(std::ref(result))).RipCurrent().Sync();
-    EXPECT_EQ("'Yo? Answer Yo!',424242", Join(result, ','));
+    EXPECT_EQ("'Yo? Answer Yo!', 4242", Join(result, ", "));
   }
-#endif
+
+  {
+    std::vector<std::string> result;
+    (RCFoo2() | RCBar2() | RCBar2(10001) | RCBaz2(std::ref(result))).RipCurrent().Sync();
+    EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", Join(result, ", "));
+  }
 }
