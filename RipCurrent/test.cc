@@ -227,9 +227,9 @@ TEST(RipCurrent, SynopsisAndDecorators) {
 TEST(RipCurrent, TypeIntrospection) {
   using namespace ripcurrent_unittest;
 
-  EXPECT_EQ("RCFoo() => { Integer } | ...", (RCFoo()).DescribeWithEmittedTypes());
-  EXPECT_EQ("... | RCBar() => { Integer } | ...", (RCBar()).DescribeWithEmittedTypes());
-  EXPECT_EQ("... | RCBaz()", (RCBaz()).DescribeWithEmittedTypes());
+  EXPECT_EQ("RCFoo() => { Integer } | ...", (RCFoo()).DescribeWithTypes());
+  EXPECT_EQ("... { Integer } => | RCBar() => { Integer } | ...", (RCBar()).DescribeWithTypes());
+  EXPECT_EQ("... { Integer } => | RCBaz()", (RCBaz()).DescribeWithTypes());
 }
 
 TEST(RipCurrent, TypeSystemGuarantees) {
@@ -391,4 +391,80 @@ TEST(RipCurrent, NotLeftHanging) {
     tmp.Dismiss();
   }
   EXPECT_EQ("NO ERROR ONCE AGAIN", captured_error_message);
+}
+
+// clang-format off
+
+namespace ripcurrent_unittest {
+
+CURRENT_STRUCT(String) {
+  CURRENT_FIELD(value, std::string);
+  CURRENT_CONSTRUCTOR(String)(const std::string& value = "") : value(value) {}
+};
+
+// TODO(dkorolev): Parentheses fix.
+using LHS_Integer_String = ripcurrent::LHS<Integer, String>;
+using RHS_Integer_String = ripcurrent::RHS<Integer, String>;
+
+RIPCURRENT_NODE(RCFoo2, ripcurrent::LHS<>, RHS_Integer_String) {
+  RCFoo2() {
+    emit(String("Answer"));
+    emit(Integer(42));
+  }
+};
+#define RCFoo2(...) RIPCURRENT_MACRO(RCFoo2, __VA_ARGS__)
+
+RIPCURRENT_NODE(RCBar2, LHS_Integer_String, RHS_Integer_String) {
+  void f(Integer x) {
+    emit(Integer(x.value * 1001001));
+  }
+  void f(String x) {
+    emit(String("Yo? " + x.value + " Yo!"));
+  }
+};
+#define RCBar2(...) RIPCURRENT_MACRO(RCBar2, __VA_ARGS__)
+
+RIPCURRENT_NODE(RCBaz2, LHS_Integer_String, ripcurrent::RHS<>) {
+  std::vector<std::string>* ptr;
+  RCBaz2() : ptr(nullptr) {}  // LCOV_EXCL_LINE
+  RCBaz2(std::vector<std::string>& ref) : ptr(&ref) {}
+  void f(Integer x) {
+    CURRENT_ASSERT(ptr);
+    ptr->push_back(current::ToString(x.value));
+  }
+  void f(String x) {
+    CURRENT_ASSERT(ptr);
+    ptr->push_back("'" + x.value + "'");
+  }
+};
+#define RCBaz2(...) RIPCURRENT_MACRO(RCBaz2, __VA_ARGS__)
+
+}  // namespace ripcurrent_unittest
+
+// clang-format on
+
+TEST(RipCurrent, CustomTypesIntrospection) {
+  using namespace ripcurrent_unittest;
+
+  EXPECT_EQ("RCFoo2() => { Integer, String } | ...", (RCFoo2()).DescribeWithTypes());
+  EXPECT_EQ("... { Integer, String } => | RCBaz2()", (RCBaz2()).DescribeWithTypes());
+}
+
+TEST(RipCurrent, CustomTypesFlow) {
+  using namespace ripcurrent_unittest;
+
+  {
+    std::vector<std::string> result;
+    (RCFoo2() | RCBaz2(std::ref(result))).RipCurrent().Sync();
+    EXPECT_EQ("'Answer',42", Join(result, ','));
+  }
+
+#if 0
+// TODO(dkorolev): Make this work.
+  {
+    std::vector<std::string> result;
+    (RCFoo2() | RCBar2() | RCBaz2(std::ref(result))).RipCurrent().Sync();
+    EXPECT_EQ("'Yo? Answer Yo!',424242", Join(result, ','));
+  }
+#endif
 }

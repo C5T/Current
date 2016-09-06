@@ -225,10 +225,16 @@ class SharedUniqueDefinition<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>> {
     AppendTypeName(std::vector<std::string>& types) { types.push_back(reflection::CurrentTypeName<T>()); }
   };
 
-  std::string DescribeWithEmittedTypes() const {
+  std::string DescribeWithTypes() const {
     MarkAs(BlockUsageBit::Described);
     std::string result;
-    result.append(sizeof...(LHS_TYPES) ? "... | " : "");
+    if (sizeof...(LHS_TYPES)) {
+      std::vector<std::string> types;
+      metaprogramming::call_all_constructors_with<AppendTypeName,
+                                                  std::vector<std::string>,
+                                                  TypeListImpl<LHS_TYPES...>>(types);
+      result.append("... { " + strings::Join(types, ", ") + " } => | ");
+    }
     result.append(unique_definition_->statement);
     if (sizeof...(RHS_TYPES)) {
       std::vector<std::string> types;
