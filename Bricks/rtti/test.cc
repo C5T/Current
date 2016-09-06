@@ -229,6 +229,8 @@ TEST(RuntimeDispatcher, ImmutableWithTypeListTypeListDispatching) {
   const OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<>>::DispatchCall(rbase, p);
+  EXPECT_EQ("const Base&", p.s);
   current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("const Base&", p.s);
   current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
@@ -255,6 +257,8 @@ TEST(RuntimeDispatcher, MutableWithTypeListTypeListDispatching) {
   OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<>>::DispatchCall(rbase, p);
+  EXPECT_EQ("Base&", p.s);
   current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("Base&", p.s);
   current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
