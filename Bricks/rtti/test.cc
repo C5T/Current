@@ -27,12 +27,8 @@ SOFTWARE.
 #include "dispatcher.h"
 
 #include <string>
-#include <tuple>
 
 #include "../../3rdparty/gtest/gtest-main.h"
-
-using std::string;
-using std::tuple;
 
 namespace rtti_unittest {
 
@@ -60,7 +56,7 @@ struct OtherBase {
 };
 
 struct RTTITestProcessor {
-  string s;
+  std::string s;
   void operator()(const Base&) { s = "const Base&"; }
   void operator()(const Foo&) { s = "const Foo&"; }
   void operator()(const Bar&) { s = "const Bar&"; }
@@ -219,7 +215,7 @@ TEST(RuntimeDispatcher, MutableWithDispatching) {
                current::rtti::UnrecognizedPolymorphicType);
 }
 
-TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
+TEST(RuntimeDispatcher, ImmutableWithTypeListTypeListDispatching) {
   using namespace rtti_unittest;
   const Base base;
   const Foo foo;
@@ -233,19 +229,19 @@ TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
   const OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("const Base&", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
   EXPECT_EQ("const Foo&", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbar, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbar, p);
   EXPECT_EQ("const Bar&", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
   EXPECT_EQ("const Baz&", p.s);
   ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
                current::rtti::UnrecognizedPolymorphicType);
 }
 
-TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
+TEST(RuntimeDispatcher, MutableWithTypeListTypeListDispatching) {
   using namespace rtti_unittest;
   Base base;
   Foo foo;
@@ -259,13 +255,13 @@ TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
   OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("Base&", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
   EXPECT_EQ("Foo&", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbar, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbar, p);
   EXPECT_EQ("Bar&", p.s);
-  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
+  current::rtti::RuntimeTypeListDispatcher<Base, TypeListImpl<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
   EXPECT_EQ("Baz&", p.s);
   ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
                current::rtti::UnrecognizedPolymorphicType);
