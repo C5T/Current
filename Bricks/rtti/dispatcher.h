@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include <tuple>
+#include "../template/typelist.h"
 
 namespace current {
 namespace rtti {
@@ -88,13 +88,13 @@ struct RuntimeDispatcher<BASE, DERIVED> {
   }
 };
 
-template <typename BASE, typename... TUPLE_TYPES>
-struct RuntimeTupleDispatcher {};
+template <typename BASE, class TYPE_LIST>
+struct RuntimeTypeListDispatcher;
 
-template <typename BASE, typename... TUPLE_TYPES>
-struct RuntimeTupleDispatcher<BASE, std::tuple<TUPLE_TYPES...>> : RuntimeDispatcher<BASE, TUPLE_TYPES...> {};
+template <typename BASE, typename... TYPES>
+struct RuntimeTypeListDispatcher<BASE, TypeListImpl<TYPES...>> : RuntimeDispatcher<BASE, TYPES...> {};
 
-}  // namespace rtti
+}  // namespace current::rtti
 }  // namespace current
 
 #endif  // BRICKS_RTTI_DISPATCHER_H
