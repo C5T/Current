@@ -64,11 +64,10 @@ class HTTPStreamSubscriber {
     while (!destructing_) {
       const std::string url = remote_stream_url_ + "?i=" + current::ToString(index_);
       try {
-        HTTP(
-            ChunkedGET(url,
-                       [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
-                       [this](const std::string& chunk_body) { OnChunk(chunk_body); },
-                       [this]() {}));
+        HTTP(ChunkedGET(url,
+                        [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
+                        [this](const std::string& chunk_body) { OnChunk(chunk_body); },
+                        [this]() {}));
       } catch (current::net::NetworkException&) {
       }
     }
@@ -91,8 +90,7 @@ class HTTPStreamSubscriber {
     }
     const idxts_t idxts = ParseJSON<idxts_t>(split[0]);
     if (idxts.index != index_) {
-      std::cerr << "HTTPStreamSubscriber expected index " << index_ << ", got " << idxts.index << '.'
-                << std::endl;
+      std::cerr << "HTTPStreamSubscriber expected index " << index_ << ", got " << idxts.index << '.' << std::endl;
       CURRENT_ASSERT(false);
     }
     callback_(idxts, ParseJSON<ENTRY>(split[1]));

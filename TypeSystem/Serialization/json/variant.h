@@ -66,8 +66,7 @@ class JSONVariantSerializer<json::JSONVariantStyle::Current, JSON_FORMAT> {
 
     using namespace ::current::reflection;
     rapidjson::Value serialized_type_id;
-    json_stringifier_.Inner(&serialized_type_id,
-                            Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
+    json_stringifier_.Inner(&serialized_type_id, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
 
     json_stringifier_.Current().SetObject();
 
@@ -76,8 +75,7 @@ class JSONVariantSerializer<json::JSONVariantStyle::Current, JSON_FORMAT> {
                                           json_stringifier_.Allocator());
 
     if (json::JSONVariantTypeIDInEmptyKey<JSON_FORMAT>::value) {
-      json_stringifier_.Current().AddMember(
-          "", std::move(serialized_type_id.Move()), json_stringifier_.Allocator());
+      json_stringifier_.Current().AddMember("", std::move(serialized_type_id.Move()), json_stringifier_.Allocator());
     }
     if (json::JSONVariantTypeNameInDollarKey<JSON_FORMAT>::value) {
       json_stringifier_.Current().AddMember(
@@ -107,19 +105,17 @@ class JSONVariantSerializer<json::JSONVariantStyle::NewtonsoftFSharp, JSON_FORMA
     json_stringifier_.Inner(&serialized_object, object);
 
     json_stringifier_.Current().SetObject();
-    json_stringifier_.Current().AddMember("Case",
-                                          rapidjson::StringRef(reflection::CurrentTypeNameAsConstCharPtr<X>()),
-                                          json_stringifier_.Allocator());
+    json_stringifier_.Current().AddMember(
+        "Case", rapidjson::StringRef(reflection::CurrentTypeNameAsConstCharPtr<X>()), json_stringifier_.Allocator());
 
     if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
       rapidjson::Value fields_as_array;
       fields_as_array.SetArray();
       fields_as_array.PushBack(std::move(serialized_object.Move()), json_stringifier_.Allocator());
 
-      json_stringifier_.Current().AddMember(
-          std::move(rapidjson::Value("Fields", json_stringifier_.Allocator()).Move()),
-          std::move(fields_as_array.Move()),
-          json_stringifier_.Allocator());
+      json_stringifier_.Current().AddMember(std::move(rapidjson::Value("Fields", json_stringifier_.Allocator()).Move()),
+                                            std::move(fields_as_array.Move()),
+                                            json_stringifier_.Allocator());
     }
   }
 
@@ -131,8 +127,7 @@ template <class JSON_FORMAT>
 class JSONVariantCaseAbstractBase {
  public:
   virtual ~JSONVariantCaseAbstractBase() = default;
-  virtual void Deserialize(JSONParser<JSON_FORMAT>& json_parser,
-                           IHasUncheckedMoveFromUniquePtr& destination) = 0;
+  virtual void Deserialize(JSONParser<JSON_FORMAT>& json_parser, IHasUncheckedMoveFromUniquePtr& destination) = 0;
 };
 
 template <class JSON_FORMAT, typename T>
@@ -215,8 +210,7 @@ struct JSONVariantPerStyleRegisterer {
     StyleCurrent(deserializers_map_t& deserializers) {
       // Silently discard duplicate types in the input type list. They would be deserialized correctly.
       deserializers[Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<X>()).type_id] =
-          std::make_unique<JSONVariantCaseGeneric<JSON_FORMAT, X>>(
-              reflection::CurrentTypeNameAsConstCharPtr<X>());
+          std::make_unique<JSONVariantCaseGeneric<JSON_FORMAT, X>>(reflection::CurrentTypeNameAsConstCharPtr<X>());
     }
   };
 
@@ -322,8 +316,8 @@ class JSONVariantPerStyle<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
               value = &cit->value;
             } else {
               // LCOV_EXCL_START
-              throw JSONSchemaException(
-                  std::string("no other key after `") + case_name + "`, seeing `" + key + "`", json_parser);
+              throw JSONSchemaException(std::string("no other key after `") + case_name + "`, seeing `" + key + "`",
+                                        json_parser);
               // LCOV_EXCL_STOP
             }
           }
@@ -426,8 +420,8 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<IS_CUR
         throw JSONUninitializedVariantObjectException();
       }
     } else {
-      json::JSONVariantPerStyle<JSON_FORMAT::variant_style, JSON_FORMAT, T>::Instance().DoLoadVariant(
-          json_parser, value);
+      json::JSONVariantPerStyle<JSON_FORMAT::variant_style, JSON_FORMAT, T>::Instance().DoLoadVariant(json_parser,
+                                                                                                      value);
     }
   }
 };

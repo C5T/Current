@@ -169,9 +169,8 @@ class MMQImpl {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        consumer_(std::move(circular_buffer_[tail].message_body),
-                  circular_buffer_[tail].index_timestamp,
-                  save_last_idx_ts);
+        consumer_(
+            std::move(circular_buffer_[tail].message_body), circular_buffer_[tail].index_timestamp, save_last_idx_ts);
       }
 
       {
@@ -223,8 +222,8 @@ class MMQImpl {
     }
     while (circular_buffer_[head_].status != Entry::FREE) {
       // Waiting for the next empty slot in the buffer.
-      condition_variable_.wait(
-          lock, [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
+      condition_variable_.wait(lock,
+                               [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
       if (destructing_) {
         return std::make_pair(false, 0u);  // LCOV_EXCL_LINE
       }

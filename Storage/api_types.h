@@ -83,14 +83,11 @@ struct FieldTypeDependentImpl<semantics::primary_key::RowCol> {
   static void CallWithOrWithoutKeyFromURL(Request&& request_rref, F_WITH&& with, F_WITHOUT&& without) {
     // TODO(dkorolev): `?1=...&2=...`, `?L=...&R=...`, etc. -- make the code more generic.
     if (request_rref.url_path_args.size() == 2u) {
-      with(std::move(request_rref),
-           std::make_pair(request_rref.url_path_args[0], request_rref.url_path_args[1]));
+      with(std::move(request_rref), std::make_pair(request_rref.url_path_args[0], request_rref.url_path_args[1]));
     } else if (request_rref.url.query.has("key1") && request_rref.url.query.has("key2")) {
-      with(std::move(request_rref),
-           std::make_pair(request_rref.url.query["key1"], request_rref.url.query["key2"]));
+      with(std::move(request_rref), std::make_pair(request_rref.url.query["key1"], request_rref.url.query["key2"]));
     } else if (request_rref.url.query.has("row") && request_rref.url.query.has("col")) {
-      with(std::move(request_rref),
-           std::make_pair(request_rref.url.query["row"], request_rref.url.query["col"]));
+      with(std::move(request_rref), std::make_pair(request_rref.url.query["row"], request_rref.url.query["col"]));
     } else if (request_rref.url.query.has("1") && request_rref.url.query.has("2")) {
       // LCOV_EXCL_START
       with(std::move(request_rref), std::make_pair(request_rref.url.query["1"], request_rref.url.query["2"]));
@@ -309,11 +306,7 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
                    field_t& field,
                    const std::string& field_name,
                    ENTRY& entry)
-      : RESTfulGenericInput<STORAGE>(input),
-        fields(fields),
-        field(field),
-        field_name(field_name),
-        entry(entry) {}
+      : RESTfulGenericInput<STORAGE>(input), fields(fields), field(field), field_name(field_name), entry(entry) {}
   RESTfulPOSTInput(RESTfulGenericInput<STORAGE>&& input,
                    mutable_fields_t fields,
                    field_t& field,
@@ -419,8 +412,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
   using outer_accessor_t = typename current::decay<FIELD>::rows_outer_accessor_t;
 
   template <typename FIELD, typename ROW>
-  static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field,
-                                                                                         ROW&& row) {
+  static GenericMapAccessor<typename current::decay<FIELD>::row_elements_map_t> RowOrCol(FIELD&& field, ROW&& row) {
     return field.Row(std::forward<ROW>(row));
   }
 
@@ -430,8 +422,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialRowKey> {
   }
 
   template <typename FIELD, typename ROW>
-  static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field,
-                                                                                         ROW&& row) {
+  static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field, ROW&& row) {
     return field.GetEntryFromRow(std::forward<ROW>(row));
   }
 
@@ -456,8 +447,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   using outer_accessor_t = typename current::decay<FIELD>::cols_outer_accessor_t;
 
   template <typename FIELD, typename COL>
-  static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field,
-                                                                                         COL&& col) {
+  static GenericMapAccessor<typename current::decay<FIELD>::col_elements_map_t> RowOrCol(FIELD&& field, COL&& col) {
     return field.Col(std::forward<COL>(col));
   }
 
@@ -467,8 +457,7 @@ struct MatrixContainerProxy<semantics::key_completeness::PartialColKey> {
   }
 
   template <typename FIELD, typename COL>
-  static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field,
-                                                                                         COL&& col) {
+  static ImmutableOptional<typename current::decay<FIELD>::entry_t> GetEntryFromRowOrCol(FIELD&& field, COL&& col) {
     return field.GetEntryFromCol(std::forward<COL>(col));
   }
 
@@ -581,9 +570,7 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
       void operator++() { ++iterator; }
       bool operator==(const SingleElementOuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const SingleElementOuterIterator& rhs) const { return !operator==(rhs); }
-      current::copy_free<OUTER_KEY> OuterKeyForPartialHypermediaCollectionView() const {
-        return iterator.key();
-      }
+      current::copy_free<OUTER_KEY> OuterKeyForPartialHypermediaCollectionView() const { return iterator.key(); }
       using value_t = SingleElementContainer<OUTER_KEY, outer_iterator_t>;
       // DIMA_FIXME: Remove all `has_range_element_t`, and likely remove/rename all `range_element_t`.
       // DIMA_FIXME: Remove all `value_t`, or change them into some `c5t_value_t` to eliminate ambiguity.
@@ -600,8 +587,8 @@ struct GenericMatrixIteratorImplSelector<PARTIAL_KEY_TYPE, semantics::matrix_dim
 
   struct Impl {
     template <typename FIELD, typename ROW_OR_COL>
-    static SingleElementInnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(
-        FIELD&& field, ROW_OR_COL&& row_or_col) {
+    static SingleElementInnerAccessor<typename current::decay<FIELD>::entry_t> RowOrCol(FIELD&& field,
+                                                                                        ROW_OR_COL&& row_or_col) {
       return SingleElementInnerAccessor<typename current::decay<FIELD>::entry_t>(
           MatrixContainerProxy<PARTIAL_KEY_TYPE>::GetEntryFromRowOrCol(std::forward<FIELD>(field),
                                                                        std::forward<ROW_OR_COL>(row_or_col)));

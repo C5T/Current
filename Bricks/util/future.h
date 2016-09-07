@@ -43,9 +43,7 @@ struct FutureImpl {
   FutureImpl() = delete;
   FutureImpl(std::future<T>&& rhs) : f_(std::move(rhs)), used_(false) {}
   FutureImpl(FutureImpl<T, StrictFuture::Forgiving>&& rhs) : f_(std::move(rhs.f_)), used_(false) {}
-  FutureImpl(FutureImpl<T, StrictFuture::Strict>&& rhs) : f_(std::move(rhs.f_)), used_(false) {
-    rhs.used_ = true;
-  }
+  FutureImpl(FutureImpl<T, StrictFuture::Strict>&& rhs) : f_(std::move(rhs.f_)), used_(false) { rhs.used_ = true; }
   ~FutureImpl() {
     if (STRICTNESS == StrictFuture::Strict && !used_) {
       std::cerr << "Strict future has been left hanging, while Go(), Wait(), or Detach() must have been called."
@@ -77,9 +75,7 @@ struct FutureImpl<void, STRICTNESS> {
   FutureImpl() = delete;
   FutureImpl(std::future<void>&& rhs) : f_(std::move(rhs)), used_(false) {}
   FutureImpl(FutureImpl<void, StrictFuture::Forgiving>&& rhs) : f_(std::move(rhs.f_)), used_(false) {}
-  FutureImpl(FutureImpl<void, StrictFuture::Strict>&& rhs) : f_(std::move(rhs.f_)), used_(false) {
-    rhs.used_ = true;
-  }
+  FutureImpl(FutureImpl<void, StrictFuture::Strict>&& rhs) : f_(std::move(rhs.f_)), used_(false) { rhs.used_ = true; }
   ~FutureImpl() {
     if (STRICTNESS == StrictFuture::Strict && !used_) {
       std::cerr << "Strict future has been left hanging, while Go(), Wait(), or Detach() must have been called."

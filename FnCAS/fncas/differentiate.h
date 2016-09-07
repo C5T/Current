@@ -48,8 +48,9 @@ fncas_value_type approximate_derivative(F f,
 }
 
 template <typename F>
-inline std::vector<fncas_value_type> approximate_gradient(
-    F f, const std::vector<fncas_value_type>& x, const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
+inline std::vector<fncas_value_type> approximate_gradient(F f,
+                                                          const std::vector<fncas_value_type>& x,
+                                                          const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<fncas_value_type> g(x.size());
   std::vector<fncas_value_type> xx(x);
   for (size_t i = 0; i < xx.size(); ++i) {
@@ -71,8 +72,7 @@ inline node_index_type d_op(operation_t operation, const V& a, const V& b, const
       [](const V&, const V&, const V& da, const V& db) { return da - db; },
       [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
       [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
-  return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index()
-                                      : 0;
+  return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
 inline node_index_type d_f(function_t function, const V& original, const V& x, const V& dx) {
@@ -103,15 +103,12 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
       // atan().
       [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
   };
-  return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index()
-                                    : 0;
+  return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index() : 0;
 }
 
 // differentiate_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
-inline node_index_type differentiate_node(node_index_type index,
-                                          int32_t var_index,
-                                          int32_t number_of_variables) {
+inline node_index_type differentiate_node(node_index_type index, int32_t var_index, int32_t number_of_variables) {
   CURRENT_ASSERT(var_index < number_of_variables);
   std::vector<std::vector<node_index_type>>& df_container = internals_singleton().df_;
   if (df_container.empty()) {
@@ -183,8 +180,7 @@ struct g : noncopyable {
 struct g_approximate : g {
   std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
   int32_t d_;
-  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, int32_t d)
-      : f_(f), d_(d) {}
+  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, int32_t d) : f_(f), d_(d) {}
   g_approximate(g_approximate&& rhs) : f_(rhs.f_) {}
   g_approximate() = default;
   g_approximate(const g_approximate&) = default;

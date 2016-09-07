@@ -168,9 +168,7 @@ struct action_test_gradient : generic_action {
   fncas::g_approximate ga;
   fncas::g_intermediate gi;
   std::vector<double> errors;
-  static double error_between(double a, double b) {
-    return fabs(b - a) / std::max(1.0, std::max(fabs(a), fabs(b)));
-  }
+  static double error_between(double a, double b) { return fabs(b - a) / std::max(1.0, std::max(fabs(a), fabs(b))); }
   static bool approximate_compare(double a, double b, double eps = 0.03) { return error_between(a, b) < eps; }
   void start() {
     x = std::vector<double>(f->dim());

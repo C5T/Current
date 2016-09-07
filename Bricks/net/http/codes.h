@@ -114,8 +114,7 @@ struct HTTPResponseCodeDotNotation {
   const HTTPResponseCodeValue RequestEntityTooLarge = HTTPResponseCodeValue::RequestEntityTooLarge;
   const HTTPResponseCodeValue RequestURITooLarge = HTTPResponseCodeValue::RequestURITooLarge;
   const HTTPResponseCodeValue UnsupportedMediaType = HTTPResponseCodeValue::UnsupportedMediaType;
-  const HTTPResponseCodeValue RequestedRangeNotSatisfiable =
-      HTTPResponseCodeValue::RequestedRangeNotSatisfiable;
+  const HTTPResponseCodeValue RequestedRangeNotSatisfiable = HTTPResponseCodeValue::RequestedRangeNotSatisfiable;
   const HTTPResponseCodeValue ExpectationFailed = HTTPResponseCodeValue::ExpectationFailed;
   const HTTPResponseCodeValue InternalServerError = HTTPResponseCodeValue::InternalServerError;
   const HTTPResponseCodeValue NotImplemented = HTTPResponseCodeValue::NotImplemented;

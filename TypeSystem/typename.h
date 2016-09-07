@@ -87,9 +87,7 @@ struct TypeListNamesAsCSV<TypeListImpl<T>> {
 
 template <typename T, typename... TS>
 struct TypeListNamesAsCSV<TypeListImpl<T, TS...>> {
-  static std::string Value() {
-    return CurrentTypeName<T>() + '_' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value();
-  }
+  static std::string Value() { return CurrentTypeName<T>() + '_' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value(); }
 };
 
 template <typename T>

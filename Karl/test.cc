@@ -44,12 +44,8 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_uint16(karl_test_keepalives_port,
-              PickPortForUnitTest(),
-              "Local test port for the `Karl` keepalive listener.");
-DEFINE_uint16(karl_test_fleet_view_port,
-              PickPortForUnitTest(),
-              "Local test port for the `Karl` fleet view listener.");
+DEFINE_uint16(karl_test_keepalives_port, PickPortForUnitTest(), "Local test port for the `Karl` keepalive listener.");
+DEFINE_uint16(karl_test_fleet_view_port, PickPortForUnitTest(), "Local test port for the `Karl` fleet view listener.");
 DEFINE_uint16(karl_generator_test_port, PickPortForUnitTest(), "Local test port for the `generator` service.");
 DEFINE_uint16(karl_is_prime_test_port, PickPortForUnitTest(), "Local test port for the `is_prime` service.");
 DEFINE_uint16(karl_annotator_test_port, PickPortForUnitTest(), "Local test port for the `annotator` service.");
@@ -106,17 +102,15 @@ TEST(Karl, SmokeGenerator) {
 
   {
     current::karl::ClaireStatus status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<current::karl::ClaireStatus>(
-            HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireStatus>(
+                        HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port))).body));
     EXPECT_EQ("generator", status.service);
   }
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -137,16 +131,14 @@ TEST(Karl, SmokeIsPrime) {
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
   EXPECT_EQ("YES\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=2", FLAGS_karl_is_prime_test_port))).body);
-  EXPECT_EQ("YES\n",
-            HTTP(GET(Printf("http://localhost:%d/is_prime?x=2017", FLAGS_karl_is_prime_test_port))).body);
+  EXPECT_EQ("YES\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=2017", FLAGS_karl_is_prime_test_port))).body);
   EXPECT_EQ("YES\n",
             HTTP(GET(Printf("http://localhost:%d/is_prime?x=1000000007", FLAGS_karl_is_prime_test_port))).body);
   EXPECT_EQ("NO\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=-1", FLAGS_karl_is_prime_test_port))).body);
   EXPECT_EQ("NO\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=0", FLAGS_karl_is_prime_test_port))).body);
   EXPECT_EQ("NO\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=1", FLAGS_karl_is_prime_test_port))).body);
   EXPECT_EQ("NO\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=10", FLAGS_karl_is_prime_test_port))).body);
-  EXPECT_EQ("NO\n",
-            HTTP(GET(Printf("http://localhost:%d/is_prime?x=1369", FLAGS_karl_is_prime_test_port))).body);
+  EXPECT_EQ("NO\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=1369", FLAGS_karl_is_prime_test_port))).body);
 
   {
     current::karl::ClaireStatus status;
@@ -157,9 +149,8 @@ TEST(Karl, SmokeIsPrime) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -202,17 +193,15 @@ TEST(Karl, SmokeAnnotator) {
 
   {
     current::karl::ClaireStatus status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<current::karl::ClaireStatus>(
-            HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_annotator_test_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireStatus>(
+                        HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_annotator_test_port))).body));
     EXPECT_EQ("annotator", status.service);
   }
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
 
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
@@ -245,8 +234,7 @@ TEST(Karl, SmokeFilter) {
       // 10-th (index=9 for 0-based) prime is `29`.
       const auto x29 = ParseJSON<karl_unittest::Number>(
           current::strings::Split(
-              HTTP(GET(Printf("http://localhost:%d/primes?i=9&n=1", FLAGS_karl_filter_test_port))).body, '\t')
-              .back());
+              HTTP(GET(Printf("http://localhost:%d/primes?i=9&n=1", FLAGS_karl_filter_test_port))).body, '\t').back());
       EXPECT_EQ(29, x29.x);
       ASSERT_TRUE(Exists(x29.is_prime));
       EXPECT_TRUE(Value(x29.is_prime)));
@@ -254,8 +242,7 @@ TEST(Karl, SmokeFilter) {
       // 20-th (index=19 for 0-based) prime is `71`.
       const auto x71 = ParseJSON<karl_unittest::Number>(
           current::strings::Split(
-              HTTP(GET(Printf("http://localhost:%d/primes?i=19&n=1", FLAGS_karl_filter_test_port))).body, '\t')
-              .back());
+              HTTP(GET(Printf("http://localhost:%d/primes?i=19&n=1", FLAGS_karl_filter_test_port))).body, '\t').back());
       EXPECT_EQ(71, x71.x);
       ASSERT_TRUE(Exists(x71.is_prime));
       EXPECT_TRUE(Value(x71.is_prime)););
@@ -269,9 +256,8 @@ TEST(Karl, SmokeFilter) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -294,9 +280,9 @@ TEST(Karl, Deregister) {
   // No services registered.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -306,9 +292,9 @@ TEST(Karl, Deregister) {
     // The `generator` service is registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                          FLAGS_karl_test_fleet_view_port))).body));
+      ASSERT_NO_THROW(
+          status = ParseJSON<unittest_karl_status_t>(
+              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -321,9 +307,9 @@ TEST(Karl, Deregister) {
       // The `generator` and `is_prime` services are registered.
       {
         unittest_karl_status_t status;
-        ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                            FLAGS_karl_test_fleet_view_port))).body));
+        ASSERT_NO_THROW(
+            status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                                                       FLAGS_karl_test_fleet_view_port))).body));
         EXPECT_EQ(1u, status.machines.size()) << JSON(status);
         ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
         auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -335,9 +321,9 @@ TEST(Karl, Deregister) {
     // The `generator` should be the only service registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                          FLAGS_karl_test_fleet_view_port))).body));
+      ASSERT_NO_THROW(
+          status = ParseJSON<unittest_karl_status_t>(
+              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -349,9 +335,9 @@ TEST(Karl, Deregister) {
   // All services should be deregistered by this moment.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 }
@@ -376,9 +362,9 @@ TEST(Karl, DeregisterWithNginx) {
   // No services registered.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -390,16 +376,15 @@ TEST(Karl, DeregisterWithNginx) {
     // The `generator` service is registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                          FLAGS_karl_test_fleet_view_port))).body));
+      ASSERT_NO_THROW(
+          status = ParseJSON<unittest_karl_status_t>(
+              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
       EXPECT_EQ(1u, per_ip_services.size());
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
-      ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied))
-          << JSON(per_ip_services);
+      ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied)) << JSON(per_ip_services);
       generator_proxied_status_url = Value(per_ip_services[generator.ClaireCodename()].url_status_page_proxied);
       EXPECT_EQ(karl_nginx_base_url + "/live/" + generator.ClaireCodename(), generator_proxied_status_url);
     }
@@ -427,9 +412,9 @@ TEST(Karl, DeregisterWithNginx) {
       // The `generator` and `is_prime` services are registered.
       {
         unittest_karl_status_t status;
-        ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                            FLAGS_karl_test_fleet_view_port))).body));
+        ASSERT_NO_THROW(
+            status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                                                       FLAGS_karl_test_fleet_view_port))).body));
         EXPECT_EQ(1u, status.machines.size()) << JSON(status);
         ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
         auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -463,9 +448,9 @@ TEST(Karl, DeregisterWithNginx) {
     // The `generator` should be the only service registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                          FLAGS_karl_test_fleet_view_port))).body));
+      ASSERT_NO_THROW(
+          status = ParseJSON<unittest_karl_status_t>(
+              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -477,9 +462,9 @@ TEST(Karl, DeregisterWithNginx) {
   // All services should be deregistered by this moment.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -508,27 +493,23 @@ TEST(Karl, DisconnectedByTimout) {
   claire.codename = "ABCDEF";
   claire.local_port = 8888;
   {
-    const std::string keepalive_url = Printf("%s?codename=%s&port=%d",
-                                             karl_locator.address_port_route.c_str(),
-                                             claire.codename.c_str(),
-                                             claire.local_port);
+    const std::string keepalive_url = Printf(
+        "%s?codename=%s&port=%d", karl_locator.address_port_route.c_str(), claire.codename.c_str(), claire.local_port);
     const auto response = HTTP(POST(keepalive_url, claire));
     EXPECT_EQ(200, static_cast<int>(response.code));
     while (karl.ActiveServicesCount() == 0u) {
       std::this_thread::yield();  // Spin lock.
     }
-    const auto result = karl.InternalExposeStorage()
-                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-                              EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
-                                        Value(fields.claires[claire.codename]).registered_state);
-                            })
-                            .Go();
+    const auto result =
+        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
+          ASSERT_TRUE(Exists(fields.claires[claire.codename]));
+          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                    Value(fields.claires[claire.codename]).registered_state);
+        }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
-  current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
-                        std::chrono::microseconds(101 * 1000 * 1000));
+  current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
   bool is_timeouted_persisted = false;
   while (!is_timeouted_persisted) {
     is_timeouted_persisted =
@@ -567,22 +548,19 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   auto http_scope = HTTP(claire.local_port).Register("/.current", [](Request r) { r("GOTIT\n"); });
 
   {
-    const std::string keepalive_url = Printf("%s?codename=%s&port=%d",
-                                             karl_locator.address_port_route.c_str(),
-                                             claire.codename.c_str(),
-                                             claire.local_port);
+    const std::string keepalive_url = Printf(
+        "%s?codename=%s&port=%d", karl_locator.address_port_route.c_str(), claire.codename.c_str(), claire.local_port);
     const auto response = HTTP(POST(keepalive_url, claire));
     EXPECT_EQ(200, static_cast<int>(response.code));
     while (karl.ActiveServicesCount() == 0u) {
       std::this_thread::yield();  // Spin lock.
     }
-    const auto result = karl.InternalExposeStorage()
-                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-                              EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
-                                        Value(fields.claires[claire.codename]).registered_state);
-                            })
-                            .Go();
+    const auto result =
+        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
+          ASSERT_TRUE(Exists(fields.claires[claire.codename]));
+          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                    Value(fields.claires[claire.codename]).registered_state);
+        }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
@@ -603,8 +581,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
     }
   }
 
-  current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
-                        std::chrono::microseconds(101 * 1000 * 1000));
+  current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
   bool is_timeouted_persisted = false;
   while (!is_timeouted_persisted) {
     is_timeouted_persisted =
@@ -637,13 +614,10 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   current::time::ResetToZero();
 
   // Start primary `Karl`.
-  const auto primary_stream_file_remover =
-      current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto primary_storage_file_remover =
-      current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  const auto primary_stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto primary_storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
   const unittest_karl_t primary_karl(UnittestKarlParameters());
-  const current::karl::Locator primary_karl_locator(
-      Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+  const current::karl::Locator primary_karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
   // Start secondary `Karl`.
   current::karl::KarlParameters secondary_karl_params;
@@ -662,16 +636,16 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   // No services registered in both `Karl`s.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        secondary_karl_params.fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                                                   secondary_karl_params.fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -680,9 +654,9 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   // The `generator` service is registered in the primary `Karl`.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -700,14 +674,12 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
     const std::string expected_body =
         Printf("Now reporting to '%s'.\n", secondary_karl_locator.address_port_route.c_str());
     EXPECT_EQ(expected_body, response.body);
-    EXPECT_EQ(secondary_karl_locator.address_port_route,
-              generator.Claire().GetKarlLocator().address_port_route);
+    EXPECT_EQ(secondary_karl_locator.address_port_route, generator.Claire().GetKarlLocator().address_port_route);
   }
 
   // Check that `generator`'s Claire reports new Karl URL.
   {
-    const std::string generator_claire_url =
-        Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port);
+    const std::string generator_claire_url = Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port);
     const auto response = HTTP(GET(generator_claire_url));
     EXPECT_EQ(200, static_cast<int>(response.code));
     current::karl::ClaireStatus status;
@@ -721,9 +693,9 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   // The `generator` service is registered in the secondary `Karl`.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        secondary_karl_params.fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                                                   secondary_karl_params.fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -731,8 +703,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
     EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
   }
 
-  current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
-                        std::chrono::microseconds(101 * 1000 * 1000));
+  current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
   // The primary `Karl` marks the `generator` service as `timeouted`.
   {
     bool is_timeouted_persisted = false;
@@ -760,9 +731,9 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   // The `generator` service is again registered as active in the primary `Karl`.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -825,9 +796,9 @@ TEST(Karl, ModifiedClaireBoilerplateStatus) {
   // Modified boilerplate status is propagated to Karl.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                        FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& server = status.machines["127.0.0.1"];
@@ -865,8 +836,7 @@ TEST(Karl, EndToEndTest) {
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
   auto params = UnittestKarlParameters();
   if (!FLAGS_karl_nginx_config_file.empty()) {
-    params.SetNginxParameters(
-        current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file));
+    params.SetNginxParameters(current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file));
   }
   params.svg_name = "Karl's Unit Test";
   params.github_repo_url = "https://github.com/dkorolev/Current";
@@ -892,9 +862,8 @@ TEST(Karl, EndToEndTest) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -925,15 +894,14 @@ TEST(Karl, KarlNotifiesUserObject) {
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
 
-  struct KarlNotifiable : current::karl::IKarlNotifiable<
-                              Variant<current::karl::default_user_status::status, karl_unittest::is_prime>> {
+  struct KarlNotifiable
+      : current::karl::IKarlNotifiable<Variant<current::karl::default_user_status::status, karl_unittest::is_prime>> {
     std::vector<std::string> events;
-    void OnKeepalive(
-        std::chrono::microseconds,
-        const current::karl::ClaireServiceKey&,
-        const std::string& codename,
-        const current::karl::ClaireServiceStatus<
-            Variant<current::karl::default_user_status::status, karl_unittest::is_prime>>& status) override {
+    void OnKeepalive(std::chrono::microseconds,
+                     const current::karl::ClaireServiceKey&,
+                     const std::string& codename,
+                     const current::karl::ClaireServiceStatus<Variant<current::karl::default_user_status::status,
+                                                                      karl_unittest::is_prime>>& status) override {
       // First `Exists` for `Optional<>`, second for `Variant<>`.
       if (!Exists(status.runtime) || !Exists<karl_unittest::is_prime>(Value(status.runtime))) {
         events.push_back("Keepalive: " + codename);
@@ -960,36 +928,31 @@ TEST(Karl, KarlNotifiesUserObject) {
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
   std::vector<std::string> expected;
-  EXPECT_EQ(current::strings::Join(expected, ", "),
-            current::strings::Join(karl_notifications_receiver.events, ", "));
+  EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
   // First, the end-to-end test with respect to callbacks.
   {
     const karl_unittest::ServiceGenerator generator(
         FLAGS_karl_generator_test_port, std::chrono::microseconds(1000000), karl_locator);
     expected.push_back("Keepalive: " + generator.ClaireCodename());
-    EXPECT_EQ(current::strings::Join(expected, ", "),
-              current::strings::Join(karl_notifications_receiver.events, ", "));
+    EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
     const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
     expected.push_back("PrimeKeepalive: " + is_prime.ClaireCodename());
-    EXPECT_EQ(current::strings::Join(expected, ", "),
-              current::strings::Join(karl_notifications_receiver.events, ", "));
+    EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
     {
-      const karl_unittest::ServiceAnnotator annotator(
-          FLAGS_karl_annotator_test_port,
-          Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
-          Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
-          karl_locator);
+      const karl_unittest::ServiceAnnotator annotator(FLAGS_karl_annotator_test_port,
+                                                      Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
+                                                      Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
+                                                      karl_locator);
       expected.push_back("Keepalive: " + annotator.ClaireCodename());
       EXPECT_EQ(current::strings::Join(expected, ", "),
                 current::strings::Join(karl_notifications_receiver.events, ", "));
 
       {
-        const karl_unittest::ServiceFilter filter(FLAGS_karl_filter_test_port,
-                                                  Printf("http://localhost:%d", FLAGS_karl_annotator_test_port),
-                                                  karl_locator);
+        const karl_unittest::ServiceFilter filter(
+            FLAGS_karl_filter_test_port, Printf("http://localhost:%d", FLAGS_karl_annotator_test_port), karl_locator);
         expected.push_back("Keepalive: " + filter.ClaireCodename());
         EXPECT_EQ(current::strings::Join(expected, ", "),
                   current::strings::Join(karl_notifications_receiver.events, ", "));
@@ -1005,16 +968,14 @@ TEST(Karl, KarlNotifiesUserObject) {
     while (karl_notifications_receiver.events.size() != expected.size()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(current::strings::Join(expected, ", "),
-              current::strings::Join(karl_notifications_receiver.events, ", "));
+    EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
     expected.push_back("Deregistered: " + is_prime.ClaireCodename());
     expected.push_back("Deregistered: " + generator.ClaireCodename());
   }
   while (karl_notifications_receiver.events.size() != expected.size()) {
     std::this_thread::yield();
   }
-  EXPECT_EQ(current::strings::Join(expected, ", "),
-            current::strings::Join(karl_notifications_receiver.events, ", "));
+  EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
   while (karl.ActiveServicesCount()) {
     std::this_thread::yield();  // Spin lock.
@@ -1039,11 +1000,9 @@ TEST(Karl, KarlNotifiesUserObject) {
       }
     }
     expected.push_back("Keepalive: ABCDEF");
-    EXPECT_EQ(current::strings::Join(expected, ", "),
-              current::strings::Join(karl_notifications_receiver.events, ", "));
+    EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
-    current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
-                          std::chrono::microseconds(101 * 1000 * 1000));
+    current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
     while (Value(karl.InternalExposeStorage()
                      .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
                        EXPECT_TRUE(Exists(fields.claires[claire.codename]));
@@ -1059,8 +1018,7 @@ TEST(Karl, KarlNotifiesUserObject) {
       std::this_thread::yield();
     }
 
-    EXPECT_EQ(current::strings::Join(expected, ", "),
-              current::strings::Join(karl_notifications_receiver.events, ", "));
+    EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
   }
 }
 
@@ -1094,9 +1052,8 @@ TEST(Karl, CustomStorage) {
   current::time::ResetToZero();
 
   using custom_storage_t = CustomKarlStorage<SherlockStreamPersister>;
-  using custom_karl_t = current::karl::GenericKarl<custom_storage_t,
-                                                   current::karl::default_user_status::status,
-                                                   karl_unittest::is_prime>;
+  using custom_karl_t =
+      current::karl::GenericKarl<custom_storage_t, current::karl::default_user_status::status, karl_unittest::is_prime>;
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
@@ -1117,12 +1074,11 @@ TEST(Karl, CustomStorage) {
         FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
     generator_codename = generator.ClaireCodename();
 
-    const auto result =
-        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
-          ASSERT_TRUE(Exists(fields.claires[generator_codename]));
-          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
-                    Value(fields.claires[generator_codename]).registered_state);
-        }).Go();
+    const auto result = karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+      ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+      EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                Value(fields.claires[generator_codename]).registered_state);
+    }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 

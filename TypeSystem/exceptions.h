@@ -57,8 +57,7 @@ struct UninitializedVariantOfTypeExceptionWrapper {
 };
 
 template <typename... TS>
-using UninitializedVariantOfType =
-    typename UninitializedVariantOfTypeExceptionWrapper<TS...>::const_reference_type;
+using UninitializedVariantOfType = typename UninitializedVariantOfTypeExceptionWrapper<TS...>::const_reference_type;
 
 template <typename T>
 struct IncompatibleVariantTypeException : Exception {};
@@ -71,9 +70,9 @@ using current::UninitializedVariantException;
 using current::UninitializedVariantOfTypeException;
 using current::IncompatibleVariantTypeException;
 
-using current::NoValue;               // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
-using current::NoValueOfType;         // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
-using current::UninitializedVariant;  // == a const reference to `UninitializedVariant`.
+using current::NoValue;                     // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
+using current::NoValueOfType;               // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
+using current::UninitializedVariant;        // == a const reference to `UninitializedVariant`.
 using current::UninitializedVariantOfType;  // == a const reference as well.
 
 #endif  // CURRENT_TYPE_SYSTEM_EXCEPTIONS_H

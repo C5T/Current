@@ -272,41 +272,29 @@ TEST(RipCurrent, TypeSystemGuarantees) {
   const auto foo_bar_bar_baz_4 = foo | (bar | (bar | baz));
 
   static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar)::input_t, ripcurrent::LHS<>>::value, "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar)::output_t, ripcurrent::RHS<Integer>>::value,
-                "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar)::output_t, ripcurrent::RHS<Integer>>::value, "");
 
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(bar_baz)::input_t, ripcurrent::LHS<Integer>>::value,
-                "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(bar_baz)::input_t, ripcurrent::LHS<Integer>>::value, "");
   static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(bar_baz)::output_t, ripcurrent::RHS<>>::value, "");
 
   static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_baz)::input_t, ripcurrent::LHS<>>::value, "");
   static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_baz)::output_t, ripcurrent::RHS<>>::value, "");
 
   static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_baz_1)::input_t, ripcurrent::LHS<>>::value, "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_baz_1)::output_t, ripcurrent::RHS<>>::value,
-                "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_baz_1)::output_t, ripcurrent::RHS<>>::value, "");
 
   static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_baz_2)::input_t, ripcurrent::LHS<>>::value, "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_baz_2)::output_t, ripcurrent::RHS<>>::value,
-                "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_1)::input_t, ripcurrent::LHS<>>::value,
-                "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_1)::output_t, ripcurrent::RHS<>>::value,
-                "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_baz_2)::output_t, ripcurrent::RHS<>>::value, "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_1)::input_t, ripcurrent::LHS<>>::value, "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_1)::output_t, ripcurrent::RHS<>>::value, "");
 
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_2)::input_t, ripcurrent::LHS<>>::value,
-                "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_2)::output_t, ripcurrent::RHS<>>::value,
-                "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_3)::input_t, ripcurrent::LHS<>>::value,
-                "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_3)::output_t, ripcurrent::RHS<>>::value,
-                "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_2)::input_t, ripcurrent::LHS<>>::value, "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_2)::output_t, ripcurrent::RHS<>>::value, "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_3)::input_t, ripcurrent::LHS<>>::value, "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_3)::output_t, ripcurrent::RHS<>>::value, "");
 
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_4)::input_t, ripcurrent::LHS<>>::value,
-                "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_4)::output_t, ripcurrent::RHS<>>::value,
-                "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_4)::input_t, ripcurrent::LHS<>>::value, "");
+  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(foo_bar_bar_baz_4)::output_t, ripcurrent::RHS<>>::value, "");
 
   foo_bar.Dismiss();
   bar_baz.Dismiss();
@@ -323,8 +311,8 @@ static std::string ExpectHasNAndReturnFirstTwoLines(size_t n, const std::string&
   const std::vector<std::string> lines = current::strings::Split<current::strings::ByLines>(s);
   EXPECT_EQ(n, lines.size());
   return current::strings::Join(
-      std::vector<std::string>(
-          lines.begin(), lines.begin() + std::min(static_cast<size_t>(lines.size()), static_cast<size_t>(2))),
+      std::vector<std::string>(lines.begin(),
+                               lines.begin() + std::min(static_cast<size_t>(lines.size()), static_cast<size_t>(2))),
       '\n');
 }
 
@@ -332,11 +320,8 @@ TEST(RipCurrent, NotLeftHanging) {
   using namespace ripcurrent_unittest;
 
   std::string captured_error_message;
-  const auto scope =
-      current::Singleton<current::ripcurrent::RipCurrentMockableErrorHandler>().ScopedInjectHandler(
-          [&captured_error_message](const std::string& error_message) {
-            captured_error_message = error_message;
-          });
+  const auto scope = current::Singleton<current::ripcurrent::RipCurrentMockableErrorHandler>().ScopedInjectHandler(
+      [&captured_error_message](const std::string& error_message) { captured_error_message = error_message; });
 
   EXPECT_EQ("", captured_error_message);
   RCFoo();

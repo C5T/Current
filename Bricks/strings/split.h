@@ -88,9 +88,7 @@ struct MatchImpl<std::string> {
 template <size_t N>
 struct MatchImpl<const char[N]> {
   enum { valid_separator = true };
-  static std::enable_if_t<(N > 0), bool> Match(char c, const char s[N]) {
-    return std::find(s, s + N, c) != (s + N);
-  }
+  static std::enable_if_t<(N > 0), bool> Match(char c, const char s[N]) { return std::find(s, s + N, c) != (s + N); }
 };
 
 template <typename T>
@@ -254,8 +252,7 @@ inline size_t Split(STRING&& s, PROCESSOR&& processor, EmptyFields empty_fields_
 
 // The versions returning an `std::vector<std::string>`, for those not caring about performance.
 template <typename SEPARATOR, typename STRING>
-inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value &&
-                            !std::is_same<SEPARATOR, EmptyFields>::value,
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
                         std::vector<std::string>>
 Split(STRING&& s,
       SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
@@ -297,11 +294,8 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
 
 template <typename KEY_VALUE_SEPARATOR, typename STRING>
 inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
-    STRING&& s,
-    KEY_VALUE_SEPARATOR&& key_value_separator,
-    KeyValueParsing throw_mode = KeyValueParsing::Silent) {
-  return SplitIntoKeyValuePairs(
-      std::forward<STRING>(s), key_value_separator, ByWhitespace::UseIsSpace, throw_mode);
+    STRING&& s, KEY_VALUE_SEPARATOR&& key_value_separator, KeyValueParsing throw_mode = KeyValueParsing::Silent) {
+  return SplitIntoKeyValuePairs(std::forward<STRING>(s), key_value_separator, ByWhitespace::UseIsSpace, throw_mode);
 }
 
 }  // namespace strings

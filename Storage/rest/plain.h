@@ -56,8 +56,7 @@ struct Plain {
                                       semantics::key_completeness::FullKey,
                                       semantics::key_completeness::DictionaryOrMatrixCompleteKey,
                                       F&& next) {
-      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
-                                                                           std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
     }
 
     template <typename F, typename KEY_COMPLETENESS>
@@ -105,8 +104,7 @@ struct Plain {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::DictionaryOrMatrixCompleteKey) const {
       if (Exists(input.get_url_key)) {
-        const auto key =
-            field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(Value(input.get_url_key));
+        const auto key = field_type_dependent_t<PARTICULAR_FIELD>::template ParseURLKey<KEY>(Value(input.get_url_key));
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
           return Value(result);
@@ -124,9 +122,9 @@ struct Plain {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
-        const auto row_or_col_key = current::FromString<
-            typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
-            Value(input.rowcol_get_url_key));
+        const auto row_or_col_key =
+            current::FromString<typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
+                Value(input.rowcol_get_url_key));
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
@@ -186,15 +184,12 @@ struct Plain {
       const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
-        return Response(field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key),
-                        HTTPResponseCode.Created);
+        return Response(field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key), HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }
     }
-    static Response ErrorBadJSON(const std::string&) {
-      return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
-    }
+    static Response ErrorBadJSON(const std::string&) { return Response("Bad JSON.\n", HTTPResponseCode.BadRequest); }
   };
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -218,9 +213,7 @@ struct Plain {
       }
     }
     // LCOV_EXCL_START
-    static Response ErrorBadJSON(const std::string&) {
-      return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
-    }
+    static Response ErrorBadJSON(const std::string&) { return Response("Bad JSON.\n", HTTPResponseCode.BadRequest); }
     // LCOV_EXCL_STOP
   };
 

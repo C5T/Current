@@ -110,8 +110,7 @@ class SocketHandle : private SocketSystemInitializer {
 #ifndef CURRENT_WINDOWS
       if (::setsockopt(socket_, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
 #else
-      if (::setsockopt(
-              socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
+      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
 #endif
       {
         CURRENT_THROW(SocketCreateException());
@@ -259,8 +258,9 @@ class Connection : public SocketHandle {
   // which will cause BlockingRead() to keep reading more data until all `max_elements` are read.
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
-  inline ENABLE_IF<sizeof(T) == 1, size_t> BlockingRead(
-      T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
+  inline ENABLE_IF<sizeof(T) == 1, size_t> BlockingRead(T* output_buffer,
+                                                        size_t max_length,
+                                                        BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     if (max_length == 0) {
       return 0;  // LCOV_EXCL_LINE
     } else {
@@ -307,8 +307,7 @@ class Connection : public SocketHandle {
           continue;             // LCOV_EXCL_LINE
         }
 #else
-        if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS ||
-            wsa_last_error == WSAENETDOWN) {
+        if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS || wsa_last_error == WSAENETDOWN) {
           // Effectively, `errno == EAGAIN`.
           continue;
         }
@@ -374,11 +373,9 @@ class Connection : public SocketHandle {
     static_cast<void>(more);  // Supress the 'unused parameter' warning.
 #endif
     CURRENT_ASSERT(buffer);
-    BRICKS_NET_LOG(
-        "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
+    BRICKS_NET_LOG("S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
 #if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
-    const int result =
-        static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL | (more ? MSG_MORE : 0)));
+    const int result = static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL | (more ? MSG_MORE : 0)));
 #else
     // No `MSG_NOSIGNAL` and extra cast for Visual Studio.
     // (As I understand, Windows sockets would not result in pipe-related issues. -- D.K.)
@@ -390,8 +387,7 @@ class Connection : public SocketHandle {
     } else if (static_cast<size_t>(result) != write_length) {
       CURRENT_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
     }
-    BRICKS_NET_LOG(
-        "S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
+    BRICKS_NET_LOG("S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
     return *this;
   }
 
@@ -441,8 +437,7 @@ class Socket final : public SocketHandle {
 
     BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
 
-    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) ==
-        static_cast<SOCKET>(-1)) {
+    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == static_cast<SOCKET>(-1)) {
       CURRENT_THROW(SocketBindException());
     }
 
@@ -469,8 +464,7 @@ class Socket final : public SocketHandle {
     int addr_client_length = sizeof(sockaddr_in);
     const auto invalid_socket = INVALID_SOCKET;
 #endif
-    const SOCKET handle =
-        ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
+    const SOCKET handle = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (handle == invalid_socket) {
       BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.

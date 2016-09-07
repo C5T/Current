@@ -265,8 +265,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       if (!serving_) {
         if (current.index >= params_.i &&                                           // Respect `i`.
             (params_.tail == 0u || (last.index - current.index) < params_.tail) &&  // Respect `tail`.
-            (from_timestamp_.count() == 0u ||
-             current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
+            (from_timestamp_.count() == 0u || current.us >= from_timestamp_)) {     // Respect `since` and `recent`.
           serving_ = true;
         }
         // Reached the end, didn't started serving and should not wait.

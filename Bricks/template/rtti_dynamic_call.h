@@ -100,8 +100,7 @@ struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
 };
 
 template <typename BASE, typename F, typename... ARGS>
-using RTTIHandlersMap =
-    std::unordered_map<std::type_index, std::unique_ptr<RTTIDispatcherBase<BASE, F, ARGS...>>>;
+using RTTIHandlersMap = std::unordered_map<std::type_index, std::unique_ptr<RTTIDispatcherBase<BASE, F, ARGS...>>>;
 
 template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
 struct PopulateRTTIHandlers {};
@@ -158,14 +157,12 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
 // Returning values from RTTI-dispatched calls is not supported. Pass in another parameter by pointer/reference.
 template <typename TYPELIST, typename BASE, typename... REST>
 void RTTIDynamicCallImpl(BASE&& ref, REST&&... rest) {
-  RTTIFindHandler<TYPELIST, BASE, REST...>(typeid(ref))
-      ->Handle(std::forward<BASE>(ref), std::forward<REST>(rest)...);
+  RTTIFindHandler<TYPELIST, BASE, REST...>(typeid(ref))->Handle(std::forward<BASE>(ref), std::forward<REST>(rest)...);
 }
 
 template <typename TYPELIST, typename BASE, typename... REST>
 void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
-  RTTIDynamicCallImpl<TYPELIST>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref)),
-                                std::forward<REST>(rest)...);
+  RTTIDynamicCallImpl<TYPELIST>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref)), std::forward<REST>(rest)...);
 }
 
 }  // namespace metaprogramming

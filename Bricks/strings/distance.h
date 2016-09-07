@@ -43,11 +43,7 @@ inline size_t SlowEditDistance(const std::string& a, const std::string& b) {
     mutable std::vector<std::vector<size_t>> D;
 
     SlowImpl(const std::string& a, const std::string& b)
-        : a(a),
-          b(b),
-          la(a.length()),
-          lb(b.length()),
-          D(la + 1, std::vector<size_t>(lb + 1, static_cast<size_t>(-1))) {}
+        : a(a), b(b), la(a.length()), lb(b.length()), D(la + 1, std::vector<size_t>(lb + 1, static_cast<size_t>(-1))) {}
 
     size_t Compute(size_t i, size_t j) const {
       size_t& R = D[i][j];

@@ -89,9 +89,7 @@ struct ActualInstance final {
   ActualInstance() : instance_(), destructing_(false), total_followers_spawned_throughout_lifetime_(0u) {}
   template <typename... ARGS>
   ActualInstance(ARGS&&... args)
-      : instance_(std::forward<ARGS>(args)...),
-        destructing_(false),
-        total_followers_spawned_throughout_lifetime_(0u) {}
+      : instance_(std::forward<ARGS>(args)...), destructing_(false), total_followers_spawned_throughout_lifetime_(0u) {}
 
   // Destructor: Block until all the followers are done.
   ~ActualInstance() {
@@ -356,8 +354,7 @@ class ScopeOwnedByMe final : private impl::ActualInstanceContainer<T>, public Sc
 
   template <typename... ARGS>
   ScopeOwnedByMe(ARGS&&... args)
-      : impl_t(std::forward<ARGS>(args)...),
-        base_t(impl::ConstructScopeOwnedByMe(), *impl_t::movable_instance_) {}
+      : impl_t(std::forward<ARGS>(args)...), base_t(impl::ConstructScopeOwnedByMe(), *impl_t::movable_instance_) {}
 
   ScopeOwnedByMe(ScopeOwnedByMe&& rhs)
       : impl_t(impl::ConstructActualContainerViaMoveConstructor(), std::move(static_cast<impl_t&&>(rhs))),

@@ -230,9 +230,8 @@ TEST(Serialization, JSON) {
   complex_object.z = Clone(simple_object);
 
   const std::string complex_object_as_json = JSON(complex_object);
-  EXPECT_EQ(
-      "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
-      complex_object_as_json);
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
+            complex_object_as_json);
 
   {
     const ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);
@@ -252,9 +251,8 @@ TEST(Serialization, JSON) {
   // Complex serialization makes a copy.
   simple_object.i = 1000;
   EXPECT_EQ(42ull, complex_object.z.i);
-  EXPECT_EQ(
-      "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
-      JSON(complex_object));
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
+            JSON(complex_object));
 
   // Derived struct serialization.
   DerivedSerializable derived_object;
@@ -433,8 +431,7 @@ TEST(Serialization, JSONExceptions) {
   }
 
   try {
-    ParseJSON<ComplexSerializable>(
-        "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
+    ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: null"), e.what());
@@ -680,8 +677,7 @@ TEST(Serialization, VariantAsJSON) {
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::JavaScript>(json)));
   }
   {
@@ -697,9 +693,8 @@ TEST(Serialization, VariantAsJSON) {
     const std::string json = "{\"Case\":\"Empty\"}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(
-        json,
-        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
     static_assert(IS_CURRENT_STRUCT(Empty), "");
@@ -714,8 +709,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_TRUE(Exists<Empty>(empty1));
     EXPECT_FALSE(Exists<AlternativeEmpty>(empty1));
 
-    const auto empty2 =
-        ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"AlternativeEmpty\"}");
+    const auto empty2 = ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"AlternativeEmpty\"}");
     EXPECT_FALSE(Exists<Empty>(empty2));
     EXPECT_TRUE(Exists<AlternativeEmpty>(empty2));
   }
@@ -732,8 +726,7 @@ TEST(Serialization, VariantAsJSON) {
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
 
     // An extra test that `Minimalistic` parser accepts the standard `Current` JSON format.
     EXPECT_EQ(JSON(object), JSON(ParseJSON<simple_variant_t, JSONFormat::Minimalistic>(json)));
@@ -744,13 +737,11 @@ TEST(Serialization, VariantAsJSON) {
   }
   {
     const simple_variant_t object(Serializable(42));
-    const std::string json =
-        "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
+    const std::string json = "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(
-        json,
-        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<simple_variant_t, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
   {
@@ -799,9 +790,8 @@ TEST(Serialization, NamedVariantAsJSON) {
     static_assert(IS_CURRENT_VARIANT(Q), "");
 
     const auto json = JSON(q);
-    EXPECT_EQ(
-        "{\"OuterA\":{\"a\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"}},\"\":\"T9204184145839071965\"}",
-        json);
+    EXPECT_EQ("{\"OuterA\":{\"a\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"}},\"\":\"T9204184145839071965\"}",
+              json);
 
     const auto result = ParseJSON<Q>(json);
     ASSERT_TRUE(Exists<OuterA>(result));
@@ -855,8 +845,7 @@ TEST(Serialization, PairsInNewtonsoftJSONFSharpFormat) {
   EXPECT_EQ("[1,2]", JSON(a));
   EXPECT_EQ("{\"Item1\":1,\"Item2\":2}", JSON<JSONFormat::NewtonsoftFSharp>(a));
   EXPECT_EQ(JSON(a), JSON(ParseJSON<decltype(a)>(JSON(a))));
-  EXPECT_EQ(JSON(a),
-            JSON(ParseJSON<decltype(a), JSONFormat::NewtonsoftFSharp>(JSON<JSONFormat::NewtonsoftFSharp>(a))));
+  EXPECT_EQ(JSON(a), JSON(ParseJSON<decltype(a), JSONFormat::NewtonsoftFSharp>(JSON<JSONFormat::NewtonsoftFSharp>(a))));
 };
 
 TEST(Serialization, OptionalInVariousFormats) {
@@ -1000,9 +989,9 @@ TEST(Serialization, TemplatedValue) {
   EXPECT_EQ(42ull, ParseJSON<TemplatedValue<uint64_t>>("{\"value\":42}").value);
   EXPECT_TRUE(ParseJSON<TemplatedValue<bool>>("{\"value\":true}").value);
   EXPECT_EQ("ok", ParseJSON<TemplatedValue<std::string>>("{\"value\":\"ok\"}").value);
-  EXPECT_EQ(100ull,
-            ParseJSON<TemplatedValue<Serializable>>("{\"value\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}")
-                .value.i);
+  EXPECT_EQ(
+      100ull,
+      ParseJSON<TemplatedValue<Serializable>>("{\"value\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}").value.i);
 
   EXPECT_EQ("{\"base\":0,\"derived\":1}", JSON(DerivedTemplatedValue<uint64_t>(1)));
   EXPECT_EQ("{\"base\":0,\"derived\":true}", JSON(DerivedTemplatedValue<bool>(true)));
@@ -1092,9 +1081,8 @@ TEST(Serialization, VariantWithTemplatedStructs) {
     contents.a = "yes";
     contents.b.value = "no";
     object = contents;
-    EXPECT_EQ(
-        "{\"ComplexTemplatedUsage_Z\":{\"a\":\"yes\",\"b\":{\"value\":\"no\"}},\"\":\"T9203187966977056754\"}",
-        JSON(object));
+    EXPECT_EQ("{\"ComplexTemplatedUsage_Z\":{\"a\":\"yes\",\"b\":{\"value\":\"no\"}},\"\":\"T9203187966977056754\"}",
+              JSON(object));
 
     const auto result = ParseJSON<complex_variant_t>(
         "{\"ComplexTemplatedUsage_Z\":{\"a\":\"yes\",\"b\":{\"value\":\"no\"}},"

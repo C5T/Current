@@ -153,8 +153,7 @@ class HTTPServerPOSIX final {
                                 const URLPathArgs::CountMask path_args_count_mask,
                                 F& handler) {
     std::lock_guard<std::mutex> lock(mutex_);
-    return DoRegisterHandler(
-        path, [&handler](Request r) { handler(std::move(r)); }, path_args_count_mask, POLICY);
+    return DoRegisterHandler(path, [&handler](Request r) { handler(std::move(r)); }, path_args_count_mask, POLICY);
   }
 
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
@@ -391,8 +390,7 @@ class HTTPServerPOSIX final {
     if (policy == ReRegisterRoute::SilentlyUpdateExisting) {
       return HTTPRoutesScopeEntry();
     } else {
-      return HTTPRoutesScopeEntry(
-          [this, path, path_args_count_mask]() { UnRegister(path, path_args_count_mask); });
+      return HTTPRoutesScopeEntry([this, path, path_args_count_mask]() { UnRegister(path, path_args_count_mask); });
     }
   }
 

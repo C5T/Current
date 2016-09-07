@@ -628,8 +628,7 @@ TEST(AccumulativeScopedDeleter, DoesNotDeleteWhatShouldStay) {
     // Initializing a real, AccumulativeScopedDeleter<>, object does invoke the deleter.
     std::string tracker;
     {
-      AccumulativeScopedDeleter<void> scope =
-          AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'e'; });
+      AccumulativeScopedDeleter<void> scope = AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'e'; });
       EXPECT_EQ("", tracker);
     }
     EXPECT_EQ("e", tracker);
@@ -648,8 +647,7 @@ TEST(AccumulativeScopedDeleter, DoesNotDeleteWhatShouldStay) {
 
   {
     std::string tracker;
-    const auto f =
-        [&tracker]() { return AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'g'; }); };
+    const auto f = [&tracker]() { return AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'g'; }); };
     {
       // Just returning another object from a function does not invoke the deleter.
       {

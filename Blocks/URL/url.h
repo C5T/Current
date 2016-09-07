@@ -227,8 +227,8 @@ struct URLParametersExtractor {
     std::string composed_parameters;
     for (size_t i = 0; i < parameters_vector.size(); ++i) {
       composed_parameters += "?&"[i > 0];
-      composed_parameters += EncodeURIComponent(parameters_vector[i].first) + '=' +
-                             EncodeURIComponent(parameters_vector[i].second);
+      composed_parameters +=
+          EncodeURIComponent(parameters_vector[i].first) + '=' + EncodeURIComponent(parameters_vector[i].second);
     }
     if (!fragment.empty()) {
       composed_parameters += "#" + fragment;
@@ -288,9 +288,8 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
         '/', '-', '.', '_', '~', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@'};
     return find_if(path.begin(),
                    path.end(),
-                   [&valid_nonalnum_chars](char c) {
-                     return !(isalnum(c) || valid_nonalnum_chars.count(c));
-                   }) == path.end();
+                   [&valid_nonalnum_chars](char c) { return !(isalnum(c) || valid_nonalnum_chars.count(c)); }) ==
+           path.end();
   }
 };
 

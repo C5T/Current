@@ -130,9 +130,7 @@ inline double RandomDouble(const double a, const double b) { return RandomReal<d
 // Cryptographically secure functions for floating point types.
 inline float CSRandomFloat(const float a, const float b) { return RandomReal<float, Generator::CSPRNG>(a, b); }
 
-inline double CSRandomDouble(const double a, const double b) {
-  return RandomReal<double, Generator::CSPRNG>(a, b);
-}
+inline double CSRandomDouble(const double a, const double b) { return RandomReal<double, Generator::CSPRNG>(a, b); }
 
 }  // namespace random
 }  // namespace current

@@ -58,8 +58,7 @@ constexpr bool HasMemberFromString(char) {
 }
 
 template <typename T>
-constexpr auto HasMemberFromString(int)
-    -> decltype(std::declval<T>().FromString(std::declval<const char*>()), bool()) {
+constexpr auto HasMemberFromString(int) -> decltype(std::declval<T>().FromString(std::declval<const char*>()), bool()) {
   return true;
 }
 

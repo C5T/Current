@@ -73,9 +73,7 @@ struct PrimitiveTypesListImpl final {
   }
 };
 
-inline const PrimitiveTypesListImpl& PrimitiveTypesList() {
-  return current::Singleton<PrimitiveTypesListImpl>();
-}
+inline const PrimitiveTypesListImpl& PrimitiveTypesList() { return current::Singleton<PrimitiveTypesListImpl>(); }
 
 inline void AppendAsMultilineCommentIndentedTwoSpaces(std::ostream& os, const std::string& description) {
   for (const auto& line : strings::Split(description, '\n')) {
@@ -163,12 +161,12 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
     std::ostream& os_;
     const std::string type_code_;
     OptionalNamespaceScope(std::ostream& os, TypeID type_id) : os_(os), type_code_(current::ToString(type_id)) {
-      os_ << "#ifndef CURRENT_SCHEMA_FOR_T" << type_code_ << '\n' << "#define CURRENT_SCHEMA_FOR_T"
-          << type_code_ << '\n' << "namespace t" << type_code_ << " {\n";
+      os_ << "#ifndef CURRENT_SCHEMA_FOR_T" << type_code_ << '\n' << "#define CURRENT_SCHEMA_FOR_T" << type_code_
+          << '\n' << "namespace t" << type_code_ << " {\n";
     }
     ~OptionalNamespaceScope() {
-      os_ << "}  // namespace t" << type_code_ << '\n' << "#endif  // CURRENT_SCHEMA_FOR_T_" << type_code_
-          << '\n' << '\n';
+      os_ << "}  // namespace t" << type_code_ << '\n' << "#endif  // CURRENT_SCHEMA_FOR_T_" << type_code_ << '\n'
+          << '\n';
     }
   };
   static void PrintCurrentStruct(std::ostream& os,
@@ -188,8 +186,8 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
           raw_type_name.find(',') == std::string::npos ? raw_type_name : '(' + raw_type_name + ')';
       os << "  CURRENT_FIELD(" << f.name << ", " << field_type_name << ");\n";
       if (Exists(f.description)) {
-        os << "  CURRENT_FIELD_DESCRIPTION(" << f.name << ", \""
-           << strings::EscapeForCPlusPlus(Value(f.description)) << "\");\n";
+        os << "  CURRENT_FIELD_DESCRIPTION(" << f.name << ", \"" << strings::EscapeForCPlusPlus(Value(f.description))
+           << "\");\n";
       }
     }
     os << "};\n";
@@ -288,9 +286,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           std::ostringstream& oss_;
           const std::string& nmspc_;
 
-          CurrentTypeNamePrinter(const FullSchemaPrinter& self,
-                                 std::ostringstream& oss,
-                                 const std::string& nmspc)
+          CurrentTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss, const std::string& nmspc)
               : self_(self), oss_(oss), nmspc_(nmspc) {}
 
           // Returns the namespace name for the type.
@@ -324,8 +320,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           }
 
           void operator()(const ReflectedType_Map& m) const {
-            oss_ << "std::map<" << self_.TypeName(m.key_type, nmspc_) << ", "
-                 << self_.TypeName(m.value_type, nmspc_) << '>';
+            oss_ << "std::map<" << self_.TypeName(m.key_type, nmspc_) << ", " << self_.TypeName(m.value_type, nmspc_)
+                 << '>';
           }
           void operator()(const ReflectedType_Pair& p) const {
             oss_ << "std::pair<" << self_.TypeName(p.first_type, nmspc_) << ", "
@@ -387,8 +383,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           const NamespaceToExpose& expose = Value(namespace_to_expose_);
           os_ << "\n  // Privileged types.\n";
           for (const auto& t : expose.types) {
-            os_ << "  CURRENT_NAMESPACE_TYPE(" << t.first << ", current_userspace::" << TypeName(t.second)
-                << ");\n";
+            os_ << "  CURRENT_NAMESPACE_TYPE(" << t.first << ", current_userspace::" << TypeName(t.second) << ");\n";
           }
         }
         os_ << "};  // CURRENT_NAMESPACE(" << nmspc << ")\n";
@@ -566,8 +561,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               for (const auto& f : s.fields) {
                 fields.push_back(f.name);
               }
-              os_ << "CURRENT_TYPE_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
-                  << bare_struct_name << ", {\n";
+              os_ << "CURRENT_TYPE_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", " << bare_struct_name
+                  << ", {\n";
               // TODO(dkorolev): REMINDER! DIMA! The base `CURRENT_STRUCT` should be handled here too.
               for (const auto& f : s.fields) {
                 const auto& field_name = f.name;
@@ -583,9 +578,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << bare_variant_name << ", " << USER_REPLACE_ME << "DestinationNamespace) {\n";
               for (TypeID c : Value<ReflectedType_Variant>(type_substance).cases) {
                 const auto& case_name = TypeName(c);
-                os_ << "  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(" << case_name
-                    << ", CURRENT_NATURAL_EVOLVE(" << src_nmspc << ", " << USER_REPLACE_ME
-                    << "DestinationNamespace, from, into));\n";
+                os_ << "  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(" << case_name << ", CURRENT_NATURAL_EVOLVE("
+                    << src_nmspc << ", " << USER_REPLACE_ME << "DestinationNamespace, from, into));\n";
               }
               os_ << "};\n" << '\n';
             }
@@ -665,8 +659,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
           const FullSchemaPrinter& self_;
           std::ostringstream& oss_;
 
-          FSharpTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss)
-              : self_(self), oss_(oss) {}
+          FSharpTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss) : self_(self), oss_(oss) {}
 
           // `operator()(...)`-s of this block print F# type name only, without the expansion.
           // They assume the declaration order is respected, and any dependencies have already been listed.
@@ -683,8 +676,8 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(v.element_type)) << " array";
           }
           void operator()(const ReflectedType_Map& m) const {
-            oss_ << "System.Collections.Generic.Dictionary<" << SanitizeFSharpSymbol(self_.TypeName(m.key_type))
-                 << ", " << self_.TypeName(m.value_type) << '>';
+            oss_ << "System.Collections.Generic.Dictionary<" << SanitizeFSharpSymbol(self_.TypeName(m.key_type)) << ", "
+                 << self_.TypeName(m.value_type) << '>';
           }
           void operator()(const ReflectedType_Pair& p) const {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(p.first_type)) << " * "
@@ -694,9 +687,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(o.optional_type)) << " option";
           }
           void operator()(const ReflectedType_Variant& v) const { oss_ << SanitizeFSharpSymbol(v.name); }
-          void operator()(const ReflectedType_Struct& s) const {
-            oss_ << SanitizeFSharpSymbol(s.CanonicalName());
-          }
+          void operator()(const ReflectedType_Struct& s) const { oss_ << SanitizeFSharpSymbol(s.CanonicalName()); }
         };
 
         std::ostringstream oss;
@@ -790,8 +781,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
           const FullSchemaPrinter& self_;
           std::ostringstream& oss_;
 
-          MarkdownTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss)
-              : self_(self), oss_(oss) {}
+          MarkdownTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss) : self_(self), oss_(oss) {}
 
           // `operator()(...)`-s of this block print the type name, without the expansion.
           void operator()(const ReflectedType_Primitive& p) const {
@@ -922,8 +912,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
           JSONSchema& schema_object_;
           mutable variant_clean_type_names::type_variant_t result_;
 
-          JSONTypeExtractor(const FullSchemaPrinter& self, JSONSchema& output)
-              : self_(self), schema_object_(output) {}
+          JSONTypeExtractor(const FullSchemaPrinter& self, JSONSchema& output) : self_(self), schema_object_(output) {}
 
           // `operator()(...)`-s of this block fills in `this->result_` with the type, not expanding on it.
           void operator()(const ReflectedType_Primitive& p) const {

@@ -81,9 +81,8 @@ class GenericManyToMany {
     } else {
       if (lm_cit != last_modified_.end()) {
         const auto previous_timestamp = lm_cit->second;
-        journal_.LogMutation(
-            UPDATE_EVENT(now, object),
-            [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
+        journal_.LogMutation(UPDATE_EVENT(now, object),
+                             [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
@@ -133,8 +132,7 @@ class GenericManyToMany {
       return nullptr;
     }
   }
-  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<row_t> row,
-                                                            sfinae::CF<col_t> col) const {
+  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     return LastModified(std::make_pair(row, col));
   }
 
@@ -143,9 +141,7 @@ class GenericManyToMany {
     const auto col = sfinae::GetCol(e.data);
     DoUpdateWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
-  void operator()(const DELETE_EVENT& e) {
-    DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
-  }
+  void operator()(const DELETE_EVENT& e) { DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second)); }
 
   template <typename OUTER_MAP>
   struct OuterAccessor final {
@@ -165,9 +161,7 @@ class GenericManyToMany {
       using value_t = GenericMapAccessor<INNER_MAP>;
       void has_range_element_t() {}
       using range_element_t = GenericMapAccessor<INNER_MAP>;
-      GenericMapAccessor<INNER_MAP> operator*() const {
-        return GenericMapAccessor<INNER_MAP>(iterator->second);
-      }
+      GenericMapAccessor<INNER_MAP> operator*() const { return GenericMapAccessor<INNER_MAP>(iterator->second); }
     };
 
     explicit OuterAccessor(const OUTER_MAP& map) : map_(map) {}

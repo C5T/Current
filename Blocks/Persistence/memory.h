@@ -159,11 +159,11 @@ class MemoryPersister {
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
     std::lock_guard<std::mutex> lock(container_->mutex);
-    const auto begin_it = std::lower_bound(
-        container_->entries.begin(),
-        container_->entries.end(),
-        from,
-        [](const typename Container::entry_t& e, std::chrono::microseconds t) { return e.first < t; });
+    const auto begin_it =
+        std::lower_bound(container_->entries.begin(),
+                         container_->entries.end(),
+                         from,
+                         [](const typename Container::entry_t& e, std::chrono::microseconds t) { return e.first < t; });
     if (begin_it != container_->entries.end()) {
       result.first = std::distance(container_->entries.begin(), begin_it);
     }

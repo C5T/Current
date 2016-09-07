@@ -206,13 +206,13 @@ class WaitableAtomicImpl {
       return true;
     }
 
-    template<typename F>
+    template <typename F>
     typename std::result_of<F(const data_t&)>::type ImmutableUse(F&& f) const {
       auto scope = ImmutableScopedAccessor();
       return f(*scope);
     }
 
-    template<typename F>
+    template <typename F>
     typename std::result_of<F(data_t&)>::type MutableUse(F&& f) {
       auto scope = MutableScopedAccessor();
       return f(*scope);
@@ -256,8 +256,7 @@ class WaitableAtomicImpl {
     using data_t = DATA;
     enum { IS_INTRUSIVE = true };
 
-    explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr)
-        : destructor_ptr_(destructor_ptr) {
+    explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr) : destructor_ptr_(destructor_ptr) {
       RefCounterTryIncrease();
     }
 

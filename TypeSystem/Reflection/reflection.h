@@ -56,9 +56,7 @@ struct ReflectorImpl {
   struct StructFieldReflector {
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) {
-      fields_.clear();
-    }
+    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) { fields_.clear(); }
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -175,14 +173,12 @@ struct ReflectorImpl {
     }
 
     template <typename T>
-    std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>>
-    ReflectTemplateInnerType() {
+    std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
       return nullptr;
     }
 
     template <typename T>
-    std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>>
-    ReflectTemplateInnerType() {
+    std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<TemplateInnerType<T>>()).type_id;
     }
   };
@@ -192,8 +188,7 @@ struct ReflectorImpl {
     const std::type_index type_index = std::type_index(typeid(T));
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.insert(std::make_pair(type_index, type_reflector_(TypeSelector<T>())));
-      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
-          type_index;
+      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] = type_index;
     }
     const auto& result = reflected_cpp_types_.at(type_index);
     CURRENT_ASSERT(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
@@ -206,8 +201,7 @@ struct ReflectorImpl {
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.emplace(type_index, ReflectedType_Struct());
       type_reflector_(TypeSelector<T>(), Value<ReflectedType_Struct>(reflected_cpp_types_.at(type_index)));
-      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
-          type_index;
+      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] = type_index;
     }
     const auto& result = reflected_cpp_types_.at(type_index);
     CURRENT_ASSERT(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);

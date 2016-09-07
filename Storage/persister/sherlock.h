@@ -38,17 +38,14 @@ namespace current {
 namespace storage {
 namespace persister {
 
-template <typename MUTATIONS_VARIANT,
-          template <typename> class UNDERLYING_PERSISTER,
-          typename STREAM_RECORD_TYPE>
+template <typename MUTATIONS_VARIANT, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
 class SherlockStreamPersisterImpl {
  public:
   using variant_t = MUTATIONS_VARIANT;
   using transaction_t = Transaction<variant_t>;
-  using sherlock_entry_t =
-      typename std::conditional<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value,
-                                transaction_t,
-                                STREAM_RECORD_TYPE>::type;
+  using sherlock_entry_t = typename std::conditional<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value,
+                                                     transaction_t,
+                                                     STREAM_RECORD_TYPE>::type;
   using sherlock_t = sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>;
   using fields_update_function_t = std::function<void(const variant_t&)>;
 
@@ -76,8 +73,8 @@ class SherlockStreamPersisterImpl {
   explicit SherlockStreamPersisterImpl(std::mutex& storage_mutex, fields_update_function_t f, ARGS&&... args)
       : storage_mutex_ref_(storage_mutex),
         fields_update_f_(f),
-        stream_owned_if_any_(std::make_unique<sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>>(
-            std::forward<ARGS>(args)...)),
+        stream_owned_if_any_(
+            std::make_unique<sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>>(std::forward<ARGS>(args)...)),
         stream_used_(*stream_owned_if_any_.get()),
         authority_(PersisterDataAuthority::Own) {
     // Do not use lock since we are in ctor.
@@ -92,8 +89,8 @@ class SherlockStreamPersisterImpl {
     authority_ = (stream_used_.DataAuthority() == current::sherlock::StreamDataAuthority::Own)
                      ? PersisterDataAuthority::Own
                      : PersisterDataAuthority::External;
-    subscriber_ = std::make_unique<SherlockSubscriber>(
-        [this](const transaction_t& transaction) { ApplyMutations(transaction); });
+    subscriber_ =
+        std::make_unique<SherlockSubscriber>([this](const transaction_t& transaction) { ApplyMutations(transaction); });
     if (authority_ == PersisterDataAuthority::Own) {
       // Do not use lock since we are in ctor.
       SyncReplayStream<current::locks::MutexLockStatus::AlreadyLocked>();
@@ -189,8 +186,7 @@ using SherlockInMemoryStreamPersister =
     SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory, STREAM_RECORD_TYPE>;
 
 template <typename TYPELIST, typename STREAM_RECORD_TYPE = NoCustomPersisterParam>
-using SherlockStreamPersister =
-    SherlockStreamPersisterImpl<TYPELIST, current::persistence::File, STREAM_RECORD_TYPE>;
+using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::File, STREAM_RECORD_TYPE>;
 
 }  // namespace persister
 }  // namespace storage
