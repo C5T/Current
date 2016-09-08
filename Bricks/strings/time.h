@@ -50,8 +50,7 @@ inline std::string TimeIntervalAsHumanReadableString(std::chrono::microseconds u
       } else {
         const size_t days = hours / 24;
         hours %= 24;
-        return ToString(days) + "d " + ToString(hours) + "h " + ToString(minutes) + "m " + ToString(seconds) +
-               's';
+        return ToString(days) + "d " + ToString(hours) + "h " + ToString(minutes) + "m " + ToString(seconds) + 's';
       }
     }
   }

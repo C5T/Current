@@ -40,8 +40,8 @@ DEFINE_size_t(random_seed, 42, "Random seed.");
 DEFINE_bool(benchmark, false, "Set to 'true' to measure how long does unpacking take.");
 
 TEST(CompactTSV, Smoke) {
-  const bool run_test = (std::make_tuple(FLAGS_rows, FLAGS_cols, FLAGS_scale, FLAGS_random_seed) ==
-                         std::make_tuple(10u, 4u, 5.0, 42));
+  const bool run_test =
+      (std::make_tuple(FLAGS_rows, FLAGS_cols, FLAGS_scale, FLAGS_random_seed) == std::make_tuple(10u, 4u, 5.0, 42));
 
   std::string golden;
   std::ostringstream os;
@@ -100,15 +100,13 @@ TEST(CompactTSV, Smoke) {
   const auto t_d_end = current::time::Now();
 
   const auto t_e_begin = current::time::Now();
-  EXPECT_EQ(
-      FLAGS_rows,
-      CompactTSV::Unpack([](const std::vector<std::pair<const char *, size_t>> &) {}, fast.GetPackedString()));
+  EXPECT_EQ(FLAGS_rows,
+            CompactTSV::Unpack([](const std::vector<std::pair<const char *, size_t>> &) {}, fast.GetPackedString()));
   const auto t_e_end = current::time::Now();
 
   const auto t_f_begin = current::time::Now();
-  EXPECT_EQ(
-      FLAGS_rows,
-      CompactTSV::Unpack([](const std::vector<current::strings::UniqueChunk> &) {}, fast.GetPackedString()));
+  EXPECT_EQ(FLAGS_rows,
+            CompactTSV::Unpack([](const std::vector<current::strings::UniqueChunk> &) {}, fast.GetPackedString()));
   const auto t_f_end = current::time::Now();
 
   if (FLAGS_benchmark) {

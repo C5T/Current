@@ -225,7 +225,6 @@ TEST(TemplateMetaprogrammingInternalTest, CallAllConstructors) {
   }
 }
 
-
 TEST(TemplateMetaprogrammingInternalTest, CallAllConstructorsWith) {
   using namespace metaprogramming_unittest;
   using current::metaprogramming::call_all_constructors_with;

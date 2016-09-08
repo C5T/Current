@@ -43,15 +43,18 @@ constexpr static char encode_map[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn
 // Ref. https://tools.ietf.org/html/rfc3548#section-4
 constexpr static char url_encode_map[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 constexpr static char pad_char = '=';
+// clang-format off
 constexpr static uint8_t decode_map[128] = {
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 62,  255, 62,  255, 63,  52,  53,  54,  55,  56,  57,  58,  59,  60,
-    61,  255, 255, 0,   255, 255, 255, 255, 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,
-    11,  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  255, 255, 255, 255,
-    63,  255, 26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,
-    43,  44,  45,  46,  47,  48,  49,  50,  51,  255, 255, 255, 255, 255};
-
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+  255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 62,  255, 62,  255, 63,
+  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  255, 255, 0,   255, 255, 255, 
+  255, 0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,
+  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  255, 255, 255, 255, 63,
+  255, 26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,
+  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  255, 255, 255, 255, 255
+};
+// clang-format on
 enum class EncodingType { Canonical, URL };
 
 template <EncodingType TYPE>
@@ -116,8 +119,7 @@ inline std::string Base64Encode(const uint8_t* input, const size_t input_size) {
 }
 
 inline std::string Base64Encode(const char* input, const size_t input_size) {
-  return base64::Impl<base64::EncodingType::Canonical>::Encode(reinterpret_cast<const uint8_t*>(input),
-                                                               input_size);
+  return base64::Impl<base64::EncodingType::Canonical>::Encode(reinterpret_cast<const uint8_t*>(input), input_size);
 }
 
 inline std::string Base64Encode(const std::string& input) {
@@ -134,8 +136,7 @@ inline std::string Base64URLEncode(const char* input, const size_t input_size) {
 }
 
 inline std::string Base64URLEncode(const std::string& input) {
-  return base64::Impl<base64::EncodingType::URL>::Encode(reinterpret_cast<const uint8_t*>(input.c_str()),
-                                                         input.size());
+  return base64::Impl<base64::EncodingType::URL>::Encode(reinterpret_cast<const uint8_t*>(input.c_str()), input.size());
 }
 
 inline std::string Base64Decode(const char* input, const size_t input_size) {

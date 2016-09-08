@@ -99,8 +99,7 @@ CURRENT_STRUCT(SubscribableSherlockSchema) {
       current::reflection::TypeID type_id, const std::string& top_level_name, const std::string& namespace_name)
       : type_id(type_id), top_level_name(top_level_name), namespace_name(namespace_name) {}
   bool operator==(const SubscribableSherlockSchema& rhs) const {
-    return type_id == rhs.type_id && namespace_name == rhs.namespace_name &&
-           top_level_name == rhs.top_level_name;
+    return type_id == rhs.type_id && namespace_name == rhs.namespace_name && top_level_name == rhs.top_level_name;
   }
   bool operator!=(const SubscribableSherlockSchema& rhs) const { return !operator==(rhs); }
 };
@@ -168,8 +167,7 @@ class StreamImpl {
 
   StreamImpl()
       : own_data_(),
-        schema_as_object_(
-            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
@@ -177,18 +175,14 @@ class StreamImpl {
       : own_data_(),
         schema_exposed_namespace_name_(exposed_namespace.namespace_name),
         schema_top_level_name_(exposed_namespace.top_level_name),
-        schema_as_object_(
-            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
-  template <typename X,
-            typename... XS,
-            class = std::enable_if_t<!std::is_same<X, SherlockNamespaceName>::value>>
+  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, SherlockNamespaceName>::value>>
   StreamImpl(X&& x, XS&&... xs)
       : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
-        schema_as_object_(
-            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
@@ -197,8 +191,7 @@ class StreamImpl {
       : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
         schema_exposed_namespace_name_(exposed_namespace.namespace_name),
         schema_top_level_name_(exposed_namespace.top_level_name),
-        schema_as_object_(
-            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
@@ -206,8 +199,7 @@ class StreamImpl {
       : own_data_(std::move(rhs.own_data_)),
         schema_exposed_namespace_name_(rhs.schema_exposed_namespace_name_),
         schema_top_level_name_(rhs.schema_top_level_name_),
-        schema_as_object_(
-            StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::move(rhs.publisher_)),
         authority_(rhs.authority_) {
     rhs.authority_ = StreamDataAuthority::External;
@@ -300,8 +292,7 @@ class StreamImpl {
           terminate_signal_(),
           data_(data,
                 [this]() {
-                  std::lock_guard<std::mutex> lock(
-                      data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
+                  std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
                   terminate_signal_.SignalExternalTermination();
                 }),
           subscriber_(subscriber),
@@ -376,10 +367,8 @@ class StreamImpl {
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(lock,
-                                      [this, &bare_data, &index]() {
-                                        return terminate_signal_ || bare_data.persistence.Size() > index;
-                                      });
+          terminate_signal_.WaitUntil(
+              lock, [this, &bare_data, &index]() { return terminate_signal_ || bare_data.persistence.Size() > index; });
         }
       }
     }
@@ -399,8 +388,7 @@ class StreamImpl {
                     F& subscriber,
                     uint64_t begin_idx,
                     std::function<void()> done_callback)
-        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {
-    }
+        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {}
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
@@ -494,8 +482,7 @@ class StreamImpl {
         uint64_t begin_idx = 0u;
         std::chrono::microseconds from_timestamp(0);
         if (request_params.tail > 0u) {
-          const uint64_t idx_by_tail =
-              request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
+          const uint64_t idx_by_tail = request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
           begin_idx = std::max(request_params.i, idx_by_tail);
         } else if (request_params.recent.count() > 0) {
           from_timestamp = r.timestamp - request_params.recent;
@@ -506,9 +493,9 @@ class StreamImpl {
         }
 
         if (from_timestamp.count() > 0) {
-          const auto idx_by_timestamp = std::min(
-              data.persistence.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
-              stream_size);
+          const auto idx_by_timestamp =
+              std::min(data.persistence.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
+                       stream_size);
           begin_idx = std::max(begin_idx, idx_by_timestamp);
         }
 
@@ -581,8 +568,7 @@ class StreamImpl {
     template <current::reflection::Language language>
     void PerLanguage() {
       schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
-          current::reflection::NamespaceToExpose(exposed_namespace_name)
-              .template AddType<entry_t>(top_level_name));
+          current::reflection::NamespaceToExpose(exposed_namespace_name).template AddType<entry_t>(top_level_name));
     }
   };
 
@@ -591,8 +577,8 @@ class StreamImpl {
     SherlockSchema schema;
 
     schema.type_name = current::reflection::CurrentTypeName<entry_t>();
-    schema.type_id = Value<current::reflection::ReflectedTypeBase>(
-                         current::reflection::Reflector().ReflectType<entry_t>()).type_id;
+    schema.type_id =
+        Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<entry_t>()).type_id;
 
     reflection::StructSchema underlying_type_schema;
     underlying_type_schema.AddType<entry_t>();

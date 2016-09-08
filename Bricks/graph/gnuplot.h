@@ -71,8 +71,7 @@ struct PlotDataBase {
 struct PlotDataFromFunction : PlotDataBase {
   std::function<void(Plotter&)> f_;
   std::string meta_;
-  explicit PlotDataFromFunction(std::function<void(Plotter&)> f,
-                                const std::string& meta = " t 'Graph' with lines lw 5")
+  explicit PlotDataFromFunction(std::function<void(Plotter&)> f, const std::string& meta = " t 'Graph' with lines lw 5")
       : f_(f), meta_(meta) {}
   virtual void AppendMetadata(current::FileSystem::OutputFile& of) const override { of << ' ' << meta_; }
   virtual void AppendData(current::FileSystem::OutputFile& of) const override {
@@ -231,8 +230,7 @@ struct GNUPlot {
     }
     if (output_format_ != "gnuplot") {
       CURRENT_ASSERT(
-          !::system(
-              strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
+          !::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
       return current::FileSystem::ReadFileAsString(output_file_name.c_str());
     } else {
       // For unit tests, just compare the inputs.

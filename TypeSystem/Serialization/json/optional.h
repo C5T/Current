@@ -105,8 +105,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, Optional<T>> {
 
 template <typename T>
 struct DeserializeImpl<json::JSONParser<JSONFormat::NewtonsoftFSharp>, Optional<T>> {
-  static void DoDeserialize(json::JSONParser<JSONFormat::NewtonsoftFSharp>& json_parser,
-                            Optional<T>& destination) {
+  static void DoDeserialize(json::JSONParser<JSONFormat::NewtonsoftFSharp>& json_parser, Optional<T>& destination) {
     if (!json_parser || json_parser.Current().IsNull()) {
       destination = nullptr;
     } else {
@@ -130,8 +129,7 @@ struct DeserializeImpl<json::JSONParser<JSONFormat::NewtonsoftFSharp>, Optional<
         }
       }
       if (!ok) {
-        throw JSONSchemaException("optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`",
-                                  json_parser);
+        throw JSONSchemaException("optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`", json_parser);
       }
     }
   }

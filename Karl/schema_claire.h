@@ -60,8 +60,7 @@ CURRENT_STRUCT(ClaireServiceKey) {
                             "in cases when multiple services share the same port.");
 
   CURRENT_DEFAULT_CONSTRUCTOR(ClaireServiceKey) {}
-  CURRENT_CONSTRUCTOR(ClaireServiceKey)(const ClaireServiceKey& rhs)
-      : ip(rhs.ip), port(rhs.port), prefix(rhs.prefix) {}
+  CURRENT_CONSTRUCTOR(ClaireServiceKey)(const ClaireServiceKey& rhs) : ip(rhs.ip), port(rhs.port), prefix(rhs.prefix) {}
   CURRENT_CONSTRUCTOR(ClaireServiceKey)(const std::string& url) {
     URL decomposed(url);
     ip = current::net::ResolveIPFromHostname(decomposed.host);
@@ -74,9 +73,7 @@ CURRENT_STRUCT(ClaireServiceKey) {
   bool operator!=(const ClaireServiceKey& rhs) const { return !operator==(rhs); }
   bool operator<(const ClaireServiceKey& rhs) const { return AsTuple() < rhs.AsTuple(); }
 
-  std::string StatusPageURL() const {
-    return "http://" + ip + ':' + current::ToString(port) + prefix + ".current";
-  }
+  std::string StatusPageURL() const { return "http://" + ip + ':' + current::ToString(port) + prefix + ".current"; }
 };
 
 // clang-format off
@@ -95,8 +92,7 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD_DESCRIPTION(service, "The name of the service, as christened by its intelligent designer.");
 
   CURRENT_FIELD(codename, std::string);
-  CURRENT_FIELD_DESCRIPTION(codename,
-                            "The codename of the service instance, assigned randomly at its startup.");
+  CURRENT_FIELD_DESCRIPTION(codename, "The codename of the service instance, assigned randomly at its startup.");
 
   CURRENT_FIELD(local_port, uint16_t);
   CURRENT_FIELD_DESCRIPTION(local_port, "The local port on which this server is listening.");
@@ -110,8 +106,7 @@ CURRENT_STRUCT(ClaireStatus) {
   // Dependencies as "ip:port[/prefix]" for now.
   CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
   CURRENT_FIELD_DESCRIPTION(
-      dependencies,
-      "The list of dependencies for this service. Will become arrows as the fleet is being visualized.");
+      dependencies, "The list of dependencies for this service. Will become arrows as the fleet is being visualized.");
 
   // The `address_port_route` of the currently configured Karl Locator.
   CURRENT_FIELD(reporting_to, std::string);
@@ -130,8 +125,7 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(last_keepalive_sent, std::string);
   CURRENT_FIELD_DESCRIPTION(last_keepalive_sent, "When was the last keepalive sent, human-readable.");
   CURRENT_FIELD(last_keepalive_status, std::string);
-  CURRENT_FIELD_DESCRIPTION(last_keepalive_status,
-                            "Whether the last keepalive sent succeeded, human-readable.");
+  CURRENT_FIELD_DESCRIPTION(last_keepalive_status, "Whether the last keepalive sent succeeded, human-readable.");
   CURRENT_FIELD(last_successful_keepalive, Optional<std::string>);
   CURRENT_FIELD_DESCRIPTION(last_successful_keepalive,
                             "When did the last successful keepalive happen, human-readable.");

@@ -124,16 +124,14 @@ CURRENT_STRUCT(ReflectedType_Vector, ReflectedTypeBase) {
 CURRENT_STRUCT(ReflectedType_Map, ReflectedTypeBase) {
   CURRENT_FIELD(key_type, TypeID);
   CURRENT_FIELD(value_type, TypeID);
-  CURRENT_CONSTRUCTOR(ReflectedType_Map)(TypeID rk = TypeID::UninitializedType,
-                                         TypeID rv = TypeID::UninitializedType)
+  CURRENT_CONSTRUCTOR(ReflectedType_Map)(TypeID rk = TypeID::UninitializedType, TypeID rv = TypeID::UninitializedType)
       : key_type(rk), value_type(rv) {}
 };
 
 CURRENT_STRUCT(ReflectedType_Pair, ReflectedTypeBase) {
   CURRENT_FIELD(first_type, TypeID);
   CURRENT_FIELD(second_type, TypeID);
-  CURRENT_CONSTRUCTOR(ReflectedType_Pair)(TypeID rf = TypeID::UninitializedType,
-                                          TypeID rs = TypeID::UninitializedType)
+  CURRENT_CONSTRUCTOR(ReflectedType_Pair)(TypeID rf = TypeID::UninitializedType, TypeID rs = TypeID::UninitializedType)
       : first_type(rf), second_type(rs) {}
 };
 
@@ -195,9 +193,8 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   uint64_t hash = current::CRC32(s.CanonicalName());
   size_t i = 0u;
-  hash ^= ROL64(
-      static_cast<TypeID>(static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct)),
-      7u);
+  hash ^=
+      ROL64(static_cast<TypeID>(static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct)), 7u);
   for (const auto& f : s.fields) {
     CURRENT_ASSERT(f.type_id != TypeID::UninitializedType);
     hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);

@@ -139,11 +139,10 @@ class SubscribableRemoteStream final {
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(
-              bare_stream.GetURLToSubscribe(index_),
-              [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
-              [this](const std::string& chunk_body) { OnChunk(chunk_body); },
-              [this]() {}));
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(index_),
+                          [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
+                          [this](const std::string& chunk_body) { OnChunk(chunk_body); },
+                          [this]() {}));
         } catch (StreamTerminatedBySubscriber&) {
           break;
         } catch (current::Exception&) {
@@ -231,14 +230,13 @@ class SubscribableRemoteStream final {
                           F& subscriber,
                           uint64_t start_idx,
                           std::function<void()> done_callback)
-        : base_t(std::move(
-              std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
+        : base_t(
+              std::move(std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
   };
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
-      : stream_(remote_stream_url,
-                sherlock::constants::kDefaultTopLevelName,
-                sherlock::constants::kDefaultNamespaceName) {
+      : stream_(
+            remote_stream_url, sherlock::constants::kDefaultTopLevelName, sherlock::constants::kDefaultNamespaceName) {
     stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
   }
 

@@ -39,9 +39,9 @@ struct JSONSchemaException : TypeSystemParseJSONException {
   const std::string actual_;
   template <typename JSON_PARSER>
   JSONSchemaException(const std::string& expected, JSON_PARSER& parser)
-      : TypeSystemParseJSONException(
-            "Expected " + (expected + (parser.PathIsEmpty() ? "" : " for `" + parser.Path() + "`") + ", got: " +
-                           NonThrowingFormatRapidJSONValueAsString(parser.CurrentAsPtr()))) {}
+      : TypeSystemParseJSONException("Expected " +
+                                     (expected + (parser.PathIsEmpty() ? "" : " for `" + parser.Path() + "`") +
+                                      ", got: " + NonThrowingFormatRapidJSONValueAsString(parser.CurrentAsPtr()))) {}
   // Attempt to generate a human-readable description of the part of the JSON,
   // that has been parsed but is of wrong schema.
   static std::string NonThrowingFormatRapidJSONValueAsString(rapidjson::Value* value) {

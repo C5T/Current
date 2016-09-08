@@ -67,8 +67,7 @@ constexpr const char* kDefaultJSONContentType = "application/json; charset=utf-8
 constexpr const char* kDefaultHTMLContentType = "text/html; charset=utf-8";
 
 constexpr const char kHeaderKeyValueSeparator[] = ": ";
-constexpr const size_t kHeaderKeyValueSeparatorLength =
-    strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
+constexpr const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
 
 constexpr const char* const kContentLengthHeaderKey = "Content-Length";
 constexpr const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
@@ -199,8 +198,7 @@ class GenericHTTPRequestData : public HELPER {
         } else if (receiving_body_in_chunks) {
           // Ignore blank lines.
           if (!line_is_blank) {
-            const size_t chunk_length =
-                static_cast<size_t>(std::stoi(&buffer_[current_line_offset], nullptr, 16));
+            const size_t chunk_length = static_cast<size_t>(std::stoi(&buffer_[current_line_offset], nullptr, 16));
             if (chunk_length == 0) {
               // Done with the body.
               HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_end_);
@@ -227,12 +225,10 @@ class GenericHTTPRequestData : public HELPER {
                 if (buffer_.size() < next_offset + 2) {
                   // LCOV_EXCL_START
                   // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
-                  buffer_.resize(
-                      std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 2));
+                  buffer_.resize(std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 2));
                   // LCOV_EXCL_STOP
                 }
-                if (bytes_to_read !=
-                    c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
+                if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
                   CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
@@ -334,7 +330,7 @@ class GenericHTTPRequestData : public HELPER {
   std::string raw_path_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.
-  std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
+  std::vector<char> buffer_;                 // The buffer into which data has been read, except for chunked case.
   const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 
@@ -359,9 +355,9 @@ class GenericHTTPServerConnection final {
   typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
-  GenericHTTPServerConnection(Connection&& c,
-                              const typename HTTP_REQUEST_DATA::ConstructionParams& params =
-                                  typename HTTP_REQUEST_DATA::ConstructionParams())
+  GenericHTTPServerConnection(
+      Connection&& c,
+      const typename HTTP_REQUEST_DATA::ConstructionParams& params = typename HTTP_REQUEST_DATA::ConstructionParams())
       : connection_(std::move(c)), message_(connection_, params) {}
   ~GenericHTTPServerConnection() {
     if (!responded_) {
@@ -370,8 +366,7 @@ class GenericHTTPServerConnection final {
       // It's also a good place for a breakpoint to tell the source of that exception.
       // LCOV_EXCL_START
       try {
-        SendHTTPResponse(
-            DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
+        SendHTTPResponse(DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
       } catch (const Exception& e) {
         // No exception should ever leave the destructor.
         if (message_.RawPath() == "/healthz") {
@@ -397,8 +392,7 @@ class GenericHTTPServerConnection final {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
     os << "Content-Type: " << content_type << constants::kCRLF;
-    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close")
-       << constants::kCRLF;
+    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;
     for (const auto& cit : extra_headers) {
       os << cit.header << ": " << cit.value << constants::kCRLF;
     }

@@ -68,8 +68,7 @@ struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   using super_t::super_t;
 
 #ifndef CURRENT_WINDOWS
-  using template_inner_t_internal =
-      TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
+  using template_inner_t_internal = TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
 #else
   using template_inner_t = TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
 #endif
@@ -250,8 +249,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define CURRENT_STRUCT_NOT_DERIVED(s)               \
   CURRENT_STRUCT_HELPERS(s, ::crnt::CurrentStruct); \
   template <typename INSTANTIATION_TYPE>            \
-  struct CSI_##s : CSSH_##s,                        \
-                   ::crnt::r::SUPER<CRH<s>, INSTANTIATION_TYPE, ::crnt::CurrentStruct, std::false_type>
+  struct CSI_##s : CSSH_##s, ::crnt::r::SUPER<CRH<s>, INSTANTIATION_TYPE, ::crnt::CurrentStruct, std::false_type>
 
 #define CURRENT_STRUCT_T_NOT_DERIVED(s)                                    \
   CURRENT_STRUCT_T_HELPERS(s, ::crnt::CurrentStruct);                      \
@@ -375,71 +373,66 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     f(field);                                 \
   }
 
-#define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
-  template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                           \
-                                 ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
-    CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(), #name);                               \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(                                                                              \
-      F&& CURRENT_CALL_F,                                                                                      \
-      ::current::reflection::Index<::current::reflection::FieldTypeAndNameAndIndex, idx>) {                    \
-    CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(),                                       \
-                   #name,                                                                                      \
-                   ::current::reflection::SimpleIndex<idx>());                                                 \
-  }                                                                                                            \
-  template <class F, class SELF>                                                                               \
-  static void CURRENT_REFLECTION(                                                                              \
-      F&& CURRENT_CALL_F, ::current::reflection::Index<::current::reflection::FieldNameAndPtr<SELF>, idx>) {   \
-    CURRENT_CALL_F(#name, &SELF::name);                                                                        \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  void CURRENT_REFLECTION(                                                                                     \
-      F&& CURRENT_CALL_F,                                                                                      \
-      ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>) const {            \
-    CURRENT_CALL_F(#name, name);                                                                               \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  void CURRENT_REFLECTION(                                                                                     \
-      F&& CURRENT_CALL_F,                                                                                      \
-      ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {                    \
-    CURRENT_CALL_F(#name, name);                                                                               \
+#define CURRENT_FIELD_REFLECTION(idx, type, name)                                                                      \
+  template <class F>                                                                                                   \
+  static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
+                                 ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) {         \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(), #name);                                       \
+  }                                                                                                                    \
+  template <class F>                                                                                                   \
+  static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
+                                 ::current::reflection::Index<::current::reflection::FieldTypeAndNameAndIndex, idx>) { \
+    CURRENT_CALL_F(                                                                                                    \
+        ::current::reflection::TypeSelector<CF_TYPE(type)>(), #name, ::current::reflection::SimpleIndex<idx>());       \
+  }                                                                                                                    \
+  template <class F, class SELF>                                                                                       \
+  static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
+                                 ::current::reflection::Index<::current::reflection::FieldNameAndPtr<SELF>, idx>) {    \
+    CURRENT_CALL_F(#name, &SELF::name);                                                                                \
+  }                                                                                                                    \
+  template <class F>                                                                                                   \
+  void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                          \
+                          ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>)        \
+      const {                                                                                                          \
+    CURRENT_CALL_F(#name, name);                                                                                       \
+  }                                                                                                                    \
+  template <class F>                                                                                                   \
+  void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                          \
+                          ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {        \
+    CURRENT_CALL_F(#name, name);                                                                                       \
   }
 
-#define CURRENT_CONSTRUCTOR(s)                                                                       \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                   \
-            class = std::enable_if_t<                                                                \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_CONSTRUCTOR(s)                                                                                        \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
+            class =                                                                                                   \
+                std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSI_##s
 
-#define CURRENT_ASSIGN_OPER(s)                                                                       \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                   \
-            class = std::enable_if_t<                                                                \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_ASSIGN_OPER(s)                                                                                        \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
+            class =                                                                                                   \
+                std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSI_##s& operator=
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
-#define CURRENT_CONSTRUCTOR_T(s)                                                                     \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                   \
-            class = std::enable_if_t<                                                                \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_CONSTRUCTOR_T(s)                                                                                      \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
+            class =                                                                                                   \
+                std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSTI_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR_T(s) CURRENT_CONSTRUCTOR_T(s)()
 
-#define IS_VALID_CURRENT_STRUCT(s)                                                                          \
-  ::current::reflection::CurrentStructFieldsConsistency<s, ::current::reflection::FieldCounter<s>::value>:: \
-      Check()
+#define IS_VALID_CURRENT_STRUCT(s) \
+  ::current::reflection::CurrentStructFieldsConsistency<s, ::current::reflection::FieldCounter<s>::value>::Check()
 
 namespace current {
 namespace reflection {
 
 template <typename T>
 struct SuperTypeImpl {
-  static_assert(IS_CURRENT_STRUCT(T),
-                "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  static_assert(IS_CURRENT_STRUCT(T), "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
   using type = typename T::super_t;
 };
 

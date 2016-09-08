@@ -35,8 +35,7 @@ namespace serialization {
 
 template <class JSON_FORMAT, typename TF, typename TS>
 struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::pair<TF, TS>> {
-  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier,
-                          const std::pair<TF, TS>& value) {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::pair<TF, TS>& value) {
     rapidjson::Value first_value;
     rapidjson::Value second_value;
     json_stringifier.Inner(&first_value, value.first);

@@ -74,10 +74,8 @@ TEST(PersistenceLayer, Memory) {
     {
       std::vector<std::string> first_two;
       for (const auto& e : impl.Iterate()) {
-        first_two.push_back(Printf("%s %d %d",
-                                   e.entry.c_str(),
-                                   static_cast<int>(e.idx_ts.index),
-                                   static_cast<int>(e.idx_ts.us.count())));
+        first_two.push_back(Printf(
+            "%s %d %d", e.entry.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
     }
@@ -88,10 +86,8 @@ TEST(PersistenceLayer, Memory) {
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(Printf("%s %d %d",
-                                   e.entry.c_str(),
-                                   static_cast<int>(e.idx_ts.index),
-                                   static_cast<int>(e.idx_ts.us.count())));
+        all_three.push_back(Printf(
+            "%s %d %d", e.entry.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 300", Join(all_three, ","));
     }
@@ -238,8 +234,7 @@ TEST(PersistenceLayer, File) {
 
   using IMPL = current::persistence::File<StorableString>;
 
-  const std::string persistence_file_name =
-      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
@@ -254,10 +249,8 @@ TEST(PersistenceLayer, File) {
     {
       std::vector<std::string> first_two;
       for (const auto& e : impl.Iterate()) {
-        first_two.push_back(Printf("%s %d %d",
-                                   e.entry.s.c_str(),
-                                   static_cast<int>(e.idx_ts.index),
-                                   static_cast<int>(e.idx_ts.us.count())));
+        first_two.push_back(Printf(
+            "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
     }
@@ -269,10 +262,8 @@ TEST(PersistenceLayer, File) {
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(Printf("%s %d %d",
-                                   e.entry.s.c_str(),
-                                   static_cast<int>(e.idx_ts.index),
-                                   static_cast<int>(e.idx_ts.us.count())));
+        all_three.push_back(Printf(
+            "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
     }
@@ -292,10 +283,8 @@ TEST(PersistenceLayer, File) {
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(Printf("%s %d %d",
-                                   e.entry.s.c_str(),
-                                   static_cast<int>(e.idx_ts.index),
-                                   static_cast<int>(e.idx_ts.us.count())));
+        all_three.push_back(Printf(
+            "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
     }
@@ -307,10 +296,8 @@ TEST(PersistenceLayer, File) {
     {
       std::vector<std::string> all_four;
       for (const auto& e : impl.Iterate()) {
-        all_four.push_back(Printf("%s %d %d",
-                                  e.entry.s.c_str(),
-                                  static_cast<int>(e.idx_ts.index),
-                                  static_cast<int>(e.idx_ts.us.count())));
+        all_four.push_back(Printf(
+            "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
     }
@@ -323,10 +310,8 @@ TEST(PersistenceLayer, File) {
 
     std::vector<std::string> all_four;
     for (const auto& e : impl.Iterate()) {
-      all_four.push_back(Printf("%s %d %d",
-                                e.entry.s.c_str(),
-                                static_cast<int>(e.idx_ts.index),
-                                static_cast<int>(e.idx_ts.us.count())));
+      all_four.push_back(Printf(
+          "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
     }
     EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
   }
@@ -346,8 +331,7 @@ TEST(PersistenceLayer, FileExceptions) {
   static_assert(!current::ss::IsPublisher<int>::value, "");
   static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
-  const std::string persistence_file_name =
-      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
   {
     current::time::ResetToZero();
@@ -466,8 +450,7 @@ TEST(PersistenceLayer, MemoryIteratorPerformanceTest) {
 TEST(PersistenceLayer, FileIteratorPerformanceTest) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<StorableString>;
-  const std::string persistence_file_name =
-      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   {
     // First, run the proper test.
@@ -484,8 +467,7 @@ TEST(PersistenceLayer, FileIteratorPerformanceTest) {
 TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<std::string>;
-  const std::string persistence_file_name =
-      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   auto p = std::make_unique<IMPL>(persistence_file_name);
@@ -547,8 +529,7 @@ TEST(PersistenceLayer, Exceptions) {
   using current::persistence::InconsistentIndexException;
   using current::persistence::InconsistentTimestampException;
 
-  const std::string persistence_file_name =
-      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
   // Malformed entry during replay.
   {

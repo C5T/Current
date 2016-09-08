@@ -78,8 +78,7 @@ TEST(EventCollector, Smoke) {
   }
 
   current::time::SetNow(std::chrono::microseconds(178000));
-  const auto post_response =
-      HTTP(POST(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port), "meh"));
+  const auto post_response = HTTP(POST(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port), "meh"));
   EXPECT_EQ(200, static_cast<int>(post_response.code));
   EXPECT_EQ("OK\n", post_response.body);
 
@@ -109,10 +108,8 @@ TEST(EventCollector, Smoke) {
 
 TEST(EventCollector, QueryParameters) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/foo", "+");
-  EXPECT_EQ("+",
-            HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
+  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/foo", "+");
+  EXPECT_EQ("+", HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
   auto e = ParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ(2u, e.q.size());
   EXPECT_EQ("v", e.q["k"]);
@@ -121,16 +118,14 @@ TEST(EventCollector, QueryParameters) {
 
 TEST(EventCollector, Body) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/bar", "y");
+  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
   EXPECT_EQ("Yay!", ParseJSON<LogEntryWithHeaders>(os.str()).b);
 }
 
 TEST(EventCollector, Headers) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/ctfo", "=");
+  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/ctfo", "=");
   EXPECT_EQ("=",
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")

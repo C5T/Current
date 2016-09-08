@@ -53,18 +53,12 @@ SOFTWARE.
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #ifndef CURRENT_WINDOWS
-DEFINE_string(transactional_storage_test_tmpdir,
-              ".current",
-              "Local path for the test to create temporary files in.");
+DEFINE_string(transactional_storage_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 #else
-DEFINE_string(transactional_storage_test_tmpdir,
-              "Debug",
-              "Local path for the test to create temporary files in.");
+DEFINE_string(transactional_storage_test_tmpdir, "Debug", "Local path for the test to create temporary files in.");
 #endif
 
-DEFINE_int32(transactional_storage_test_port,
-             PickPortForUnitTest(),
-             "Local port to run [REST] API tests against.");
+DEFINE_int32(transactional_storage_test_port, PickPortForUnitTest(), "Local port to run [REST] API tests against.");
 
 namespace transactional_storage_test {
 
@@ -1600,15 +1594,9 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
   // Write mutation log.
   {
     Storage master_storage(storage_file_name);
-    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
-      fields.d.Add(Record{"one", 1});
-    }).Go();
-    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
-      fields.d.Add(Record{"two", 2});
-    }).Go();
-    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
-      fields.d.Add(Record{"three", 3});
-    }).Go();
+    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) { fields.d.Add(Record{"one", 1}); }).Go();
+    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) { fields.d.Add(Record{"two", 2}); }).Go();
+    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) { fields.d.Add(Record{"three", 3}); }).Go();
   }
 
   // Test following storage.
@@ -1765,9 +1753,7 @@ class StorageSherlockTestProcessorImpl {
   StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
 
   void SetAllowTerminate() { allow_terminate_ = true; }
-  void SetAllowTerminateOnOnMoreEntriesOfRightType() {
-    allow_terminate_on_no_more_entries_of_right_type_ = true;
-  }
+  void SetAllowTerminateOnOnMoreEntriesOfRightType() { allow_terminate_on_no_more_entries_of_right_type_ = true; }
 
   EntryResponse operator()(const SHERLOCK_ENTRY& entry, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(entry) + '\n';
@@ -1862,16 +1848,14 @@ namespace transactional_storage_test {
 CURRENT_STRUCT(SimpleUser) {
   CURRENT_FIELD(key, std::string);
   CURRENT_FIELD(name, std::string);
-  CURRENT_CONSTRUCTOR(SimpleUser)(const std::string& key = "", const std::string& name = "")
-      : key(key), name(name) {}
+  CURRENT_CONSTRUCTOR(SimpleUser)(const std::string& key = "", const std::string& name = "") : key(key), name(name) {}
   void InitializeOwnKey() { key = current::ToString(std::hash<std::string>()(name)); }
 };
 
 CURRENT_STRUCT(SimplePost) {
   CURRENT_FIELD(key, std::string);
   CURRENT_FIELD(text, std::string);
-  CURRENT_CONSTRUCTOR(SimplePost)(const std::string& key = "", const std::string& text = "")
-      : key(key), text(text) {}
+  CURRENT_CONSTRUCTOR(SimplePost)(const std::string& key = "", const std::string& text = "") : key(key), text(text) {}
   void InitializeOwnKey() { key = current::ToString(std::hash<std::string>()(text)); }  // LCOV_EXCL_LINE
 };
 
@@ -1885,8 +1869,7 @@ CURRENT_STRUCT(SimpleLikeBase) {
 CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
   using brief_t = SUPER;
   CURRENT_FIELD(details, Optional<std::string>);
-  CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who = "", const std::string& what = "")
-      : SUPER(who, what) {}
+  CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who = "", const std::string& what = "") : SUPER(who, what) {}
   CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who, const std::string& what, const std::string& details)
       : SUPER(who, what), details(details) {}
 };
@@ -2019,8 +2002,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
-    auto rest = RESTfulStorage<Storage>(
-        storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+    auto rest =
+        RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
     const auto hypermedia_rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
         storage, FLAGS_transactional_storage_test_port, "/hypermedia", "http://unittest.current.ai");
 
@@ -2089,8 +2072,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Run the subset of the above test for posts, not just for users.
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
 
-    EXPECT_EQ(201,
-              static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", SimplePost("test", "blah"))).code));
+    EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", SimplePost("test", "blah"))).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
     EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api/data/post/test")).body).text);
 
@@ -2105,12 +2087,10 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api/data/like", SimpleLike("dima", "beer"))).code));
 
     // Add a few likes.
+    EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/dima/beer", SimpleLike("dima", "beer"))).code));
     EXPECT_EQ(
         201,
-        static_cast<int>(HTTP(PUT(base_url + "/api/data/like/dima/beer", SimpleLike("dima", "beer"))).code));
-    EXPECT_EQ(201,
-              static_cast<int>(
-                  HTTP(PUT(base_url + "/api/data/like/max/beer", SimpleLike("max", "beer", "Cheers!"))).code));
+        static_cast<int>(HTTP(PUT(base_url + "/api/data/like/max/beer", SimpleLike("max", "beer", "Cheers!"))).code));
 
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
@@ -2215,8 +2195,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah/blah")).code));
   }
 
-  const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
-      current::FileSystem::ReadFileAsString(persistence_file_name));
+  const std::vector<std::string> persisted_transactions =
+      current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(persistence_file_name));
 
   EXPECT_EQ(20u, persisted_transactions.size());
 }
@@ -2361,8 +2341,8 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
     {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
       EXPECT_EQ(200, static_cast<int>(response.code));
-      using parsed_t = hypermedia::HypermediaRESTCollectionResponse<
-          hypermedia::HypermediaRESTFullCollectionRecord<SimpleComposite>>;
+      using parsed_t =
+          hypermedia::HypermediaRESTCollectionResponse<hypermedia::HypermediaRESTFullCollectionRecord<SimpleComposite>>;
       parsed_t parsed;
       ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
       std::vector<std::string> strings;
@@ -2481,8 +2461,7 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimplePostPersisted>::exposed, "");
 
   static_assert(current::storage::rest::FieldExposedViaREST<Storage2, SimpleUserPersistedExposed>::exposed, "");
-  static_assert(!current::storage::rest::FieldExposedViaREST<Storage2, SimplePostPersistedNotExposed>::exposed,
-                "");
+  static_assert(!current::storage::rest::FieldExposedViaREST<Storage2, SimplePostPersistedNotExposed>::exposed, "");
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
@@ -2543,10 +2522,11 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  static_assert(std::is_same<typename Storage::persister_t::sherlock_t,
-                             current::sherlock::Stream<typename Storage::persister_t::transaction_t,
-                                                       current::persistence::Memory>>::value,
-                "");
+  static_assert(
+      std::is_same<
+          typename Storage::persister_t::sherlock_t,
+          current::sherlock::Stream<typename Storage::persister_t::transaction_t, current::persistence::Memory>>::value,
+      "");
 
   typename Storage::persister_t::sherlock_t stream;
   Storage storage(stream);
@@ -2659,8 +2639,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
   using StreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
 
-  const std::string master_file_name =
-      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
+  const std::string master_file_name = current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
   const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
 
   const std::string follower_file_name =
@@ -2684,8 +2663,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
 
   // Launch continuous replication process.
   {
-    const auto replicator_scope =
-        master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
+    const auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
 
     // Confirm an empty collection is returned.
     {
@@ -2756,8 +2734,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     // `FlipToMaster()` method on a storage with `Master` role throws an exception.
     EXPECT_THROW(master_storage.FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
     // Publisher of the `follower_stream` is still in the `replicator`.
-    EXPECT_THROW(follower_storage.FlipToMaster(),
-                 current::storage::UnderlyingStreamHasExternalDataAuthorityException);
+    EXPECT_THROW(follower_storage.FlipToMaster(), current::storage::UnderlyingStreamHasExternalDataAuthorityException);
 
     // Stop the replication process by ending its scope.
   }

@@ -49,8 +49,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, reflection::TypeID> {
       destination =
           static_cast<reflection::TypeID>(current::FromString<uint64_t>(json_parser.Current().GetString() + 1));
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
-               (json_parser &&
-                !(json_parser.Current().IsString() && *json_parser.Current().GetString() == 'T'))) {
+               (json_parser && !(json_parser.Current().IsString() && *json_parser.Current().GetString() == 'T'))) {
       throw JSONSchemaException("TypeID", json_parser);  // LCOV_EXCL_LINE
     }
   }

@@ -30,9 +30,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_string(self_modifying_config_test_tmpdir,
-              ".current",
-              "Local path for the test to create temporary files in.");
+DEFINE_string(self_modifying_config_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 CURRENT_STRUCT(UnitTestSelfModifyingConfig) {
   CURRENT_FIELD(x, int32_t, 0);
@@ -68,14 +66,12 @@ TEST(SelfModifyingConfig, Smoke) {
   config.Update(UnitTestSelfModifyingConfig(2));
 
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(historical_filename));
-  EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)),
-            current::FileSystem::ReadFileAsString(another_historical_filename));
+  EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(another_historical_filename));
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(2)), current::FileSystem::ReadFileAsString(config_filename));
 
   config.Update(UnitTestSelfModifyingConfig(3));
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(1)), current::FileSystem::ReadFileAsString(historical_filename));
-  EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(2)),
-            current::FileSystem::ReadFileAsString(another_historical_filename));
+  EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(2)), current::FileSystem::ReadFileAsString(another_historical_filename));
   EXPECT_EQ(JSON(UnitTestSelfModifyingConfig(3)), current::FileSystem::ReadFileAsString(config_filename));
 }
 
@@ -98,8 +94,7 @@ TEST(SelfModifyingConfig, ReadFileException) {
     std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
   } catch (const current::SelfModifyingConfigReadFileException& e) {
     ExpectStringEndsWith(
-        "config.h:80\tSelfModifyingConfigReadFileException(filename_)\t.current/ReadFileExceptionConfig",
-        e.What());
+        "config.h:80\tSelfModifyingConfigReadFileException(filename_)\t.current/ReadFileExceptionConfig", e.What());
   }
 }
 

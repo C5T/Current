@@ -107,8 +107,8 @@ class GenericConsumer {
   }
 
   void operator()(const iOSIdentifyEvent& event) {
-    AppendToLastEvent(Printf("[iOSIdentifyEvent user_ms=%lld client_id=", event.user_ms.count()) +
-                      event.client_id + ']');
+    AppendToLastEvent(Printf("[iOSIdentifyEvent user_ms=%lld client_id=", event.user_ms.count()) + event.client_id +
+                      ']');
   }
 
   void operator()(const iOSFocusEvent& event) {
@@ -159,13 +159,9 @@ class GenericConsumer {
     AppendToLastEvent("[WebBackgroundEvent " + ExtractWebBaseEventParams(e) + ']');
   }
 
-  void operator()(const WebEnterEvent& e) {
-    AppendToLastEvent("[WebEnterEvent " + ExtractWebBaseEventParams(e) + ']');
-  }
+  void operator()(const WebEnterEvent& e) { AppendToLastEvent("[WebEnterEvent " + ExtractWebBaseEventParams(e) + ']'); }
 
-  void operator()(const WebExitEvent& e) {
-    AppendToLastEvent("[WebExitEvent " + ExtractWebBaseEventParams(e) + ']');
-  }
+  void operator()(const WebExitEvent& e) { AppendToLastEvent("[WebExitEvent " + ExtractWebBaseEventParams(e) + ']'); }
 
   void operator()(const WebGenericEvent& e) {
     AppendToLastEvent("[WebGenericEvent " + e.event_action + ':' + e.event_category + ' ' +
@@ -257,8 +253,7 @@ TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
 
   NSDictionary* launchOptions = [NSDictionary new];
-  [Midichlorians setup:[NSString
-                           stringWithFormat:@"http://localhost:%d/log", FLAGS_midichlorians_server_test_port]
+  [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", FLAGS_midichlorians_server_test_port]
       withLaunchOptions:launchOptions];
 
   current::time::SetNow(std::chrono::microseconds(1000));
@@ -298,9 +293,7 @@ GET MockGETRequest(const std::string& base_url,
       "&_t=" +
       current::ToString(ms) + "&ea=" + ea + "&ec=" + ec;
   GET r(base_url + '?' + query_params);
-  r.UserAgent("test_ua")
-      .SetHeader("X-Forwarded-For", "192.168.0.1")
-      .SetHeader("Referer", "http://myurl/page1?x=8");
+  r.UserAgent("test_ua").SetHeader("X-Forwarded-For", "192.168.0.1").SetHeader("Referer", "http://myurl/page1?x=8");
   return r;
 }
 
@@ -314,9 +307,7 @@ POST MockPOSTRequest(const std::string& base_url,
       "&_t=" +
       current::ToString(ms) + "&ea=" + ea + "&ec=" + ec;
   POST r(base_url + '?' + query_params, body);
-  r.UserAgent("test_ua")
-      .SetHeader("X-Forwarded-For", "192.168.0.1")
-      .SetHeader("Referer", "http://myurl/page1?x=8");
+  r.UserAgent("test_ua").SetHeader("X-Forwarded-For", "192.168.0.1").SetHeader("Referer", "http://myurl/page1?x=8");
   return r;
 }
 

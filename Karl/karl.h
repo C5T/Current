@@ -117,8 +117,8 @@ class KarlNginxManager {
           // Proxy status pages of the services via `{route_prefix}/{codename}`.
           for (const auto& claire : fields.claires) {
             if (claire.registered_state == ClaireRegisteredState::Active) {
-              auto& location = server.CreateProxyPassLocation(
-                  nginx_parameters_.route_prefix + '/' + claire.codename, claire.location.StatusPageURL());
+              auto& location = server.CreateProxyPassLocation(nginx_parameters_.route_prefix + '/' + claire.codename,
+                                                              claire.location.StatusPageURL());
               // Block all HTTP methods except `GET`.
               location.Add(nginx::config::BlockDirective(
                   "limit_except", "GET", {nginx::config::SimpleDirective("deny", "all")}));
@@ -201,12 +201,8 @@ class DummyKarlNotifiable : public IKarlNotifiable<RUNTIME_STATUS_VARIANT> {
                    const ClaireServiceKey&,
                    const std::string&,
                    const claire_status_t&) override {}
-  void OnDeregistered(std::chrono::microseconds,
-                      const std::string&,
-                      const ImmutableOptional<ClaireInfo>&) override {}
-  void OnTimedOut(std::chrono::microseconds,
-                  const std::string&,
-                  const ImmutableOptional<ClaireInfo>&) override {}
+  void OnDeregistered(std::chrono::microseconds, const std::string&, const ImmutableOptional<ClaireInfo>&) override {}
+  void OnTimedOut(std::chrono::microseconds, const std::string&, const ImmutableOptional<ClaireInfo>&) override {}
 };
 
 template <class STORAGE_TYPE, typename... TS>
@@ -225,8 +221,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   explicit GenericKarl(const KarlParameters& parameters)
       : GenericKarl(parameters.storage_persistence_file, parameters, *this, PrivateConstructorSelector()) {}
   GenericKarl(const KarlParameters& parameters, IKarlNotifiable<runtime_status_variant_t>& notifiable)
-      : GenericKarl(parameters.storage_persistence_file, parameters, notifiable, PrivateConstructorSelector()) {
-  }
+      : GenericKarl(parameters.storage_persistence_file, parameters, notifiable, PrivateConstructorSelector()) {}
 
   template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
   GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters)
@@ -256,10 +251,9 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
             storage_, parameters.nginx_parameters, parameters.keepalives_port, parameters.fleet_view_port),
         destructing_(false),
         parameters_(parameters),
-        actual_public_url_(
-            parameters_.public_url == kDefaultFleetViewURL
-                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
-                : parameters_.public_url),
+        actual_public_url_(parameters_.public_url == kDefaultFleetViewURL
+                               ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
+                               : parameters_.public_url),
         notifiable_ref_(notifiable),
         keepalives_stream_(parameters_.stream_persistence_file),
         state_update_thread_running_(false),
@@ -372,23 +366,24 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       }
       if (!timeouted_codenames.empty()) {
         auto& notifiable_ref = notifiable_ref_;
-        storage_.ReadWriteTransaction(
-                     [&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields) -> void {
-                       for (const auto& codename : timeouted_codenames) {
-                         const auto& current_claire_info = fields.claires[codename];
-                         // OK to call from within a transaction.
-                         // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                         ClaireInfo claire;
-                         if (Exists(current_claire_info)) {
-                           claire = Value(current_claire_info);
-                           notifiable_ref.OnTimedOut(now, codename, current_claire_info);
-                         } else {
-                           claire.codename = codename;
-                         }
-                         claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
-                         fields.claires.Add(claire);
-                       }
-                     }).Wait();
+        storage_.ReadWriteTransaction([&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields)
+                                          -> void {
+                                            for (const auto& codename : timeouted_codenames) {
+                                              const auto& current_claire_info = fields.claires[codename];
+                                              // OK to call from within a transaction.
+                                              // The call is fast, and `storage_`'s transaction guarantees thread
+                                              // safety. -- D.K.
+                                              ClaireInfo claire;
+                                              if (Exists(current_claire_info)) {
+                                                claire = Value(current_claire_info);
+                                                notifiable_ref.OnTimedOut(now, codename, current_claire_info);
+                                              } else {
+                                                claire.codename = codename;
+                                              }
+                                              claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
+                                              fields.claires.Add(claire);
+                                            }
+                                          }).Wait();
       }
       UpdateNginxIfNeeded();
 #ifdef CURRENT_MOCK_TIME
@@ -429,23 +424,21 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         const std::string codename = qs["codename"];
         const auto now = current::time::Now();
         auto& notifiable_ref = notifiable_ref_;
-        storage_.ReadWriteTransaction(
-                     [codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
-                       const auto& current_claire_info = fields.claires[codename];
-                       // OK to call from within a transaction.
-                       // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                       notifiable_ref.OnDeregistered(now, codename, current_claire_info);
-                       ClaireInfo claire;
-                       if (Exists(current_claire_info)) {
-                         claire = Value(current_claire_info);
-                       } else {
-                         claire.codename = codename;
-                       }
-                       claire.registered_state = ClaireRegisteredState::Deregistered;
-                       fields.claires.Add(claire);
-                       return Response("OK\n");
-                     },
-                     std::move(r)).Detach();
+        storage_.ReadWriteTransaction([codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
+          const auto& current_claire_info = fields.claires[codename];
+          // OK to call from within a transaction.
+          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+          notifiable_ref.OnDeregistered(now, codename, current_claire_info);
+          ClaireInfo claire;
+          if (Exists(current_claire_info)) {
+            claire = Value(current_claire_info);
+          } else {
+            claire.codename = codename;
+          }
+          claire.registered_state = ClaireRegisteredState::Deregistered;
+          fields.claires.Add(claire);
+          return Response("OK\n");
+        }, std::move(r)).Detach();
         {
           // Delete this `codename` from cache.
           std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
@@ -466,8 +459,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           if (qs.has("confirm") && qs.has("port")) {
             const std::string url = "http://" + remote_ip + ':' + qs["port"] + "/.current";
             // Send a GET request, with a random component in the URL to prevent caching.
-            return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
-                .body;
+            return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9)))).body;
           } else {
             return r.body;
           }
@@ -492,8 +484,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
               std::cerr << "Could not parse: " << json << '\n';
               reflection::StructSchema struct_schema;
               struct_schema.AddType<claire_status_t>();
-              std::cerr << "As:\n" << struct_schema.GetSchemaInfo().Describe<reflection::Language::Current>()
-                        << '\n';
+              std::cerr << "As:\n" << struct_schema.GetSchemaInfo().Describe<reflection::Language::Current>() << '\n';
 #endif
 
               claire_status_t status;
@@ -533,8 +524,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                         &notifiable_ref](MutableFields<storage_t> fields) -> Response {
                          // OK to call from within a transaction.
                          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                         notifiable_ref.OnKeepalive(
-                             now, location, parsed_status.codename, detailed_parsed_status);
+                         notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
 
                          const auto& service = parsed_status.service;
                          const auto& codename = parsed_status.codename;
@@ -581,8 +571,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                          }
 
                          // Update the `DB` if the build information was not stored there yet.
-                         const ImmutableOptional<ClaireBuildInfo> current_claire_build_info =
-                             fields.builds[codename];
+                         const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
                          if (Exists(optional_build) &&
                              (!Exists(current_claire_build_info) ||
                               Value(current_claire_build_info).build != Value(optional_build))) {
@@ -667,8 +656,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   }
 
   void ServeKarlStatus(Request r) {
-    if (r.url.query.has("parameters") || r.url.query.has("params") || r.url.query.has("p") ||
-        r.url.query.has("full") || r.url.query.has("f")) {
+    if (r.url.query.has("parameters") || r.url.query.has("params") || r.url.query.has("p") || r.url.query.has("full") ||
+        r.url.query.has("f")) {
       r(KarlUpStatus(parameters_));
     } else {
       // TODO(dkorolev) + TODO(mzhurovich): JSON headers magic.
@@ -716,8 +705,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     if (index) {
       const auto e = (*keepalives_stream_.InternalExposePersister().Iterate(index - 1).begin());
       if (!r.url.query.has("nobuild")) {
-        r(JSON<JSONFormat::Minimalistic>(SnapshotOfKeepalive<runtime_status_variant_t>(
-              e.idx_ts.us - current::time::Now(), e.entry.keepalive)),
+        r(JSON<JSONFormat::Minimalistic>(
+              SnapshotOfKeepalive<runtime_status_variant_t>(e.idx_ts.us - current::time::Now(), e.entry.keepalive)),
           HTTPResponseCode.OK,
           current::net::constants::kDefaultJSONContentType);
       } else {
@@ -750,8 +739,8 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                          static_cast<int64_t>(current::FromString<double>(r.url.query["h"]) * 1e6 * 60 * 60));
       }
       if (r.url.query.has("d")) {  // `d` stands for days.
-        return now - std::chrono::microseconds(static_cast<int64_t>(
-                         current::FromString<double>(r.url.query["d"]) * 1e6 * 60 * 60 * 24));
+        return now - std::chrono::microseconds(
+                         static_cast<int64_t>(current::FromString<double>(r.url.query["d"]) * 1e6 * 60 * 60 * 24));
       }
       // Five minutes by default.
       return now - std::chrono::microseconds(static_cast<int64_t>(1e6 * 60 * 5));
@@ -927,11 +916,9 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                        if (std::abs(behind_this_by_us) < 100000) {
                          server.time_skew = "NTP OK";
                        } else if (behind_this_by_us > 0) {
-                         server.time_skew =
-                             current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
+                         server.time_skew = current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
                        } else {
-                         server.time_skew =
-                             current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
+                         server.time_skew = current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
                        }
                      }
                    }

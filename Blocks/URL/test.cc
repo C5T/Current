@@ -129,8 +129,7 @@ TEST(URLTest, RedirectPreservesSchemeHostAndPortTest) {
   EXPECT_EQ("ftp://foo:8080/", URL("ftp://foo", URL("meh://localhost:8080")).ComposeURL());
   EXPECT_EQ("ftp://localhost:8080/bar", URL("ftp:///bar", URL("meh://localhost:8080")).ComposeURL());
   EXPECT_EQ("blah://new_host:5000/foo", URL("blah://new_host/foo", URL("meh://localhost:5000")).ComposeURL());
-  EXPECT_EQ("blah://new_host:6000/foo",
-            URL("blah://new_host:6000/foo", URL("meh://localhost:5000")).ComposeURL());
+  EXPECT_EQ("blah://new_host:6000/foo", URL("blah://new_host:6000/foo", URL("meh://localhost:5000")).ComposeURL());
 }
 
 TEST(URLTest, ExtractsURLParameters) {
@@ -252,10 +251,8 @@ TEST(URLTest, ExtractsURLParameters) {
 
 TEST(URLTest, URLParametersCompositionTest) {
   EXPECT_EQ("http://www.google.com/search", URL("www.google.com/search").ComposeURL());
-  EXPECT_EQ("http://www.google.com/search?q=foo#fragment",
-            URL("www.google.com/search?q=foo#fragment").ComposeURL());
-  EXPECT_EQ("http://www.google.com/search?q=foo&q2=bar",
-            URL("www.google.com/search?q=foo&q2=bar").ComposeURL());
+  EXPECT_EQ("http://www.google.com/search?q=foo#fragment", URL("www.google.com/search?q=foo#fragment").ComposeURL());
+  EXPECT_EQ("http://www.google.com/search?q=foo&q2=bar", URL("www.google.com/search?q=foo&q2=bar").ComposeURL());
   EXPECT_EQ("http://www.google.com/search?q=foo&q2=bar#fragment",
             URL("www.google.com/search?q=foo&q2=bar#fragment").ComposeURL());
   EXPECT_EQ("http://www.google.com/search#fragment", URL("www.google.com/search#fragment").ComposeURL());
@@ -266,6 +263,5 @@ TEST(URLTest, EmptyURLException) {
   ASSERT_THROW(URL(""), EmptyURLException);
 
   // Empty host is allowed in relative links.
-  EXPECT_EQ("foo://www.website.com:321/second",
-            URL("/second", URL("foo://www.website.com:321/first")).ComposeURL());
+  EXPECT_EQ("foo://www.website.com:321/second", URL("/second", URL("foo://www.website.com:321/first")).ComposeURL());
 }

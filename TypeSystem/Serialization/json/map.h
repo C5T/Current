@@ -38,8 +38,7 @@ namespace serialization {
 
 template <class JSON_FORMAT, typename TK, typename TV, typename TC, typename TA>
 struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::map<TK, TV, TC, TA>> {
-  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier,
-                          const std::map<TK, TV, TC, TA>& value) {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::map<TK, TV, TC, TA>& value) {
     json_stringifier.Current().SetArray();
     for (const auto& element : value) {
       rapidjson::Value key_value_as_array;
@@ -72,8 +71,8 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::map<std::string, T
 template <class JSON_FORMAT, typename TK, typename TV, typename TC, typename TA, class J>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, J> {
   template <typename K = TK>
-  static std::enable_if_t<std::is_same<std::string, K>::value> DoDeserialize(
-      json::JSONParser<JSON_FORMAT>& json_parser, std::map<TK, TV, TC, TA>& destination) {
+  static std::enable_if_t<std::is_same<std::string, K>::value> DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
+                                                                             std::map<TK, TV, TC, TA>& destination) {
     if (json_parser && json_parser.Current().IsObject()) {
       destination.clear();
       TK k;
@@ -95,8 +94,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
       json::JSONParser<JSON_FORMAT>& json_parser, std::map<TK, TV, TC, TA>& destination) {
     if (json_parser && json_parser.Current().IsArray()) {
       destination.clear();
-      for (rapidjson::Value::ValueIterator cit = json_parser.Current().Begin();
-           cit != json_parser.Current().End();
+      for (rapidjson::Value::ValueIterator cit = json_parser.Current().Begin(); cit != json_parser.Current().End();
            ++cit) {
         if (!cit->IsArray()) {
           throw JSONSchemaException("map entry as array", json_parser);  // LCOV_EXCL_LINE

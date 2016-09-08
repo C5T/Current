@@ -35,10 +35,9 @@ SOFTWARE.
 
 // `CURRENT_EVOLVE` and `CURRENT_NATURAL_EVOLVE` are the syntaxes to eliminate the need
 // to write `::current::type_evolution::Evolve<...>::template Go<...>(from_object, into_object)`.
-#define CURRENT_EVOLVE_IMPL(evolver, from_namespace, into_namespace, from_object, into_object) \
-  ::current::type_evolution::Evolve<from_namespace,                                            \
-                                    ::current::decay<decltype(from_object)>,                   \
-                                    evolver>::template Go<into_namespace>(from_object, into_object)
+#define CURRENT_EVOLVE_IMPL(evolver, from_namespace, into_namespace, from_object, into_object)                      \
+  ::current::type_evolution::Evolve<from_namespace, ::current::decay<decltype(from_object)>, evolver>::template Go< \
+      into_namespace>(from_object, into_object)
 
 // `CURRENT_EVOLVE` uses the `evolver` provided explicitly as the first parameter.
 #define CURRENT_EVOLVE(evolver, from_namespace, into_namespace, from_object, into_object) \

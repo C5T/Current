@@ -96,10 +96,7 @@ struct ChunkedGET {
                       std::function<void(const std::string&, const std::string&)> header_callback,
                       std::function<void(const std::string&)> chunk_callback,
                       std::function<void()> done_callback)
-      : url(url),
-        header_callback(header_callback),
-        chunk_callback(chunk_callback),
-        done_callback(done_callback) {}
+      : url(url), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
 };
 
 struct HEAD : HTTPRequestBase<HEAD> {
@@ -123,8 +120,9 @@ struct FillBody<REQUEST, true> {
 template <typename REQUEST>
 struct FillBody<REQUEST, false> {
   template <typename T>
-  static typename std::enable_if<IS_CURRENT_STRUCT(current::decay<T>)>::type Fill(
-      REQUEST& request, T&& object, const std::string& content_type) {
+  static typename std::enable_if<IS_CURRENT_STRUCT(current::decay<T>)>::type Fill(REQUEST& request,
+                                                                                  T&& object,
+                                                                                  const std::string& content_type) {
     request.body = JSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultJSONContentType;
   }
@@ -137,8 +135,7 @@ struct POST : HTTPRequestBase<POST> {
   template <typename T>
   POST(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<POST, current::strings::is_string_type<T>::value>::Fill(
-        *this, std::forward<T>(body), content_type);
+    FillBody<POST, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 

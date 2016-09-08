@@ -101,8 +101,7 @@ class GenericHTTPClientPOSIX final {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
       if (!request_body_contents_.empty()) {
-        connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n",
-                                 true);
+        connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n", true);
         connection.BlockingWrite("\r\n", true);
         connection.BlockingWrite(request_body_contents_, false);
       } else {

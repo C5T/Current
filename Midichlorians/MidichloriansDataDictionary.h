@@ -110,8 +110,7 @@ CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
   CURRENT_FIELD(unparsable_fields, std::vector<std::string>);
   CURRENT_DEFAULT_CONSTRUCTOR(iOSGenericEvent) {}  // LCOV_EXCL_LINE
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
-  CURRENT_CONSTRUCTOR(iOSGenericEvent)(
-      NSString * event_name, NSString * event_source, NSDictionary * properties) {
+  CURRENT_CONSTRUCTOR(iOSGenericEvent)(NSString * event_name, NSString * event_source, NSDictionary * properties) {
     // A somewhat strict yet safe way to parse dictionaries. Imperfect but works. -- D. K.
     event = [event_name UTF8String];
     source = [event_source UTF8String];
@@ -138,12 +137,8 @@ CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
 #endif  // COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 };
 
-using ios_events_t = TypeList<iOSFirstLaunchEvent,
-                              iOSAppLaunchEvent,
-                              iOSDeviceInfo,
-                              iOSIdentifyEvent,
-                              iOSFocusEvent,
-                              iOSGenericEvent>;
+using ios_events_t =
+    TypeList<iOSFirstLaunchEvent, iOSAppLaunchEvent, iOSDeviceInfo, iOSIdentifyEvent, iOSFocusEvent, iOSGenericEvent>;
 
 }  // namespace ios
 
@@ -181,8 +176,7 @@ CURRENT_STRUCT(WebGenericEvent, WebBaseEvent) {
       : event_category(category), event_action(action) {}
 };
 
-using web_events_t =
-    TypeList<WebEnterEvent, WebExitEvent, WebForegroundEvent, WebBackgroundEvent, WebGenericEvent>;
+using web_events_t = TypeList<WebEnterEvent, WebExitEvent, WebForegroundEvent, WebBackgroundEvent, WebGenericEvent>;
 
 }  // namespace web
 

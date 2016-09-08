@@ -64,8 +64,7 @@ CURRENT_STRUCT(KarlParameters) {
       storage_persistence_file,
       "The file name to store the persisted event log of keepalives post-processed into servers and services.");
   CURRENT_FIELD(keepalives_url, std::string, "/");
-  CURRENT_FIELD_DESCRIPTION(keepalives_url,
-                            "The endpoint to listen to keepalives on, on the `keepalives_port` port.");
+  CURRENT_FIELD_DESCRIPTION(keepalives_url, "The endpoint to listen to keepalives on, on the `keepalives_port` port.");
   CURRENT_FIELD(fleet_view_url, std::string, "/");
   CURRENT_FIELD_DESCRIPTION(fleet_view_url, "The endpoint to listen to fleet view requests on.");
   CURRENT_FIELD(public_url, std::string, kDefaultFleetViewURL);
@@ -75,8 +74,7 @@ CURRENT_STRUCT(KarlParameters) {
   CURRENT_FIELD(svg_name, std::string, "Karl");
   CURRENT_FIELD_DESCRIPTION(svg_name, "The top-level image name on the GraphViz-rendered SVG.");
   CURRENT_FIELD(github_repo_url, std::string, "");
-  CURRENT_FIELD_DESCRIPTION(github_repo_url,
-                            "The top-level GitHub repo URL to have git commit hashes browsable.");
+  CURRENT_FIELD_DESCRIPTION(github_repo_url, "The top-level GitHub repo URL to have git commit hashes browsable.");
   CURRENT_FIELD(nginx_parameters, KarlNginxParameters, KarlNginxParameters(0, ""));
   CURRENT_FIELD_DESCRIPTION(nginx_parameters, "Nginx manager config.");
   CURRENT_FIELD(service_timeout_interval, std::chrono::microseconds, k45Seconds);
@@ -124,16 +122,14 @@ CURRENT_STRUCT(KarlParameters) {
 CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds, current::time::Now());
   CURRENT_FIELD_DESCRIPTION(
-      timestamp,
-      "Unix epoch microseconds of the time this report was generated. Can be used to measure time skew.");
+      timestamp, "Unix epoch microseconds of the time this report was generated. Can be used to measure time skew.");
   CURRENT_USE_FIELD_AS_KEY(timestamp);
 
   CURRENT_FIELD(up, bool, true);
   CURRENT_FIELD_DESCRIPTION(up, "`true` for starting up, `false` for a graceful shutdown.");
 
   CURRENT_FIELD(persisted_keepalives_info, Optional<idxts_t>);
-  CURRENT_FIELD_DESCRIPTION(persisted_keepalives_info,
-                            "Details on the stream which stores the received keepalives.");
+  CURRENT_FIELD_DESCRIPTION(persisted_keepalives_info, "Details on the stream which stores the received keepalives.");
 
   CURRENT_FIELD(karl_build_info, build::BuildInfo, build::BuildInfo());
   CURRENT_FIELD_DESCRIPTION(karl_build_info, "Build information of Karl itself.");
@@ -224,12 +220,10 @@ CURRENT_STRUCT(up) {
       last_keepalive_received,
       "Time elapsed since the most recent keepalive message was received from this service, human-readable.");
   CURRENT_FIELD(last_keepalive_received_epoch_microseconds, std::chrono::microseconds);
-  CURRENT_FIELD_DESCRIPTION(
-      last_keepalive_received_epoch_microseconds,
-      "Unix epoch microseconds of the most recent keepalive message received from this service.");
+  CURRENT_FIELD_DESCRIPTION(last_keepalive_received_epoch_microseconds,
+                            "Unix epoch microseconds of the most recent keepalive message received from this service.");
   CURRENT_FIELD(uptime, std::string);
-  CURRENT_FIELD_DESCRIPTION(uptime,
-                            "The uptime of the service based on the most recent keepalive, human-readable.");
+  CURRENT_FIELD_DESCRIPTION(uptime, "The uptime of the service based on the most recent keepalive, human-readable.");
 
   CURRENT_DEFAULT_CONSTRUCTOR(up) {}
   CURRENT_CONSTRUCTOR(up)(const std::chrono::microseconds start_time_epoch_microseconds,
@@ -283,12 +277,11 @@ CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD_DESCRIPTION(service, "The service name.");
 
   CURRENT_FIELD(codename, std::string);
-  CURRENT_FIELD_DESCRIPTION(
-      codename, "The codename of this instance of the running service, assigned randomly at its startup.");
+  CURRENT_FIELD_DESCRIPTION(codename,
+                            "The codename of this instance of the running service, assigned randomly at its startup.");
 
   CURRENT_FIELD(location, ClaireServiceKey);
-  CURRENT_FIELD_DESCRIPTION(location,
-                            "The information identifying where is this service running and how to reach it.");
+  CURRENT_FIELD_DESCRIPTION(location, "The information identifying where is this service running and how to reach it.");
 
   CURRENT_FIELD(dependencies, std::vector<std::string>);
   CURRENT_FIELD_DESCRIPTION(dependencies, "Other services this one depends on, resolved to their codenames.");
@@ -353,13 +346,11 @@ CURRENT_STRUCT_T(GenericKarlStatus) {
   CURRENT_FIELD(now, std::chrono::microseconds);
   CURRENT_FIELD_DESCRIPTION(now, "Unix epoch microseconds of when this report has been generated.");
   CURRENT_FIELD(from, std::chrono::microseconds);
-  CURRENT_FIELD_DESCRIPTION(from,
-                            "Unix epoch microseconds of the beginning of the time range this report covers.");
+  CURRENT_FIELD_DESCRIPTION(from, "Unix epoch microseconds of the beginning of the time range this report covers.");
   CURRENT_FIELD(to, std::chrono::microseconds);
   CURRENT_FIELD_DESCRIPTION(to, "Unix epoch microseconds of the end of the time range this report covers.");
   CURRENT_FIELD(generation_time, std::chrono::microseconds);
-  CURRENT_FIELD_DESCRIPTION(generation_time,
-                            "How long did the generation of this report take, in microseconds.");
+  CURRENT_FIELD_DESCRIPTION(generation_time, "How long did the generation of this report take, in microseconds.");
   CURRENT_FIELD(machines, (std::map<std::string, ServerToReport<T>>));
   CURRENT_FIELD_DESCRIPTION(machines, "The actual report, grouped by servers.");
 };

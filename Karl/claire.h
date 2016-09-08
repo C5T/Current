@@ -217,9 +217,7 @@ class GenericClaire final : private DummyClaireNotifiable {
     return codename;
   }
 
-  static std::string KarlKeepaliveRoute(const Locator& karl_locator,
-                                        const std::string& codename,
-                                        uint16_t port) {
+  static std::string KarlKeepaliveRoute(const Locator& karl_locator, const std::string& codename, uint16_t port) {
     return karl_locator.address_port_route + "?codename=" + codename + "&port=" + current::ToString(port);
   }
 
@@ -256,15 +254,14 @@ class GenericClaire final : private DummyClaireNotifiable {
     {
       std::lock_guard<std::mutex> lock(status_mutex_);
       if (last_keepalive_attempt_result_.timestamp.count()) {
-        status.last_keepalive_sent = current::strings::TimeIntervalAsHumanReadableString(
-                                         now - last_keepalive_attempt_result_.timestamp) +
-                                     " ago";
+        status.last_keepalive_sent =
+            current::strings::TimeIntervalAsHumanReadableString(now - last_keepalive_attempt_result_.timestamp) +
+            " ago";
         status.last_keepalive_status = KeepaliveAttemptResultAsString(last_keepalive_attempt_result_);
       }
       if (last_successful_keepalive_timestamp_.count()) {
         status.last_successful_keepalive =
-            current::strings::TimeIntervalAsHumanReadableString(now - last_successful_keepalive_timestamp_) +
-            " ago";
+            current::strings::TimeIntervalAsHumanReadableString(now - last_successful_keepalive_timestamp_) + " ago";
       }
       if (last_successful_keepalive_ping_.count()) {
         status.last_successful_keepalive_ping_us = last_successful_keepalive_ping_;
@@ -330,8 +327,7 @@ class GenericClaire final : private DummyClaireNotifiable {
         std::lock_guard<std::mutex> lock(status_mutex_);
         last_keepalive_attempt_result_.timestamp = current::time::Now();
         last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::Unknown;
-        last_keepalive_attempt_result_.http_code =
-            static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode);
+        last_keepalive_attempt_result_.http_code = static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode);
       }
 
       const auto code = HTTP(POST(route, keepalive_body)).code;

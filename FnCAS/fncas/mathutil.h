@@ -39,8 +39,8 @@ namespace fncas {
 inline bool IsNormal(double arg) { return (std::isnormal(arg) || arg == 0.0); }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
-    std::vector<T> a, const std::vector<T>& b) {
+inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                              const std::vector<T>& b) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -51,8 +51,9 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
-    std::vector<T> a, const std::vector<T>& b, double kb) {
+inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                              const std::vector<T>& b,
+                                                                                              double kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -63,8 +64,10 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
-    std::vector<T> a, const std::vector<T>& b, double ka, double kb) {
+inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                              const std::vector<T>& b,
+                                                                                              double ka,
+                                                                                              double kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif

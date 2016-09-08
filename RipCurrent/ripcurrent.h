@@ -128,8 +128,7 @@ struct Definition {
   struct Pipe final {};
   std::string statement;
   std::vector<std::pair<std::string, FileLine>> sources;
-  static std::vector<std::pair<std::string, FileLine>> CombineSources(const Definition& a,
-                                                                      const Definition& b) {
+  static std::vector<std::pair<std::string, FileLine>> CombineSources(const Definition& a, const Definition& b) {
     std::vector<std::pair<std::string, FileLine>> sources;
     sources.reserve(a.sources.size() + b.sources.size());
     for (const auto& e : a.sources) {
@@ -231,17 +230,15 @@ class SharedUniqueDefinition<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>> {
     std::string result;
     if (sizeof...(LHS_TYPES)) {
       std::vector<std::string> types;
-      metaprogramming::call_all_constructors_with<AppendTypeName,
-                                                  std::vector<std::string>,
-                                                  TypeListImpl<LHS_TYPES...>>(types);
+      metaprogramming::call_all_constructors_with<AppendTypeName, std::vector<std::string>, TypeListImpl<LHS_TYPES...>>(
+          types);
       result.append("... | { " + strings::Join(types, ", ") + " } => ");
     }
     result.append(unique_definition_->statement);
     if (sizeof...(RHS_TYPES)) {
       std::vector<std::string> types;
-      metaprogramming::call_all_constructors_with<AppendTypeName,
-                                                  std::vector<std::string>,
-                                                  TypeListImpl<RHS_TYPES...>>(types);
+      metaprogramming::call_all_constructors_with<AppendTypeName, std::vector<std::string>, TypeListImpl<RHS_TYPES...>>(
+          types);
       result.append(" => { " + strings::Join(types, ", ") + " } | ...");
     }
     return result;
@@ -410,8 +407,7 @@ class NextHandlersCollection final {
 
   class Scope final {
    public:
-    explicit Scope(const NextHandlerContainerBase* key, GenericEntriesConsumer* value)
-        : key(key), value(value) {
+    explicit Scope(const NextHandlerContainerBase* key, GenericEntriesConsumer* value) : key(key), value(value) {
       Singleton<NextHandlersCollection>().Add(key, value);
     }
     ~Scope() { Singleton<NextHandlersCollection>().Remove(key, value); }
@@ -438,14 +434,12 @@ class NextHandlerContainer;
 template <class... NEXT_TYPES>
 class NextHandlerContainer<LHS<NEXT_TYPES...>> : public NextHandlerContainerBase {
  public:
-  NextHandlerContainer()
-      : next_handler_(Singleton<NextHandlersCollection>().template Get<next_handler_t>(this)) {}
+  NextHandlerContainer() : next_handler_(Singleton<NextHandlersCollection>().template Get<next_handler_t>(this)) {}
   virtual ~NextHandlerContainer() = default;
 
  protected:
   template <typename T>
-  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(
-      const T& x) const {
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(const T& x) const {
     next_handler_->ConsumeEntry(x);
   }
 
@@ -512,9 +506,8 @@ template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
 class UserClassInstantiator<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>
     : public AbstractCurrent<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>> {
  public:
-  static_assert(
-      std::is_base_of<UserClassTopLevelBase<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>>, USER_CLASS>::value,
-      "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
+  static_assert(std::is_base_of<UserClassTopLevelBase<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>>, USER_CLASS>::value,
+                "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
 
   using input_t = LHS<LHS_TYPES...>;
   using output_t = RHS<RHS_TYPES...>;
@@ -530,12 +523,11 @@ class UserClassInstantiator<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>
    public:
     virtual ~Instance() = default;
 
-    explicit Instance(const current::LazilyInstantiated<
-                          NextHandlerInitializer<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>,
-                          std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>>>& lazy_instance,
-                      std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>> next)
-        : next_(next),
-          spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
+    explicit Instance(
+        const current::LazilyInstantiated<NextHandlerInitializer<LHS<LHS_TYPES...>, RHS<RHS_TYPES...>, USER_CLASS>,
+                                          std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>>>& lazy_instance,
+        std::shared_ptr<EntriesConsumer<LHS<RHS_TYPES...>>> next)
+        : next_(next), spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
 
     void ConsumeEntry(const CurrentSuper& x) override { spawned_user_class_instance_->Accept(x); }
 
@@ -671,8 +663,8 @@ class SubflowSequence<LHS_TYPELIST, RHS_TYPELIST, VIA<VIA_X, VIA_XS...>>
   typedef SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> subflow_t;
   SubflowSequence(SharedCurrent<LHS_TYPELIST, RHS<VIA_X, VIA_XS...>> from,
                   SharedCurrent<LHS<VIA_X, VIA_XS...>, RHS_TYPELIST> into)
-      : subflow_t(std::make_shared<GenericCurrentSequence<LHS_TYPELIST, RHS_TYPELIST, VIA<VIA_X, VIA_XS...>>>(
-            from, into)) {}
+      : subflow_t(
+            std::make_shared<GenericCurrentSequence<LHS_TYPELIST, RHS_TYPELIST, VIA<VIA_X, VIA_XS...>>>(from, into)) {}
 };
 
 // SharedCurrent sequence combiner, `A | B`.

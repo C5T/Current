@@ -47,9 +47,7 @@ inline std::string CurrentFaviconPng() {
   return png;
 }
 
-inline Response CurrentFaviconResponse() {
-  return Response(CurrentFaviconPng(), HTTPResponseCode.OK, "image/png");
-}
+inline Response CurrentFaviconResponse() { return Response(CurrentFaviconPng(), HTTPResponseCode.OK, "image/png"); }
 
 inline std::function<void(Request)> CurrentFaviconHandler() {
   return [](Request r) { r(CurrentFaviconResponse()); };

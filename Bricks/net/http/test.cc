@@ -60,8 +60,7 @@ using current::net::AttemptedToSendHTTPResponseMoreThanOnce;
 static void ExpectToReceive(const std::string& golden, Connection& connection) {
   std::vector<char> response(golden.length());
   try {
-    ASSERT_EQ(golden.length(),
-              connection.BlockingRead(&response[0], golden.length(), Connection::FillFullBuffer));
+    ASSERT_EQ(golden.length(), connection.BlockingRead(&response[0], golden.length(), Connection::FillFullBuffer));
     EXPECT_EQ(golden, std::string(response.begin(), response.end()));
   } catch (const SocketException& e) {  // LCOV_EXCL_LINE
     ASSERT_TRUE(false) << e.What();     // LCOV_EXCL_LINE
@@ -354,21 +353,15 @@ struct HTTPClientImplCURL {
   }
 
   static string Fetch(thread& server_thread, const string& url, const string& method) {
-    const string result = Syscall(
-        strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
+    const string result =
+        Syscall(strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
 
-  static string FetchWithBody(thread& server_thread,
-                              const string& url,
-                              const string& method,
-                              const string& data) {
-    const string result = Syscall(strings::Printf("curl -s -X %s -d '%s' localhost:%d%s",
-                                                  method.c_str(),
-                                                  data.c_str(),
-                                                  FLAGS_net_http_test_port,
-                                                  url.c_str()));
+  static string FetchWithBody(thread& server_thread, const string& url, const string& method, const string& data) {
+    const string result = Syscall(strings::Printf(
+        "curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
@@ -381,19 +374,13 @@ class HTTPClientImplPOSIX {
     return Impl(server_thread, url, method);
   }
 
-  static string FetchWithBody(thread& server_thread,
-                              const string& url,
-                              const string& method,
-                              const string& data) {
+  static string FetchWithBody(thread& server_thread, const string& url, const string& method, const string& data) {
     return Impl(server_thread, url, method, true, data);
   }
 
  private:
-  static string Impl(thread& server_thread,
-                     const string& url,
-                     const string& method,
-                     bool has_data = false,
-                     const string& data = "") {
+  static string Impl(
+      thread& server_thread, const string& url, const string& method, bool has_data = false, const string& data = "") {
     Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
     connection.BlockingWrite(method + ' ' + url + "\r\n", true);
     if (has_data) {

@@ -38,8 +38,7 @@ SOFTWARE.
 namespace current {
 namespace net {
 
-inline std::string GetFileMimeType(const std::string& file_name,
-                                   const std::string& default_type = "text/plain") {
+inline std::string GetFileMimeType(const std::string& file_name, const std::string& default_type = "text/plain") {
   static const std::map<std::string, std::string> file_extension_to_mime_type_map = {
       {"js", "application/javascript"},
       {"json", "application/json; charset=utf-8"},

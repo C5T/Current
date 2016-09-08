@@ -41,8 +41,8 @@ struct DeserializeImpl;
 
 template <class SERIALIZER, typename T>
 inline void Serialize(SERIALIZER&& serializer, T&& x) {
-  SerializeImpl<current::decay<SERIALIZER>, current::decay<T>>::DoSerialize(
-      std::forward<SERIALIZER>(serializer), std::forward<T>(x));
+  SerializeImpl<current::decay<SERIALIZER>, current::decay<T>>::DoSerialize(std::forward<SERIALIZER>(serializer),
+                                                                            std::forward<T>(x));
 }
 
 template <class DESERIALIZER, typename T>

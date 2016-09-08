@@ -71,8 +71,8 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
 template <class JSON_FORMAT, typename T>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
                        T,
-                       std::enable_if_t<std::numeric_limits<T>::is_integer &&
-                                        !std::numeric_limits<T>::is_signed && !std::is_same<T, bool>::value>> {
+                       std::enable_if_t<std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed &&
+                                        !std::is_same<T, bool>::value>> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
     if (json_parser && json_parser.Current().IsUint64()) {
       destination = static_cast<T>(json_parser.Current().GetUint64());
@@ -84,10 +84,9 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
 
 // `int*_t`
 template <class JSON_FORMAT, typename T>
-struct DeserializeImpl<
-    json::JSONParser<JSON_FORMAT>,
-    T,
-    std::enable_if_t<std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed>> {
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
+                       T,
+                       std::enable_if_t<std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_signed>> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
     if (json_parser && json_parser.Current().IsInt64()) {
       destination = static_cast<T>(json_parser.Current().GetInt64());
@@ -103,8 +102,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, float> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, float& destination) {
     if (json_parser && json_parser.Current().IsDouble()) {
       destination = static_cast<float>(json_parser.Current().GetDouble());
-    } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
-               (json_parser && !(json_parser.Current().IsDouble()))) {
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !(json_parser.Current().IsDouble()))) {
       throw JSONSchemaException("float", json_parser);  // LCOV_EXCL_LINE
     }
   }
@@ -150,8 +148,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, bool> {
 // `std::chrono::milliseconds`.
 template <class JSON_FORMAT>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::milliseconds> {
-  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
-                            std::chrono::milliseconds& destination) {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::chrono::milliseconds& destination) {
     int64_t value_as_int64;
     Deserialize(json_parser, value_as_int64);
     destination = std::chrono::milliseconds(value_as_int64);
@@ -161,8 +158,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::milliseconds>
 // `std::chrono::microseconds`.
 template <class JSON_FORMAT>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::microseconds> {
-  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
-                            std::chrono::microseconds& destination) {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::chrono::microseconds& destination) {
     int64_t value_as_int64;
     Deserialize(json_parser, value_as_int64);
     destination = std::chrono::microseconds(value_as_int64);

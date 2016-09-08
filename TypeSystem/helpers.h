@@ -83,8 +83,7 @@ template <typename TEST, typename T>
 struct ExistsImplCaller {
   template <typename TT = T>
   static bool CallExistsImpl(TT&& x) {
-    return ExistsImplCallerRespectingVariant<TEST, T, IS_CURRENT_VARIANT(TT)>::CallExistsImpl(
-        std::forward<TT>(x));
+    return ExistsImplCallerRespectingVariant<TEST, T, IS_CURRENT_VARIANT(TT)>::CallExistsImpl(std::forward<TT>(x));
   }
 };
 
@@ -107,10 +106,9 @@ struct ExistsImplCaller<T, T> {
 struct DefaultExistsInvokation {};
 template <typename TEST = DefaultExistsInvokation, typename T>
 bool Exists(T&& x) {
-  return ExistsImplCaller<typename std::conditional<std::is_same<TEST, DefaultExistsInvokation>::value,
-                                                    current::decay<T>,
-                                                    TEST>::type,
-                          current::decay<T>>::CallExistsImpl(std::forward<T>(x));
+  return ExistsImplCaller<
+      typename std::conditional<std::is_same<TEST, DefaultExistsInvokation>::value, current::decay<T>, TEST>::type,
+      current::decay<T>>::CallExistsImpl(std::forward<T>(x));
 }
 
 template <typename OUTPUT, typename INPUT, bool HAS_VALUE_IMPL_METHOD>

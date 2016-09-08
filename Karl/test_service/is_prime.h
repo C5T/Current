@@ -52,12 +52,12 @@ class ServiceIsPrime final {
  public:
   explicit ServiceIsPrime(uint16_t port, const current::karl::Locator& karl)
       : counter_(0ull),
-        http_scope_(HTTP(port).Register(
-            "/is_prime",
-            [this](Request r) {
-              ++counter_;
-              r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n" : "NO\n");
-            })),
+        http_scope_(HTTP(port).Register("/is_prime",
+                                        [this](Request r) {
+                                          ++counter_;
+                                          r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n"
+                                                                                                         : "NO\n");
+                                        })),
         claire_(karl, "is_prime", port) {
     const auto status_reporter = [this]() -> is_prime { return is_prime(counter_); };
 #ifdef CURRENT_MOCK_TIME
