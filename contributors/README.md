@@ -9,13 +9,15 @@ To sign the CLA, [read it](https://github.com/C5T/Current/blob/master/contributo
 Please:
 
 * Call this Markdown file `{your_github_handle}.md`.
-* Placed it under the `contributors/signed/` directory.
+* Place it under the `contributors/signed/` directory.
 * Have it contain:
   * Your name.
   * Date.
   * The "I hereby agree" clause.
   * The declaration you're authorized to sign the CLA.
   * The version of the CLA you're signing (GitHub commit hash is OK).
+
+As a true engineer, you'll probably be glad to know we have an [example](https://github.com/C5T/Current/pull/631) to mimic.
 
 Wait until we merge your pull request, and we're good to go.
 
