@@ -26,14 +26,14 @@
 | `a` | Integer (32-bit signed) |
 
 
-### `B`
+### `B`, extends `A`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
 | `b` | Integer (32-bit signed) |
 
 
-### `B2`
+### `B2`, extends `A`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
@@ -85,7 +85,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `bar` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
 
 
-### `TemplatedInheriting_T9200000002835747520`
+### `TemplatedInheriting_T9200000002835747520`, extends `A`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
@@ -100,7 +100,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `bar` | `TemplatedInheriting_T9200000002835747520` |
 
 
-### `TemplatedInheriting_T9209980946934124423`
+### `TemplatedInheriting_T9209980946934124423`, extends `A`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
@@ -108,7 +108,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `meh` | `X` |
 
 
-### `TemplatedInheriting_T9227782344077896555`
+### `TemplatedInheriting_T9227782344077896555`, extends `A`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
@@ -123,7 +123,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `bar` | `Empty` |
 
 
-### `TemplatedInheriting_T9201673071807149456`
+### `TemplatedInheriting_T9201673071807149456`, extends `A`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |

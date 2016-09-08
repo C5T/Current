@@ -824,7 +824,6 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
             }
             oss_ << "Algebraic " << current::strings::Join(cases, " / ") << " (a.k.a. `" << v.name << "`)";
           }
-
           void operator()(const ReflectedType_Struct& s) const { oss_ << '`' << s.CanonicalName() << '`'; }
         };
 
@@ -876,8 +875,11 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       RecursivelyListStructFields(temporary_os, s);
       const std::string fields = temporary_os.str();
       if (!fields.empty()) {
-        os_ << "\n### `" << s.CanonicalName()
-            << "`\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n" << fields << '\n';
+        os_ << "\n### `" << s.CanonicalName() << '`';
+        if (s.super_id != TypeID::CurrentStruct) {
+          os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).CanonicalName() << '`';
+        }
+        os_ << "\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n" << fields << '\n';
       }
     }
   };  // struct LanguageSyntax<Language::Markdown>::FullSchemaPrinter
