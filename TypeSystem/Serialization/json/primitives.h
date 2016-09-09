@@ -100,9 +100,9 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
 template <class JSON_FORMAT>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, float> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, float& destination) {
-    if (json_parser && json_parser.Current().IsDouble()) {
+    if (json_parser && json_parser.Current().IsNumber()) {
       destination = static_cast<float>(json_parser.Current().GetDouble());
-    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !(json_parser.Current().IsDouble()))) {
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !(json_parser.Current().IsNumber()))) {
       throw JSONSchemaException("float", json_parser);  // LCOV_EXCL_LINE
     }
   }
@@ -112,9 +112,9 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, float> {
 template <class JSON_FORMAT>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, double> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, double& destination) {
-    if (json_parser && json_parser.Current().IsDouble()) {
+    if (json_parser && json_parser.Current().IsNumber()) {
       destination = json_parser.Current().GetDouble();
-    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsDouble())) {
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsNumber())) {
       throw JSONSchemaException("double", json_parser);  // LCOV_EXCL_LINE
     }
   }
