@@ -64,6 +64,10 @@ CURRENT_STRUCT(Int) {
   CURRENT_FIELD(x, int32_t, 0);
 };
 
+CURRENT_STRUCT(Float) {
+  CURRENT_FIELD(x, float, 0);
+};
+
 CURRENT_STRUCT(Double) {
   CURRENT_FIELD(x, double, 0);
 };
@@ -1208,7 +1212,9 @@ TEST(Serialization, IntegerZeroIsADouble) {
 
   EXPECT_EQ("{\"x\":0}", JSON(Int()));
   EXPECT_EQ("{\"x\":0.0}", JSON(Double()));
+
   EXPECT_EQ(0, ParseJSON<Double>(JSON(Int())).x);
+  EXPECT_EQ(0, ParseJSON<Float>(JSON(Int())).x);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
