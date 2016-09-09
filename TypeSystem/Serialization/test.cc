@@ -60,6 +60,14 @@ CURRENT_STRUCT(Serializable) {
   bool operator<(const Serializable& rhs) const { return i < rhs.i; }
 };
 
+CURRENT_STRUCT(Int) {
+  CURRENT_FIELD(x, int32_t, 0);
+};
+
+CURRENT_STRUCT(Double) {
+  CURRENT_FIELD(x, double, 0);
+};
+
 CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(j, uint64_t);
   CURRENT_FIELD(q, std::string);
@@ -1193,6 +1201,14 @@ TEST(Serialization, PatchObjectWithJSON) {
 
   PatchObjectWithJSON(s, "{\"c\":null}");
   EXPECT_FALSE(Exists(s.c));
+}
+
+TEST(Serialization, IntegerZeroIsADouble) {
+  using namespace serialization_test;
+
+  EXPECT_EQ("{\"x\":0}", JSON(Int()));
+  EXPECT_EQ("{\"x\":0.0}", JSON(Double()));
+  EXPECT_EQ(0, ParseJSON<Double>(JSON(Int())).x);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
