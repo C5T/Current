@@ -42,8 +42,6 @@ using std::string;
 using std::thread;
 using std::to_string;
 
-using namespace current;
-
 using current::net::Socket;
 using current::net::ClientSocket;
 using current::net::Connection;
