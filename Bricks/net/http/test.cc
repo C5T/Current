@@ -351,8 +351,8 @@ struct HTTPClientImplCURL {
   }
 
   static string Fetch(thread& server_thread, const string& url, const string& method) {
-    const string result =
-        Syscall(current::strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
+    const string result = Syscall(current::strings::Printf(
+        "curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
