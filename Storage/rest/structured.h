@@ -255,7 +255,7 @@ struct Structured {
       input.entry.InitializeOwnKey();
       const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       const std::string key = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key);
-      if (!Exists(input.field[entry_key])) {
+      if (input.overwrite || !Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + key;

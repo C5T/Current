@@ -184,7 +184,7 @@ struct Plain {
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
       const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
-      if (!Exists(input.field[entry_key])) {
+      if (input.overwrite || !Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
         return Response(field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key),
                         HTTPResponseCode.Created);
