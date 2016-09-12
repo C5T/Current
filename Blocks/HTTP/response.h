@@ -75,8 +75,7 @@ struct Response {
   std::string content_type;
   current::net::http::Headers headers;
 
-  Response()
-      : body(""), code(HTTPResponseCode.OK), content_type(current::net::constants::kDefaultContentType) {}
+  Response() : body(""), code(HTTPResponseCode.OK), content_type(current::net::constants::kDefaultContentType) {}
 
   Response(const Response&) = default;
   Response(Response&&) = default;
@@ -134,9 +133,7 @@ struct Response {
   }
 
   template <typename T>
-  void Construct(T&& object,
-                 current::net::HTTPResponseCodeValue code,
-                 const current::net::http::Headers& headers) {
+  void Construct(T&& object, current::net::HTTPResponseCodeValue code, const current::net::http::Headers& headers) {
     using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;

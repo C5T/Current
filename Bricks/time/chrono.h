@@ -53,8 +53,8 @@ namespace time {
 
 struct InconsistentSetNowException : Exception {
   InconsistentSetNowException(std::chrono::microseconds was, std::chrono::microseconds attempted)
-      : Exception("SetNow() attempted to change time back to " + ToString(attempted) + ' ' + " from " +
-                  ToString(was) + '.') {}
+      : Exception("SetNow() attempted to change time back to " + ToString(attempted) + ' ' + " from " + ToString(was) +
+                  '.') {}
 };
 
 struct MockNowImpl {
@@ -73,8 +73,7 @@ inline const std::chrono::microseconds Now() {
   return now;
 }
 
-inline void SetNow(std::chrono::microseconds us,
-                   std::chrono::microseconds max_us = std::chrono::microseconds(0)) {
+inline void SetNow(std::chrono::microseconds us, std::chrono::microseconds max_us = std::chrono::microseconds(0)) {
   auto& impl = Singleton<MockNowImpl>();
   std::lock_guard<std::mutex> lock(impl.mutex);
   if (us >= impl.mock_now_value) {
@@ -162,8 +161,7 @@ enum class SecondsToMicrosecondsPadding : bool { Lower = false, Upper = true };
 }  // namespace current::time
 
 template <time::TimeRepresentation T = time::TimeRepresentation::Local>
-inline std::string FormatDateTime(std::chrono::microseconds t,
-                                  const char* format_string = "%Y/%m/%d %H:%M:%S") {
+inline std::string FormatDateTime(std::chrono::microseconds t, const char* format_string = "%Y/%m/%d %H:%M:%S") {
   std::chrono::time_point<std::chrono::system_clock> tp(t);
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];
@@ -241,15 +239,13 @@ inline std::chrono::microseconds LocalDateTimeStringToTimestamp(
 inline std::chrono::microseconds IMFFixDateTimeStringToTimestamp(
     const std::string& datetime,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
-      datetime, time::DateTimeFmts::IMFFix, padding);
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(datetime, time::DateTimeFmts::IMFFix, padding);
 }
 
 inline std::chrono::microseconds RFC850DateTimeStringToTimestamp(
     const std::string& datetime,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
-      datetime, time::DateTimeFmts::RFC850, padding);
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(datetime, time::DateTimeFmts::RFC850, padding);
 }
 
 }  // namespace current

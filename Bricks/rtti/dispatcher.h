@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include <tuple>
+#include "../template/typelist.h"
 
 namespace current {
 namespace rtti {
@@ -37,7 +37,7 @@ namespace rtti {
 template <typename BASE, typename DERIVED, typename... TAIL>
 struct RuntimeDispatcher {
   typedef BASE base_t;
-  typedef DERIVED deriver_t;
+  typedef DERIVED derived_t;
   template <typename T, typename PROCESSOR>
   static void DispatchCall(const T &x, PROCESSOR &c) {
     if (const DERIVED *d = dynamic_cast<const DERIVED *>(&x)) {
@@ -59,7 +59,7 @@ struct RuntimeDispatcher {
 template <typename BASE, typename DERIVED>
 struct RuntimeDispatcher<BASE, DERIVED> {
   typedef BASE base_t;
-  typedef DERIVED deriver_t;
+  typedef DERIVED derived_t;
   template <typename T, typename PROCESSOR>
   static void DispatchCall(const T &x, PROCESSOR &c) {
     if (const DERIVED *d = dynamic_cast<const DERIVED *>(&x)) {
@@ -88,13 +88,36 @@ struct RuntimeDispatcher<BASE, DERIVED> {
   }
 };
 
-template <typename BASE, typename... TUPLE_TYPES>
-struct RuntimeTupleDispatcher {};
+template <typename BASE, class TYPE_LIST>
+struct RuntimeTypeListDispatcher;
 
-template <typename BASE, typename... TUPLE_TYPES>
-struct RuntimeTupleDispatcher<BASE, std::tuple<TUPLE_TYPES...>> : RuntimeDispatcher<BASE, TUPLE_TYPES...> {};
+template <typename BASE, typename... TYPES>
+struct RuntimeTypeListDispatcher<BASE, TypeListImpl<TYPES...>> : RuntimeDispatcher<BASE, TYPES...> {};
 
-}  // namespace rtti
+template <typename BASE>
+struct RuntimeTypeListDispatcher<BASE, TypeListImpl<>> {
+  typedef BASE base_t;
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(const T &x, PROCESSOR &c) {
+    const BASE *b = dynamic_cast<const BASE *>(&x);
+    if (b) {
+      c(*b);
+    } else {
+      CURRENT_THROW(UnrecognizedPolymorphicType());
+    }
+  }
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(T &x, PROCESSOR &c) {
+    BASE *b = dynamic_cast<BASE *>(&x);
+    if (b) {
+      c(*b);
+    } else {
+      CURRENT_THROW(UnrecognizedPolymorphicType());
+    }
+  }
+};
+
+}  // namespace current::rtti
 }  // namespace current
 
 #endif  // BRICKS_RTTI_DISPATCHER_H

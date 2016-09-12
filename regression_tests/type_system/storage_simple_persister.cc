@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../Storage/storage.h"
 
 #include "../../Bricks/file/file.h"
@@ -45,3 +47,5 @@ TEST(TypeTest, Storage) {
 
 #include "include/storage.cc"
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

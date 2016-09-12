@@ -67,9 +67,8 @@ static void ExpectFromSocket(const std::string& golden,
   Connection connection(ClientSocket(host, port));
   client_code(connection);
   std::vector<char> response(golden.length());
-  ASSERT_EQ(
-      golden.length(),
-      connection.BlockingRead(&response[0], golden.length(), Connection::BlockingReadPolicy::FillFullBuffer));
+  ASSERT_EQ(golden.length(),
+            connection.BlockingRead(&response[0], golden.length(), Connection::BlockingReadPolicy::FillFullBuffer));
   EXPECT_EQ(golden, std::string(response.begin(), response.end()));
   server_thread.join();
 }
@@ -123,8 +122,7 @@ TEST(TCPTest, IPAndPort) {
 }
 
 TEST(TCPTest, ReceiveMessage) {
-  thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM", false); },
-                Socket(FLAGS_net_tcp_test_port));
+  thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM", false); }, Socket(FLAGS_net_tcp_test_port));
   ExpectFromSocket("BOOM", server);
 }
 

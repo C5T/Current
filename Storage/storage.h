@@ -101,36 +101,35 @@ namespace storage {
 #define CURRENT_STORAGE_FIELD_ENTRY_OrderedDictionary(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(OrderedDictionary, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                \
-  CURRENT_STRUCT(entry_name##Updated) {                                                             \
-    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
-    CURRENT_FIELD(data, entry_type);                                                                \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                             \
-    CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value) \
-        : us(us), data(value) {}                                                                    \
-  };                                                                                                \
-  CURRENT_STRUCT(entry_name##Deleted) {                                                             \
-    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
-    CURRENT_FIELD(key,                                                                              \
-                  (std::pair<::current::storage::sfinae::entry_row_t<entry_type>,                   \
-                             ::current::storage::sfinae::entry_col_t<entry_type>>));                \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                             \
-    CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value) \
-        : us(us),                                                                                   \
-          key(std::make_pair(::current::storage::sfinae::GetRow(value),                             \
-                             ::current::storage::sfinae::GetCol(value))) {}                         \
-  };                                                                                                \
-  struct entry_name {                                                                               \
-    template <typename T, typename E1, typename E2>                                                 \
-    using field_t = matrix_type<T, E1, E2>;                                                         \
-    using entry_t = entry_type;                                                                     \
-    using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                              \
-    using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                              \
-    using key_t = std::pair<row_t, col_t>;                                                          \
-    using update_event_t = entry_name##Updated;                                                     \
-    using delete_event_t = entry_name##Deleted;                                                     \
-    using persisted_event_1_t = entry_name##Updated;                                                \
-    using persisted_event_2_t = entry_name##Deleted;                                                \
+#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                                   \
+  CURRENT_STRUCT(entry_name##Updated) {                                                                                \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                                      \
+    CURRENT_FIELD(data, entry_type);                                                                                   \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                                                \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value)                    \
+        : us(us), data(value) {}                                                                                       \
+  };                                                                                                                   \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                                                \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                                      \
+    CURRENT_FIELD(key,                                                                                                 \
+                  (std::pair<::current::storage::sfinae::entry_row_t<entry_type>,                                      \
+                             ::current::storage::sfinae::entry_col_t<entry_type>>));                                   \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                                                \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value)                    \
+        : us(us),                                                                                                      \
+          key(std::make_pair(::current::storage::sfinae::GetRow(value), ::current::storage::sfinae::GetCol(value))) {} \
+  };                                                                                                                   \
+  struct entry_name {                                                                                                  \
+    template <typename T, typename E1, typename E2>                                                                    \
+    using field_t = matrix_type<T, E1, E2>;                                                                            \
+    using entry_t = entry_type;                                                                                        \
+    using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                                                 \
+    using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                                                 \
+    using key_t = std::pair<row_t, col_t>;                                                                             \
+    using update_event_t = entry_name##Updated;                                                                        \
+    using delete_event_t = entry_name##Deleted;                                                                        \
+    using persisted_event_1_t = entry_name##Updated;                                                                   \
+    using persisted_event_2_t = entry_name##Deleted;                                                                   \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToUnorderedMany(entry_type, entry_name) \
@@ -254,8 +253,8 @@ class GenericStorageImpl {
   }
 
   template <typename F1, typename F2>
-  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>
-  ReadWriteTransaction(F1&& f1, F2&& f2) {
+  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict> ReadWriteTransaction(
+      F1&& f1, F2&& f2) {
     if (role_ == StorageRole::Follower) {
       CURRENT_THROW(ReadWriteTransactionInFollowerStorageException());
     }
@@ -269,16 +268,15 @@ class GenericStorageImpl {
   }
 
   template <typename F1, typename F2>
-  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>
-  ReadOnlyTransaction(F1&& f1, F2&& f2) const {
+  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict> ReadOnlyTransaction(
+      F1&& f1, F2&& f2) const {
     return transaction_policy_.Transaction([&f1, this]() { return f1(static_cast<const FIELDS&>(fields_)); },
                                            std::forward<F2>(f2));
   }
 
   void ExposeRawLogViaHTTP(int port, const std::string& route) { persister_.ExposeRawLogViaHTTP(port, route); }
 
-  typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type
-  InternalExposeStream() {
+  typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type InternalExposeStream() {
     return persister_.InternalExposeStream();
   }
 
@@ -321,9 +319,7 @@ class GenericStorageImpl {
 // Used for the sole purpose of extracting the underlying `transaction_t` type without extra template magic.
 namespace persister {
 
-template <typename MUTATIONS_VARIANT,
-          template <typename> class UNDERLYING_PERSISTER,
-          typename STREAM_RECORD_TYPE>
+template <typename MUTATIONS_VARIANT, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
 class NullStoragePersisterImpl {
  public:
   using variant_t = MUTATIONS_VARIANT;

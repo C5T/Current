@@ -34,6 +34,6 @@ DEFINE_int64(tick_interval_ms, 1000, "Maximum interval between entries.");
 
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);
-  EventCollectorHTTPServer(
-      FLAGS_port, std::cerr, std::chrono::milliseconds(FLAGS_tick_interval_ms), FLAGS_route).Join();
+  EventCollectorHTTPServer(FLAGS_port, std::cerr, std::chrono::milliseconds(FLAGS_tick_interval_ms), FLAGS_route)
+      .Join();
 }

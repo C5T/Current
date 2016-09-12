@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../Bricks/template/typelist.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -36,3 +38,5 @@ TEST(TypeTest, TypeList) {
   using namespace type_test;
 #include "include/typelist.cc"
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

@@ -97,8 +97,9 @@ CURRENT_STRUCT_T(TemplatedDerivedFromFoo, Foo) {
 };
 
 CURRENT_STRUCT(NonTemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDerivedFromFoo<std::string>){
-  CURRENT_CONSTRUCTOR(NonTemplateDerivedFromTemplatedDerivedFromFooString)(
-      const uint32_t x, const std::string& s, const std::string& t) : SUPER(x, s, t){}
+  CURRENT_CONSTRUCTOR(NonTemplateDerivedFromTemplatedDerivedFromFooString)(const uint32_t x,
+                                                                           const std::string& s,
+                                                                           const std::string& t) : SUPER(x, s, t){}
 };
 
 #ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
@@ -130,10 +131,8 @@ static_assert(IS_VALID_CURRENT_STRUCT(struct_definition_test::DerivedFromFoo),
 namespace some_other_namespace {
 
 // Confirm that Current data types defined in one namespace are accessible from another one.
-static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Foo),
-              "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Baz),
-              "Struct `Baz` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Foo), "Struct `Foo` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Baz), "Struct `Baz` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::DerivedFromFoo),
               "Struct `DerivedFromFoo` was not properly declared.");
 
@@ -146,8 +145,7 @@ CURRENT_STRUCT(Empty){};
 CURRENT_STRUCT(EmptyDerived, Empty){};
 
 static_assert(IS_VALID_CURRENT_STRUCT(Empty), "`Empty` must pass `IS_VALID_CURRENT_STRUCT` check.");
-static_assert(IS_VALID_CURRENT_STRUCT(EmptyDerived),
-              "`EmptyDerived` must pass `IS_VALID_CURRENT_STRUCT` check.");
+static_assert(IS_VALID_CURRENT_STRUCT(EmptyDerived), "`EmptyDerived` must pass `IS_VALID_CURRENT_STRUCT` check.");
 
 // Improperly declared structures.
 struct WrongStructNotCurrentStruct {
@@ -643,8 +641,7 @@ TEST(TypeSystemTest, VariantStaticAsserts) {
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<Foo, Bar>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar>>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<SlowTypeList<Foo, Bar, Foo>>>::value, "");
-  static_assert(
-      is_same_or_compile_error<Variant<Foo, Bar>, Variant<SlowTypeList<Foo, Bar, TypeList<Bar>>>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<SlowTypeList<Foo, Bar, TypeList<Bar>>>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeListImpl<Foo, Bar>>>::value, "");
   static_assert(Variant<Foo, Bar>::typelist_size == 2u, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>::typelist_t, TypeListImpl<Foo, Bar>>::value, "");

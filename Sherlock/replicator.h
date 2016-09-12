@@ -139,15 +139,15 @@ class SubscribableRemoteStream final {
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(
-              bare_stream.GetURLToSubscribe(index_),
-              [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
-              [this](const std::string& chunk_body) { OnChunk(chunk_body); },
-              [this]() {}));
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(index_),
+                          [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
+                          [this](const std::string& chunk_body) { OnChunk(chunk_body); },
+                          [this]() {}));
         } catch (StreamTerminatedBySubscriber&) {
           break;
         } catch (current::Exception&) {
         }
+        carried_over_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();
       }
     }
@@ -163,16 +163,26 @@ class SubscribableRemoteStream final {
         return;
       }
 
-      // Expected one entire entry in each chunk,
-      // won't work in case of partial or multiple entries per chunk
-      const auto split = current::strings::Split(chunk, '\t');
-      CURRENT_ASSERT(split.size() == 2u);
-      const auto idxts = ParseJSON<idxts_t>(split[0]);
-      CURRENT_ASSERT(idxts.index == index_);
-      auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-      ++index_;
-      if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
-        CURRENT_THROW(StreamTerminatedBySubscriber());
+      const std::string combined_data = carried_over_data_ + chunk;
+      const auto lines = current::strings::Split<current::strings::ByLines>(combined_data);
+      size_t whole_entries_count = lines.size();
+      CURRENT_ASSERT(!combined_data.empty());
+      if (combined_data.back() != '\n' && combined_data.back() != '\r') {
+        --whole_entries_count;
+        carried_over_data_ = lines.back();
+      } else {
+        carried_over_data_.clear();
+      }
+      for (size_t i = 0; i < whole_entries_count; ++i) {
+        const auto split = current::strings::Split(lines[i], '\t');
+        CURRENT_ASSERT(split.size() == 2u);
+        const auto idxts = ParseJSON<idxts_t>(split[0]);
+        CURRENT_ASSERT(idxts.index == index_);
+        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+        ++index_;
+        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
       }
     }
 
@@ -204,6 +214,7 @@ class SubscribableRemoteStream final {
     current::WaitableAtomic<std::string> subscription_id_;
     std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
+    std::string carried_over_data_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
@@ -219,14 +230,13 @@ class SubscribableRemoteStream final {
                           F& subscriber,
                           uint64_t start_idx,
                           std::function<void()> done_callback)
-        : base_t(std::move(
-              std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
+        : base_t(
+              std::move(std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
   };
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
-      : stream_(remote_stream_url,
-                sherlock::constants::kDefaultTopLevelName,
-                sherlock::constants::kDefaultNamespaceName) {
+      : stream_(
+            remote_stream_url, sherlock::constants::kDefaultTopLevelName, sherlock::constants::kDefaultNamespaceName) {
     stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
   }
 

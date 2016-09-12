@@ -37,6 +37,7 @@ SOFTWARE.
 #include "../struct.h"
 #include "../timestamp.h"
 
+#include "../../Bricks/template/call_all_constructors.h"
 #include "../../Bricks/util/comparators.h"
 #include "../../Bricks/util/singleton.h"
 
@@ -55,9 +56,7 @@ struct ReflectorImpl {
   struct StructFieldReflector {
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) {
-      fields_.clear();
-    }
+    StructFieldReflector(fields_list_t& fields, bool go_deep) : fields_(fields), go_deep_(go_deep) { fields_.clear(); }
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -87,7 +86,7 @@ struct ReflectorImpl {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
     template <typename T>
-    ENABLE_IF<std::is_enum<T>::value, ReflectedType> operator()(TypeSelector<T>) {
+    std::enable_if_t<std::is_enum<T>::value, ReflectedType> operator()(TypeSelector<T>) {
       return ReflectedType(ReflectedType_Enum(
           EnumName<T>(),
           Value<ReflectedTypeBase>(Reflector().ReflectType<typename std::underlying_type<T>::type>()).type_id));
@@ -123,17 +122,10 @@ struct ReflectorImpl {
       return ReflectedType(std::move(result));
     }
 
-    template <typename... TS>
-    struct VisitAllVariantTypes {
-      template <typename X>
-      struct VisitImpl {
-        static void DispatchToAll(ReflectedType_Variant& destination) {
-          destination.cases.push_back(Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
-        }
-      };
-      static void Run(ReflectedType_Variant& destination) {
-        current::metaprogramming::combine<current::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
-        impl.DispatchToAll(destination);
+    template <typename CASE>
+    struct ReflectVariantCase {
+      ReflectVariantCase(ReflectedType_Variant& destination) {
+        destination.cases.push_back(Value<ReflectedTypeBase>(Reflector().ReflectType<CASE>()).type_id);
       }
     };
 
@@ -141,13 +133,15 @@ struct ReflectorImpl {
     ReflectedType operator()(TypeSelector<VariantImpl<NAME, TypeListImpl<TS...>>>) {
       ReflectedType_Variant result;
       result.name = VariantImpl<NAME, TypeListImpl<TS...>>::VariantName();
-      VisitAllVariantTypes<TS...>::Run(result);
+      current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
+                                                           ReflectedType_Variant,
+                                                           TypeListImpl<TS...>>(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
     }
 
     template <typename T>
-    ENABLE_IF<IS_CURRENT_STRUCT(T), void> operator()(TypeSelector<T>, ReflectedType_Struct& s) {
+    std::enable_if_t<IS_CURRENT_STRUCT(T), void> operator()(TypeSelector<T>, ReflectedType_Struct& s) {
       // Two step reflection is needed to support self-referring structs.
       if (TypePrefix(s.type_id) != TYPEID_INCOMPLETE_STRUCT_PREFIX) {
         s.native_name = CurrentTypeName<T>();
@@ -169,33 +163,32 @@ struct ReflectorImpl {
 
    private:
     template <typename T>
-    ENABLE_IF<std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
+    std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
       return TypeID::CurrentStruct;
     }
 
     template <typename T>
-    ENABLE_IF<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
+    std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<SuperType<T>>()).type_id;
     }
 
     template <typename T>
-    ENABLE_IF<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+    std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
       return nullptr;
     }
 
     template <typename T>
-    ENABLE_IF<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+    std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<TemplateInnerType<T>>()).type_id;
     }
   };
 
   template <typename T>
-  ENABLE_IF<!IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
+  std::enable_if_t<!IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
     const std::type_index type_index = std::type_index(typeid(T));
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.insert(std::make_pair(type_index, type_reflector_(TypeSelector<T>())));
-      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
-          type_index;
+      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] = type_index;
     }
     const auto& result = reflected_cpp_types_.at(type_index);
     CURRENT_ASSERT(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);
@@ -203,13 +196,12 @@ struct ReflectorImpl {
   }
 
   template <typename T>
-  ENABLE_IF<IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
+  std::enable_if_t<IS_CURRENT_STRUCT(T), const ReflectedType&> ReflectType() {
     const std::type_index type_index = std::type_index(typeid(T));
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.emplace(type_index, ReflectedType_Struct());
       type_reflector_(TypeSelector<T>(), Value<ReflectedType_Struct>(reflected_cpp_types_.at(type_index)));
-      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
-          type_index;
+      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] = type_index;
     }
     const auto& result = reflected_cpp_types_.at(type_index);
     CURRENT_ASSERT(Value<ReflectedTypeBase>(result).type_id != TypeID::NotYetReadyButYouGuysHangInThere);

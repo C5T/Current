@@ -68,17 +68,16 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
 
   graph.Title(title);
 
-  graph["label"] =
-      current::strings::Printf("Generated %s, from `%s` to `%s`, in %.1lf seconds.",
-                               current::FormatDateTime(now).c_str(),
-                               strings::TimeDifferenceAsHumanReadableString(status.from - now).c_str(),
-                               strings::TimeDifferenceAsHumanReadableString(status.to - now).c_str(),
-                               1e-6 * status.generation_time.count());
+  graph["label"] = current::strings::Printf("Generated %s, from `%s` to `%s`, in %.1lf seconds.",
+                                            current::FormatDateTime(now).c_str(),
+                                            strings::TimeDifferenceAsHumanReadableString(status.from - now).c_str(),
+                                            strings::TimeDifferenceAsHumanReadableString(status.to - now).c_str(),
+                                            1e-6 * status.generation_time.count());
   graph["labelloc"] = "b";
   graph["fontname"] = "Courier";
   graph["fontsize"] = "24";
 
-  std::unordered_map<std::string, Node> services;  // Codename -> `Node`, to add groups and edges.
+  std::unordered_map<std::string, Node> services;                      // Codename -> `Node`, to add groups and edges.
   std::unordered_map<std::string, std::vector<std::string>> machines;  // IP -> [ Codename ], to manage groups.
 
   // Layout right to left. It's same as left to right, but as our edges are "follower -> master",
@@ -95,16 +94,15 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
       os << "<TABLE CELLBORDER='0'>";
 
       // Top row: Service name, no link.
-      os << "<TR><TD COLSPAN='2' ALIGN='center'>" << tiny_text_begin + "service" + tiny_text_end + "<BR/>"
-         << h1_begin << service.service << h1_end << "</TD></TR>";
+      os << "<TR><TD COLSPAN='2' ALIGN='center'>" << tiny_text_begin + "service" + tiny_text_end + "<BR/>" << h1_begin
+         << service.service << h1_end << "</TD></TR>";
 
       // First section, codename and up/down status.
       {
         struct up_down_renderer {
           std::chrono::microseconds now;
           const std::string& codename;
-          up_down_renderer(std::chrono::microseconds now, const std::string& codename)
-              : now(now), codename(codename) {}
+          up_down_renderer(std::chrono::microseconds now, const std::string& codename) : now(now), codename(codename) {}
           std::vector<std::string> cells;
           void operator()(const current_service_state::up& up) {
             cells.push_back("<TD>" + medium_text_begin + "up " +
@@ -114,12 +112,11 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
                             up.last_keepalive_received + medium_link_end + "</TD>");
           }
           void operator()(const current_service_state::down& down) {
-            cells.push_back(
-                "<TD>" + medium_text_begin + "started " +
-                strings::TimeDifferenceAsHumanReadableString(down.start_time_epoch_microseconds - now) +
-                medium_text_end + "</TD>");
-            cells.push_back("<TD HREF='./snapshot/" + codename + "?nobuild'>" + medium_link_begin +
-                            "down, last seen " + down.last_keepalive_received + medium_link_end + "</TD>");
+            cells.push_back("<TD>" + medium_text_begin + "started " +
+                            strings::TimeDifferenceAsHumanReadableString(down.start_time_epoch_microseconds - now) +
+                            medium_text_end + "</TD>");
+            cells.push_back("<TD HREF='./snapshot/" + codename + "?nobuild'>" + medium_link_begin + "down, last seen " +
+                            down.last_keepalive_received + medium_link_end + "</TD>");
           }
         };
         up_down_renderer up_down(now, codename);
@@ -154,14 +151,13 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
         std::vector<std::string> cells;
         {
           {
-            const auto text =
-                std::string("build of ") + current::FormatDateTime(service.build_time_epoch_microseconds);
+            const auto text = std::string("build of ") + current::FormatDateTime(service.build_time_epoch_microseconds);
             const auto body = medium_text_begin + text + medium_text_end;
             cells.push_back("<TD>" + body + "</TD>");
           }
           if (service.build_time_epoch_microseconds.count()) {
-            const auto text = "built " + strings::TimeDifferenceAsHumanReadableString(
-                                             service.build_time_epoch_microseconds - now);
+            const auto text =
+                "built " + strings::TimeDifferenceAsHumanReadableString(service.build_time_epoch_microseconds - now);
             if (!github_repo_url.empty()) {
               const auto url = github_repo_url + "/commit/" + service.git_commit;
               const auto body = medium_link_begin + text + medium_link_end;
@@ -218,16 +214,15 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
   for (const auto& machine : status.machines) {
     const auto& m = machine.second;
     const bool is_localhost = (machine.first == "127.0.0.1");
-    auto group =
-        Group()
-            .Label((is_localhost ? "localhost" : machine.first) + '\n' +
-                   (Exists(m.cloud_instance_name) ? Value(m.cloud_instance_name) + '\n' : "") +
-                   (Exists(m.cloud_availability_group) ? Value(m.cloud_availability_group) + '\n' : "") +
-                   (is_localhost ? "" : machine.second.time_skew))
-            .LabelLoc("t")
-            .FontName("Courier")
-            .FontSize("32")
-            .GraphStyle("dashed");
+    auto group = Group()
+                     .Label((is_localhost ? "localhost" : machine.first) + '\n' +
+                            (Exists(m.cloud_instance_name) ? Value(m.cloud_instance_name) + '\n' : "") +
+                            (Exists(m.cloud_availability_group) ? Value(m.cloud_availability_group) + '\n' : "") +
+                            (is_localhost ? "" : machine.second.time_skew))
+                     .LabelLoc("t")
+                     .FontName("Courier")
+                     .FontSize("32")
+                     .GraphStyle("dashed");
     for (const auto& codename : machines[machine.first]) {
       group.Add(services[codename]);
     }

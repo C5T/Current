@@ -148,8 +148,7 @@ struct node_impl {
     return *reinterpret_cast<node_index_type*>(&data_[2]);
   }
 };
-static_assert(sizeof(node_impl) == 18,
-              "sizeof(node_impl) should be 18. Check struct alignment compilation flags.");
+static_assert(sizeof(node_impl) == 18, "sizeof(node_impl) should be 18. Check struct alignment compilation flags.");
 
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
@@ -362,8 +361,7 @@ struct f_intermediate : f {
   // Template is used here as a form of forward declaration.
   template <typename TX>
   V differentiate(const TX& x_ref, int32_t variable_index) const {
-    static_assert(std::is_same<TX, X>::value,
-                  "f_intermediate::differentiate(const x& x, int32_t variable_index);");
+    static_assert(std::is_same<TX, X>::value, "f_intermediate::differentiate(const x& x, int32_t variable_index);");
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
     CURRENT_ASSERT(variable_index >= 0);
     CURRENT_ASSERT(variable_index < dim());

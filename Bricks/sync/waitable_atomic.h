@@ -206,23 +206,27 @@ class WaitableAtomicImpl {
       return true;
     }
 
-    void ImmutableUse(std::function<void(const data_t&)> f) const {
+    template <typename F>
+    typename std::result_of<F(const data_t&)>::type ImmutableUse(F&& f) const {
       auto scope = ImmutableScopedAccessor();
-      f(*scope);
+      return f(*scope);
     }
 
-    void MutableUse(std::function<void(data_t&)> f) {
+    template <typename F>
+    typename std::result_of<F(data_t&)>::type MutableUse(F&& f) {
       auto scope = MutableScopedAccessor();
-      f(*scope);
+      return f(*scope);
     }
 
-    void PotentiallyMutableUse(std::function<bool(data_t&)> f) {
+    bool PotentiallyMutableUse(std::function<bool(data_t&)> f) {
       auto scope = MutableScopedAccessor();
-      if (!f(*scope)) {
+      if (f(*scope)) {
+        return true;
+      } else {
         scope.MarkAsUnmodified();
+        return false;
       }
     }
-
     data_t GetValue() const { return *ImmutableScopedAccessor(); }
 
     void SetValue(const data_t& data) { *MutableScopedAccessor() = data; }
@@ -252,8 +256,7 @@ class WaitableAtomicImpl {
     using data_t = DATA;
     enum { IS_INTRUSIVE = true };
 
-    explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr)
-        : destructor_ptr_(destructor_ptr) {
+    explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr) : destructor_ptr_(destructor_ptr) {
       RefCounterTryIncrease();
     }
 

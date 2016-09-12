@@ -83,15 +83,12 @@ struct TimestampAccessorImpl<VariantImpl<T, TS...>> {
   static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, const VariantImpl<T, TS...>& p) {
     p.Call(functor);
   }
-  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, VariantImpl<T, TS...>& p) {
-    p.Call(functor);
-  }
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, VariantImpl<T, TS...>& p) { p.Call(functor); }
 };
 
 template <>
 struct TimestampAccessorImpl<std::chrono::microseconds> {
-  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor,
-                                           const std::chrono::microseconds& us) {
+  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, const std::chrono::microseconds& us) {
     functor.result = us;
   }
   static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, std::chrono::microseconds& us) {
@@ -104,9 +101,7 @@ struct TimestampAccessorImpl<int64_t> {
   static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, int64_t us) {
     functor.result = std::chrono::microseconds(us);
   }
-  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, int64_t& us) {
-    us = functor.value.count();
-  }
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, int64_t& us) { us = functor.value.count(); }
 };
 
 struct ExtractTimestampImpl {

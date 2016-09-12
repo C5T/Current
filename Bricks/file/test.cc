@@ -229,8 +229,7 @@ TEST(File, ScanDir) {
     explicit Scanner(const std::string& dir, bool return_code = true) : dir_(dir), return_code_(return_code) {}
     Scanner(const Scanner&) = delete;  // Make sure ScanDir()/ScanDirUntil() don't copy the argument.
     bool operator()(const std::string& file_name) {
-      files_.push_back(
-          std::make_pair(file_name, FileSystem::ReadFileAsString(FileSystem::JoinPath(dir_, file_name))));
+      files_.push_back(std::make_pair(file_name, FileSystem::ReadFileAsString(FileSystem::JoinPath(dir_, file_name))));
       return return_code_;
     }
     const std::string dir_;
@@ -270,8 +269,7 @@ TEST(File, ScanDir) {
   FileSystem::ScanDirUntil(dir, scanner_after_until);
   ASSERT_EQ(1u, scanner_after_until.files_.size());
   EXPECT_TRUE(scanner_after_until.files_[0].first == "one" || scanner_after_until.files_[0].first == "two");
-  EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"),
-            scanner_after_until.files_[0].second);
+  EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"), scanner_after_until.files_[0].second);
 
   FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
 }
@@ -311,9 +309,8 @@ TEST(File, ScanDirParameters) {
 
   {
     std::set<std::string> xs;
-    FileSystem::ScanDir(base_dir,
-                        [&xs](const std::string& x) { xs.insert(x); },
-                        FileSystem::ScanDirParameters::ListFilesAndDirs);
+    FileSystem::ScanDir(
+        base_dir, [&xs](const std::string& x) { xs.insert(x); }, FileSystem::ScanDirParameters::ListFilesAndDirs);
     EXPECT_EQ("d,f", current::strings::Join(xs, ','));
   }
 }
@@ -343,9 +340,9 @@ TEST(File, RmDirRecursive) {
   ASSERT_THROW(FileSystem::WriteStringToFile("test", f3.c_str()), FileException);
   ASSERT_THROW(FileSystem::WriteStringToFile("test", f2.c_str()), FileException);
   ASSERT_THROW(FileSystem::WriteStringToFile("test", f1.c_str()), FileException);
-  ASSERT_THROW(FileSystem::RmDir(
-                   dir_x, FileSystem::RmDirParameters::ThrowExceptionOnError, FileSystem::RmDirRecursive::Yes),
-               DirDoesNotExistException);
+  ASSERT_THROW(
+      FileSystem::RmDir(dir_x, FileSystem::RmDirParameters::ThrowExceptionOnError, FileSystem::RmDirRecursive::Yes),
+      DirDoesNotExistException);
 }
 
 TEST(File, ScopedRmDir) {

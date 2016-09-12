@@ -29,9 +29,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_bool(graphviz_overwrite_golden_files,
-            false,
-            "Set to true to have SVG golden files created/overwritten.");
+DEFINE_bool(graphviz_overwrite_golden_files, false, "Set to true to have SVG golden files created/overwritten.");
 
 template <current::graphviz::GraphDirected DIRECTED>
 inline void RunTest(const current::graphviz::GenericGraph<DIRECTED>& graph) {
@@ -126,8 +124,7 @@ TEST(GraphViz, HTMLWithHyperlink) {
   // to create hyperlinks.
 
   RunTest(DiGraph().Title("Test").Add(
-      Node(
-          "<TABLE CELLBORDER='0'><TR><TD HREF='http://current.ai'>link</TD></TR><TR><TD>text</TD></TR></TABLE>")
+      Node("<TABLE CELLBORDER='0'><TR><TD HREF='http://current.ai'>link</TD></TR><TR><TD>text</TD></TR></TABLE>")
           .HTML()
           .Shape("none")));
 }

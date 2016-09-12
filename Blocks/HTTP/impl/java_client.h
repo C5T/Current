@@ -116,11 +116,9 @@ class HTTPClientPlatformWrapper {
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
     }
 
-    const static jfieldID contentTypeField =
-        env->GetFieldID(JAVA.httpParamsClass, "contentType", "Ljava/lang/String;");
+    const static jfieldID contentTypeField = env->GetFieldID(JAVA.httpParamsClass, "contentType", "Ljava/lang/String;");
     if (!content_type_.empty()) {
-      const auto jniContentType =
-          MakePointerScopeGuard(env->NewStringUTF(content_type_.c_str()), deleteLocalRef);
+      const auto jniContentType = MakePointerScopeGuard(env->NewStringUTF(content_type_.c_str()), deleteLocalRef);
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
       env->SetObjectField(httpParamsObject.get(), contentTypeField, jniContentType.get());
@@ -128,8 +126,7 @@ class HTTPClientPlatformWrapper {
     }
 
     if (!user_agent_.empty()) {
-      const static jfieldID userAgentField =
-          env->GetFieldID(JAVA.httpParamsClass, "userAgent", "Ljava/lang/String;");
+      const static jfieldID userAgentField = env->GetFieldID(JAVA.httpParamsClass, "userAgent", "Ljava/lang/String;");
 
       const auto jniUserAgent = MakePointerScopeGuard(env->NewStringUTF(user_agent_.c_str()), deleteLocalRef);
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
@@ -142,8 +139,7 @@ class HTTPClientPlatformWrapper {
       const static jfieldID inputFilePathField =
           env->GetFieldID(JAVA.httpParamsClass, "inputFilePath", "Ljava/lang/String;");
 
-      const auto jniInputFilePath =
-          MakePointerScopeGuard(env->NewStringUTF(post_file_.c_str()), deleteLocalRef);
+      const auto jniInputFilePath = MakePointerScopeGuard(env->NewStringUTF(post_file_.c_str()), deleteLocalRef);
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
       env->SetObjectField(httpParamsObject.get(), inputFilePathField, jniInputFilePath.get());
@@ -154,8 +150,7 @@ class HTTPClientPlatformWrapper {
       const static jfieldID outputFilePathField =
           env->GetFieldID(JAVA.httpParamsClass, "outputFilePath", "Ljava/lang/String;");
 
-      const auto jniOutputFilePath =
-          MakePointerScopeGuard(env->NewStringUTF(received_file_.c_str()), deleteLocalRef);
+      const auto jniOutputFilePath = MakePointerScopeGuard(env->NewStringUTF(received_file_.c_str()), deleteLocalRef);
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
       env->SetObjectField(httpParamsObject.get(), outputFilePathField, jniOutputFilePath.get());
@@ -165,8 +160,8 @@ class HTTPClientPlatformWrapper {
     // DO ALL MAGIC!
     // Current Java implementation simply reuses input params instance, so we don't need to
     // DeleteLocalRef(response).
-    const jobject response = env->CallStaticObjectMethod(
-        JAVA.httpTransportClass, JAVA.httpTransportClass_run, httpParamsObject.get());
+    const jobject response =
+        env->CallStaticObjectMethod(JAVA.httpTransportClass, JAVA.httpTransportClass_run, httpParamsObject.get());
     if (env->ExceptionCheck()) {
       env->ExceptionDescribe();
       // TODO(AlexZ): think about rethrowing corresponding C++ exceptions.
@@ -174,31 +169,29 @@ class HTTPClientPlatformWrapper {
       return false;
     }
 
-    const static jfieldID httpResponseCodeField =
-        env->GetFieldID(JAVA.httpParamsClass, "httpResponseCode", "I");
+    const static jfieldID httpResponseCodeField = env->GetFieldID(JAVA.httpParamsClass, "httpResponseCode", "I");
     error_code_ = env->GetIntField(response, httpResponseCodeField);
     CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
-    const static jfieldID receivedUrlField =
-        env->GetFieldID(JAVA.httpParamsClass, "receivedUrl", "Ljava/lang/String;");
-    const auto jniReceivedUrl = MakePointerScopeGuard(
-        static_cast<jstring>(env->GetObjectField(response, receivedUrlField)), deleteLocalRef);
+    const static jfieldID receivedUrlField = env->GetFieldID(JAVA.httpParamsClass, "receivedUrl", "Ljava/lang/String;");
+    const auto jniReceivedUrl =
+        MakePointerScopeGuard(static_cast<jstring>(env->GetObjectField(response, receivedUrlField)), deleteLocalRef);
     CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
     if (jniReceivedUrl) {
       url_received_ = std::move(ToStdString(env, jniReceivedUrl.get()));
     }
 
     // contentTypeField is already cached above.
-    const auto jniContentType = MakePointerScopeGuard(
-        static_cast<jstring>(env->GetObjectField(response, contentTypeField)), deleteLocalRef);
+    const auto jniContentType =
+        MakePointerScopeGuard(static_cast<jstring>(env->GetObjectField(response, contentTypeField)), deleteLocalRef);
     CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
     if (jniContentType) {
       content_type_ = std::move(ToStdString(env, jniContentType.get()));
     }
 
     // dataField is already cached above.
-    const auto jniData = MakePointerScopeGuard(
-        static_cast<jbyteArray>(env->GetObjectField(response, dataField)), deleteLocalRef);
+    const auto jniData =
+        MakePointerScopeGuard(static_cast<jbyteArray>(env->GetObjectField(response, dataField)), deleteLocalRef);
     CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
     if (jniData) {
       jbyte* buffer = env->GetByteArrayElements(jniData.get(), nullptr);
@@ -252,8 +245,7 @@ struct ImplWrapper<java_wrapper::HTTPClientPlatformWrapper> {
     client.post_body_ = request.body;
     client.content_type_ = request.content_type;
   }
-  inline static void PrepareInput(const POSTFromFile& request,
-                                  java_wrapper::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const POSTFromFile& request, java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;

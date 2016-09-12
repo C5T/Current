@@ -25,55 +25,7 @@ SOFTWARE.
 #ifndef TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H
 #define TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H
 
-#include "../../port.h"
-
 #include "exceptions_base.h"
-
-#include "rapidjson.h"
-
-namespace current {
-namespace serialization {
-namespace json {
-
-struct JSONSchemaException : TypeSystemParseJSONException {
-  const std::string expected_;
-  const std::string actual_;
-  JSONSchemaException(const std::string& expected, rapidjson::Value* value, const std::string& path)
-      : TypeSystemParseJSONException("Expected " +
-                                     (expected + (path.empty() ? "" : " for `" + path.substr(1u) + "`")) +
-                                     ", got: " + NonThrowingFormatRapidJSONValueAsString(value)) {}
-  static std::string NonThrowingFormatRapidJSONValueAsString(
-      rapidjson::Value* value) {  // Attempt to generate a human-readable description of the part of the JSON,
-    // that has been parsed but is of wrong schema.
-    if (value) {
-      try {
-        rapidjson::StringBuffer string_buffer;
-        rapidjson::Writer<rapidjson::StringBuffer> writer(string_buffer);
-        rapidjson::Document document;
-        if (value->IsObject() || value->IsArray()) {
-          // Objects and arrays can be dumped directly.
-          value->Accept(writer);
-          return string_buffer.GetString();
-        } else {
-          // Every other type of value has to be wrapped into an object or an array.
-          // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
-          document.SetArray();
-          document.PushBack(*value, document.GetAllocator());
-          document.Accept(writer);
-          const std::string result = string_buffer.GetString();
-          return result.substr(1u, result.length() - 2u);
-        }
-      } catch (const std::exception&) {     // LCOV_EXCL_LINE
-        return "field can not be parsed.";  // LCOV_EXCL_LINE
-      }
-    } else {
-      return "missing field.";
-    }
-  }
-};
-
-}  // namespace current::serialization::json
-}  // namespace current::serialization
-}  // namespace current
+#include "json/exceptions.h"
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H

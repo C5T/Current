@@ -91,9 +91,7 @@ struct FileSystem {
   // `file_name` is `const char*` to require users do `.c_str()` on it.
   // This reduces the risk of accidentally passing `file_name` and `contents` in the wrong order,
   // since `contents` should naturally be a C++ string supporting '\0'-s, while `file_name` does not have to.
-  static inline void WriteStringToFile(const std::string& contents,
-                                       const char* file_name,
-                                       bool append = false) {
+  static inline void WriteStringToFile(const std::string& contents, const char* file_name, bool append = false) {
     try {
       std::ofstream fo;
       fo.exceptions(std::ofstream::failbit | std::ofstream::badbit);
@@ -243,9 +241,8 @@ struct FileSystem {
           // Proved to be required on Ubuntu running in Parallels on a Mac,
           // with Bricks' directory mounted from Mac's filesystem.
           // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
-          const ScanDirParameters mask = IsDir(JoinPath(directory, filename))
-                                             ? ScanDirParameters::ListDirsOnly
-                                             : ScanDirParameters::ListFilesOnly;
+          const ScanDirParameters mask =
+              IsDir(JoinPath(directory, filename)) ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
           if (static_cast<int>(parameters) & static_cast<int>(mask)) {
             if (!f(filename)) {
               return;
@@ -289,8 +286,7 @@ struct FileSystem {
 
   class ScopedRmFile final {
    public:
-    explicit ScopedRmFile(const std::string& file_name, bool remove_now_as_well = true)
-        : file_name_(file_name) {
+    explicit ScopedRmFile(const std::string& file_name, bool remove_now_as_well = true) : file_name_(file_name) {
       if (remove_now_as_well) {
         RmFile(file_name_, RmFileParameters::Silent);
       }

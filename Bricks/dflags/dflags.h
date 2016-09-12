@@ -98,8 +98,8 @@ class FlagsRegistererSingleton {
   virtual void PrintHelp(const std::map<std::string, FlagRegistererBase*>& flags, std::ostream& os) const {
     os << flags.size() << " flags registered.\n";
     for (const auto cit : flags) {
-      os << "\t--" << cit.first << " , " << cit.second->TypeAsString() << "\n\t\t"
-         << cit.second->DescriptionAsString() << "\n\t\t"
+      os << "\t--" << cit.first << " , " << cit.second->TypeAsString() << "\n\t\t" << cit.second->DescriptionAsString()
+         << "\n\t\t"
          << "Default value: " << cit.second->DefaultValueAsString() << '\n';
     }
   }
@@ -170,8 +170,7 @@ class FlagsManager {
             ++flag;
             ++dashes_count;
             if (dashes_count > 2) {
-              TerminateExecution(-1,
-                                 std::string() + "Parameter: '" + argv[i] + "' has too many dashes in front.");
+              TerminateExecution(-1, std::string() + "Parameter: '" + argv[i] + "' has too many dashes in front.");
             }
           }
           // Support both "--flag value" and "--flag=value".
@@ -196,8 +195,7 @@ class FlagsManager {
                 }
               }();
               if (i == argc) {
-                TerminateExecution(-1,
-                                   std::string() + "Flag: '" + flag_name + "' is not provided with the value.");
+                TerminateExecution(-1, std::string() + "Flag: '" + flag_name + "' is not provided with the value.");
               }
               cit->second->ParseValue(cit->first, flag_value);
             }
@@ -221,8 +219,7 @@ class FlagsManager {
 
   class ScopedSingletonInjector {
    public:
-    explicit ScopedSingletonInjector(FlagsRegistererSingleton* ptr)
-        : current_ptr_(MockableSingletonGetterAndSetter()) {
+    explicit ScopedSingletonInjector(FlagsRegistererSingleton* ptr) : current_ptr_(MockableSingletonGetterAndSetter()) {
       MockableSingletonGetterAndSetter(ptr);
     }
     ~ScopedSingletonInjector() { MockableSingletonGetterAndSetter(current_ptr_); }
@@ -232,8 +229,7 @@ class FlagsManager {
     FlagsRegistererSingleton* current_ptr_;
   };
 
-  static FlagsRegistererSingleton* MockableSingletonGetterAndSetter(
-      FlagsRegistererSingleton* inject_ptr = nullptr) {
+  static FlagsRegistererSingleton* MockableSingletonGetterAndSetter(FlagsRegistererSingleton* inject_ptr = nullptr) {
     static DefaultRegisterer singleton;
     static FlagsRegistererSingleton* ptr = &singleton;
     if (inject_ptr) {
@@ -244,9 +240,7 @@ class FlagsManager {
 
   static FlagsRegistererSingleton& Singleton() { return *MockableSingletonGetterAndSetter(); }
 
-  static void RegisterFlag(const std::string& name, FlagRegistererBase* impl) {
-    Singleton().RegisterFlag(name, impl);
-  }
+  static void RegisterFlag(const std::string& name, FlagRegistererBase* impl) { Singleton().RegisterFlag(name, impl); }
 
   static void ParseFlags(int& argc, char**& argv) { Singleton().ParseFlags(argc, argv); }
 };
@@ -287,8 +281,7 @@ class FlagRegisterer : public FlagRegistererBase {
 
 #define DEFINE_flag(type, name, default_value, description) \
   type FLAGS_##name = default_value;                        \
-  ::dflags::FlagRegisterer<type> REGISTERER_##name(         \
-      std::ref(FLAGS_##name), #name, #type, FLAGS_##name, description)
+  ::dflags::FlagRegisterer<type> REGISTERER_##name(std::ref(FLAGS_##name), #name, #type, FLAGS_##name, description)
 
 #define DEFINE_int8(name, default_value, description) DEFINE_flag(int8_t, name, default_value, description)
 #define DEFINE_uint8(name, default_value, description) DEFINE_flag(uint8_t, name, default_value, description)

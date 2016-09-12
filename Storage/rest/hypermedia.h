@@ -100,8 +100,8 @@ struct HypermediaResponseFormatter {
       if (!context.brief) {
         return Response(HypermediaRESTSingleRecordResponse<ENTRY>(url, url_collection, entry));
       } else {
-        return Response(HypermediaRESTSingleRecordResponse<brief_t>(
-            url, url_collection, static_cast<const brief_t&>(entry)));
+        return Response(
+            HypermediaRESTSingleRecordResponse<brief_t>(url, url_collection, static_cast<const brief_t&>(entry)));
       }
     }
   }
@@ -109,10 +109,9 @@ struct HypermediaResponseFormatter {
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
   static Response BuildResponseWithCollection(const Context& context, const std::string& url, ITERABLE&& span) {
     using inner_element_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
-    using collection_element_t =
-        typename std::conditional<std::is_same<INNER_HYPERMEDIA_TYPE, inner_element_t>::value,
-                                  HypermediaRESTFullCollectionRecord<inner_element_t>,
-                                  HypermediaRESTBriefCollectionRecord<inner_element_t>>::type;
+    using collection_element_t = typename std::conditional<std::is_same<INNER_HYPERMEDIA_TYPE, inner_element_t>::value,
+                                                           HypermediaRESTFullCollectionRecord<inner_element_t>,
+                                                           HypermediaRESTBriefCollectionRecord<inner_element_t>>::type;
 
     HypermediaRESTCollectionResponse<collection_element_t> response;
     response.url_directory = url;
@@ -160,14 +159,13 @@ struct HypermediaResponseFormatter {
     response.n = std::min(context.query_n, total - context.query_i);
     response.total = total;
     if (has_previous_page) {
-      response.url_previous_page = gen_page_url(
-          context.query_i >= context.query_n ? context.query_i - context.query_n : 0, context.query_n);
+      response.url_previous_page =
+          gen_page_url(context.query_i >= context.query_n ? context.query_i - context.query_n : 0, context.query_n);
     }
     if (has_next_page) {
-      response.url_next_page =
-          gen_page_url(context.query_i + context.query_n * 2 > total ? total - context.query_n
-                                                                     : context.query_i + context.query_n,
-                       context.query_n);
+      response.url_next_page = gen_page_url(
+          context.query_i + context.query_n * 2 > total ? total - context.query_n : context.query_i + context.query_n,
+          context.query_n);
     }
 
     return Response(response, HTTPResponseCode.OK);
@@ -180,8 +178,7 @@ struct Hypermedia : generic::Structured<hypermedia::HypermediaResponseFormatter>
   using STRUCTURED = generic::Structured<hypermedia::HypermediaResponseFormatter>;
 
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulDataHandler
-      : STRUCTURED::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {};
+  struct RESTfulDataHandler : STRUCTURED::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {};
 
   template <typename STORAGE, typename ENTRY>
   using RESTfulSchemaHandler = STRUCTURED::RESTfulSchemaHandler<STORAGE, ENTRY>;
@@ -189,8 +186,7 @@ struct Hypermedia : generic::Structured<hypermedia::HypermediaResponseFormatter>
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>
       : STRUCTURED::RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
-    using SUPER_GET_HANDLER_GENERATOR =
-        STRUCTURED::RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
+    using SUPER_GET_HANDLER_GENERATOR = STRUCTURED::RESTfulDataHandler<GET, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
 
     template <typename F>
     void Enter(Request request, F&& next) {

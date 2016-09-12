@@ -85,14 +85,12 @@ struct IsPublisher {
 
 template <typename T, typename E>
 struct IsEntryPublisher {
-  static constexpr bool value =
-      std::is_base_of<GenericEntryPublisher<current::decay<E>>, current::decay<T>>::value;
+  static constexpr bool value = std::is_base_of<GenericEntryPublisher<current::decay<E>>, current::decay<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsStreamPublisher {
-  static constexpr bool value =
-      std::is_base_of<GenericStreamPublisher<current::decay<E>>, current::decay<T>>::value;
+  static constexpr bool value = std::is_base_of<GenericStreamPublisher<current::decay<E>>, current::decay<T>>::value;
 };
 
 enum class EntryResponse { Done = 0, More = 1 };
@@ -111,9 +109,7 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntrySubscriber() {}
 
-  EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) {
-    return IMPL::operator()(e, current, last);
-  }
+  EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) { return IMPL::operator()(e, current, last); }
   EntryResponse operator()(ENTRY&& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(std::move(e), current, last);
   }
@@ -142,14 +138,12 @@ struct IsSubscriber {
 
 template <typename T, typename E>
 struct IsEntrySubscriber {
-  static constexpr bool value =
-      std::is_base_of<GenericEntrySubscriber<current::decay<E>>, current::decay<T>>::value;
+  static constexpr bool value = std::is_base_of<GenericEntrySubscriber<current::decay<E>>, current::decay<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsStreamSubscriber {
-  static constexpr bool value =
-      std::is_base_of<GenericStreamSubscriber<current::decay<E>>, current::decay<T>>::value;
+  static constexpr bool value = std::is_base_of<GenericStreamSubscriber<current::decay<E>>, current::decay<T>>::value;
 };
 
 namespace impl {
@@ -189,8 +183,7 @@ struct PassEntryToSubscriberIfTypeMatchesImpl<T, T> {
 }  // namespace current::ss::impl
 
 template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT, typename F, typename G, typename E>
-EntryResponse PassEntryToSubscriberIfTypeMatches(
-    F&& f, G&& fallback, E&& entry, idxts_t current, idxts_t last) {
+EntryResponse PassEntryToSubscriberIfTypeMatches(F&& f, G&& fallback, E&& entry, idxts_t current, idxts_t last) {
   return impl::PassEntryToSubscriberIfTypeMatchesImpl<TYPE_SUBSCRIBED_TO, STREAM_UNDERLYING_VARIANT>::Dispatch(
       std::forward<F>(f), std::forward<G>(fallback), std::forward<E>(entry), current, last);
 }

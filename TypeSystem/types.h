@@ -110,8 +110,7 @@ constexpr bool HasCheckIntegrityImplMethod(char) {
 }
 
 template <typename ENTRY>
-constexpr auto HasCheckIntegrityImplMethod(int)
-    -> decltype(std::declval<const ENTRY>().CheckIntegrityImpl(), bool()) {
+constexpr auto HasCheckIntegrityImplMethod(int) -> decltype(std::declval<const ENTRY>().CheckIntegrityImpl(), bool()) {
   return true;
 }
 

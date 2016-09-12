@@ -96,8 +96,7 @@ struct Request final {
 
   // Support objects with user-defined HTTP response handlers.
   template <typename T>
-  inline typename std::enable_if<HasRespondViaHTTP<current::decay<T>>(0)>::type operator()(
-      T&& that_dude_over_there) {
+  inline typename std::enable_if<HasRespondViaHTTP<current::decay<T>>(0)>::type operator()(T&& that_dude_over_there) {
     that_dude_over_there.RespondViaHTTP(std::move(*this));
   }
 

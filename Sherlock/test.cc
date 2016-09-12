@@ -26,6 +26,7 @@ SOFTWARE.
 #define CURRENT_MOCK_TIME
 
 #include "sherlock.h"
+#include "replicator.h"
 
 #include <string>
 #include <atomic>
@@ -116,8 +117,8 @@ struct SherlockTestProcessorImpl {
       data_.results_ += ",";
     }
     if (with_idx_ts_) {
-      data_.results_ += Printf(
-          "[%llu:%llu,%llu:%llu] %i", current.index, current.us.count(), last.index, last.us.count(), entry.x);
+      data_.results_ +=
+          Printf("[%llu:%llu,%llu:%llu] %i", current.index, current.us.count(), last.index, last.us.count(), entry.x);
     } else {
       data_.results_ += current::ToString(entry.x);
     }
@@ -149,8 +150,7 @@ struct SherlockTestProcessorImpl {
 
 std::string SherlockTestProcessorImpl::kTerminateStr = "TERMINATE";
 
-using SherlockTestProcessor =
-    current::ss::StreamSubscriber<SherlockTestProcessorImpl, sherlock_unittest::Record>;
+using SherlockTestProcessor = current::ss::StreamSubscriber<SherlockTestProcessorImpl, sherlock_unittest::Record>;
 
 static_assert(current::ss::IsStreamSubscriber<SherlockTestProcessor, sherlock_unittest::Record>::value, "");
 
@@ -201,8 +201,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
 
   const std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
-  EXPECT_TRUE(
-      CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << Join(expected_values, ',') << " != " << d.results_;
 }
 
@@ -235,8 +234,7 @@ TEST(Sherlock, SubscribeSynchronously) {
 
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
-  EXPECT_TRUE(
-      CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << Join(expected_values, ',') << " != " << d.results_;
 }
 
@@ -325,13 +323,16 @@ namespace sherlock_unittest {
 // Collector class for `SubscribeToStreamViaHTTP` test.
 struct RecordsCollectorImpl {
   std::atomic_size_t count_;
-  std::vector<std::string>& data_;
+  std::vector<std::string>& rows_;
+  std::vector<std::string>& entries_;
 
   RecordsCollectorImpl() = delete;
-  explicit RecordsCollectorImpl(std::vector<std::string>& data) : count_(0u), data_(data) {}
+  RecordsCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
+      : count_(0u), rows_(rows), entries_(entries) {}
 
   EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
-    data_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
+    rows_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
+    entries_.push_back(JSON(entry));
     ++count_;
     return EntryResponse::More;
   }
@@ -357,10 +358,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   const auto scope =
       HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream) +
       HTTP(FLAGS_sherlock_http_test_port)
-          .Register(
-              "/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
-  const std::string base_url_with_args =
-      Printf("http://localhost:%d/exposed_more", FLAGS_sherlock_http_test_port);
+          .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
+  const std::string base_url_with_args = Printf("http://localhost:%d/exposed_more", FLAGS_sherlock_http_test_port);
 
   {
     // Test that verbs other than "GET" result in '405 Method not allowed' error.
@@ -496,9 +495,9 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     {
       const auto result = HTTP(GET(base_url + "?schema=blah"));
       EXPECT_EQ(404, static_cast<int>(result.code));
-      EXPECT_EQ("blah",
-                Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFound>(result.body)
-                          .unsupported_format_requested));
+      EXPECT_EQ(
+          "blah",
+          Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFound>(result.body).unsupported_format_requested));
     }
     {
       // The `base_url` location does not have the URL argument registered, so it's a plain "standard" 404.
@@ -533,7 +532,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   current::time::SetNow(now);
 
   std::vector<std::string> s;
-  RecordsCollector collector(s);
+  std::vector<std::string> e;
+  RecordsCollector collector(s, e);
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
@@ -584,25 +584,21 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   // Test `recent` + `nowait`.
   // All entries since (now - 400 us).
-  EXPECT_EQ(
-      s[3],
-      HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
+  EXPECT_EQ(s[3],
+            HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
   // All entries since (now - 300 us).
-  EXPECT_EQ(
-      s[2] + s[3],
-      HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
+  EXPECT_EQ(s[2] + s[3],
+            HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
   // All entries since (now - 100 us).
-  EXPECT_EQ(
-      s[0] + s[1] + s[2] + s[3],
-      HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
+            HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
   // Large `recent` value => all entries.
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?nowait&recent=10000")).body);
 
   // Test `recent` + `n`.
   // Two entries since (now - 101 us).
-  EXPECT_EQ(
-      s[1] + s[2],
-      HTTP(GET(base_url + "?n=2&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
+  EXPECT_EQ(s[1] + s[2],
+            HTTP(GET(base_url + "?n=2&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
   // Three entries with large `recent` value.
   EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&recent=10000")).body);
 
@@ -666,6 +662,21 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // Request with the capacity large enough to hold all the entries.
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait")).body);
 
+  // Test the `array` mode.
+  {
+    {
+      const std::string body = HTTP(GET(base_url + "?n=1&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "\n]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+    }
+    {
+      const std::string body = HTTP(GET(base_url + "?n=2&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]));
+    }
+  }
+
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
@@ -696,18 +707,17 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   std::atomic_bool chunks_done(false);
 
   std::thread slow_subscriber([&] {
-    const auto result =
-        HTTP(ChunkedGET(base_url,
-                        [&subscription_id](const std::string& header, const std::string& value) {
-                          if (header == "X-Current-Stream-Subscription-Id") {
-                            subscription_id = value;
-                          }
-                        },
-                        [&chunks_count](const std::string& unused_chunk_body) {
-                          static_cast<void>(unused_chunk_body);
-                          ++chunks_count;
-                        },
-                        [&chunks_done]() { chunks_done = true; }));
+    const auto result = HTTP(ChunkedGET(base_url,
+                                        [&subscription_id](const std::string& header, const std::string& value) {
+                                          if (header == "X-Current-Stream-Subscription-Id") {
+                                            subscription_id = value;
+                                          }
+                                        },
+                                        [&chunks_count](const std::string& unused_chunk_body) {
+                                          static_cast<void>(unused_chunk_body);
+                                          ++chunks_count;
+                                        },
+                                        [&chunks_done]() { chunks_done = true; }));
     EXPECT_EQ(200, static_cast<int>(result));
   });
 
@@ -743,6 +753,12 @@ const std::string sherlock_golden_data =
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
     "{\"index\":2,\"us\":300}\t{\"x\":3}\n";
+
+const std::string sherlock_golden_data_chunks[] = {
+    "{\"index\":0,\"u",
+    "s\":100}\t{\"x\":1}\r",
+    "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n{\"index\":2,\"us\":300}\t{\"x",
+    "\":3}\n"};
 
 TEST(Sherlock, PersistsToFile) {
   current::time::ResetToZero();
@@ -814,9 +830,67 @@ TEST(Sherlock, ParsesFromFile) {
 
   const std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
-  EXPECT_TRUE(
-      CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
+}
+
+TEST(Sherlock, ParseArbitrarilySplitChunks) {
+  using namespace sherlock_unittest;
+
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  using sherlock_t = current::sherlock::Stream<Record, current::persistence::File>;
+  using RemoteStreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
+  sherlock_t replicated_stream(persistence_file_name);
+
+  // Simulate subscription to sherlock stream.
+  const auto scope =
+      HTTP(FLAGS_sherlock_http_test_port)
+          .Register("/log",
+                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                    [](Request r) {
+                      EXPECT_EQ("GET", r.method);
+                      const std::string subscription_id = "fake_subscription";
+                      if (r.url.query.has("terminate")) {
+                        EXPECT_EQ(r.url.query["terminate"], subscription_id);
+                      } else if (r.url.query.has("i")) {
+                        const auto ind = current::FromString<uint64_t>(r.url.query["i"]);
+                        auto response = r.connection.SendChunkedHTTPResponse(
+                            HTTPResponseCode.OK,
+                            "text/plain",
+                            current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
+                        if (ind == 0u) {
+                          for (const auto& chunk : sherlock_golden_data_chunks) {
+                            response.Send(chunk);
+                          }
+                        } else {
+                          EXPECT_EQ(3u, ind);
+                        }
+                      } else {
+                        EXPECT_EQ(1u, r.url_path_args.size());
+                        EXPECT_EQ("schema.simple", r.url_path_args[0]);
+                        r(current::sherlock::SubscribableSherlockSchema(
+                            Value<current::reflection::ReflectedTypeBase>(
+                                current::reflection::Reflector().ReflectType<Record>()).type_id,
+                            "Record",
+                            "Namespace"));
+                      }
+                    });
+
+  // Replicate data via subscription to the fake stream.
+  current::sherlock::SubscribableRemoteStream<Record> remote_stream(
+      Printf("http://localhost:%d/log", FLAGS_sherlock_http_test_port), "Record", "Namespace");
+  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
+
+  {
+    const auto subscriber_scope = remote_stream.Subscribe(*replicator);
+    while (replicated_stream.InternalExposePersister().Size() < 3u) {
+      std::this_thread::yield();
+    }
+  }
+
+  EXPECT_EQ(sherlock_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
 TEST(Sherlock, SubscribeWithFilterByType) {

@@ -44,9 +44,7 @@ namespace karl_unittest {
 
 class ServiceGenerator final {
  public:
-  ServiceGenerator(uint16_t port,
-                   std::chrono::microseconds sleep_between_numbers,
-                   const current::karl::Locator& karl)
+  ServiceGenerator(uint16_t port, std::chrono::microseconds sleep_between_numbers, const current::karl::Locator& karl)
       : current_value_(0),
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/numbers", stream_)),
@@ -88,8 +86,7 @@ class ServiceGenerator final {
       std::unique_lock<std::mutex> lock(mutex_);
 #ifdef CURRENT_MOCK_TIME
       // Removed `SetNow` to avoid problems with service timeout tests -- M.Z.
-      stream_.Publish(Number(current_value_),
-                      std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull));
+      stream_.Publish(Number(current_value_), std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull));
 #else
       stream_.Publish(Number(current_value_));
 #endif

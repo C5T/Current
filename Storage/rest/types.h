@@ -60,8 +60,7 @@ CURRENT_STRUCT(RESTError) {
   CURRENT_FIELD(details, Optional<details_t>);
 
   CURRENT_DEFAULT_CONSTRUCTOR(RESTError) {}
-  CURRENT_CONSTRUCTOR(RESTError)(const std::string& name, const std::string& message)
-      : name(name), message(message) {}
+  CURRENT_CONSTRUCTOR(RESTError)(const std::string& name, const std::string& message) : name(name), message(message) {}
   CURRENT_CONSTRUCTOR(RESTError)(const std::string& name, const std::string& message, const details_t& details)
       : name(name), message(message), details(details) {}
 };
@@ -82,21 +81,18 @@ CURRENT_STRUCT(RESTGenericResponse) {
       : success(success), message(message) {}
   CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success, const std::string& message, const RESTError& error)
       : success(success), message(message), error(error) {}
-  CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success, const RESTError& error)
-      : success(success), error(error) {}
+  CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success, const RESTError& error) : success(success), error(error) {}
 };
 
 CURRENT_STRUCT(RESTResourceUpdateResponse, RESTGenericResponse) {
   CURRENT_FIELD(resource_url, Optional<std::string>);
 
   CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success) : SUPER(success) {}
-  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success, const std::string& message)
-      : SUPER(success, message) {}
+  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success, const std::string& message) : SUPER(success, message) {}
   CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(
       bool success, const std::string& message, const std::string& resource_url)
       : SUPER(success, message), resource_url(resource_url) {}
-  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(
-      bool success, const std::string& message, const RESTError& error)
+  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success, const std::string& message, const RESTError& error)
       : SUPER(success, message, error) {}
 };
 
@@ -104,8 +100,7 @@ CURRENT_STRUCT(RESTResourceUpdateResponse, RESTGenericResponse) {
 
 namespace helpers {
 
-inline generic::RESTGenericResponse ErrorResponseObject(const std::string& message,
-                                                        const generic::RESTError& error) {
+inline generic::RESTGenericResponse ErrorResponseObject(const std::string& message, const generic::RESTError& error) {
   return generic::RESTGenericResponse(false, message, error);
 }
 
@@ -117,8 +112,7 @@ inline Response ErrorResponse(const generic::RESTError& error_object, net::HTTPR
   return Response(ErrorResponseObject(error_object), code);
 }
 
-inline generic::RESTError MethodNotAllowedError(const std::string& message,
-                                                const std::string& requested_method) {
+inline generic::RESTError MethodNotAllowedError(const std::string& message, const std::string& requested_method) {
   return generic::RESTError("MethodNotAllowed", message, {{"requested_method", requested_method}});
 }
 
@@ -174,10 +168,8 @@ CURRENT_STRUCT_T(SimpleRESTRecordResponse) {
   CURRENT_FIELD(data, T);
 
   CURRENT_DEFAULT_CONSTRUCTOR_T(SimpleRESTRecordResponse) {}
-  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, const T& data)
-      : url(url), data(data) {}
-  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, T&& data)
-      : url(url), data(std::move(data)) {}
+  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, const T& data) : url(url), data(data) {}
+  CURRENT_CONSTRUCTOR_T(SimpleRESTRecordResponse)(const std::string& url, T&& data) : url(url), data(std::move(data)) {}
 };
 
 CURRENT_STRUCT(SimpleRESTContainerResponse, generic::RESTGenericResponse) {
@@ -214,11 +206,7 @@ CURRENT_STRUCT_T(HypermediaRESTSingleRecordResponse) {
   CURRENT_DEFAULT_CONSTRUCTOR_T(HypermediaRESTSingleRecordResponse) {}
   CURRENT_CONSTRUCTOR_T(HypermediaRESTSingleRecordResponse)(
       const std::string& url, const std::string& url_directory, const T& data)
-      : url(url),
-        url_full(url + "?full"),
-        url_brief(url + "?brief"),
-        url_directory(url_directory),
-        data(data) {}
+      : url(url), url_full(url + "?full"), url_brief(url + "?brief"), url_directory(url_directory), data(data) {}
 };
 
 CURRENT_STRUCT_T(HypermediaRESTFullCollectionRecord) {

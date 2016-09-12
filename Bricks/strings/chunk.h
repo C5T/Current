@@ -147,8 +147,7 @@ class Chunk {
       for (size_t i = 0; i < chunk.N; ++i, k = cos(k + i)) {
         hash += k * chunk.S[i];
       }
-      return static_cast<size_t>(hash) ^ static_cast<size_t>(hash * 0x100) ^
-             static_cast<size_t>(hash * 0x10000);
+      return static_cast<size_t>(hash) ^ static_cast<size_t>(hash * 0x100) ^ static_cast<size_t>(hash * 0x10000);
     }
   };
 

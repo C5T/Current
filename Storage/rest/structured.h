@@ -50,18 +50,17 @@ struct Structured {
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
-    input.scope +=
-        HTTP(input.port)
-            .Register(input.route_prefix,
-                      [input](Request request) {
-                        const bool up = input.up_status;
-                        RESTTopLevel response(input.restful_url_prefix, up);
-                        for (const auto& f : input.field_names) {
-                          response.url_data[f] =
-                              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
-                        }
-                        request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
-                      });
+    input.scope += HTTP(input.port)
+                       .Register(input.route_prefix,
+                                 [input](Request request) {
+                                   const bool up = input.up_status;
+                                   RESTTopLevel response(input.restful_url_prefix, up);
+                                   for (const auto& f : input.field_names) {
+                                     response.url_data[f] =
+                                         input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
+                                   }
+                                   request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
+                                 });
     input.scope +=
         HTTP(input.port)
             .Register(input.route_prefix == "/" ? "/status" : input.route_prefix + "/status",
@@ -79,9 +78,9 @@ struct Structured {
       try {
         destination = net::http::ParseHTTPDate(header_value);
       } catch (const current::net::http::InvalidHTTPDateException&) {
-        request(ErrorResponseObject(
-                    InvalidHeaderError("Unparsable datetime value.", "If-Unmodified-Since", header_value)),
-                HTTPResponseCode.BadRequest);
+        request(
+            ErrorResponseObject(InvalidHeaderError("Unparsable datetime value.", "If-Unmodified-Since", header_value)),
+            HTTPResponseCode.BadRequest);
         return false;
       }
     } else {
@@ -99,8 +98,7 @@ struct Structured {
                                       semantics::key_completeness::FullKey,
                                       semantics::key_completeness::DictionaryOrMatrixCompleteKey,
                                       F&& next) {
-      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request),
-                                                                           std::forward<F>(next));
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
     }
 
     template <typename F, typename KEY_COMPLETENESS>
@@ -137,8 +135,7 @@ struct Structured {
                 input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
             const std::string url =
                 url_collection + '/' + field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
-            Response response =
-                RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
+            Response response = RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
             const auto last_modified = input.field.LastModified(key);
             if (Exists(last_modified)) {
               response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
@@ -150,26 +147,22 @@ struct Structured {
           }
         } else {
           return ErrorResponse(
-              ResourceNotFoundError(
-                  "The requested resource was not found.",
-                  {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
+              ResourceNotFoundError("The requested resource was not found.",
+                                    {{"key", field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value)}}),
               HTTPResponseCode.NotFound);
         }
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
           return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
-              context,
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
-              input.field);
+              context, input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, input.field);
         } else {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
           // Slow. Only available off the followers.
           if (input.role != StorageRole::Follower) {
-            return ErrorResponse(
-                RESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
-                HTTPResponseCode.Forbidden);
+            return ErrorResponse(RESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
+                                 HTTPResponseCode.Forbidden);
           } else
 #endif  // CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           {
@@ -192,21 +185,19 @@ struct Structured {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
-        const auto row_or_col_key = current::FromString<
-            typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
-            Value(input.rowcol_get_url_key));
+        const auto row_or_col_key =
+            current::FromString<typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
+                Value(input.rowcol_get_url_key));
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
           return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
-              context,
-              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
-              iterable);
+              context, input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, iterable);
         } else {
-          return ErrorResponse(ResourceNotFoundError("The requested key has was not found.",
-                                                     {{"key", Value(input.rowcol_get_url_key)}}),
-                               HTTPResponseCode.NotFound);
+          return ErrorResponse(
+              ResourceNotFoundError("The requested key has was not found.", {{"key", Value(input.rowcol_get_url_key)}}),
+              HTTPResponseCode.NotFound);
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
@@ -259,24 +250,22 @@ struct Structured {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + key;
-        auto response =
-            Response(RESTResourceUpdateResponse(true, "Resource created.", url), HTTPResponseCode.Created);
+        auto response = Response(RESTResourceUpdateResponse(true, "Resource created.", url), HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
         if (Exists(last_modified)) {
           response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
         }
         return response;
       } else {
-        return Response(RESTResourceUpdateResponse(
-                            false,
-                            "Resource creation failed.",
-                            {ResourceAlreadyExistsError("The resource already exists", {{"key", key}})}),
-                        HTTPResponseCode.Conflict);
+        return Response(
+            RESTResourceUpdateResponse(false,
+                                       "Resource creation failed.",
+                                       {ResourceAlreadyExistsError("The resource already exists", {{"key", key}})}),
+            HTTPResponseCode.Conflict);
       }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
-      return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message),
-                           HTTPResponseCode.BadRequest);
+      return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message), HTTPResponseCode.BadRequest);
     }
   };
 
@@ -326,16 +315,14 @@ struct Structured {
         }
         return response;
       } else {
-        const std::string key_as_url_string =
-            field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.entry_key);
+        const std::string key_as_url_string = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.entry_key);
         return ErrorResponse(InvalidKeyError("Object key doesn't match URL key.",
                                              {{"object_key", key_as_url_string}, {"url_key", url_key}}),
                              HTTPResponseCode.BadRequest);
       }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
-      return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message),
-                           HTTPResponseCode.BadRequest);
+      return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message), HTTPResponseCode.BadRequest);
     }
   };
 

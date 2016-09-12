@@ -150,14 +150,13 @@ class FilePersister {
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
-        while (cit.ProcessNextEntry(
-            [&fi, &offset, &timestamp, &current_offset](const idxts_t& current, const char*) {
-              CURRENT_ASSERT(current.index == offset.size());
-              CURRENT_ASSERT(current.index == timestamp.size());
-              offset.push_back(current_offset);
-              timestamp.push_back(current.us);
-              current_offset = fi.tellg();
-            })) {
+        while (cit.ProcessNextEntry([&fi, &offset, &timestamp, &current_offset](const idxts_t& current, const char*) {
+          CURRENT_ASSERT(current.index == offset.size());
+          CURRENT_ASSERT(current.index == timestamp.size());
+          offset.push_back(current_offset);
+          timestamp.push_back(current.us);
+          current_offset = fi.tellg();
+        })) {
           ;
         }
         const auto& end = cit.Next();
@@ -268,24 +267,22 @@ class FilePersister {
 
     Iterator begin() const {
       if (!valid_) {
-        CURRENT_THROW(PersistenceFileNoLongerAvailable(
-            file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       if (begin_ == end_) {
-        return Iterator(
-            file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return Iterator(file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
         return Iterator(file_persister_impl_, file_persister_impl_->filename, begin_, begin_offset_, begin_);
       }
     }
     Iterator end() const {
       if (!valid_) {
-        CURRENT_THROW(PersistenceFileNoLongerAvailable(
-            file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       if (begin_ == end_) {
-        return Iterator(
-            file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return Iterator(file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
         return Iterator(
             file_persister_impl_, "", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
@@ -340,20 +337,20 @@ class FilePersister {
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
     std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-    const auto begin_it = std::lower_bound(
-        file_persister_impl_->timestamp.begin(),
-        file_persister_impl_->timestamp.end(),
-        from,
-        [](std::chrono::microseconds entry_t, std::chrono::microseconds t) { return entry_t < t; });
+    const auto begin_it =
+        std::lower_bound(file_persister_impl_->timestamp.begin(),
+                         file_persister_impl_->timestamp.end(),
+                         from,
+                         [](std::chrono::microseconds entry_t, std::chrono::microseconds t) { return entry_t < t; });
     if (begin_it != file_persister_impl_->timestamp.end()) {
       result.first = std::distance(file_persister_impl_->timestamp.begin(), begin_it);
     }
     if (till.count() > 0) {
-      const auto end_it = std::upper_bound(
-          file_persister_impl_->timestamp.begin(),
-          file_persister_impl_->timestamp.end(),
-          till,
-          [](std::chrono::microseconds t, std::chrono::microseconds entry_t) { return t < entry_t; });
+      const auto end_it =
+          std::upper_bound(file_persister_impl_->timestamp.begin(),
+                           file_persister_impl_->timestamp.end(),
+                           till,
+                           [](std::chrono::microseconds t, std::chrono::microseconds entry_t) { return t < entry_t; });
       if (end_it != file_persister_impl_->timestamp.end()) {
         result.second = std::distance(file_persister_impl_->timestamp.begin(), end_it);
       }
@@ -379,8 +376,7 @@ class FilePersister {
     std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
     CURRENT_ASSERT(file_persister_impl_->offset.size() >=
                    current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
-    return IterableRange(
-        file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
+    return IterableRange(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
   }
 
   IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {

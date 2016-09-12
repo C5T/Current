@@ -30,7 +30,6 @@ SOFTWARE.
 
 #include "../../../3rdparty/gtest/gtest-main.h"
 
-using std::tuple;
 using current::strings::Printf;
 
 #if 0
@@ -67,9 +66,9 @@ using current::strings::Printf;
   
 
 TEST(RTTIDocu, Docu01) {
-  using current::rtti::RuntimeTupleDispatcher;
-  typedef RuntimeTupleDispatcher<ExampleBase,
-                                 tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
+  using current::rtti::RuntimeTypeListDispatcher;
+  typedef RuntimeTypeListDispatcher<ExampleBase,
+                                    TypeListImpl<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
   
   ExampleProcessor processor;
   

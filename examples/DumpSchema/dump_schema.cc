@@ -22,24 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
-#define CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
+#include "../../current.h"
 
-// Keep all RapidJSON includes here, to make sure the right macros are defined. -- D.K.
-
-#include "exceptions_base.h"
-
-inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
-  current::serialization::json::RapidJSONAssertionFailedException e(text);
-  e.SetCaller(text);
-  e.SetOrigin(file, line);
-  throw e;
+template<class T, current::reflection::Language L>
+void DumpSchema() {
+  current::reflection::StructSchema schema;
+  schema.AddType<T>();
+  std::cout << schema.GetSchemaInfo().Describe<L>();
 }
 
-#define RAPIDJSON_HAS_STDSTRING 1
-#define RAPIDJSON_ASSERT(x) ((x) ? static_cast<void>(0) : RapidJSONAssertThrow(#x, __FILE__, __LINE__))
+CURRENT_STRUCT(CurrentType) {
+  CURRENT_FIELD(foo, std::string);
+};
 
-#include "../../3rdparty/rapidjson/document.h"
-#include "../../3rdparty/rapidjson/prettywriter.h"
-
-#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_RAPIDJSON_H
+int main() {
+  DumpSchema<CurrentType, current::reflection::Language::Markdown>();
+}

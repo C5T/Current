@@ -83,23 +83,22 @@ template <typename TEST, typename T>
 struct ExistsImplCaller {
   template <typename TT = T>
   static bool CallExistsImpl(TT&& x) {
-    return ExistsImplCallerRespectingVariant<TEST, T, IS_CURRENT_VARIANT(TT)>::CallExistsImpl(
-        std::forward<TT>(x));
+    return ExistsImplCallerRespectingVariant<TEST, T, IS_CURRENT_VARIANT(TT)>::CallExistsImpl(std::forward<TT>(x));
   }
 };
 
-// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
+// MSVS is not friendly with `std::enable_if_t` as return type, but OK with it as a template parameter. -- D.K.
 template <typename T>
 struct ExistsImplCaller<T, T> {
   // Primitive types.
-  template <typename TT = T, class = ENABLE_IF<!sfinae::HasExistsImplMethod<TT>(0)>>
+  template <typename TT = T, class = std::enable_if_t<!sfinae::HasExistsImplMethod<TT>(0)>>
   static bool CallExistsImpl(TT&&) {
     return true;
   }
 
   // Special types.
-  template <typename TT = T, class = ENABLE_IF<sfinae::HasExistsImplMethod<TT>(0)>>
-  static ENABLE_IF<sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
+  template <typename TT = T, class = std::enable_if_t<sfinae::HasExistsImplMethod<TT>(0)>>
+  static std::enable_if_t<sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
     return x.ExistsImpl();
   }
 };
@@ -107,10 +106,9 @@ struct ExistsImplCaller<T, T> {
 struct DefaultExistsInvokation {};
 template <typename TEST = DefaultExistsInvokation, typename T>
 bool Exists(T&& x) {
-  return ExistsImplCaller<typename std::conditional<std::is_same<TEST, DefaultExistsInvokation>::value,
-                                                    current::decay<T>,
-                                                    TEST>::type,
-                          current::decay<T>>::CallExistsImpl(std::forward<T>(x));
+  return ExistsImplCaller<
+      typename std::conditional<std::is_same<TEST, DefaultExistsInvokation>::value, current::decay<T>, TEST>::type,
+      current::decay<T>>::CallExistsImpl(std::forward<T>(x));
 }
 
 template <typename OUTPUT, typename INPUT, bool HAS_VALUE_IMPL_METHOD>
@@ -162,14 +160,14 @@ auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
       sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::forward<INPUT>(x));
 }
 
-// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
+// MSVS is not friendly with `std::enable_if_t` as return type, but OK with it as a template parameter. -- D.K.
 template <typename T>
 struct CheckIntegrityImplCaller {
-  template <typename TT = T, class = ENABLE_IF<!sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  template <typename TT = T, class = std::enable_if_t<!sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
   static void CallCheckIntegrityImpl(TT&&) {}
 
-  template <typename TT = T, class = ENABLE_IF<sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
-  static ENABLE_IF<sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
+  template <typename TT = T, class = std::enable_if_t<sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  static std::enable_if_t<sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
     x.CheckIntegrityImpl();
   }
 };

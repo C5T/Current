@@ -88,20 +88,18 @@ class GenericOneToMany {
         const auto conflicting_object_lm_cit = last_modified_.find(conflicting_object_key);
         CURRENT_ASSERT(conflicting_object_lm_cit != last_modified_.end());
         const auto conflicting_object_timestamp = conflicting_object_lm_cit->second;
-        journal_.LogMutation(
-            DELETE_EVENT(now, conflicting_object),
-            [this, conflicting_object_key, conflicting_object, conflicting_object_timestamp]() {
-              DoUpdateWithLastModified(
-                  conflicting_object_timestamp, conflicting_object_key, conflicting_object);
-            });
+        journal_.LogMutation(DELETE_EVENT(now, conflicting_object),
+                             [this, conflicting_object_key, conflicting_object, conflicting_object_timestamp]() {
+                               DoUpdateWithLastModified(
+                                   conflicting_object_timestamp, conflicting_object_key, conflicting_object);
+                             });
         DoEraseWithLastModified(now, conflicting_object_key);
         now = current::time::Now();
       }
       if (lm_cit != last_modified_.end()) {
         const auto previous_timestamp = lm_cit->second;
-        journal_.LogMutation(
-            UPDATE_EVENT(now, object),
-            [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
+        journal_.LogMutation(UPDATE_EVENT(now, object),
+                             [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
       } else {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key]() {
@@ -176,8 +174,7 @@ class GenericOneToMany {
       return nullptr;
     }
   }
-  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<row_t> row,
-                                                            sfinae::CF<col_t> col) const {
+  ImmutableOptional<std::chrono::microseconds> LastModified(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     return LastModified(std::make_pair(row, col));
   }
 
@@ -191,9 +188,7 @@ class GenericOneToMany {
     const auto col = sfinae::GetCol(e.data);
     DoUpdateWithLastModified(e.us, std::make_pair(row, col), e.data);
   }
-  void operator()(const DELETE_EVENT& e) {
-    DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second));
-  }
+  void operator()(const DELETE_EVENT& e) { DoEraseWithLastModified(e.us, std::make_pair(e.key.first, e.key.second)); }
 
   template <typename ROWS_MAP>
   struct RowsAccessor final {

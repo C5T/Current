@@ -132,9 +132,7 @@ using Field = typename FieldImpl<INSTANTIATION_TYPE, T>::type;
 
 template <typename T>
 struct FieldCounter {
-  enum {
-    value = sizeof(typename T::CURRENT_STORAGE_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)
-  };
+  enum { value = sizeof(typename T::CURRENT_STORAGE_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType) };
 };
 
 // Helper class to get the corresponding persisted types for each of the storage fields.
@@ -155,8 +153,7 @@ struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
 };
 
 template <typename FIELDS, int COUNT>
-using FieldsTypeList =
-    typename TypeListMapperImpl<FIELDS, current::variadic_indexes::generate_indexes<COUNT>>::result;
+using FieldsTypeList = typename TypeListMapperImpl<FIELDS, current::variadic_indexes::generate_indexes<COUNT>>::result;
 
 // `MutationJournal` keeps all the changes made during one transaction, as well as the way to rollback them.
 struct MutationJournal {

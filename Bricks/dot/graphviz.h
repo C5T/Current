@@ -173,9 +173,7 @@ struct GenericGraph {
   };
 
   struct OrderNodesByOrderKey {
-    bool operator()(const Node::Impl* lhs, const Node::Impl* rhs) const {
-      return lhs->order_key < rhs->order_key;
-    }
+    bool operator()(const Node::Impl* lhs, const Node::Impl* rhs) const { return lhs->order_key < rhs->order_key; }
   };
 
   std::string AsDOT() const {
@@ -237,9 +235,8 @@ struct GenericGraph {
       os << "  }\n";
     }
     for (const auto& edge : edges) {
-      os << "  node" << node_index[edge.from.get()] << ' '
-         << ((DIRECTED == GraphDirected::Directed) ? "->" : "--") << " node" << node_index[edge.into.get()]
-         << ";\n";
+      os << "  node" << node_index[edge.from.get()] << ' ' << ((DIRECTED == GraphDirected::Directed) ? "->" : "--")
+         << " node" << node_index[edge.into.get()] << ";\n";
     }
     os << "}\n";
 
@@ -253,9 +250,8 @@ struct GenericGraph {
     const auto output_file_deleter = current::FileSystem::ScopedRmFile(output_file_name);
 
     current::FileSystem::WriteStringToFile(AsDOT(), input_file_name.c_str());
-    CURRENT_ASSERT(
-        !::system(current::strings::Printf(
-                      "dot -T svg %s -o %s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
+    CURRENT_ASSERT(!::system(current::strings::Printf(
+                                 "dot -T svg %s -o %s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
     return current::FileSystem::ReadFileAsString(output_file_name.c_str());
   }
 };

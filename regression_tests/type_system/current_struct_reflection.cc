@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 #include "../../TypeSystem/Schema/schema.h"
 
 #include "../../Bricks/file/file.h"
@@ -42,3 +44,5 @@ TEST(TypeTest, CurrentStruct) {
   EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/current_struct.cc"),
             schema.GetSchemaInfo().Describe<current::reflection::Language::CPP>(false));
 }
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE

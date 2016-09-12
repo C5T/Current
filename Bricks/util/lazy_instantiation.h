@@ -113,8 +113,7 @@ enum class LazyInstantiationStrategy { Flexible = 0, ShouldNotBeInitialized, Sho
 template <typename T, typename EXTRA_PARAMETER = void>
 class LazilyInstantiated {
  public:
-  LazilyInstantiated(std::unique_ptr<LazyInstantiatorAbstract<T, EXTRA_PARAMETER>>&& impl)
-      : impl_(std::move(impl)) {}
+  LazilyInstantiated(std::unique_ptr<LazyInstantiatorAbstract<T, EXTRA_PARAMETER>>&& impl) : impl_(std::move(impl)) {}
 
   // Instantiates as a `shared_ptr<T>`.
   std::shared_ptr<T> InstantiateAsSharedPtr() const { return impl_->InstantiateAsSharedPtr(); }
@@ -171,8 +170,8 @@ LazilyInstantiated<T, EXTRA_PARAMETER> DelayedInstantiateWithExtraParameter(ARGS
 // get out of scope before the instantiation takes place.
 template <typename T, typename... ARGS>
 LazilyInstantiated<T, void> DelayedInstantiateFromTuple(std::tuple<ARGS...>&& args_as_tuple) {
-  return LazilyInstantiated<T, void>(std::move(std::make_unique<LazyInstantiatorPerType<T, void, ARGS...>>(
-      std::forward<std::tuple<ARGS...>>(args_as_tuple))));
+  return LazilyInstantiated<T, void>(std::move(
+      std::make_unique<LazyInstantiatorPerType<T, void, ARGS...>>(std::forward<std::tuple<ARGS...>>(args_as_tuple))));
 }
 template <typename T, typename EXTRA_PARAMETER, typename... ARGS>
 LazilyInstantiated<T, EXTRA_PARAMETER> DelayedInstantiateWithExtraParameterFromTuple(
