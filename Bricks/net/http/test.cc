@@ -42,8 +42,6 @@ using std::string;
 using std::thread;
 using std::to_string;
 
-using namespace current;
-
 using current::net::Socket;
 using current::net::ClientSocket;
 using current::net::Connection;
@@ -253,7 +251,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
-  connection.BlockingWrite(strings::Printf("Content-Length: %d\r\n", static_cast<int>(body.length())), true);
+  connection.BlockingWrite(current::strings::Printf("Content-Length: %d\r\n", static_cast<int>(body.length())), true);
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite(body, false);
   ExpectToReceive(
@@ -292,7 +290,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
     connection.BlockingWrite("\r\n", true);
   }
   connection.BlockingWrite("0\r\n", false);
-  ExpectToReceive(strings::Printf(
+  ExpectToReceive(current::strings::Printf(
                       "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
                       "Connection: close\r\n"
@@ -320,7 +318,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   string chunk(10000, '.');
   string body = "";
   for (size_t i = 0; i < 10; ++i) {
-    connection.BlockingWrite(strings::Printf("%X\r\n", 10000), true);
+    connection.BlockingWrite(current::strings::Printf("%X\r\n", 10000), true);
     for (size_t j = 0; j < 10000; ++j) {
       chunk[j] = 'a' + ((i + j) % 26);
     }
@@ -328,7 +326,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
     body += chunk;
   }
   connection.BlockingWrite("0\r\n", false);
-  ExpectToReceive(strings::Printf(
+  ExpectToReceive(current::strings::Printf(
                       "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
                       "Connection: close\r\n"
@@ -353,14 +351,14 @@ struct HTTPClientImplCURL {
   }
 
   static string Fetch(thread& server_thread, const string& url, const string& method) {
-    const string result =
-        Syscall(strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
+    const string result = Syscall(current::strings::Printf(
+        "curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
 
   static string FetchWithBody(thread& server_thread, const string& url, const string& method, const string& data) {
-    const string result = Syscall(strings::Printf(
+    const string result = Syscall(current::strings::Printf(
         "curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;

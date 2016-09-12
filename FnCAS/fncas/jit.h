@@ -52,8 +52,6 @@
 #include "base.h"
 #include "node.h"
 
-using namespace current;
-
 namespace fncas {
 
 // Linux-friendly code to compile into .so and link against it at runtime.
@@ -274,8 +272,8 @@ struct compile_impl {
       const char* compile_cmdline = "nasm -f elf64 %s.asm -o %s.o";
       const char* link_cmdline = "ld -lm -shared -o %s.so %s.o";
 
-      compiled_expression::syscall(strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str()));
-      compiled_expression::syscall(strings::Printf(link_cmdline, filebase.c_str(), filebase.c_str()));
+      compiled_expression::syscall(current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str()));
+      compiled_expression::syscall(current::strings::Printf(link_cmdline, filebase.c_str(), filebase.c_str()));
     }
   };
   struct CLANG {
@@ -286,7 +284,7 @@ struct compile_impl {
       fclose(f);
 
       const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %s.c -o %s.so";
-      std::string cmdline = strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str());
+      std::string cmdline = current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str());
       compiled_expression::syscall(cmdline);
     }
   };
@@ -298,9 +296,9 @@ struct compile_impl {
 };
 
 inline compiled_expression compile(node_index_type index) {
-  const std::string filebase(FileSystem::GenTmpFileName());
+  const std::string filebase(current::FileSystem::GenTmpFileName());
   const std::string filename_so = filebase + ".so";
-  FileSystem::RmFile(filename_so, FileSystem::RmFileParameters::Silent);
+  current::FileSystem::RmFile(filename_so, current::FileSystem::RmFileParameters::Silent);
   compile_impl::selected::compile(filebase, index);
   return compiled_expression(filename_so);
 }
