@@ -169,15 +169,20 @@ struct PerFieldRESTfulHandlerGenerator {
             // Capture by reference since this lambda is run synchronously.
             [&handler, &generic_input, &field_name](Request request) {
               try {
+                const bool overwrite = request.url.query.has("overwrite");
                 auto mutable_entry = ParseJSON<entry_t>(request.body);
                 specific_field_t& field = generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                 generic_input.storage.ReadWriteTransaction(
                                           // Capture local variables by value for safe async transactions.
-                                          [handler, generic_input, &field, mutable_entry, field_name](
+                                          [handler, generic_input, &field, mutable_entry, field_name, overwrite](
                                               mutable_fields_t fields) mutable -> Response {
                                             using POSTInput = RESTfulPOSTInput<STORAGE, specific_field_t, entry_t>;
-                                            const POSTInput input(
-                                                std::move(generic_input), fields, field, field_name, mutable_entry);
+                                            const POSTInput input(std::move(generic_input),
+                                                                  fields,
+                                                                  field,
+                                                                  field_name,
+                                                                  mutable_entry,
+                                                                  overwrite);
                                             return handler.Run(input);
                                           },
                                           std::move(request)).Detach();

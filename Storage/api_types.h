@@ -300,23 +300,32 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
   field_t& field;
   const std::string field_name;
   ENTRY& entry;
+  const bool overwrite;
 
   RESTfulPOSTInput(const RESTfulGenericInput<STORAGE>& input,
                    mutable_fields_t fields,
                    field_t& field,
                    const std::string& field_name,
-                   ENTRY& entry)
-      : RESTfulGenericInput<STORAGE>(input), fields(fields), field(field), field_name(field_name), entry(entry) {}
+                   ENTRY& entry,
+                   bool overwrite)
+      : RESTfulGenericInput<STORAGE>(input),
+        fields(fields),
+        field(field),
+        field_name(field_name),
+        entry(entry),
+        overwrite(overwrite) {}
   RESTfulPOSTInput(RESTfulGenericInput<STORAGE>&& input,
                    mutable_fields_t fields,
                    field_t& field,
                    const std::string& field_name,
-                   ENTRY& entry)
+                   ENTRY& entry,
+                   bool overwrite)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
         fields(fields),
         field(field),
         field_name(field_name),
-        entry(entry) {}
+        entry(entry),
+        overwrite(overwrite) {}
 };
 
 template <typename STORAGE, typename FIELD, typename ENTRY, typename KEY>
