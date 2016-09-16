@@ -248,10 +248,10 @@ class GenericHTTPRequestData : public HELPER {
             const char* const key = &buffer_[current_line_offset];
             const char* const value = p + constants::kHeaderKeyValueSeparatorLength;
             HELPER::OnHeader(key, value);
-            if (!strcmp(key, constants::kContentLengthHeaderKey)) {
+            if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
-            } else if (!strcmp(key, constants::kTransferEncodingHeaderKey)) {
-              if (!strcmp(value, constants::kTransferEncodingChunkedValue)) {
+            } else if (HeaderNameEquals(key, constants::kTransferEncodingHeaderKey)) {
+              if (HeaderNameEquals(value, constants::kTransferEncodingChunkedValue)) {
                 chunked_transfer_encoding = true;
               }
             }
@@ -324,6 +324,18 @@ class GenericHTTPRequestData : public HELPER {
   }
 
  private:
+  static char NormalizeHeaderChar(char c) {
+    return c != '_' ? std::tolower(c) : '-';
+  }
+  static bool HeaderNameEquals(const char* lhs, const char* rhs) {
+    while (*lhs && *rhs) {
+      if (NormalizeHeaderChar(*lhs++) != NormalizeHeaderChar(*rhs++)) {
+        return false;
+      }
+    }
+    return !*lhs && !*rhs;
+  }
+
   // Fields available to the user via getters.
   std::string method_;
   current::url::URL url_;
