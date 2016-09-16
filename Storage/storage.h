@@ -70,12 +70,14 @@ namespace current {
 namespace storage {
 
 #define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)        \
+  struct entry_name;                                                                                \
   CURRENT_STRUCT(entry_name##Updated) {                                                             \
     CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
     CURRENT_FIELD(data, entry_type);                                                                \
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                             \
     CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value) \
         : us(us), data(value) {}                                                                    \
+    using storage_field_t = entry_name;                                                             \
   };                                                                                                \
   CURRENT_STRUCT(entry_name##Deleted) {                                                             \
     CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
@@ -83,6 +85,7 @@ namespace storage {
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                             \
     CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value) \
         : us(us), key(::current::storage::sfinae::GetKey(value)) {}                                 \
+    using storage_field_t = entry_name;                                                             \
   };                                                                                                \
   struct entry_name {                                                                               \
     template <typename T, typename E1, typename E2>                                                 \
@@ -102,12 +105,14 @@ namespace storage {
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(OrderedDictionary, entry_type, entry_name)
 
 #define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                                   \
+  struct entry_name;                                                                                                   \
   CURRENT_STRUCT(entry_name##Updated) {                                                                                \
     CURRENT_FIELD(us, std::chrono::microseconds);                                                                      \
     CURRENT_FIELD(data, entry_type);                                                                                   \
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                                                \
     CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value)                    \
         : us(us), data(value) {}                                                                                       \
+    using storage_field_t = entry_name;                                                                                \
   };                                                                                                                   \
   CURRENT_STRUCT(entry_name##Deleted) {                                                                                \
     CURRENT_FIELD(us, std::chrono::microseconds);                                                                      \
@@ -118,6 +123,7 @@ namespace storage {
     CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value)                    \
         : us(us),                                                                                                      \
           key(std::make_pair(::current::storage::sfinae::GetRow(value), ::current::storage::sfinae::GetCol(value))) {} \
+    using storage_field_t = entry_name;                                                                                \
   };                                                                                                                   \
   struct entry_name {                                                                                                  \
     template <typename T, typename E1, typename E2>                                                                    \
