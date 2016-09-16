@@ -29,6 +29,7 @@ SOFTWARE.
 #define CURRENT_MOCK_TIME
 
 #include <set>
+#include <type_traits>
 
 #ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 #include "docu/docu_2_code.cc"
@@ -119,6 +120,10 @@ CURRENT_STORAGE(TestStorage) {
 };
 
 }  // namespace transactional_storage_test
+
+static_assert(std::is_same<transactional_storage_test::RecordDictionary::update_event_t::storage_field_t,
+                           transactional_storage_test::RecordDictionary>::value,
+              "expected type of RecordDictionary::update_event_t::storage_field_t to be RecordDictionary");
 
 #ifndef STORAGE_ONLY_RUN_RESTFUL_TESTS
 
