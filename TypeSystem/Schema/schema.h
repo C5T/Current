@@ -402,7 +402,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           if (Exists<ReflectedType_Struct>(type_substance)) {
             // Default evolver for `CURRENT_STRUCT`.
             const auto bare_struct_name = TypeName(input_type.first, "::");
-            const auto namespaced_from_struct_name = TypeName(input_type.first, "typename " + nmspc);
+            const auto namespaced_origin_struct_name = TypeName(input_type.first, "typename " + nmspc);
+            const auto namespaced_from_struct_name = TypeName(input_type.first, "typename FROM");
             const auto namespaced_into_struct_name = TypeName(input_type.first, "typename INTO");
             const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
             std::vector<std::string> fields;
@@ -410,7 +411,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               fields.push_back(f.name);
             }
             os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
-            const std::string origin = namespaced_from_struct_name;
+            const std::string origin = namespaced_origin_struct_name;
             const std::string origin_guard =
                 "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
@@ -431,8 +432,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "&>(from), static_cast<typename INTO::" << super_name << "&>(into));\n";
             }
             for (const auto& f : fields) {
-              os_ << "      Evolve<FROM, decltype(from." << f << "), CURRENT_ACTIVE_EVOLVER>::"
-                  << "template Go<INTO>(from." << f << ", into." << f << ");\n";
+              os_ << "      CURRENT_EVOLUTION_FIELD(" << f << ");\n";
             }
             if (fields.empty()) {
               os_ << "      static_cast<void>(from);\n"

@@ -50,8 +50,8 @@ CURRENT_TYPE_EVOLVER(CustomEvolver,
                       From,
                       WithFieldsToRemove,
                       {
-                        CURRENT_NATURAL_EVOLVE(From, Into, from.foo, into.foo);
-                        CURRENT_NATURAL_EVOLVE(From, Into, from.bar, into.bar);
+                        CURRENT_NATURAL_EVOLVE_FIELD(foo);
+                        CURRENT_NATURAL_EVOLVE_FIELD(bar);
                         if (!from.baz.empty()) {
                           into.foo += ' ' + current::strings::Join(from.baz, ' ');
                         }

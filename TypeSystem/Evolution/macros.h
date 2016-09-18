@@ -49,6 +49,13 @@ SOFTWARE.
 #define CURRENT_NATURAL_EVOLVE(from_namespace, into_namespace, from_object, into_object) \
   CURRENT_EVOLVE_IMPL(CURRENT_ACTIVE_EVOLVER, from_namespace, into_namespace, from_object, into_object)
 
+// Making the syntax shorter. -- D.K.
+#define CURRENT_NATURAL_EVOLVE_FIELD(f) \
+  ::current::type_evolution::Evolve<FROM, decltype(from.f), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.f, into.f)
+
+#define CURRENT_EVOLUTION_FIELD(f) \
+  ::current::type_evolution::Evolve<FROM, decltype(from.f), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.f, into.f)
+
 // Macros to shorten variant evolution.
 namespace current {
 namespace type_evolution {

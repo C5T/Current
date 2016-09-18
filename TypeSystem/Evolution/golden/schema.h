@@ -118,13 +118,13 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::SimpleStruct, CURRENT_ACTIVE_EVOLVER> {
   using FROM = USERSPACE_F055D51FBF78DB84;
   template <typename INTO>
-  static void Go(const typename USERSPACE_F055D51FBF78DB84::SimpleStruct& from,
+  static void Go(const typename FROM::SimpleStruct& from,
                  typename INTO::SimpleStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::SimpleStruct>::value == 3,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.x), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.x, into.x);
-      Evolve<FROM, decltype(from.y), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.y, into.y);
-      Evolve<FROM, decltype(from.z), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.z, into.z);
+      CURRENT_EVOLUTION_FIELD(x);
+      CURRENT_EVOLUTION_FIELD(y);
+      CURRENT_EVOLUTION_FIELD(z);
   }
 };
 #endif
@@ -136,11 +136,11 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::StructWithStruct, CURRENT_ACTIVE_EVOLVER> {
   using FROM = USERSPACE_F055D51FBF78DB84;
   template <typename INTO>
-  static void Go(const typename USERSPACE_F055D51FBF78DB84::StructWithStruct& from,
+  static void Go(const typename FROM::StructWithStruct& from,
                  typename INTO::StructWithStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithStruct>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.s), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.s, into.s);
+      CURRENT_EVOLUTION_FIELD(s);
   }
 };
 #endif
@@ -152,12 +152,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::OtherTypes, CURRENT_ACTIVE_EVOLVER> {
   using FROM = USERSPACE_F055D51FBF78DB84;
   template <typename INTO>
-  static void Go(const typename USERSPACE_F055D51FBF78DB84::OtherTypes& from,
+  static void Go(const typename FROM::OtherTypes& from,
                  typename INTO::OtherTypes& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::OtherTypes>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.enum_class), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.enum_class, into.enum_class);
-      Evolve<FROM, decltype(from.optional), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.optional, into.optional);
+      CURRENT_EVOLUTION_FIELD(enum_class);
+      CURRENT_EVOLUTION_FIELD(optional);
   }
 };
 #endif
@@ -169,11 +169,11 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::StructWithVariant, CURRENT_ACTIVE_EVOLVER> {
   using FROM = USERSPACE_F055D51FBF78DB84;
   template <typename INTO>
-  static void Go(const typename USERSPACE_F055D51FBF78DB84::StructWithVariant& from,
+  static void Go(const typename FROM::StructWithVariant& from,
                  typename INTO::StructWithVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithVariant>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.v), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.v, into.v);
+      CURRENT_EVOLUTION_FIELD(v);
   }
 };
 #endif
@@ -185,12 +185,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::Name, CURRENT_ACTIVE_EVOLVER> {
   using FROM = USERSPACE_F055D51FBF78DB84;
   template <typename INTO>
-  static void Go(const typename USERSPACE_F055D51FBF78DB84::Name& from,
+  static void Go(const typename FROM::Name& from,
                  typename INTO::Name& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Name>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.first), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.first, into.first);
-      Evolve<FROM, decltype(from.last), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.last, into.last);
+      CURRENT_EVOLUTION_FIELD(first);
+      CURRENT_EVOLUTION_FIELD(last);
   }
 };
 #endif
@@ -202,11 +202,11 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames, CURRENT_ACTIVE_EVOLVER> {
   using FROM = USERSPACE_F055D51FBF78DB84;
   template <typename INTO>
-  static void Go(const typename USERSPACE_F055D51FBF78DB84::StructWithVectorOfNames& from,
+  static void Go(const typename FROM::StructWithVectorOfNames& from,
                  typename INTO::StructWithVectorOfNames& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithVectorOfNames>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.w), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w, into.w);
+      CURRENT_EVOLUTION_FIELD(w);
   }
 };
 #endif

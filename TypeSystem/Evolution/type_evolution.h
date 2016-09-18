@@ -129,9 +129,10 @@ struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLVER> {
   struct evolver;                                                                                    \
   template <>                                                                                        \
   struct Evolve<from_namespace, from_namespace::type_name, evolver> {                                \
+    using FROM = from_namespace; \
     using CURRENT_ACTIVE_EVOLVER = evolver;                                                          \
     template <typename INTO>                                                                         \
-    static void Go(const typename from_namespace::type_name& from, typename INTO::type_name& into) { \
+    static void Go(const typename FROM::type_name& from, typename INTO::type_name& into) { \
       __VA_ARGS__;                                                                                   \
     }                                                                                                \
   };                                                                                                 \

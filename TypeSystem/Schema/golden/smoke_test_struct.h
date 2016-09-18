@@ -300,7 +300,7 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Empty, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Empty& from,
+  static void Go(const typename FROM::Empty& from,
                  typename INTO::Empty& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Empty>::value == 0,
                     "Custom evolver required.");
@@ -317,23 +317,23 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::FullTest& from,
+  static void Go(const typename FROM::FullTest& from,
                  typename INTO::FullTest& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::FullTest>::value == 13,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.primitives), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.primitives, into.primitives);
-      Evolve<FROM, decltype(from.v1), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.v1, into.v1);
-      Evolve<FROM, decltype(from.v2), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.v2, into.v2);
-      Evolve<FROM, decltype(from.p), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.p, into.p);
-      Evolve<FROM, decltype(from.o), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o, into.o);
-      Evolve<FROM, decltype(from.q), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.q, into.q);
-      Evolve<FROM, decltype(from.w1), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w1, into.w1);
-      Evolve<FROM, decltype(from.w2), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w2, into.w2);
-      Evolve<FROM, decltype(from.w3), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w3, into.w3);
-      Evolve<FROM, decltype(from.w4), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w4, into.w4);
-      Evolve<FROM, decltype(from.w5), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w5, into.w5);
-      Evolve<FROM, decltype(from.w6), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.w6, into.w6);
-      Evolve<FROM, decltype(from.tsc), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.tsc, into.tsc);
+      CURRENT_EVOLUTION_FIELD(primitives);
+      CURRENT_EVOLUTION_FIELD(v1);
+      CURRENT_EVOLUTION_FIELD(v2);
+      CURRENT_EVOLUTION_FIELD(p);
+      CURRENT_EVOLUTION_FIELD(o);
+      CURRENT_EVOLUTION_FIELD(q);
+      CURRENT_EVOLUTION_FIELD(w1);
+      CURRENT_EVOLUTION_FIELD(w2);
+      CURRENT_EVOLUTION_FIELD(w3);
+      CURRENT_EVOLUTION_FIELD(w4);
+      CURRENT_EVOLUTION_FIELD(w5);
+      CURRENT_EVOLUTION_FIELD(w6);
+      CURRENT_EVOLUTION_FIELD(tsc);
   }
 };
 #endif
@@ -345,12 +345,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::B, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::B& from,
+  static void Go(const typename FROM::B& from,
                  typename INTO::B& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::B>::value == 1,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<FROM, decltype(from.b), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.b, into.b);
+      CURRENT_EVOLUTION_FIELD(b);
   }
 };
 #endif
@@ -362,12 +362,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390174323094, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9209626390174323094& from,
+  static void Go(const typename FROM::Templated_T9209626390174323094& from,
                  typename INTO::Templated_T9209626390174323094& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9209626390174323094>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.foo), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<FROM, decltype(from.bar), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_EVOLUTION_FIELD(foo);
+      CURRENT_EVOLUTION_FIELD(bar);
   }
 };
 #endif
@@ -379,12 +379,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002835747520, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9200000002835747520& from,
+  static void Go(const typename FROM::Templated_T9200000002835747520& from,
                  typename INTO::Templated_T9200000002835747520& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.foo), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<FROM, decltype(from.bar), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_EVOLUTION_FIELD(foo);
+      CURRENT_EVOLUTION_FIELD(bar);
   }
 };
 #endif
@@ -396,13 +396,13 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::C, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::C& from,
+  static void Go(const typename FROM::C& from,
                  typename INTO::C& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::C>::value == 3,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.e), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.e, into.e);
-      Evolve<FROM, decltype(from.c), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.c, into.c);
-      Evolve<FROM, decltype(from.d), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.d, into.d);
+      CURRENT_EVOLUTION_FIELD(e);
+      CURRENT_EVOLUTION_FIELD(c);
+      CURRENT_EVOLUTION_FIELD(d);
   }
 };
 #endif
@@ -414,17 +414,17 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TrickyEvolutionCases& from,
+  static void Go(const typename FROM::TrickyEvolutionCases& from,
                  typename INTO::TrickyEvolutionCases& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TrickyEvolutionCases>::value == 7,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.o1), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o1, into.o1);
-      Evolve<FROM, decltype(from.o2), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o2, into.o2);
-      Evolve<FROM, decltype(from.o3), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o3, into.o3);
-      Evolve<FROM, decltype(from.o4), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o4, into.o4);
-      Evolve<FROM, decltype(from.o5), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o5, into.o5);
-      Evolve<FROM, decltype(from.o6), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o6, into.o6);
-      Evolve<FROM, decltype(from.o7), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o7, into.o7);
+      CURRENT_EVOLUTION_FIELD(o1);
+      CURRENT_EVOLUTION_FIELD(o2);
+      CURRENT_EVOLUTION_FIELD(o3);
+      CURRENT_EVOLUTION_FIELD(o4);
+      CURRENT_EVOLUTION_FIELD(o5);
+      CURRENT_EVOLUTION_FIELD(o6);
+      CURRENT_EVOLUTION_FIELD(o7);
   }
 };
 #endif
@@ -436,13 +436,13 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9201673071807149456, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9201673071807149456& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9201673071807149456& from,
                  typename INTO::TemplatedInheriting_T9201673071807149456& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9201673071807149456>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<FROM, decltype(from.baz), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<FROM, decltype(from.meh), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_EVOLUTION_FIELD(baz);
+      CURRENT_EVOLUTION_FIELD(meh);
   }
 };
 #endif
@@ -454,11 +454,11 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::A, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::A& from,
+  static void Go(const typename FROM::A& from,
                  typename INTO::A& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::A>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.a), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.a, into.a);
+      CURRENT_EVOLUTION_FIELD(a);
   }
 };
 #endif
@@ -470,25 +470,25 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Primitives& from,
+  static void Go(const typename FROM::Primitives& from,
                  typename INTO::Primitives& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Primitives>::value == 15,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.a), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.a, into.a);
-      Evolve<FROM, decltype(from.b), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.b, into.b);
-      Evolve<FROM, decltype(from.c), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.c, into.c);
-      Evolve<FROM, decltype(from.d), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.d, into.d);
-      Evolve<FROM, decltype(from.e), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.e, into.e);
-      Evolve<FROM, decltype(from.f), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.f, into.f);
-      Evolve<FROM, decltype(from.g), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.g, into.g);
-      Evolve<FROM, decltype(from.h), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.h, into.h);
-      Evolve<FROM, decltype(from.i), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.i, into.i);
-      Evolve<FROM, decltype(from.j), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.j, into.j);
-      Evolve<FROM, decltype(from.k), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.k, into.k);
-      Evolve<FROM, decltype(from.l), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.l, into.l);
-      Evolve<FROM, decltype(from.m), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.m, into.m);
-      Evolve<FROM, decltype(from.n), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.n, into.n);
-      Evolve<FROM, decltype(from.o), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.o, into.o);
+      CURRENT_EVOLUTION_FIELD(a);
+      CURRENT_EVOLUTION_FIELD(b);
+      CURRENT_EVOLUTION_FIELD(c);
+      CURRENT_EVOLUTION_FIELD(d);
+      CURRENT_EVOLUTION_FIELD(e);
+      CURRENT_EVOLUTION_FIELD(f);
+      CURRENT_EVOLUTION_FIELD(g);
+      CURRENT_EVOLUTION_FIELD(h);
+      CURRENT_EVOLUTION_FIELD(i);
+      CURRENT_EVOLUTION_FIELD(j);
+      CURRENT_EVOLUTION_FIELD(k);
+      CURRENT_EVOLUTION_FIELD(l);
+      CURRENT_EVOLUTION_FIELD(m);
+      CURRENT_EVOLUTION_FIELD(n);
+      CURRENT_EVOLUTION_FIELD(o);
   }
 };
 #endif
@@ -500,13 +500,13 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9209980946934124423, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9209980946934124423& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9209980946934124423& from,
                  typename INTO::TemplatedInheriting_T9209980946934124423& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<FROM, decltype(from.baz), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<FROM, decltype(from.meh), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_EVOLUTION_FIELD(baz);
+      CURRENT_EVOLUTION_FIELD(meh);
   }
 };
 #endif
@@ -518,11 +518,11 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Y& from,
+  static void Go(const typename FROM::Y& from,
                  typename INTO::Y& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Y>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.e), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.e, into.e);
+      CURRENT_EVOLUTION_FIELD(e);
   }
 };
 #endif
@@ -534,12 +534,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946934124423, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9209980946934124423& from,
+  static void Go(const typename FROM::Templated_T9209980946934124423& from,
                  typename INTO::Templated_T9209980946934124423& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.foo), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<FROM, decltype(from.bar), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_EVOLUTION_FIELD(foo);
+      CURRENT_EVOLUTION_FIELD(bar);
   }
 };
 #endif
@@ -551,13 +551,13 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9227782344077896555, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9227782344077896555& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9227782344077896555& from,
                  typename INTO::TemplatedInheriting_T9227782344077896555& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<FROM, decltype(from.baz), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<FROM, decltype(from.meh), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_EVOLUTION_FIELD(baz);
+      CURRENT_EVOLUTION_FIELD(meh);
   }
 };
 #endif
@@ -569,13 +569,13 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9200000002835747520, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9200000002835747520& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9200000002835747520& from,
                  typename INTO::TemplatedInheriting_T9200000002835747520& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<FROM, decltype(from.baz), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<FROM, decltype(from.meh), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_EVOLUTION_FIELD(baz);
+      CURRENT_EVOLUTION_FIELD(meh);
   }
 };
 #endif
@@ -587,7 +587,7 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::B2& from,
+  static void Go(const typename FROM::B2& from,
                  typename INTO::B2& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::B2>::value == 0,
                     "Custom evolver required.");
@@ -605,12 +605,12 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344077896555, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9227782344077896555& from,
+  static void Go(const typename FROM::Templated_T9227782344077896555& from,
                  typename INTO::Templated_T9227782344077896555& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.foo), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<FROM, decltype(from.bar), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_EVOLUTION_FIELD(foo);
+      CURRENT_EVOLUTION_FIELD(bar);
   }
 };
 #endif
@@ -622,11 +622,11 @@ template <typename CURRENT_ACTIVE_EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::X, CURRENT_ACTIVE_EVOLVER> {
   using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::X& from,
+  static void Go(const typename FROM::X& from,
                  typename INTO::X& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::X>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, decltype(from.x), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.x, into.x);
+      CURRENT_EVOLUTION_FIELD(x);
   }
 };
 #endif
