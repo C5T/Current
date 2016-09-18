@@ -34,15 +34,15 @@ SOFTWARE.
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, into.full_name = from.last_name + ", " + from.first_name);
 
 // `ShrinkingVariant` has changed. With three options going into two, need to fit the 3rd one into the 1st one.
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, SchemaFrom, ShrinkingVariant, SchemaInto) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into));
-  CURRENT_TYPE_EVOLVER_VARIANT_CASE(CustomTypeC,
-                                    {
-                                      typename INTO::CustomTypeA value;
-                                      value.a = from.c + 1;
-                                      into = std::move(value);
-                                    });
+CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, ShrinkingVariant, SchemaInto) {
+  CURRENT_CASE_KEEP_UNCHANGED(CustomTypeA);
+  CURRENT_CASE_KEEP_UNCHANGED(CustomTypeB);
+  CURRENT_CASE_EVOLVER(CustomTypeC,
+                       {
+                         typename INTO::CustomTypeA value;
+                         value.a = from.c + 1;
+                         into = std::move(value);
+                       });
 };
 
 // `WithFieldsToRemove` has changed. Need to copy over `.foo` and `.bar`, and process `.baz`.

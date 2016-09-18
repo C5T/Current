@@ -105,4 +105,16 @@ struct CurrentGenericPerCaseVariantEvolver {
     __VA_ARGS__;                                                                                \
   }
 
+// Shorter syntax. -- D.K.
+#define CURRENT_VARIANT_EVOLVER CURRENT_TYPE_EVOLVER_VARIANT
+#define CURRENT_CASE_EVOLVER CURRENT_TYPE_EVOLVER_VARIANT_CASE
+#define CURRENT_CASE_KEEP_UNCHANGED(T)                                                          \
+  void operator()(const typename FROM::T& from) const {                                         \
+    auto& into0 = *::current::type_evolution::CurrentGenericPerCaseVariantEvolver<DST>::p_into; \
+    using into_t = typename INTO::T;                                                            \
+    into0 = into_t();                                                                           \
+    auto& into = Value<into_t>(into0);                                                          \
+    CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into);                                             \
+  }
+
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_MACROS_H
