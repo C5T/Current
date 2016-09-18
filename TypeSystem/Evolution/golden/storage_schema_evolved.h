@@ -138,7 +138,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, CURRE
                  typename INTO::User& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::User>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::Name, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::Name&>(from), static_cast<typename INTO::Name&>(into));
+      CURRENT_EVOLVE_SUPER(Name);
       CURRENT_EVOLVE_FIELD(key);
   }
 };

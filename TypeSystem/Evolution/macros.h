@@ -53,6 +53,10 @@ SOFTWARE.
 #define CURRENT_EVOLVE_FIELD(f) \
   ::current::type_evolution::Evolve<FROM, decltype(from.f), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.f, into.f)
 
+#define CURRENT_EVOLVE_SUPER(t)                                                                \
+  ::current::type_evolution::Evolve<FROM, FROM::t, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>( \
+      static_cast<const typename FROM::t&>(from), static_cast<typename INTO::t&>(into))
+
 // Macros to shorten variant evolution.
 namespace current {
 namespace type_evolution {

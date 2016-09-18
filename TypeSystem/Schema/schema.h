@@ -426,10 +426,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "                    \"Custom evolver required.\");\n";
             if (s.super_id != TypeID::CurrentStruct) {
               const std::string super_name = TypeName(s.super_id, "::");
-              // NOTE(dkorolev): The `static_cast` here is unnecessary. Temporarily keep for now.
-              os_ << "      Evolve<FROM, FROM::" << super_name << ", CURRENT_ACTIVE_EVOLVER>::"
-                  << "template Go<INTO>(static_cast<const typename FROM::" << super_name
-                  << "&>(from), static_cast<typename INTO::" << super_name << "&>(into));\n";
+              os_ << "      CURRENT_EVOLVE_SUPER(" << super_name << ");\n";
             }
             for (const auto& f : fields) {
               os_ << "      CURRENT_EVOLVE_FIELD(" << f << ");\n";

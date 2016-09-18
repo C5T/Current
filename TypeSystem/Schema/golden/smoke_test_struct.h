@@ -349,7 +349,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B, CURRENT_ACTIVE_EVO
                  typename INTO::B& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::B>::value == 1,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_EVOLVE_SUPER(A);
       CURRENT_EVOLVE_FIELD(b);
   }
 };
@@ -440,7 +440,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
                  typename INTO::TemplatedInheriting_T9201673071807149456& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9201673071807149456>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_EVOLVE_SUPER(A);
       CURRENT_EVOLVE_FIELD(baz);
       CURRENT_EVOLVE_FIELD(meh);
   }
@@ -504,7 +504,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
                  typename INTO::TemplatedInheriting_T9209980946934124423& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_EVOLVE_SUPER(A);
       CURRENT_EVOLVE_FIELD(baz);
       CURRENT_EVOLVE_FIELD(meh);
   }
@@ -555,7 +555,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
                  typename INTO::TemplatedInheriting_T9227782344077896555& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_EVOLVE_SUPER(A);
       CURRENT_EVOLVE_FIELD(baz);
       CURRENT_EVOLVE_FIELD(meh);
   }
@@ -573,7 +573,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
                  typename INTO::TemplatedInheriting_T9200000002835747520& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_EVOLVE_SUPER(A);
       CURRENT_EVOLVE_FIELD(baz);
       CURRENT_EVOLVE_FIELD(meh);
   }
@@ -591,7 +591,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, CURRENT_ACTIVE_EV
                  typename INTO::B2& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::B2>::value == 0,
                     "Custom evolver required.");
-      Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_EVOLVE_SUPER(A);
       static_cast<void>(from);
       static_cast<void>(into);
   }
