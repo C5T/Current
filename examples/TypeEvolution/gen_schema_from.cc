@@ -27,4 +27,4 @@ SOFTWARE.
 #include "flags.h"
 #include "gen_schema.h"
 
-GEN_SCHEMA(from, "From");
+GEN_SCHEMA(from, "SchemaFrom");
