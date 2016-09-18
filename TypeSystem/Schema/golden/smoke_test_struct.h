@@ -808,132 +808,138 @@ CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Empty, {
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, FullTest, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.primitives, into.primitives);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.v1, into.v1);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.v2, into.v2);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.p, into.p);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o, into.o);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.q, into.q);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w1, into.w1);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w2, into.w2);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w3, into.w3);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w4, into.w4);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w5, into.w5);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w6, into.w6);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.tsc, into.tsc);
+  CURRENT_COPY_FIELD(primitives);
+  CURRENT_COPY_FIELD(v1);
+  CURRENT_COPY_FIELD(v2);
+  CURRENT_COPY_FIELD(p);
+  CURRENT_COPY_FIELD(o);
+  CURRENT_COPY_FIELD(q);
+  CURRENT_COPY_FIELD(w1);
+  CURRENT_COPY_FIELD(w2);
+  CURRENT_COPY_FIELD(w3);
+  CURRENT_COPY_FIELD(w4);
+  CURRENT_COPY_FIELD(w5);
+  CURRENT_COPY_FIELD(w6);
+  CURRENT_COPY_FIELD(tsc);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, B, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.b, into.b);
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(b);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209626390174323094, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9200000002835747520, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, C, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.c, into.c);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.d, into.d);
+  CURRENT_COPY_FIELD(e);
+  CURRENT_COPY_FIELD(c);
+  CURRENT_COPY_FIELD(d);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TrickyEvolutionCases, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o1, into.o1);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o2, into.o2);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o3, into.o3);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o4, into.o4);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o5, into.o5);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o6, into.o6);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o7, into.o7);
+  CURRENT_COPY_FIELD(o1);
+  CURRENT_COPY_FIELD(o2);
+  CURRENT_COPY_FIELD(o3);
+  CURRENT_COPY_FIELD(o4);
+  CURRENT_COPY_FIELD(o5);
+  CURRENT_COPY_FIELD(o6);
+  CURRENT_COPY_FIELD(o7);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9201673071807149456, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, A, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.a, into.a);
+  CURRENT_COPY_FIELD(a);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Primitives, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.a, into.a);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.b, into.b);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.c, into.c);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.d, into.d);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.f, into.f);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.g, into.g);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.h, into.h);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.i, into.i);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.j, into.j);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.k, into.k);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.l, into.l);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.m, into.m);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.n, into.n);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o, into.o);
+  CURRENT_COPY_FIELD(a);
+  CURRENT_COPY_FIELD(b);
+  CURRENT_COPY_FIELD(c);
+  CURRENT_COPY_FIELD(d);
+  CURRENT_COPY_FIELD(e);
+  CURRENT_COPY_FIELD(f);
+  CURRENT_COPY_FIELD(g);
+  CURRENT_COPY_FIELD(h);
+  CURRENT_COPY_FIELD(i);
+  CURRENT_COPY_FIELD(j);
+  CURRENT_COPY_FIELD(k);
+  CURRENT_COPY_FIELD(l);
+  CURRENT_COPY_FIELD(m);
+  CURRENT_COPY_FIELD(n);
+  CURRENT_COPY_FIELD(o);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9209980946934124423, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Y, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
+  CURRENT_COPY_FIELD(e);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209980946934124423, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9227782344077896555, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9200000002835747520, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, B2, {
+  CURRENT_COPY_SUPER(A);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9227782344077896555, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, X, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.x, into.x);
+  CURRENT_COPY_FIELD(x);
 });
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, ExposedNamespace, t9227782344077896555::MyFreakingVariant, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911749438269255::A, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209980946934124423::X, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9208828720332602574::Y, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, ExposedNamespace, t9227782344077896555::MyFreakingVariant, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(A);
+  CURRENT_COPY_CASE(X);
+  CURRENT_COPY_CASE(Y);
 };
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, ExposedNamespace, t9227782347108675041::Variant_B_A_X_Y_E, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911749438269255::A, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209980946934124423::X, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9208828720332602574::Y, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, ExposedNamespace, t9227782347108675041::Variant_B_A_X_Y_E, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(A);
+  CURRENT_COPY_CASE(X);
+  CURRENT_COPY_CASE(Y);
 };
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, ExposedNamespace, t9228482442669086788::Variant_B_A_B_B2_C_Empty_E, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911749438269255::A, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9200817599233955266::B, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209827283478105543::B2, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9202971611369570493::C, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9200000002835747520::Empty, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, ExposedNamespace, t9228482442669086788::Variant_B_A_B_B2_C_Empty_E, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(A);
+  CURRENT_COPY_CASE(B);
+  CURRENT_COPY_CASE(B2);
+  CURRENT_COPY_CASE(C);
+  CURRENT_COPY_CASE(Empty);
 };
 
 #endif  // Boilerplate evolvers.

@@ -451,68 +451,68 @@ struct Evolve<SchemaFrom, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListIm
 #if 0  // Boilerplate evolvers.
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithExpandingVariant, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.v, into.v);
+  CURRENT_COPY_FIELD(v);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.first_name, into.first_name);
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.last_name, into.last_name);
+  CURRENT_COPY_FIELD(first_name);
+  CURRENT_COPY_FIELD(last_name);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeB, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.b, into.b);
+  CURRENT_COPY_FIELD(b);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, Basic, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.i, into.i);
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.s, into.s);
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.t, into.t);
+  CURRENT_COPY_FIELD(i);
+  CURRENT_COPY_FIELD(s);
+  CURRENT_COPY_FIELD(t);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, TopLevel, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.data, into.data);
+  CURRENT_COPY_FIELD(data);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithShrinkingVariant, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.v, into.v);
+  CURRENT_COPY_FIELD(v);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithFieldsToRemove, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.bar, into.bar);
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.baz, into.baz);
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
+  CURRENT_COPY_FIELD(baz);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeA, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.a, into.a);
+  CURRENT_COPY_FIELD(a);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeC, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.c, into.c);
+  CURRENT_COPY_FIELD(c);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithOptional, {
-  CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.maybe_name, into.maybe_name);
+  CURRENT_COPY_FIELD(maybe_name);
 });
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, SchemaFrom, t9221067729821834539::ExpandingVariant, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911750362052937::CustomTypeA, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9202573820625447155::CustomTypeB, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, t9221067729821834539::ExpandingVariant, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(CustomTypeA);
+  CURRENT_COPY_CASE(CustomTypeB);
 };
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, SchemaFrom, t9226317599863657099::ShrinkingVariant, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911750362052937::CustomTypeA, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9202573820625447155::CustomTypeB, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9207934621170686053::CustomTypeC, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, t9226317599863657099::ShrinkingVariant, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(CustomTypeA);
+  CURRENT_COPY_CASE(CustomTypeB);
+  CURRENT_COPY_CASE(CustomTypeC);
 };
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, SchemaFrom, t9227074222822990824::All, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9203341832538601265::Basic, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9201952458119363219::FullName, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209615657629583566::WithOptional, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9201009161779005289::WithExpandingVariant, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9205425707876881313::WithShrinkingVariant, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206820554754825223::WithFieldsToRemove, CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, t9227074222822990824::All, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(Basic);
+  CURRENT_COPY_CASE(FullName);
+  CURRENT_COPY_CASE(WithOptional);
+  CURRENT_COPY_CASE(WithExpandingVariant);
+  CURRENT_COPY_CASE(WithShrinkingVariant);
+  CURRENT_COPY_CASE(WithFieldsToRemove);
 };
 
 #endif  // Boilerplate evolvers.

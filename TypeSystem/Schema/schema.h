@@ -563,23 +563,22 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               }
               os_ << "CURRENT_STRUCT_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
                   << bare_struct_name << ", {\n";
-              // TODO(dkorolev): REMINDER! DIMA! The base `CURRENT_STRUCT` should be handled here too.
+              if (s.super_id != TypeID::CurrentStruct) {
+                const std::string super_name = TypeName(s.super_id, "::");
+                os_ << "  CURRENT_COPY_SUPER(" << super_name << ");\n";
+              }
               for (const auto& f : s.fields) {
-                const auto& field_name = f.name;
-                os_ << "  CURRENT_NATURAL_EVOLVE(" << src_nmspc << ", " << USER_REPLACE_ME
-                    << "DestinationNamespace, from." << field_name << ", into." << field_name << ");\n";
+                os_ << "  CURRENT_COPY_FIELD(" << f.name << ");\n";
               }
               os_ << "});\n";
               os_ << '\n';
             } else if (Exists<ReflectedType_Variant>(type_substance)) {
               // Boilerplate evolver for `CURRENT_VARIANT`, or for a plain `Variant<>`.
               const auto bare_variant_name = TypeName(input_type.first);
-              os_ << "CURRENT_TYPE_EVOLVER_VARIANT(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
+              os_ << "CURRENT_VARIANT_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
                   << bare_variant_name << ", " << USER_REPLACE_ME << "DestinationNamespace) {\n";
               for (TypeID c : Value<ReflectedType_Variant>(type_substance).cases) {
-                const auto& case_name = TypeName(c);
-                os_ << "  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(" << case_name << ", CURRENT_NATURAL_EVOLVE("
-                    << src_nmspc << ", " << USER_REPLACE_ME << "DestinationNamespace, from, into));\n";
+                os_ << "  CURRENT_COPY_CASE(" << TypeName(c, "::") << ");\n";
               }
               os_ << "};\n" << '\n';
             }

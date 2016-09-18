@@ -231,37 +231,38 @@ struct Evolve<SchemaModifiedStorage, ::current::VariantImpl<VARIANT_NAME_HELPER,
 #if 0  // Boilerplate evolvers.
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaModifiedStorage, PersistedUserDeleted, {
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.us, into.us);
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.key, into.key);
+  CURRENT_COPY_FIELD(us);
+  CURRENT_COPY_FIELD(key);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaModifiedStorage, Name, {
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.full, into.full);
+  CURRENT_COPY_FIELD(full);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaModifiedStorage, User, {
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.key, into.key);
+  CURRENT_COPY_SUPER(Name);
+  CURRENT_COPY_FIELD(key);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaModifiedStorage, Transaction_T9221660456409416796, {
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.meta, into.meta);
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.mutations, into.mutations);
+  CURRENT_COPY_FIELD(meta);
+  CURRENT_COPY_FIELD(mutations);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaModifiedStorage, TransactionMeta, {
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.begin_us, into.begin_us);
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.end_us, into.end_us);
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.fields, into.fields);
+  CURRENT_COPY_FIELD(begin_us);
+  CURRENT_COPY_FIELD(end_us);
+  CURRENT_COPY_FIELD(fields);
 });
 
 CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaModifiedStorage, PersistedUserUpdated, {
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.us, into.us);
-  CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from.data, into.data);
+  CURRENT_COPY_FIELD(us);
+  CURRENT_COPY_FIELD(data);
 });
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, SchemaModifiedStorage, t9221660456409416796::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9208682047004194331::PersistedUserUpdated, CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9200749442651087763::PersistedUserDeleted, CURRENT_NATURAL_EVOLVE(SchemaModifiedStorage, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaModifiedStorage, t9221660456409416796::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(PersistedUserUpdated);
+  CURRENT_COPY_CASE(PersistedUserDeleted);
 };
 
 #endif  // Boilerplate evolvers.
