@@ -426,10 +426,10 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "                    \"Custom evolver required.\");\n";
             if (s.super_id != TypeID::CurrentStruct) {
               const std::string super_name = TypeName(s.super_id, "::");
-              os_ << "      CURRENT_EVOLVE_SUPER(" << super_name << ");\n";
+              os_ << "      CURRENT_COPY_SUPER(" << super_name << ");\n";
             }
             for (const auto& f : fields) {
-              os_ << "      CURRENT_EVOLVE_FIELD(" << f << ");\n";
+              os_ << "      CURRENT_COPY_FIELD(" << f << ");\n";
             }
             if (fields.empty()) {
               os_ << "      static_cast<void>(from);\n"

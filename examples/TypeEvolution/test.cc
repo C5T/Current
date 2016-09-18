@@ -35,9 +35,9 @@ CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, into.full_name = fro
 
 // `ShrinkingVariant` has changed. With three options going into two, need to fit the 3rd one into the 1st one.
 CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, ShrinkingVariant, SchemaInto) {
-  CURRENT_CASE_KEEP_UNCHANGED(CustomTypeA);
-  CURRENT_CASE_KEEP_UNCHANGED(CustomTypeB);
-  CURRENT_CASE_EVOLVER(CustomTypeC,
+  CURRENT_COPY_CASE(CustomTypeA);
+  CURRENT_COPY_CASE(CustomTypeB);
+  CURRENT_EVOLVE_CASE(CustomTypeC,
                        {
                          typename INTO::CustomTypeA value;
                          value.a = from.c + 1;
@@ -50,8 +50,8 @@ CURRENT_STRUCT_EVOLVER(CustomEvolver,
                        SchemaFrom,
                        WithFieldsToRemove,
                        {
-                         CURRENT_EVOLVE_FIELD(foo);
-                         CURRENT_EVOLVE_FIELD(bar);
+                         CURRENT_COPY_FIELD(foo);
+                         CURRENT_COPY_FIELD(bar);
                          if (!from.baz.empty()) {
                            into.foo += ' ' + current::strings::Join(from.baz, ' ');
                          }

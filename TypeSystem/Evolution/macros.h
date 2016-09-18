@@ -50,10 +50,10 @@ SOFTWARE.
   CURRENT_EVOLVE_IMPL(CURRENT_ACTIVE_EVOLVER, from_namespace, into_namespace, from_object, into_object)
 
 // Making the syntax shorter. -- D.K.
-#define CURRENT_EVOLVE_FIELD(f) \
+#define CURRENT_COPY_FIELD(f) \
   ::current::type_evolution::Evolve<FROM, decltype(from.f), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.f, into.f)
 
-#define CURRENT_EVOLVE_SUPER(t)                                                                \
+#define CURRENT_COPY_SUPER(t)                                                                  \
   ::current::type_evolution::Evolve<FROM, FROM::t, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>( \
       static_cast<const typename FROM::t&>(from), static_cast<typename INTO::t&>(into))
 
@@ -107,8 +107,8 @@ struct CurrentGenericPerCaseVariantEvolver {
 
 // Shorter syntax. -- D.K.
 #define CURRENT_VARIANT_EVOLVER CURRENT_TYPE_EVOLVER_VARIANT
-#define CURRENT_CASE_EVOLVER CURRENT_TYPE_EVOLVER_VARIANT_CASE
-#define CURRENT_CASE_KEEP_UNCHANGED(T)                                                          \
+#define CURRENT_EVOLVE_CASE CURRENT_TYPE_EVOLVER_VARIANT_CASE
+#define CURRENT_COPY_CASE(T)                                                                    \
   void operator()(const typename FROM::T& from) const {                                         \
     auto& into0 = *::current::type_evolution::CurrentGenericPerCaseVariantEvolver<DST>::p_into; \
     using into_t = typename INTO::T;                                                            \
@@ -116,5 +116,9 @@ struct CurrentGenericPerCaseVariantEvolver {
     auto& into = Value<into_t>(into0);                                                          \
     CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into);                                             \
   }
+
+// TO REMOVE
+#define CURRENT_EVOLVE_FIELD CURRENT_COPY_FIELD
+#define CURRENT_EVOLVE_SUPER CURRENT_COPY_SUPER
 
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_MACROS_H
