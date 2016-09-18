@@ -159,7 +159,7 @@ struct Evolve<Into, typename Into::WithShrinkingVariant, CURRENT_ACTIVE_EVOLVER>
                  typename INTO::WithShrinkingVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithShrinkingVariant>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(v);
+      CURRENT_EVOLVE_FIELD(v);
   }
 };
 #endif
@@ -175,7 +175,7 @@ struct Evolve<Into, typename Into::FullName, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::FullName& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::FullName>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(full_name);
+      CURRENT_EVOLVE_FIELD(full_name);
   }
 };
 #endif
@@ -191,7 +191,7 @@ struct Evolve<Into, typename Into::CustomTypeB, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::CustomTypeB& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeB>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(b);
+      CURRENT_EVOLVE_FIELD(b);
   }
 };
 #endif
@@ -207,9 +207,9 @@ struct Evolve<Into, typename Into::Basic, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::Basic& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Basic>::value == 3,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(i);
-      CURRENT_EVOLUTION_FIELD(s);
-      CURRENT_EVOLUTION_FIELD(t);
+      CURRENT_EVOLVE_FIELD(i);
+      CURRENT_EVOLVE_FIELD(s);
+      CURRENT_EVOLVE_FIELD(t);
   }
 };
 #endif
@@ -225,7 +225,7 @@ struct Evolve<Into, typename Into::WithExpandingVariant, CURRENT_ACTIVE_EVOLVER>
                  typename INTO::WithExpandingVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithExpandingVariant>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(v);
+      CURRENT_EVOLVE_FIELD(v);
   }
 };
 #endif
@@ -241,7 +241,7 @@ struct Evolve<Into, typename Into::CustomTypeA, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::CustomTypeA& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeA>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(a);
+      CURRENT_EVOLVE_FIELD(a);
   }
 };
 #endif
@@ -257,7 +257,7 @@ struct Evolve<Into, typename Into::WithOptional, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::WithOptional& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithOptional>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(maybe_name);
+      CURRENT_EVOLVE_FIELD(maybe_name);
   }
 };
 #endif
@@ -273,8 +273,8 @@ struct Evolve<Into, typename Into::WithFieldsToRemove, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::WithFieldsToRemove& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithFieldsToRemove>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(foo);
-      CURRENT_EVOLUTION_FIELD(bar);
+      CURRENT_EVOLVE_FIELD(foo);
+      CURRENT_EVOLVE_FIELD(bar);
   }
 };
 #endif
@@ -290,7 +290,7 @@ struct Evolve<Into, typename Into::TopLevel, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::TopLevel& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TopLevel>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(data);
+      CURRENT_EVOLVE_FIELD(data);
   }
 };
 #endif
@@ -306,7 +306,7 @@ struct Evolve<Into, typename Into::CustomTypeC, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::CustomTypeC& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeC>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(c);
+      CURRENT_EVOLVE_FIELD(c);
   }
 };
 #endif

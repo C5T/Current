@@ -432,7 +432,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                   << "&>(from), static_cast<typename INTO::" << super_name << "&>(into));\n";
             }
             for (const auto& f : fields) {
-              os_ << "      CURRENT_EVOLUTION_FIELD(" << f << ");\n";
+              os_ << "      CURRENT_EVOLVE_FIELD(" << f << ");\n";
             }
             if (fields.empty()) {
               os_ << "      static_cast<void>(from);\n"

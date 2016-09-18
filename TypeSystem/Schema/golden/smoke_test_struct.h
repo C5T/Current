@@ -321,19 +321,19 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, CURRENT_ACT
                  typename INTO::FullTest& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::FullTest>::value == 13,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(primitives);
-      CURRENT_EVOLUTION_FIELD(v1);
-      CURRENT_EVOLUTION_FIELD(v2);
-      CURRENT_EVOLUTION_FIELD(p);
-      CURRENT_EVOLUTION_FIELD(o);
-      CURRENT_EVOLUTION_FIELD(q);
-      CURRENT_EVOLUTION_FIELD(w1);
-      CURRENT_EVOLUTION_FIELD(w2);
-      CURRENT_EVOLUTION_FIELD(w3);
-      CURRENT_EVOLUTION_FIELD(w4);
-      CURRENT_EVOLUTION_FIELD(w5);
-      CURRENT_EVOLUTION_FIELD(w6);
-      CURRENT_EVOLUTION_FIELD(tsc);
+      CURRENT_EVOLVE_FIELD(primitives);
+      CURRENT_EVOLVE_FIELD(v1);
+      CURRENT_EVOLVE_FIELD(v2);
+      CURRENT_EVOLVE_FIELD(p);
+      CURRENT_EVOLVE_FIELD(o);
+      CURRENT_EVOLVE_FIELD(q);
+      CURRENT_EVOLVE_FIELD(w1);
+      CURRENT_EVOLVE_FIELD(w2);
+      CURRENT_EVOLVE_FIELD(w3);
+      CURRENT_EVOLVE_FIELD(w4);
+      CURRENT_EVOLVE_FIELD(w5);
+      CURRENT_EVOLVE_FIELD(w6);
+      CURRENT_EVOLVE_FIELD(tsc);
   }
 };
 #endif
@@ -350,7 +350,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B, CURRENT_ACTIVE_EVO
       static_assert(::current::reflection::FieldCounter<typename INTO::B>::value == 1,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      CURRENT_EVOLUTION_FIELD(b);
+      CURRENT_EVOLVE_FIELD(b);
   }
 };
 #endif
@@ -366,8 +366,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390
                  typename INTO::Templated_T9209626390174323094& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9209626390174323094>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(foo);
-      CURRENT_EVOLUTION_FIELD(bar);
+      CURRENT_EVOLVE_FIELD(foo);
+      CURRENT_EVOLVE_FIELD(bar);
   }
 };
 #endif
@@ -383,8 +383,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002
                  typename INTO::Templated_T9200000002835747520& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(foo);
-      CURRENT_EVOLUTION_FIELD(bar);
+      CURRENT_EVOLVE_FIELD(foo);
+      CURRENT_EVOLVE_FIELD(bar);
   }
 };
 #endif
@@ -400,9 +400,9 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::C, CURRENT_ACTIVE_EVO
                  typename INTO::C& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::C>::value == 3,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(e);
-      CURRENT_EVOLUTION_FIELD(c);
-      CURRENT_EVOLUTION_FIELD(d);
+      CURRENT_EVOLVE_FIELD(e);
+      CURRENT_EVOLVE_FIELD(c);
+      CURRENT_EVOLVE_FIELD(d);
   }
 };
 #endif
@@ -418,13 +418,13 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases,
                  typename INTO::TrickyEvolutionCases& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TrickyEvolutionCases>::value == 7,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(o1);
-      CURRENT_EVOLUTION_FIELD(o2);
-      CURRENT_EVOLUTION_FIELD(o3);
-      CURRENT_EVOLUTION_FIELD(o4);
-      CURRENT_EVOLUTION_FIELD(o5);
-      CURRENT_EVOLUTION_FIELD(o6);
-      CURRENT_EVOLUTION_FIELD(o7);
+      CURRENT_EVOLVE_FIELD(o1);
+      CURRENT_EVOLVE_FIELD(o2);
+      CURRENT_EVOLVE_FIELD(o3);
+      CURRENT_EVOLVE_FIELD(o4);
+      CURRENT_EVOLVE_FIELD(o5);
+      CURRENT_EVOLVE_FIELD(o6);
+      CURRENT_EVOLVE_FIELD(o7);
   }
 };
 #endif
@@ -441,8 +441,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9201673071807149456>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      CURRENT_EVOLUTION_FIELD(baz);
-      CURRENT_EVOLUTION_FIELD(meh);
+      CURRENT_EVOLVE_FIELD(baz);
+      CURRENT_EVOLVE_FIELD(meh);
   }
 };
 #endif
@@ -458,7 +458,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::A, CURRENT_ACTIVE_EVO
                  typename INTO::A& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::A>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(a);
+      CURRENT_EVOLVE_FIELD(a);
   }
 };
 #endif
@@ -474,21 +474,21 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, CURRENT_A
                  typename INTO::Primitives& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Primitives>::value == 15,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(a);
-      CURRENT_EVOLUTION_FIELD(b);
-      CURRENT_EVOLUTION_FIELD(c);
-      CURRENT_EVOLUTION_FIELD(d);
-      CURRENT_EVOLUTION_FIELD(e);
-      CURRENT_EVOLUTION_FIELD(f);
-      CURRENT_EVOLUTION_FIELD(g);
-      CURRENT_EVOLUTION_FIELD(h);
-      CURRENT_EVOLUTION_FIELD(i);
-      CURRENT_EVOLUTION_FIELD(j);
-      CURRENT_EVOLUTION_FIELD(k);
-      CURRENT_EVOLUTION_FIELD(l);
-      CURRENT_EVOLUTION_FIELD(m);
-      CURRENT_EVOLUTION_FIELD(n);
-      CURRENT_EVOLUTION_FIELD(o);
+      CURRENT_EVOLVE_FIELD(a);
+      CURRENT_EVOLVE_FIELD(b);
+      CURRENT_EVOLVE_FIELD(c);
+      CURRENT_EVOLVE_FIELD(d);
+      CURRENT_EVOLVE_FIELD(e);
+      CURRENT_EVOLVE_FIELD(f);
+      CURRENT_EVOLVE_FIELD(g);
+      CURRENT_EVOLVE_FIELD(h);
+      CURRENT_EVOLVE_FIELD(i);
+      CURRENT_EVOLVE_FIELD(j);
+      CURRENT_EVOLVE_FIELD(k);
+      CURRENT_EVOLVE_FIELD(l);
+      CURRENT_EVOLVE_FIELD(m);
+      CURRENT_EVOLVE_FIELD(n);
+      CURRENT_EVOLVE_FIELD(o);
   }
 };
 #endif
@@ -505,8 +505,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      CURRENT_EVOLUTION_FIELD(baz);
-      CURRENT_EVOLUTION_FIELD(meh);
+      CURRENT_EVOLVE_FIELD(baz);
+      CURRENT_EVOLVE_FIELD(meh);
   }
 };
 #endif
@@ -522,7 +522,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, CURRENT_ACTIVE_EVO
                  typename INTO::Y& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Y>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(e);
+      CURRENT_EVOLVE_FIELD(e);
   }
 };
 #endif
@@ -538,8 +538,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946
                  typename INTO::Templated_T9209980946934124423& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(foo);
-      CURRENT_EVOLUTION_FIELD(bar);
+      CURRENT_EVOLVE_FIELD(foo);
+      CURRENT_EVOLVE_FIELD(bar);
   }
 };
 #endif
@@ -556,8 +556,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      CURRENT_EVOLUTION_FIELD(baz);
-      CURRENT_EVOLUTION_FIELD(meh);
+      CURRENT_EVOLVE_FIELD(baz);
+      CURRENT_EVOLVE_FIELD(meh);
   }
 };
 #endif
@@ -574,8 +574,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
       Evolve<FROM, FROM::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::A&>(from), static_cast<typename INTO::A&>(into));
-      CURRENT_EVOLUTION_FIELD(baz);
-      CURRENT_EVOLUTION_FIELD(meh);
+      CURRENT_EVOLVE_FIELD(baz);
+      CURRENT_EVOLVE_FIELD(meh);
   }
 };
 #endif
@@ -609,8 +609,8 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344
                  typename INTO::Templated_T9227782344077896555& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(foo);
-      CURRENT_EVOLUTION_FIELD(bar);
+      CURRENT_EVOLVE_FIELD(foo);
+      CURRENT_EVOLVE_FIELD(bar);
   }
 };
 #endif
@@ -626,7 +626,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::X, CURRENT_ACTIVE_EVO
                  typename INTO::X& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::X>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(x);
+      CURRENT_EVOLVE_FIELD(x);
   }
 };
 #endif

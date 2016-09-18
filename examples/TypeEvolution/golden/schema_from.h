@@ -161,7 +161,7 @@ struct Evolve<From, typename From::WithExpandingVariant, CURRENT_ACTIVE_EVOLVER>
                  typename INTO::WithExpandingVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithExpandingVariant>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(v);
+      CURRENT_EVOLVE_FIELD(v);
   }
 };
 #endif
@@ -177,8 +177,8 @@ struct Evolve<From, typename From::FullName, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::FullName& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::FullName>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(first_name);
-      CURRENT_EVOLUTION_FIELD(last_name);
+      CURRENT_EVOLVE_FIELD(first_name);
+      CURRENT_EVOLVE_FIELD(last_name);
   }
 };
 #endif
@@ -194,7 +194,7 @@ struct Evolve<From, typename From::CustomTypeB, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::CustomTypeB& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeB>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(b);
+      CURRENT_EVOLVE_FIELD(b);
   }
 };
 #endif
@@ -210,9 +210,9 @@ struct Evolve<From, typename From::Basic, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::Basic& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Basic>::value == 3,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(i);
-      CURRENT_EVOLUTION_FIELD(s);
-      CURRENT_EVOLUTION_FIELD(t);
+      CURRENT_EVOLVE_FIELD(i);
+      CURRENT_EVOLVE_FIELD(s);
+      CURRENT_EVOLVE_FIELD(t);
   }
 };
 #endif
@@ -228,7 +228,7 @@ struct Evolve<From, typename From::TopLevel, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::TopLevel& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TopLevel>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(data);
+      CURRENT_EVOLVE_FIELD(data);
   }
 };
 #endif
@@ -244,7 +244,7 @@ struct Evolve<From, typename From::WithShrinkingVariant, CURRENT_ACTIVE_EVOLVER>
                  typename INTO::WithShrinkingVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithShrinkingVariant>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(v);
+      CURRENT_EVOLVE_FIELD(v);
   }
 };
 #endif
@@ -260,9 +260,9 @@ struct Evolve<From, typename From::WithFieldsToRemove, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::WithFieldsToRemove& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithFieldsToRemove>::value == 3,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(foo);
-      CURRENT_EVOLUTION_FIELD(bar);
-      CURRENT_EVOLUTION_FIELD(baz);
+      CURRENT_EVOLVE_FIELD(foo);
+      CURRENT_EVOLVE_FIELD(bar);
+      CURRENT_EVOLVE_FIELD(baz);
   }
 };
 #endif
@@ -278,7 +278,7 @@ struct Evolve<From, typename From::CustomTypeA, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::CustomTypeA& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeA>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(a);
+      CURRENT_EVOLVE_FIELD(a);
   }
 };
 #endif
@@ -294,7 +294,7 @@ struct Evolve<From, typename From::CustomTypeC, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::CustomTypeC& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeC>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(c);
+      CURRENT_EVOLVE_FIELD(c);
   }
 };
 #endif
@@ -310,7 +310,7 @@ struct Evolve<From, typename From::WithOptional, CURRENT_ACTIVE_EVOLVER> {
                  typename INTO::WithOptional& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithOptional>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(maybe_name);
+      CURRENT_EVOLVE_FIELD(maybe_name);
   }
 };
 #endif

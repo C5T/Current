@@ -122,9 +122,9 @@ struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::S
                  typename INTO::SimpleStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::SimpleStruct>::value == 3,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(x);
-      CURRENT_EVOLUTION_FIELD(y);
-      CURRENT_EVOLUTION_FIELD(z);
+      CURRENT_EVOLVE_FIELD(x);
+      CURRENT_EVOLVE_FIELD(y);
+      CURRENT_EVOLVE_FIELD(z);
   }
 };
 #endif
@@ -140,7 +140,7 @@ struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::S
                  typename INTO::StructWithStruct& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithStruct>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(s);
+      CURRENT_EVOLVE_FIELD(s);
   }
 };
 #endif
@@ -156,8 +156,8 @@ struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::O
                  typename INTO::OtherTypes& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::OtherTypes>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(enum_class);
-      CURRENT_EVOLUTION_FIELD(optional);
+      CURRENT_EVOLVE_FIELD(enum_class);
+      CURRENT_EVOLVE_FIELD(optional);
   }
 };
 #endif
@@ -173,7 +173,7 @@ struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::S
                  typename INTO::StructWithVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithVariant>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(v);
+      CURRENT_EVOLVE_FIELD(v);
   }
 };
 #endif
@@ -189,8 +189,8 @@ struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::N
                  typename INTO::Name& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Name>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(first);
-      CURRENT_EVOLUTION_FIELD(last);
+      CURRENT_EVOLVE_FIELD(first);
+      CURRENT_EVOLVE_FIELD(last);
   }
 };
 #endif
@@ -206,7 +206,7 @@ struct Evolve<USERSPACE_F055D51FBF78DB84, typename USERSPACE_F055D51FBF78DB84::S
                  typename INTO::StructWithVectorOfNames& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::StructWithVectorOfNames>::value == 1,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(w);
+      CURRENT_EVOLVE_FIELD(w);
   }
 };
 #endif

@@ -106,8 +106,8 @@ struct Evolve<SchemaOriginalStorage, typename SchemaOriginalStorage::PersistedUs
                  typename INTO::PersistedUserDeleted& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::PersistedUserDeleted>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(us);
-      CURRENT_EVOLUTION_FIELD(key);
+      CURRENT_EVOLVE_FIELD(us);
+      CURRENT_EVOLVE_FIELD(key);
   }
 };
 #endif
@@ -123,8 +123,8 @@ struct Evolve<SchemaOriginalStorage, typename SchemaOriginalStorage::Transaction
                  typename INTO::Transaction_T9226378158835221611& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Transaction_T9226378158835221611>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(meta);
-      CURRENT_EVOLUTION_FIELD(mutations);
+      CURRENT_EVOLVE_FIELD(meta);
+      CURRENT_EVOLVE_FIELD(mutations);
   }
 };
 #endif
@@ -140,8 +140,8 @@ struct Evolve<SchemaOriginalStorage, typename SchemaOriginalStorage::Name, CURRE
                  typename INTO::Name& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Name>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(first);
-      CURRENT_EVOLUTION_FIELD(last);
+      CURRENT_EVOLVE_FIELD(first);
+      CURRENT_EVOLVE_FIELD(last);
   }
 };
 #endif
@@ -157,9 +157,9 @@ struct Evolve<SchemaOriginalStorage, typename SchemaOriginalStorage::Transaction
                  typename INTO::TransactionMeta& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TransactionMeta>::value == 3,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(begin_us);
-      CURRENT_EVOLUTION_FIELD(end_us);
-      CURRENT_EVOLUTION_FIELD(fields);
+      CURRENT_EVOLVE_FIELD(begin_us);
+      CURRENT_EVOLVE_FIELD(end_us);
+      CURRENT_EVOLVE_FIELD(fields);
   }
 };
 #endif
@@ -176,7 +176,7 @@ struct Evolve<SchemaOriginalStorage, typename SchemaOriginalStorage::User, CURRE
       static_assert(::current::reflection::FieldCounter<typename INTO::User>::value == 1,
                     "Custom evolver required.");
       Evolve<FROM, FROM::Name, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::Name&>(from), static_cast<typename INTO::Name&>(into));
-      CURRENT_EVOLUTION_FIELD(key);
+      CURRENT_EVOLVE_FIELD(key);
   }
 };
 #endif
@@ -192,8 +192,8 @@ struct Evolve<SchemaOriginalStorage, typename SchemaOriginalStorage::PersistedUs
                  typename INTO::PersistedUserUpdated& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::PersistedUserUpdated>::value == 2,
                     "Custom evolver required.");
-      CURRENT_EVOLUTION_FIELD(us);
-      CURRENT_EVOLUTION_FIELD(data);
+      CURRENT_EVOLVE_FIELD(us);
+      CURRENT_EVOLVE_FIELD(data);
   }
 };
 #endif
