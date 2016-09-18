@@ -1911,7 +1911,7 @@ CURRENT_STORAGE(SimpleStorage) {
 }  // namespace transactional_storage_test
 
 // RESTful API test.
-TEST(TransactionalStorage, DISABLED_RESTfulAPITest) {
+TEST(TransactionalStorage, RESTfulAPITest) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
@@ -1960,21 +1960,18 @@ TEST(TransactionalStorage, DISABLED_RESTfulAPITest) {
       "namespace type_evolution {\n"
       "\n"
       "// Default evolution for struct `SimpleUser`.\n"
-      "#ifndef DEFAULT_EVOLUTION_03EF01DB8AAC8284F79033E453C68C55958D143788D6A43EC1F8ED9B22050D10  // typename "
-      "USERSPACE_C546BDBF8F3A5614::SimpleUser\n"
-      "#define DEFAULT_EVOLUTION_03EF01DB8AAC8284F79033E453C68C55958D143788D6A43EC1F8ED9B22050D10  // typename "
-      "USERSPACE_C546BDBF8F3A5614::SimpleUser\n"
-      "template <typename EVOLVER>\n"
-      "struct Evolve<USERSPACE_C546BDBF8F3A5614, typename USERSPACE_C546BDBF8F3A5614::SimpleUser, EVOLVER> {\n"
+      "#ifndef DEFAULT_EVOLUTION_03EF01DB8AAC8284F79033E453C68C55958D143788D6A43EC1F8ED9B22050D10  // typename USERSPACE_C546BDBF8F3A5614::SimpleUser\n"
+      "#define DEFAULT_EVOLUTION_03EF01DB8AAC8284F79033E453C68C55958D143788D6A43EC1F8ED9B22050D10  // typename USERSPACE_C546BDBF8F3A5614::SimpleUser\n"
+      "template <typename CURRENT_ACTIVE_EVOLVER>\n"
+      "struct Evolve<USERSPACE_C546BDBF8F3A5614, typename USERSPACE_C546BDBF8F3A5614::SimpleUser, CURRENT_ACTIVE_EVOLVER> {\n"
+      "  using FROM = USERSPACE_C546BDBF8F3A5614;\n"
       "  template <typename INTO>\n"
-      "  static void Go(const typename USERSPACE_C546BDBF8F3A5614::SimpleUser& from,\n"
+      "  static void Go(const typename FROM::SimpleUser& from,\n"
       "                 typename INTO::SimpleUser& into) {\n"
       "      static_assert(::current::reflection::FieldCounter<typename INTO::SimpleUser>::value == 2,\n"
       "                    \"Custom evolver required.\");\n"
-      "      Evolve<USERSPACE_C546BDBF8F3A5614, decltype(from.key), EVOLVER>::template Go<INTO>(from.key, "
-      "into.key);\n"
-      "      Evolve<USERSPACE_C546BDBF8F3A5614, decltype(from.name), EVOLVER>::template Go<INTO>(from.name, "
-      "into.name);\n"
+      "      CURRENT_COPY_FIELD(key);\n"
+      "      CURRENT_COPY_FIELD(name);\n"
       "  }\n"
       "};\n"
       "#endif\n"
@@ -1984,16 +1981,14 @@ TEST(TransactionalStorage, DISABLED_RESTfulAPITest) {
       "\n"
       "#if 0  // Boilerplate evolvers.\n"
       "\n"
-      "CURRENT_TYPE_EVOLVER(CustomEvolver, USERSPACE_C546BDBF8F3A5614, SimpleUser, {\n"
-      "  CURRENT_NATURAL_EVOLVE(USERSPACE_C546BDBF8F3A5614, CustomDestinationNamespace, from.key, into.key);\n"
-      "  CURRENT_NATURAL_EVOLVE(USERSPACE_C546BDBF8F3A5614, CustomDestinationNamespace, from.name, "
-      "into.name);\n"
+      "CURRENT_STRUCT_EVOLVER(CustomEvolver, USERSPACE_C546BDBF8F3A5614, SimpleUser, {\n"
+      "  CURRENT_COPY_FIELD(key);\n"
+      "  CURRENT_COPY_FIELD(name);\n"
       "});\n"
       "\n"
       "#endif  // Boilerplate evolvers.\n"
       "\n"
       "// clang-format on\n";
-
   // clang-format off
   const std::string golden_user_schema_json =
   "["
