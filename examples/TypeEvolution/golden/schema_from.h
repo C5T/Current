@@ -153,15 +153,15 @@ namespace type_evolution {
 // Default evolution for struct `WithExpandingVariant`.
 #ifndef DEFAULT_EVOLUTION_B496AA86275A67D9F4C7EF1DB01D57EDD22C16E4A98320F8BD5B1815942A10ED  // typename From::WithExpandingVariant
 #define DEFAULT_EVOLUTION_B496AA86275A67D9F4C7EF1DB01D57EDD22C16E4A98320F8BD5B1815942A10ED  // typename From::WithExpandingVariant
-template <typename EVOLVER>
-struct Evolve<From, typename From::WithExpandingVariant, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::WithExpandingVariant, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::WithExpandingVariant& from,
                  typename INTO::WithExpandingVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithExpandingVariant>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.v), EVOLVER>::template Go<INTO>(from.v, into.v);
+      Evolve<FROM, decltype(from.v), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.v, into.v);
   }
 };
 #endif
@@ -169,16 +169,16 @@ struct Evolve<From, typename From::WithExpandingVariant, EVOLVER> {
 // Default evolution for struct `FullName`.
 #ifndef DEFAULT_EVOLUTION_6577A8C63F5A4B2F68562B7B359EF1805EBB39C7BDA6711589F1E64C033C9790  // typename From::FullName
 #define DEFAULT_EVOLUTION_6577A8C63F5A4B2F68562B7B359EF1805EBB39C7BDA6711589F1E64C033C9790  // typename From::FullName
-template <typename EVOLVER>
-struct Evolve<From, typename From::FullName, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::FullName, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::FullName& from,
                  typename INTO::FullName& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::FullName>::value == 2,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.first_name), EVOLVER>::template Go<INTO>(from.first_name, into.first_name);
-      Evolve<From, decltype(from.last_name), EVOLVER>::template Go<INTO>(from.last_name, into.last_name);
+      Evolve<FROM, decltype(from.first_name), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.first_name, into.first_name);
+      Evolve<FROM, decltype(from.last_name), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.last_name, into.last_name);
   }
 };
 #endif
@@ -186,15 +186,15 @@ struct Evolve<From, typename From::FullName, EVOLVER> {
 // Default evolution for struct `CustomTypeB`.
 #ifndef DEFAULT_EVOLUTION_B4F7587FE0CBAD1306A8E6AF1B4A23BCCC6B9D1CD27445C2D3A62DFB83ADB03F  // typename From::CustomTypeB
 #define DEFAULT_EVOLUTION_B4F7587FE0CBAD1306A8E6AF1B4A23BCCC6B9D1CD27445C2D3A62DFB83ADB03F  // typename From::CustomTypeB
-template <typename EVOLVER>
-struct Evolve<From, typename From::CustomTypeB, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::CustomTypeB, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::CustomTypeB& from,
                  typename INTO::CustomTypeB& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeB>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.b), EVOLVER>::template Go<INTO>(from.b, into.b);
+      Evolve<FROM, decltype(from.b), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.b, into.b);
   }
 };
 #endif
@@ -202,17 +202,17 @@ struct Evolve<From, typename From::CustomTypeB, EVOLVER> {
 // Default evolution for struct `Basic`.
 #ifndef DEFAULT_EVOLUTION_CF5D17E6C58FB51A713EAB6FDCC0DB8E60A8DDE553FDD41139224BD19A0C4947  // typename From::Basic
 #define DEFAULT_EVOLUTION_CF5D17E6C58FB51A713EAB6FDCC0DB8E60A8DDE553FDD41139224BD19A0C4947  // typename From::Basic
-template <typename EVOLVER>
-struct Evolve<From, typename From::Basic, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::Basic, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::Basic& from,
                  typename INTO::Basic& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Basic>::value == 3,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.i), EVOLVER>::template Go<INTO>(from.i, into.i);
-      Evolve<From, decltype(from.s), EVOLVER>::template Go<INTO>(from.s, into.s);
-      Evolve<From, decltype(from.t), EVOLVER>::template Go<INTO>(from.t, into.t);
+      Evolve<FROM, decltype(from.i), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.i, into.i);
+      Evolve<FROM, decltype(from.s), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.s, into.s);
+      Evolve<FROM, decltype(from.t), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.t, into.t);
   }
 };
 #endif
@@ -220,15 +220,15 @@ struct Evolve<From, typename From::Basic, EVOLVER> {
 // Default evolution for struct `TopLevel`.
 #ifndef DEFAULT_EVOLUTION_C287C195670345584E3E28963FBCB9135C02DC52F5925249ABAC277413CC8795  // typename From::TopLevel
 #define DEFAULT_EVOLUTION_C287C195670345584E3E28963FBCB9135C02DC52F5925249ABAC277413CC8795  // typename From::TopLevel
-template <typename EVOLVER>
-struct Evolve<From, typename From::TopLevel, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::TopLevel, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::TopLevel& from,
                  typename INTO::TopLevel& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TopLevel>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.data), EVOLVER>::template Go<INTO>(from.data, into.data);
+      Evolve<FROM, decltype(from.data), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.data, into.data);
   }
 };
 #endif
@@ -236,15 +236,15 @@ struct Evolve<From, typename From::TopLevel, EVOLVER> {
 // Default evolution for struct `WithShrinkingVariant`.
 #ifndef DEFAULT_EVOLUTION_0A1C6EDB7AB8582E2505B02D8534CCBC3D3539389F050AFBA639474CEDAEA2D9  // typename From::WithShrinkingVariant
 #define DEFAULT_EVOLUTION_0A1C6EDB7AB8582E2505B02D8534CCBC3D3539389F050AFBA639474CEDAEA2D9  // typename From::WithShrinkingVariant
-template <typename EVOLVER>
-struct Evolve<From, typename From::WithShrinkingVariant, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::WithShrinkingVariant, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::WithShrinkingVariant& from,
                  typename INTO::WithShrinkingVariant& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithShrinkingVariant>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.v), EVOLVER>::template Go<INTO>(from.v, into.v);
+      Evolve<FROM, decltype(from.v), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.v, into.v);
   }
 };
 #endif
@@ -252,17 +252,17 @@ struct Evolve<From, typename From::WithShrinkingVariant, EVOLVER> {
 // Default evolution for struct `WithFieldsToRemove`.
 #ifndef DEFAULT_EVOLUTION_FB411CF04FCA3A6F22CDD114FF27D733B09B31ED5059D6670A8B4C484D08ED3C  // typename From::WithFieldsToRemove
 #define DEFAULT_EVOLUTION_FB411CF04FCA3A6F22CDD114FF27D733B09B31ED5059D6670A8B4C484D08ED3C  // typename From::WithFieldsToRemove
-template <typename EVOLVER>
-struct Evolve<From, typename From::WithFieldsToRemove, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::WithFieldsToRemove, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::WithFieldsToRemove& from,
                  typename INTO::WithFieldsToRemove& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithFieldsToRemove>::value == 3,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.foo), EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<From, decltype(from.bar), EVOLVER>::template Go<INTO>(from.bar, into.bar);
-      Evolve<From, decltype(from.baz), EVOLVER>::template Go<INTO>(from.baz, into.baz);
+      Evolve<FROM, decltype(from.foo), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.foo, into.foo);
+      Evolve<FROM, decltype(from.bar), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      Evolve<FROM, decltype(from.baz), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.baz, into.baz);
   }
 };
 #endif
@@ -270,15 +270,15 @@ struct Evolve<From, typename From::WithFieldsToRemove, EVOLVER> {
 // Default evolution for struct `CustomTypeA`.
 #ifndef DEFAULT_EVOLUTION_F9104A2D9C1D1AD7EBA0D769759C414CEEC91E6F67AE55969B2FD0FA225811F8  // typename From::CustomTypeA
 #define DEFAULT_EVOLUTION_F9104A2D9C1D1AD7EBA0D769759C414CEEC91E6F67AE55969B2FD0FA225811F8  // typename From::CustomTypeA
-template <typename EVOLVER>
-struct Evolve<From, typename From::CustomTypeA, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::CustomTypeA, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::CustomTypeA& from,
                  typename INTO::CustomTypeA& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeA>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.a), EVOLVER>::template Go<INTO>(from.a, into.a);
+      Evolve<FROM, decltype(from.a), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.a, into.a);
   }
 };
 #endif
@@ -286,15 +286,15 @@ struct Evolve<From, typename From::CustomTypeA, EVOLVER> {
 // Default evolution for struct `CustomTypeC`.
 #ifndef DEFAULT_EVOLUTION_F857EC95C5A6D5456B78F905565F3EB0B0D530571DBBB8D2DAC34472C0F6462F  // typename From::CustomTypeC
 #define DEFAULT_EVOLUTION_F857EC95C5A6D5456B78F905565F3EB0B0D530571DBBB8D2DAC34472C0F6462F  // typename From::CustomTypeC
-template <typename EVOLVER>
-struct Evolve<From, typename From::CustomTypeC, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::CustomTypeC, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::CustomTypeC& from,
                  typename INTO::CustomTypeC& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::CustomTypeC>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.c), EVOLVER>::template Go<INTO>(from.c, into.c);
+      Evolve<FROM, decltype(from.c), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.c, into.c);
   }
 };
 #endif
@@ -302,15 +302,15 @@ struct Evolve<From, typename From::CustomTypeC, EVOLVER> {
 // Default evolution for struct `WithOptional`.
 #ifndef DEFAULT_EVOLUTION_0EDF8BC44C2CA1505F6D61005DF01A3D206E349509AFE045970771886618F01A  // typename From::WithOptional
 #define DEFAULT_EVOLUTION_0EDF8BC44C2CA1505F6D61005DF01A3D206E349509AFE045970771886618F01A  // typename From::WithOptional
-template <typename EVOLVER>
-struct Evolve<From, typename From::WithOptional, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, typename From::WithOptional, CURRENT_ACTIVE_EVOLVER> {
   using FROM = From;
   template <typename INTO>
   static void Go(const typename From::WithOptional& from,
                  typename INTO::WithOptional& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::WithOptional>::value == 1,
                     "Custom evolver required.");
-      Evolve<From, decltype(from.maybe_name), EVOLVER>::template Go<INTO>(from.maybe_name, into.maybe_name);
+      Evolve<FROM, decltype(from.maybe_name), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.maybe_name, into.maybe_name);
   }
 };
 #endif
@@ -318,13 +318,13 @@ struct Evolve<From, typename From::WithOptional, EVOLVER> {
 // Default evolution for `Optional<t9201952458119363219::FullName>`.
 #ifndef DEFAULT_EVOLUTION_7F21884FD1D375CB1AAF7E44AF4D6A3EA8C86BF3B56C276FBE1AE0936192B26C  // Optional<typename From::FullName>
 #define DEFAULT_EVOLUTION_7F21884FD1D375CB1AAF7E44AF4D6A3EA8C86BF3B56C276FBE1AE0936192B26C  // Optional<typename From::FullName>
-template <typename EVOLVER>
-struct Evolve<From, Optional<typename From::FullName>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<From, Optional<typename From::FullName>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO, typename INTO_TYPE>
   static void Go(const Optional<typename From::FullName>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       typename INTO::FullName evolved;
-      Evolve<From, typename From::FullName, EVOLVER>::template Go<INTO>(Value(from), evolved);
+      Evolve<From, typename From::FullName, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(Value(from), evolved);
       into = evolved;
     } else {
       into = nullptr;
@@ -336,28 +336,28 @@ struct Evolve<From, Optional<typename From::FullName>, EVOLVER> {
 // Default evolution for `Variant<CustomTypeA, CustomTypeB>`.
 #ifndef DEFAULT_EVOLUTION_650CD48C6CB00F02DC05D209DA289756B834242D11C7B86B7F9ECD3475DAB814  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB>>
 #define DEFAULT_EVOLUTION_650CD48C6CB00F02DC05D209DA289756B834242D11C7B86B7F9ECD3475DAB814  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB>>
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+template <typename DST, typename FROM_NAMESPACE, typename INTO, typename CURRENT_ACTIVE_EVOLVER>
 struct From_ExpandingVariant_Cases {
   DST& into;
   explicit From_ExpandingVariant_Cases(DST& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::CustomTypeA& value) const {
     using into_t = typename INTO::CustomTypeA;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeA, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeA, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::CustomTypeB& value) const {
     using into_t = typename INTO::CustomTypeB;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeB, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeB, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLVER, typename VARIANT_NAME_HELPER>
-struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER, typename VARIANT_NAME_HELPER>
+struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(From_ExpandingVariant_Cases<decltype(into), From, INTO, EVOLVER>(into));
+    from.Call(From_ExpandingVariant_Cases<decltype(into), From, INTO, CURRENT_ACTIVE_EVOLVER>(into));
   }
 };
 #endif
@@ -365,33 +365,33 @@ struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<Fro
 // Default evolution for `Variant<CustomTypeA, CustomTypeB, CustomTypeC>`.
 #ifndef DEFAULT_EVOLUTION_094E6600AB7A3F33BD7D6FDCD74BEE64B6933D2103B9039D1BF77740CC854901  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB, From::CustomTypeC>>
 #define DEFAULT_EVOLUTION_094E6600AB7A3F33BD7D6FDCD74BEE64B6933D2103B9039D1BF77740CC854901  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB, From::CustomTypeC>>
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+template <typename DST, typename FROM_NAMESPACE, typename INTO, typename CURRENT_ACTIVE_EVOLVER>
 struct From_ShrinkingVariant_Cases {
   DST& into;
   explicit From_ShrinkingVariant_Cases(DST& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::CustomTypeA& value) const {
     using into_t = typename INTO::CustomTypeA;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeA, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeA, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::CustomTypeB& value) const {
     using into_t = typename INTO::CustomTypeB;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeB, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeB, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::CustomTypeC& value) const {
     using into_t = typename INTO::CustomTypeC;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeC, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::CustomTypeC, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLVER, typename VARIANT_NAME_HELPER>
-struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB, From::CustomTypeC>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER, typename VARIANT_NAME_HELPER>
+struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB, From::CustomTypeC>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::CustomTypeA, From::CustomTypeB, From::CustomTypeC>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(From_ShrinkingVariant_Cases<decltype(into), From, INTO, EVOLVER>(into));
+    from.Call(From_ShrinkingVariant_Cases<decltype(into), From, INTO, CURRENT_ACTIVE_EVOLVER>(into));
   }
 };
 #endif
@@ -399,48 +399,48 @@ struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<Fro
 // Default evolution for `Variant<Basic, FullName, WithOptional, WithExpandingVariant, WithShrinkingVariant, WithFieldsToRemove>`.
 #ifndef DEFAULT_EVOLUTION_58BD551664EB46378ED6EDA9EBE68599DDBA86E20A296CF15797BD3E9C8A9195  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::Basic, From::FullName, From::WithOptional, From::WithExpandingVariant, From::WithShrinkingVariant, From::WithFieldsToRemove>>
 #define DEFAULT_EVOLUTION_58BD551664EB46378ED6EDA9EBE68599DDBA86E20A296CF15797BD3E9C8A9195  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::Basic, From::FullName, From::WithOptional, From::WithExpandingVariant, From::WithShrinkingVariant, From::WithFieldsToRemove>>
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+template <typename DST, typename FROM_NAMESPACE, typename INTO, typename CURRENT_ACTIVE_EVOLVER>
 struct From_All_Cases {
   DST& into;
   explicit From_All_Cases(DST& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::Basic& value) const {
     using into_t = typename INTO::Basic;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Basic, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Basic, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::FullName& value) const {
     using into_t = typename INTO::FullName;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::FullName, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::FullName, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::WithOptional& value) const {
     using into_t = typename INTO::WithOptional;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithOptional, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithOptional, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::WithExpandingVariant& value) const {
     using into_t = typename INTO::WithExpandingVariant;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithExpandingVariant, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithExpandingVariant, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::WithShrinkingVariant& value) const {
     using into_t = typename INTO::WithShrinkingVariant;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithShrinkingVariant, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithShrinkingVariant, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::WithFieldsToRemove& value) const {
     using into_t = typename INTO::WithFieldsToRemove;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithFieldsToRemove, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::WithFieldsToRemove, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLVER, typename VARIANT_NAME_HELPER>
-struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::Basic, From::FullName, From::WithOptional, From::WithExpandingVariant, From::WithShrinkingVariant, From::WithFieldsToRemove>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER, typename VARIANT_NAME_HELPER>
+struct Evolve<From, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::Basic, From::FullName, From::WithOptional, From::WithExpandingVariant, From::WithShrinkingVariant, From::WithFieldsToRemove>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<From::Basic, From::FullName, From::WithOptional, From::WithExpandingVariant, From::WithShrinkingVariant, From::WithFieldsToRemove>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(From_All_Cases<decltype(into), From, INTO, EVOLVER>(into));
+    from.Call(From_All_Cases<decltype(into), From, INTO, CURRENT_ACTIVE_EVOLVER>(into));
   }
 };
 #endif

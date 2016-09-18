@@ -97,16 +97,16 @@ namespace type_evolution {
 // Default evolution for struct `PersistedUserDeleted`.
 #ifndef DEFAULT_EVOLUTION_1D2A1B807AE8014F4D1B0D28A473AA863153A2359A767A509D34486A3C2A8B80  // typename SchemaModifiedStorage::PersistedUserDeleted
 #define DEFAULT_EVOLUTION_1D2A1B807AE8014F4D1B0D28A473AA863153A2359A767A509D34486A3C2A8B80  // typename SchemaModifiedStorage::PersistedUserDeleted
-template <typename EVOLVER>
-struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUserDeleted, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUserDeleted, CURRENT_ACTIVE_EVOLVER> {
   using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::PersistedUserDeleted& from,
                  typename INTO::PersistedUserDeleted& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::PersistedUserDeleted>::value == 2,
                     "Custom evolver required.");
-      Evolve<SchemaModifiedStorage, decltype(from.us), EVOLVER>::template Go<INTO>(from.us, into.us);
-      Evolve<SchemaModifiedStorage, decltype(from.key), EVOLVER>::template Go<INTO>(from.key, into.key);
+      Evolve<FROM, decltype(from.us), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.us, into.us);
+      Evolve<FROM, decltype(from.key), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.key, into.key);
   }
 };
 #endif
@@ -114,15 +114,15 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUs
 // Default evolution for struct `Name`.
 #ifndef DEFAULT_EVOLUTION_1FF0D8B674D5B622EFB6ADE5DB9A02FF4BF340F65FC228AF4A748BF2E57B0457  // typename SchemaModifiedStorage::Name
 #define DEFAULT_EVOLUTION_1FF0D8B674D5B622EFB6ADE5DB9A02FF4BF340F65FC228AF4A748BF2E57B0457  // typename SchemaModifiedStorage::Name
-template <typename EVOLVER>
-struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Name, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Name, CURRENT_ACTIVE_EVOLVER> {
   using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::Name& from,
                  typename INTO::Name& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Name>::value == 1,
                     "Custom evolver required.");
-      Evolve<SchemaModifiedStorage, decltype(from.full), EVOLVER>::template Go<INTO>(from.full, into.full);
+      Evolve<FROM, decltype(from.full), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.full, into.full);
   }
 };
 #endif
@@ -130,16 +130,16 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Name, EVOLV
 // Default evolution for struct `User`.
 #ifndef DEFAULT_EVOLUTION_878AB940AFD77B5554975A77F2BBADB756F0DEE3EE62CE7F7C7C85EC7BC5E07E  // typename SchemaModifiedStorage::User
 #define DEFAULT_EVOLUTION_878AB940AFD77B5554975A77F2BBADB756F0DEE3EE62CE7F7C7C85EC7BC5E07E  // typename SchemaModifiedStorage::User
-template <typename EVOLVER>
-struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, CURRENT_ACTIVE_EVOLVER> {
   using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::User& from,
                  typename INTO::User& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::User>::value == 1,
                     "Custom evolver required.");
-      Evolve<SchemaModifiedStorage, SchemaModifiedStorage::Name, EVOLVER>::template Go<INTO>(static_cast<const typename SchemaModifiedStorage::Name&>(from), static_cast<typename INTO::Name&>(into));
-      Evolve<SchemaModifiedStorage, decltype(from.key), EVOLVER>::template Go<INTO>(from.key, into.key);
+      Evolve<FROM, FROM::Name, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(static_cast<const typename FROM::Name&>(from), static_cast<typename INTO::Name&>(into));
+      Evolve<FROM, decltype(from.key), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.key, into.key);
   }
 };
 #endif
@@ -147,16 +147,16 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, EVOLV
 // Default evolution for struct `Transaction_T9221660456409416796`.
 #ifndef DEFAULT_EVOLUTION_C1853441F0679BE46A407C6C231C39645C74828E577DB471D4F9CA7574B9B7BD  // typename SchemaModifiedStorage::Transaction_T9221660456409416796
 #define DEFAULT_EVOLUTION_C1853441F0679BE46A407C6C231C39645C74828E577DB471D4F9CA7574B9B7BD  // typename SchemaModifiedStorage::Transaction_T9221660456409416796
-template <typename EVOLVER>
-struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction_T9221660456409416796, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction_T9221660456409416796, CURRENT_ACTIVE_EVOLVER> {
   using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::Transaction_T9221660456409416796& from,
                  typename INTO::Transaction_T9221660456409416796& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Transaction_T9221660456409416796>::value == 2,
                     "Custom evolver required.");
-      Evolve<SchemaModifiedStorage, decltype(from.meta), EVOLVER>::template Go<INTO>(from.meta, into.meta);
-      Evolve<SchemaModifiedStorage, decltype(from.mutations), EVOLVER>::template Go<INTO>(from.mutations, into.mutations);
+      Evolve<FROM, decltype(from.meta), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.meta, into.meta);
+      Evolve<FROM, decltype(from.mutations), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.mutations, into.mutations);
   }
 };
 #endif
@@ -164,17 +164,17 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction
 // Default evolution for struct `TransactionMeta`.
 #ifndef DEFAULT_EVOLUTION_A0DC6E4D03DC4F25AFE631E3AC0734DFE967B0D2B930C3C9F7DE4656F80CBC3D  // typename SchemaModifiedStorage::TransactionMeta
 #define DEFAULT_EVOLUTION_A0DC6E4D03DC4F25AFE631E3AC0734DFE967B0D2B930C3C9F7DE4656F80CBC3D  // typename SchemaModifiedStorage::TransactionMeta
-template <typename EVOLVER>
-struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::TransactionMeta, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::TransactionMeta, CURRENT_ACTIVE_EVOLVER> {
   using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::TransactionMeta& from,
                  typename INTO::TransactionMeta& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TransactionMeta>::value == 3,
                     "Custom evolver required.");
-      Evolve<SchemaModifiedStorage, decltype(from.begin_us), EVOLVER>::template Go<INTO>(from.begin_us, into.begin_us);
-      Evolve<SchemaModifiedStorage, decltype(from.end_us), EVOLVER>::template Go<INTO>(from.end_us, into.end_us);
-      Evolve<SchemaModifiedStorage, decltype(from.fields), EVOLVER>::template Go<INTO>(from.fields, into.fields);
+      Evolve<FROM, decltype(from.begin_us), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.begin_us, into.begin_us);
+      Evolve<FROM, decltype(from.end_us), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.end_us, into.end_us);
+      Evolve<FROM, decltype(from.fields), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.fields, into.fields);
   }
 };
 #endif
@@ -182,16 +182,16 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction
 // Default evolution for struct `PersistedUserUpdated`.
 #ifndef DEFAULT_EVOLUTION_3B353B4EAABC9BA1F9B0E79AB218EAF6EE538F895E975D87B84EF059E8B5D3CD  // typename SchemaModifiedStorage::PersistedUserUpdated
 #define DEFAULT_EVOLUTION_3B353B4EAABC9BA1F9B0E79AB218EAF6EE538F895E975D87B84EF059E8B5D3CD  // typename SchemaModifiedStorage::PersistedUserUpdated
-template <typename EVOLVER>
-struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUserUpdated, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUserUpdated, CURRENT_ACTIVE_EVOLVER> {
   using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::PersistedUserUpdated& from,
                  typename INTO::PersistedUserUpdated& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::PersistedUserUpdated>::value == 2,
                     "Custom evolver required.");
-      Evolve<SchemaModifiedStorage, decltype(from.us), EVOLVER>::template Go<INTO>(from.us, into.us);
-      Evolve<SchemaModifiedStorage, decltype(from.data), EVOLVER>::template Go<INTO>(from.data, into.data);
+      Evolve<FROM, decltype(from.us), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.us, into.us);
+      Evolve<FROM, decltype(from.data), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.data, into.data);
   }
 };
 #endif
@@ -199,28 +199,28 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUs
 // Default evolution for `Variant<PersistedUserUpdated, PersistedUserDeleted>`.
 #ifndef DEFAULT_EVOLUTION_B4142EE07135B1EFE9DF472ACD7D2253E22971D190BFCDACB36B9B2AAC839027  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<SchemaModifiedStorage::PersistedUserUpdated, SchemaModifiedStorage::PersistedUserDeleted>>
 #define DEFAULT_EVOLUTION_B4142EE07135B1EFE9DF472ACD7D2253E22971D190BFCDACB36B9B2AAC839027  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<SchemaModifiedStorage::PersistedUserUpdated, SchemaModifiedStorage::PersistedUserDeleted>>
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+template <typename DST, typename FROM_NAMESPACE, typename INTO, typename CURRENT_ACTIVE_EVOLVER>
 struct SchemaModifiedStorage_Variant_B_PersistedUserUpdated_PersistedUserDeleted_E_Cases {
   DST& into;
   explicit SchemaModifiedStorage_Variant_B_PersistedUserUpdated_PersistedUserDeleted_E_Cases(DST& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::PersistedUserUpdated& value) const {
     using into_t = typename INTO::PersistedUserUpdated;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::PersistedUserUpdated, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::PersistedUserUpdated, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::PersistedUserDeleted& value) const {
     using into_t = typename INTO::PersistedUserDeleted;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::PersistedUserDeleted, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::PersistedUserDeleted, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLVER, typename VARIANT_NAME_HELPER>
-struct Evolve<SchemaModifiedStorage, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<SchemaModifiedStorage::PersistedUserUpdated, SchemaModifiedStorage::PersistedUserDeleted>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER, typename VARIANT_NAME_HELPER>
+struct Evolve<SchemaModifiedStorage, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<SchemaModifiedStorage::PersistedUserUpdated, SchemaModifiedStorage::PersistedUserDeleted>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<SchemaModifiedStorage::PersistedUserUpdated, SchemaModifiedStorage::PersistedUserDeleted>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(SchemaModifiedStorage_Variant_B_PersistedUserUpdated_PersistedUserDeleted_E_Cases<decltype(into), SchemaModifiedStorage, INTO, EVOLVER>(into));
+    from.Call(SchemaModifiedStorage_Variant_B_PersistedUserUpdated_PersistedUserDeleted_E_Cases<decltype(into), SchemaModifiedStorage, INTO, CURRENT_ACTIVE_EVOLVER>(into));
   }
 };
 #endif
