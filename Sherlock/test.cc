@@ -346,7 +346,7 @@ using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl, Rec
 
 }  // namespace sherlock_unittest
 
-TEST(Sherlock, SubscribeToStreamViaHTTP) {
+TEST(Sherlock, DISABLED_SubscribeToStreamViaHTTP) {
   current::time::ResetToZero();
 
   using namespace sherlock_unittest;

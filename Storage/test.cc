@@ -1911,7 +1911,7 @@ CURRENT_STORAGE(SimpleStorage) {
 }  // namespace transactional_storage_test
 
 // RESTful API test.
-TEST(TransactionalStorage, RESTfulAPITest) {
+TEST(TransactionalStorage, DISABLED_RESTfulAPITest) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
