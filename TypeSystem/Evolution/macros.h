@@ -117,8 +117,4 @@ struct CurrentGenericPerCaseVariantEvolver {
     CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into);                                             \
   }
 
-// TO REMOVE
-#define CURRENT_EVOLVE_FIELD CURRENT_COPY_FIELD
-#define CURRENT_EVOLVE_SUPER CURRENT_COPY_SUPER
-
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_MACROS_H

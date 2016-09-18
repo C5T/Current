@@ -388,8 +388,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ("0", result.headers.Get("X-Current-Stream-Size"));
   }
   {
-    // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,
-    // and various serializations.
+    // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,  and various serializations.
+    // clang-format off
     const std::string golden_h =
         "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
         "// Compile with `-std=c++11` or higher.\n"
@@ -426,10 +426,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "namespace type_evolution {\n"
         "\n"
         "// Default evolution for struct `RecordWithTimestamp`.\n"
-        "#ifndef DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // typename "
-        "Sherlock::RecordWithTimestamp\n"
-        "#define DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // typename "
-        "Sherlock::RecordWithTimestamp\n"
+        "#ifndef DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // typename Sherlock::RecordWithTimestamp\n"
+        "#define DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // typename Sherlock::RecordWithTimestamp\n"
         "template <typename CURRENT_ACTIVE_EVOLVER>\n"
         "struct Evolve<Sherlock, typename Sherlock::RecordWithTimestamp, CURRENT_ACTIVE_EVOLVER> {\n"
         "  using FROM = Sherlock;\n"
@@ -457,6 +455,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "#endif  // Boilerplate evolvers.\n"
         "\n"
         "// clang-format on\n";
+    // clang-format on
 
     const std::string golden_fs =
         "// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`\n"
