@@ -298,6 +298,7 @@ struct Evolve<ExposedNamespace, ExposedNamespace::E, EVOLVER> {
 #define DEFAULT_EVOLUTION_5939C237877725072E3046253DBCC20B9DD887E80C18CE5446104CF0EB2C62C5  // typename ExposedNamespace::Empty
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Empty, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Empty& from,
                  typename INTO::Empty& into) {
@@ -314,6 +315,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Empty, EVOLVER> {
 #define DEFAULT_EVOLUTION_59B8F56918FA03C3FF69EDB9C44286B5A17F00C53AD98E9E6C2E2FFDCC9042B8  // typename ExposedNamespace::FullTest
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::FullTest& from,
                  typename INTO::FullTest& into) {
@@ -341,6 +343,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, EVOLVER> {
 #define DEFAULT_EVOLUTION_A15D5B33561D4874DC860C2ADE32021A400299BED685625855AC7E5C2ACE8B25  // typename ExposedNamespace::B
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::B, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::B& from,
                  typename INTO::B& into) {
@@ -357,6 +360,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B, EVOLVER> {
 #define DEFAULT_EVOLUTION_9066C275D8288ED3744F89BF3B0474B04AAE1571E60619068250ED037D4CFBC7  // typename ExposedNamespace::Templated_T9209626390174323094
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390174323094, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Templated_T9209626390174323094& from,
                  typename INTO::Templated_T9209626390174323094& into) {
@@ -373,6 +377,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390
 #define DEFAULT_EVOLUTION_EA77C70DF8F4BE40294BFD6B28B1BD23185E3A99F196BF933481EFE294A3403F  // typename ExposedNamespace::Templated_T9200000002835747520
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002835747520, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Templated_T9200000002835747520& from,
                  typename INTO::Templated_T9200000002835747520& into) {
@@ -389,6 +394,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002
 #define DEFAULT_EVOLUTION_DDE310AA7719296DBACC18106A71460781CAEEE2B04F24A1109BB0B94167270F  // typename ExposedNamespace::C
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::C, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::C& from,
                  typename INTO::C& into) {
@@ -406,6 +412,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::C, EVOLVER> {
 #define DEFAULT_EVOLUTION_49C764EB5BE1119C7F7A682FED912AC6F84C1B7E50DE5FFD2C6B4BF92F8627DC  // typename ExposedNamespace::TrickyEvolutionCases
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::TrickyEvolutionCases& from,
                  typename INTO::TrickyEvolutionCases& into) {
@@ -427,6 +434,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases,
 #define DEFAULT_EVOLUTION_861EF512C56B8CAB7389A30E16021A83F518B8363C2D9DA113A11B613A5BA0E4  // typename ExposedNamespace::TemplatedInheriting_T9201673071807149456
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9201673071807149456, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::TemplatedInheriting_T9201673071807149456& from,
                  typename INTO::TemplatedInheriting_T9201673071807149456& into) {
@@ -444,6 +452,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 #define DEFAULT_EVOLUTION_CB2E976118E62268E31533B2FCB4ACDC7D423A3F3C999C40A059D3CE7069663A  // typename ExposedNamespace::A
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::A, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::A& from,
                  typename INTO::A& into) {
@@ -459,6 +468,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::A, EVOLVER> {
 #define DEFAULT_EVOLUTION_2939885D492B19EC612443266E33601C2D5E89FA766AD88BACC05022A1C6BD00  // typename ExposedNamespace::Primitives
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Primitives& from,
                  typename INTO::Primitives& into) {
@@ -488,6 +498,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, EVOLVER> 
 #define DEFAULT_EVOLUTION_A8EDEC803A73757F6D0E8DD935C763F066E9B9193AB7D1E153B1A8D784804DCC  // typename ExposedNamespace::TemplatedInheriting_T9209980946934124423
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9209980946934124423, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::TemplatedInheriting_T9209980946934124423& from,
                  typename INTO::TemplatedInheriting_T9209980946934124423& into) {
@@ -505,6 +516,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 #define DEFAULT_EVOLUTION_BF73E632C3E758DE2753A63B99D9BBC9BFB0AA2293FC634374C6A76DF21386CE  // typename ExposedNamespace::Y
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Y& from,
                  typename INTO::Y& into) {
@@ -520,6 +532,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, EVOLVER> {
 #define DEFAULT_EVOLUTION_A88B17CDDDFDDDE6DA4AD1A5060172098C276373D45EAD8F379CB84FA882A590  // typename ExposedNamespace::Templated_T9209980946934124423
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946934124423, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Templated_T9209980946934124423& from,
                  typename INTO::Templated_T9209980946934124423& into) {
@@ -536,6 +549,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946
 #define DEFAULT_EVOLUTION_BF9F7F4895FE4B3D53F5332610604599A08A6686DAFA8EA57DB6D0B3995A3A05  // typename ExposedNamespace::TemplatedInheriting_T9227782344077896555
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9227782344077896555, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::TemplatedInheriting_T9227782344077896555& from,
                  typename INTO::TemplatedInheriting_T9227782344077896555& into) {
@@ -553,6 +567,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 #define DEFAULT_EVOLUTION_C5ABE688A04E351A29474634960FB1B4723A5E6BFD6F6C6BA3F085843D540AD3  // typename ExposedNamespace::TemplatedInheriting_T9200000002835747520
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9200000002835747520, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::TemplatedInheriting_T9200000002835747520& from,
                  typename INTO::TemplatedInheriting_T9200000002835747520& into) {
@@ -570,6 +585,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 #define DEFAULT_EVOLUTION_8A1E7F884F5E71838181FED05934EFF1984E0B1C0F84A50B298E7A662E76C7C3  // typename ExposedNamespace::B2
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::B2& from,
                  typename INTO::B2& into) {
@@ -587,6 +603,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, EVOLVER> {
 #define DEFAULT_EVOLUTION_E85C06F34A2C944B948194E1C7BA0B4F17EFC2E450488D292B66702728F3AE25  // typename ExposedNamespace::Templated_T9227782344077896555
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344077896555, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::Templated_T9227782344077896555& from,
                  typename INTO::Templated_T9227782344077896555& into) {
@@ -603,6 +620,7 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344
 #define DEFAULT_EVOLUTION_6A49BB9E6B1311D2427D567AF16667E71D185DC267636B6BBBC05421E48C061B  // typename ExposedNamespace::X
 template <typename EVOLVER>
 struct Evolve<ExposedNamespace, typename ExposedNamespace::X, EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
   static void Go(const typename ExposedNamespace::X& from,
                  typename INTO::X& into) {

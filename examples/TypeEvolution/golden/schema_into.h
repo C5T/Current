@@ -153,6 +153,7 @@ namespace type_evolution {
 #define DEFAULT_EVOLUTION_635FF9A23574EDEA2DEF09F40EAF99BD88B386FF64CC397D9A15A22B2FD4F180  // typename Into::WithShrinkingVariant
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::WithShrinkingVariant, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::WithShrinkingVariant& from,
                  typename INTO::WithShrinkingVariant& into) {
@@ -168,6 +169,7 @@ struct Evolve<Into, typename Into::WithShrinkingVariant, EVOLVER> {
 #define DEFAULT_EVOLUTION_74FE7CF20A7A7F7F0EB974896447590D0C82A4437D12532D6258CB796F7DDEF7  // typename Into::FullName
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::FullName, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::FullName& from,
                  typename INTO::FullName& into) {
@@ -183,6 +185,7 @@ struct Evolve<Into, typename Into::FullName, EVOLVER> {
 #define DEFAULT_EVOLUTION_C66FCB4CAB0D4C774A62F422F479E09ED963E8C9AA6D7078DADB4D499FEE3AF3  // typename Into::CustomTypeB
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::CustomTypeB, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::CustomTypeB& from,
                  typename INTO::CustomTypeB& into) {
@@ -198,6 +201,7 @@ struct Evolve<Into, typename Into::CustomTypeB, EVOLVER> {
 #define DEFAULT_EVOLUTION_997FD215786594F423913E7905EED459F1845943406A4806937E61BFB2483354  // typename Into::Basic
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::Basic, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::Basic& from,
                  typename INTO::Basic& into) {
@@ -215,6 +219,7 @@ struct Evolve<Into, typename Into::Basic, EVOLVER> {
 #define DEFAULT_EVOLUTION_376898126CF51B0170AF638DAE5AC149137BF6C6EBFF392039AFFB8DD46F01AC  // typename Into::WithExpandingVariant
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::WithExpandingVariant, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::WithExpandingVariant& from,
                  typename INTO::WithExpandingVariant& into) {
@@ -230,6 +235,7 @@ struct Evolve<Into, typename Into::WithExpandingVariant, EVOLVER> {
 #define DEFAULT_EVOLUTION_FB3D460185CDCFDA13F3191B73A2EF824E182246CAAF0A9B49DD96043ED1EAA3  // typename Into::CustomTypeA
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::CustomTypeA, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::CustomTypeA& from,
                  typename INTO::CustomTypeA& into) {
@@ -245,6 +251,7 @@ struct Evolve<Into, typename Into::CustomTypeA, EVOLVER> {
 #define DEFAULT_EVOLUTION_0B47BEC7EDE0F59DB04F09DE30BDE1FC15B8EE275FA32270D8C1950C0D8496E6  // typename Into::WithOptional
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::WithOptional, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::WithOptional& from,
                  typename INTO::WithOptional& into) {
@@ -260,6 +267,7 @@ struct Evolve<Into, typename Into::WithOptional, EVOLVER> {
 #define DEFAULT_EVOLUTION_153A8A367106BC172A11928CF5272FDFEC03C3E8E0AB59D9DFC00159F9E5868B  // typename Into::WithFieldsToRemove
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::WithFieldsToRemove, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::WithFieldsToRemove& from,
                  typename INTO::WithFieldsToRemove& into) {
@@ -276,6 +284,7 @@ struct Evolve<Into, typename Into::WithFieldsToRemove, EVOLVER> {
 #define DEFAULT_EVOLUTION_2DBADA8115FE0D6209C301462726C0D52E0EE23011704F80BEB546C9D07BADE0  // typename Into::TopLevel
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::TopLevel, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::TopLevel& from,
                  typename INTO::TopLevel& into) {
@@ -291,6 +300,7 @@ struct Evolve<Into, typename Into::TopLevel, EVOLVER> {
 #define DEFAULT_EVOLUTION_9070DCC9D25F4231B14503FFADE377378132575004ED756199548455B4014510  // typename Into::CustomTypeC
 template <typename EVOLVER>
 struct Evolve<Into, typename Into::CustomTypeC, EVOLVER> {
+  using FROM = Into;
   template <typename INTO>
   static void Go(const typename Into::CustomTypeC& from,
                  typename INTO::CustomTypeC& into) {

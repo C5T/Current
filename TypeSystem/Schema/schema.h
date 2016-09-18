@@ -416,6 +416,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
                 << "template <typename EVOLVER>\n"
                 << "struct Evolve<" << nmspc << ", " << origin << ", EVOLVER> {\n"
+                << "  using FROM = " << nmspc << ";\n"
                 << "  template <typename INTO>\n"
                 << "  static void Go(const " << namespaced_from_struct_name << "& from,\n"
                 << "                 " << namespaced_into_struct_name << "& into) {\n"

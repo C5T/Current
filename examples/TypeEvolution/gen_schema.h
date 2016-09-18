@@ -32,7 +32,7 @@ inline void GenerateSchema(const std::string& filename, const std::string& expos
   current::reflection::NamespaceToExpose expose(exposed_namespace_name);
 
   struct_schema.AddType<TopLevel>();
-  expose.template AddType<TopLevel>("TopLevel");
+  expose.template AddType<TopLevel>("ExposedTopLevel");
 
   current::FileSystem::WriteStringToFile(
       struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose),

@@ -99,6 +99,7 @@ namespace type_evolution {
 #define DEFAULT_EVOLUTION_1D2A1B807AE8014F4D1B0D28A473AA863153A2359A767A509D34486A3C2A8B80  // typename SchemaModifiedStorage::PersistedUserDeleted
 template <typename EVOLVER>
 struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUserDeleted, EVOLVER> {
+  using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::PersistedUserDeleted& from,
                  typename INTO::PersistedUserDeleted& into) {
@@ -115,6 +116,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUs
 #define DEFAULT_EVOLUTION_1FF0D8B674D5B622EFB6ADE5DB9A02FF4BF340F65FC228AF4A748BF2E57B0457  // typename SchemaModifiedStorage::Name
 template <typename EVOLVER>
 struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Name, EVOLVER> {
+  using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::Name& from,
                  typename INTO::Name& into) {
@@ -130,6 +132,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Name, EVOLV
 #define DEFAULT_EVOLUTION_878AB940AFD77B5554975A77F2BBADB756F0DEE3EE62CE7F7C7C85EC7BC5E07E  // typename SchemaModifiedStorage::User
 template <typename EVOLVER>
 struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, EVOLVER> {
+  using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::User& from,
                  typename INTO::User& into) {
@@ -146,6 +149,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, EVOLV
 #define DEFAULT_EVOLUTION_C1853441F0679BE46A407C6C231C39645C74828E577DB471D4F9CA7574B9B7BD  // typename SchemaModifiedStorage::Transaction_T9221660456409416796
 template <typename EVOLVER>
 struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction_T9221660456409416796, EVOLVER> {
+  using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::Transaction_T9221660456409416796& from,
                  typename INTO::Transaction_T9221660456409416796& into) {
@@ -162,6 +166,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction
 #define DEFAULT_EVOLUTION_A0DC6E4D03DC4F25AFE631E3AC0734DFE967B0D2B930C3C9F7DE4656F80CBC3D  // typename SchemaModifiedStorage::TransactionMeta
 template <typename EVOLVER>
 struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::TransactionMeta, EVOLVER> {
+  using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::TransactionMeta& from,
                  typename INTO::TransactionMeta& into) {
@@ -179,6 +184,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::Transaction
 #define DEFAULT_EVOLUTION_3B353B4EAABC9BA1F9B0E79AB218EAF6EE538F895E975D87B84EF059E8B5D3CD  // typename SchemaModifiedStorage::PersistedUserUpdated
 template <typename EVOLVER>
 struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::PersistedUserUpdated, EVOLVER> {
+  using FROM = SchemaModifiedStorage;
   template <typename INTO>
   static void Go(const typename SchemaModifiedStorage::PersistedUserUpdated& from,
                  typename INTO::PersistedUserUpdated& into) {
