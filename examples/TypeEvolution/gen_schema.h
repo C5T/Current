@@ -35,16 +35,14 @@ inline void GenerateSchema(const std::string& filename, const std::string& expos
   expose.template AddType<TopLevel>("ExposedTopLevel");
 
   current::FileSystem::WriteStringToFile(
-      struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose),
-      filename.c_str());
+      struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose), filename.c_str());
 }
 
-#define GEN_SCHEMA(realm, Realm)                                                                         \
-  int main(int argc, char** argv) {                                                                      \
-    ParseDFlags(&argc, &argv);                                                                           \
-    current::FileSystem::MkDir(FLAGS_golden_dir, current::FileSystem::MkDirParameters::Silent);          \
-    GenerateSchema(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_##realm##_file).c_str(), \
-                   Realm);                                                                               \
+#define GEN_SCHEMA(realm, Realm)                                                                                 \
+  int main(int argc, char** argv) {                                                                              \
+    ParseDFlags(&argc, &argv);                                                                                   \
+    current::FileSystem::MkDir(FLAGS_golden_dir, current::FileSystem::MkDirParameters::Silent);                  \
+    GenerateSchema(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_##realm##_file).c_str(), Realm); \
   }
 
 #endif  // GEN_SCHEMA_H

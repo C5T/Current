@@ -139,4 +139,6 @@ struct Evolve<FROM_NAMESPACE, Optional<OPTIONAL_INNER_TYPE>, EVOLVER> {
   }                                                                                        \
   }
 
+#define CURRENT_STRUCT_EVOLVER CURRENT_TYPE_EVOLVER
+
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H

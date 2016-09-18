@@ -561,8 +561,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               for (const auto& f : s.fields) {
                 fields.push_back(f.name);
               }
-              os_ << "CURRENT_TYPE_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", " << bare_struct_name
-                  << ", {\n";
+              os_ << "CURRENT_STRUCT_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
+                  << bare_struct_name << ", {\n";
               // TODO(dkorolev): REMINDER! DIMA! The base `CURRENT_STRUCT` should be handled here too.
               for (const auto& f : s.fields) {
                 const auto& field_name = f.name;

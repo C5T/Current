@@ -804,10 +804,10 @@ struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, Type
 
 #if 0  // Boilerplate evolvers.
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Empty, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Empty, {
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, FullTest, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, FullTest, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.primitives, into.primitives);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.v1, into.v1);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.v2, into.v2);
@@ -823,27 +823,27 @@ CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, FullTest, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.tsc, into.tsc);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, B, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, B, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.b, into.b);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209626390174323094, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209626390174323094, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9200000002835747520, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9200000002835747520, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, C, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, C, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.c, into.c);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.d, into.d);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TrickyEvolutionCases, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TrickyEvolutionCases, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o1, into.o1);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o2, into.o2);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o3, into.o3);
@@ -853,16 +853,16 @@ CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TrickyEvolutionCases, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o7, into.o7);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9201673071807149456, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9201673071807149456, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, A, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, A, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.a, into.a);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Primitives, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Primitives, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.a, into.a);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.b, into.b);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.c, into.c);
@@ -880,39 +880,39 @@ CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Primitives, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o, into.o);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9209980946934124423, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9209980946934124423, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Y, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Y, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209980946934124423, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209980946934124423, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9227782344077896555, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9227782344077896555, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9200000002835747520, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9200000002835747520, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, B2, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, B2, {
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9227782344077896555, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9227782344077896555, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, X, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, X, {
   CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.x, into.x);
 });
 

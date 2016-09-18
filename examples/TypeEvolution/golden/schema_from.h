@@ -450,48 +450,48 @@ struct Evolve<SchemaFrom, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListIm
 
 #if 0  // Boilerplate evolvers.
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, WithExpandingVariant, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithExpandingVariant, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.v, into.v);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, FullName, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.first_name, into.first_name);
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.last_name, into.last_name);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeB, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeB, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.b, into.b);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, Basic, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, Basic, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.i, into.i);
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.s, into.s);
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.t, into.t);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, TopLevel, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, TopLevel, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.data, into.data);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, WithShrinkingVariant, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithShrinkingVariant, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.v, into.v);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, WithFieldsToRemove, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithFieldsToRemove, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.foo, into.foo);
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.bar, into.bar);
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.baz, into.baz);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeA, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeA, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.a, into.a);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeC, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, CustomTypeC, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.c, into.c);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, WithOptional, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithOptional, {
   CURRENT_NATURAL_EVOLVE(SchemaFrom, CustomDestinationNamespace, from.maybe_name, into.maybe_name);
 });
 

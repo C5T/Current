@@ -232,32 +232,32 @@ struct Evolve<SchemaOriginalStorage, ::current::VariantImpl<VARIANT_NAME_HELPER,
 
 #if 0  // Boilerplate evolvers.
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaOriginalStorage, PersistedUserDeleted, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaOriginalStorage, PersistedUserDeleted, {
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.us, into.us);
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.key, into.key);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaOriginalStorage, Transaction_T9226378158835221611, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaOriginalStorage, Transaction_T9226378158835221611, {
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.meta, into.meta);
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.mutations, into.mutations);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaOriginalStorage, Name, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaOriginalStorage, Name, {
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.first, into.first);
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.last, into.last);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaOriginalStorage, TransactionMeta, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaOriginalStorage, TransactionMeta, {
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.begin_us, into.begin_us);
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.end_us, into.end_us);
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.fields, into.fields);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaOriginalStorage, User, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaOriginalStorage, User, {
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.key, into.key);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaOriginalStorage, PersistedUserUpdated, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaOriginalStorage, PersistedUserUpdated, {
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.us, into.us);
   CURRENT_NATURAL_EVOLVE(SchemaOriginalStorage, CustomDestinationNamespace, from.data, into.data);
 });

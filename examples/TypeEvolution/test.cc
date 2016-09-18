@@ -31,31 +31,31 @@ SOFTWARE.
 #include "flags.h"
 
 // `FullName` has changed. Need to compose the full name from first and last ones.
-CURRENT_TYPE_EVOLVER(CustomEvolver, SchemaFrom, FullName, into.full_name = from.last_name + ", " + from.first_name);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, into.full_name = from.last_name + ", " + from.first_name);
 
 // `ShrinkingVariant` has changed. With three options going into two, need to fit the 3rd one into the 1st one.
 CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, SchemaFrom, ShrinkingVariant, SchemaInto) {
   CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into));
   CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into));
   CURRENT_TYPE_EVOLVER_VARIANT_CASE(CustomTypeC,
-                                     {
-                                       typename INTO::CustomTypeA value;
-                                       value.a = from.c + 1;
-                                       into = std::move(value);
-                                     });
+                                    {
+                                      typename INTO::CustomTypeA value;
+                                      value.a = from.c + 1;
+                                      into = std::move(value);
+                                    });
 };
 
 // `WithFieldsToRemove` has changed. Need to copy over `.foo` and `.bar`, and process `.baz`.
-CURRENT_TYPE_EVOLVER(CustomEvolver,
-                      SchemaFrom,
-                      WithFieldsToRemove,
-                      {
-                        CURRENT_EVOLVE_FIELD(foo);
-                        CURRENT_EVOLVE_FIELD(bar);
-                        if (!from.baz.empty()) {
-                          into.foo += ' ' + current::strings::Join(from.baz, ' ');
-                        }
-                      });
+CURRENT_STRUCT_EVOLVER(CustomEvolver,
+                       SchemaFrom,
+                       WithFieldsToRemove,
+                       {
+                         CURRENT_EVOLVE_FIELD(foo);
+                         CURRENT_EVOLVE_FIELD(bar);
+                         if (!from.baz.empty()) {
+                           into.foo += ' ' + current::strings::Join(from.baz, ' ');
+                         }
+                       });
 
 TEST(TypeEvolution, SchemaFrom) {
   current::reflection::StructSchema struct_schema;
@@ -70,10 +70,9 @@ TEST(TypeEvolution, SchemaFrom) {
           current::strings::Split<current::strings::ByLines>(
               struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose)),
           '\n'),
-      current::strings::Join(
-          current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-              current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_from_file))),
-          '\n'));
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_from_file))),
+                             '\n'));
 }
 
 TEST(TypeEvolution, SchemaInto) {
@@ -89,10 +88,9 @@ TEST(TypeEvolution, SchemaInto) {
           current::strings::Split<current::strings::ByLines>(
               struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose)),
           '\n'),
-      current::strings::Join(
-          current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-              current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_into_file))),
-          '\n'));
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_into_file))),
+                             '\n'));
 }
 
 TEST(TypeEvolution, Data) {
@@ -101,10 +99,9 @@ TEST(TypeEvolution, Data) {
   std::vector<std::string> golden_into;
 
   // Run type evolution.
-  for (const std::string& line :
-       current::strings::Split(current::FileSystem::ReadFileAsString(
-                                   current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file)),
-                               '\n')) {
+  for (const std::string& line : current::strings::Split(
+           current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file)),
+           '\n')) {
     typename SchemaFrom::TopLevel from;
     typename SchemaInto::TopLevel into;
 
@@ -118,15 +115,15 @@ TEST(TypeEvolution, Data) {
   }
 
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
-  EXPECT_EQ(current::strings::Join(
-                current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-                    current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file))),
-                '\n'),
-            current::strings::Join(golden_from, '\n'));
+  EXPECT_EQ(
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file))),
+                             '\n'),
+      current::strings::Join(golden_from, '\n'));
 
-  EXPECT_EQ(current::strings::Join(
-                current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-                    current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_into_file))),
-                '\n'),
-            current::strings::Join(golden_into, '\n'));
+  EXPECT_EQ(
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_into_file))),
+                             '\n'),
+      current::strings::Join(golden_into, '\n'));
 }
