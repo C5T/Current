@@ -46,11 +46,14 @@ struct SimpleResponseFormatter {
   }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
-  static Response BuildResponseWithCollection(const Context&, const std::string& url, ITERABLE&& span) {
+  static Response BuildResponseWithCollection(const Context&,
+                                              const std::string& pagination_url,
+                                              const std::string& collection_url,
+                                              ITERABLE&& span) {
     SimpleRESTContainerResponse payload;
-    payload.url = url;
+    payload.url = pagination_url;
     for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
-      payload.data.emplace_back(url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
+      payload.data.emplace_back(collection_url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator));
     }
     return Response(payload);
   }
