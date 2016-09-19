@@ -2323,7 +2323,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.1/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1/!2\",\"data\":[\"/data/"
           "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
           response.body);
     }
@@ -2331,7 +2331,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.2/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m\",\"data\":[\"/data/"
+          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2/3\",\"data\":[\"/data/"
           "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
           response.body);
     }
@@ -2384,7 +2384,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=0&n=10\",\"url_directory\":\"/data/"
           "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
           "\"data\":[{\"url\":\"/data/composite_m2m/!2/1\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"url\":\"/"
           "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
@@ -2394,10 +2394,51 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
       const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3"));
       EXPECT_EQ(200, static_cast<int>(response.code));
       EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m?i=0&n=10\",\"url_directory\":\"/data/"
+          "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=0&n=10\",\"url_directory\":\"/data/"
           "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
           "\"data\":[{\"url\":\"/data/composite_m2m/!1/3\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"url\":\"/"
           "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+          response.body);
+    }
+    // And some inner-level pagination tests.
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2?n=1"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=0&n=1\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":1,\"total\":2,\"url_next_page\":\"/data/composite_m2m.1/"
+          "!2?i=1&n=1\",\"url_previous_page\":null,\"data\":[{\"url\":\"/data/composite_m2m/!2/"
+          "1\",\"data\":{\"row\":\"!2\",\"col\":1}}]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2?n=1&i=1"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=1&n=1\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":1,\"n\":1,\"total\":2,\"url_next_page\":null,\"url_previous_page\":\"/data/"
+          "composite_m2m.1/!2?i=0&n=1\",\"data\":[{\"url\":\"/data/composite_m2m/!2/"
+          "3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3?n=1"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=0&n=1\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":0,\"n\":1,\"total\":2,\"url_next_page\":\"/data/composite_m2m.2/"
+          "3?i=1&n=1\",\"url_previous_page\":null,\"data\":[{\"url\":\"/data/composite_m2m/!1/"
+          "3\",\"data\":{\"row\":\"!1\",\"col\":3}}]}\n",
+          response.body);
+    }
+    {
+      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3?n=1&i=1"));
+      EXPECT_EQ(200, static_cast<int>(response.code));
+      EXPECT_EQ(
+          "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=1&n=1\",\"url_directory\":\"/data/"
+          "composite_m2m\",\"i\":1,\"n\":1,\"total\":2,\"url_next_page\":null,\"url_previous_page\":\"/data/"
+          "composite_m2m.2/3?i=0&n=1\",\"data\":[{\"url\":\"/data/composite_m2m/!2/"
+          "3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
           response.body);
     }
   }
