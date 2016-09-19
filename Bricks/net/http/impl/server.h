@@ -232,13 +232,17 @@ class GenericHTTPRequestData : public HELPER {
                   CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
+                buffer_[offset] = '\0';
               }
+
               // Then, append this newly parsed or received chunk to the body.
               HELPER::OnChunk(&buffer_[chunk_offset], chunk_length);
-              // Finally, change `next_line_offset` to force skipping the, possibly binary, body.
-              // There will be an extra CRLF after the chunk, but we don't require it.
-              next_line_offset = next_offset;
-              // TODO(dkorolev): The above code works, but keeps growing memory usage. Shrink it.
+
+              // In chunked mode, span the next line to the beginning of the buffer to prevent infinite RAM growth.
+              CURRENT_ASSERT(body_offset == static_cast<size_t>(-1));
+              std::memmove(&buffer_[0], &buffer_[next_offset], buffer_.size() - next_offset);
+              offset -= next_offset;
+              next_line_offset = 0;
             }
           }
         } else if (!line_is_blank) {
@@ -257,6 +261,7 @@ class GenericHTTPRequestData : public HELPER {
             }
           }
         } else {
+          // The blank line is what separates HTTP headers from HTTP body.
           if (!chunked_transfer_encoding) {
             // HTTP body starts right after this last CRLF.
             body_offset = next_line_offset;
@@ -273,9 +278,18 @@ class GenericHTTPRequestData : public HELPER {
                 const size_t delta_size = length_cap + 1 - buffer_.size();
                 buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length));
               }
+              if (length_cap > offset) {
+                const size_t bytes_to_read = length_cap - offset;
+                if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
+                  CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
+                }
+              }
+              body_buffer_begin_ = &buffer_[body_offset];
+              body_buffer_end_ = body_buffer_begin_ + body_length;
+              return;
             } else {
-              // Indicate we are done parsing the header.
-              length_cap = body_offset;
+              // HTTP body length has not been set, so we're done..
+              return;
             }
           } else {
             receiving_body_in_chunks = true;
@@ -283,11 +297,6 @@ class GenericHTTPRequestData : public HELPER {
         }
         current_line_offset = next_line_offset;
       }
-    }
-    if (body_length != static_cast<size_t>(-1)) {
-      // Initialize pointers pair to point to the BODY to be read.
-      body_buffer_begin_ = &buffer_[body_offset];
-      body_buffer_end_ = body_buffer_begin_ + body_length;
     }
   }
 
