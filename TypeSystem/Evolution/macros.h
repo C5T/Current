@@ -117,4 +117,7 @@ struct CurrentGenericPerCaseVariantEvolver {
     CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into);                                             \
   }
 
+#define CURRENT_DROP_CASE(T) \
+  void operator()(const typename FROM::T&) const {}
+
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_MACROS_H
