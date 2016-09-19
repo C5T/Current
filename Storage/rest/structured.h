@@ -208,15 +208,13 @@ struct Structured {
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
+        // Pass the same `url` twice, as the collection ("specific row/col") and pagination have the same base URL.
+        const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
+                                '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
         return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
                                                                         ENTRY,
                                                                         RESTSubCollection<ENTRY>>(
-            context,
-            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
-                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
-            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
-                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
-            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
+            context, url, url, GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
       }
     }
 
