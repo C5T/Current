@@ -107,14 +107,17 @@ struct HypermediaResponseFormatter {
   }
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename INNER_HYPERMEDIA_TYPE, typename ITERABLE>
-  static Response BuildResponseWithCollection(const Context& context, const std::string& url, ITERABLE&& span) {
+  static Response BuildResponseWithCollection(const Context& context,
+                                              const std::string& pagination_url,
+                                              const std::string& collection_url,
+                                              ITERABLE&& span) {
     using inner_element_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
     using collection_element_t = typename std::conditional<std::is_same<INNER_HYPERMEDIA_TYPE, inner_element_t>::value,
                                                            HypermediaRESTFullCollectionRecord<inner_element_t>,
                                                            HypermediaRESTBriefCollectionRecord<inner_element_t>>::type;
 
     HypermediaRESTCollectionResponse<collection_element_t> response;
-    response.url_directory = url;
+    response.url_directory = collection_url;
 
     // Poor man's pagination.
     const size_t total = span.Size();
@@ -135,7 +138,7 @@ struct HypermediaResponseFormatter {
         response.data.resize(response.data.size() + 1);
         collection_element_t& record = response.data.back();
 
-        record.url = url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
+        record.url = collection_url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
         PopulateCollectionRecord<ENTRY, typename current::decay<typename iterator_t::value_t>>::DoIt(
             record.DataOrBriefByRef(), iterator);
       } else if (current_index < context.query_i) {
@@ -147,8 +150,8 @@ struct HypermediaResponseFormatter {
       ++current_index;
     }
 
-    const auto gen_page_url = [&url](uint64_t url_i, uint64_t url_n) {
-      return url + "?i=" + current::ToString(url_i) + "&n=" + current::ToString(url_n);
+    const auto gen_page_url = [&pagination_url](uint64_t url_i, uint64_t url_n) {
+      return pagination_url + "?i=" + current::ToString(url_i) + "&n=" + current::ToString(url_n);
     };
 
     if (context.query_i > total) {

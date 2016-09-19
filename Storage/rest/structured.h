@@ -154,8 +154,10 @@ struct Structured {
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
+          // Pass `url` twice, as `pagination_url` and `collection_url` are the same for this format.
+          const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
-              context, input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, input.field);
+              context, url, url, input.field);
         } else {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
@@ -185,15 +187,20 @@ struct Structured {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
+        const std::string row_or_col_key_string = Value(input.rowcol_get_url_key);
         const auto row_or_col_key =
             current::FromString<typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
-                Value(input.rowcol_get_url_key));
+                row_or_col_key_string);
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
           return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
-              context, input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, iterable);
+              context,
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
+                  MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix() + '/' + row_or_col_key_string,
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
+              iterable);
         } else {
           return ErrorResponse(
               ResourceNotFoundError("The requested key has was not found.", {{"key", Value(input.rowcol_get_url_key)}}),
@@ -205,6 +212,8 @@ struct Structured {
                                                                         ENTRY,
                                                                         RESTSubCollection<ENTRY>>(
             context,
+            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
+                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
                 MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
