@@ -31,38 +31,38 @@ SOFTWARE.
 #include "flags.h"
 
 // `FullName` has changed. Need to compose the full name from first and last ones.
-CURRENT_TYPE_EVOLVER(CustomEvolver, From, FullName, into.full_name = from.last_name + ", " + from.first_name);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, into.full_name = from.last_name + ", " + from.first_name);
 
 // `ShrinkingVariant` has changed. With three options going into two, need to fit the 3rd one into the 1st one.
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, From, ShrinkingVariant, Into) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeA, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(CustomTypeB, CURRENT_NATURAL_EVOLVE(From, Into, from, into));
-  CURRENT_TYPE_EVOLVER_VARIANT_CASE(CustomTypeC,
-                                     {
-                                       typename Into::CustomTypeA value;
-                                       value.a = from.c + 1;
-                                       into = std::move(value);
-                                     });
+CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, ShrinkingVariant, SchemaInto) {
+  CURRENT_COPY_CASE(CustomTypeA);
+  CURRENT_COPY_CASE(CustomTypeB);
+  CURRENT_EVOLVE_CASE(CustomTypeC,
+                       {
+                         typename INTO::CustomTypeA value;
+                         value.a = from.c + 1;
+                         into = std::move(value);
+                       });
 };
 
 // `WithFieldsToRemove` has changed. Need to copy over `.foo` and `.bar`, and process `.baz`.
-CURRENT_TYPE_EVOLVER(CustomEvolver,
-                      From,
-                      WithFieldsToRemove,
-                      {
-                        CURRENT_NATURAL_EVOLVE(From, Into, from.foo, into.foo);
-                        CURRENT_NATURAL_EVOLVE(From, Into, from.bar, into.bar);
-                        if (!from.baz.empty()) {
-                          into.foo += ' ' + current::strings::Join(from.baz, ' ');
-                        }
-                      });
+CURRENT_STRUCT_EVOLVER(CustomEvolver,
+                       SchemaFrom,
+                       WithFieldsToRemove,
+                       {
+                         CURRENT_COPY_FIELD(foo);
+                         CURRENT_COPY_FIELD(bar);
+                         if (!from.baz.empty()) {
+                           into.foo += ' ' + current::strings::Join(from.baz, ' ');
+                         }
+                       });
 
 TEST(TypeEvolution, SchemaFrom) {
   current::reflection::StructSchema struct_schema;
-  current::reflection::NamespaceToExpose expose("From");
+  current::reflection::NamespaceToExpose expose("SchemaFrom");
 
-  struct_schema.AddType<typename From::TopLevel>();
-  expose.template AddType<typename From::TopLevel>("ExposedTopLevel");
+  struct_schema.AddType<typename SchemaFrom::TopLevel>();
+  expose.template AddType<typename SchemaFrom::TopLevel>("ExposedTopLevel");
 
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
   EXPECT_EQ(
@@ -70,18 +70,17 @@ TEST(TypeEvolution, SchemaFrom) {
           current::strings::Split<current::strings::ByLines>(
               struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose)),
           '\n'),
-      current::strings::Join(
-          current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-              current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_from_file))),
-          '\n'));
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_from_file))),
+                             '\n'));
 }
 
 TEST(TypeEvolution, SchemaInto) {
   current::reflection::StructSchema struct_schema;
-  current::reflection::NamespaceToExpose expose("Into");
+  current::reflection::NamespaceToExpose expose("SchemaInto");
 
-  struct_schema.AddType<typename Into::TopLevel>();
-  expose.template AddType<typename Into::TopLevel>("ExposedTopLevel");
+  struct_schema.AddType<typename SchemaInto::TopLevel>();
+  expose.template AddType<typename SchemaInto::TopLevel>("ExposedTopLevel");
 
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
   EXPECT_EQ(
@@ -89,10 +88,9 @@ TEST(TypeEvolution, SchemaInto) {
           current::strings::Split<current::strings::ByLines>(
               struct_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>(true, expose)),
           '\n'),
-      current::strings::Join(
-          current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-              current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_into_file))),
-          '\n'));
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_into_file))),
+                             '\n'));
 }
 
 TEST(TypeEvolution, Data) {
@@ -101,32 +99,31 @@ TEST(TypeEvolution, Data) {
   std::vector<std::string> golden_into;
 
   // Run type evolution.
-  for (const std::string& line :
-       current::strings::Split(current::FileSystem::ReadFileAsString(
-                                   current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file)),
-                               '\n')) {
-    typename From::TopLevel from;
-    typename Into::TopLevel into;
+  for (const std::string& line : current::strings::Split(
+           current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file)),
+           '\n')) {
+    typename SchemaFrom::TopLevel from;
+    typename SchemaInto::TopLevel into;
 
     ParseJSON(line, from);
-    current::type_evolution::Evolve<From,
-                                    typename From::TopLevel,
-                                    current::type_evolution::CustomEvolver>::template Go<Into>(from, into);
+    current::type_evolution::Evolve<SchemaFrom,
+                                    typename SchemaFrom::TopLevel,
+                                    current::type_evolution::CustomEvolver>::template Go<SchemaInto>(from, into);
 
     golden_from.push_back(JSON(from));
     golden_into.push_back(JSON(into));
   }
 
   // Compare the results to the golden files. Split-and-join for Windows-friendliness wrt. line endings. -- D.K.
-  EXPECT_EQ(current::strings::Join(
-                current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-                    current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file))),
-                '\n'),
-            current::strings::Join(golden_from, '\n'));
+  EXPECT_EQ(
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_from_file))),
+                             '\n'),
+      current::strings::Join(golden_from, '\n'));
 
-  EXPECT_EQ(current::strings::Join(
-                current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
-                    current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_into_file))),
-                '\n'),
-            current::strings::Join(golden_into, '\n'));
+  EXPECT_EQ(
+      current::strings::Join(current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(
+                                 current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_into_file))),
+                             '\n'),
+      current::strings::Join(golden_into, '\n'));
 }

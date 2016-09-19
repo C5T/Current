@@ -49,6 +49,14 @@ SOFTWARE.
 #define CURRENT_NATURAL_EVOLVE(from_namespace, into_namespace, from_object, into_object) \
   CURRENT_EVOLVE_IMPL(CURRENT_ACTIVE_EVOLVER, from_namespace, into_namespace, from_object, into_object)
 
+// Making the syntax shorter. -- D.K.
+#define CURRENT_COPY_FIELD(f) \
+  ::current::type_evolution::Evolve<FROM, decltype(from.f), CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(from.f, into.f)
+
+#define CURRENT_COPY_SUPER(t)                                                                  \
+  ::current::type_evolution::Evolve<FROM, FROM::t, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>( \
+      static_cast<const typename FROM::t&>(from), static_cast<typename INTO::t&>(into))
+
 // Macros to shorten variant evolution.
 namespace current {
 namespace type_evolution {
@@ -96,5 +104,20 @@ struct CurrentGenericPerCaseVariantEvolver {
     auto& into = Value<into_t>(into0);                                                          \
     __VA_ARGS__;                                                                                \
   }
+
+// Shorter syntax. -- D.K.
+#define CURRENT_VARIANT_EVOLVER CURRENT_TYPE_EVOLVER_VARIANT
+#define CURRENT_EVOLVE_CASE CURRENT_TYPE_EVOLVER_VARIANT_CASE
+#define CURRENT_COPY_CASE(T)                                                                    \
+  void operator()(const typename FROM::T& from) const {                                         \
+    auto& into0 = *::current::type_evolution::CurrentGenericPerCaseVariantEvolver<DST>::p_into; \
+    using into_t = typename INTO::T;                                                            \
+    into0 = into_t();                                                                           \
+    auto& into = Value<into_t>(into0);                                                          \
+    CURRENT_NATURAL_EVOLVE(FROM, INTO, from, into);                                             \
+  }
+
+#define CURRENT_DROP_CASE(T) \
+  void operator()(const typename FROM::T&) const {}
 
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_MACROS_H

@@ -25,4 +25,4 @@ SOFTWARE.
 #include "flags.h"
 #include "gen_schema.h"
 
-GEN_SCHEMA(into, "Into");
+GEN_SCHEMA(into, "SchemaInto");
