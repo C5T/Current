@@ -232,13 +232,17 @@ class GenericHTTPRequestData : public HELPER {
                   CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
+                buffer_[offset] = '\0';
               }
+
               // Then, append this newly parsed or received chunk to the body.
               HELPER::OnChunk(&buffer_[chunk_offset], chunk_length);
-              // Finally, change `next_line_offset` to force skipping the, possibly binary, body.
-              // There will be an extra CRLF after the chunk, but we don't require it.
-              next_line_offset = next_offset;
-              // TODO(dkorolev): The above code works, but keeps growing memory usage. Shrink it.
+
+              // In chunked mode, span the next line to the beginning of the buffer to prevent infinite RAM growth.
+              CURRENT_ASSERT(body_offset == static_cast<size_t>(-1));
+              std::memmove(&buffer_[0], &buffer_[next_offset], buffer_.size() - next_offset);
+              offset -= next_offset;
+              next_line_offset = 0;
             }
           }
         } else if (!line_is_blank) {
