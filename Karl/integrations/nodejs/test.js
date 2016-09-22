@@ -34,7 +34,7 @@ const claireConfig = {
   localPort: 30002,
   cloudInstanceName: 'i-12345',
   cloudAvailabilityGroup: 'g-1',
-  karlURL: 'http://127.0.0.1:' + String(testKarlKeepalivesPort) + '/',
+  karlUrl: 'http://127.0.0.1:' + String(testKarlKeepalivesPort),
   keepaliveInterval: 10000
 }
 
@@ -51,7 +51,7 @@ describe('Claire JS client test.', function () {
 
   it('Check that no service is running on Karl\'s port', function (done) {
     request({
-      uri: claireConfig.karlURL + '/up'
+      uri: claireConfig.karlUrl + '/up'
     }, function (error, response) {
       if (error) {
         done();
@@ -69,7 +69,7 @@ describe('Claire JS client test.', function () {
     var retriesLeft = 10;
     var checkKarlIsUp = function () {
       request({
-        uri: claireConfig.karlURL + 'up'
+        uri: claireConfig.karlUrl + '/up'
       }, function (error, response) {
         if (error || response.statusCode !== 200) {
           if (--retriesLeft) {
@@ -79,7 +79,7 @@ describe('Claire JS client test.', function () {
           done();
         }
       });
-    }
+    };
     checkKarlIsUp();
   });
 
@@ -95,9 +95,9 @@ describe('Claire JS client test.', function () {
   });
 
   it('Check that Karl responds with the proper fleet status', function (done) {
-    const fleetViewURL = 'http://127.0.0.1:' + String(testKarlFleetViewPort) + '/';
+    const fleetViewUrl = 'http://127.0.0.1:' + String(testKarlFleetViewPort) + '/';
     request({
-      uri: fleetViewURL
+      uri: fleetViewUrl
     }, function (error, response) {
       if (error) {
         console.error('Can\'t get fleet state information from Karl.');
@@ -105,11 +105,16 @@ describe('Claire JS client test.', function () {
       } else {
         assert.equal(response.statusCode, 200);
         var fleet = JSON.parse(response.body);
-        assert.equal(fleet.machines['127.0.0.1'].cloud_instance_name, claireConfig.cloudInstanceName);
-        assert.equal(fleet.machines['127.0.0.1'].cloud_availability_group, claireConfig.cloudAvailabilityGroup);
-        assert(claire.codename in fleet.machines['127.0.0.1'].services);
-        var service = fleet.machines['127.0.0.1'].services[claire.codename];
-        assert("up" in service.currently);
+        assert(typeof fleet === 'object' && fleet);
+        assert(typeof fleet.machines === 'object' && fleet.machines);
+        assert(typeof fleet.machines['127.0.0.1'] === 'object' && fleet.machines['127.0.0.1']);
+        var machine = fleet.machines['127.0.0.1'];
+        assert.equal(machine.cloud_instance_name, claireConfig.cloudInstanceName);
+        assert.equal(machine.cloud_availability_group, claireConfig.cloudAvailabilityGroup);
+        assert(claire.codename in machine.services);
+        var service = machine.services[claire.codename];
+        assert(typeof service.currently.up === 'object' && service.currently.up);
+        assert.equal(service.currently.up.start_time_epoch_microseconds, claire.startTimestamp * 1000);
         assert.equal(service.service, claireConfig.service);
         assert.equal(service.codename, claire.codename);
         assert.equal(service.location.ip, '127.0.0.1');
@@ -123,14 +128,16 @@ describe('Claire JS client test.', function () {
   });
 
   it('Deregister in Karl', function (done) {
-    claire.deregister();
-    done();
+    claire.deregister(function (result) {
+      assert(result.success);
+      done();
+    });
   });
 
   it('Check that Karl does not report our service as active', function (done) {
-    const fleetViewURL = 'http://127.0.0.1:' + String(testKarlFleetViewPort) + '/?active_only';
+    const fleetViewUrl = 'http://127.0.0.1:' + String(testKarlFleetViewPort) + '/?active_only';
     request({
-      uri: fleetViewURL
+      uri: fleetViewUrl
     }, function (error, response) {
       if (error) {
         console.error('Can\'t get fleet state information from Karl.');
@@ -149,17 +156,17 @@ describe('Claire JS client test.', function () {
     var retriesLeft = 10;
     var shutdownKarl = function () {
       request({
-        uri: claireConfig.karlURL + 'shutdown'
+        uri: claireConfig.karlUrl + '/shutdown'
       }, function (error, response) {
         if (error || response.statusCode !== 200) {
           if (--retriesLeft) {
-            setTimeout(checkKarlIsUp, 50);
+            setTimeout(shutdownKarl, 50);
           }
         } else {
           done();
         }
       });
-    }
+    };
     shutdownKarl();
   });
 
@@ -170,7 +177,7 @@ describe('Claire JS client test.', function () {
       } else {
         done();
       }
-    }
+    };
     wait();
   });
 });

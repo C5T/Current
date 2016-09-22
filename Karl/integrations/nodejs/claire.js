@@ -24,15 +24,12 @@ SOFTWARE.
 
 var request = require('request');
 
-function timeIntervalAsHumanReadableString(begin_date, end_date) {
-  var begin_ms = begin_date.getTime();
-  var end_ms = end_date.getTime();
-
-  if (end_ms < begin_ms) {
-    return '-' + timeIntervalAsHumanReadableString(end_date, begin_date);
+function timeIntervalAsHumanReadableString(begin, end) {
+  if (end < begin) {
+    return '-' + timeIntervalAsHumanReadableString(end, begin);
   }
 
-  var seconds = Math.floor((end_ms - begin_ms) / 1000);
+  var seconds = Math.floor((end - begin) / 1000);
   if (seconds < 60) {
     return String(seconds) + 's';
   } else {
@@ -63,113 +60,148 @@ function generateCodename () {
 }
 
 function Claire (config) {
-  const startDate = new Date();
+  const startTimestamp = Date.now();
   const codename = generateCodename();
-  this.lastKeepaliveAttemptResult = { date: null, status: null };
-  this.keepaliveLoopRunning = false;
+  var claireStatus_;
+  var statusFiller_;
+  var lastKeepaliveAttemptResult_ = { timestamp: null, status: null };
+  var registered_ = false;
+  var keepaliveTimeoutId_;
+  var lastSuccessfulKeepaliveTimestamp_;
+  var lastSuccessfulKeepalivePing_;
 
   Object.defineProperty(this, 'config', { value: config, writable: false });
   Object.defineProperty(this, 'codename', { value: codename, writable: false });
-  Object.defineProperty(this, 'startDate', { value: startDate, writable: false });
+  Object.defineProperty(this, 'startTimestamp', { value: startTimestamp, writable: false });
   Object.defineProperty(this,
                         'keepaliveInterval',
                         {
-                          value: (config.keepaliveInterval !== undefined) ? config.keepaliveInterval : 20000,
+                          value: (config.keepaliveInterval !== undefined ? config.keepaliveInterval : 20000),
                           writable: false
                         });
+
+  this.setStatusFiller = function (value) { statusFiller_ = value; }
+  this.isRegistered = function () { return registered_; }
+  this.setRegistered = function (value) { registered_ = value; }
+
+  this.keepaliveLoop = function () {
+    if (registered_) {
+      this.fillKeepaliveStatus();
+      this.sendKeepalive();
+      keepaliveTimeoutId_ = setTimeout(this.keepaliveLoop.bind(this), this.keepaliveInterval);
+    }
+  };
+
+  this.clearKeepaliveTimeout = function () {
+    if (keepaliveTimeoutId_ !== undefined && keepaliveTimeoutId_) {
+      clearTimeout(keepaliveTimeoutId_);
+      keepaliveTimeoutId_ = null;
+    }
+  };
+
+  this.fillKeepaliveStatus = function () {
+    var now = Date.now();
+    var dependencies = (config.dependencies !== undefined && Array.isArray(config.dependencies) ?
+        config.dependencies : []);
+    var lastKeepaliveSent = (lastKeepaliveAttemptResult_.timestamp !== null ?
+        timeIntervalAsHumanReadableString(lastKeepaliveAttemptResult_.timestamp, now) + ' ago' : '');
+    var lastKeepaliveStatus = (lastKeepaliveAttemptResult_.status !== null ?
+        lastKeepaliveAttemptResult_.status : '');
+    var lastSuccessfulKeepalive = (lastSuccessfulKeepaliveTimestamp_ !== undefined ?
+        timeIntervalAsHumanReadableString(lastSuccessfulKeepaliveTimestamp_, now) + ' ago' : undefined);
+    var lastSuccessfulKeepalivePing = (lastSuccessfulKeepalivePing_ !== undefined ?
+        String(lastSuccessfulKeepalivePing_) + 'ms' : undefined);
+    var lastSuccessfulKeepalivePingUs = (lastSuccessfulKeepalivePing_ !== undefined ?
+        lastSuccessfulKeepalivePing_ * 1000 : undefined);
+    claireStatus = {
+      service: config.service,
+      codename: codename,
+      local_port: config.localPort,
+      cloud_instance_name: config.cloudInstanceName,
+      cloud_availability_group: config.cloudAvailabilityGroup,
+      dependencies: dependencies,
+      reporting_to: config.karlUrl,
+      now: now * 1000,
+      start_time_epoch_microseconds: startTimestamp * 1000,
+      uptime: timeIntervalAsHumanReadableString(startTimestamp, now),
+      last_keepalive_sent: lastKeepaliveSent,
+      last_keepalive_status: lastKeepaliveStatus,
+      last_successful_keepalive: lastSuccessfulKeepalive,
+      last_successful_keepalive_ping: lastSuccessfulKeepalivePing,
+      last_successful_keepalive_ping_us: lastSuccessfulKeepalivePingUs,
+      build: config.buildInfo,
+    };
+
+    if (statusFiller_ !== undefined && statusFiller_) {
+      claireStatus.runtime = statusFiller_();
+    }
+  };
+
+  this.sendKeepalive = function () {
+    var beforeRequestTimestamp = Date.now();
+
+    request({
+      uri: this.config.karlUrl,
+      method: 'POST',
+      qs: { codename: this.codename, port: this.config.localPort },
+      json: true,
+      body: claireStatus
+    }, function (error, response) {
+      var afterRequestTimestamp = Date.now();
+      lastKeepaliveAttemptResult_.timestamp = afterRequestTimestamp;
+      if (error) {
+        lastKeepaliveAttemptResult_.status = 'HTTP connection attempt failed';
+      } else if (response.statusCode < 200 || response.statusCode > 299) {
+        lastKeepaliveAttemptResult_.status = 'HTTP response code ' + String(response.statusCode);
+      } else {
+        lastKeepaliveAttemptResult_.status = 'Success';
+        lastSuccessfulKeepaliveTimestamp_ = afterRequestTimestamp;
+        lastSuccessfulKeepalivePing_ = afterRequestTimestamp - beforeRequestTimestamp;
+      }
+    });
+  };
+
 }
 
 Claire.prototype.constructor = Claire;
 
+// TODO(mzhurovich): Strict register.
 Claire.prototype.register = function (statusFiller) {
-  Object.defineProperty(this, 'statusFiller', { value: statusFiller, writable: false });
-  this.keepaliveLoopRunning = true;
-  this.keepaliveLoop();
-}
+  if (!this.isRegistered()) {
+    this.setStatusFiller(statusFiller);
+    this.setRegistered(true);
+    this.keepaliveLoop();
+  }
+};
 
-Claire.prototype.deregister = function () {
-  this.keepaliveLoopRunning = false;
-  request({
-    uri: this.config.karlURL,
-    method: 'DELETE',
-    qs: { codename: this.codename }
-  }, function () {});
-}
+Claire.prototype.deregister = function (callback) {
+  if (this.isRegistered()) {
+    this.clearKeepaliveTimeout();
+    this.setRegistered(false);
+    request({
+      uri: this.config.karlUrl,
+      method: 'DELETE',
+      qs: { codename: this.codename }
+    }, function (error, response) {
+      if (typeof callback === 'function') {
+        if (error) {
+          callback({ success: false, error: 'HTTP connection attempt failed' });
+        } else if (response.statusCode < 200 || response.statusCode > 299) {
+          callback({ success: false, error: 'HTTP request error', response: response });
+        } else {
+          callback({ success: true });
+        }
+      }
+    });
+  }
+};
 
 Claire.prototype.forceSendKeepalive = function () {
-  this.fillKeepaliveStatus();
-  this.sendKeepalive();
-}
-
-Claire.prototype.keepaliveLoop = function () {
-  if (this.keepaliveLoopRunning) {
-    this.fillKeepaliveStatus();
-    this.sendKeepalive();
-    setTimeout(this.keepaliveLoop.bind(this), this.keepaliveInterval);
+  if (this.isRegistered()) {
+    // Clear existing keepalive timeout and restart the loop.
+    this.clearKeepaliveTimeout();
+    this.keepaliveLoop();
   }
-}
-
-Claire.prototype.fillKeepaliveStatus = function () {
-  var now = new Date();
-  var dependencies = (this.config.dependencies !== undefined && this.config.dependencies.isArray) ?
-      this.config.dependencies : [];
-  var lastKeepaliveSent = (this.lastKeepaliveAttemptResult.date !== null) ?
-      timeIntervalAsHumanReadableString(this.lastKeepaliveAttemptResult.date, now) + ' ago' : '';
-  var lastKeepaliveStatus = (this.lastKeepaliveAttemptResult.status !== null) ?
-      this.lastKeepaliveAttemptResult.status : '';
-  var lastSuccessfulKeepalive = (this.lastSuccessfulKeepaliveDate !== undefined) ?
-      timeIntervalAsHumanReadableString(this.lastSuccessfulKeepaliveDate, now) + ' ago' : undefined;
-  var lastSuccessfulKeepalivePing = (this.lastSuccessfulKeepalivePing !== undefined) ?
-      String(this.lastSuccessfulKeepalivePing) + 'ms' : undefined;
-  var lastSuccessfulKeepalivePingUs = (this.lastSuccessfulKeepalivePing !== undefined) ?
-      this.lastSuccessfulKeepalivePing * 1000 : undefined;
-  this.claireStatus = {
-    service: this.config.service,
-    codename: this.codename,
-    local_port: this.config.localPort,
-    cloud_instance_name: this.config.cloudInstanceName,
-    cloud_availability_group: this.config.cloudAvailabilityGroup,
-    dependencies: dependencies,
-    reporting_to: this.config.karlURL,
-    now: now.getTime() * 1000,
-    start_time_epoch_microseconds: this.startDate.getTime() * 1000,
-    uptime: timeIntervalAsHumanReadableString(this.startDate, now),
-    last_keepalive_sent: lastKeepaliveSent,
-    last_keepalive_status: lastKeepaliveStatus,
-    last_successful_keepalive: lastSuccessfulKeepalive,
-    last_successful_keepalive_ping: lastSuccessfulKeepalivePing,
-    last_successful_keepalive_ping_us: lastSuccessfulKeepalivePingUs,
-    build: this.config.buildInfo,
-  };
-
-  if (this.statusFiller !== undefined) {
-    this.claireStatus.runtime = this.statusFiller();
-  }
-}
-
-Claire.prototype.sendKeepalive = function () {
-  var thisClaire = this;
-  var beforeRequestDate = new Date();
-
-  request({
-    uri: this.config.karlURL,
-    method: 'POST',
-    qs: { codename: this.codename, port: this.config.localPort },
-    json: true,
-    body: this.claireStatus
-  }, function (error, response) {
-    var afterRequestDate = new Date();
-    thisClaire.lastKeepaliveAttemptResult.date = afterRequestDate;
-    if (error) {
-      thisClaire.lastKeepaliveAttemptResult.status = 'HTTP connection attempt failed';
-    } else if (response.statusCode < 200 || response.statusCode > 299) {
-      thisClaire.lastKeepaliveAttemptResult.status = 'HTTP response code ' + String(response.statusCode);
-    } else {
-      thisClaire.lastKeepaliveAttemptResult.status = 'Success';
-      thisClaire.lastSuccessfulKeepaliveDate = afterRequestDate;
-      thisClaire.lastSuccessfulKeepalivePing = afterRequestDate.getTime() - beforeRequestDate.getTime();
-    }
-  });
-}
+};
 
 module.exports = Claire;
