@@ -22,3 +22,10 @@
 1. JSON formats:
    1. `&json=js` for JavaScript-friendly JSONs (no numerical type ID), and
    1. `&json=fs` for F#-friendly JSONs (see the `/raw_log/schema.fs` above).
+1. Recap for `/raw_log`:
+   1. Left boundary: `&i=<index>` | `&since=<microseconds timestamp>` | `&tail=<index starting from the end>` | `&recent=<same as tail but in microseconds instead of indexes>`.
+   1. Right boundary: `&n=<count>` | `&period=<microseconds range>` | `&stop_after_bytes=<bytes>` | `&nowait`.
+   1. JSON layout: `&json=js` hides type IDs, and `&json=fs` is F#-friendly.
+   1. Default format is one event per line, as two `'\t'`-separated JSONs: `{index,timestamp}` and event body.
+      1 `&entries_only` surpasses the 1st col, and `&array`, makes the output one large JSON array of the 2nd col.
+   1. Special endpoints: `?sizeonly` for the todal number of entries, and `/raw_low/schema.{json,cpp,fs,h}` for the schema.
