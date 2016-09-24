@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../../Bricks/dflags/dflags.h"
 
-#include "../../Sherlock/sherlock.h"
-#include "../../Sherlock/replicator.h"
+#include "../../../Sherlock/sherlock.h"
+#include "../../../Sherlock/replicator.h"
 
 DEFINE_uint32(n, 100, "The length of the desired chain of subscribers. 255 seems to be the limit on Linux. -- D.K.");
 DEFINE_uint32(m, 1, "The number of \"events\" (really, single-integer JSONs) to work through per replication.");
