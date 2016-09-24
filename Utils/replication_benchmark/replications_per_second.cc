@@ -49,8 +49,8 @@ void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::
 void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::persistence::File>>& output,
                       int index) {
   static int global_index = 0;  // Must have unique filenames otherwise Linux could crash. -- D.K.
-  const std::string fn =
-      current::FileSystem::JoinPath(FLAGS_tmpdir, current::ToString(index) + '-' + current::ToString(global_index));
+  const std::string fn = current::FileSystem::JoinPath(
+      FLAGS_tmpdir, "log-" + current::ToString(index) + '-' + current::ToString(++global_index));
   current::FileSystem::RmFile(fn, current::FileSystem::RmFileParameters::Silent);
   output = std::make_unique<current::sherlock::Stream<Event, current::persistence::File>>(
       current::sherlock::SherlockNamespaceName("Sherlock", "Event"), fn);
@@ -73,7 +73,7 @@ double RunIteration() {
         HTTP(FLAGS_base_port + static_cast<uint16_t>(i)).Register("/stream", URLPathArgs::CountMask::Any, *streams[i]);
   }
 
-  // N remote subscribers, although the last one is unused. 
+  // N remote subscribers, although the last one is unused.
   std::vector<std::unique_ptr<current::sherlock::SubscribableRemoteStream<Event>>> remote_subscribers(FLAGS_n);
   for (uint32_t i = 0; i < FLAGS_n; ++i) {
     remote_subscribers[i] = std::make_unique<current::sherlock::SubscribableRemoteStream<Event>>(
