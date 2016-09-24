@@ -582,6 +582,7 @@ TEST(HTTPAPI, PostAStringAsString) {
                          .Register("/post_string",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
+                                     EXPECT_EQ("POST", r.method);
                                      r(r.body);
                                    });
   EXPECT_EQ("std::string",
@@ -595,6 +596,7 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
                          .Register("/post_const_char_ptr",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
+                                     EXPECT_EQ("POST", r.method);
                                      r(r.body);
                                    });
   EXPECT_EQ("const char*",
@@ -607,6 +609,7 @@ TEST(HTTPAPI, RespondWithStringAsString) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_with_std_string",
                                    [](Request r) {
+                                     EXPECT_EQ("POST", r.method);
                                      EXPECT_EQ("", r.body);
                                      r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
                                    });
