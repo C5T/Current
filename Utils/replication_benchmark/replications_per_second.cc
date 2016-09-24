@@ -98,7 +98,7 @@ double RunIteration() {
     streams[0]->Publish(Event(x));
   }
   while (streams.back()->InternalExposePersister().Size() != FLAGS_m) {
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
   // Do the math and return "replications per second".
