@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
   printf("N = %d, M = %d\n", FLAGS_n, FLAGS_m);
 #ifndef NDEBUG
-  printf("NDEBUG\n");
+  printf("DEBUG\n");
 #endif
   printf("Memory\n");
   Run<current::persistence::Memory>();
