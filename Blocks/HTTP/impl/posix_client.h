@@ -192,6 +192,15 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_body_content_type_ = request.content_type;
   }
 
+  inline static void PrepareInput(const PATCH& request, HTTPClientPOSIX& client) {
+    client.request_method_ = "PATCH";
+    client.request_url_ = request.url;
+    client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    client.request_headers_ = request.custom_headers;
+    client.request_body_contents_ = request.body;
+    client.request_body_content_type_ = request.content_type;
+  }
+
   inline static void PrepareInput(const DELETE& request, HTTPClientPOSIX& client) {
     client.request_method_ = "DELETE";
     client.request_url_ = request.url;

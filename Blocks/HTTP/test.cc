@@ -757,6 +757,19 @@ TEST(HTTPAPI, DeleteRequest) {
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
+TEST(HTTPAPI, PatchRequest) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/patch",
+                                   [](Request r) {
+                                     EXPECT_EQ("PATCH", r.method);
+                                     EXPECT_EQ("test", r.body);
+                                     r("Patch OK.");
+                                   });
+  const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", FLAGS_net_api_test_port), "test"));
+  EXPECT_EQ("Patch OK.", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
 TEST(HTTPAPI, UserAgent) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/ua", [](Request r) { r("TODO(dkorolev): Actually get passed in user agent."); });
