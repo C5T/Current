@@ -77,7 +77,7 @@ double RunIteration() {
   std::vector<std::unique_ptr<current::sherlock::SubscribableRemoteStream<Event>>> remote_subscribers(FLAGS_n);
   for (uint32_t i = 0; i < FLAGS_n; ++i) {
     remote_subscribers[i] = std::make_unique<current::sherlock::SubscribableRemoteStream<Event>>(
-        Printf("http://localhost:%d/stream", static_cast<uint16_t>(FLAGS_base_port)), "Event", "Sherlock");
+        Printf("http://localhost:%d/stream", static_cast<uint16_t>(FLAGS_base_port + i)), "Event", "Sherlock");
   }
 
   // (N - 1) replicators, where index zero, "replicate into the source", is left uninitialized.
