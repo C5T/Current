@@ -83,8 +83,44 @@ describe('Claire JS client test.', function () {
     checkKarlIsUp();
   });
 
-  it('Spawn Claire instance and register in Karl', function (done) {
+  it('Spawn Claire instance and test adding/removing dependencies', function (done) {
     claire = new Claire(claireConfig);
+    var completed = false;
+
+    claire.addDependency('http://localhost:8283', function (error) {
+      assert(!error);
+      assert.equal(claire.dependencies.length, 1);
+      assert.equal(claire.dependencies[0].ip, '127.0.0.1');
+      assert.equal(claire.dependencies[0].port, 8283);
+      assert.equal(claire.dependencies[0].prefix, '/');
+      claire.addDependency('http://localhost:12345', function (error) {
+        assert(!error);
+        assert.equal(claire.dependencies.length, 2);
+        assert.equal(claire.dependencies[1].ip, '127.0.0.1');
+        assert.equal(claire.dependencies[1].port, 12345);
+        assert.equal(claire.dependencies[1].prefix, '/');
+        claire.removeDependency('http://localhost:12345', function (error) {
+          assert(!error);
+          assert.equal(claire.dependencies.length, 1);
+          assert.equal(claire.dependencies[0].ip, '127.0.0.1');
+          assert.equal(claire.dependencies[0].port, 8283);
+          assert.equal(claire.dependencies[0].prefix, '/');
+          completed = true;
+        });
+      });
+    });
+
+    var wait = function () {
+      if (!completed) {
+        setTimeout(wait, 50);
+      } else {
+        done();
+      }
+    };
+    wait();
+  });
+
+  it('Register in Karl using custom status filler', function (done) {
     claire.register(statusFiller);
     done();
   });
@@ -120,6 +156,8 @@ describe('Claire JS client test.', function () {
         assert.equal(service.location.ip, '127.0.0.1');
         assert.equal(service.location.port, claireConfig.localPort);
         assert.equal(service.location.prefix, '/');
+        assert(Array.isArray(service.unresolved_dependencies) && service.unresolved_dependencies.length === 1);
+        assert.equal(service.unresolved_dependencies[0], 'http://127.0.0.1:8283/.current');
         // There should be two keepalives sent at this moment.
         assert.equal(service.runtime.custom_status.custom_field, '2');
         done();
@@ -128,8 +166,8 @@ describe('Claire JS client test.', function () {
   });
 
   it('Deregister in Karl', function (done) {
-    claire.deregister(function (result) {
-      assert(result.success);
+    claire.deregister(function (error) {
+      assert(!error);
       done();
     });
   });

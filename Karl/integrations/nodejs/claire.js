@@ -23,6 +23,8 @@ SOFTWARE.
 *******************************************************************************/
 
 var request = require('request');
+var url = require('url');
+var dns = require('dns');
 
 function timeIntervalAsHumanReadableString(begin, end) {
   if (end < begin) {
@@ -62,11 +64,13 @@ function generateCodename () {
 function Claire (config) {
   const startTimestamp = Date.now();
   const codename = generateCodename();
+  this.dependencies_ = [];
   this.lastKeepaliveAttemptResult_ = { timestamp: null, status: null };
   this.registered_ = false;
 
   Object.defineProperty(this, 'config', { value: config, writable: false });
   Object.defineProperty(this, 'codename', { value: codename, writable: false });
+  Object.defineProperty(this, 'dependencies', { get: function() { return this.dependencies_; } });
   Object.defineProperty(this, 'startTimestamp', { value: startTimestamp, writable: false });
   Object.defineProperty(this,
                         'keepaliveInterval',
@@ -93,7 +97,7 @@ Claire.prototype.register = function (statusFiller) {
 Claire.prototype.deregister = function (callback) {
   if (this.registered_) {
     this.clearKeepaliveTimeout_();
-    this.registerd_ = false;
+    this.registered_ = false;
     request({
       uri: this.config.karlUrl,
       method: 'DELETE',
@@ -101,16 +105,49 @@ Claire.prototype.deregister = function (callback) {
     }, function (error, response) {
       if (typeof callback === 'function') {
         if (error) {
-          callback({ success: false, error: { message: 'HTTP connection attempt failed' } });
+          callback({ message: 'HTTP connection attempt failed' });
         } else if (response.statusCode < 200 || response.statusCode > 299) {
-          callback({ success: false, error: { message: 'HTTP request error', http_response: response } });
+          callback({ message: 'HTTP request error', http_response: response });
         } else {
-          callback({ success: true });
+          callback(null);
         }
       }
     });
   }
 };
+
+Claire.prototype.addDependency = function (dependencyUrl, callback) {
+  var that = this;
+  this.makeDependencyKey_(dependencyUrl, function (error, key) {
+    if (error) {
+      callback(error);
+    } else {
+      if (that.findDependency_(key) === undefined) {
+        that.dependencies_.push(key);
+        callback(null, key);
+      } else {
+        callback({ message: 'Dependency already exists', key: key });
+      }
+    }
+  });
+}
+
+Claire.prototype.removeDependency = function (dependencyUrl, callback) {
+  var that = this;
+  this.makeDependencyKey_(dependencyUrl, function (error, key) {
+    if (error) {
+      callback(error);
+    } else {
+      var idx = that.findDependency_(key);
+      if (idx !== undefined) {
+        that.dependencies_.splice(idx, 1);
+        callback(null);
+      } else {
+        callback({ message: 'Dependency not found', key: key });
+      }
+    }
+  });
+}
 
 Claire.prototype.forceSendKeepalive = function () {
   if (this.registered_) {
@@ -119,6 +156,34 @@ Claire.prototype.forceSendKeepalive = function () {
     this.keepaliveLoop_();
   }
 };
+
+Claire.prototype.makeDependencyKey_ = function (dependencyUrl, callback) {
+  var parsedUrl = url.parse(dependencyUrl);
+  if (parsedUrl.protocol === 'http:' && parsedUrl.hostname && parsedUrl.port && parsedUrl.pathname) {
+    dns.lookup(parsedUrl.hostname, { family: 4, all: false }, function (error, ip, family) {
+      if (error) {
+        callback({ message: 'DNS lookup failed', lookupError: error });
+      } else {
+        callback(null, {
+          ip: ip,
+          port: parseInt(parsedUrl.port),
+          prefix: parsedUrl.pathname
+        });
+      }
+    });
+  } else {
+    callback({ message: 'Unable to parse dependency URL' });
+  }
+}
+
+Claire.prototype.findDependency_ = function (dependencyKey) {
+  var keyAsJSON = JSON.stringify(dependencyKey);
+  for (var i = 0; i < this.dependencies_.length; i++) {
+    if (JSON.stringify(this.dependencies_[i]) === keyAsJSON) {
+      return i;
+    }
+  }
+}
 
 Claire.prototype.keepaliveLoop_ = function () {
   if (this.registered_) {
@@ -137,8 +202,6 @@ Claire.prototype.clearKeepaliveTimeout_ = function () {
 
 Claire.prototype.fillKeepaliveStatus_ = function () {
   var now = Date.now();
-  var dependencies = (this.config.dependencies !== undefined && Array.isArray(this.config.dependencies) ?
-      this.config.dependencies : []);
   var lastKeepaliveSent = (this.lastKeepaliveAttemptResult_.timestamp !== null ?
       timeIntervalAsHumanReadableString(this.lastKeepaliveAttemptResult_.timestamp, now) + ' ago' : '');
   var lastKeepaliveStatus = (this.lastKeepaliveAttemptResult_.status !== null ?
@@ -155,7 +218,7 @@ Claire.prototype.fillKeepaliveStatus_ = function () {
     local_port: this.config.localPort,
     cloud_instance_name: this.config.cloudInstanceName,
     cloud_availability_group: this.config.cloudAvailabilityGroup,
-    dependencies: dependencies,
+    dependencies: this.dependencies_,
     reporting_to: this.config.karlUrl,
     now: now * 1000,
     start_time_epoch_microseconds: this.startTimestamp * 1000,
