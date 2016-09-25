@@ -209,12 +209,41 @@ struct Plain {
           return Response("Created.\n", HTTPResponseCode.Created);
         }
       } else {
-        return Response("Object key doesn't match URL key.\n", HTTPResponseCode.BadRequest);
+        return Response("The object key doesn't match the URL key.\n", HTTPResponseCode.BadRequest);
       }
     }
     // LCOV_EXCL_START
     static Response ErrorBadJSON(const std::string&) { return Response("Bad JSON.\n", HTTPResponseCode.BadRequest); }
     // LCOV_EXCL_STOP
+  };
+
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandler<PATCH, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
+    }
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      const auto current = input.field[input.patch_key];
+      if (Exists(current)) {
+        auto value = Value(current);
+        try {
+          PatchObjectWithJSON(value, input.patch_body);
+          const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(value);
+          if (entry_key != input.patch_key) {
+            return Response("PATCH should not change the key.\n", HTTPResponseCode.BadRequest);
+          } else {
+            input.field.Add(value);
+            return Response("Patched.\n", HTTPResponseCode.OK);
+          }
+        } catch (const TypeSystemParseJSONException&) {
+          return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
+        }
+      } else {
+        return Response("Nope.\n", HTTPResponseCode.NotFound);
+      }
+    }
   };
 
   template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>

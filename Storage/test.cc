@@ -1857,6 +1857,15 @@ CURRENT_STRUCT(SimpleUser) {
   void InitializeOwnKey() { key = current::ToString(std::hash<std::string>()(name)); }
 };
 
+CURRENT_STRUCT(SimpleUserValidPatch) {
+  CURRENT_FIELD(name, std::string);
+  CURRENT_CONSTRUCTOR(SimpleUserValidPatch)(const std::string& name = "") : name(name) {}
+};
+
+CURRENT_STRUCT(SimpleUserInvalidPatch) {
+  CURRENT_FIELD(name, bool, true);  // Won't be able to cast `bool` into `string`.
+};
+
 CURRENT_STRUCT(SimplePost) {
   CURRENT_FIELD(key, std::string);
   CURRENT_FIELD(text, std::string);
@@ -1927,6 +1936,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
+  // clang-format off
   const std::string golden_user_schema_h =
       "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
       "// Compile with `-std=c++11` or higher.\n"
@@ -1989,7 +1999,6 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "#endif  // Boilerplate evolvers.\n"
       "\n"
       "// clang-format on\n";
-  // clang-format off
   const std::string golden_user_schema_json =
   "["
     "{\"object\":\"SimpleUser\",\"contains\":["
@@ -2063,6 +2072,49 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.key")).code));
+
+    {
+      // Test PUT on users.
+      EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      {
+        user2.name = "dk2";
+        EXPECT_NE(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api/data/user/" + user2_key, user2)).code));
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      }
+      {
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        const auto response = HTTP(PUT(base_url + "/api/data/user/" + user2_key, SimpleUser("dima2a", "dk2a")));
+        EXPECT_EQ(400, static_cast<int>(response.code));
+        EXPECT_EQ("The object key doesn't match the URL key.\n", response.body);
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      }
+    }
+
+    {
+      // Test PATCH on users.
+      EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      {
+        user2.name = "dk3";
+        EXPECT_NE(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_EQ(
+            200,
+            static_cast<int>(HTTP(PATCH(base_url + "/api/data/user/" + user2_key, SimpleUserValidPatch("dk3"))).code));
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      }
+      {
+        const auto response = HTTP(PATCH(base_url + "/api/data/user/" + user2_key, SimpleUser("dima3a", "foo")));
+        EXPECT_EQ(400, static_cast<int>(response.code));
+        EXPECT_EQ("PATCH should not change the key.\n", response.body);
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      }
+      {
+        const auto response = HTTP(PATCH(base_url + "/api/data/user/" + user2_key, SimpleUserInvalidPatch()));
+        EXPECT_EQ(400, static_cast<int>(response.code));
+        EXPECT_EQ("Bad JSON.\n", response.body);
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      }
+    }
 
     // Delete the users.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user1_key)).code));
@@ -2198,7 +2250,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   const std::vector<std::string> persisted_transactions =
       current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  EXPECT_EQ(20u, persisted_transactions.size());
+  EXPECT_EQ(24u, persisted_transactions.size());
 }
 
 TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
