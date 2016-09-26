@@ -106,6 +106,7 @@ describe('Claire JS client test.', function () {
           assert.equal(claire.dependencies[0].port, 8283);
           assert.equal(claire.dependencies[0].prefix, '/');
           completed = true;
+          done();
         });
       });
     });
@@ -113,8 +114,6 @@ describe('Claire JS client test.', function () {
     var wait = function () {
       if (!completed) {
         setTimeout(wait, 50);
-      } else {
-        done();
       }
     };
     wait();

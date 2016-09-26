@@ -158,16 +158,19 @@ Claire.prototype.forceSendKeepalive = function () {
 };
 
 Claire.prototype.makeDependencyKey_ = function (dependencyUrl, callback) {
-  var parsedUrl = url.parse(dependencyUrl);
-  if (parsedUrl.protocol === 'http:' && parsedUrl.hostname && parsedUrl.port && parsedUrl.pathname) {
-    dns.lookup(parsedUrl.hostname, { family: 4, all: false }, function (error, ip, family) {
+  var dependencyUrlParts = url.parse(dependencyUrl);
+  if (dependencyUrlParts.protocol === 'http:' &&
+      dependencyUrlParts.hostname &&
+      dependencyUrlParts.port &&
+      dependencyUrlParts.pathname) {
+    dns.lookup(dependencyUrlParts.hostname, { family: 4, all: false }, function (error, ip, family) {
       if (error) {
         callback({ message: 'DNS lookup failed', lookupError: error });
       } else {
         callback(null, {
           ip: ip,
-          port: parseInt(parsedUrl.port),
-          prefix: parsedUrl.pathname
+          port: parseInt(dependencyUrlParts.port),
+          prefix: dependencyUrlParts.pathname
         });
       }
     });
