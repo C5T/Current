@@ -26,11 +26,11 @@ var assert = require('assert');
 var fs = require('fs');
 var request = require('request');
 var Claire = require('./claire.js');
+const currentBuild = require('./current_build.json');
 
 const testKarlKeepalivesPort = 30001;
 const testKarlFleetViewPort = 30999;
 
-const currentBuild = JSON.parse(fs.readFileSync('current_build.json'));
 const claireConfig = {
   service: 'JS.Test',
   localPort: 30002,

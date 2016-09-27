@@ -66,15 +66,13 @@ class ImmutableOptional<T, std::enable_if_t<std::is_pod<T>::value>> final {
 
   bool ExistsImpl() const { return exists_; }
 
-  T operator*() const {
+  T ValueImpl() const {
     if (exists_) {
       return value_;
     } else {
       throw NoValueOfTypeException<T>();
     }
   }
-
-  T ValueImpl() const { return this->operator*(); }
 
  private:
   const T value_;
@@ -102,15 +100,13 @@ class ImmutableOptional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
 
   bool ExistsImpl() const { return optional_object_ != nullptr; }
 
-  const T& operator*() const {
+  const T& ValueImpl() const {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
       throw NoValueOfTypeException<T>();
     }
   }
-
-  const T& ValueImpl() const { return this->operator*(); }
 
  private:
   std::unique_ptr<T> owned_optional_object_;
@@ -120,7 +116,7 @@ class ImmutableOptional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
 // Compare `ImmutableOptional<T>` with `ImmutableOptional<T>`.
 template <class T>
 bool operator==(const ImmutableOptional<T>& x, const ImmutableOptional<T>& y) {
-  return x.ExistsImpl() != y.ExistsImpl() ? false : x.ExistsImpl() == false ? true : *x == *y;
+  return x.ExistsImpl() != y.ExistsImpl() ? false : (x.ExistsImpl() ? x.ValueImpl() == y.ValueImpl() : true);
 }
 
 template <class T>
@@ -130,7 +126,7 @@ bool operator!=(const ImmutableOptional<T>& x, const ImmutableOptional<T>& y) {
 
 template <class T>
 bool operator<(const ImmutableOptional<T>& x, const ImmutableOptional<T>& y) {
-  return !y.ExistsImpl() ? false : !x.ExistsImpl() ? true : *x < *y;
+  return !y.ExistsImpl() ? false : (!x.ExistsImpl() ? true : x.ValueImpl() < y.ValueImpl());
 }
 
 template <class T>
@@ -151,62 +147,62 @@ bool operator>=(const ImmutableOptional<T>& x, const ImmutableOptional<T>& y) {
 // Compare `ImmutableOptional<T>` with `const T&`.
 template <class T>
 bool operator==(const ImmutableOptional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x == v : false;
+  return x.ExistsImpl() ? x.ValueImpl() == v : false;
 }
 
 template <class T>
 bool operator==(const T& v, const ImmutableOptional<T>& x) {
-  return x.ExistsImpl() ? v == *x : false;
+  return x.ExistsImpl() ? v == x.ValueImpl() : false;
 }
 
 template <class T>
 bool operator!=(const ImmutableOptional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x != v : true;
+  return x.ExistsImpl() ? x.ValueImpl() != v : true;
 }
 
 template <class T>
 bool operator!=(const T& v, const ImmutableOptional<T>& x) {
-  return x.ExistsImpl() ? v != *x : true;
+  return x.ExistsImpl() ? v != x.ValueImpl() : true;
 }
 
 template <class T>
 bool operator<(const ImmutableOptional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x < v : true;
+  return x.ExistsImpl() ? x.ValueImpl() < v : true;
 }
 
 template <class T>
 bool operator<(const T& v, const ImmutableOptional<T>& x) {
-  return x.ExistsImpl() ? v < *x : false;
+  return x.ExistsImpl() ? v < x.ValueImpl() : false;
 }
 
 template <class T>
 bool operator>(const ImmutableOptional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x > v : false;
+  return x.ExistsImpl() ? x.ValueImpl() > v : false;
 }
 
 template <class T>
 bool operator>(const T& v, const ImmutableOptional<T>& x) {
-  return x.ExistsImpl() ? v > *x : true;
+  return x.ExistsImpl() ? v > x.ValueImpl() : true;
 }
 
 template <class T>
 bool operator<=(const ImmutableOptional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x <= v : true;
+  return x.ExistsImpl() ? x.ValueImpl() <= v : true;
 }
 
 template <class T>
 bool operator<=(const T& v, const ImmutableOptional<T>& x) {
-  return x.ExistsImpl() ? v <= *x : false;
+  return x.ExistsImpl() ? v <= x.ValueImpl() : false;
 }
 
 template <class T>
 bool operator>=(const ImmutableOptional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x >= v : false;
+  return x.ExistsImpl() ? x.ValueImpl() >= v : false;
 }
 
 template <class T>
 bool operator>=(const T& v, const ImmutableOptional<T>& x) {
-  return x.ExistsImpl() ? v >= *x : true;
+  return x.ExistsImpl() ? v >= x.ValueImpl() : true;
 }
 
 // `Optional` class holds mutable optional value of `T`.
@@ -259,7 +255,7 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
 
   bool ExistsImpl() const { return exists_; }
 
-  T operator*() const {
+  T ValueImpl() const {
     if (exists_) {
       return value_;
     } else {
@@ -267,17 +263,13 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     }
   }
 
-  T& operator*() {
+  T& ValueImpl() {
     if (exists_) {
       return value_;
     } else {
       throw NoValueOfTypeException<T>();
     }
   }
-
-  T ValueImpl() const { return this->operator*(); }
-
-  T& ValueImpl() { return this->operator*(); }
 
  private:
   T value_;
@@ -375,7 +367,7 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
 
   bool ExistsImpl() const { return optional_object_ != nullptr; }
 
-  const T& operator*() const {
+  const T& ValueImpl() const {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
@@ -383,17 +375,13 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
     }
   }
 
-  T& operator*() {
+  T& ValueImpl() {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
       throw NoValueOfTypeException<T>();
     }
   }
-
-  const T& ValueImpl() const { return this->operator*(); }
-
-  T& ValueImpl() { return this->operator*(); }
 
  private:
   std::unique_ptr<T> owned_optional_object_;
@@ -403,7 +391,7 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
 // Compare `Optional<T>` with `Optional<T>`.
 template <class T>
 bool operator==(const Optional<T>& x, const Optional<T>& y) {
-  return x.ExistsImpl() != y.ExistsImpl() ? false : x.ExistsImpl() == false ? true : *x == *y;
+  return x.ExistsImpl() != y.ExistsImpl() ? false : (x.ExistsImpl() ? x.ValueImpl() == y.ValueImpl() : true);
 }
 
 template <class T>
@@ -413,7 +401,7 @@ bool operator!=(const Optional<T>& x, const Optional<T>& y) {
 
 template <class T>
 bool operator<(const Optional<T>& x, const Optional<T>& y) {
-  return !y.ExistsImpl() ? false : !x.ExistsImpl() ? true : *x < *y;
+  return !y.ExistsImpl() ? false : (!x.ExistsImpl() ? true : x.ValueImpl() < y.ValueImpl());
 }
 
 template <class T>
@@ -434,62 +422,62 @@ bool operator>=(const Optional<T>& x, const Optional<T>& y) {
 // Compare `Optional<T>` with `const T&`.
 template <class T>
 bool operator==(const Optional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x == v : false;
+  return x.ExistsImpl() ? x.ValueImpl() == v : false;
 }
 
 template <class T>
 bool operator==(const T& v, const Optional<T>& x) {
-  return x.ExistsImpl() ? v == *x : false;
+  return x.ExistsImpl() ? v == x.ValueImpl() : false;
 }
 
 template <class T>
 bool operator!=(const Optional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x != v : true;
+  return x.ExistsImpl() ? x.ValueImpl() != v : true;
 }
 
 template <class T>
 bool operator!=(const T& v, const Optional<T>& x) {
-  return x.ExistsImpl() ? v != *x : true;
+  return x.ExistsImpl() ? v != x.ValueImpl() : true;
 }
 
 template <class T>
 bool operator<(const Optional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x < v : true;
+  return x.ExistsImpl() ? x.ValueImpl() < v : true;
 }
 
 template <class T>
 bool operator<(const T& v, const Optional<T>& x) {
-  return x.ExistsImpl() ? v < *x : false;
+  return x.ExistsImpl() ? v < x.ValueImpl() : false;
 }
 
 template <class T>
 bool operator>(const Optional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x > v : false;
+  return x.ExistsImpl() ? x.ValueImpl() > v : false;
 }
 
 template <class T>
 bool operator>(const T& v, const Optional<T>& x) {
-  return x.ExistsImpl() ? v > *x : true;
+  return x.ExistsImpl() ? v > x.ValueImpl() : true;
 }
 
 template <class T>
 bool operator<=(const Optional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x <= v : true;
+  return x.ExistsImpl() ? x.ValueImpl() <= v : true;
 }
 
 template <class T>
 bool operator<=(const T& v, const Optional<T>& x) {
-  return x.ExistsImpl() ? v <= *x : false;
+  return x.ExistsImpl() ? v <= x.ValueImpl() : false;
 }
 
 template <class T>
 bool operator>=(const Optional<T>& x, const T& v) {
-  return x.ExistsImpl() ? *x >= v : false;
+  return x.ExistsImpl() ? x.ValueImpl() >= v : false;
 }
 
 template <class T>
 bool operator>=(const T& v, const Optional<T>& x) {
-  return x.ExistsImpl() ? v >= *x : true;
+  return x.ExistsImpl() ? v >= x.ValueImpl() : true;
 }
 
 }  // namespace current

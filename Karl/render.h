@@ -137,7 +137,7 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
 
       // Second section, build info.
       {
-        const std::string commit_text = Exists(service.git_commit) ? Value(service.git_commit).substr(0, 6) : "build";
+        const std::string commit_text = Exists(service.git_commit) ? Value(service.git_commit).substr(0, 6) : "unknown";
 
         const auto build_url = "./build/" + codename;
         const auto build_body = tiny_text_begin + "commit" + tiny_text_end + "<BR/>" + small_link_begin + commit_text +

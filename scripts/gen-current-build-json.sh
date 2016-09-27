@@ -3,7 +3,7 @@
 # Generates the minimalistic `current_build.json` file without compiler-related fields.
 
 BUILD_DATETIME=$(LC_ALL=en_EN date "+%b %d %Y, %H:%M:%S")
-BUILD_EPOCH_MICROSECONDS="$(date "+%s")000000"
+BUILD_EPOCH_MICROSECONDS="$(date '+%s')000000"
 
 OS_VERSION="$(uname -a)"
 if [[ $? -ne 0 ]]; then
