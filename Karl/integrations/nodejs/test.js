@@ -23,8 +23,10 @@ SOFTWARE.
 *******************************************************************************/
 
 var assert = require('assert');
+var fs = require('fs');
 var request = require('request');
 var Claire = require('./claire.js');
+const currentBuild = require('./current_build.json');
 
 const testKarlKeepalivesPort = 30001;
 const testKarlFleetViewPort = 30999;
@@ -34,6 +36,7 @@ const claireConfig = {
   localPort: 30002,
   cloudInstanceName: 'i-12345',
   cloudAvailabilityGroup: 'g-1',
+  buildInfo: currentBuild,
   karlUrl: 'http://127.0.0.1:' + String(testKarlKeepalivesPort),
   keepaliveInterval: 10000
 }
@@ -85,7 +88,6 @@ describe('Claire JS client test.', function () {
 
   it('Spawn Claire instance and test adding/removing dependencies', function (done) {
     claire = new Claire(claireConfig);
-    var completed = false;
 
     claire.addDependency('http://localhost:8283', function (error) {
       assert(!error);
@@ -105,18 +107,10 @@ describe('Claire JS client test.', function () {
           assert.equal(claire.dependencies[0].ip, '127.0.0.1');
           assert.equal(claire.dependencies[0].port, 8283);
           assert.equal(claire.dependencies[0].prefix, '/');
-          completed = true;
           done();
         });
       });
     });
-
-    var wait = function () {
-      if (!completed) {
-        setTimeout(wait, 50);
-      }
-    };
-    wait();
   });
 
   it('Register in Karl using custom status filler', function (done) {
@@ -157,6 +151,11 @@ describe('Claire JS client test.', function () {
         assert.equal(service.location.prefix, '/');
         assert(Array.isArray(service.unresolved_dependencies) && service.unresolved_dependencies.length === 1);
         assert.equal(service.unresolved_dependencies[0], 'http://127.0.0.1:8283/.current');
+        assert.equal(service.build_time, currentBuild.build_time);
+        assert.equal(service.build_time_epoch_microseconds, currentBuild.build_time_epoch_microseconds);
+        assert.equal(service.git_commit, currentBuild.git_commit_hash);
+        assert.equal(service.git_branch, currentBuild.git_branch);
+        assert.equal(service.git_dirty, (currentBuild.git_dirty_files.length !== 0));
         // There should be two keepalives sent at this moment.
         assert.equal(service.runtime.custom_status.custom_field, '2');
         done();

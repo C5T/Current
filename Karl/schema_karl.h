@@ -303,19 +303,19 @@ CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD_DESCRIPTION(build_time,
                             "An exempt of this service's build information, to help visually locating a "
                             "specific, usually recently started, service.");
-  CURRENT_FIELD(build_time_epoch_microseconds, std::chrono::microseconds);
+  CURRENT_FIELD(build_time_epoch_microseconds, std::chrono::microseconds, std::chrono::microseconds(0));
   CURRENT_FIELD_DESCRIPTION(build_time_epoch_microseconds,
                             "An exempt of this service's build information, to help visually locating a "
                             "specific, usually recently started, service.");
-  CURRENT_FIELD(git_commit, std::string);
+  CURRENT_FIELD(git_commit, Optional<std::string>);
   CURRENT_FIELD_DESCRIPTION(git_commit,
                             "An exempt of this service's build information, to help visually locating a "
                             "specific, usually recently started, service.");
-  CURRENT_FIELD(git_branch, std::string);
+  CURRENT_FIELD(git_branch, Optional<std::string>);
   CURRENT_FIELD_DESCRIPTION(git_branch,
                             "An exempt of this service's build information, to help visually locating a "
                             "specific, usually recently started, service.");
-  CURRENT_FIELD(git_dirty, bool);
+  CURRENT_FIELD(git_dirty, Optional<bool>);
   CURRENT_FIELD_DESCRIPTION(git_dirty,
                             "An exempt of this service's build information, to help visually locating a "
                             "specific, usually recently started, service.");

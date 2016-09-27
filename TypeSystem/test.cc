@@ -619,6 +619,219 @@ TEST(TypeSystemTest, Optional) {
   }
 }
 
+namespace optionals_test {
+
+template <template <typename...> class OPTIONAL_TYPE>
+void TestComparisonOperatorsForPOD() {
+  OPTIONAL_TYPE<int> i1(1), j1(1), k2(2);
+  OPTIONAL_TYPE<int> empty(nullptr), empty2(nullptr);
+
+  // Compare two `[Immutable]Optional<int>`-s.
+  EXPECT_TRUE(i1 == i1);
+  EXPECT_TRUE(i1 == j1);
+  EXPECT_FALSE(i1 == k2);
+  EXPECT_FALSE(i1 == empty);
+  EXPECT_TRUE(empty == empty2);
+
+  EXPECT_FALSE(i1 != i1);
+  EXPECT_FALSE(i1 != j1);
+  EXPECT_TRUE(i1 != k2);
+  EXPECT_TRUE(i1 != empty);
+  EXPECT_FALSE(empty != empty2);
+
+  EXPECT_FALSE(i1 < i1);
+  EXPECT_FALSE(i1 < j1);
+  EXPECT_TRUE(i1 < k2);
+  EXPECT_FALSE(i1 < empty);
+  EXPECT_TRUE(empty < i1);
+  EXPECT_FALSE(empty < empty2);
+
+  EXPECT_TRUE(i1 <= i1);
+  EXPECT_TRUE(i1 <= j1);
+  EXPECT_TRUE(i1 <= k2);
+  EXPECT_FALSE(i1 <= empty);
+  EXPECT_TRUE(empty <= i1);
+  EXPECT_TRUE(empty <= empty2);
+
+  EXPECT_FALSE(i1 > i1);
+  EXPECT_FALSE(i1 > j1);
+  EXPECT_FALSE(i1 > k2);
+  EXPECT_TRUE(i1 > empty);
+  EXPECT_FALSE(empty > i1);
+  EXPECT_FALSE(empty > empty2);
+
+  EXPECT_TRUE(i1 >= i1);
+  EXPECT_TRUE(i1 >= j1);
+  EXPECT_FALSE(i1 >= k2);
+  EXPECT_TRUE(i1 >= empty);
+  EXPECT_FALSE(empty >= i1);
+  EXPECT_TRUE(empty >= empty2);
+
+  // Compare `[Immutable]Optional<int>` with `const int&`.
+  EXPECT_TRUE(i1 == 1);
+  EXPECT_TRUE(1 == i1);
+  EXPECT_FALSE(i1 == 0);
+  EXPECT_FALSE(0 == i1);
+  EXPECT_FALSE(empty == 1);
+  EXPECT_FALSE(1 == empty);
+
+  EXPECT_FALSE(i1 != 1);
+  EXPECT_FALSE(1 != i1);
+  EXPECT_TRUE(i1 != 0);
+  EXPECT_TRUE(0 != i1);
+  EXPECT_TRUE(empty != 1);
+  EXPECT_TRUE(1 != empty);
+
+  EXPECT_FALSE(i1 < 1);
+  EXPECT_FALSE(1 < i1);
+  EXPECT_FALSE(i1 < 0);
+  EXPECT_TRUE(0 < i1);
+  EXPECT_TRUE(i1 < 2);
+  EXPECT_FALSE(2 < i1);
+  EXPECT_TRUE(empty < 1);
+  EXPECT_FALSE(1 < empty);
+
+  EXPECT_TRUE(i1 <= 1);
+  EXPECT_TRUE(1 <= i1);
+  EXPECT_FALSE(i1 <= 0);
+  EXPECT_TRUE(0 <= i1);
+  EXPECT_TRUE(i1 <= 2);
+  EXPECT_FALSE(2 <= i1);
+  EXPECT_TRUE(empty <= 1);
+  EXPECT_FALSE(1 <= empty);
+
+  EXPECT_FALSE(i1 > 1);
+  EXPECT_FALSE(1 > i1);
+  EXPECT_TRUE(i1 > 0);
+  EXPECT_FALSE(0 > i1);
+  EXPECT_FALSE(i1 > 2);
+  EXPECT_TRUE(2 > i1);
+  EXPECT_FALSE(empty > 1);
+  EXPECT_TRUE(1 > empty);
+
+  EXPECT_TRUE(i1 >= 1);
+  EXPECT_TRUE(1 >= i1);
+  EXPECT_TRUE(i1 >= 0);
+  EXPECT_FALSE(0 >= i1);
+  EXPECT_FALSE(i1 >= 2);
+  EXPECT_TRUE(2 >= i1);
+  EXPECT_FALSE(empty >= 1);
+  EXPECT_TRUE(1 >= empty);
+}
+
+template <template <typename...> class OPTIONAL_TYPE>
+void TestComparisonOperatorsForNonPOD() {
+  OPTIONAL_TYPE<std::string> i1("1"), j1("1"), k2("2");
+  OPTIONAL_TYPE<std::string> empty(nullptr), empty2(nullptr);
+  const std::string const_str0("0"), const_str1("1"), const_str2("2");
+
+  // Compare two `[Immutable]Optional<std::string>`-s.
+  EXPECT_TRUE(i1 == i1);
+  EXPECT_TRUE(i1 == j1);
+  EXPECT_FALSE(i1 == k2);
+  EXPECT_FALSE(i1 == empty);
+  EXPECT_TRUE(empty == empty2);
+
+  EXPECT_FALSE(i1 != i1);
+  EXPECT_FALSE(i1 != j1);
+  EXPECT_TRUE(i1 != k2);
+  EXPECT_TRUE(i1 != empty);
+  EXPECT_FALSE(empty != empty2);
+
+  EXPECT_FALSE(i1 < i1);
+  EXPECT_FALSE(i1 < j1);
+  EXPECT_TRUE(i1 < k2);
+  EXPECT_FALSE(i1 < empty);
+  EXPECT_TRUE(empty < i1);
+  EXPECT_FALSE(empty < empty2);
+
+  EXPECT_TRUE(i1 <= i1);
+  EXPECT_TRUE(i1 <= j1);
+  EXPECT_TRUE(i1 <= k2);
+  EXPECT_FALSE(i1 <= empty);
+  EXPECT_TRUE(empty <= i1);
+  EXPECT_TRUE(empty <= empty2);
+
+  EXPECT_FALSE(i1 > i1);
+  EXPECT_FALSE(i1 > j1);
+  EXPECT_FALSE(i1 > k2);
+  EXPECT_TRUE(i1 > empty);
+  EXPECT_FALSE(empty > i1);
+  EXPECT_FALSE(empty > empty2);
+
+  EXPECT_TRUE(i1 >= i1);
+  EXPECT_TRUE(i1 >= j1);
+  EXPECT_FALSE(i1 >= k2);
+  EXPECT_TRUE(i1 >= empty);
+  EXPECT_FALSE(empty >= i1);
+  EXPECT_TRUE(empty >= empty2);
+
+  // Compare `[Immutable]Optional<std::string>` with `const std::string&`.
+  EXPECT_TRUE(i1 == const_str1);
+  EXPECT_TRUE(const_str1 == i1);
+  EXPECT_FALSE(i1 == const_str0);
+  EXPECT_FALSE(const_str0 == i1);
+  EXPECT_FALSE(empty == const_str1);
+  EXPECT_FALSE(const_str1 == empty);
+
+  EXPECT_FALSE(i1 != const_str1);
+  EXPECT_FALSE(const_str1 != i1);
+  EXPECT_TRUE(i1 != const_str0);
+  EXPECT_TRUE(const_str0 != i1);
+  EXPECT_TRUE(empty != const_str1);
+  EXPECT_TRUE(const_str1 != empty);
+
+  EXPECT_FALSE(i1 < const_str1);
+  EXPECT_FALSE(const_str1 < i1);
+  EXPECT_FALSE(i1 < const_str0);
+  EXPECT_TRUE(const_str0 < i1);
+  EXPECT_TRUE(i1 < const_str2);
+  EXPECT_FALSE(const_str2 < i1);
+  EXPECT_TRUE(empty < const_str1);
+  EXPECT_FALSE(const_str1 < empty);
+
+  EXPECT_TRUE(i1 <= const_str1);
+  EXPECT_TRUE(const_str1 <= i1);
+  EXPECT_FALSE(i1 <= const_str0);
+  EXPECT_TRUE(const_str0 <= i1);
+  EXPECT_TRUE(i1 <= const_str2);
+  EXPECT_FALSE(const_str2 <= i1);
+  EXPECT_TRUE(empty <= const_str1);
+  EXPECT_FALSE(const_str1 <= empty);
+
+  EXPECT_FALSE(i1 > const_str1);
+  EXPECT_FALSE(const_str1 > i1);
+  EXPECT_TRUE(i1 > const_str0);
+  EXPECT_FALSE(const_str0 > i1);
+  EXPECT_FALSE(i1 > const_str2);
+  EXPECT_TRUE(const_str2 > i1);
+  EXPECT_FALSE(empty > const_str1);
+  EXPECT_TRUE(const_str1 > empty);
+
+  EXPECT_TRUE(i1 >= const_str1);
+  EXPECT_TRUE(const_str1 >= i1);
+  EXPECT_TRUE(i1 >= const_str0);
+  EXPECT_FALSE(const_str0 >= i1);
+  EXPECT_FALSE(i1 >= const_str2);
+  EXPECT_TRUE(const_str2 >= i1);
+  EXPECT_FALSE(empty >= const_str1);
+  EXPECT_TRUE(const_str1 >= empty);
+}
+
+}  // namespace optionals_test
+
+TEST(TypeSystemTest, OptionalComparisonOperators) {
+  using namespace optionals_test;
+
+  // Test `ImmutableOptional<>`.
+  TestComparisonOperatorsForPOD<ImmutableOptional>();
+  TestComparisonOperatorsForNonPOD<ImmutableOptional>();
+
+  // Test `Optional<>`.
+  TestComparisonOperatorsForPOD<Optional>();
+  TestComparisonOperatorsForNonPOD<Optional>();
+}
+
 namespace enum_class_test {
 CURRENT_ENUM(Fruits, uint32_t){APPLE = 1u, ORANGE = 2u};
 }  // namespace enum_class_test
