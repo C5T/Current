@@ -158,6 +158,18 @@ class StreamImpl {
       }
     }
 
+    template <current::locks::MutexLockStatus MLS>
+    void DoUpdateHead(const std::chrono::microseconds us = current::time::Now()) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        data.persistence.UpdateHead(us);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+      } catch (const current::sync::InDestructingModeException&) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+    }
+
     operator bool() const { return data_; }
 
    private:
@@ -234,6 +246,15 @@ class StreamImpl {
     std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
+    } else {
+      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
+    }
+  }
+
+  void UpdateHead(const std::chrono::microseconds us = current::time::Now()) {
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
+    if (publisher_) {
+      return publisher_->template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
     } else {
       CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
     }
