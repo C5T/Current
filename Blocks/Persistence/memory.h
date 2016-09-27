@@ -54,6 +54,7 @@ class MemoryPersister {
     using entry_t = std::pair<std::chrono::microseconds, ENTRY>;
     std::mutex mutex;
     std::deque<entry_t> entries;
+    std::chrono::microseconds head = std::chrono::microseconds(0);
   };
 
  public:
@@ -125,15 +126,23 @@ class MemoryPersister {
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     std::lock_guard<std::mutex> lock(container_->mutex);
-    if (!container_->entries.empty()) {
-      const std::chrono::microseconds expected = container_->entries.back().first;
-      if (!(timestamp > expected)) {
-        CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
-      }
+    const std::chrono::microseconds expected = container_->head;
+    if (expected.count() && !(timestamp > expected)) {
+      CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
     }
     const auto index = static_cast<uint64_t>(container_->entries.size());
     container_->entries.emplace_back(timestamp, std::forward<E>(entry));
+    container_->head = timestamp;
     return idxts_t(index, timestamp);
+  }
+
+  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    const std::chrono::microseconds expected = container_->head;
+    if (expected.count() && !(timestamp > expected)) {
+      CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
+    }
+    container_->head = timestamp;
   }
 
   bool Empty() const noexcept {
