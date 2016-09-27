@@ -85,7 +85,6 @@ describe('Claire JS client test.', function () {
 
   it('Spawn Claire instance and test adding/removing dependencies', function (done) {
     claire = new Claire(claireConfig);
-    var completed = false;
 
     claire.addDependency('http://localhost:8283', function (error) {
       assert(!error);
@@ -105,18 +104,10 @@ describe('Claire JS client test.', function () {
           assert.equal(claire.dependencies[0].ip, '127.0.0.1');
           assert.equal(claire.dependencies[0].port, 8283);
           assert.equal(claire.dependencies[0].prefix, '/');
-          completed = true;
           done();
         });
       });
     });
-
-    var wait = function () {
-      if (!completed) {
-        setTimeout(wait, 50);
-      }
-    };
-    wait();
   });
 
   it('Register in Karl using custom status filler', function (done) {
