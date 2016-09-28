@@ -374,7 +374,7 @@ struct Structured {
             const std::string entry_key_as_url_string =
                 field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key);
             return ErrorResponse(
-                InvalidKeyError("PATCH should not change the key key doesn't match URL key.",
+                InvalidKeyError("PATCH should not change the key.",
                                 {{"object_key", entry_key_as_url_string}, {"url_key", patch_key_as_url_string}}),
                 HTTPResponseCode.BadRequest);
           } else {

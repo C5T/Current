@@ -1888,6 +1888,16 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
       : SUPER(who, what), details(details) {}
 };
 
+CURRENT_STRUCT(SimpleLikeValidPatch) {
+  CURRENT_FIELD(details, Optional<std::string>);
+  CURRENT_CONSTRUCTOR(SimpleLikeValidPatch)(const char* details) : details(std::string(details)) {}
+  CURRENT_CONSTRUCTOR(SimpleLikeValidPatch)(Optional<std::string> details) : details(details) {}
+};
+
+CURRENT_STRUCT(SimpleLikeInvalidPatch) {
+  CURRENT_FIELD(unknown_field, double, 3.14);  // Field does not exist in the original structure.
+};
+
 // Test RESTful compilation with different `row` and `col` types.
 CURRENT_STRUCT(SimpleComposite) {
   CURRENT_FIELD(row, std::string);
@@ -2011,244 +2021,272 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
-    auto rest =
-        RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+    auto rest = RESTfulStorage<Storage>(
+        storage, FLAGS_transactional_storage_test_port, "/api_plain", "http://unittest.current.ai");
     const auto hypermedia_rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
-        storage, FLAGS_transactional_storage_test_port, "/hypermedia", "http://unittest.current.ai");
+        storage, FLAGS_transactional_storage_test_port, "/api_hypermedia", "http://unittest.current.ai");
 
     // Confirm the schema is returned.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user")).code));
-    EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user")).body);
-    EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api/schema/user.h")).body);
-    EXPECT_EQ(golden_user_schema_json, HTTP(GET(base_url + "/api/schema/user.json")).body);
-    EXPECT_EQ("SimplePost", HTTP(GET(base_url + "/api/schema/post")).body);
-    EXPECT_EQ("SimpleLike", HTTP(GET(base_url + "/api/schema/like")).body);
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/schema/user")).code));
+    EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api_plain/schema/user")).body);
+    EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api_plain/schema/user.h")).body);
+    EXPECT_EQ(golden_user_schema_json, HTTP(GET(base_url + "/api_plain/schema/user.json")).body);
+    EXPECT_EQ("SimplePost", HTTP(GET(base_url + "/api_plain/schema/post")).body);
+    EXPECT_EQ("SimpleLike", HTTP(GET(base_url + "/api_plain/schema/like")).body);
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/schema/user_alias")).code));
 
     rest.RegisterAlias("user", "user_alias");
 
     // Confirm the schema is returned as the alias too.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));
-    EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user_alias")).body);
-    EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api/schema/user_alias.h")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/schema/user_alias")).code));
+    EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api_plain/schema/user_alias")).body);
+    EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api_plain/schema/user_alias.h")).body);
 
     // Confirm an empty collection is returned.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
-    EXPECT_EQ("", HTTP(GET(base_url + "/api/data/user")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/user")).code));
+    EXPECT_EQ("", HTTP(GET(base_url + "/api_plain/data/user")).body);
 
     // Begin POST-ing data.
     auto user1 = SimpleUser("max", "MZ");
     auto user2 = SimpleUser("dima", "DK");
 
-    const auto post_user1_response = HTTP(POST(base_url + "/api/data/user", user1));
-    EXPECT_EQ(201, static_cast<int>(post_user1_response.code));
+    // POST first user via Plain API.
+    const auto post_user1_response = HTTP(POST(base_url + "/api_plain/data/user", user1));
+    ASSERT_EQ(201, static_cast<int>(post_user1_response.code));
     const auto user1_key = post_user1_response.body;
     user1.key = user1_key;  // Assigned by the server, save for the purposes of this test.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).code));
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).body).name);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/user/" + user1_key)).code));
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api_plain/data/user/" + user1_key)).body).name);
 
     // Test the alias too.
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user_alias/" + user1_key)).body).name);
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api_plain/data/user_alias/" + user1_key)).body).name);
 
     // Test other key format too.
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user?key=" + user1_key)).body).name);
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api_plain/data/user?key=" + user1_key)).body).name);
 
     // Confirm a collection of one element is returned.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
-    EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n', HTTP(GET(base_url + "/api/data/user")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/user")).code));
+    EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n', HTTP(GET(base_url + "/api_plain/data/user")).body);
+
+    // POST second user via Hypermedia API.
+    const auto post_user2_response = HTTP(POST(base_url + "/api_hypermedia/data/user", user2));
+    ASSERT_EQ(201, static_cast<int>(post_user2_response.code));
+    const std::string user2_resource_url = Value(
+        ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(post_user2_response.body).resource_url);
+    const std::string user2_key = user2_resource_url.substr(user2_resource_url.rfind('/') + 1);
+    user2.key = user2_key;  // Assigned by the server, save for the purposes of this test.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_hypermedia/data/user")).code));
 
     // Test collection retrieval.
-    const auto post_user2_response = HTTP(POST(base_url + "/api/data/user", user2));
-    EXPECT_EQ(201, static_cast<int>(post_user2_response.code));
-    const auto user2_key = post_user2_response.body;
-    user2.key = user2_key;  // Assigned by the server, save for the purposes of this test.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
     EXPECT_EQ(user1_key + '\t' + JSON(user1) + '\n' + user2_key + '\t' + JSON(user2) + '\n',
-              HTTP(GET(base_url + "/api/data/user")).body);
+              HTTP(GET(base_url + "/api_plain/data/user")).body);
 
     // Confirm matrix collection retrieval.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user.key")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/user.row")).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.key")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/user.key")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/user.row")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.row")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.col")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.key")).code));
 
     // Non-GET methods are not allowed for partial key accessors.
-    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api/data/like.row", SimpleLike("x", "y"))).code));
-    EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like.row/x")).code));
+    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api_plain/data/like.row", SimpleLike("x", "y"))).code));
+    EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/like.row/x")).code));
 
     {
       // Test PUT on users.
-      EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       {
         user2.name = "dk2";
-        EXPECT_NE(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
-        EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api/data/user/" + user2_key, user2)).code));
-        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_NE(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
+        EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api_plain/data/user/" + user2_key, user2)).code));
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       }
       {
-        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
-        const auto response = HTTP(PUT(base_url + "/api/data/user/" + user2_key, SimpleUser("dima2a", "dk2a")));
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
+        const auto response = HTTP(PUT(base_url + "/api_plain/data/user/" + user2_key, SimpleUser("dima2a", "dk2a")));
         EXPECT_EQ(400, static_cast<int>(response.code));
         EXPECT_EQ("The object key doesn't match the URL key.\n", response.body);
-        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       }
     }
 
     {
       // Test PATCH on users.
-      EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+      EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       {
         user2.name = "dk3";
-        EXPECT_NE(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
-        EXPECT_EQ(
-            200,
-            static_cast<int>(HTTP(PATCH(base_url + "/api/data/user/" + user2_key, SimpleUserValidPatch("dk3"))).code));
-        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_NE(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
+        EXPECT_EQ(200,
+                  static_cast<int>(
+                      HTTP(PATCH(base_url + "/api_plain/data/user/" + user2_key, SimpleUserValidPatch("dk3"))).code));
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       }
       {
-        const auto response = HTTP(PATCH(base_url + "/api/data/user/" + user2_key, SimpleUser("dima3a", "foo")));
+        const auto response = HTTP(PATCH(base_url + "/api_plain/data/user/" + user2_key, SimpleUser("dima3a", "foo")));
         EXPECT_EQ(400, static_cast<int>(response.code));
         EXPECT_EQ("PATCH should not change the key.\n", response.body);
-        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       }
       {
-        const auto response = HTTP(PATCH(base_url + "/api/data/user/" + user2_key, SimpleUserInvalidPatch()));
+        const auto response = HTTP(PATCH(base_url + "/api_plain/data/user/" + user2_key, SimpleUserInvalidPatch()));
         EXPECT_EQ(400, static_cast<int>(response.code));
         EXPECT_EQ("Bad JSON.\n", response.body);
-        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);
+        EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api_plain/data/user/" + user2_key)).body);
       }
     }
 
     // Delete the users.
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user1_key)).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user2_key)).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/user/max")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/user/" + user1_key)).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/user/" + user2_key)).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/user/max")).code));
 
     // Run the subset of the above test for posts, not just for users.
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/post/test")).code));
 
-    EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", SimplePost("test", "blah"))).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api/data/post/test")).body).text);
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(PUT(base_url + "/api_plain/data/post/test", SimplePost("test", "blah"))).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/post/test")).code));
+    EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api_plain/data/post/test")).body).text);
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/post/test")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/post/test")).code));
 
     // Test RESTful matrix too.
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/dima/beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/max/beer")).code));
 
     // For this test, we disallow POST for the `/like`-s matrix.
-    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api/data/like", SimpleLike("dima", "beer"))).code));
+    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api_plain/data/like", SimpleLike("dima", "beer"))).code));
 
     // Add a few likes.
-    EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/dima/beer", SimpleLike("dima", "beer"))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(
+                  HTTP(PUT(base_url + "/api_plain/data/like/dima/beer", SimpleLike("dima", "beer", "Yo!"))).code));
     EXPECT_EQ(
         201,
-        static_cast<int>(HTTP(PUT(base_url + "/api/data/like/max/beer", SimpleLike("max", "beer", "Cheers!"))).code));
+        static_cast<int>(HTTP(PUT(base_url + "/api_hypermedia/data/like/max/beer", SimpleLike("max", "beer"))).code));
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_hypermedia/data/like/dima/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/max/beer")).code));
 
-    // Confirm the likes went through.
+    {
+      // Test PATCH on likes.
+      {
+        EXPECT_EQ(200,
+                  static_cast<int>(
+                      HTTP(PATCH(base_url + "/api_plain/data/like/max/beer", SimpleLikeValidPatch("Cheers!"))).code));
+        EXPECT_EQ(
+            400,
+            static_cast<int>(HTTP(PATCH(base_url + "/api_plain/data/like/max/beer", SimpleLikeInvalidPatch())).code));
+      }
+      {
+        EXPECT_EQ(200,
+                  static_cast<int>(HTTP(PATCH(base_url + "/api_hypermedia/data/like/dima/beer",
+                                              SimpleLikeValidPatch(nullptr))).code));
+        EXPECT_EQ(400,
+                  static_cast<int>(
+                      HTTP(PATCH(base_url + "/api_hypermedia/data/like/dima/beer", SimpleLikeInvalidPatch())).code));
+      }
+    }
+
+    // Confirm the patches went through.
     EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
-              HTTP(GET(base_url + "/api/data/like/dima/beer")).body);
+              HTTP(GET(base_url + "/api_plain/data/like/dima/beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
-              HTTP(GET(base_url + "/api/data/like?row=max&col=beer")).body);
+              HTTP(GET(base_url + "/api_plain/data/like?row=max&col=beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
-              HTTP(GET(base_url + "/api/data/like?key1=max&key2=beer")).body);
+              HTTP(GET(base_url + "/api_plain/data/like?key1=max&key2=beer")).body);
     EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
-              HTTP(GET(base_url + "/api/data/like/max/beer")).body);
+              HTTP(GET(base_url + "/api_plain/data/like/max/beer")).body);
 
     // Confirm the likes are returned correctly both in brief and full formats.
-    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer")).body,
-              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
-    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?full")).body,
-              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
-    EXPECT_EQ(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?brief")).body,
-              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
-    EXPECT_NE(HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body,
-              HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer")).body,
+              HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?full")).body,
+              HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=full")).body);
+    EXPECT_EQ(HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?brief")).body,
+              HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=brief")).body);
+    EXPECT_NE(HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=full")).body,
+              HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=brief")).body);
 
     EXPECT_EQ(
         "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
         "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
         "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
         "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}}\n",
-        HTTP(GET(base_url + "/hypermedia/data/like/max/beer")).body);
+        HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer")).body);
     EXPECT_EQ(
         "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
         "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
         "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
         "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}}\n",
-        HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=full")).body);
+        HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=full")).body);
     EXPECT_EQ(
         "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
         "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
         "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
         "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"row\":\"max\"}}\n",
-        HTTP(GET(base_url + "/hypermedia/data/like/max/beer?fields=brief")).body);
+        HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=brief")).body);
 
     // GET matrix as the collection, all records.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like")).code));
     EXPECT_EQ(
         "max\tbeer\t{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
         "dima\tbeer\t{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
-        HTTP(GET(base_url + "/api/data/like")).body);
+        HTTP(GET(base_url + "/api_plain/data/like")).body);
 
     // GET matrix as the collection, per rows.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row")).code));
-    EXPECT_EQ("max\t1\ndima\t1\n", HTTP(GET(base_url + "/api/data/like.row")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.row")).code));
+    EXPECT_EQ("max\t1\ndima\t1\n", HTTP(GET(base_url + "/api_plain/data/like.row")).body);
 
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row/foo")).code));
-    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api/data/like.row/foo")).body);
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.row/foo")).code));
+    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api_plain/data/like.row/foo")).body);
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.row/dima")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.row/dima")).code));
     EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
-              HTTP(GET(base_url + "/api/data/like.row/dima")).body);
+              HTTP(GET(base_url + "/api_plain/data/like.row/dima")).body);
 
     // GET matrix as the collection, per cols.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
-    EXPECT_EQ("beer\t2\n", HTTP(GET(base_url + "/api/data/like.col")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.col")).code));
+    EXPECT_EQ("beer\t2\n", HTTP(GET(base_url + "/api_plain/data/like.col")).body);
 
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col/foo")).code));
-    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api/data/like.col/foo")).body);
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.col/foo")).code));
+    EXPECT_EQ("Nope.\n", HTTP(GET(base_url + "/api_plain/data/like.col/foo")).body);
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like.col/beer")).code));
     EXPECT_EQ(
         "{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n"
         "{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
-        HTTP(GET(base_url + "/api/data/like.col/beer")).body);
+        HTTP(GET(base_url + "/api_plain/data/like.col/beer")).body);
 
     // Clean up the likes.
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima/beer")).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/max/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/like/dima/beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/like/max/beer")).code));
 
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima/beer")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max/beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/dima/beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/max/beer")).code));
 
     // Confirm REST endpoints successfully change to 503s.
     rest.SwitchHTTPEndpointsTo503s();
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah/blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/like", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah/blah", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah/blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api_plain/data/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api_plain/data/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/blah/blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api_plain/data/like", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api_plain/data/like/blah/blah", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/like/blah/blah")).code));
 
     // Twice, just in case.
     rest.SwitchHTTPEndpointsTo503s();
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah/blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/like", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah/blah", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah/blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api_plain/data/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api_plain/data/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api_plain/data/like/blah/blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api_plain/data/like", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api_plain/data/like/blah/blah", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/like/blah/blah")).code));
   }
 
   const std::vector<std::string> persisted_transactions =
