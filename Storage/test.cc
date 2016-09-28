@@ -1890,12 +1890,11 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
 
 CURRENT_STRUCT(SimpleLikeValidPatch) {
   CURRENT_FIELD(details, Optional<std::string>);
-  CURRENT_CONSTRUCTOR(SimpleLikeValidPatch)(const char* details) : details(std::string(details)) {}
   CURRENT_CONSTRUCTOR(SimpleLikeValidPatch)(Optional<std::string> details) : details(details) {}
 };
 
 CURRENT_STRUCT(SimpleLikeInvalidPatch) {
-  CURRENT_FIELD(unknown_field, double, 3.14);  // Field does not exist in the original structure.
+  CURRENT_FIELD(row, std::string, "meh");  // Modifying row/col is not allowed.
 };
 
 // Test RESTful compilation with different `row` and `col` types.
@@ -2173,8 +2172,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       // Test PATCH on likes.
       {
         EXPECT_EQ(200,
-                  static_cast<int>(
-                      HTTP(PATCH(base_url + "/api_plain/data/like/max/beer", SimpleLikeValidPatch("Cheers!"))).code));
+                  static_cast<int>(HTTP(PATCH(base_url + "/api_plain/data/like/max/beer",
+                                              SimpleLikeValidPatch(std::string("Cheers!")))).code));
         EXPECT_EQ(
             400,
             static_cast<int>(HTTP(PATCH(base_url + "/api_plain/data/like/max/beer", SimpleLikeInvalidPatch())).code));
@@ -2292,7 +2291,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   const std::vector<std::string> persisted_transactions =
       current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  EXPECT_EQ(24u, persisted_transactions.size());
+  EXPECT_EQ(28u, persisted_transactions.size());
 }
 
 TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
