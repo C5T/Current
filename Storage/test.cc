@@ -2073,6 +2073,10 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like.col")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like.key")).code));
 
+    // Non-GET methods are not allowed for partial key accessors.
+    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api/data/like.row", SimpleLike("x", "y"))).code));
+    EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like.row/x")).code));
+
     {
       // Test PUT on users.
       EXPECT_EQ(JSON(user2) + '\n', HTTP(GET(base_url + "/api/data/user/" + user2_key)).body);

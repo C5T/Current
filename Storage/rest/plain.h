@@ -175,8 +175,9 @@ struct Plain {
       return RunImpl<INPUT, sfinae::HasInitializeOwnKey<decltype(std::declval<INPUT>().entry)>(0)>(input);
     }
     template <class INPUT, bool B>
-    ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
-      return Plain::ErrorMethodNotAllowed("POST");
+    ENABLE_IF<!B, Response> RunImpl(const INPUT& input) const {
+      return Plain::ErrorMethodNotAllowed(
+          "POST", "Storage field `" + input.field_name + "` does not support key initialization.");
     }
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
@@ -293,8 +294,8 @@ struct Plain {
   };
 
   // LCOV_EXCL_START
-  static Response ErrorMethodNotAllowed(const std::string& method) {
-    return Response("Method " + method + " not allowed.\n", HTTPResponseCode.MethodNotAllowed);
+  static Response ErrorMethodNotAllowed(const std::string& method, const std::string& error_message) {
+    return Response("Method " + method + " not allowed. " + error_message + '\n', HTTPResponseCode.MethodNotAllowed);
   }
   // LCOV_EXCL_STOP
 };
