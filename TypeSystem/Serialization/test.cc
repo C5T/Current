@@ -60,17 +60,11 @@ CURRENT_STRUCT(Serializable) {
   bool operator<(const Serializable& rhs) const { return i < rhs.i; }
 };
 
-CURRENT_STRUCT(Int) {
-  CURRENT_FIELD(x, int32_t, 0);
-};
+CURRENT_STRUCT(Int) { CURRENT_FIELD(x, int32_t, 0); };
 
-CURRENT_STRUCT(Float) {
-  CURRENT_FIELD(x, float, 0);
-};
+CURRENT_STRUCT(Float) { CURRENT_FIELD(x, float, 0); };
 
-CURRENT_STRUCT(Double) {
-  CURRENT_FIELD(x, double, 0);
-};
+CURRENT_STRUCT(Double) { CURRENT_FIELD(x, double, 0); };
 
 CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(j, uint64_t);

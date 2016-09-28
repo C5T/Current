@@ -16,7 +16,7 @@ Example output:
 296998  297012  10000000
 ```
 
-=> **The lag is effectively zero (`curl` time eats up more), and the replication speed is a but under 2K records per second.**
+=> **The lag is effectively zero (`curl` time eats up more), and the replication speed is a bit under 2K records per second.**
 
 ## Change two legs into 99 legs (`-n 100 -m 10000000`), and change `localhost:8592` into `localhost:8599` in the second command.
 

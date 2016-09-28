@@ -893,7 +893,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                            blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
                            blob.git_commit = info.git_commit_hash;
                            blob.git_branch = info.git_branch;
-                           blob.git_dirty = !info.git_dirty_files.empty();
+                           blob.git_dirty = Exists(info.git_dirty_files) && !Value(info.git_dirty_files).empty();
                          }
                        }
 

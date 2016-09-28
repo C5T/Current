@@ -92,7 +92,7 @@ double RunIteration() {
     subscriber_scopes[i] = remote_subscribers[i - 1]->Subscribe(*replicators[i]);
   }
 
-  // Publish M events and watch them proparate.
+  // Publish M events and watch them propagate.
   const auto begin = current::time::Now();
   for (uint32_t x = 1; x <= FLAGS_m; ++x) {
     streams[0]->Publish(Event(x));
