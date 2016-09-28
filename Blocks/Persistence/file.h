@@ -64,28 +64,29 @@ class IteratorOverFileOfPersistedEntries {
 
   template <typename F>
   bool ProcessNextEntry(F&& f) {
-    if (std::getline(fi_, line_)) {
-      const size_t tab_pos = line_.find('\t');
-      if (tab_pos == std::string::npos) {
-        CURRENT_THROW(MalformedEntryException(line_));
+    do {
+      if (!std::getline(fi_, line_)) {
+        return false;
       }
-      const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
-      if (current.index != next_.index) {
-        // Indexes must be strictly continuous.
-        CURRENT_THROW(InconsistentIndexException(next_.index, current.index));
-      }
-      if (current.us < next_.us) {
-        // Timestamps must monotonically increase.
-        CURRENT_THROW(InconsistentTimestampException(next_.us, current.us));
-      }
-      f(current, line_.c_str() + tab_pos + 1);
-      next_ = current;
-      ++next_.index;
-      ++next_.us;
-      return true;
-    } else {
-      return false;
+    } while (line_.empty() || line_[0] == '#');
+    const size_t tab_pos = line_.find('\t');
+    if (tab_pos == std::string::npos) {
+      CURRENT_THROW(MalformedEntryException(line_));
     }
+    const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
+    if (current.index != next_.index) {
+      // Indexes must be strictly continuous.
+      CURRENT_THROW(InconsistentIndexException(next_.index, current.index));
+    }
+    if (current.us < next_.us) {
+      // Timestamps must monotonically increase.
+      CURRENT_THROW(InconsistentTimestampException(next_.us, current.us));
+    }
+    f(current, line_.c_str() + tab_pos + 1);
+    next_ = current;
+    ++next_.index;
+    ++next_.us;
+    return true;
   }
 
   // Return the absolute lowest possible next entry to scan or publish.
@@ -117,6 +118,7 @@ class FilePersister {
     // `offset.size() == end.index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
     std::mutex mutex;
     std::vector<std::streampos> offset;
+    std::streamoff head_offset;
     std::vector<std::chrono::microseconds> timestamp;
 
     // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
@@ -133,16 +135,16 @@ class FilePersister {
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
-          end(ValidateFileAndInitializeNext(filename, offset, timestamp)) {
+          head_offset(0),
+          end(ValidateFileAndInitializeNext()) {
+      InitializeHeaders();
       if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    static end_t ValidateFileAndInitializeNext(const std::string& filename,
-                                               std::vector<std::streampos>& offset,
-                                               std::vector<std::chrono::microseconds>& timestamp) {
+    end_t ValidateFileAndInitializeNext() {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -150,19 +152,63 @@ class FilePersister {
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
-        while (cit.ProcessNextEntry([&fi, &offset, &timestamp, &current_offset](const idxts_t& current, const char*) {
-          CURRENT_ASSERT(current.index == offset.size());
-          CURRENT_ASSERT(current.index == timestamp.size());
-          offset.push_back(current_offset);
-          timestamp.push_back(current.us);
-          current_offset = fi.tellg();
-        })) {
+        while (ProcessHeader(fi) ||
+               cit.ProcessNextEntry([&](const idxts_t& current, const char*) {
+                 CURRENT_ASSERT(current.index == offset.size());
+                 CURRENT_ASSERT(current.index == timestamp.size());
+                 offset.push_back(current_offset);
+                 timestamp.push_back(current.us);
+                 current_offset = fi.tellg();
+               })) {
           ;
         }
         const auto& end = cit.Next();
         return end_t{end.index, end.us};
       } else {
         return end_t{0ull, std::chrono::microseconds(0)};
+      }
+    }
+
+    enum class HEADER_TYPE : int { HEAD, PID, SCHEMA };
+
+    bool ProcessHeader(std::ifstream& fi) {
+      std::string line;
+      if (fi.peek() == '#' && std::getline(fi, line)) {
+        static const std::map<std::string, HEADER_TYPE> supported_headers = {
+            {"HEAD", HEADER_TYPE::HEAD}, {"PID", HEADER_TYPE::PID}, {"SCHEMA", HEADER_TYPE::SCHEMA}};
+        const size_t tab_pos = line.find('\t');
+        if (tab_pos == std::string::npos) {
+          return false;
+        }
+        const auto cit = supported_headers.find(line.substr(1, tab_pos));
+        if (cit == supported_headers.end()) {
+          return false;
+        }
+        const HEADER_TYPE header = cit->second;
+        if (header == HEADER_TYPE::HEAD) {
+          head_offset = std::streamoff(fi.tellg()) + tab_pos + 1;
+        }
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    void InitializeHeaders() {
+      if (head_offset) {
+        std::ifstream fi(filename);
+        fi.seekg(head_offset, std::ios_base::beg);
+        auto iterator = end.load();
+        std::string line;
+        if (!std::getline(fi, line)) {
+          CURRENT_THROW(Exception());
+        }
+        iterator.us = std::chrono::microseconds(current::FromString<uint64_t>(line));
+        end.store(iterator);
+      } else {
+        appender << "#HEAD\t";
+        head_offset = appender.tellp();
+        appender << Printf("%010lld\n", end.load().us.count());
       }
     }
   };
@@ -319,6 +365,18 @@ class FilePersister {
     iterator.us += std::chrono::microseconds(1);
     file_persister_impl_->end.store(iterator);
     return current;
+  }
+
+  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+    end_t iterator = file_persister_impl_->end.load();
+    if (timestamp < iterator.us) {
+      CURRENT_THROW(InconsistentTimestampException(iterator.us, timestamp));
+    }
+    std::ofstream fo(file_persister_impl_->filename, std::ios_base::app);
+    fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
+    fo << Printf("%010lld", timestamp.count());
+    iterator.us = timestamp + std::chrono::microseconds(1);
+    file_persister_impl_->end.store(iterator);
   }
 
   bool Empty() const noexcept { return !file_persister_impl_->end.load().index; }
