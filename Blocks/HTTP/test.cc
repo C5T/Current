@@ -312,7 +312,7 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
-#ifndef CURRENT_APPLE
+#if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, Redirect) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
@@ -661,7 +661,7 @@ CURRENT_STRUCT(SerializableObject) {
   std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
 };
 
-#ifndef CURRENT_APPLE
+#if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, PostFromInvalidFile) {
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
@@ -785,7 +785,7 @@ struct OnlyCheckForInvalidURLOnceSingleton {
   bool done = false;
 };
 
-#ifndef CURRENT_APPLE
+#if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, InvalidUrl) {
   bool& done = Singleton<OnlyCheckForInvalidURLOnceSingleton>().done;
