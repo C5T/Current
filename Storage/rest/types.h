@@ -87,7 +87,7 @@ CURRENT_STRUCT(RESTGenericResponse) {
 CURRENT_STRUCT(RESTResourceUpdateResponse, RESTGenericResponse) {
   CURRENT_FIELD(resource_url, Optional<std::string>);
 
-  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success) : SUPER(success) {}
+  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success = true) : SUPER(success) {}
   CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success, const std::string& message) : SUPER(success, message) {}
   CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(
       bool success, const std::string& message, const std::string& resource_url)

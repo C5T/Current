@@ -130,10 +130,12 @@ struct PerFieldRESTfulHandlerGenerator {
     using GETHandler = DataHandlerImpl<GET, top_level_operation_t, specific_field_t, entry_t, key_t>;
     using POSTHandler = DataHandlerImpl<POST, top_level_operation_t, specific_field_t, entry_t, key_t>;
     using PUTHandler = DataHandlerImpl<PUT, top_level_operation_t, specific_field_t, entry_t, key_t>;
+    using PATCHHandler = DataHandlerImpl<PATCH, top_level_operation_t, specific_field_t, entry_t, key_t>;
     using DELETEHandler = DataHandlerImpl<DELETE, top_level_operation_t, specific_field_t, entry_t, key_t>;
 
     const auto generic_data_handler = [&storage, restful_url_prefix, field_name](Request request) {
       auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix);
+      const auto storage_role = storage.GetRole();
       if (request.method == "GET") {
         GETHandler handler;
         const bool export_requested = request.url.query.has("export");
@@ -162,7 +164,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                  std::move(request))
                             .Detach();
                       });
-      } else if (request.method == "POST" && storage.GetRole() == StorageRole::Master) {
+      } else if (request.method == "POST" && storage_role == StorageRole::Master) {
         POSTHandler handler;
         handler.Enter(
             std::move(request),
@@ -190,7 +192,7 @@ struct PerFieldRESTfulHandlerGenerator {
                 request(handler.ErrorBadJSON(e.What()));
               }
             });
-      } else if (request.method == "PUT" && storage.GetRole() == StorageRole::Master) {
+      } else if (request.method == "PUT" && storage_role == StorageRole::Master) {
         PUTHandler handler;
         handler.Enter(
             std::move(request),
@@ -222,7 +224,29 @@ struct PerFieldRESTfulHandlerGenerator {
                 request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
               }
             });
-      } else if (request.method == "DELETE" && storage.GetRole() == StorageRole::Master) {
+      } else if (request.method == "PATCH" && storage_role == StorageRole::Master) {
+        PATCHHandler handler;
+        handler.Enter(
+            std::move(request),
+            // Capture by reference since this lambda is run synchronously.
+            [&handler, &generic_input, &field_name](
+                Request request, const typename field_type_dependent_t<specific_field_t>::url_key_t& input_url_key) {
+              const auto url_key = field_type_dependent_t<specific_field_t>::template ParseURLKey<key_t>(input_url_key);
+              const std::string patch_body = request.body;
+              specific_field_t& field = generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+              generic_input.storage.ReadWriteTransaction(
+                                        // Capture local variables by value for safe async transactions.
+                                        [handler, generic_input, &field, url_key, field_name, patch_body](
+                                            mutable_fields_t fields) -> Response {
+                                          using PATCHInput =
+                                              RESTfulPATCHInput<STORAGE, specific_field_t, entry_t, key_t>;
+                                          const PATCHInput input(
+                                              std::move(generic_input), fields, field, field_name, url_key, patch_body);
+                                          return handler.Run(input);
+                                        },
+                                        std::move(request)).Detach();
+            });
+      } else if (request.method == "DELETE" && storage_role == StorageRole::Master) {
         DELETEHandler handler;
         handler.Enter(
             std::move(request),
@@ -243,7 +267,10 @@ struct PerFieldRESTfulHandlerGenerator {
                                         std::move(request)).Detach();
             });
       } else {
-        request(REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
+        const std::string error_message = (storage_role == StorageRole::Master)
+                                              ? "Supported methods: GET, PUT, PATCH, POST, DELETE."
+                                              : "Supported methods: GET.";
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method, error_message));  // LCOV_EXCL_LINE
       }
     };
 
@@ -312,7 +339,8 @@ struct PerFieldRESTfulHandlerGenerator {
                                         std::move(request)).Detach();
             });
       } else {
-        request(REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
+        request(
+            REST_IMPL::ErrorMethodNotAllowed(request.method, "Only GET method is allowed for partial key operations."));
       }
     };
   }
