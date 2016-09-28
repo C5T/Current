@@ -143,25 +143,25 @@ CURRENT_STRUCT(BuildInfo) {
   CURRENT_FIELD(os, std::string, kOS);
   CURRENT_FIELD_DESCRIPTION(os, "The information about the operating system.");
 
-  CURRENT_FIELD(git_commit_hash, Optional<std::string>, kGitCommit);
+  CURRENT_FIELD(git_commit_hash, Optional<std::string>, std::string(kGitCommit));
   CURRENT_FIELD_DESCRIPTION(git_commit_hash, "The hash of the Git commit used for building the binary.");
 
   CURRENT_FIELD(git_dirty_files, Optional<std::vector<std::string>>, GitDiffNames());
   CURRENT_FIELD_DESCRIPTION(git_dirty_files, "The list of the Git dirty files.");
 
-  CURRENT_FIELD(git_branch, Optional<std::string>, kGitBranch);
+  CURRENT_FIELD(git_branch, Optional<std::string>, std::string(kGitBranch));
   CURRENT_FIELD_DESCRIPTION(git_branch, "The name of the Git branch used for building the binary.");
 
-  CURRENT_FIELD(compiler, Optional<std::string>, kCompiler);
+  CURRENT_FIELD(compiler, Optional<std::string>, std::string(kCompiler));
   CURRENT_FIELD_DESCRIPTION(compiler, "The command used to invoke the compiler.");
 
-  CURRENT_FIELD(compiler_flags, Optional<std::string>, kCompilerFlags);
+  CURRENT_FIELD(compiler_flags, Optional<std::string>, std::string(kCompilerFlags));
   CURRENT_FIELD_DESCRIPTION(compiler_flags, "The flags passed to the compiler.");
 
-  CURRENT_FIELD(linker_flags, Optional<std::string>, kLinkerFlags);
+  CURRENT_FIELD(linker_flags, Optional<std::string>, std::string(kLinkerFlags));
   CURRENT_FIELD_DESCRIPTION(linker_flags, "The flags passed to the linker.");
 
-  CURRENT_FIELD(compiler_info, Optional<std::string>, kCompilerInfo);
+  CURRENT_FIELD(compiler_info, Optional<std::string>, std::string(kCompilerInfo));
   CURRENT_FIELD_DESCRIPTION(compiler_info, "The output of the \`\$CPLUSPLUS -v\` command.");
 
   std::tuple<
