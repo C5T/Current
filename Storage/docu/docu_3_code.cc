@@ -598,10 +598,11 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
   // Check that everything has been persisted correctly, including meta fields.
   const auto persisted_entries =
       current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(client_storage_file_name));
-  ASSERT_EQ(2u, persisted_entries.size());
+  // HEAD section + two transactions.
+  ASSERT_EQ(3u, persisted_entries.size());
 
   {
-    const auto add_fields = current::strings::Split(persisted_entries[0], '\t');
+    const auto add_fields = current::strings::Split(persisted_entries[1], '\t');
     ASSERT_TRUE(add_fields.size() == 2u);
     const auto idx_ts = ParseJSON<idxts_t>(add_fields[0]);
     EXPECT_EQ(0u, idx_ts.index);
@@ -623,7 +624,7 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
   }
 
   {
-    const auto del_fields = current::strings::Split(persisted_entries[1], '\t');
+    const auto del_fields = current::strings::Split(persisted_entries[2], '\t');
     ASSERT_TRUE(del_fields.size() == 2u);
     const auto idx_ts = ParseJSON<idxts_t>(del_fields[0]);
     EXPECT_EQ(1u, idx_ts.index);
