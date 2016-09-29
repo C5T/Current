@@ -259,6 +259,11 @@ TEST(PersistenceLayer, File) {
     impl.Publish(StorableString("meh"));
     EXPECT_EQ(3u, impl.Size());
 
+    current::time::SetNow(std::chrono::microseconds(600));
+    EXPECT_EQ(500, impl.CurrentHead().count());
+    impl.UpdateHead();
+    EXPECT_EQ(600, impl.CurrentHead().count());
+
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
@@ -270,7 +275,7 @@ TEST(PersistenceLayer, File) {
   }
 
   EXPECT_EQ(
-      "#HEAD\t0000000000\n"
+      "#HEAD\t0000000600\n"
       "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
       "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
       "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",

@@ -164,6 +164,8 @@ class MemoryPersister {
     }
   }
 
+  std::chrono::microseconds CurrentHead() const { return container_->head; }
+
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};

@@ -133,18 +133,15 @@ class FilePersister {
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
     explicit FilePersisterImpl(const std::string& filename)
-        : filename(filename),
-          appender(filename, std::ofstream::app),
-          head_offset(0),
-          end(ValidateFileAndInitializeNext()) {
-      InitializeHeaders();
+        : filename(filename), appender(filename, std::ofstream::app), head_offset(0) {
+      ValidateFileAndInitializeHeaders();
       if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    end_t ValidateFileAndInitializeNext() {
+    void ValidateFileAndInitializeHeaders() {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -162,11 +159,12 @@ class FilePersister {
                })) {
           ;
         }
-        const auto& end = cit.Next();
-        return end_t{end.index, end.us};
+        const auto& next = cit.Next();
+        end.store({next.index, next.us});
       } else {
-        return end_t{0ull, std::chrono::microseconds(0)};
+        end.store({0ull, std::chrono::microseconds(0)});
       }
+      InitializeHeaders();
     }
 
     enum class HEADER_TYPE : int { HEAD, PID, SCHEMA };
@@ -195,20 +193,23 @@ class FilePersister {
     }
 
     void InitializeHeaders() {
+      auto iterator = end.load();
       if (head_offset) {
         std::ifstream fi(filename);
         fi.seekg(head_offset, std::ios_base::beg);
-        auto iterator = end.load();
         std::string line;
         if (!std::getline(fi, line)) {
           CURRENT_THROW(Exception());
         }
-        iterator.us = std::chrono::microseconds(current::FromString<uint64_t>(line));
-        end.store(iterator);
+        const auto head_us = std::chrono::microseconds(current::FromString<uint64_t>(line));
+        if (head_us > iterator.us) {
+          iterator.us = head_us + std::chrono::microseconds(1);
+          end.store(iterator);
+        }
       } else {
         appender << "#HEAD\t";
         head_offset = appender.tellp();
-        appender << Printf("%010lld\n", end.load().us.count());
+        appender << Printf("%010lld\n", iterator.index ? iterator.us.count() - 1 : 0);
       }
     }
   };
@@ -372,7 +373,7 @@ class FilePersister {
     if (timestamp < iterator.us) {
       CURRENT_THROW(InconsistentTimestampException(iterator.us, timestamp));
     }
-    std::ofstream fo(file_persister_impl_->filename, std::ios_base::app);
+    std::fstream fo(file_persister_impl_->filename, std::ios::out | std::ios::in);
     fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
     fo << Printf("%010lld", timestamp.count());
     iterator.us = timestamp + std::chrono::microseconds(1);
@@ -389,6 +390,11 @@ class FilePersister {
     } else {
       CURRENT_THROW(NoEntriesPublishedYet());
     }
+  }
+
+  std::chrono::microseconds CurrentHead() const {
+    const auto head_us = file_persister_impl_->end.load().us;
+    return head_us.count() ? head_us - std::chrono::microseconds(1) : head_us;
   }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
