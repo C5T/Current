@@ -36,8 +36,6 @@ SOFTWARE.
 #include "../../../strings/join.h"
 #include "../../../strings/printf.h"
 
-using namespace current;
-
 TEST(HTTPHeadersTest, Smoke) {
   using namespace current::net::http;  // `Headers`, `HeaderNotFoundException`.
 

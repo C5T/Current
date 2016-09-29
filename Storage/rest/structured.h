@@ -154,8 +154,10 @@ struct Structured {
       } else {
         if (!input.export_requested) {
           // Top-level field view, identical for dictionaries and matrices.
+          // Pass `url` twice, as `pagination_url` and `collection_url` are the same for this format.
+          const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
           return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
-              context, input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, input.field);
+              context, url, url, input.field);
         } else {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
@@ -185,15 +187,20 @@ struct Structured {
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::MatrixHalfKey) const {
       if (Exists(input.rowcol_get_url_key)) {
+        const std::string row_or_col_key_string = Value(input.rowcol_get_url_key);
         const auto row_or_col_key =
             current::FromString<typename MatrixContainerProxy<KEY_COMPLETENESS>::template entry_outer_key_t<ENTRY>>(
-                Value(input.rowcol_get_url_key));
+                row_or_col_key_string);
         const auto iterable =
             GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowOrCol(input.field, row_or_col_key);
         if (!iterable.Empty()) {
           // Outer-level matrix collection view, browse the list of rows of cols.
           return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, ENTRY>(
-              context, input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name, iterable);
+              context,
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
+                  MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix() + '/' + row_or_col_key_string,
+              input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name,
+              iterable);
         } else {
           return ErrorResponse(
               ResourceNotFoundError("The requested key has was not found.", {{"key", Value(input.rowcol_get_url_key)}}),
@@ -201,13 +208,13 @@ struct Structured {
         }
       } else {
         // Inner-level matrix collection view, browse a specific row or specific col.
+        // Pass the same `url` twice, as the collection ("specific row/col") and pagination have the same base URL.
+        const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
+                                '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
         return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
                                                                         ENTRY,
                                                                         RESTSubCollection<ENTRY>>(
-            context,
-            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '.' +
-                MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix(),
-            GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
+            context, url, url, GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
       }
     }
 
@@ -238,15 +245,16 @@ struct Structured {
       return RunImpl<INPUT, sfinae::HasInitializeOwnKey<decltype(std::declval<INPUT>().entry)>(0)>(input);
     }
     template <class INPUT, bool B>
-    ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
-      return ErrorMethodNotAllowed("POST");
+    ENABLE_IF<!B, Response> RunImpl(const INPUT& input) const {
+      return ErrorMethodNotAllowed("POST",
+                                   "Storage field `" + input.field_name + "` does not support key initialization.");
     }
     template <class INPUT, bool B>
     ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
       const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       const std::string key = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key);
-      if (!Exists(input.field[entry_key])) {
+      if (input.overwrite || !Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' + key;
@@ -316,13 +324,81 @@ struct Structured {
         return response;
       } else {
         const std::string key_as_url_string = field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.entry_key);
-        return ErrorResponse(InvalidKeyError("Object key doesn't match URL key.",
+        return ErrorResponse(InvalidKeyError("The object key doesn't match the URL key.",
                                              {{"object_key", key_as_url_string}, {"url_key", url_key}}),
                              HTTPResponseCode.BadRequest);
       }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
       return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message), HTTPResponseCode.BadRequest);
+    }
+  };
+
+  template <typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTfulDataHandler<PATCH, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
+    context_t context;
+
+    Optional<std::chrono::microseconds> if_unmodified_since;
+
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      if (ExtractIfUnmodifiedSinceOrRespondWithError(request, if_unmodified_since)) {
+        field_type_dependent_t<PARTICULAR_FIELD>::CallWithKeyFromURL(std::move(request), std::forward<F>(next));
+      }
+    }
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      const std::string patch_key_as_url_string =
+          field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.patch_key);
+      const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name + '/' +
+                              patch_key_as_url_string;
+
+      auto current = input.field[input.patch_key];
+      if (Exists(current)) {
+        if (Exists(if_unmodified_since)) {
+          const auto last_modified = input.field.LastModified(input.patch_key);
+          if (Exists(last_modified) && Value(last_modified).count() > Value(if_unmodified_since).count()) {
+            return ErrorResponse(
+                ResourceWasModifiedError("Resource can not be updated as it has been modified in the meantime.",
+                                         Value(if_unmodified_since),
+                                         Value(last_modified)),
+                HTTPResponseCode.PreconditionFailed);
+          }
+        }
+
+        auto value = Value(current);
+        try {
+          PatchObjectWithJSON(value, input.patch_body);
+          const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(value);
+          if (entry_key != input.patch_key) {
+            const std::string entry_key_as_url_string =
+                field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(entry_key);
+            return ErrorResponse(
+                InvalidKeyError("PATCH should not change the key.",
+                                {{"object_key", entry_key_as_url_string}, {"url_key", patch_key_as_url_string}}),
+                HTTPResponseCode.BadRequest);
+          } else {
+            input.field.Add(value);
+            RESTResourceUpdateResponse hypermedia_response(true);
+            hypermedia_response.resource_url = url;
+            hypermedia_response.message = "Resource patched.";
+            Response response(hypermedia_response, HTTPResponseCode.OK);
+            const auto last_modified = input.field.LastModified(input.patch_key);
+            if (Exists(last_modified)) {
+              response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+            }
+            return response;
+          }
+        } catch (const TypeSystemParseJSONException&) {
+          return ErrorResponse(ParseJSONError("Invalid JSON in request body.", input.patch_body),
+                               HTTPResponseCode.BadRequest);
+        }
+      } else {
+        return ErrorResponse(
+            ResourceNotFoundError("The requested resource was not found.",
+                                  {{"key", field_type_dependent_t<PARTICULAR_FIELD>::ComposeURLKey(input.patch_key)}}),
+            HTTPResponseCode.NotFound);
+      }
     }
   };
 
@@ -373,9 +449,8 @@ struct Structured {
   template <typename STORAGE, typename ENTRY>
   using RESTfulSchemaHandler = plain::Plain::template RESTfulSchemaHandler<STORAGE, ENTRY>;
 
-  static Response ErrorMethodNotAllowed(const std::string& method) {
-    return ErrorResponse(MethodNotAllowedError("Supported methods: GET, PUT, POST, DELETE.", method),
-                         HTTPResponseCode.MethodNotAllowed);
+  static Response ErrorMethodNotAllowed(const std::string& method, const std::string& error_message) {
+    return ErrorResponse(MethodNotAllowedError(error_message, method), HTTPResponseCode.MethodNotAllowed);
   }
 };
 

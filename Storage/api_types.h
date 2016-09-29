@@ -300,23 +300,32 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
   field_t& field;
   const std::string field_name;
   ENTRY& entry;
+  const bool overwrite;
 
   RESTfulPOSTInput(const RESTfulGenericInput<STORAGE>& input,
                    mutable_fields_t fields,
                    field_t& field,
                    const std::string& field_name,
-                   ENTRY& entry)
-      : RESTfulGenericInput<STORAGE>(input), fields(fields), field(field), field_name(field_name), entry(entry) {}
+                   ENTRY& entry,
+                   bool overwrite)
+      : RESTfulGenericInput<STORAGE>(input),
+        fields(fields),
+        field(field),
+        field_name(field_name),
+        entry(entry),
+        overwrite(overwrite) {}
   RESTfulPOSTInput(RESTfulGenericInput<STORAGE>&& input,
                    mutable_fields_t fields,
                    field_t& field,
                    const std::string& field_name,
-                   ENTRY& entry)
+                   ENTRY& entry,
+                   bool overwrite)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
         fields(fields),
         field(field),
         field_name(field_name),
-        entry(entry) {}
+        entry(entry),
+        overwrite(overwrite) {}
 };
 
 template <typename STORAGE, typename FIELD, typename ENTRY, typename KEY>
@@ -358,6 +367,42 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
         put_key(put_key),
         entry(entry),
         entry_key(entry_key) {}
+};
+
+template <typename STORAGE, typename FIELD, typename ENTRY, typename KEY>
+struct RESTfulPATCHInput : RESTfulGenericInput<STORAGE> {
+  using field_t = FIELD;
+  using mutable_fields_t = MutableFields<STORAGE>;
+  mutable_fields_t fields;
+  field_t& field;
+  const std::string field_name;
+  const KEY& patch_key;
+  const std::string patch_body;
+
+  RESTfulPATCHInput(const RESTfulGenericInput<STORAGE>& input,
+                    mutable_fields_t fields,
+                    field_t& field,
+                    const std::string& field_name,
+                    const KEY& patch_key,
+                    const std::string& patch_body)
+      : RESTfulGenericInput<STORAGE>(input),
+        fields(fields),
+        field(field),
+        field_name(field_name),
+        patch_key(patch_key),
+        patch_body(patch_body) {}
+  RESTfulPATCHInput(RESTfulGenericInput<STORAGE>&& input,
+                    mutable_fields_t fields,
+                    field_t& field,
+                    const std::string& field_name,
+                    const KEY& patch_key,
+                    const std::string& patch_body)
+      : RESTfulGenericInput<STORAGE>(std::move(input)),
+        fields(fields),
+        field(field),
+        field_name(field_name),
+        patch_key(patch_key),
+        patch_body(patch_body) {}
 };
 
 template <typename STORAGE, typename FIELD, typename KEY>

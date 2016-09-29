@@ -476,9 +476,13 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           // If the received status can be parsed in detail, including the "runtime" variant, persist it.
           // If no, no big deal, keep the top-level one regardless.
           const auto detailed_parsed_status = [&]() -> claire_status_t {
-            try {
-              return ParseJSON<claire_status_t>(json);
-            } catch (const TypeSystemParseJSONException&) {
+            Optional<claire_status_t> parsed_opt = TryParseJSON<claire_status_t>(json);
+            if (!Exists(parsed_opt)) {  // Can't parse in Current format. Trying `Minimalistic`.
+              parsed_opt = TryParseJSON<claire_status_t, JSONFormat::Minimalistic>(json);
+            }
+            if (Exists(parsed_opt)) {
+              return Value(parsed_opt);
+            } else {
 
 #ifdef EXTRA_KARL_LOGGING
               std::cerr << "Could not parse: " << json << '\n';
@@ -889,7 +893,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                            blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
                            blob.git_commit = info.git_commit_hash;
                            blob.git_branch = info.git_branch;
-                           blob.git_dirty = !info.git_dirty_files.empty();
+                           blob.git_dirty = Exists(info.git_dirty_files) && !Value(info.git_dirty_files).empty();
                          }
                        }
 

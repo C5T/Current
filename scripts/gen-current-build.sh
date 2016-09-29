@@ -58,6 +58,7 @@ cat >$1 << EOF
 #include <string>
 
 #include "$SCRIPT_DIR/../TypeSystem/struct.h"
+#include "$SCRIPT_DIR/../TypeSystem/optional.h"
 #include "$SCRIPT_DIR/../Bricks/strings/split.h"
 
 namespace current {
@@ -139,28 +140,28 @@ CURRENT_STRUCT(BuildInfo) {
   CURRENT_FIELD(build_time_epoch_microseconds, std::chrono::microseconds, BuildTimestamp());
   CURRENT_FIELD_DESCRIPTION(build_time_epoch_microseconds, "Unix epoch microseconds of when the binary was built.");
 
-  CURRENT_FIELD(git_commit_hash, std::string, kGitCommit);
-  CURRENT_FIELD_DESCRIPTION(git_commit_hash, "The hash of the Git commit used for building the binary.");
-
-  CURRENT_FIELD(git_dirty_files, (std::vector<std::string>), GitDiffNames());
-  CURRENT_FIELD_DESCRIPTION(git_dirty_files, "The list of the Git dirty files.");
-
-  CURRENT_FIELD(git_branch, std::string, kGitBranch);
-  CURRENT_FIELD_DESCRIPTION(git_branch, "The name of the Git branch used for building the binary.");
-
   CURRENT_FIELD(os, std::string, kOS);
   CURRENT_FIELD_DESCRIPTION(os, "The information about the operating system.");
 
-  CURRENT_FIELD(compiler, std::string, kCompiler);
+  CURRENT_FIELD(git_commit_hash, Optional<std::string>, std::string(kGitCommit));
+  CURRENT_FIELD_DESCRIPTION(git_commit_hash, "The hash of the Git commit used for building the binary.");
+
+  CURRENT_FIELD(git_dirty_files, Optional<std::vector<std::string>>, GitDiffNames());
+  CURRENT_FIELD_DESCRIPTION(git_dirty_files, "The list of the Git dirty files.");
+
+  CURRENT_FIELD(git_branch, Optional<std::string>, std::string(kGitBranch));
+  CURRENT_FIELD_DESCRIPTION(git_branch, "The name of the Git branch used for building the binary.");
+
+  CURRENT_FIELD(compiler, Optional<std::string>, std::string(kCompiler));
   CURRENT_FIELD_DESCRIPTION(compiler, "The command used to invoke the compiler.");
 
-  CURRENT_FIELD(compiler_flags, std::string, kCompilerFlags);
+  CURRENT_FIELD(compiler_flags, Optional<std::string>, std::string(kCompilerFlags));
   CURRENT_FIELD_DESCRIPTION(compiler_flags, "The flags passed to the compiler.");
 
-  CURRENT_FIELD(linker_flags, std::string, kLinkerFlags);
+  CURRENT_FIELD(linker_flags, Optional<std::string>, std::string(kLinkerFlags));
   CURRENT_FIELD_DESCRIPTION(linker_flags, "The flags passed to the linker.");
 
-  CURRENT_FIELD(compiler_info, std::string, kCompilerInfo);
+  CURRENT_FIELD(compiler_info, Optional<std::string>, std::string(kCompilerInfo));
   CURRENT_FIELD_DESCRIPTION(compiler_info, "The output of the \`\$CPLUSPLUS -v\` command.");
 
   std::tuple<
@@ -169,23 +170,23 @@ CURRENT_STRUCT(BuildInfo) {
     std::string,
     std::chrono::microseconds,
     std::string,
-    std::vector<std::string>,
-    std::string,
-    std::string,
-    std::string,
-    std::string,
-    std::string,
-    std::string>
+    Optional<std::string>,
+    Optional<std::vector<std::string>>,
+    Optional<std::string>,
+    Optional<std::string>,
+    Optional<std::string>,
+    Optional<std::string>,
+    Optional<std::string>>
   AsTuple() const {
     return std::tie(
       build_time,
       build_dir,
       build_user,
       build_time_epoch_microseconds,
+      os,
       git_commit_hash,
       git_dirty_files,
       git_branch,
-      os,
       compiler,
       compiler_flags,
       linker_flags,

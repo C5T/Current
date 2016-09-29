@@ -388,8 +388,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ("0", result.headers.Get("X-Current-Stream-Size"));
   }
   {
-    // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,
-    // and various serializations.
+    // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,  and various serializations.
+    // clang-format off
     const std::string golden_h =
         "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
         "// Compile with `-std=c++11` or higher.\n"
@@ -415,12 +415,10 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "#ifndef CURRENT_NAMESPACE_Sherlock_DEFINED\n"
         "#define CURRENT_NAMESPACE_Sherlock_DEFINED\n"
         "CURRENT_NAMESPACE(Sherlock) {\n"
-        "  CURRENT_NAMESPACE_TYPE(RecordWithTimestamp, "
-        "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
+        "  CURRENT_NAMESPACE_TYPE(RecordWithTimestamp, current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
         "\n"
         "  // Privileged types.\n"
-        "  CURRENT_NAMESPACE_TYPE(Transaction, "
-        "current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
+        "  CURRENT_NAMESPACE_TYPE(Transaction, current_userspace::t9205399982292878352::RecordWithTimestamp);\n"
         "};  // CURRENT_NAMESPACE(Sherlock)\n"
         "#endif  // CURRENT_NAMESPACE_Sherlock_DEFINED\n"
         "\n"
@@ -428,20 +426,18 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "namespace type_evolution {\n"
         "\n"
         "// Default evolution for struct `RecordWithTimestamp`.\n"
-        "#ifndef DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // "
-        "typename Sherlock::RecordWithTimestamp\n"
-        "#define DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // "
-        "typename Sherlock::RecordWithTimestamp\n"
-        "template <typename EVOLVER>\n"
-        "struct Evolve<Sherlock, typename Sherlock::RecordWithTimestamp, EVOLVER> {\n"
+        "#ifndef DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // typename Sherlock::RecordWithTimestamp\n"
+        "#define DEFAULT_EVOLUTION_404C31CD304F34D07C87292D55E5E9089FB6214D91A49CF95195FD994280466C  // typename Sherlock::RecordWithTimestamp\n"
+        "template <typename CURRENT_ACTIVE_EVOLVER>\n"
+        "struct Evolve<Sherlock, typename Sherlock::RecordWithTimestamp, CURRENT_ACTIVE_EVOLVER> {\n"
+        "  using FROM = Sherlock;\n"
         "  template <typename INTO>\n"
-        "  static void Go(const typename Sherlock::RecordWithTimestamp& from,\n"
+        "  static void Go(const typename FROM::RecordWithTimestamp& from,\n"
         "                 typename INTO::RecordWithTimestamp& into) {\n"
-        "      static_assert(::current::reflection::FieldCounter<typename INTO::RecordWithTimestamp>::value == "
-        "2,\n"
+        "      static_assert(::current::reflection::FieldCounter<typename INTO::RecordWithTimestamp>::value == 2,\n"
         "                    \"Custom evolver required.\");\n"
-        "      Evolve<Sherlock, decltype(from.s), EVOLVER>::template Go<INTO>(from.s, into.s);\n"
-        "      Evolve<Sherlock, decltype(from.t), EVOLVER>::template Go<INTO>(from.t, into.t);\n"
+        "      CURRENT_COPY_FIELD(s);\n"
+        "      CURRENT_COPY_FIELD(t);\n"
         "  }\n"
         "};\n"
         "#endif\n"
@@ -451,14 +447,16 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "\n"
         "#if 0  // Boilerplate evolvers.\n"
         "\n"
-        "CURRENT_TYPE_EVOLVER(CustomEvolver, Sherlock, RecordWithTimestamp, {\n"
-        "  CURRENT_NATURAL_EVOLVE(Sherlock, CustomDestinationNamespace, from.s, into.s);\n"
-        "  CURRENT_NATURAL_EVOLVE(Sherlock, CustomDestinationNamespace, from.t, into.t);\n"
+        "CURRENT_STRUCT_EVOLVER(CustomEvolver, Sherlock, RecordWithTimestamp, {\n"
+        "  CURRENT_COPY_FIELD(s);\n"
+        "  CURRENT_COPY_FIELD(t);\n"
         "});\n"
         "\n"
         "#endif  // Boilerplate evolvers.\n"
         "\n"
         "// clang-format on\n";
+    // clang-format on
+
     const std::string golden_fs =
         "// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`\n"
         "(*\n"

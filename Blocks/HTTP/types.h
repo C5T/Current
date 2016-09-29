@@ -47,11 +47,11 @@ namespace http {
 enum class ReRegisterRoute { ThrowOnAttempt, SilentlyUpdateExisting };
 
 // Structures to define HTTP requests.
-// Support GET and POST.
 // The syntax for creating an instance of a GET request is GET is `GET(url)`.
 // The syntax for creating an instance of a POST request is POST is `POST(url, data, content_type)`'.
 // Alternatively, `POSTFromFile(url, file_name, content_type)` is supported.
 // Both GET and two forms of POST allow `.UserAgent(custom_user_agent)`.
+// Addendum 9/24/2016: We have HEAD, DELETE, and PUT since a while ago, and I've just added PATCH. -- D.K.
 template <typename T>
 struct HTTPRequestBase {
   std::string url;
@@ -155,6 +155,17 @@ struct PUT : HTTPRequestBase<PUT> {
   PUT(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
     FillBody<PUT, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
+  }
+};
+
+struct PATCH : HTTPRequestBase<PATCH> {
+  std::string body;
+  std::string content_type;
+
+  template <typename T>
+  PATCH(const std::string& url, T&& body, const std::string& content_type = "")
+      : HTTPRequestBase(url) {
+    FillBody<PATCH, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 
@@ -281,6 +292,7 @@ using current::http::HEAD;
 using current::http::POST;
 using current::http::POSTFromFile;
 using current::http::PUT;
+using current::http::PATCH;
 using current::http::DELETE;
 
 using current::http::ChunkedGET;

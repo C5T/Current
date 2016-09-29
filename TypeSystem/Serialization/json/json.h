@@ -32,6 +32,7 @@ SOFTWARE.
 #include "../serialization.h"
 
 #include "../../helpers.h"
+#include "../../optional.h"
 
 #include "../../../Bricks/template/pod.h"  // `current::copy_free`.
 
@@ -290,12 +291,24 @@ inline T ParseJSON(const std::string& source) {
   return result;
 }
 
+template <typename T, class J = JSONFormat::Current>
+inline Optional<T> TryParseJSON(const std::string& source) {
+  try {
+    T result;
+    ParseJSON<T, J>(source, result);
+    return result;
+  } catch (const TypeSystemParseJSONException&) {
+    return nullptr;
+  }
+}
+
 }  // namespace current::serialization::json
 }  // namespace current::serialization
 
 // Keep top-level symbols both in `current::` and in global namespace.
 using serialization::json::JSON;
 using serialization::json::ParseJSON;
+using serialization::json::TryParseJSON;
 using serialization::json::PatchObjectWithJSON;
 using serialization::json::JSONFormat;
 using serialization::json::TypeSystemParseJSONException;

@@ -283,8 +283,8 @@ namespace type_evolution {
 // Default evolution for `CURRENT_ENUM(E)`.
 #ifndef DEFAULT_EVOLUTION_94F245ACBEA5010A5B9FD5444CB3AB40945E9F820F78179AAE8D1F6B1CB083EF  // ExposedNamespace::E
 #define DEFAULT_EVOLUTION_94F245ACBEA5010A5B9FD5444CB3AB40945E9F820F78179AAE8D1F6B1CB083EF  // ExposedNamespace::E
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, ExposedNamespace::E, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, ExposedNamespace::E, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO>
   static void Go(ExposedNamespace::E from,
                  typename INTO::E& into) {
@@ -296,10 +296,11 @@ struct Evolve<ExposedNamespace, ExposedNamespace::E, EVOLVER> {
 // Default evolution for struct `Empty`.
 #ifndef DEFAULT_EVOLUTION_5939C237877725072E3046253DBCC20B9DD887E80C18CE5446104CF0EB2C62C5  // typename ExposedNamespace::Empty
 #define DEFAULT_EVOLUTION_5939C237877725072E3046253DBCC20B9DD887E80C18CE5446104CF0EB2C62C5  // typename ExposedNamespace::Empty
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Empty, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Empty, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Empty& from,
+  static void Go(const typename FROM::Empty& from,
                  typename INTO::Empty& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Empty>::value == 0,
                     "Custom evolver required.");
@@ -312,26 +313,27 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Empty, EVOLVER> {
 // Default evolution for struct `FullTest`.
 #ifndef DEFAULT_EVOLUTION_59B8F56918FA03C3FF69EDB9C44286B5A17F00C53AD98E9E6C2E2FFDCC9042B8  // typename ExposedNamespace::FullTest
 #define DEFAULT_EVOLUTION_59B8F56918FA03C3FF69EDB9C44286B5A17F00C53AD98E9E6C2E2FFDCC9042B8  // typename ExposedNamespace::FullTest
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::FullTest& from,
+  static void Go(const typename FROM::FullTest& from,
                  typename INTO::FullTest& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::FullTest>::value == 13,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.primitives), EVOLVER>::template Go<INTO>(from.primitives, into.primitives);
-      Evolve<ExposedNamespace, decltype(from.v1), EVOLVER>::template Go<INTO>(from.v1, into.v1);
-      Evolve<ExposedNamespace, decltype(from.v2), EVOLVER>::template Go<INTO>(from.v2, into.v2);
-      Evolve<ExposedNamespace, decltype(from.p), EVOLVER>::template Go<INTO>(from.p, into.p);
-      Evolve<ExposedNamespace, decltype(from.o), EVOLVER>::template Go<INTO>(from.o, into.o);
-      Evolve<ExposedNamespace, decltype(from.q), EVOLVER>::template Go<INTO>(from.q, into.q);
-      Evolve<ExposedNamespace, decltype(from.w1), EVOLVER>::template Go<INTO>(from.w1, into.w1);
-      Evolve<ExposedNamespace, decltype(from.w2), EVOLVER>::template Go<INTO>(from.w2, into.w2);
-      Evolve<ExposedNamespace, decltype(from.w3), EVOLVER>::template Go<INTO>(from.w3, into.w3);
-      Evolve<ExposedNamespace, decltype(from.w4), EVOLVER>::template Go<INTO>(from.w4, into.w4);
-      Evolve<ExposedNamespace, decltype(from.w5), EVOLVER>::template Go<INTO>(from.w5, into.w5);
-      Evolve<ExposedNamespace, decltype(from.w6), EVOLVER>::template Go<INTO>(from.w6, into.w6);
-      Evolve<ExposedNamespace, decltype(from.tsc), EVOLVER>::template Go<INTO>(from.tsc, into.tsc);
+      CURRENT_COPY_FIELD(primitives);
+      CURRENT_COPY_FIELD(v1);
+      CURRENT_COPY_FIELD(v2);
+      CURRENT_COPY_FIELD(p);
+      CURRENT_COPY_FIELD(o);
+      CURRENT_COPY_FIELD(q);
+      CURRENT_COPY_FIELD(w1);
+      CURRENT_COPY_FIELD(w2);
+      CURRENT_COPY_FIELD(w3);
+      CURRENT_COPY_FIELD(w4);
+      CURRENT_COPY_FIELD(w5);
+      CURRENT_COPY_FIELD(w6);
+      CURRENT_COPY_FIELD(tsc);
   }
 };
 #endif
@@ -339,15 +341,16 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::FullTest, EVOLVER> {
 // Default evolution for struct `B`.
 #ifndef DEFAULT_EVOLUTION_A15D5B33561D4874DC860C2ADE32021A400299BED685625855AC7E5C2ACE8B25  // typename ExposedNamespace::B
 #define DEFAULT_EVOLUTION_A15D5B33561D4874DC860C2ADE32021A400299BED685625855AC7E5C2ACE8B25  // typename ExposedNamespace::B
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::B, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::B, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::B& from,
+  static void Go(const typename FROM::B& from,
                  typename INTO::B& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::B>::value == 1,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, ExposedNamespace::A, EVOLVER>::template Go<INTO>(static_cast<const typename ExposedNamespace::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<ExposedNamespace, decltype(from.b), EVOLVER>::template Go<INTO>(from.b, into.b);
+      CURRENT_COPY_SUPER(A);
+      CURRENT_COPY_FIELD(b);
   }
 };
 #endif
@@ -355,15 +358,16 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B, EVOLVER> {
 // Default evolution for struct `Templated_T9209626390174323094`.
 #ifndef DEFAULT_EVOLUTION_9066C275D8288ED3744F89BF3B0474B04AAE1571E60619068250ED037D4CFBC7  // typename ExposedNamespace::Templated_T9209626390174323094
 #define DEFAULT_EVOLUTION_9066C275D8288ED3744F89BF3B0474B04AAE1571E60619068250ED037D4CFBC7  // typename ExposedNamespace::Templated_T9209626390174323094
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390174323094, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390174323094, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9209626390174323094& from,
+  static void Go(const typename FROM::Templated_T9209626390174323094& from,
                  typename INTO::Templated_T9209626390174323094& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9209626390174323094>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.foo), EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<ExposedNamespace, decltype(from.bar), EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_COPY_FIELD(foo);
+      CURRENT_COPY_FIELD(bar);
   }
 };
 #endif
@@ -371,15 +375,16 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209626390
 // Default evolution for struct `Templated_T9200000002835747520`.
 #ifndef DEFAULT_EVOLUTION_EA77C70DF8F4BE40294BFD6B28B1BD23185E3A99F196BF933481EFE294A3403F  // typename ExposedNamespace::Templated_T9200000002835747520
 #define DEFAULT_EVOLUTION_EA77C70DF8F4BE40294BFD6B28B1BD23185E3A99F196BF933481EFE294A3403F  // typename ExposedNamespace::Templated_T9200000002835747520
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002835747520, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002835747520, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9200000002835747520& from,
+  static void Go(const typename FROM::Templated_T9200000002835747520& from,
                  typename INTO::Templated_T9200000002835747520& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.foo), EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<ExposedNamespace, decltype(from.bar), EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_COPY_FIELD(foo);
+      CURRENT_COPY_FIELD(bar);
   }
 };
 #endif
@@ -387,16 +392,17 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9200000002
 // Default evolution for struct `C`.
 #ifndef DEFAULT_EVOLUTION_DDE310AA7719296DBACC18106A71460781CAEEE2B04F24A1109BB0B94167270F  // typename ExposedNamespace::C
 #define DEFAULT_EVOLUTION_DDE310AA7719296DBACC18106A71460781CAEEE2B04F24A1109BB0B94167270F  // typename ExposedNamespace::C
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::C, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::C, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::C& from,
+  static void Go(const typename FROM::C& from,
                  typename INTO::C& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::C>::value == 3,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.e), EVOLVER>::template Go<INTO>(from.e, into.e);
-      Evolve<ExposedNamespace, decltype(from.c), EVOLVER>::template Go<INTO>(from.c, into.c);
-      Evolve<ExposedNamespace, decltype(from.d), EVOLVER>::template Go<INTO>(from.d, into.d);
+      CURRENT_COPY_FIELD(e);
+      CURRENT_COPY_FIELD(c);
+      CURRENT_COPY_FIELD(d);
   }
 };
 #endif
@@ -404,20 +410,21 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::C, EVOLVER> {
 // Default evolution for struct `TrickyEvolutionCases`.
 #ifndef DEFAULT_EVOLUTION_49C764EB5BE1119C7F7A682FED912AC6F84C1B7E50DE5FFD2C6B4BF92F8627DC  // typename ExposedNamespace::TrickyEvolutionCases
 #define DEFAULT_EVOLUTION_49C764EB5BE1119C7F7A682FED912AC6F84C1B7E50DE5FFD2C6B4BF92F8627DC  // typename ExposedNamespace::TrickyEvolutionCases
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TrickyEvolutionCases& from,
+  static void Go(const typename FROM::TrickyEvolutionCases& from,
                  typename INTO::TrickyEvolutionCases& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TrickyEvolutionCases>::value == 7,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.o1), EVOLVER>::template Go<INTO>(from.o1, into.o1);
-      Evolve<ExposedNamespace, decltype(from.o2), EVOLVER>::template Go<INTO>(from.o2, into.o2);
-      Evolve<ExposedNamespace, decltype(from.o3), EVOLVER>::template Go<INTO>(from.o3, into.o3);
-      Evolve<ExposedNamespace, decltype(from.o4), EVOLVER>::template Go<INTO>(from.o4, into.o4);
-      Evolve<ExposedNamespace, decltype(from.o5), EVOLVER>::template Go<INTO>(from.o5, into.o5);
-      Evolve<ExposedNamespace, decltype(from.o6), EVOLVER>::template Go<INTO>(from.o6, into.o6);
-      Evolve<ExposedNamespace, decltype(from.o7), EVOLVER>::template Go<INTO>(from.o7, into.o7);
+      CURRENT_COPY_FIELD(o1);
+      CURRENT_COPY_FIELD(o2);
+      CURRENT_COPY_FIELD(o3);
+      CURRENT_COPY_FIELD(o4);
+      CURRENT_COPY_FIELD(o5);
+      CURRENT_COPY_FIELD(o6);
+      CURRENT_COPY_FIELD(o7);
   }
 };
 #endif
@@ -425,16 +432,17 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TrickyEvolutionCases,
 // Default evolution for struct `TemplatedInheriting_T9201673071807149456`.
 #ifndef DEFAULT_EVOLUTION_861EF512C56B8CAB7389A30E16021A83F518B8363C2D9DA113A11B613A5BA0E4  // typename ExposedNamespace::TemplatedInheriting_T9201673071807149456
 #define DEFAULT_EVOLUTION_861EF512C56B8CAB7389A30E16021A83F518B8363C2D9DA113A11B613A5BA0E4  // typename ExposedNamespace::TemplatedInheriting_T9201673071807149456
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9201673071807149456, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9201673071807149456, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9201673071807149456& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9201673071807149456& from,
                  typename INTO::TemplatedInheriting_T9201673071807149456& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9201673071807149456>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, ExposedNamespace::A, EVOLVER>::template Go<INTO>(static_cast<const typename ExposedNamespace::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<ExposedNamespace, decltype(from.baz), EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<ExposedNamespace, decltype(from.meh), EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_COPY_SUPER(A);
+      CURRENT_COPY_FIELD(baz);
+      CURRENT_COPY_FIELD(meh);
   }
 };
 #endif
@@ -442,14 +450,15 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 // Default evolution for struct `A`.
 #ifndef DEFAULT_EVOLUTION_CB2E976118E62268E31533B2FCB4ACDC7D423A3F3C999C40A059D3CE7069663A  // typename ExposedNamespace::A
 #define DEFAULT_EVOLUTION_CB2E976118E62268E31533B2FCB4ACDC7D423A3F3C999C40A059D3CE7069663A  // typename ExposedNamespace::A
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::A, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::A, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::A& from,
+  static void Go(const typename FROM::A& from,
                  typename INTO::A& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::A>::value == 1,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.a), EVOLVER>::template Go<INTO>(from.a, into.a);
+      CURRENT_COPY_FIELD(a);
   }
 };
 #endif
@@ -457,28 +466,29 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::A, EVOLVER> {
 // Default evolution for struct `Primitives`.
 #ifndef DEFAULT_EVOLUTION_2939885D492B19EC612443266E33601C2D5E89FA766AD88BACC05022A1C6BD00  // typename ExposedNamespace::Primitives
 #define DEFAULT_EVOLUTION_2939885D492B19EC612443266E33601C2D5E89FA766AD88BACC05022A1C6BD00  // typename ExposedNamespace::Primitives
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Primitives& from,
+  static void Go(const typename FROM::Primitives& from,
                  typename INTO::Primitives& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Primitives>::value == 15,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.a), EVOLVER>::template Go<INTO>(from.a, into.a);
-      Evolve<ExposedNamespace, decltype(from.b), EVOLVER>::template Go<INTO>(from.b, into.b);
-      Evolve<ExposedNamespace, decltype(from.c), EVOLVER>::template Go<INTO>(from.c, into.c);
-      Evolve<ExposedNamespace, decltype(from.d), EVOLVER>::template Go<INTO>(from.d, into.d);
-      Evolve<ExposedNamespace, decltype(from.e), EVOLVER>::template Go<INTO>(from.e, into.e);
-      Evolve<ExposedNamespace, decltype(from.f), EVOLVER>::template Go<INTO>(from.f, into.f);
-      Evolve<ExposedNamespace, decltype(from.g), EVOLVER>::template Go<INTO>(from.g, into.g);
-      Evolve<ExposedNamespace, decltype(from.h), EVOLVER>::template Go<INTO>(from.h, into.h);
-      Evolve<ExposedNamespace, decltype(from.i), EVOLVER>::template Go<INTO>(from.i, into.i);
-      Evolve<ExposedNamespace, decltype(from.j), EVOLVER>::template Go<INTO>(from.j, into.j);
-      Evolve<ExposedNamespace, decltype(from.k), EVOLVER>::template Go<INTO>(from.k, into.k);
-      Evolve<ExposedNamespace, decltype(from.l), EVOLVER>::template Go<INTO>(from.l, into.l);
-      Evolve<ExposedNamespace, decltype(from.m), EVOLVER>::template Go<INTO>(from.m, into.m);
-      Evolve<ExposedNamespace, decltype(from.n), EVOLVER>::template Go<INTO>(from.n, into.n);
-      Evolve<ExposedNamespace, decltype(from.o), EVOLVER>::template Go<INTO>(from.o, into.o);
+      CURRENT_COPY_FIELD(a);
+      CURRENT_COPY_FIELD(b);
+      CURRENT_COPY_FIELD(c);
+      CURRENT_COPY_FIELD(d);
+      CURRENT_COPY_FIELD(e);
+      CURRENT_COPY_FIELD(f);
+      CURRENT_COPY_FIELD(g);
+      CURRENT_COPY_FIELD(h);
+      CURRENT_COPY_FIELD(i);
+      CURRENT_COPY_FIELD(j);
+      CURRENT_COPY_FIELD(k);
+      CURRENT_COPY_FIELD(l);
+      CURRENT_COPY_FIELD(m);
+      CURRENT_COPY_FIELD(n);
+      CURRENT_COPY_FIELD(o);
   }
 };
 #endif
@@ -486,16 +496,17 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, EVOLVER> 
 // Default evolution for struct `TemplatedInheriting_T9209980946934124423`.
 #ifndef DEFAULT_EVOLUTION_A8EDEC803A73757F6D0E8DD935C763F066E9B9193AB7D1E153B1A8D784804DCC  // typename ExposedNamespace::TemplatedInheriting_T9209980946934124423
 #define DEFAULT_EVOLUTION_A8EDEC803A73757F6D0E8DD935C763F066E9B9193AB7D1E153B1A8D784804DCC  // typename ExposedNamespace::TemplatedInheriting_T9209980946934124423
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9209980946934124423, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9209980946934124423, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9209980946934124423& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9209980946934124423& from,
                  typename INTO::TemplatedInheriting_T9209980946934124423& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, ExposedNamespace::A, EVOLVER>::template Go<INTO>(static_cast<const typename ExposedNamespace::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<ExposedNamespace, decltype(from.baz), EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<ExposedNamespace, decltype(from.meh), EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_COPY_SUPER(A);
+      CURRENT_COPY_FIELD(baz);
+      CURRENT_COPY_FIELD(meh);
   }
 };
 #endif
@@ -503,14 +514,15 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 // Default evolution for struct `Y`.
 #ifndef DEFAULT_EVOLUTION_BF73E632C3E758DE2753A63B99D9BBC9BFB0AA2293FC634374C6A76DF21386CE  // typename ExposedNamespace::Y
 #define DEFAULT_EVOLUTION_BF73E632C3E758DE2753A63B99D9BBC9BFB0AA2293FC634374C6A76DF21386CE  // typename ExposedNamespace::Y
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Y& from,
+  static void Go(const typename FROM::Y& from,
                  typename INTO::Y& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Y>::value == 1,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.e), EVOLVER>::template Go<INTO>(from.e, into.e);
+      CURRENT_COPY_FIELD(e);
   }
 };
 #endif
@@ -518,15 +530,16 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Y, EVOLVER> {
 // Default evolution for struct `Templated_T9209980946934124423`.
 #ifndef DEFAULT_EVOLUTION_A88B17CDDDFDDDE6DA4AD1A5060172098C276373D45EAD8F379CB84FA882A590  // typename ExposedNamespace::Templated_T9209980946934124423
 #define DEFAULT_EVOLUTION_A88B17CDDDFDDDE6DA4AD1A5060172098C276373D45EAD8F379CB84FA882A590  // typename ExposedNamespace::Templated_T9209980946934124423
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946934124423, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946934124423, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9209980946934124423& from,
+  static void Go(const typename FROM::Templated_T9209980946934124423& from,
                  typename INTO::Templated_T9209980946934124423& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9209980946934124423>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.foo), EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<ExposedNamespace, decltype(from.bar), EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_COPY_FIELD(foo);
+      CURRENT_COPY_FIELD(bar);
   }
 };
 #endif
@@ -534,16 +547,17 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9209980946
 // Default evolution for struct `TemplatedInheriting_T9227782344077896555`.
 #ifndef DEFAULT_EVOLUTION_BF9F7F4895FE4B3D53F5332610604599A08A6686DAFA8EA57DB6D0B3995A3A05  // typename ExposedNamespace::TemplatedInheriting_T9227782344077896555
 #define DEFAULT_EVOLUTION_BF9F7F4895FE4B3D53F5332610604599A08A6686DAFA8EA57DB6D0B3995A3A05  // typename ExposedNamespace::TemplatedInheriting_T9227782344077896555
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9227782344077896555, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9227782344077896555, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9227782344077896555& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9227782344077896555& from,
                  typename INTO::TemplatedInheriting_T9227782344077896555& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, ExposedNamespace::A, EVOLVER>::template Go<INTO>(static_cast<const typename ExposedNamespace::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<ExposedNamespace, decltype(from.baz), EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<ExposedNamespace, decltype(from.meh), EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_COPY_SUPER(A);
+      CURRENT_COPY_FIELD(baz);
+      CURRENT_COPY_FIELD(meh);
   }
 };
 #endif
@@ -551,16 +565,17 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 // Default evolution for struct `TemplatedInheriting_T9200000002835747520`.
 #ifndef DEFAULT_EVOLUTION_C5ABE688A04E351A29474634960FB1B4723A5E6BFD6F6C6BA3F085843D540AD3  // typename ExposedNamespace::TemplatedInheriting_T9200000002835747520
 #define DEFAULT_EVOLUTION_C5ABE688A04E351A29474634960FB1B4723A5E6BFD6F6C6BA3F085843D540AD3  // typename ExposedNamespace::TemplatedInheriting_T9200000002835747520
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9200000002835747520, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T9200000002835747520, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::TemplatedInheriting_T9200000002835747520& from,
+  static void Go(const typename FROM::TemplatedInheriting_T9200000002835747520& from,
                  typename INTO::TemplatedInheriting_T9200000002835747520& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::TemplatedInheriting_T9200000002835747520>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, ExposedNamespace::A, EVOLVER>::template Go<INTO>(static_cast<const typename ExposedNamespace::A&>(from), static_cast<typename INTO::A&>(into));
-      Evolve<ExposedNamespace, decltype(from.baz), EVOLVER>::template Go<INTO>(from.baz, into.baz);
-      Evolve<ExposedNamespace, decltype(from.meh), EVOLVER>::template Go<INTO>(from.meh, into.meh);
+      CURRENT_COPY_SUPER(A);
+      CURRENT_COPY_FIELD(baz);
+      CURRENT_COPY_FIELD(meh);
   }
 };
 #endif
@@ -568,14 +583,15 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::TemplatedInheriting_T
 // Default evolution for struct `B2`.
 #ifndef DEFAULT_EVOLUTION_8A1E7F884F5E71838181FED05934EFF1984E0B1C0F84A50B298E7A662E76C7C3  // typename ExposedNamespace::B2
 #define DEFAULT_EVOLUTION_8A1E7F884F5E71838181FED05934EFF1984E0B1C0F84A50B298E7A662E76C7C3  // typename ExposedNamespace::B2
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::B2& from,
+  static void Go(const typename FROM::B2& from,
                  typename INTO::B2& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::B2>::value == 0,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, ExposedNamespace::A, EVOLVER>::template Go<INTO>(static_cast<const typename ExposedNamespace::A&>(from), static_cast<typename INTO::A&>(into));
+      CURRENT_COPY_SUPER(A);
       static_cast<void>(from);
       static_cast<void>(into);
   }
@@ -585,15 +601,16 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::B2, EVOLVER> {
 // Default evolution for struct `Templated_T9227782344077896555`.
 #ifndef DEFAULT_EVOLUTION_E85C06F34A2C944B948194E1C7BA0B4F17EFC2E450488D292B66702728F3AE25  // typename ExposedNamespace::Templated_T9227782344077896555
 #define DEFAULT_EVOLUTION_E85C06F34A2C944B948194E1C7BA0B4F17EFC2E450488D292B66702728F3AE25  // typename ExposedNamespace::Templated_T9227782344077896555
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344077896555, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344077896555, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::Templated_T9227782344077896555& from,
+  static void Go(const typename FROM::Templated_T9227782344077896555& from,
                  typename INTO::Templated_T9227782344077896555& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::Templated_T9227782344077896555>::value == 2,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.foo), EVOLVER>::template Go<INTO>(from.foo, into.foo);
-      Evolve<ExposedNamespace, decltype(from.bar), EVOLVER>::template Go<INTO>(from.bar, into.bar);
+      CURRENT_COPY_FIELD(foo);
+      CURRENT_COPY_FIELD(bar);
   }
 };
 #endif
@@ -601,14 +618,15 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::Templated_T9227782344
 // Default evolution for struct `X`.
 #ifndef DEFAULT_EVOLUTION_6A49BB9E6B1311D2427D567AF16667E71D185DC267636B6BBBC05421E48C061B  // typename ExposedNamespace::X
 #define DEFAULT_EVOLUTION_6A49BB9E6B1311D2427D567AF16667E71D185DC267636B6BBBC05421E48C061B  // typename ExposedNamespace::X
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, typename ExposedNamespace::X, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, typename ExposedNamespace::X, CURRENT_ACTIVE_EVOLVER> {
+  using FROM = ExposedNamespace;
   template <typename INTO>
-  static void Go(const typename ExposedNamespace::X& from,
+  static void Go(const typename FROM::X& from,
                  typename INTO::X& into) {
       static_assert(::current::reflection::FieldCounter<typename INTO::X>::value == 1,
                     "Custom evolver required.");
-      Evolve<ExposedNamespace, decltype(from.x), EVOLVER>::template Go<INTO>(from.x, into.x);
+      CURRENT_COPY_FIELD(x);
   }
 };
 #endif
@@ -616,13 +634,13 @@ struct Evolve<ExposedNamespace, typename ExposedNamespace::X, EVOLVER> {
 // Default evolution for `Optional<t9206911749438269255::A>`.
 #ifndef DEFAULT_EVOLUTION_335EF7A9E1BEA2104FA53AD08270A403897AA5A2AC3947337BB7EA4D8652D2D5  // Optional<typename ExposedNamespace::A>
 #define DEFAULT_EVOLUTION_335EF7A9E1BEA2104FA53AD08270A403897AA5A2AC3947337BB7EA4D8652D2D5  // Optional<typename ExposedNamespace::A>
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, Optional<typename ExposedNamespace::A>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, Optional<typename ExposedNamespace::A>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO, typename INTO_TYPE>
   static void Go(const Optional<typename ExposedNamespace::A>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       typename INTO::A evolved;
-      Evolve<ExposedNamespace, typename ExposedNamespace::A, EVOLVER>::template Go<INTO>(Value(from), evolved);
+      Evolve<ExposedNamespace, typename ExposedNamespace::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(Value(from), evolved);
       into = evolved;
     } else {
       into = nullptr;
@@ -634,13 +652,13 @@ struct Evolve<ExposedNamespace, Optional<typename ExposedNamespace::A>, EVOLVER>
 // Default evolution for `Optional<t9206969065948310524::Primitives>`.
 #ifndef DEFAULT_EVOLUTION_BE977B90D0AA48F4FC3D7A76F5C8E203C2C740EEC1E87137CEE976422C74B0D5  // Optional<typename ExposedNamespace::Primitives>
 #define DEFAULT_EVOLUTION_BE977B90D0AA48F4FC3D7A76F5C8E203C2C740EEC1E87137CEE976422C74B0D5  // Optional<typename ExposedNamespace::Primitives>
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, Optional<typename ExposedNamespace::Primitives>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, Optional<typename ExposedNamespace::Primitives>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO, typename INTO_TYPE>
   static void Go(const Optional<typename ExposedNamespace::Primitives>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       typename INTO::Primitives evolved;
-      Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, EVOLVER>::template Go<INTO>(Value(from), evolved);
+      Evolve<ExposedNamespace, typename ExposedNamespace::Primitives, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(Value(from), evolved);
       into = evolved;
     } else {
       into = nullptr;
@@ -652,13 +670,13 @@ struct Evolve<ExposedNamespace, Optional<typename ExposedNamespace::Primitives>,
 // Default evolution for `Optional<std::vector<t9206911749438269255::A>>`.
 #ifndef DEFAULT_EVOLUTION_4BC8B7225437989E35C9EB7F62A7AE79E09299AE29CBCAE1035894375DD60018  // Optional<std::vector<typename ExposedNamespace::A>>
 #define DEFAULT_EVOLUTION_4BC8B7225437989E35C9EB7F62A7AE79E09299AE29CBCAE1035894375DD60018  // Optional<std::vector<typename ExposedNamespace::A>>
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, Optional<std::vector<typename ExposedNamespace::A>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, Optional<std::vector<typename ExposedNamespace::A>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO, typename INTO_TYPE>
   static void Go(const Optional<std::vector<typename ExposedNamespace::A>>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       std::vector<typename INTO::A> evolved;
-      Evolve<ExposedNamespace, std::vector<typename ExposedNamespace::A>, EVOLVER>::template Go<INTO>(Value(from), evolved);
+      Evolve<ExposedNamespace, std::vector<typename ExposedNamespace::A>, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(Value(from), evolved);
       into = evolved;
     } else {
       into = nullptr;
@@ -670,13 +688,13 @@ struct Evolve<ExposedNamespace, Optional<std::vector<typename ExposedNamespace::
 // Default evolution for `Optional<std::vector<int32_t>>`.
 #ifndef DEFAULT_EVOLUTION_F842514CCF3605B350AF7450C3D994B0FC6982CA714F7B8924A37016DCF7D5C1  // Optional<std::vector<int32_t>>
 #define DEFAULT_EVOLUTION_F842514CCF3605B350AF7450C3D994B0FC6982CA714F7B8924A37016DCF7D5C1  // Optional<std::vector<int32_t>>
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, Optional<std::vector<int32_t>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, Optional<std::vector<int32_t>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO, typename INTO_TYPE>
   static void Go(const Optional<std::vector<int32_t>>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       std::vector<int32_t> evolved;
-      Evolve<ExposedNamespace, std::vector<int32_t>, EVOLVER>::template Go<INTO>(Value(from), evolved);
+      Evolve<ExposedNamespace, std::vector<int32_t>, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(Value(from), evolved);
       into = evolved;
     } else {
       into = nullptr;
@@ -688,13 +706,13 @@ struct Evolve<ExposedNamespace, Optional<std::vector<int32_t>>, EVOLVER> {
 // Default evolution for `Optional<std::vector<std::string>>`.
 #ifndef DEFAULT_EVOLUTION_FA2394B37D58C5EB952B0A685E82FF630767B7DE653B4ED5ECABABFB8A3AF0BB  // Optional<std::vector<std::string>>
 #define DEFAULT_EVOLUTION_FA2394B37D58C5EB952B0A685E82FF630767B7DE653B4ED5ECABABFB8A3AF0BB  // Optional<std::vector<std::string>>
-template <typename EVOLVER>
-struct Evolve<ExposedNamespace, Optional<std::vector<std::string>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER>
+struct Evolve<ExposedNamespace, Optional<std::vector<std::string>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO, typename INTO_TYPE>
   static void Go(const Optional<std::vector<std::string>>& from, INTO_TYPE& into) {
     if (Exists(from)) {
       std::vector<std::string> evolved;
-      Evolve<ExposedNamespace, std::vector<std::string>, EVOLVER>::template Go<INTO>(Value(from), evolved);
+      Evolve<ExposedNamespace, std::vector<std::string>, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(Value(from), evolved);
       into = evolved;
     } else {
       into = nullptr;
@@ -706,33 +724,33 @@ struct Evolve<ExposedNamespace, Optional<std::vector<std::string>>, EVOLVER> {
 // Default evolution for `Variant<A, X, Y>`.
 #ifndef DEFAULT_EVOLUTION_07232405E57CFE405500B20AE4462E6416EAC17487EFF5AA64EFC9D7A195BF82  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::X, ExposedNamespace::Y>>
 #define DEFAULT_EVOLUTION_07232405E57CFE405500B20AE4462E6416EAC17487EFF5AA64EFC9D7A195BF82  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::X, ExposedNamespace::Y>>
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+template <typename DST, typename FROM_NAMESPACE, typename INTO, typename CURRENT_ACTIVE_EVOLVER>
 struct ExposedNamespace_MyFreakingVariant_Cases {
   DST& into;
   explicit ExposedNamespace_MyFreakingVariant_Cases(DST& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::A& value) const {
     using into_t = typename INTO::A;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::X& value) const {
     using into_t = typename INTO::X;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::X, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::X, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::Y& value) const {
     using into_t = typename INTO::Y;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Y, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Y, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLVER, typename VARIANT_NAME_HELPER>
-struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::X, ExposedNamespace::Y>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER, typename VARIANT_NAME_HELPER>
+struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::X, ExposedNamespace::Y>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::X, ExposedNamespace::Y>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(ExposedNamespace_MyFreakingVariant_Cases<decltype(into), ExposedNamespace, INTO, EVOLVER>(into));
+    from.Call(ExposedNamespace_MyFreakingVariant_Cases<decltype(into), ExposedNamespace, INTO, CURRENT_ACTIVE_EVOLVER>(into));
   }
 };
 #endif
@@ -740,43 +758,43 @@ struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, Type
 // Default evolution for `Variant<A, B, B2, C, Empty>`.
 #ifndef DEFAULT_EVOLUTION_34D2032062E09B23986AD3F4B8DCF2784A70169CE43B2E9AF44303A8D5A3A2D0  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::B, ExposedNamespace::B2, ExposedNamespace::C, ExposedNamespace::Empty>>
 #define DEFAULT_EVOLUTION_34D2032062E09B23986AD3F4B8DCF2784A70169CE43B2E9AF44303A8D5A3A2D0  // ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::B, ExposedNamespace::B2, ExposedNamespace::C, ExposedNamespace::Empty>>
-template <typename DST, typename FROM_NAMESPACE, typename INTO, typename EVOLVER>
+template <typename DST, typename FROM_NAMESPACE, typename INTO, typename CURRENT_ACTIVE_EVOLVER>
 struct ExposedNamespace_Variant_B_A_B_B2_C_Empty_E_Cases {
   DST& into;
   explicit ExposedNamespace_Variant_B_A_B_B2_C_Empty_E_Cases(DST& into) : into(into) {}
   void operator()(const typename FROM_NAMESPACE::A& value) const {
     using into_t = typename INTO::A;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::A, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::B& value) const {
     using into_t = typename INTO::B;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::B, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::B, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::B2& value) const {
     using into_t = typename INTO::B2;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::B2, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::B2, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::C& value) const {
     using into_t = typename INTO::C;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::C, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::C, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
   void operator()(const typename FROM_NAMESPACE::Empty& value) const {
     using into_t = typename INTO::Empty;
     into = into_t();
-    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Empty, EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
+    Evolve<FROM_NAMESPACE, typename FROM_NAMESPACE::Empty, CURRENT_ACTIVE_EVOLVER>::template Go<INTO>(value, Value<into_t>(into));
   }
 };
-template <typename EVOLVER, typename VARIANT_NAME_HELPER>
-struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::B, ExposedNamespace::B2, ExposedNamespace::C, ExposedNamespace::Empty>>, EVOLVER> {
+template <typename CURRENT_ACTIVE_EVOLVER, typename VARIANT_NAME_HELPER>
+struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::B, ExposedNamespace::B2, ExposedNamespace::C, ExposedNamespace::Empty>>, CURRENT_ACTIVE_EVOLVER> {
   template <typename INTO,
             typename CUSTOM_INTO_VARIANT_TYPE>
   static void Go(const ::current::VariantImpl<VARIANT_NAME_HELPER, TypeListImpl<ExposedNamespace::A, ExposedNamespace::B, ExposedNamespace::B2, ExposedNamespace::C, ExposedNamespace::Empty>>& from,
                  CUSTOM_INTO_VARIANT_TYPE& into) {
-    from.Call(ExposedNamespace_Variant_B_A_B_B2_C_Empty_E_Cases<decltype(into), ExposedNamespace, INTO, EVOLVER>(into));
+    from.Call(ExposedNamespace_Variant_B_A_B_B2_C_Empty_E_Cases<decltype(into), ExposedNamespace, INTO, CURRENT_ACTIVE_EVOLVER>(into));
   }
 };
 #endif
@@ -786,136 +804,142 @@ struct Evolve<ExposedNamespace, ::current::VariantImpl<VARIANT_NAME_HELPER, Type
 
 #if 0  // Boilerplate evolvers.
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Empty, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Empty, {
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, FullTest, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.primitives, into.primitives);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.v1, into.v1);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.v2, into.v2);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.p, into.p);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o, into.o);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.q, into.q);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w1, into.w1);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w2, into.w2);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w3, into.w3);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w4, into.w4);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w5, into.w5);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.w6, into.w6);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.tsc, into.tsc);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, FullTest, {
+  CURRENT_COPY_FIELD(primitives);
+  CURRENT_COPY_FIELD(v1);
+  CURRENT_COPY_FIELD(v2);
+  CURRENT_COPY_FIELD(p);
+  CURRENT_COPY_FIELD(o);
+  CURRENT_COPY_FIELD(q);
+  CURRENT_COPY_FIELD(w1);
+  CURRENT_COPY_FIELD(w2);
+  CURRENT_COPY_FIELD(w3);
+  CURRENT_COPY_FIELD(w4);
+  CURRENT_COPY_FIELD(w5);
+  CURRENT_COPY_FIELD(w6);
+  CURRENT_COPY_FIELD(tsc);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, B, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.b, into.b);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, B, {
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(b);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209626390174323094, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209626390174323094, {
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9200000002835747520, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9200000002835747520, {
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, C, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.c, into.c);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.d, into.d);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, C, {
+  CURRENT_COPY_FIELD(e);
+  CURRENT_COPY_FIELD(c);
+  CURRENT_COPY_FIELD(d);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TrickyEvolutionCases, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o1, into.o1);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o2, into.o2);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o3, into.o3);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o4, into.o4);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o5, into.o5);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o6, into.o6);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o7, into.o7);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TrickyEvolutionCases, {
+  CURRENT_COPY_FIELD(o1);
+  CURRENT_COPY_FIELD(o2);
+  CURRENT_COPY_FIELD(o3);
+  CURRENT_COPY_FIELD(o4);
+  CURRENT_COPY_FIELD(o5);
+  CURRENT_COPY_FIELD(o6);
+  CURRENT_COPY_FIELD(o7);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9201673071807149456, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9201673071807149456, {
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, A, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.a, into.a);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, A, {
+  CURRENT_COPY_FIELD(a);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Primitives, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.a, into.a);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.b, into.b);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.c, into.c);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.d, into.d);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.f, into.f);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.g, into.g);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.h, into.h);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.i, into.i);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.j, into.j);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.k, into.k);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.l, into.l);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.m, into.m);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.n, into.n);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.o, into.o);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Primitives, {
+  CURRENT_COPY_FIELD(a);
+  CURRENT_COPY_FIELD(b);
+  CURRENT_COPY_FIELD(c);
+  CURRENT_COPY_FIELD(d);
+  CURRENT_COPY_FIELD(e);
+  CURRENT_COPY_FIELD(f);
+  CURRENT_COPY_FIELD(g);
+  CURRENT_COPY_FIELD(h);
+  CURRENT_COPY_FIELD(i);
+  CURRENT_COPY_FIELD(j);
+  CURRENT_COPY_FIELD(k);
+  CURRENT_COPY_FIELD(l);
+  CURRENT_COPY_FIELD(m);
+  CURRENT_COPY_FIELD(n);
+  CURRENT_COPY_FIELD(o);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9209980946934124423, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9209980946934124423, {
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Y, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.e, into.e);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Y, {
+  CURRENT_COPY_FIELD(e);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209980946934124423, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9209980946934124423, {
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9227782344077896555, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9227782344077896555, {
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9200000002835747520, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.baz, into.baz);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.meh, into.meh);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, TemplatedInheriting_T9200000002835747520, {
+  CURRENT_COPY_SUPER(A);
+  CURRENT_COPY_FIELD(baz);
+  CURRENT_COPY_FIELD(meh);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, B2, {
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, B2, {
+  CURRENT_COPY_SUPER(A);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9227782344077896555, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.foo, into.foo);
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.bar, into.bar);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, Templated_T9227782344077896555, {
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
 });
 
-CURRENT_TYPE_EVOLVER(CustomEvolver, ExposedNamespace, X, {
-  CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from.x, into.x);
+CURRENT_STRUCT_EVOLVER(CustomEvolver, ExposedNamespace, X, {
+  CURRENT_COPY_FIELD(x);
 });
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, ExposedNamespace, t9227782344077896555::MyFreakingVariant, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911749438269255::A, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209980946934124423::X, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9208828720332602574::Y, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, ExposedNamespace, t9227782344077896555::MyFreakingVariant, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(A);
+  CURRENT_COPY_CASE(X);
+  CURRENT_COPY_CASE(Y);
 };
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, ExposedNamespace, t9227782347108675041::Variant_B_A_X_Y_E, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911749438269255::A, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209980946934124423::X, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9208828720332602574::Y, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, ExposedNamespace, t9227782347108675041::Variant_B_A_X_Y_E, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(A);
+  CURRENT_COPY_CASE(X);
+  CURRENT_COPY_CASE(Y);
 };
 
-CURRENT_TYPE_EVOLVER_VARIANT(CustomEvolver, ExposedNamespace, t9228482442669086788::Variant_B_A_B_B2_C_Empty_E, CustomDestinationNamespace) {
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9206911749438269255::A, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9200817599233955266::B, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9209827283478105543::B2, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9202971611369570493::C, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
-  CURRENT_TYPE_EVOLVER_NATURAL_VARIANT_CASE(t9200000002835747520::Empty, CURRENT_NATURAL_EVOLVE(ExposedNamespace, CustomDestinationNamespace, from, into));
+CURRENT_VARIANT_EVOLVER(CustomEvolver, ExposedNamespace, t9228482442669086788::Variant_B_A_B_B2_C_Empty_E, CustomDestinationNamespace) {
+  CURRENT_COPY_CASE(A);
+  CURRENT_COPY_CASE(B);
+  CURRENT_COPY_CASE(B2);
+  CURRENT_COPY_CASE(C);
+  CURRENT_COPY_CASE(Empty);
 };
 
 #endif  // Boilerplate evolvers.

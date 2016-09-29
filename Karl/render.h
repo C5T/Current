@@ -91,7 +91,7 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
       const std::string& codename = e.first;
       const auto& service = e.second;
       std::ostringstream os;
-      os << "<TABLE CELLBORDER='0'>";
+      os << "<TABLE CELLBORDER='0' CELLSPACING='5'>";
 
       // Top row: Service name, no link.
       os << "<TR><TD COLSPAN='2' ALIGN='center'>" << tiny_text_begin + "service" + tiny_text_end + "<BR/>" << h1_begin
@@ -137,54 +137,53 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
 
       // Second section, build info.
       {
-        auto text = service.git_commit;
-        if (text.empty()) {
-          text = "build";
-        } else if (text.length() > 6) {
-          text = text.substr(0, 6);
-        }
+        const std::string commit_text = Exists(service.git_commit) ? Value(service.git_commit).substr(0, 6) : "unknown";
 
-        const auto url = "./build/" + codename;
-        const auto body = tiny_text_begin + "commit" + tiny_text_end + "<BR/>" + small_link_begin + text +
-                          small_link_end + width_marker;
+        const auto build_url = "./build/" + codename;
+        const auto build_body = tiny_text_begin + "commit" + tiny_text_end + "<BR/>" + small_link_begin + commit_text +
+                                small_link_end + width_marker;
 
         std::vector<std::string> cells;
         {
-          {
-            const auto text = std::string("build of ") + current::FormatDateTime(service.build_time_epoch_microseconds);
-            const auto body = medium_text_begin + text + medium_text_end;
-            cells.push_back("<TD>" + body + "</TD>");
-          }
           if (service.build_time_epoch_microseconds.count()) {
-            const auto text =
+            // `Build of YYYY/MM/DD HH:MM:SS` cell.
+            const auto build_date_text =
+                std::string("build of ") + current::FormatDateTime(service.build_time_epoch_microseconds);
+            const auto build_date_body = medium_text_begin + build_date_text + medium_text_end;
+            cells.push_back("<TD>" + build_date_body + "</TD>");
+
+            // `built X days ago` cell with the link to a particular commit.
+            const auto built_ago_text =
                 "built " + strings::TimeDifferenceAsHumanReadableString(service.build_time_epoch_microseconds - now);
-            if (!github_repo_url.empty()) {
-              const auto url = github_repo_url + "/commit/" + service.git_commit;
-              const auto body = medium_link_begin + text + medium_link_end;
-              cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
+            const auto built_ago_body = medium_link_begin + built_ago_text + medium_link_end;
+            if (!github_repo_url.empty() && Exists(service.git_commit)) {
+              const auto github_url = github_repo_url + "/commit/" + Value(service.git_commit);
+              cells.push_back("<TD HREF='" + github_url + "'>" + built_ago_body + "</TD>");
             } else {
-              const auto body = medium_text_begin + text + medium_text_end;
-              cells.push_back("<TD>" + body + "</TD>");
+              cells.push_back("<TD>" + built_ago_body + "</TD>");
             }
           }
-          {
+          // `{branch_name}, {dirty|clean}` cell with the link to a github branch.
+          if (Exists(service.git_branch) && Exists(service.git_dirty)) {
+            const auto& git_branch = Value(service.git_branch);
+            const bool git_dirty = Value(service.git_dirty);
+            const auto git_branch_text = git_branch + ", " + (git_dirty ? "dirty" : "clean");
+            const auto git_branch_body = medium_link_begin + git_branch_text + medium_link_end;
             if (!github_repo_url.empty()) {
-              const auto text = service.git_branch + ", " + (service.git_dirty ? "dirty" : "clean");
-              const auto url = github_repo_url + "/tree/" + service.git_branch;
-              const auto body = medium_link_begin + text + medium_link_end;
-              cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
+              const auto github_url = github_repo_url + "/tree/" + git_branch;
+              cells.push_back("<TD HREF='" + github_url + "'>" + git_branch_body + "</TD>");
             } else {
-              const auto text = service.git_branch + ", " + (service.git_dirty ? "dirty" : "clean");
-              const auto body = medium_text_begin + text + medium_text_end;
-              cells.push_back("<TD>" + body + "</TD>");
+              cells.push_back("<TD>" + git_branch_body + "</TD>");
             }
           }
         }
 
-        os << "<TR><TD ROWSPAN='" << cells.size() + 1 << "' HREF='" << url << "'>" << body << "</TD>";
-        os << cells[0] << "</TR>";
-        for (size_t i = 1; i < cells.size(); ++i) {
-          os << "<TR>" << cells[i] << "</TR>";
+        if (!cells.empty()) {
+          os << "<TR><TD ROWSPAN='" << cells.size() + 1 << "' HREF='" << build_url << "'>" << build_body << "</TD>";
+          os << cells[0] << "</TR>";
+          for (size_t i = 1; i < cells.size(); ++i) {
+            os << "<TR>" << cells[i] << "</TR>";
+          }
         }
         os << "<TR><TD><BR/></TD></TR>";
       }

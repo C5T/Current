@@ -259,6 +259,52 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   const ClientID client1_key = static_cast<ClientID>(current::FromString<uint64_t>(client1_key_str));
   EXPECT_EQ(201, static_cast<int>(post_response.code));
 
+  // POST the same record again, not allowed.
+  {
+  current::time::SetNow(std::chrono::microseconds(108));
+    const auto result = HTTP(POST(base_url + "/api1/data/client", Client(ClientID(42))));
+    EXPECT_EQ(409, static_cast<int>(result.code));
+    EXPECT_EQ("Already exists.\n", result.body);
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(109));
+    const auto result = HTTP(POST(base_url + "/api2/data/client", Client(ClientID(42))));
+    EXPECT_EQ(409, static_cast<int>(result.code));
+    EXPECT_EQ(
+        "{"
+        "\"success\":false,"
+        "\"message\":\"Resource creation failed.\","
+        "\"error\":{"
+                   "\"name\":\"ResourceAlreadyExists\","
+                   "\"message\":\"The resource already exists\","
+                   "\"details\":{\"key\":\"" + client1_key_str + "\"}"
+                   "},"
+        "\"resource_url\":null"
+        "}\n",
+        result.body);
+  }
+
+  // POST the same record with the `overwrite` flag set, allowed.
+  {
+    current::time::SetNow(std::chrono::microseconds(110));
+    const auto result = HTTP(POST(base_url + "/api1/data/client?overwrite", Client(ClientID(42))));
+    EXPECT_EQ(201, static_cast<int>(result.code));
+    EXPECT_EQ(client1_key_str, result.body);
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(111));
+    const auto result = HTTP(POST(base_url + "/api2/data/client?overwrite", Client(ClientID(42))));
+    EXPECT_EQ(201, static_cast<int>(result.code));
+    EXPECT_EQ(
+        "{"
+        "\"success\":true,"
+        "\"message\":\"Resource created.\","
+        "\"error\":null,"
+        "\"resource_url\":\"http://example.current.ai/api2/data/client/" + client1_key_str + "\""
+        "}\n",
+        result.body);
+  }
+
   // Now GET it via both APIs.
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client/" + client1_key_str));
@@ -285,18 +331,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // PUT an entry with the key different from URL is not allowed.
-  current::time::SetNow(std::chrono::microseconds(108));
+  current::time::SetNow(std::chrono::microseconds(112));
   EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/42", Client(ClientID(64)))).code));
-  current::time::SetNow(std::chrono::microseconds(109));
+  current::time::SetNow(std::chrono::microseconds(113));
   EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api2/data/client/42", Client(ClientID(64)))).code));
 
   // PUT a modified entry via both APIs.
   Client updated_client1((ClientID(client1_key)));
   updated_client1.name = "Jane Doe";
-  current::time::SetNow(std::chrono::microseconds(110));
+  current::time::SetNow(std::chrono::microseconds(114));
   EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/" + client1_key_str, updated_client1)).code));
   updated_client1.male = false;
-  current::time::SetNow(std::chrono::microseconds(111));
+  current::time::SetNow(std::chrono::microseconds(115));
   EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/data/client/" + client1_key_str, updated_client1)).code));
 
   // Check if both updates took place.
@@ -316,9 +362,9 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   // PUT two more records and GET the collection again.
   const auto client1 = Client(ClientID(101));
   const auto client2 = Client(ClientID(102));
-  current::time::SetNow(std::chrono::microseconds(112));
+  current::time::SetNow(std::chrono::microseconds(116));
   EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/101", client1)).code));
-  current::time::SetNow(std::chrono::microseconds(113));
+  current::time::SetNow(std::chrono::microseconds(117));
   EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/102", client2)).code));
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
@@ -386,7 +432,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // DELETE non-existing record.
-  current::time::SetNow(std::chrono::microseconds(114));
+  current::time::SetNow(std::chrono::microseconds(118));
   {
     const auto result = HTTP(DELETE(base_url + "/api2/data/client/100500"));
     EXPECT_EQ(200, static_cast<int>(result.code));
@@ -394,7 +440,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
               result.body);
   }
   // DELETE one record and GET the collection again.
-  current::time::SetNow(std::chrono::microseconds(115));
+  current::time::SetNow(std::chrono::microseconds(119));
   {
     const auto result = HTTP(DELETE(base_url + "/api2/data/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));

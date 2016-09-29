@@ -312,7 +312,7 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
-#ifndef CURRENT_APPLE
+#if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, Redirect) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
@@ -582,6 +582,7 @@ TEST(HTTPAPI, PostAStringAsString) {
                          .Register("/post_string",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
+                                     EXPECT_EQ("POST", r.method);
                                      r(r.body);
                                    });
   EXPECT_EQ("std::string",
@@ -595,6 +596,7 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
                          .Register("/post_const_char_ptr",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
+                                     EXPECT_EQ("POST", r.method);
                                      r(r.body);
                                    });
   EXPECT_EQ("const char*",
@@ -607,6 +609,7 @@ TEST(HTTPAPI, RespondWithStringAsString) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_with_std_string",
                                    [](Request r) {
+                                     EXPECT_EQ("POST", r.method);
                                      EXPECT_EQ("", r.body);
                                      r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
                                    });
@@ -658,7 +661,7 @@ CURRENT_STRUCT(SerializableObject) {
   std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
 };
 
-#ifndef CURRENT_APPLE
+#if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, PostFromInvalidFile) {
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
@@ -754,6 +757,19 @@ TEST(HTTPAPI, DeleteRequest) {
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
+TEST(HTTPAPI, PatchRequest) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/patch",
+                                   [](Request r) {
+                                     EXPECT_EQ("PATCH", r.method);
+                                     EXPECT_EQ("test", r.body);
+                                     r("Patch OK.");
+                                   });
+  const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", FLAGS_net_api_test_port), "test"));
+  EXPECT_EQ("Patch OK.", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
 TEST(HTTPAPI, UserAgent) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/ua", [](Request r) { r("TODO(dkorolev): Actually get passed in user agent."); });
@@ -769,7 +785,7 @@ struct OnlyCheckForInvalidURLOnceSingleton {
   bool done = false;
 };
 
-#ifndef CURRENT_APPLE
+#if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, InvalidUrl) {
   bool& done = Singleton<OnlyCheckForInvalidURLOnceSingleton>().done;

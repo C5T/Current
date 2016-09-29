@@ -35,8 +35,7 @@ CURRENT_STRUCT(Basic) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(t, std::chrono::microseconds);
   CURRENT_DEFAULT_CONSTRUCTOR(Basic) {}
-  CURRENT_CONSTRUCTOR(Basic)(std::integral_constant<int, 0>)
-      : i(42), s("answer"), t(std::chrono::microseconds(123)) {}
+  CURRENT_CONSTRUCTOR(Basic)(std::integral_constant<int, 0>) : i(42), s("answer"), t(std::chrono::microseconds(123)) {}
 };
 
 // A struct with changing fields, that requires evolution.
@@ -114,15 +113,12 @@ CURRENT_STRUCT(WithFieldsToRemove) {
 #endif
 };
 
-CURRENT_VARIANT(
-    All, Basic, FullName, WithOptional, WithExpandingVariant, WithShrinkingVariant, WithFieldsToRemove);
+CURRENT_VARIANT(All, Basic, FullName, WithOptional, WithExpandingVariant, WithShrinkingVariant, WithFieldsToRemove);
 
 CURRENT_STRUCT(TopLevel) {
   CURRENT_FIELD(data, All);
-  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 0>)
-      : data(Basic(std::integral_constant<int, 0>())) {}
-  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 1>)
-      : data(FullName(std::integral_constant<int, 1>())) {}
+  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 0>) : data(Basic(std::integral_constant<int, 0>())) {}
+  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 1>) : data(FullName(std::integral_constant<int, 1>())) {}
   CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 2>)
       : data(WithOptional(std::integral_constant<int, 2>())) {}
   CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 3>)
