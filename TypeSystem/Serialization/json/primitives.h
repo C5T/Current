@@ -149,9 +149,11 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, bool> {
 template <class JSON_FORMAT>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::milliseconds> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::chrono::milliseconds& destination) {
-    int64_t value_as_int64;
-    Deserialize(json_parser, value_as_int64);
-    destination = std::chrono::milliseconds(value_as_int64);
+    if (json_parser && json_parser.Current().IsInt64()) {
+      destination = std::chrono::milliseconds(json_parser.Current().GetInt64());
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsInt64())) {
+      throw JSONSchemaException("milliseconds as integer", json_parser);  // LCOV_EXCL_LINE
+    }
   }
 };
 
@@ -159,9 +161,11 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::milliseconds>
 template <class JSON_FORMAT>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::microseconds> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::chrono::microseconds& destination) {
-    int64_t value_as_int64;
-    Deserialize(json_parser, value_as_int64);
-    destination = std::chrono::microseconds(value_as_int64);
+    if (json_parser && json_parser.Current().IsInt64()) {
+      destination = std::chrono::microseconds(json_parser.Current().GetInt64());
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsInt64())) {
+      throw JSONSchemaException("microseconds as integer", json_parser);  // LCOV_EXCL_LINE
+    }
   }
 };
 
