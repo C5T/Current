@@ -52,9 +52,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
     return IMPL::DoPublish(std::move(e), us);
   }
-  void UpdateHead(std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoUpdateHead(us);
-  }
+  void UpdateHead(std::chrono::microseconds us = current::time::Now()) { return IMPL::DoUpdateHead(us); }
 
   // template <typename... ARGS>
   // IndexAndTimestamp Emplace(ARGS&&... args) {

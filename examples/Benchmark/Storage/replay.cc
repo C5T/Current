@@ -52,6 +52,10 @@ struct RawLogSubscriberImpl {
     return EntryResponse::More;
   }
 
+  EntryResponse operator()(std::chrono::microseconds) const {
+    return EntryResponse::More;
+  }
+
   TerminationResponse Terminate() {
     terminating_ = true;
     return TerminationResponse::Terminate;

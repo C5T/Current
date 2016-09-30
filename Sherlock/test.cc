@@ -81,6 +81,7 @@ struct Data final {
   std::atomic_bool subscriber_alive_;
   std::atomic_size_t seen_;
   std::string results_;
+  std::chrono::microseconds head_;
   Data() : subscriber_alive_(false), seen_(0u) {}
 };
 
@@ -122,12 +123,21 @@ struct SherlockTestProcessorImpl {
     } else {
       data_.results_ += current::ToString(entry.x);
     }
+    data_.head_ = current.us;
     ++data_.seen_;
     if (data_.seen_ < max_to_process_) {
       return EntryResponse::More;
     } else {
       return EntryResponse::Done;
     }
+  }
+
+  EntryResponse operator()(std::chrono::microseconds ts) {
+    while (wait_) {
+      ;  // Spin lock.
+    }
+    data_.head_ = ts;
+    return EntryResponse::More;
   }
 
   static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::Done; }
@@ -336,6 +346,8 @@ struct RecordsCollectorImpl {
     ++count_;
     return EntryResponse::More;
   }
+
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
   static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
 
@@ -918,6 +930,8 @@ TEST(Sherlock, SubscribeWithFilterByType) {
       results_.push_back("Y=" + current::ToString(another_record.y));
       return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
     }
+
+    EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
     TerminationResponse Terminate() const { return TerminationResponse::Wait; }
 

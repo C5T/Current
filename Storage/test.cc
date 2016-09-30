@@ -1770,6 +1770,8 @@ class StorageSherlockTestProcessorImpl {
     }
   }
 
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
+
   TerminationResponse Terminate() const {
     if (allow_terminate_) {
       return TerminationResponse::Terminate;

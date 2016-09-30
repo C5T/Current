@@ -64,6 +64,8 @@ class SherlockStreamPersisterImpl {
       return EntryResponse::More;
     }
 
+    EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
+
     EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
     TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
   };

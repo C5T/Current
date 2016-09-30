@@ -331,6 +331,11 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     return result;
   }
 
+  // TODO(grixa): Need to send update_head to the subscriber
+  ss::EntryResponse operator()(std::chrono::microseconds) {
+    return (time_to_terminate_) ? ss::EntryResponse::Done : ss::EntryResponse::More;
+  }
+
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
   // whether we should terminate or no depends on `nowait`.
   ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {

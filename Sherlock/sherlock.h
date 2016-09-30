@@ -354,6 +354,7 @@ class StreamImpl {
     }
 
     void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
+      auto head = std::chrono::microseconds(0);
       uint64_t index = begin_idx;
       uint64_t size = 0;
       bool terminate_sent = false;
@@ -367,7 +368,8 @@ class StreamImpl {
           }
         }
         size = bare_data.persistence.Size();
-        if (size > index) {
+        auto current_head = bare_data.persistence.CurrentHead();
+        if (current_head > head) {
           for (const auto& e : bare_data.persistence.Iterate(index, size)) {
             if (!terminate_sent && terminate_signal_) {
               terminate_sent = true;
@@ -375,6 +377,7 @@ class StreamImpl {
                 return;
               }
             }
+            head = e.idx_ts.us;
             if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
                     subscriber_,
                     [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
@@ -385,6 +388,10 @@ class StreamImpl {
             }
           }
           index = size;
+          if (current_head > head && subscriber_(current_head) == ss::EntryResponse::Done) {
+            return;
+          }
+          head = current_head;
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);

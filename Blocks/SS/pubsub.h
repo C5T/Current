@@ -117,6 +117,7 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
   EntryResponse operator()(ENTRY&& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(std::move(e), current, last);
   }
+  EntryResponse operator()(std::chrono::microseconds ts) { return IMPL::operator()(ts); }
 
   // If a type-filtered subscriber hits the end which it doesn't see as the last entry does not pass the filter,
   // we need a way to ask that subscriber whether it wants to terminate or continue.

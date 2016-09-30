@@ -59,6 +59,10 @@ TEST(TypeTest, Storage) {
       return current::ss::EntryResponse::Done;
     }
 
+    current::ss::EntryResponse operator()(std::chrono::microseconds) const {
+      return current::ss::EntryResponse::More;
+    }
+
     static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
       return current::ss::EntryResponse::More;
     }

@@ -288,6 +288,12 @@ struct StreamReplicatorImpl {
     return EntryResponse::More;
   }
 
+  EntryResponse operator()(std::chrono::microseconds ts) {
+    CURRENT_ASSERT(publisher_);
+    publisher_->UpdateHead(ts);
+    return EntryResponse::More;
+  }
+
   EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
   TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
 

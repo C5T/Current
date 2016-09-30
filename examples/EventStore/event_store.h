@@ -57,6 +57,9 @@ struct EventStore final {
       emitter(e, current);
       return current::ss::EntryResponse::More;
     }
+    current::ss::EntryResponse operator()(std::chrono::microseconds) const {
+      return current::ss::EntryResponse::More;
+    }
     static current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
     static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
       return current::ss::EntryResponse::More;
