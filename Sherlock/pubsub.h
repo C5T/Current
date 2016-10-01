@@ -331,9 +331,19 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     return result;
   }
 
-  // TODO(grixa): Need to send update_head to the subscriber
-  ss::EntryResponse operator()(std::chrono::microseconds) {
-    return (time_to_terminate_) ? ss::EntryResponse::Done : ss::EntryResponse::More;
+  ss::EntryResponse operator()(std::chrono::microseconds us) {
+    if (time_to_terminate_) {
+      return ss::EntryResponse::Done;
+    }
+    if (serving_) {
+      if (us > to_timestamp_) {
+        return ss::EntryResponse::Done;
+      }
+      if (!params_.array && !params_.entries_only) {
+        http_response_(Printf("#HEAD:\t%020lld}\n", us.count()));
+      }
+    }
+    return ss::EntryResponse::More;
   }
 
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,

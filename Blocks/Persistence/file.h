@@ -206,7 +206,7 @@ class FilePersister {
         fi.seekg(head_offset, std::ios_base::beg);
         std::string line;
         std::getline(fi, line);
-        const auto head_us = std::chrono::microseconds(current::FromString<uint64_t>(line));
+        const auto head_us = std::chrono::microseconds(current::FromString<int64_t>(line));
         if (head_us > iterator.us) {
           iterator.us = head_us + std::chrono::microseconds(1);
           end.store(iterator);

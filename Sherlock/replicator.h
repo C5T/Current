@@ -176,11 +176,24 @@ class SubscribableRemoteStream final {
       for (size_t i = 0; i < whole_entries_count; ++i) {
         const auto split = current::strings::Split(lines[i], '\t');
         CURRENT_ASSERT(split.size() == 2u);
-        const auto idxts = ParseJSON<idxts_t>(split[0]);
-        CURRENT_ASSERT(idxts.index == index_);
-        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-        ++index_;
-        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+        if (split[0][0] != '#') {
+          const auto idxts = ParseJSON<idxts_t>(split[0]);
+          CURRENT_ASSERT(idxts.index == index_);
+          auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+          ++index_;
+          if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+            CURRENT_THROW(StreamTerminatedBySubscriber());
+          }
+        } else {
+          OnDirective(split[0], split[1]);
+        }
+      }
+    }
+
+    void OnDirective(const std::string& type, const std::string& value) {
+      if (type == "#HEAD") {
+        const auto head_us = std::chrono::microseconds(current::FromString<int64_t>(value));
+        if (subscriber_(head_us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       }

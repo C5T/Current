@@ -760,16 +760,17 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 }
 
 const std::string sherlock_golden_data =
-    "#HEAD\t00000000000000000000\n"
+    "#HEAD\t00000000000000000300\n"
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
-    "{\"index\":2,\"us\":300}\t{\"x\":3}\n";
+    "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
 
-const std::string sherlock_golden_data_chunks[] = {
-    "{\"index\":0,\"u",
-    "s\":100}\t{\"x\":1}\r",
-    "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n{\"index\":2,\"us\":300}\t{\"x",
-    "\":3}\n"};
+const std::string sherlock_golden_data_chunks[] = {"{\"index\":0,\"u",
+                                                   "s\":100}\t{\"x\":1}\r",
+                                                   "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n#HEA",
+                                                   "D\t0000000000",
+                                                   "0000000300\n{\"index\":2,\"us\":400}\t{\"x",
+                                                   "\":3}\n"};
 
 TEST(Sherlock, PersistsToFile) {
   current::time::ResetToZero();
@@ -786,6 +787,8 @@ TEST(Sherlock, PersistsToFile) {
   current::time::SetNow(std::chrono::microseconds(200u));
   persisted.Publish(2);
   current::time::SetNow(std::chrono::microseconds(300u));
+  persisted.UpdateHead();
+  current::time::SetNow(std::chrono::microseconds(400u));
   persisted.Publish(3);
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
@@ -839,7 +842,7 @@ TEST(Sherlock, ParsesFromFile) {
     EXPECT_FALSE(d2.subscriber_alive_);
   }
 
-  const std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
+  const std::vector<std::string> expected_values{"[0:100,2:400] 1", "[1:200,2:400] 2", "[2:400,2:400] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
