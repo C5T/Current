@@ -44,7 +44,6 @@ SOFTWARE.
 #define REMOVE_PARENTHESES(...) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT __VA_ARGS__)
 
 // Self-test.
-static int DIMA = 42;
 static_assert(sizeof(is_same_or_compile_error<int, REMOVE_PARENTHESES(int)>), "");
 static_assert(sizeof(is_same_or_compile_error<std::tuple<int>, std::tuple<REMOVE_PARENTHESES(int)>>), "");
 static_assert(sizeof(is_same_or_compile_error<std::tuple<int, double>, std::tuple<REMOVE_PARENTHESES(int, double)>>), "");
