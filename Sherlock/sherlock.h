@@ -367,27 +367,29 @@ class StreamImpl {
             return;
           }
         }
-        size = bare_data.persistence.Size();
         auto current_head = bare_data.persistence.CurrentHead();
+        size = bare_data.persistence.Size();
         if (current_head > head) {
-          for (const auto& e : bare_data.persistence.Iterate(index, size)) {
-            if (!terminate_sent && terminate_signal_) {
-              terminate_sent = true;
-              if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+          if (size > index) {
+            for (const auto& e : bare_data.persistence.Iterate(index, size)) {
+              if (!terminate_sent && terminate_signal_) {
+                terminate_sent = true;
+                if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+                  return;
+                }
+              }
+              head = e.idx_ts.us;
+              if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
+                      subscriber_,
+                      [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
+                      e.entry,
+                      e.idx_ts,
+                      bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
                 return;
               }
             }
-            head = e.idx_ts.us;
-            if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
-                    subscriber_,
-                    [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
-                    e.entry,
-                    e.idx_ts,
-                    bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
-              return;
-            }
+            index = size;
           }
-          index = size;
           if (current_head > head && subscriber_(current_head) == ss::EntryResponse::Done) {
             return;
           }
@@ -396,7 +398,7 @@ class StreamImpl {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
           terminate_signal_.WaitUntil(
-              lock, [this, &bare_data, &index]() { return terminate_signal_ || bare_data.persistence.Size() > index; });
+              lock, [this, &bare_data, &index, &head]() { return terminate_signal_ || bare_data.persistence.Size() > index || bare_data.persistence.CurrentHead() > head; });
         }
       }
     }
