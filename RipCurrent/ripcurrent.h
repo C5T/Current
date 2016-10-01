@@ -295,7 +295,8 @@ class EntriesConsumer;
 template <class... LHS_XS>
 class EntriesConsumer<LHSTypes<LHS_XS...>> : public GenericEntriesConsumer {};
 
-class NoEntryShallPassFakeConsumer final : public EntriesConsumer<LHSTypes<>> {
+template <>
+class EntriesConsumer<LHSTypes<>> : public GenericEntriesConsumer {
  public:
   void ConsumeEntry(const CurrentSuper&) override {
     std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
@@ -384,7 +385,7 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
   // User-facing `RipCurrent()` method.
   template <int IN_N = sizeof...(LHS_TYPES), int OUT_N = sizeof...(RHS_TYPES)>
   std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentRunContext> RipCurrent() {
-    SpawnAndRun(std::make_shared<NoEntryShallPassFakeConsumer>());
+    SpawnAndRun(std::make_shared<EntriesConsumer<LHSTypes<>>>());
 
     // TODO(dkorolev): Return proper run context. So far, just require `.Sync()` to be called on it.
     std::ostringstream os;
