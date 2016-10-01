@@ -42,7 +42,7 @@ CURRENT_STRUCT(Integer) {
 };
 
 // `RCEmit`: The emitter of events. RHS the integers passed to its constructor.
-RIPCURRENT_NODE(RCEmit, ripcurrent::LHS<>, ripcurrent::RHS<Integer>) {
+RIPCURRENT_NODE(RCEmit, (), Integer) {
   static std::string UnitTestClassName() { return "RCEmit"; }
   RCEmit() {}  // LCOV_EXCL_LINE
   RCEmit(int a) { emit(Integer(a)); }
@@ -59,7 +59,7 @@ RIPCURRENT_NODE(RCEmit, ripcurrent::LHS<>, ripcurrent::RHS<Integer>) {
 #define RCEmit(...) RIPCURRENT_MACRO(RCEmit, __VA_ARGS__)
 
 // `RCMult`: The processor of events. Multiplies each integer by what was passed to its constructor.
-RIPCURRENT_NODE(RCMult, ripcurrent::LHS<Integer>, ripcurrent::RHS<Integer>) {
+RIPCURRENT_NODE(RCMult, Integer, Integer) {
   static std::string UnitTestClassName() { return "RCMult"; }
   int k;
   RCMult(int k = 1) : k(k) {}
@@ -68,7 +68,7 @@ RIPCURRENT_NODE(RCMult, ripcurrent::LHS<Integer>, ripcurrent::RHS<Integer>) {
 #define RCMult(...) RIPCURRENT_MACRO(RCMult, __VA_ARGS__)
 
 // `RCDump`: The destination of events. Collects the output integers.
-RIPCURRENT_NODE(RCDump, ripcurrent::LHS<Integer>, ripcurrent::RHS<>) {
+RIPCURRENT_NODE(RCDump, Integer, ()) {
   static std::string UnitTestClassName() { return "RCDump"; }
   std::vector<int>* ptr;
   RCDump() : ptr(nullptr) {}  // LCOV_EXCL_LINE
@@ -391,11 +391,7 @@ CURRENT_STRUCT(String) {
   CURRENT_CONSTRUCTOR(String)(const std::string& value = "") : value(value) {}
 };
 
-// TODO(dkorolev): Parentheses fix.
-using LHS_Integer_String = ripcurrent::LHS<Integer, String>;
-using RHS_Integer_String = ripcurrent::RHS<Integer, String>;
-
-RIPCURRENT_NODE(EmitStringAndInteger, ripcurrent::LHS<>, RHS_Integer_String) {
+RIPCURRENT_NODE(EmitStringAndInteger, (), (Integer, String)) {
   EmitStringAndInteger() {
     emit(String("Answer"));
     emit(Integer(42));
@@ -403,7 +399,7 @@ RIPCURRENT_NODE(EmitStringAndInteger, ripcurrent::LHS<>, RHS_Integer_String) {
 };
 #define EmitStringAndInteger(...) RIPCURRENT_MACRO(EmitStringAndInteger, __VA_ARGS__)
 
-RIPCURRENT_NODE(MultIntegerOrString, LHS_Integer_String, RHS_Integer_String) {
+RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
   const int k;
   MultIntegerOrString(int k = 101) : k(k) {}
   void f(Integer x) {
@@ -415,7 +411,7 @@ RIPCURRENT_NODE(MultIntegerOrString, LHS_Integer_String, RHS_Integer_String) {
 };
 #define MultIntegerOrString(...) RIPCURRENT_MACRO(MultIntegerOrString, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpIntegerAndString, LHS_Integer_String, ripcurrent::RHS<>) {
+RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {
   std::vector<std::string>* ptr;
   DumpIntegerAndString() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpIntegerAndString(std::vector<std::string>& ref) : ptr(&ref) {}

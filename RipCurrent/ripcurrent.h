@@ -58,6 +58,7 @@ SOFTWARE.
 #include <vector>
 
 #include "../TypeSystem/struct.h"
+#include "../TypeSystem/remove_parentheses.h"
 
 #include "../Bricks/rtti/dispatcher.h"
 #include "../Bricks/strings/join.h"
@@ -678,12 +679,14 @@ SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> operator|(SharedCurrent<LHS_TYPELIST, 
 
 // Macros to wrap user code into RipCurrent building blocks.
 
-#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST)        \
-  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                          \
-    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; } \
-  };                                                                   \
-  struct USER_CLASS final : USER_CLASS##_RIPCURRENT_CLASS_NAME,        \
-                            ::ripcurrent::UserClassBase<LHS_TYPELIST, RHS_TYPELIST, USER_CLASS>
+#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST)                                            \
+  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                              \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                     \
+  };                                                                                                       \
+  struct USER_CLASS final : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                            \
+                            ::ripcurrent::UserClassBase<ripcurrent::LHS<REMOVE_PARENTHESES(LHS_TYPELIST)>, \
+                                                        ripcurrent::RHS<REMOVE_PARENTHESES(RHS_TYPELIST)>, \
+                                                        USER_CLASS>
 
 #define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                    \
   ::current::ripcurrent::UserClass<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \
