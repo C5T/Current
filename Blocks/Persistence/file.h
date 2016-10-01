@@ -49,6 +49,12 @@ namespace current {
 namespace persistence {
 
 namespace impl {
+
+namespace constants {
+constexpr const char kDirectiveMarker = '#';
+constexpr const char* kHeadFromatString = "%020lld\n";
+}  // namespace current::persistence::impl::constants
+
 // An iterator to read a file line by line, extracting tab-separated `idxts_t index` and `const char* data`.
 // Validates the entries come in the right order of 0-based indexes, and with strictly increasing timestamps.
 template <typename ENTRY>
@@ -68,7 +74,7 @@ class IteratorOverFileOfPersistedEntries {
       if (!std::getline(fi_, line_)) {
         return false;
       }
-    } while (line_.empty() || line_[0] == '#');
+    } while (line_.empty() || line_[0] == constants::kDirectiveMarker);
     const size_t tab_pos = line_.find('\t');
     if (tab_pos == std::string::npos) {
       CURRENT_THROW(MalformedEntryException(line_));
@@ -134,14 +140,14 @@ class FilePersister {
 
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename), appender(filename, std::ofstream::app), head_offset(0) {
-      ValidateFileAndInitializeHeaders();
+      ValidateFileAndInitializeHead();
       if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    void ValidateFileAndInitializeHeaders() {
+    void ValidateFileAndInitializeHead() {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -149,14 +155,15 @@ class FilePersister {
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
-        while (ProcessHeader(fi) ||
-               cit.ProcessNextEntry([&](const idxts_t& current, const char*) {
-                 CURRENT_ASSERT(current.index == offset.size());
-                 CURRENT_ASSERT(current.index == timestamp.size());
-                 offset.push_back(current_offset);
-                 timestamp.push_back(current.us);
-                 current_offset = fi.tellg();
-               })) {
+        while (fi.peek() == constants::kDirectiveMarker
+                   ? ProcessDirective(fi)
+                   : cit.ProcessNextEntry([&](const idxts_t& current, const char*) {
+                     CURRENT_ASSERT(current.index == offset.size());
+                     CURRENT_ASSERT(current.index == timestamp.size());
+                     offset.push_back(current_offset);
+                     timestamp.push_back(current.us);
+                     current_offset = fi.tellg();
+                   })) {
           ;
         }
         const auto& next = cit.Next();
@@ -164,23 +171,23 @@ class FilePersister {
       } else {
         end.store({0ull, std::chrono::microseconds(0)});
       }
-      InitializeHeaders();
+      InitializeHead();
     }
 
     enum class HEADER_TYPE : int { HEAD, PID, SCHEMA };
 
-    bool ProcessHeader(std::ifstream& fi) {
+    bool ProcessDirective(std::ifstream& fi) {
       std::string line;
-      if (fi.peek() == '#' && std::getline(fi, line)) {
+      if (std::getline(fi, line)) {
         static const std::map<std::string, HEADER_TYPE> supported_headers = {
             {"HEAD", HEADER_TYPE::HEAD}, {"PID", HEADER_TYPE::PID}, {"SCHEMA", HEADER_TYPE::SCHEMA}};
         const size_t tab_pos = line.find('\t');
         if (tab_pos == std::string::npos) {
-          return false;
+          return true;
         }
         const auto cit = supported_headers.find(line.substr(1, tab_pos));
         if (cit == supported_headers.end()) {
-          return false;
+          return true;
         }
         const HEADER_TYPE header = cit->second;
         if (header == HEADER_TYPE::HEAD) {
@@ -192,24 +199,22 @@ class FilePersister {
       }
     }
 
-    void InitializeHeaders() {
+    void InitializeHead() {
       auto iterator = end.load();
       if (head_offset) {
         std::ifstream fi(filename);
         fi.seekg(head_offset, std::ios_base::beg);
         std::string line;
-        if (!std::getline(fi, line)) {
-          CURRENT_THROW(Exception());
-        }
+        std::getline(fi, line);
         const auto head_us = std::chrono::microseconds(current::FromString<uint64_t>(line));
         if (head_us > iterator.us) {
           iterator.us = head_us + std::chrono::microseconds(1);
           end.store(iterator);
         }
       } else {
-        appender << "#HEAD\t";
+        appender << constants::kDirectiveMarker << "HEAD\t";
         head_offset = appender.tellp();
-        appender << Printf("%010lld\n", iterator.index ? iterator.us.count() - 1 : 0);
+        appender << Printf(constants::kHeadFromatString, iterator.index ? iterator.us.count() - 1 : 0);
       }
     }
   };
@@ -375,7 +380,7 @@ class FilePersister {
     }
     std::fstream fo(file_persister_impl_->filename, std::ios::out | std::ios::in);
     fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
-    fo << Printf("%010lld", timestamp.count());
+    fo << Printf(constants::kHeadFromatString, timestamp.count());
     iterator.us = timestamp + std::chrono::microseconds(1);
     file_persister_impl_->end.store(iterator);
   }

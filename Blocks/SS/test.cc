@@ -94,6 +94,9 @@ struct DemoEntryPublisherImpl {
     return idxts_t(index, current::time::Now());
   }
 
+  template <current::locks::MutexLockStatus>
+  void DoUpdateHead(std::chrono::microseconds) const {}
+
   // TODO: Decide on `Emplace`.
   //  idxts_t DoEmplace(const std::string& text) {
   //    ++index;
