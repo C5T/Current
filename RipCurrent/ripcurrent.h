@@ -619,15 +619,15 @@ class UserClass<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
 
 // The implementation of the `A | B` combiner building block.
 template <class LHS_TYPELIST, class RHS_TYPELIST, class VIA_TYPELIST>
-class AbstractCurrentSequence;
+class SharedSequenceImpl;
 
-template <typename LHS_TYPELIST, typename RHS_TYPELIST, typename VIA_X, typename... VIA_XS>
-class AbstractCurrentSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>
-    : public AbstractCurrent<LHS_TYPELIST, RHS_TYPELIST> {
+template <class... LHS_TYPES, class... RHS_TYPES, typename VIA_X, typename... VIA_XS>
+class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIATypes<VIA_X, VIA_XS...>>
+    : public AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
-  AbstractCurrentSequence(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from,
-                          SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into)
-      : AbstractCurrent<LHS_TYPELIST, RHS_TYPELIST>(
+  SharedSequenceImpl(SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<VIA_X, VIA_XS...>> from,
+                     SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHSTypes<RHS_TYPES...>> into)
+      : AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>(
             Definition(Definition::Pipe(), from.GetDefinition(), into.GetDefinition())),
         from_(from),
         into_(into) {
@@ -635,32 +635,11 @@ class AbstractCurrentSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS
     into.MarkAs(BlockUsageBit::UsedInLargerBlock);
   }
 
- protected:
-  const SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>>& From() const { return from_; }
-  const SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST>& Into() const { return into_; }
-
- private:
-  SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from_;
-  SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into_;
-};
-
-template <class LHS_TYPELIST, class RHS_TYPELIST, class VIA_TYPELIST>
-class GenericCurrentSequence;
-
-template <class... LHS_TYPES, class... RHS_TYPES, typename VIA_X, typename... VIA_XS>
-class GenericCurrentSequence<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIATypes<VIA_X, VIA_XS...>>
-    : public AbstractCurrentSequence<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIATypes<VIA_X, VIA_XS...>> {
- public:
-  GenericCurrentSequence(SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<VIA_X, VIA_XS...>> from,
-                         SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHSTypes<RHS_TYPES...>> into)
-      : AbstractCurrentSequence<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIATypes<VIA_X, VIA_XS...>>(from,
-                                                                                                            into) {}
-
   class Instance : public InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
    public:
     virtual ~Instance() = default;
 
-    Instance(const GenericCurrentSequence* self, std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next)
+    Instance(const SharedSequenceImpl* self, std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next)
         : next_(next), into_(self->Into().SpawnAndRun(next_)), from_(self->From().SpawnAndRun(into_)) {
       self->MarkAs(BlockUsageBit::Run);
     }
@@ -678,29 +657,37 @@ class GenericCurrentSequence<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIA
       std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next) const override {
     return std::make_shared<Instance>(this, next);
   }
+
+ protected:
+  const SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<VIA_X, VIA_XS...>>& From() const { return from_; }
+  const SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHSTypes<RHS_TYPES...>>& Into() const { return into_; }
+
+ private:
+  SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<VIA_X, VIA_XS...>> from_;
+  SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHSTypes<RHS_TYPES...>> into_;
 };
 
-// `SubflowSequence` requires `VIA_TYPELIST` to be a nonempty type list.
+// `SharedSequence` requires `VIA_TYPELIST` to be a nonempty type list.
 // This is enforced by the `operator|()` declaration below.
 template <class LHS_TYPELIST, class RHS_TYPELIST, class VIA_TYPELIST>
-class SubflowSequence;
+class SharedSequence;
 
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename VIA_X, typename... VIA_XS>
-class SubflowSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>
+class SharedSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>
     : public SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> {
  public:
-  using subflow_t = SharedCurrent<LHS_TYPELIST, RHS_TYPELIST>;
-  SubflowSequence(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from,
-                  SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into)
-      : subflow_t(std::make_shared<GenericCurrentSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>>(
-            from, into)) {}
+  using base_t = SharedCurrent<LHS_TYPELIST, RHS_TYPELIST>;
+  SharedSequence(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from,
+                 SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into)
+      : base_t(
+            std::make_shared<SharedSequenceImpl<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>>(from, into)) {}
 };
 
 // SharedCurrent sequence combiner, `A | B`.
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename VIA_X, typename... VIA_XS>
 SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> operator|(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from,
                                                     SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into) {
-  return SubflowSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>(from, into);
+  return SharedSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>(from, into);
 }
 
 // These `using`-s are the types the user can directly operate with.
