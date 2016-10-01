@@ -321,16 +321,17 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define CF_SWITCH(x, y) x y
 #define CURRENT_FIELD(...) CF_SWITCH(CF_CHOOSERX(CF_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                                           \
-  ::current::reflection::Field<INSTANTIATION_TYPE, REMOVE_PARENTHESES(type)> name;        \
-  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                    \
-      CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1; \
+#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                                            \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CURRENT_REMOVE_PARENTHESES(type)> name; \
+  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                     \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1;  \
   CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                                           \
-  ::current::reflection::Field<INSTANTIATION_TYPE, REMOVE_PARENTHESES(type)> name{REMOVE_PARENTHESES(value)}; \
-  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                                        \
-      CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1;                     \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                        \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CURRENT_REMOVE_PARENTHESES(type)> name{ \
+      CURRENT_REMOVE_PARENTHESES(value)};                                                  \
+  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                     \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1;  \
   CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
 
 #define CURRENT_FIELD_DESCRIPTION(name, description)                    \
@@ -371,12 +372,12 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   template <class F>                                                                                                   \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) {         \
-    CURRENT_CALL_F(::current::reflection::TypeSelector<REMOVE_PARENTHESES(type)>(), #name);                            \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<CURRENT_REMOVE_PARENTHESES(type)>(), #name);                    \
   }                                                                                                                    \
   template <class F>                                                                                                   \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndNameAndIndex, idx>) { \
-    CURRENT_CALL_F(::current::reflection::TypeSelector<REMOVE_PARENTHESES(type)>(),                                    \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<CURRENT_REMOVE_PARENTHESES(type)>(),                            \
                    #name,                                                                                              \
                    ::current::reflection::SimpleIndex<idx>());                                                         \
   }                                                                                                                    \

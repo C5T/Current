@@ -722,14 +722,14 @@ using E2E = SharedCurrent<LHSTypes<>, RHSTypes<>>;
 }  // namespace current
 
 // Macros to wrap user code into RipCurrent building blocks.
-#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST)                                                  \
-  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                                    \
-    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                           \
-  };                                                                                                             \
-  struct USER_CLASS final                                                                                        \
-      : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                                                      \
-        ::current::ripcurrent::UserClassBase<::current::ripcurrent::VoidOrLHS<REMOVE_PARENTHESES(LHS_TYPELIST)>, \
-                                             ::current::ripcurrent::VoidOrRHS<REMOVE_PARENTHESES(RHS_TYPELIST)>, \
+#define RIPCURRENT_NODE(USER_CLASS, LHS_TS, RHS_TS)                                                                \
+  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                                      \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                             \
+  };                                                                                                               \
+  struct USER_CLASS final                                                                                          \
+      : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                                                        \
+        ::current::ripcurrent::UserClassBase<::current::ripcurrent::VoidOrLHS<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
+                                             ::current::ripcurrent::VoidOrRHS<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
                                              USER_CLASS>
 
 #define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                    \

@@ -31,21 +31,22 @@ SOFTWARE.
 #include <tuple>
 
 // A macro to equally treat bare and parenthesized type arguments:
-// REMOVE_PARENTHESES((int)) = REMOVE_PARENTHESES(int) = int
+// CURRENT_REMOVE_PARENTHESES((int)) = CURRENT_REMOVE_PARENTHESES(int) = int
 #define EMPTY_CF_TYPE_EXTRACT
 #define CF_TYPE_PASTE(x, ...) x##__VA_ARGS__
 #define CF_TYPE_PASTE2(x, ...) CF_TYPE_PASTE(x, __VA_ARGS__)
 #define CF_TYPE_EXTRACT(...) CF_TYPE_EXTRACT __VA_ARGS__
 
 // Was. -- D.K. TODO: Test on Windows.
-// #define REMOVE_PARENTHESES(x) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT x)
+// #define CURRENT_REMOVE_PARENTHESES(x) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT x)
 
 // Now. -- D.K.
-#define REMOVE_PARENTHESES(...) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT __VA_ARGS__)
+#define CURRENT_REMOVE_PARENTHESES(...) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT __VA_ARGS__)
 
 // Self-test.
-static_assert(sizeof(is_same_or_compile_error<int, REMOVE_PARENTHESES(int)>), "");
-static_assert(sizeof(is_same_or_compile_error<std::tuple<int>, std::tuple<REMOVE_PARENTHESES(int)>>), "");
-static_assert(sizeof(is_same_or_compile_error<std::tuple<int, double>, std::tuple<REMOVE_PARENTHESES(int, double)>>), "");
+static_assert(sizeof(is_same_or_compile_error<int, CURRENT_REMOVE_PARENTHESES(int)>), "");
+static_assert(sizeof(is_same_or_compile_error<std::tuple<int>, std::tuple<CURRENT_REMOVE_PARENTHESES(int)>>), "");
+static_assert(
+    sizeof(is_same_or_compile_error<std::tuple<int, double>, std::tuple<CURRENT_REMOVE_PARENTHESES(int, double)>>), "");
 
 #endif  // CURRENT_TYPE_SYSTEM_REMOVE_PARENTHESES_H
