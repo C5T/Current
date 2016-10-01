@@ -107,7 +107,7 @@ class VIATypes;
 // A singleton wrapping error handling logic, to allow mocking for the unit test.
 class RipCurrentMockableErrorHandler {
  public:
-  typedef std::function<void(const std::string& error_message)> handler_t;
+  using handler_t = std::function<void(const std::string& error_message)>;
 
   // LCOV_EXCL_START
   RipCurrentMockableErrorHandler()
@@ -174,7 +174,7 @@ struct Definition {
 };
 
 // `UniqueDefinition` is a `Definition` that:
-// * Templated with `LHSTypes<...>` and `RHSTypes<...>` for strict typing.
+// * Is templated with `LHSTypes<...>` and `RHSTypes<...>` for strict typing.
 // * Exposes user-friendly decorators.
 // * Can be marked as used in various ways.
 // * Generates an error upon destructing if it was not marked as used in at least one way.
@@ -587,7 +587,7 @@ class SharedUserClassInstantiator;
 template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
 class SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> {
  public:
-  typedef UserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> impl_t;
+  using impl_t = UserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
   template <class ARGS_AS_TUPLE>
   SharedUserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
       : shared_spawner_(std::make_shared<impl_t>(definition, std::forward<ARGS_AS_TUPLE>(params))) {}
@@ -601,15 +601,12 @@ class SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>
 // initializes `SharedUserClassInstantiator<LHSTypes<...>, RHSTypes<...>, IMPL>`
 // before constructing the parent `SharedCurrent<LHSTypes<...>, RHSTypes<...>>` object, thus
 // allowing the latter to reuse the `shared_ptr<>` containing the user code constructed in the former.
-template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class UserClass;
-
 template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
 class UserClass<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
     : public SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
       public SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
-  typedef SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> impl_t;
+  using impl_t = SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
   template <class ARGS_AS_TUPLE>
   UserClass(Definition definition, ARGS_AS_TUPLE&& params)
       : impl_t(definition, std::forward<ARGS_AS_TUPLE>(params)),
@@ -691,7 +688,7 @@ template <class LHS_TYPELIST, class RHS_TYPELIST, typename VIA_X, typename... VI
 class SubflowSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>
     : public SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> {
  public:
-  typedef SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> subflow_t;
+  using subflow_t = SharedCurrent<LHS_TYPELIST, RHS_TYPELIST>;
   SubflowSequence(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from,
                   SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into)
       : subflow_t(std::make_shared<GenericCurrentSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>>(
@@ -705,7 +702,7 @@ SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> operator|(SharedCurrent<LHS_TYPELIST, 
   return SubflowSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>(from, into);
 }
 
-// These typedef are the types the user can directly operate with.
+// These `using`-s are the types the user can directly operate with.
 // All of them can be liberally copied over, since the logic is concealed within the inner `shared_ptr<>`.
 template <typename RHS_TYPELIST>
 using LHS = SharedCurrent<LHSTypes<>, RHS_TYPELIST>;
