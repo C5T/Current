@@ -549,7 +549,7 @@ class UserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER
             NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
             std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>>>(std::forward<ARGS_AS_TUPLE>(params))) {}
 
-  class Instance : public InstanceBeingRun<input_t, output_t> {
+  class Instance final : public InstanceBeingRun<input_t, output_t> {
    public:
     virtual ~Instance() = default;
 
@@ -635,7 +635,7 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
     into.MarkAs(BlockUsageBit::UsedInLargerBlock);
   }
 
-  class Instance : public InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
+  class Instance final : public InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
    public:
     virtual ~Instance() = default;
 
@@ -672,15 +672,14 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
 template <class LHS_TYPELIST, class RHS_TYPELIST, class VIA_TYPELIST>
 class SharedSequence;
 
-template <class LHS_TYPELIST, class RHS_TYPELIST, typename VIA_X, typename... VIA_XS>
-class SharedSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>
+template <class LHS_TYPELIST, class RHS_TYPELIST, typename... VIA_XS>
+class SharedSequence<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_XS...>>
     : public SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> {
  public:
   using base_t = SharedCurrent<LHS_TYPELIST, RHS_TYPELIST>;
-  SharedSequence(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_X, VIA_XS...>> from,
-                 SharedCurrent<LHSTypes<VIA_X, VIA_XS...>, RHS_TYPELIST> into)
-      : base_t(
-            std::make_shared<SharedSequenceImpl<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_X, VIA_XS...>>>(from, into)) {}
+  SharedSequence(SharedCurrent<LHS_TYPELIST, RHSTypes<VIA_XS...>> from,
+                 SharedCurrent<LHSTypes<VIA_XS...>, RHS_TYPELIST> into)
+      : base_t(std::make_shared<SharedSequenceImpl<LHS_TYPELIST, RHS_TYPELIST, VIATypes<VIA_XS...>>>(from, into)){};
 };
 
 // SharedCurrent sequence combiner, `A | B`.
