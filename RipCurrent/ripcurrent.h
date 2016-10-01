@@ -226,18 +226,18 @@ class UniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> final : p
   BlockUsageBitMask mask_ = BlockUsageBitMask::Unused;
 };
 
-// `SharedUniqueDefinition` is a helper class for an `std::shared_ptr<UniqueDefinition>`.
+// `SharedDefinition` is a helper class for an `std::shared_ptr<UniqueDefinition>`.
 // The premise is that building blocks that should be used or run can be liberally copied over,
 // with the test that they have been used or run performed at the very end of their lifetime.
 template <class LHS_TYPELIST, class RHS_TYPELIST>
-class SharedUniqueDefinition;
+class SharedDefinition;
 
 template <typename... LHS_TYPES, typename... RHS_TYPES>
-class SharedUniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
+class SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
   using impl_t = UniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>;
 
-  SharedUniqueDefinition(Definition definition) : unique_definition_(std::make_shared<impl_t>(definition)) {}
+  SharedDefinition(Definition definition) : unique_definition_(std::make_shared<impl_t>(definition)) {}
   void MarkAs(BlockUsageBit bit) const { unique_definition_->MarkAs(bit); }
 
   // User-facing methods.
@@ -274,7 +274,7 @@ class SharedUniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
   void Dismiss() const { MarkAs(BlockUsageBit::Dismissed); }
 
   // For expressive initialized lists of shared instances.
-  const SharedUniqueDefinition& GetUniqueDefinition() const { return *this; }
+  const SharedDefinition& GetUniqueDefinition() const { return *this; }
   const UniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>& GetDefinition() const {
     return *unique_definition_.get();
   }
@@ -345,14 +345,14 @@ class AbstractCurrent;
 
 template <typename... LHS_TYPES, typename... RHS_TYPES>
 class AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
-    : public SharedUniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
+    : public SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
   struct Traits final {
     using input_t = LHSTypes<LHS_TYPES...>;
     using output_t = RHSTypes<RHS_TYPES...>;
   };
 
-  using definition_t = SharedUniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>;
+  using definition_t = SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>;
 
   explicit AbstractCurrent(definition_t definition) : definition_t(definition) {}
   virtual ~AbstractCurrent() = default;
