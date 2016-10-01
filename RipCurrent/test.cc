@@ -418,7 +418,7 @@ CURRENT_STRUCT(String) {
   CURRENT_CONSTRUCTOR(String)(const std::string& value = "") : value(value) {}
 };
 
-RIPCURRENT_NODE(EmitStringAndInteger, (), (Integer, String)) {
+RIPCURRENT_NODE(EmitStringAndInteger, (), (Integer, String)) {  // Note: `()` is same as `void`.
   EmitStringAndInteger() {
     emit(String("Answer"));
     emit(Integer(42));
@@ -438,7 +438,7 @@ RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
 };
 #define MultIntegerOrString(...) RIPCURRENT_MACRO(MultIntegerOrString, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {
+RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {  // Note: `()` is same as `void`.
   std::vector<std::string>* ptr;
   DumpIntegerAndString() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpIntegerAndString(std::vector<std::string>& ref) : ptr(&ref) {}
