@@ -76,6 +76,32 @@ template <typename... TS>
 class RHS;
 
 template <typename... TS>
+struct VoidOrLHSImpl {
+  using type = LHS<TS...>;
+};
+
+template <typename... TS>
+struct VoidOrRHSImpl {
+  using type = RHS<TS...>;
+};
+
+template <>
+struct VoidOrLHSImpl<void> {
+  using type = LHS<>;
+};
+
+template <>
+struct VoidOrRHSImpl<void> {
+  using type = RHS<>;
+};
+
+template <typename... TS>
+using VoidOrLHS = typename VoidOrLHSImpl<TS...>::type;
+
+template <typename... TS>
+using VoidOrRHS = typename VoidOrRHSImpl<TS...>::type;
+
+template <typename... TS>
 class VIA;
 
 // A singleton wrapping error handling logic, to allow mocking for the unit test.
@@ -679,14 +705,15 @@ SharedCurrent<LHS_TYPELIST, RHS_TYPELIST> operator|(SharedCurrent<LHS_TYPELIST, 
 
 // Macros to wrap user code into RipCurrent building blocks.
 
-#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST)                                            \
-  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                              \
-    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                     \
-  };                                                                                                       \
-  struct USER_CLASS final : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                            \
-                            ::ripcurrent::UserClassBase<ripcurrent::LHS<REMOVE_PARENTHESES(LHS_TYPELIST)>, \
-                                                        ripcurrent::RHS<REMOVE_PARENTHESES(RHS_TYPELIST)>, \
-                                                        USER_CLASS>
+#define RIPCURRENT_NODE(USER_CLASS, LHS_TYPELIST, RHS_TYPELIST)                                         \
+  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                           \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                  \
+  };                                                                                                    \
+  struct USER_CLASS final                                                                               \
+      : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                                             \
+        ::ripcurrent::UserClassBase<::current::ripcurrent::VoidOrLHS<REMOVE_PARENTHESES(LHS_TYPELIST)>, \
+                                    ::current::ripcurrent::VoidOrRHS<REMOVE_PARENTHESES(RHS_TYPELIST)>, \
+                                    USER_CLASS>
 
 #define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                    \
   ::current::ripcurrent::UserClass<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \

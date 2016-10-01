@@ -42,7 +42,7 @@ CURRENT_STRUCT(Integer) {
 };
 
 // `RCEmit`: The emitter of events. RHS the integers passed to its constructor.
-RIPCURRENT_NODE(RCEmit, (), Integer) {
+RIPCURRENT_NODE(RCEmit, void, Integer) {
   static std::string UnitTestClassName() { return "RCEmit"; }
   RCEmit() {}  // LCOV_EXCL_LINE
   RCEmit(int a) { emit(Integer(a)); }
@@ -68,7 +68,7 @@ RIPCURRENT_NODE(RCMult, Integer, Integer) {
 #define RCMult(...) RIPCURRENT_MACRO(RCMult, __VA_ARGS__)
 
 // `RCDump`: The destination of events. Collects the output integers.
-RIPCURRENT_NODE(RCDump, Integer, ()) {
+RIPCURRENT_NODE(RCDump, Integer, void) {
   static std::string UnitTestClassName() { return "RCDump"; }
   std::vector<int>* ptr;
   RCDump() : ptr(nullptr) {}  // LCOV_EXCL_LINE
