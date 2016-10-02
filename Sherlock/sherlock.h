@@ -390,7 +390,7 @@ class StreamImpl {
             }
             index = size;
           }
-          if (current_head > head && subscriber_(current_head) == ss::EntryResponse::Done) {
+          if (size > begin_idx && current_head > head && subscriber_(current_head) == ss::EntryResponse::Done) {
             return;
           }
           head = current_head;
