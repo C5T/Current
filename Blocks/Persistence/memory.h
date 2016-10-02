@@ -164,7 +164,16 @@ class MemoryPersister {
     }
   }
 
-  std::chrono::microseconds CurrentHead() const { return container_->head; }
+  std::chrono::microseconds CurrentHead() const {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    return container_->head;
+  }
+
+  bool HeadDetached() const noexcept {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    return container_->head.count() &&
+           (container_->entries.empty() || container_->head > container_->entries.back().idx_ts.us);
+  }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
