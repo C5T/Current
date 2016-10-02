@@ -84,13 +84,14 @@ class IteratorOverFileOfPersistedEntries {
       // Indexes must be strictly continuous.
       CURRENT_THROW(InconsistentIndexException(next_.index, current.index));
     }
-    if (!(current.us > next_.us)) {
+    if (current.us < next_.us) {
       // Timestamps must monotonically increase.
-      CURRENT_THROW(InconsistentTimestampException(next_.us + std::chrono::microseconds(1), current.us));
+      CURRENT_THROW(InconsistentTimestampException(next_.us, current.us));
     }
     f(current, line_.c_str() + tab_pos + 1);
     next_ = current;
     ++next_.index;
+    ++next_.us;
     return true;
   }
 
@@ -170,7 +171,7 @@ class FilePersister {
           ;
         }
         const auto& next = cit.Next();
-        end.store({next.index, next.us});
+        end.store({next.index, next.us - std::chrono::microseconds(1)});
       } else {
         end.store({0ull, std::chrono::microseconds(0)});
       }
@@ -358,9 +359,9 @@ class FilePersister {
 
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    if (!(timestamp > file_persister_impl_->head_timestamp)) {
-      CURRENT_THROW(InconsistentTimestampException(file_persister_impl_->head_timestamp + std::chrono::microseconds(1),
-                                                   timestamp));
+    auto& head = file_persister_impl_->head_timestamp;
+    if (head.count() && !(timestamp > head)) {
+      CURRENT_THROW(InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
     end_t iterator = file_persister_impl_->end.load();
     iterator.us = timestamp;
@@ -375,19 +376,19 @@ class FilePersister {
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.index;
     file_persister_impl_->end.store(iterator);
-    file_persister_impl_->head_timestamp = timestamp;
+    head = timestamp;
     return current;
   }
 
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
-    if (!(timestamp > file_persister_impl_->head_timestamp)) {
-      CURRENT_THROW(InconsistentTimestampException(file_persister_impl_->head_timestamp + std::chrono::microseconds(1),
-                                                   timestamp));
+    auto& head = file_persister_impl_->head_timestamp;
+    if (head.count() && !(timestamp > head)) {
+      CURRENT_THROW(InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
     std::fstream fo(file_persister_impl_->filename, std::ios::out | std::ios::in);
     fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
     fo << Printf(constants::kHeadFromatString, timestamp.count());
-    file_persister_impl_->head_timestamp = timestamp;
+    head = timestamp;
   }
 
   bool Empty() const noexcept { return !file_persister_impl_->end.load().index; }

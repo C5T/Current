@@ -172,7 +172,7 @@ class MemoryPersister {
   bool HeadDetached() const noexcept {
     std::lock_guard<std::mutex> lock(container_->mutex);
     return container_->head.count() &&
-           (container_->entries.empty() || container_->head > container_->entries.back().idx_ts.us);
+           (container_->entries.empty() || container_->head > container_->entries.back().first);
   }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
