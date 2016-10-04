@@ -319,6 +319,7 @@ using serialization::json::JSONUninitializedVariantObjectException;
 
 using current::JSON;
 using current::ParseJSON;
+using current::TryParseJSON;
 using current::PatchObjectWithJSON;
 using current::JSONFormat;
 using current::TypeSystemParseJSONException;
