@@ -65,6 +65,10 @@ struct RTTITestProcessor {
   void operator()(Foo&) { s = "Foo&"; }
   void operator()(Bar&) { s = "Bar&"; }
   void operator()(Baz&) { s = "Baz&"; }
+  void operator()(Base&&) { s = "Base&&"; }
+  void operator()(Foo&&) { s = "Foo&&"; }
+  void operator()(Bar&&) { s = "Bar&&"; }
+  void operator()(Baz&&) { s = "Baz&&"; }
 };
 
 }  // namespace rtti_unittest
@@ -74,13 +78,13 @@ TEST(RuntimeDispatcher, StaticCalls) {
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(Base());
-  EXPECT_EQ("const Base&", p.s);
+  EXPECT_EQ("Base&&", p.s);
   p(Foo());
-  EXPECT_EQ("const Foo&", p.s);
+  EXPECT_EQ("Foo&&", p.s);
   p(Bar());
-  EXPECT_EQ("const Bar&", p.s);
+  EXPECT_EQ("Bar&&", p.s);
   p(Baz());
-  EXPECT_EQ("const Baz&", p.s);
+  EXPECT_EQ("Baz&&", p.s);
 }
 
 TEST(RuntimeDispatcher, ImmutableStaticCalls) {
@@ -270,3 +274,22 @@ TEST(RuntimeDispatcher, MutableWithTypeListTypeListDispatching) {
   ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
                current::rtti::UnrecognizedPolymorphicType);
 }
+
+TEST(RuntimeDispatcher, MoveSemantics) {
+  using namespace rtti_unittest;
+  {
+    Foo foo;
+    const Base& x = foo;
+    RTTITestProcessor p;
+    EXPECT_EQ("", p.s);
+    current::rtti::RuntimeDispatcher<Base, Foo>::DispatchCall(x, p);
+    EXPECT_EQ("const Foo&", p.s);
+  }
+  {
+    Bar bar;
+    Base&& y = std::move(bar);
+    RTTITestProcessor p;
+    EXPECT_EQ("", p.s);
+    current::rtti::RuntimeDispatcher<Base, Bar>::DispatchCall(std::move(y), p);
+    EXPECT_EQ("Bar&&", p.s);
+  }}

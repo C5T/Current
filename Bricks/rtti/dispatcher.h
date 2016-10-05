@@ -39,19 +39,27 @@ struct RuntimeDispatcher {
   typedef BASE base_t;
   typedef DERIVED derived_t;
   template <typename T, typename PROCESSOR>
-  static void DispatchCall(const T &x, PROCESSOR &c) {
-    if (const DERIVED *d = dynamic_cast<const DERIVED *>(&x)) {
+  static void DispatchCall(const T& x, PROCESSOR& c) {
+    if (const DERIVED* d = dynamic_cast<const DERIVED*>(&x)) {
       c(*d);
     } else {
       RuntimeDispatcher<BASE, TAIL...>::DispatchCall(x, c);
     }
   }
   template <typename T, typename PROCESSOR>
-  static void DispatchCall(T &x, PROCESSOR &c) {
-    if (DERIVED *d = dynamic_cast<DERIVED *>(&x)) {
+  static void DispatchCall(T& x, PROCESSOR& c) {
+    if (DERIVED* d = dynamic_cast<DERIVED*>(&x)) {
       c(*d);
     } else {
       RuntimeDispatcher<BASE, TAIL...>::DispatchCall(x, c);
+    }
+  }
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(T&& x, PROCESSOR& c) {
+    if (DERIVED* d = dynamic_cast<DERIVED*>(&x)) {
+      c(std::move(*d));
+    } else {
+      RuntimeDispatcher<BASE, TAIL...>::DispatchCall(std::move(x), c);
     }
   }
 };
@@ -61,11 +69,11 @@ struct RuntimeDispatcher<BASE, DERIVED> {
   typedef BASE base_t;
   typedef DERIVED derived_t;
   template <typename T, typename PROCESSOR>
-  static void DispatchCall(const T &x, PROCESSOR &c) {
-    if (const DERIVED *d = dynamic_cast<const DERIVED *>(&x)) {
+  static void DispatchCall(const T& x, PROCESSOR& c) {
+    if (const DERIVED* d = dynamic_cast<const DERIVED*>(&x)) {
       c(*d);
     } else {
-      const BASE *b = dynamic_cast<const BASE *>(&x);
+      const BASE* b = dynamic_cast<const BASE*>(&x);
       if (b) {
         c(*b);
       } else {
@@ -74,13 +82,26 @@ struct RuntimeDispatcher<BASE, DERIVED> {
     }
   }
   template <typename T, typename PROCESSOR>
-  static void DispatchCall(T &x, PROCESSOR &c) {
-    if (DERIVED *d = dynamic_cast<DERIVED *>(&x)) {
+  static void DispatchCall(T& x, PROCESSOR& c) {
+    if (DERIVED* d = dynamic_cast<DERIVED*>(&x)) {
       c(*d);
     } else {
-      BASE *b = dynamic_cast<BASE *>(&x);
+      BASE* b = dynamic_cast<BASE*>(&x);
       if (b) {
         c(*b);
+      } else {
+        CURRENT_THROW(UnrecognizedPolymorphicType());
+      }
+    }
+  }
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(T&& x, PROCESSOR& c) {
+    if (DERIVED* d = dynamic_cast<DERIVED*>(&x)) {
+      c(std::move(*d));
+    } else {
+      BASE* b = dynamic_cast<BASE*>(&x);
+      if (b) {
+        c(std::move(*b));
       } else {
         CURRENT_THROW(UnrecognizedPolymorphicType());
       }
@@ -98,8 +119,8 @@ template <typename BASE>
 struct RuntimeTypeListDispatcher<BASE, TypeListImpl<>> {
   typedef BASE base_t;
   template <typename T, typename PROCESSOR>
-  static void DispatchCall(const T &x, PROCESSOR &c) {
-    const BASE *b = dynamic_cast<const BASE *>(&x);
+  static void DispatchCall(const T& x, PROCESSOR& c) {
+    const BASE* b = dynamic_cast<const BASE*>(&x);
     if (b) {
       c(*b);
     } else {
@@ -107,10 +128,19 @@ struct RuntimeTypeListDispatcher<BASE, TypeListImpl<>> {
     }
   }
   template <typename T, typename PROCESSOR>
-  static void DispatchCall(T &x, PROCESSOR &c) {
-    BASE *b = dynamic_cast<BASE *>(&x);
+  static void DispatchCall(T& x, PROCESSOR& c) {
+    BASE* b = dynamic_cast<BASE*>(&x);
     if (b) {
       c(*b);
+    } else {
+      CURRENT_THROW(UnrecognizedPolymorphicType());
+    }
+  }
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(T&& x, PROCESSOR& c) {
+    BASE* b = dynamic_cast<BASE*>(&x);
+    if (b) {
+      c(std::move(*b));
     } else {
       CURRENT_THROW(UnrecognizedPolymorphicType());
     }
