@@ -29,8 +29,6 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
-using current::strings::Join;
-
 // `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
 
 // clang-format off
@@ -118,7 +116,7 @@ TEST(RipCurrent, SingleEdgeFlow) {
   std::vector<int> result;
 
   (RCEmit(1, 2, 3) | RCDump(std::ref(result))).RipCurrent().Sync();
-  EXPECT_EQ("1,2,3", Join(result, ','));
+  EXPECT_EQ("1,2,3", current::strings::Join(result, ','));
 }
 
 TEST(RipCurrent, SingleChainFlow) {
@@ -127,7 +125,7 @@ TEST(RipCurrent, SingleChainFlow) {
   std::vector<int> result;
 
   (RCEmit(1, 2, 3) | RCMult(2) | RCMult(5) | RCMult(10) | RCDump(std::ref(result))).RipCurrent().Sync();
-  EXPECT_EQ("100,200,300", Join(result, ','));
+  EXPECT_EQ("100,200,300", current::strings::Join(result, ','));
 }
 
 TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
@@ -143,9 +141,9 @@ TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
   EXPECT_EQ("... | RCDump(std::ref(result))", dump.Describe());
   EXPECT_EQ("RCEmit(42) | RCDump(std::ref(result))", emit_dump.Describe());
 
-  EXPECT_EQ("", Join(result, ','));
+  EXPECT_EQ("", current::strings::Join(result, ','));
   emit_dump.RipCurrent().Sync();
-  EXPECT_EQ("42", Join(result, ','));
+  EXPECT_EQ("42", current::strings::Join(result, ','));
 }
 
 TEST(RipCurrent, OrderDoesNotMatter) {
@@ -159,19 +157,19 @@ TEST(RipCurrent, OrderDoesNotMatter) {
 
   result.clear();
   (a | b | b | c).RipCurrent().Sync();
-  EXPECT_EQ("4", Join(result, ','));
+  EXPECT_EQ("4", current::strings::Join(result, ','));
 
   result.clear();
   ((a | b) | (b | c)).RipCurrent().Sync();
-  EXPECT_EQ("4", Join(result, ','));
+  EXPECT_EQ("4", current::strings::Join(result, ','));
 
   result.clear();
   ((a | (b | b)) | c).RipCurrent().Sync();
-  EXPECT_EQ("4", Join(result, ','));
+  EXPECT_EQ("4", current::strings::Join(result, ','));
 
   result.clear();
   (a | ((b | b) | c)).RipCurrent().Sync();
-  EXPECT_EQ("4", Join(result, ','));
+  EXPECT_EQ("4", current::strings::Join(result, ','));
 }
 
 TEST(RipCurrent, BuildingBlocksCanBeReused) {
@@ -189,15 +187,15 @@ TEST(RipCurrent, BuildingBlocksCanBeReused) {
 
   (emit1 | mult10 | dump1).RipCurrent().Sync();
   (emit2 | mult10 | dump2).RipCurrent().Sync();
-  EXPECT_EQ("10", Join(result1, ','));
-  EXPECT_EQ("20", Join(result2, ','));
+  EXPECT_EQ("10", current::strings::Join(result1, ','));
+  EXPECT_EQ("20", current::strings::Join(result2, ','));
 
   result1.clear();
   result2.clear();
   ((emit1 | mult10) | dump1).RipCurrent().Sync();
   ((emit2 | mult10) | dump2).RipCurrent().Sync();
-  EXPECT_EQ("10", Join(result1, ','));
-  EXPECT_EQ("20", Join(result2, ','));
+  EXPECT_EQ("10", current::strings::Join(result1, ','));
+  EXPECT_EQ("20", current::strings::Join(result2, ','));
 }
 
 TEST(RipCurrent, SynopsisAndDecorators) {
@@ -469,13 +467,13 @@ TEST(RipCurrent, CustomTypesFlow) {
   {
     std::vector<std::string> result;
     (EmitStringAndInteger() | DumpIntegerAndString(std::ref(result))).RipCurrent().Sync();
-    EXPECT_EQ("'Answer', 42", Join(result, ", "));
+    EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
   }
 
   {
     std::vector<std::string> result;
     (EmitStringAndInteger() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Sync();
-    EXPECT_EQ("'Yo? Answer Yo!', 4242", Join(result, ", "));
+    EXPECT_EQ("'Yo? Answer Yo!', 4242", current::strings::Join(result, ", "));
   }
 
   {
@@ -484,6 +482,6 @@ TEST(RipCurrent, CustomTypesFlow) {
      DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
         .Sync();
-    EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", Join(result, ", "));
+    EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", current::strings::Join(result, ", "));
   }
 }
