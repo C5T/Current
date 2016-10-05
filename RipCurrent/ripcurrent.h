@@ -286,7 +286,7 @@ class SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
 class GenericEmitDestination {
  public:
   virtual ~GenericEmitDestination() = default;
-  virtual void OnEmitted(const CurrentSuper&) = 0;
+  virtual void OnEmitted(CurrentSuper&&) = 0;
 };
 
 template <class LHS_TYPELIST>
@@ -298,7 +298,7 @@ class EmitDestination<LHSTypes<LHS_XS...>> : public GenericEmitDestination {};
 template <>
 class EmitDestination<LHSTypes<>> : public GenericEmitDestination {
  public:
-  void OnEmitted(const CurrentSuper&) override {
+  void OnEmitted(CurrentSuper&&) override {
     std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
     CURRENT_ASSERT(false);
   }
@@ -469,8 +469,8 @@ class EmitDestinationContainer<LHSTypes<NEXT_TYPES...>> : public NextHandlerCont
 
  protected:
   template <typename T>
-  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(const T& x) const {
-    next_handler_->OnEmitted(x);
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(T&& x) const {
+    next_handler_->OnEmitted(std::forward<T>(x));
   }
 
  private:
@@ -488,18 +488,19 @@ class NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USE
       : scope_(&impl_, next.get()), impl_(std::forward<ARGS>(args)...) {}
 
   template <typename X>
-  void operator()(const X& x) {
-    impl_.f(x);
+  void operator()(X&& x) {
+    impl_.f(std::forward<X>(x));
   }
 
-  void operator()(const CurrentSuper&) {
+  void operator()(CurrentSuper&&) {
     // Should define this method to make sure the RTTI call compiles.
     // Assuming type list magic is done right at compile time (TODO(dkorolev): !), it should never get called.
     CURRENT_ASSERT(false);
   }
 
-  void Accept(const CurrentSuper& x) {
-    current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(x, *this);
+  void Accept(CurrentSuper&& x) {
+    current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(std::move(x),
+                                                                                                     *this);
   }
 
  private:
@@ -559,7 +560,7 @@ class UserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER
                    std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next)
         : next_(next), spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
 
-    void OnEmitted(const CurrentSuper& x) override { spawned_user_class_instance_->Accept(x); }
+    void OnEmitted(CurrentSuper&& x) override { spawned_user_class_instance_->Accept(std::move(x)); }
 
    private:
     std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next_;
@@ -644,7 +645,7 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
       self->MarkAs(BlockUsageBit::Run);
     }
 
-    void OnEmitted(const CurrentSuper& x) override { from_->OnEmitted(x); }
+    void OnEmitted(CurrentSuper&& x) override { from_->OnEmitted(std::move(x)); }
 
    private:
     // Construction / destruction order matters: { next, into, from }.
