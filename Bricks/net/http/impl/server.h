@@ -72,6 +72,7 @@ constexpr const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStri
 constexpr const char* const kContentLengthHeaderKey = "Content-Length";
 constexpr const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
 constexpr const char* const kTransferEncodingChunkedValue = "chunked";
+constexpr const char* const kHTTPMethodOverrideHeaderKey = "X-HTTP-Method-Override";
 
 inline static const http::Headers DefaultJSONHTTPHeaders() {
   return http::Headers({{"Access-Control-Allow-Origin", "*"}});
@@ -254,6 +255,8 @@ class GenericHTTPRequestData : public HELPER {
             HELPER::OnHeader(key, value);
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
+            } else if (HeaderNameEquals(key, constants::kHTTPMethodOverrideHeaderKey)) {
+              method_ = current::strings::ToUpper(value);
             } else if (HeaderNameEquals(key, constants::kTransferEncodingHeaderKey)) {
               if (HeaderNameEquals(value, constants::kTransferEncodingChunkedValue)) {
                 chunked_transfer_encoding = true;
@@ -333,9 +336,7 @@ class GenericHTTPRequestData : public HELPER {
   }
 
  private:
-  static char NormalizeHeaderChar(char c) {
-    return c != '_' ? std::tolower(c) : '-';
-  }
+  static char NormalizeHeaderChar(char c) { return c != '_' ? std::tolower(c) : '-'; }
   static bool HeaderNameEquals(const char* lhs, const char* rhs) {
     while (*lhs && *rhs) {
       if (NormalizeHeaderChar(*lhs++) != NormalizeHeaderChar(*rhs++)) {
