@@ -103,17 +103,19 @@ TEST(RipCurrent, TypeStaticAsserts) {
                 "");
   static_assert(sizeof(is_same_or_compile_error<current::ripcurrent::RHSTypes<>, typename rcdump_t::output_t>), "");
 
-  static_assert(sizeof(is_same_or_compile_error<decltype(RCEmit(1, 2, 3)),
-                                                current::ripcurrent::UserClass<current::ripcurrent::LHSTypes<>,
-                                                                               current::ripcurrent::RHSTypes<Integer>,
-                                                                               rcemit_t>>),
-                "");
+  static_assert(
+      sizeof(is_same_or_compile_error<decltype(RCEmit(1, 2, 3)),
+                                      current::ripcurrent::UserCodeImpl<current::ripcurrent::LHSTypes<>,
+                                                                        current::ripcurrent::RHSTypes<Integer>,
+                                                                        rcemit_t>>),
+      "");
 
-  static_assert(sizeof(is_same_or_compile_error<decltype(RCDump(std::ref(result))),
-                                                current::ripcurrent::UserClass<current::ripcurrent::LHSTypes<Integer>,
-                                                                               current::ripcurrent::RHSTypes<>,
-                                                                               rcdump_t>>),
-                "");
+  static_assert(
+      sizeof(is_same_or_compile_error<decltype(RCDump(std::ref(result))),
+                                      current::ripcurrent::UserCodeImpl<current::ripcurrent::LHSTypes<Integer>,
+                                                                        current::ripcurrent::RHSTypes<>,
+                                                                        rcdump_t>>),
+      "");
 }
 
 TEST(RipCurrent, SingleEdgeFlow) {
