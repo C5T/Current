@@ -510,10 +510,11 @@ RIPCURRENT_NODE(RCHTTPAcceptor, void, Request) {
 
 RIPCURRENT_NODE(RCHTTPResponder, Request, void) {
   std::vector<std::string>& requests;
-  RCHTTPResponder(std::vector<std::string> & requests) : requests(requests) {}
   // clang-format off
-  // (Messes with the next line and puts a space between `Request` and `&&`. -- D.K.)
-  void f(Request&& r) {
+  // Messes with " & " -- D.K.
+  RCHTTPResponder(std::vector<std::string>& requests) : requests(requests) {}
+  // clang-format on
+  void f(Request r) {
     if (r.method == "POST") {
       requests.push_back("POST " + r.body);
     } else {
@@ -521,7 +522,6 @@ RIPCURRENT_NODE(RCHTTPResponder, Request, void) {
     }
     r("OK\n");
   }
-  // clang-format on
 };
 #define RCHTTPResponder(...) RIPCURRENT_MACRO(RCHTTPResponder, __VA_ARGS__)
 
