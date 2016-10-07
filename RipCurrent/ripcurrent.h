@@ -60,14 +60,19 @@ SOFTWARE.
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/remove_parentheses.h"
 
+#include "../Blocks/MMQ/mmq.h"
+
 #include "../Bricks/rtti/dispatcher.h"
 #include "../Bricks/strings/join.h"
+#include "../Bricks/sync/waitable_atomic.h"
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/util/lazy_instantiation.h"
 #include "../Bricks/util/singleton.h"
 
 namespace current {
 namespace ripcurrent {
+
+using movable_message_t = std::unique_ptr<CurrentSuper, CurrentSuperDeleter>;
 
 template <typename... TS>
 class LHSTypes;
@@ -286,7 +291,7 @@ class SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
 class GenericEmitDestination {
  public:
   virtual ~GenericEmitDestination() = default;
-  virtual void OnEmitted(CurrentSuper&&) = 0;
+  virtual void OnThreadUnsafeEmitted(movable_message_t&&) = 0;
 };
 
 template <class LHS_TYPELIST>
@@ -298,7 +303,7 @@ class EmitDestination<LHSTypes<LHS_XS...>> : public GenericEmitDestination {};
 template <>
 class EmitDestination<LHSTypes<>> : public GenericEmitDestination {
  public:
-  void OnEmitted(CurrentSuper&&) override {
+  void OnThreadUnsafeEmitted(movable_message_t&&) override {
     std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
     CURRENT_ASSERT(false);
   }
@@ -468,13 +473,15 @@ class HasEmit<LHSTypes<NEXT_TYPES...>> : public AbstractHasEmit {
   virtual ~HasEmit() = default;
 
  protected:
-  template <typename T>
-  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(T&& x) const {
-    next_handler_->OnEmitted(std::forward<T>(x));
+  template <typename T, typename... ARGS>
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, T>::value> emit(ARGS&&... args) const {
+    // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
+    next_handler_->OnThreadUnsafeEmitted(
+        std::move(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release())));
   }
 
  private:
-  EmitDestination<LHSTypes<NEXT_TYPES...>>* const next_handler_;
+  emit_destination_t* next_handler_;
 };
 
 template <typename LHS_TYPELIST, typename RHS_TYPELIST, typename USER_CLASS>
@@ -488,9 +495,8 @@ class EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, U
   EventConsumerInitializer(std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next, ARGS&&... args)
       : scope_(&impl_, next.get()), impl_(std::forward<ARGS>(args)...) {}
 
-  void Accept(CurrentSuper&& x) {
-    current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(std::move(x),
-                                                                                                     *this);
+  void OnThreadSafeEmitted(movable_message_t&& x) {
+    rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(std::move(*x), *this);
   }
 
   template <typename X>
@@ -551,20 +557,48 @@ class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_
 
   class Scope final : public SubCurrentScope<instantiator_input_t, instantiator_output_t> {
    public:
-    virtual ~Scope() = default;
-
     explicit Scope(const current::LazilyInstantiated<
                        EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
                        std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>>>& lazy_instance,
                    std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next)
-        : next_(next), spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
+        : next_(next),
+          spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)),
+          waitable_counters_(std::make_pair<size_t, size_t>(0, 0)),
+          single_threaded_processor_(waitable_counters_, *spawned_user_class_instance_),
+          mmq_(single_threaded_processor_) {}
 
-    void OnEmitted(CurrentSuper&& x) override { spawned_user_class_instance_->Accept(std::move(x)); }
+    virtual ~Scope() {
+      // TODO(dkorolev): Consider other termination techniques, not only plain "wait until everything is done".
+      waitable_counters_.Wait([](const std::pair<size_t, size_t>& p) { return p.first == p.second; });
+    }
+
+    void OnThreadUnsafeEmitted(movable_message_t&& x) override {
+      waitable_counters_.MutableUse([](std::pair<size_t, size_t>& p) { ++p.first; });
+      mmq_.Publish(std::move(x));
+    }
 
    private:
+    using instance_t = EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
+    using waitable_counters_t = WaitableAtomic<std::pair<size_t, size_t>>;
+
+    struct SingleThreadedProcessorImpl {
+      SingleThreadedProcessorImpl(waitable_counters_t& waitable_counters, instance_t& instance)
+          : waitable_counters_(waitable_counters), instance_(instance) {}
+      ss::EntryResponse operator()(movable_message_t&& e, idxts_t, idxts_t) {
+        instance_.OnThreadSafeEmitted(std::move(e));
+        waitable_counters_.MutableUse([](std::pair<size_t, size_t>& p) { ++p.second; });
+        return ss::EntryResponse::More;
+      }
+      waitable_counters_t& waitable_counters_;
+      instance_t& instance_;
+    };
+    using single_threaded_processor_t = current::ss::EntrySubscriber<SingleThreadedProcessorImpl, movable_message_t>;
+
     std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next_;
-    std::unique_ptr<EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>>
-        spawned_user_class_instance_;
+    std::unique_ptr<instance_t> spawned_user_class_instance_;
+    waitable_counters_t waitable_counters_;
+    single_threaded_processor_t single_threaded_processor_;
+    mmq::MMQ<movable_message_t, single_threaded_processor_t> mmq_;
   };
 
   std::shared_ptr<SubCurrentScope<instantiator_input_t, instantiator_output_t>> SpawnAndRun(
@@ -644,7 +678,7 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
       self->MarkAs(BlockUsageBit::Run);
     }
 
-    void OnEmitted(CurrentSuper&& x) override { from_->OnEmitted(std::move(x)); }
+    void OnThreadUnsafeEmitted(movable_message_t&& x) override { from_->OnThreadUnsafeEmitted(std::move(x)); }
 
    private:
     // Construction / destruction order matters: { next, into, from }.

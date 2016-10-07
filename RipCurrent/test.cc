@@ -49,15 +49,15 @@ CURRENT_STRUCT(Integer) {
 RIPCURRENT_NODE(RCEmit, void, Integer) {
   static std::string UnitTestClassName() { return "RCEmit"; }
   RCEmit() {}  // LCOV_EXCL_LINE
-  RCEmit(int a) { emit(Integer(a)); }
+  RCEmit(int a) { emit<Integer>(a); }
   RCEmit(int a, int b) {
-    emit(Integer(a));
-    emit(Integer(b));
+    emit<Integer>(a);
+    emit<Integer>(b);
   }
   RCEmit(int a, int b, int c) {
-    emit(Integer(a));
-    emit(Integer(b));
-    emit(Integer(c));
+    emit<Integer>(a);
+    emit<Integer>(b);
+    emit<Integer>(c);
   }
 };
 #define RCEmit(...) RIPCURRENT_MACRO(RCEmit, __VA_ARGS__)
@@ -67,7 +67,7 @@ RIPCURRENT_NODE(RCMult, Integer, Integer) {
   static std::string UnitTestClassName() { return "RCMult"; }
   int k;
   RCMult(int k = 1) : k(k) {}
-  void f(Integer x) { emit(Integer(x.value * k)); }
+  void f(Integer x) { emit<Integer>(x.value * k); }
 };
 #define RCMult(...) RIPCURRENT_MACRO(RCMult, __VA_ARGS__)
 
@@ -426,8 +426,8 @@ CURRENT_STRUCT(String) {
 
 RIPCURRENT_NODE(EmitStringAndInteger, (), (Integer, String)) {  // Note: `()` is same as `void`.
   EmitStringAndInteger() {
-    emit(String("Answer"));
-    emit(Integer(42));
+    emit<String>("Answer");
+    emit<Integer>(42);
   }
 };
 #define EmitStringAndInteger(...) RIPCURRENT_MACRO(EmitStringAndInteger, __VA_ARGS__)
@@ -436,10 +436,10 @@ RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
   const int k;
   MultIntegerOrString(int k = 101) : k(k) {}
   void f(Integer x) {
-    emit(Integer(x.value * k));
+    emit<Integer>(x.value * k);
   }
   void f(String x) {
-    emit(String("Yo? " + x.value + " Yo!"));
+    emit<String>("Yo? " + x.value + " Yo!");
   }
 };
 #define MultIntegerOrString(...) RIPCURRENT_MACRO(MultIntegerOrString, __VA_ARGS__)
@@ -503,7 +503,7 @@ struct RequestContainer : crnt::CurrentSuper {
 
 RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
   RCHTTPAcceptor(uint16_t port)
-      : scope(HTTP(port).Register("/ripcurrent", [this](Request r) { emit(RequestContainer(std::move(r))); })) {
+      : scope(HTTP(port).Register("/ripcurrent", [this](Request r) { emit<RequestContainer>(std::move(r)); })) {
     const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
     EXPECT_EQ("OK\n", HTTP(GET(base_url)).body);
     EXPECT_EQ("OK\n", HTTP(HEAD(base_url)).body);
