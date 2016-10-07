@@ -51,7 +51,7 @@ constexpr static auto HasRespondViaHTTP(int)
 }
 
 // The only parameter to be passed to HTTP handlers.
-struct Request final {
+struct Request final : CurrentSuper {
   std::unique_ptr<current::net::HTTPServerConnection> unique_connection;
 
   current::net::HTTPServerConnection& connection;

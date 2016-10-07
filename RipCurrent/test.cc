@@ -496,14 +496,9 @@ TEST(RipCurrent, CustomTypesFlow) {
 
 namespace ripcurrent_unittest {
 
-struct RequestContainer : crnt::CurrentSuper {
-  Request request;
-  RequestContainer(Request&& r) : request(std::move(r)) {}
-};
-
-RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
+RIPCURRENT_NODE(RCHTTPAcceptor, void, Request) {
   RCHTTPAcceptor(uint16_t port)
-      : scope(HTTP(port).Register("/ripcurrent", [this](Request r) { emit<RequestContainer>(std::move(r)); })) {
+      : scope(HTTP(port).Register("/ripcurrent", [this](Request r) { emit<Request>(std::move(r)); })) {
     const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
     EXPECT_EQ("OK\n", HTTP(GET(base_url)).body);
     EXPECT_EQ("OK\n", HTTP(HEAD(base_url)).body);
@@ -513,18 +508,18 @@ RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
 };
 #define RCHTTPAcceptor(...) RIPCURRENT_MACRO(RCHTTPAcceptor, __VA_ARGS__)
 
-RIPCURRENT_NODE(RCHTTPResponder, RequestContainer, void) {
+RIPCURRENT_NODE(RCHTTPResponder, Request, void) {
   std::vector<std::string>& requests;
   RCHTTPResponder(std::vector<std::string> & requests) : requests(requests) {}
   // clang-format off
-  // (Messes with the next line and puts a space between `RequestContainer` and `&&`. -- D.K.
-  void f(RequestContainer&& e) {
-    if (e.request.method == "POST") {
-      requests.push_back("POST " + e.request.body);
+  // (Messes with the next line and puts a space between `Request` and `&&`. -- D.K.)
+  void f(Request&& r) {
+    if (r.method == "POST") {
+      requests.push_back("POST " + r.body);
     } else {
-      requests.push_back(e.request.method);
+      requests.push_back(r.method);
     }
-    e.request("OK\n");
+    r("OK\n");
   }
   // clang-format on
 };
