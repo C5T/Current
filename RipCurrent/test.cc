@@ -529,8 +529,13 @@ RIPCURRENT_NODE(RCHTTPResponder, Request, void) {
 
 TEST(RipCurrent, CanHandleHTTPRequest) {
   using namespace ripcurrent_unittest;
+  const uint16_t port = FLAGS_ripcurrent_http_test_port;
 
   std::vector<std::string> results;
-  (RCHTTPAcceptor(FLAGS_ripcurrent_http_test_port) | RCHTTPResponder(std::ref(results))).RipCurrent().Sync();
+  auto scope = (RCHTTPAcceptor(port) | RCHTTPResponder(std::ref(results))).RipCurrent();
   EXPECT_EQ("GET,HEAD,POST OK", current::strings::Join(results, ','));
+  EXPECT_EQ("OK\n", HTTP(POST(Printf("http://localhost:%d/ripcurrent", static_cast<int>(port)), "ONE MORE")).body);
+  EXPECT_EQ("GET,HEAD,POST OK,POST ONE MORE", current::strings::Join(results, ','));
+
+  scope.Sync();
 }

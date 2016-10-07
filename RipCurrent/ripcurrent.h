@@ -309,18 +309,31 @@ class EmitDestination<LHSTypes<>> : public GenericEmitDestination {
   }
 };
 
+template <class LHS_TYPELIST, class RHS_TYPELIST>
+class SubCurrentScope;
+
+template <class... LHS_TYPES, class... RHS_TYPES>
+class SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> : public EmitDestination<LHSTypes<LHS_TYPES...>> {
+ public:
+  virtual ~SubCurrentScope() = default;
+};
+
 // Run context for RipCurrent allows to run it in background, foreground, or scoped.
 // TODO(dkorolev): Only supports `.Sync()` now. Implement everything else.
 class RipCurrentScope final {
  public:
-  explicit RipCurrentScope(const std::string& error_message) : sync_called_(false), error_message_(error_message) {}
-  RipCurrentScope(RipCurrentScope&& rhs) : error_message_(rhs.error_message_) {
+  using scope_t = SubCurrentScope<LHSTypes<>, RHSTypes<>>;
+
+  RipCurrentScope(std::shared_ptr<scope_t> scope, const std::string& error_message)
+      : scope_(scope), sync_called_(false), error_message_(error_message) {}
+  RipCurrentScope(RipCurrentScope&& rhs) : scope_(std::move(rhs.scope_)), error_message_(rhs.error_message_) {
     CURRENT_ASSERT(!rhs.sync_called_);
     rhs.sync_called_ = true;
   }
   void Sync() {
     CURRENT_ASSERT(!sync_called_);
     sync_called_ = true;
+    scope_ = nullptr;
   }
   ~RipCurrentScope() {
     if (!sync_called_) {
@@ -329,17 +342,9 @@ class RipCurrentScope final {
   }
 
  private:
+  std::shared_ptr<scope_t> scope_;
   bool sync_called_ = false;
   std::string error_message_;
-};
-
-template <class LHS_TYPELIST, class RHS_TYPELIST>
-class SubCurrentScope;
-
-template <class... LHS_TYPES, class... RHS_TYPES>
-class SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> : public EmitDestination<LHSTypes<LHS_TYPES...>> {
- public:
-  virtual ~SubCurrentScope() = default;
 };
 
 // Template logic to wrap the above implementations into abstract classes of proper templated types.
@@ -388,13 +393,12 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
   // User-facing `RipCurrent()` method.
   template <int IN_N = sizeof...(LHS_TYPES), int OUT_N = sizeof...(RHS_TYPES)>
   std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentScope> RipCurrent() {
-    SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>());
-
-    // TODO(dkorolev): Return proper run context. So far, just require `.Sync()` to be called on it.
     std::ostringstream os;
     os << "RipCurrent run context was left hanging. Call `.Sync()`, or, well, something else. -- D.K.\n";
     super_t::GetDefinition().FullDescription(os);
-    return std::move(RipCurrentScope(os.str()));
+
+    return std::move(
+        RipCurrentScope(std::move(SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>())), os.str()));
   }
 
  private:
