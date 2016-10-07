@@ -213,12 +213,12 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
 TEST(PosixHTTPServerTest, SmokeWithHeaders) {
   thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
+    EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/header", c.HTTPRequest().RawPath());
     c.SendHTTPResponse("OK", HTTPResponseCode.OK, c.HTTPRequest().Body(), {{"foo", "bar"}, {"baz", "meh"}});
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /header HTTP/1.1\r\n", true);
+  connection.BlockingWrite("POST /header HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("Content-Length: 19\r\n", true);
   connection.BlockingWrite("\r\n", true);
@@ -265,6 +265,60 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseContentLength) {
       "Content-Length: 8\r\n"
       "\r\n"
       "Data: Ok",
+      connection);
+  t.join();
+}
+
+TEST(PosixHTTPServerTest, SmokeWithMethodInHeader) {
+  thread t([](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("PATCH", c.HTTPRequest().Method());
+    EXPECT_EQ("/ugly", c.HTTPRequest().RawPath());
+    EXPECT_EQ("YES", c.HTTPRequest().Body());
+    c.SendHTTPResponse("PASS");
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST /ugly HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("X-HTTP-Method-Override: PATCH\r\n", true);
+  connection.BlockingWrite("Content-Length: 3\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("YES\r\n", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 4\r\n"
+      "\r\n"
+      "PASS",
+      connection);
+  t.join();
+}
+
+TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
+  thread t([](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("PATCH", c.HTTPRequest().Method());
+    EXPECT_EQ("/ugly2", c.HTTPRequest().RawPath());
+    EXPECT_EQ("yes", c.HTTPRequest().Body());
+    c.SendHTTPResponse("Pass");
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST /ugly2 HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("x-http_method_override: pAtCh\r\n", true);
+  connection.BlockingWrite("Content-Length: 3\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("yes\r\n", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 4\r\n"
+      "\r\n"
+      "Pass",
       connection);
   t.join();
 }
