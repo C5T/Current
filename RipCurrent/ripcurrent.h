@@ -28,16 +28,17 @@ SOFTWARE.
 // Building blocks can be output-only ("LHS"), input-only ("RHS"), in/out ("VIA"), or end-to-end ("E2E").
 // No buliding block, simple or composite, can be left hanging. Each one should be used, run, described,
 // or dismissed.
-// End-to-end blocks can be run with `(...).RipCurrent().Sync()`. TODO(dkorolev): Not only `.Sync()`.
+//
+// End-to-end blocks can be run with `(...).RipCurrent().Join()`. Another option is to save the return value
+// of `(...).RipCurrent()` into some `scope` variable, which must be `.Join()`-ed at a later time. Finally,
+// the `scope` variable can be called `.Async()` on, which would eliminate the need to explicitly call `.Join()`
+// at the end of its lifetime; and the syntax of `auto scope = (...).RipCurrent().Async();` is acceptable too.
 //
 // HI-PRI:
 // TODO(dkorolev): ParseFileByLines() and/or TailFileForever() as possible LHS.
 // TODO(dkorolev): Sherlock listener as possible LHS.
-// TODO(dkorolev): MMQ.
-// TODO(dkorolev): Threads and joins, run forever.
 // TODO(dkorolev): The `+`-combiner.
 // TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`, `| ~foo`).
-// TODO(dkorolev): Run scoping strategies others than `.Sync()`.
 //
 // LO-PRI:
 // TODO(dkorolev): Add debug output counters / HTTP endpoint for # of messages per typeid.
@@ -318,33 +319,50 @@ class SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> : public E
   virtual ~SubCurrentScope() = default;
 };
 
-// Run context for RipCurrent allows to run it in background, foreground, or scoped.
-// TODO(dkorolev): Only supports `.Sync()` now. Implement everything else.
+// The run context for RipCurrent to allow running it synchronously (via `.RipCurrent().Join()`), or
+// asyncronously (via `auto scope = (...).RipCurrent(); ... scope.Join()`).
 class RipCurrentScope final {
  public:
   using scope_t = SubCurrentScope<LHSTypes<>, RHSTypes<>>;
 
-  RipCurrentScope(std::shared_ptr<scope_t> scope, const std::string& error_message)
-      : scope_(scope), sync_called_(false), error_message_(error_message) {}
-  RipCurrentScope(RipCurrentScope&& rhs) : scope_(std::move(rhs.scope_)), error_message_(rhs.error_message_) {
-    CURRENT_ASSERT(!rhs.sync_called_);
-    rhs.sync_called_ = true;
+  RipCurrentScope(std::shared_ptr<scope_t> scope, const std::string& description_as_text)
+      : scope_(scope), legitimately_terminated_(false), description_as_text_(description_as_text) {}
+  RipCurrentScope(RipCurrentScope&& rhs)
+      : scope_(std::move(rhs.scope_)),
+        legitimately_terminated_(rhs.legitimately_terminated_),
+        description_as_text_(rhs.description_as_text_) {
+    rhs.legitimately_terminated_ = true;
   }
-  void Sync() {
-    CURRENT_ASSERT(!sync_called_);
-    sync_called_ = true;
+  void Join() {
+    if (legitimately_terminated_) {
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+          "Attempted to call `RipCurrent::Join()` on a scope that has already been legitimately taken care of.\n" +
+          description_as_text_);  // LCOV_EXCL_LINE
+    }
+    legitimately_terminated_ = true;
     scope_ = nullptr;
   }
+  RipCurrentScope& Async() {
+    if (legitimately_terminated_) {
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+          "Attempted to call `RipCurrent::Async()` on a scope that has already been legitimately taken care of.\n" +
+          description_as_text_);  // LCOV_EXCL_LINE
+    }
+    legitimately_terminated_ = true;
+    return *this;
+  }
   ~RipCurrentScope() {
-    if (!sync_called_) {
-      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);  // LCOV_EXCL_LINE
+    if (!legitimately_terminated_) {
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+          "RipCurrent run context was left hanging. Call `.Join()` or `.Async()` on it.\n" +
+          description_as_text_);  // LCOV_EXCL_LINE
     }
   }
 
  private:
   std::shared_ptr<scope_t> scope_;
-  bool sync_called_ = false;
-  std::string error_message_;
+  bool legitimately_terminated_ = false;
+  std::string description_as_text_;
 };
 
 // Template logic to wrap the above implementations into abstract classes of proper templated types.
@@ -392,9 +410,8 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
 
   // User-facing `RipCurrent()` method.
   template <int IN_N = sizeof...(LHS_TYPES), int OUT_N = sizeof...(RHS_TYPES)>
-  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentScope> RipCurrent() {
+  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentScope> RipCurrent() const {
     std::ostringstream os;
-    os << "RipCurrent run context was left hanging. Call `.Sync()`, or, well, something else. -- D.K.\n";
     super_t::GetDefinition().FullDescription(os);
 
     return std::move(

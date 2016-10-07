@@ -123,7 +123,7 @@ TEST(RipCurrent, SingleEdgeFlow) {
 
   std::vector<int> result;
 
-  (RCEmit(1, 2, 3) | RCDump(std::ref(result))).RipCurrent().Sync();
+  (RCEmit(1, 2, 3) | RCDump(std::ref(result))).RipCurrent().Join();
   EXPECT_EQ("1,2,3", current::strings::Join(result, ','));
 }
 
@@ -132,7 +132,7 @@ TEST(RipCurrent, SingleChainFlow) {
 
   std::vector<int> result;
 
-  (RCEmit(1, 2, 3) | RCMult(2) | RCMult(5) | RCMult(10) | RCDump(std::ref(result))).RipCurrent().Sync();
+  (RCEmit(1, 2, 3) | RCMult(2) | RCMult(5) | RCMult(10) | RCDump(std::ref(result))).RipCurrent().Join();
   EXPECT_EQ("100,200,300", current::strings::Join(result, ','));
 }
 
@@ -150,7 +150,7 @@ TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
   EXPECT_EQ("RCEmit(42) | RCDump(std::ref(result))", emit_dump.Describe());
 
   EXPECT_EQ("", current::strings::Join(result, ','));
-  emit_dump.RipCurrent().Sync();
+  emit_dump.RipCurrent().Join();
   EXPECT_EQ("42", current::strings::Join(result, ','));
 }
 
@@ -164,19 +164,19 @@ TEST(RipCurrent, OrderDoesNotMatter) {
   const auto c = RCDump(std::ref(result));
 
   result.clear();
-  (a | b | b | c).RipCurrent().Sync();
+  (a | b | b | c).RipCurrent().Join();
   EXPECT_EQ("4", current::strings::Join(result, ','));
 
   result.clear();
-  ((a | b) | (b | c)).RipCurrent().Sync();
+  ((a | b) | (b | c)).RipCurrent().Join();
   EXPECT_EQ("4", current::strings::Join(result, ','));
 
   result.clear();
-  ((a | (b | b)) | c).RipCurrent().Sync();
+  ((a | (b | b)) | c).RipCurrent().Join();
   EXPECT_EQ("4", current::strings::Join(result, ','));
 
   result.clear();
-  (a | ((b | b) | c)).RipCurrent().Sync();
+  (a | ((b | b) | c)).RipCurrent().Join();
   EXPECT_EQ("4", current::strings::Join(result, ','));
 }
 
@@ -193,15 +193,15 @@ TEST(RipCurrent, BuildingBlocksCanBeReused) {
   current::ripcurrent::RHS<current::ripcurrent::LHSTypes<Integer>> dump1 = RCDump(std::ref(result1));
   current::ripcurrent::RHS<current::ripcurrent::LHSTypes<Integer>> dump2 = RCDump(std::ref(result2));
 
-  (emit1 | mult10 | dump1).RipCurrent().Sync();
-  (emit2 | mult10 | dump2).RipCurrent().Sync();
+  (emit1 | mult10 | dump1).RipCurrent().Join();
+  (emit2 | mult10 | dump2).RipCurrent().Join();
   EXPECT_EQ("10", current::strings::Join(result1, ','));
   EXPECT_EQ("20", current::strings::Join(result2, ','));
 
   result1.clear();
   result2.clear();
-  ((emit1 | mult10) | dump1).RipCurrent().Sync();
-  ((emit2 | mult10) | dump2).RipCurrent().Sync();
+  ((emit1 | mult10) | dump1).RipCurrent().Join();
+  ((emit2 | mult10) | dump2).RipCurrent().Join();
   EXPECT_EQ("10", current::strings::Join(result1, ','));
   EXPECT_EQ("20", current::strings::Join(result2, ','));
 }
@@ -474,13 +474,13 @@ TEST(RipCurrent, CustomTypesFlow) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | DumpIntegerAndString(std::ref(result))).RipCurrent().Sync();
+    (EmitStringAndInteger() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
     EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
   }
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Sync();
+    (EmitStringAndInteger() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
     EXPECT_EQ("'Yo? Answer Yo!', 4242", current::strings::Join(result, ", "));
   }
 
@@ -489,7 +489,7 @@ TEST(RipCurrent, CustomTypesFlow) {
     (EmitStringAndInteger() | MultIntegerOrString() | MultIntegerOrString(10001) |
      DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
-        .Sync();
+        .Join();
     EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", current::strings::Join(result, ", "));
   }
 }
@@ -500,27 +500,28 @@ RIPCURRENT_NODE(RCHTTPAcceptor, void, Request) {
   RCHTTPAcceptor(uint16_t port)
       : scope(HTTP(port).Register("/ripcurrent", [this](Request r) { emit<Request>(std::move(r)); })) {
     const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
-    EXPECT_EQ("OK\n", HTTP(GET(base_url)).body);
-    EXPECT_EQ("OK\n", HTTP(HEAD(base_url)).body);
-    EXPECT_EQ("OK\n", HTTP(POST(base_url, "OK")).body);
+    EXPECT_EQ("1\n", HTTP(GET(base_url)).body);
+    EXPECT_EQ("2\n", HTTP(HEAD(base_url)).body);
+    EXPECT_EQ("3\n", HTTP(POST(base_url, "OK")).body);
   }
   HTTPRoutesScope scope;
 };
 #define RCHTTPAcceptor(...) RIPCURRENT_MACRO(RCHTTPAcceptor, __VA_ARGS__)
 
 RIPCURRENT_NODE(RCHTTPResponder, Request, void) {
-  std::vector<std::string>& requests;
+  int index = 0;
+  std::vector<std::string>& calls;
   // clang-format off
   // Messes with " & " -- D.K.
-  RCHTTPResponder(std::vector<std::string>& requests) : requests(requests) {}
+  RCHTTPResponder(std::vector<std::string>& calls) : calls(calls) {}
   // clang-format on
   void f(Request r) {
     if (r.method == "POST") {
-      requests.push_back("POST " + r.body);
+      calls.push_back("POST " + r.body);
     } else {
-      requests.push_back(r.method);
+      calls.push_back(r.method);
     }
-    r("OK\n");
+    r(current::ToString(++index) + '\n');
   }
 };
 #define RCHTTPResponder(...) RIPCURRENT_MACRO(RCHTTPResponder, __VA_ARGS__)
@@ -531,11 +532,18 @@ TEST(RipCurrent, CanHandleHTTPRequest) {
   using namespace ripcurrent_unittest;
   const uint16_t port = FLAGS_ripcurrent_http_test_port;
 
-  std::vector<std::string> results;
-  auto scope = (RCHTTPAcceptor(port) | RCHTTPResponder(std::ref(results))).RipCurrent();
-  EXPECT_EQ("GET,HEAD,POST OK", current::strings::Join(results, ','));
-  EXPECT_EQ("OK\n", HTTP(POST(Printf("http://localhost:%d/ripcurrent", static_cast<int>(port)), "ONE MORE")).body);
-  EXPECT_EQ("GET,HEAD,POST OK,POST ONE MORE", current::strings::Join(results, ','));
+  std::vector<std::string> calls;
 
-  scope.Sync();
+  const auto job = RCHTTPAcceptor(port) | RCHTTPResponder(std::ref(calls));
+  ASSERT_TRUE(calls.empty());
+
+  // Begin running the job.
+  auto scope = std::move(job.RipCurrent().Async());
+
+  // The first three calls are performed from the constructor of `RCHTTPAcceptor`, and thus synchronously.
+  EXPECT_EQ("GET,HEAD,POST OK", current::strings::Join(calls, ','));
+
+  // Now make another call and confirm it goes through all the way.
+  EXPECT_EQ("4\n", HTTP(POST(Printf("http://localhost:%d/ripcurrent", static_cast<int>(port)), "ONE MORE")).body);
+  EXPECT_EQ("GET,HEAD,POST OK,POST ONE MORE", current::strings::Join(calls, ','));
 }
