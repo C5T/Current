@@ -31,7 +31,7 @@ SOFTWARE.
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <queue>
+#include <set>
 
 #include "../SS/ss.h"
 
@@ -88,6 +88,29 @@ class MMPQ {
     return last_idx_ts_;
   }
 
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock, class T>
+  idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
+    locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    if (!(timestamp > last_idx_ts_.us)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
+    }
+    ++last_idx_ts_.index;
+    // Don't update the timestamp.
+    queue_.emplace(std::move(message), idxts_t(last_idx_ts_.index, timestamp));
+    condition_variable_.notify_all();
+    return last_idx_ts_;
+  }
+
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  void UpdateHead(std::chrono::microseconds timestamp = current::time::Now()) {
+    locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    if (!(timestamp > last_idx_ts_.us)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
+    }
+    last_idx_ts_.us = timestamp;
+    condition_variable_.notify_all();
+  }
+
  private:
   MMPQ(const MMPQ&) = delete;
   MMPQ(MMPQ&&) = delete;
@@ -98,17 +121,19 @@ class MMPQ {
     while (true) {
       std::unique_lock<std::mutex> lock(mutex_);
 
-      condition_variable_.wait(lock, [this] { return !queue_.empty() || destructing_; });
+      condition_variable_.wait(lock,
+                               [this] {
+                                 return (!queue_.empty() && queue_.begin()->index_timestamp.us <= last_idx_ts_.us) ||
+                                        destructing_;
+                               });
 
       if (destructing_) {
         return;  // LCOV_EXCL_LINE
       }
 
-      Entry e = std::move(queue_.front());
-      queue_.pop();
-
-      lock.unlock();
-      consumer_(std::move(e.message_body), e.index_timestamp, last_idx_ts_);
+      auto it = queue_.begin();
+      consumer_(std::move(it->message_body), it->index_timestamp, last_idx_ts_);
+      queue_.erase(it);
     }
   }
 
@@ -125,9 +150,10 @@ class MMPQ {
     Entry(Entry&&) = default;
     Entry(message_t&& message_body, idxts_t index_timestamp)
         : index_timestamp(index_timestamp), message_body(std::move(message_body)) {}
+    bool operator<(const Entry& rhs) const { return index_timestamp.us < rhs.index_timestamp.us; }
   };
 
-  std::queue<Entry> queue_;
+  std::set<Entry> queue_;
   idxts_t last_idx_ts_ = idxts_t(0, std::chrono::microseconds(-1));
   std::mutex mutex_;
   std::condition_variable condition_variable_;
