@@ -60,28 +60,31 @@ SOFTWARE.
 namespace current {
 namespace mmq {
 
-template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
+template <typename MESSAGE,
+          typename CONSUMER,
+          size_t DEFAULT_BUFFER_SIZE = 1024,
+          bool DROP_ON_OVERFLOW = false,
+          bool CHECK_TIMESTAMP_MONOTONICITY = true>
 class MMQImpl {
   static_assert(current::ss::IsEntrySubscriber<CONSUMER, MESSAGE>::value, "");
 
  public:
-  // Type of messages to store and dispatch.
+  // The type of messages to store and dispatch.
   using message_t = MESSAGE;
 
-  // This method will be called from one thread, which is spawned and owned by an instance of MMQImpl.
-  // See "Blocks/SS/ss.h" and its test for possible callee signatures.
+  // Consumer's `operator()` will be called from a dedicated thread, which is spawned and owned
+  // by the instance of MMQImpl. See "Blocks/SS/ss.h" and its test for possible callee signatures.
   using consumer_t = CONSUMER;
 
   MMQImpl(consumer_t& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : consumer_thread_created_(false),
-        consumer_(consumer),
+      : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
         consumer_thread_(&MMQImpl::ConsumerThread, this) {
     consumer_thread_created_ = true;
   }
 
-  // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
+  // The destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
   ~MMQImpl() {
     if (consumer_thread_created_) {
       CURRENT_ASSERT(consumer_thread_.joinable());
@@ -101,8 +104,13 @@ class MMQImpl {
   using MutexLockStatus = current::locks::MutexLockStatus;
 
   template <MutexLockStatus MLS>
-  idxts_t DoPublish(const message_t& message, std::chrono::microseconds) {
-    const std::pair<bool, size_t> index = CircularBufferAllocate();
+  idxts_t DoPublish(const message_t& message, std::chrono::microseconds timestamp) {
+    if (CHECK_TIMESTAMP_MONOTONICITY) {
+      if (!(timestamp > last_idx_ts_.us)) {
+        CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
+      }
+    }
+    const std::pair<bool, size_t> index = CircularBufferAllocate(timestamp);
     if (index.first) {
       circular_buffer_[index.second].message_body = message;
       CircularBufferCommit(index.second);
@@ -113,8 +121,13 @@ class MMQImpl {
   }
 
   template <MutexLockStatus MLS>
-  idxts_t DoPublish(message_t&& message, std::chrono::microseconds) {
-    const std::pair<bool, size_t> index = CircularBufferAllocate();
+  idxts_t DoPublish(message_t&& message, std::chrono::microseconds timestamp) {
+    if (CHECK_TIMESTAMP_MONOTONICITY) {
+      if (!(timestamp > last_idx_ts_.us)) {
+        CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
+      }
+    }
+    const std::pair<bool, size_t> index = CircularBufferAllocate(timestamp);
     if (index.first) {
       circular_buffer_[index.second].message_body = std::move(message);
       CircularBufferCommit(index.second);
@@ -145,8 +158,7 @@ class MMQImpl {
   // Increment the index respecting the circular nature of the buffer.
   void Increment(size_t& i) const { i = (i + 1) % circular_buffer_size_; }
 
-  // The thread which extracts fully populated messages from the tail of the buffer
-  // and feeds them to the consumer.
+  // The thread which extracts fully populated messages from the tail of the buffer and feeds them to the consumer.
   void ConsumerThread() {
     // The `tail` pointer is local to the procesing thread.
     size_t tail = 0u;
@@ -191,7 +203,8 @@ class MMQImpl {
 
   // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<DROP, std::pair<bool, size_t>>::type CircularBufferAllocate() {
+  typename std::enable_if<DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(
+      std::chrono::microseconds timestamp) {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
@@ -199,7 +212,7 @@ class MMQImpl {
       // Regular case.
       const size_t index = head_;
       ++last_idx_ts_.index;
-      last_idx_ts_.us = current::time::Now();
+      last_idx_ts_.us = timestamp;
       Increment(head_);
       circular_buffer_[index].status = Entry::BEING_IMPORTED;
       circular_buffer_[index].index_timestamp = last_idx_ts_;
@@ -212,7 +225,8 @@ class MMQImpl {
 
   // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate() {
+  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(
+      std::chrono::microseconds timestamp) {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
@@ -230,7 +244,7 @@ class MMQImpl {
     }
     const size_t index = head_;
     ++last_idx_ts_.index;
-    last_idx_ts_.us = current::time::Now();
+    last_idx_ts_.us = timestamp;
     Increment(head_);
     circular_buffer_[index].status = Entry::BEING_IMPORTED;
     circular_buffer_[index].index_timestamp = last_idx_ts_;
@@ -245,7 +259,7 @@ class MMQImpl {
     condition_variable_.notify_all();
   }
 
-  bool consumer_thread_created_;
+  bool consumer_thread_created_ = false;
 
   // The instance of the consuming side of the FIFO buffer.
   consumer_t& consumer_;
@@ -268,7 +282,7 @@ class MMQImpl {
   size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
-  idxts_t last_idx_ts_;
+  idxts_t last_idx_ts_ = idxts_t(0, std::chrono::microseconds(-1));
 
   // For safe thread destruction.
   bool destructing_ = false;
@@ -277,8 +291,14 @@ class MMQImpl {
   std::thread consumer_thread_;
 };
 
-template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
-using MMQ = ss::EntryPublisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
+template <typename MESSAGE,
+          typename CONSUMER,
+          size_t DEFAULT_BUFFER_SIZE = 1024,
+          bool DROP_ON_OVERFLOW = false,
+          bool CHECK_TIMESTAMP_MONOTONICITY = true>
+using MMQ =
+    ss::EntryPublisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW, CHECK_TIMESTAMP_MONOTONICITY>,
+                       MESSAGE>;
 
 }  // namespace mmq
 }  // namespace current

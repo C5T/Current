@@ -24,6 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "mmq.h"
+#include "mmpq.h"
 
 #include <atomic>
 #include <chrono>
@@ -34,6 +35,7 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main.h"
 
 using current::mmq::MMQ;
+using current::mmq::MMPQ;
 using current::ss::EntryResponse;
 
 TEST(InMemoryMQ, SmokeTest) {
@@ -44,27 +46,43 @@ TEST(InMemoryMQ, SmokeTest) {
     std::atomic_size_t processed_messages_;
     ConsumerImpl() : processed_messages_(0u) {}
     EntryResponse operator()(const std::string& s, idxts_t current, idxts_t) {
-      CURRENT_ASSERT(current.index >= expected_next_message_index_);
+      EXPECT_GE(current.index, expected_next_message_index_);
       dropped_messages_ += (current.index - expected_next_message_index_);
       expected_next_message_index_ = (current.index + 1);
       messages_ += s + '\n';
       ++processed_messages_;
-      CURRENT_ASSERT(expected_next_message_index_ - processed_messages_ - 1 == dropped_messages_);
+      EXPECT_EQ(expected_next_message_index_ - processed_messages_ - 1, dropped_messages_);
       return EntryResponse::More;
     }
   };
 
   using Consumer = current::ss::EntrySubscriber<ConsumerImpl, std::string>;
-  Consumer c;
-  MMQ<std::string, Consumer> mmq(c);
-  mmq.Publish("one");
-  mmq.Publish("two");
-  mmq.Publish("three");
-  while (c.processed_messages_ != 3) {
-    ;  // Spin lock;
+
+  {
+    Consumer c;
+    MMQ<std::string, Consumer> mmq(c);
+    mmq.Publish("one");
+    mmq.Publish("two");
+    mmq.Publish("three");
+    while (c.processed_messages_ != 3) {
+      ;  // Spin lock.
+    }
+    EXPECT_EQ("one\ntwo\nthree\n", c.messages_);
+    EXPECT_EQ(0u, c.dropped_messages_);
   }
-  EXPECT_EQ("one\ntwo\nthree\n", c.messages_);
-  EXPECT_EQ(0u, c.dropped_messages_);
+
+  {
+    Consumer c;
+    MMPQ<std::string, Consumer> mmpq(c);
+    mmpq.Publish("one");
+    mmpq.Publish("two");
+    mmpq.Publish("three");
+    while (c.processed_messages_ != 3) {
+      ;  // Spin lock.
+    }
+    EXPECT_EQ("one\ntwo\nthree\n", c.messages_);
+    EXPECT_EQ(0u, c.dropped_messages_);
+  }
 }
 
 struct SuspendableConsumerImpl {
@@ -82,7 +100,7 @@ struct SuspendableConsumerImpl {
       ;  // Spin lock.
     }
     messages_.push_back(s);
-    CURRENT_ASSERT(last.index >= total_messages_accepted_by_the_queue_);
+    EXPECT_GE(last.index, total_messages_accepted_by_the_queue_);
     total_messages_accepted_by_the_queue_ = last.index;
     if (processing_delay_ms_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(processing_delay_ms_));
@@ -147,8 +165,8 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   SuspendableConsumer c;
   c.SetProcessingDelayMillis(1u);
 
-  // Queue with 10 events in the buffer.
-  MMQ<std::string, SuspendableConsumer, 10> mmq(c);
+  // Queue with 10 events in the buffer. Don't drop events on overflow, and allow non-monotonic timestamps.
+  MMQ<std::string, SuspendableConsumer, 10, false, false> mmq(c);
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {
@@ -181,4 +199,43 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   // Ensure that all processed messages are indeed unique.
   std::set<std::string> messages(begin(c.messages_), end(c.messages_));
   EXPECT_EQ(100u, std::set<std::string>(c.messages_.begin(), c.messages_.end()).size());
+}
+
+TEST(InMemoryMQ, TimeShouldNotGoBack) {
+  struct ConsumerImpl {
+    std::string messages_;
+    std::atomic_size_t processed_messages_;
+    ConsumerImpl() : processed_messages_(0u) {}
+    EntryResponse operator()(const std::string& s, idxts_t, idxts_t) {
+      messages_ += s + '\n';
+      ++processed_messages_;
+      return EntryResponse::More;
+    }
+  };
+
+  using Consumer = current::ss::EntrySubscriber<ConsumerImpl, std::string>;
+
+  {
+    Consumer c;
+    MMQ<std::string, Consumer> mmq(c);
+    mmq.Publish("one", std::chrono::microseconds(1));
+    mmq.Publish("three", std::chrono::microseconds(3));
+    ASSERT_THROW(mmq.Publish("two", std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
+    while (c.processed_messages_ != 2) {
+      ;  // Spin lock;
+    }
+    EXPECT_EQ("one\nthree\n", c.messages_);
+  }
+
+  {
+    Consumer c;
+    MMPQ<std::string, Consumer> mmpq(c);
+    mmpq.Publish("one", std::chrono::microseconds(1));
+    mmpq.Publish("three", std::chrono::microseconds(3));
+    ASSERT_THROW(mmpq.Publish("two", std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
+    while (c.processed_messages_ != 2) {
+      ;  // Spin lock;
+    }
+    EXPECT_EQ("one\nthree\n", c.messages_);
+  }
 }

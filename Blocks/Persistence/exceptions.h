@@ -42,26 +42,6 @@ struct MalformedEntryException : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
-struct InconsistentIndexOrTimestampException : PersistenceException {
-  using PersistenceException::PersistenceException;
-};
-
-struct InconsistentIndexException : InconsistentIndexOrTimestampException {
-  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
-  InconsistentIndexException(uint64_t expected, uint64_t found) {
-    using current::strings::Printf;
-    SetWhat(Printf("Expecting index %llu, seeing %llu.", expected, found));
-  }
-};
-
-struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
-  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
-  InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found) {
-    using current::strings::Printf;
-    SetWhat(Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count()));
-  }
-};
-
 struct InvalidIterableRangeException : PersistenceException {
   using PersistenceException::PersistenceException;
 };
