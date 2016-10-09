@@ -132,7 +132,7 @@ class MMPQ {
       }
 
       auto it = queue_.begin();
-      consumer_(std::move(it->message_body), it->index_timestamp, last_idx_ts_);
+      consumer_(std::move(const_cast<Entry&>(*it).message_body), it->index_timestamp, last_idx_ts_);
       queue_.erase(it);
     }
   }
