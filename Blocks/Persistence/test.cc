@@ -275,10 +275,10 @@ TEST(PersistenceLayer, File) {
   }
 
   EXPECT_EQ(
-      "#HEAD\t00000000000000000600\n"
       "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
       "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
-      "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
+      "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
+      "#HEAD\t00000000000000000600\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {

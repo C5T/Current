@@ -760,9 +760,9 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 }
 
 const std::string sherlock_golden_data =
-    "#HEAD\t00000000000000000300\n"
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+    "#HEAD\t00000000000000000300\n"
     "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
 
 const std::string sherlock_golden_data_chunks[] = {"{\"index\":0,\"u",

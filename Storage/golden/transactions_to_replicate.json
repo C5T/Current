@@ -1,3 +1,2 @@
-#HEAD	00000000000000000000
 {"index":0,"us":103}	{"meta":{"begin_us":100,"end_us":103,"fields":{"user":"dima"}},"mutations":[{"RecordDictionaryUpdated":{"us":101,"data":{"lhs":"one","rhs":1}},"":"T9200018162904582576"},{"RecordDictionaryUpdated":{"us":102,"data":{"lhs":"two","rhs":2}},"":"T9200018162904582576"}]}
 {"index":1,"us":203}	{"meta":{"begin_us":200,"end_us":203,"fields":{}},"mutations":[{"RecordDictionaryUpdated":{"us":201,"data":{"lhs":"three","rhs":3}},"":"T9200018162904582576"},{"RecordDictionaryDeleted":{"us":202,"key":"two"},"":"T9200749443989249031"}]}

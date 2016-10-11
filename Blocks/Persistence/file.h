@@ -178,29 +178,24 @@ class FilePersister {
       InitializeHead();
     }
 
-    enum class HEADER_TYPE : int { HEAD, PID, SCHEMA };
+    enum class DIRECTIVE_TYPE : int { HEAD, SCHEMA, NAMESPACE };
 
     bool ProcessDirective(std::ifstream& fi) {
       std::string line;
-      if (std::getline(fi, line)) {
-        static const std::map<std::string, HEADER_TYPE> supported_headers = {
-            {"HEAD", HEADER_TYPE::HEAD}, {"PID", HEADER_TYPE::PID}, {"SCHEMA", HEADER_TYPE::SCHEMA}};
-        const size_t tab_pos = line.find('\t');
-        if (tab_pos == std::string::npos) {
-          return true;
-        }
-        const auto cit = supported_headers.find(line.substr(1, tab_pos));
-        if (cit == supported_headers.end()) {
-          return true;
-        }
-        const HEADER_TYPE header = cit->second;
-        if (header == HEADER_TYPE::HEAD) {
-          head_offset = std::streamoff(fi.tellg()) + tab_pos + 1;
-        }
-        return true;
-      } else {
+      if (!std::getline(fi, line)) {
         return false;
       }
+
+      static const std::map<std::string, DIRECTIVE_TYPE> supported_directives = {
+          {"HEAD", DIRECTIVE_TYPE::HEAD}, {"SCHEMA", DIRECTIVE_TYPE::SCHEMA}, {"NAMESPACE", DIRECTIVE_TYPE::NAMESPACE}};
+      const size_t tab_pos = line.find('\t');
+      if (tab_pos != std::string::npos) {
+        const auto cit = supported_directives.find(line.substr(1, tab_pos));
+        if (cit != supported_directives.end() && cit->second == DIRECTIVE_TYPE::HEAD) {
+          head_offset = std::streamoff(fi.tellg()) + tab_pos + 1;
+        }
+      }
+      return true;
     }
 
     void InitializeHead() {
@@ -217,10 +212,6 @@ class FilePersister {
         if (head_us > head_timestamp) {
           head_timestamp = head_us;
         }
-      } else {
-        appender << constants::kDirectiveMarker << "HEAD\t";
-        head_offset = appender.tellp();
-        appender << Printf(constants::kHeadFromatString, head_timestamp.count());
       }
     }
   };
@@ -385,9 +376,16 @@ class FilePersister {
     if (head.count() && !(timestamp > head)) {
       CURRENT_THROW(InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
-    std::fstream fo(file_persister_impl_->filename, std::ios::out | std::ios::in);
-    fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
-    fo << Printf(constants::kHeadFromatString, timestamp.count());
+    if (file_persister_impl_->head_offset) {
+      std::fstream fo(file_persister_impl_->filename, std::ios::out | std::ios::in);
+      fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
+      fo << Printf(constants::kHeadFromatString, timestamp.count());
+    } else {
+      auto& appender = file_persister_impl_->appender;
+      appender << constants::kDirectiveMarker << "HEAD\t";
+      file_persister_impl_->head_offset = appender.tellp();
+      appender << Printf(constants::kHeadFromatString, timestamp.count());
+    }
     head = timestamp;
   }
 

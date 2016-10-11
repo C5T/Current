@@ -199,8 +199,7 @@ TEST(StorageDocumentation, BasicUsage) {
     current::strings::Split<current::strings::ByLines>(
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  // HEAD section + three transactions.
-  ASSERT_EQ(4u, persisted_transactions.size());
+  ASSERT_EQ(3u, persisted_transactions.size());
   const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, std::chrono::microseconds timestamp) {
     std::istringstream iss(line);
     const size_t tab_pos = line.find('\t');
@@ -211,7 +210,7 @@ TEST(StorageDocumentation, BasicUsage) {
   };
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[1], 0u, std::chrono::microseconds(1003));
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 0u, std::chrono::microseconds(1003));
     ASSERT_EQ(2u, t.mutations.size());
 
     {
@@ -237,7 +236,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[2], 1u, std::chrono::microseconds(1102));
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 1u, std::chrono::microseconds(1102));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
@@ -251,7 +250,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[3], 2u, std::chrono::microseconds(1202));
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 2u, std::chrono::microseconds(1202));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_FALSE(Exists<PersistedUserUpdated>(t.mutations[0]));
