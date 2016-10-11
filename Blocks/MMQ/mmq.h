@@ -101,9 +101,7 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  using MutexLockStatus = current::locks::MutexLockStatus;
-
-  template <MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus MLS>
   idxts_t DoPublish(const message_t& message, std::chrono::microseconds timestamp) {
     if (CHECK_TIMESTAMP_MONOTONICITY) {
       if (!(timestamp > last_idx_ts_.us)) {
@@ -120,7 +118,7 @@ class MMQImpl {
     }
   }
 
-  template <MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus MLS>
   idxts_t DoPublish(message_t&& message, std::chrono::microseconds timestamp) {
     if (CHECK_TIMESTAMP_MONOTONICITY) {
       if (!(timestamp > last_idx_ts_.us)) {

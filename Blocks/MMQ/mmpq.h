@@ -70,12 +70,10 @@ class MMPQ {
   }
 
   // Adds a message to the buffer. Supports both copy and move semantics. THREAD SAFE.
-  using MutexLockStatus = current::locks::MutexLockStatus;
 
   // NOTE(dkorolev): `std::enable_if_t<std::is_same<message_t, current::decay<T>>::value, idxts_t>` can't convert
   // `const char*` into an `std::string`, which is essential, as, unlike MMQ, MMPQ is not an `ss::EntryPublisher<>`.
-
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock, class T>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t Publish(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
     if (!(timestamp > last_idx_ts_.us)) {
@@ -88,7 +86,7 @@ class MMPQ {
     return last_idx_ts_;
   }
 
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock, class T>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
     if (!(timestamp > last_idx_ts_.us)) {
@@ -101,7 +99,7 @@ class MMPQ {
     return last_idx_ts_;
   }
 
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void UpdateHead(std::chrono::microseconds timestamp = current::time::Now()) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
     if (!(timestamp > last_idx_ts_.us)) {
