@@ -767,9 +767,9 @@ const std::string sherlock_golden_data =
 
 const std::string sherlock_golden_data_chunks[] = {"{\"index\":0,\"u",
                                                    "s\":100}\t{\"x\":1}\r",
-                                                   "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n#HEA",
-                                                   "D\t0000000000",
-                                                   "0000000300\n{\"index\":2,\"us\":400}\t{\"x",
+                                                   "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n{\"us\"",
+                                                   ":3",
+                                                   "00}\n{\"index\":2,\"us\":400}\t{\"x",
                                                    "\":3}\n"};
 
 TEST(Sherlock, PersistsToFile) {

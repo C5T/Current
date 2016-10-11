@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <chrono>
 
+#include "../../TypeSystem/optional.h"
 #include "../../TypeSystem/struct.h"
 
 namespace current {
@@ -44,9 +45,20 @@ CURRENT_STRUCT(IndexAndTimestamp) {
   CURRENT_CONSTRUCTOR(IndexAndTimestamp)(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
 };
 
+// The same as `IndexAndTimestamp`, but with optional index member.
+CURRENT_STRUCT(TimestampAndOptionalIndex) {
+  CURRENT_FIELD(us, std::chrono::microseconds);
+  CURRENT_FIELD(index, Optional<uint64_t>);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(us);
+  CURRENT_DEFAULT_CONSTRUCTOR(TimestampAndOptionalIndex) : us(0) {}
+  CURRENT_CONSTRUCTOR(TimestampAndOptionalIndex)(std::chrono::microseconds us) : us(us) {}
+  CURRENT_CONSTRUCTOR(TimestampAndOptionalIndex)(std::chrono::microseconds us, uint64_t index) : us(us), index(index) {}
+};
+
 }  // namespace current::ss
 }  // namespace current
 
 using idxts_t = current::ss::IndexAndTimestamp;
+using ts_optidx_t = current::ss::TimestampAndOptionalIndex;
 
 #endif  // BLOCKS_SS_IDX_TS_H

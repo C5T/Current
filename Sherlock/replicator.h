@@ -145,7 +145,8 @@ class SubscribableRemoteStream final {
                           [this]() {}));
         } catch (StreamTerminatedBySubscriber&) {
           break;
-        } catch (current::Exception&) {
+        } catch (current::Exception& e) {
+          printf("Exception! (\"%s\"", e.what());
         }
         carried_over_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();
@@ -175,8 +176,8 @@ class SubscribableRemoteStream final {
       }
       for (size_t i = 0; i < whole_entries_count; ++i) {
         const auto split = current::strings::Split(lines[i], '\t');
-        CURRENT_ASSERT(split.size() == 2u);
-        if (split[0][0] != '#') {
+        CURRENT_ASSERT(split.size() == 1u || split.size() == 2u);
+        if (split.size() == 2u) {
           const auto idxts = ParseJSON<idxts_t>(split[0]);
           CURRENT_ASSERT(idxts.index == index_);
           auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
@@ -184,17 +185,11 @@ class SubscribableRemoteStream final {
           if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
             CURRENT_THROW(StreamTerminatedBySubscriber());
           }
-        } else {
-          OnDirective(split[0], split[1]);
-        }
-      }
-    }
-
-    void OnDirective(const std::string& type, const std::string& value) {
-      if (type == "#HEAD") {
-        const auto head_us = std::chrono::microseconds(current::FromString<int64_t>(value));
-        if (subscriber_(head_us) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
+        } else if (split.size() == 1u) {
+          const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
+          if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+            CURRENT_THROW(StreamTerminatedBySubscriber());
+          }
         }
       }
     }
