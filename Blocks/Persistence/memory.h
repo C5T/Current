@@ -128,7 +128,7 @@ class MemoryPersister {
     if (!container_->entries.empty()) {
       const std::chrono::microseconds expected = container_->entries.back().first;
       if (!(timestamp > expected)) {
-        CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
+        CURRENT_THROW(ss::InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
       }
     }
     const auto index = static_cast<uint64_t>(container_->entries.size());

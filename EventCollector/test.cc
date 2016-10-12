@@ -74,7 +74,7 @@ TEST(EventCollector, Smoke) {
 
   current::time::SetNow(std::chrono::microseconds(112000));
   while (collector.EventsPushed() < 2u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   current::time::SetNow(std::chrono::microseconds(178000));
@@ -84,7 +84,7 @@ TEST(EventCollector, Smoke) {
 
   current::time::SetNow(std::chrono::microseconds(278000));
   while (collector.EventsPushed() < 4u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   // Strip headers from test output since they are platform dependent.

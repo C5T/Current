@@ -72,11 +72,11 @@ class IteratorOverFileOfPersistedEntries {
       const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
       if (current.index != next_.index) {
         // Indexes must be strictly continuous.
-        CURRENT_THROW(InconsistentIndexException(next_.index, current.index));
+        CURRENT_THROW(ss::InconsistentIndexException(next_.index, current.index));
       }
       if (current.us < next_.us) {
         // Timestamps must monotonically increase.
-        CURRENT_THROW(InconsistentTimestampException(next_.us, current.us));
+        CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
       }
       f(current, line_.c_str() + tab_pos + 1);
       next_ = current;
@@ -235,8 +235,8 @@ class FilePersister {
                   found = true;
                   result.idx_ts = cursor;
                   result.entry = ParseJSON<ENTRY>(json);
-                } else if (cursor.index > i_) {                                 // LCOV_EXCL_LINE
-                  CURRENT_THROW(InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
+                } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
+                  CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
                 }
               }))) {
             // End of file. Should never happen as long as the user only iterates over valid ranges.
@@ -303,7 +303,7 @@ class FilePersister {
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     end_t iterator = file_persister_impl_->end.load();
     if (timestamp < iterator.us) {
-      CURRENT_THROW(InconsistentTimestampException(iterator.us, timestamp));
+      CURRENT_THROW(ss::InconsistentTimestampException(iterator.us, timestamp));
     }
     iterator.us = timestamp;
     const auto current = idxts_t(iterator.index, iterator.us);

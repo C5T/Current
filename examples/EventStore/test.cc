@@ -77,7 +77,7 @@ TEST(EventStore, SmokeWithInMemoryEventStore) {
   }
 
   while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
   EXPECT_EQ("haha",
@@ -126,7 +126,7 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
     }
 
     while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
     EXPECT_EQ("haha",
@@ -195,7 +195,7 @@ TEST(EventStore, SmokeWithHTTP) {
   }
 
   while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
   EXPECT_EQ("1\n",

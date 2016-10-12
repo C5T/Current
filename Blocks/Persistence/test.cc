@@ -143,7 +143,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
     impl.Publish("2", std::chrono::microseconds(2));
     current::time::ResetToZero();
     current::time::SetNow(std::chrono::microseconds(1));
-    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -152,7 +152,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
     current::time::SetNow(std::chrono::microseconds(3));
     IMPL impl;
     impl.Publish("2");
-    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -203,6 +203,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
         if (!iterator) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -217,6 +218,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
         if (!iterable) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -342,7 +344,7 @@ TEST(PersistenceLayer, FileExceptions) {
     impl.Publish("2");
     current::time::ResetToZero();
     current::time::SetNow(std::chrono::microseconds(1));
-    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -352,7 +354,7 @@ TEST(PersistenceLayer, FileExceptions) {
     current::time::SetNow(std::chrono::microseconds(3));
     IMPL impl(persistence_file_name);
     impl.Publish("2");
-    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -497,6 +499,7 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
         if (!iterator) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -511,6 +514,7 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
         if (!iterable) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -525,9 +529,9 @@ TEST(PersistenceLayer, Exceptions) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<StorableString>;
   using current::ss::IndexAndTimestamp;
+  using current::ss::InconsistentTimestampException;
+  using current::ss::InconsistentIndexException;
   using current::persistence::MalformedEntryException;
-  using current::persistence::InconsistentIndexException;
-  using current::persistence::InconsistentTimestampException;
 
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 

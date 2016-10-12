@@ -291,7 +291,7 @@ class Synchronous final {
   void PersistJournal() {
     try {
       persister_.PersistJournal(journal_);
-    } catch (const persistence::InconsistentTimestampException& e) {
+    } catch (const ss::InconsistentTimestampException& e) {
       std::cerr << "PersistJournal() failed with InconsistentTimestampException: " << e.what() << std::endl;
 #ifdef CURRENT_MOCK_TIME
       std::cerr << "Binary is compiled with `CURRENT_MOCK_TIME`. Probably `SetNow()` wasn't properly called."

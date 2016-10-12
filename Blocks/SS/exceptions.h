@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
-          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +22,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BLOCKS_SS_IDX_TS_H
-#define BLOCKS_SS_IDX_TS_H
+#ifndef BLOCKS_SS_EXCEPTIONS_H
+#define BLOCKS_SS_EXCEPTIONS_H
 
 #include "../../port.h"
+#include "../../Bricks/exception.h"
 
 #include <chrono>
-
-#include "exceptions.h"
-
-#include "../../TypeSystem/struct.h"
 
 namespace current {
 namespace ss {
 
-// The `IndexAndTimestamp` binds record index and timestamp together.
-// * `index` is 0-based.
-// * `us` is an epoch microsecond timestamp.
-CURRENT_STRUCT(IndexAndTimestamp) {
-  CURRENT_FIELD(index, uint64_t);
-  CURRENT_FIELD(us, std::chrono::microseconds);
-  CURRENT_USE_FIELD_AS_TIMESTAMP(us);
-  CURRENT_DEFAULT_CONSTRUCTOR(IndexAndTimestamp) : index(0u), us(0) {}
-  CURRENT_CONSTRUCTOR(IndexAndTimestamp)(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
+struct InconsistentIndexOrTimestampException : Exception {
+  using Exception::Exception;
+};
+
+struct InconsistentIndexException : InconsistentIndexOrTimestampException {
+  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
+  InconsistentIndexException(uint64_t expected, uint64_t found) {
+    using current::strings::Printf;
+    SetWhat(Printf("Expecting index %llu, seeing %llu.", expected, found));
+  }
+};
+
+struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
+  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
+  InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found) {
+    using current::strings::Printf;
+    SetWhat(Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count()));
+  }
 };
 
 }  // namespace current::ss
 }  // namespace current
 
-using idxts_t = current::ss::IndexAndTimestamp;
-
-#endif  // BLOCKS_SS_IDX_TS_H
+#endif  // BLOCKS_SS_EXCEPTIONS_H
