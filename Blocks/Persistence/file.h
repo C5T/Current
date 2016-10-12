@@ -368,6 +368,7 @@ class FilePersister {
     ++iterator.index;
     file_persister_impl_->end.store(iterator);
     head = timestamp;
+    file_persister_impl_->head_offset = 0;
     return current;
   }
 

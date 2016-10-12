@@ -245,6 +245,10 @@ TEST(PersistenceLayer, File) {
     current::time::SetNow(std::chrono::microseconds(200));
     impl.Publish(StorableString("bar"));
     EXPECT_EQ(2u, impl.Size());
+    current::time::SetNow(std::chrono::microseconds(300));
+    EXPECT_EQ(200, impl.CurrentHead().count());
+    impl.UpdateHead();
+    EXPECT_EQ(300, impl.CurrentHead().count());
 
     {
       std::vector<std::string> first_two;
@@ -277,6 +281,7 @@ TEST(PersistenceLayer, File) {
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
       "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "#HEAD\t00000000000000000300\n"
       "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
       "#HEAD\t00000000000000000600\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
