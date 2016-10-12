@@ -140,9 +140,7 @@ class FilePersister {
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
     explicit FilePersisterImpl(const std::string& filename)
-        : filename(filename),
-          appender(filename, std::ofstream::app),
-          head_offset(0) {
+        : filename(filename), appender(filename, std::ofstream::app), head_offset(0) {
       ValidateFileAndInitializeHead();
       if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
@@ -151,7 +149,7 @@ class FilePersister {
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
     void ValidateFileAndInitializeHead() {
-      std::ifstream fi(filename);//, std::ios::out | std::ios::in);
+      std::ifstream fi(filename);  //, std::ios::out | std::ios::in);
       if (!fi.bad()) {
         // Read through all the lines.
         // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
@@ -393,12 +391,16 @@ class FilePersister {
     }
   }
 
-  std::chrono::microseconds CurrentHead() const { return file_persister_impl_->end.load().head; }
-
-  bool HeadDetached() const {
+  head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
     const auto iterator = file_persister_impl_->end.load();
-    return iterator.head.count() && (!iterator.index || iterator.head > iterator.us);
+    if (iterator.index) {
+      return head_optidxts_t(iterator.head, iterator.index - 1, iterator.us);
+    } else {
+      return head_optidxts_t(iterator.head);
+    }
   }
+
+  std::chrono::microseconds CurrentHead() const noexcept { return file_persister_impl_->end.load().head; }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {

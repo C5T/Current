@@ -164,15 +164,18 @@ class MemoryPersister {
     }
   }
 
-  std::chrono::microseconds CurrentHead() const {
+  head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
     std::lock_guard<std::mutex> lock(container_->mutex);
-    return container_->head;
+    if (!container_->entries.empty()) {
+      return head_optidxts_t(container_->head, container_->entries.size() - 1, container_->entries.back().first);
+    } else {
+      return head_optidxts_t(container_->head);
+    }
   }
 
-  bool HeadDetached() const noexcept {
+  std::chrono::microseconds CurrentHead() const noexcept {
     std::lock_guard<std::mutex> lock(container_->mutex);
-    return container_->head.count() &&
-           (container_->entries.empty() || container_->head > container_->entries.back().first);
+    return container_->head;
   }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
