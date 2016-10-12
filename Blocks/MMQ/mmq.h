@@ -266,7 +266,7 @@ class MMQImpl {
   // Messages beyond it will be dropped.
   const size_t circular_buffer_size_;
 
-  // The `Entry` struct keeps the entries along with their completion status.
+  // The `Entry` struct keeps the entries along with their timestamps and completion status.
   struct Entry {
     idxts_t index_timestamp;
     message_t message_body;

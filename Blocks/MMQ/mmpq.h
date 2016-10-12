@@ -140,7 +140,7 @@ class MMPQ {
   // The instance of the consuming side of the FIFO buffer.
   consumer_t& consumer_;
 
-  // The `Entry` struct keeps the entries along with their completion status.
+  // The `Entry` struct keeps the entries along with their timestamps.
   struct Entry {
     idxts_t index_timestamp;
     message_t message_body;
