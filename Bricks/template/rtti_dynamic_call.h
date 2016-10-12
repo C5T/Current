@@ -32,6 +32,7 @@ SOFTWARE.
 #include <unordered_map>
 #include <utility>
 
+#include "decay.h"
 #include "is_tuple.h"
 #include "typelist.h"
 

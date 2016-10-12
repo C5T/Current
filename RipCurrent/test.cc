@@ -24,16 +24,12 @@ SOFTWARE.
 
 #include "ripcurrent.h"
 
-#include "../Bricks/dflags/dflags.h"
-
 #include "../Bricks/strings/join.h"
 #include "../Bricks/strings/split.h"
 
-#include "../Blocks/HTTP/api.h"
+#include "../3rdparty/gtest/gtest-main.h"
 
-#include "../3rdparty/gtest/gtest-main-with-dflags.h"
-
-DEFINE_uint16(ripcurrent_http_test_port, PickPortForUnitTest(), "Local port to use for RipCurrent unit test.");
+using current::strings::Join;
 
 // `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
 
@@ -49,15 +45,15 @@ CURRENT_STRUCT(Integer) {
 RIPCURRENT_NODE(RCEmit, void, Integer) {
   static std::string UnitTestClassName() { return "RCEmit"; }
   RCEmit() {}  // LCOV_EXCL_LINE
-  RCEmit(int a) { emit<Integer>(a); }
+  RCEmit(int a) { emit(Integer(a)); }
   RCEmit(int a, int b) {
-    emit<Integer>(a);
-    emit<Integer>(b);
+    emit(Integer(a));
+    emit(Integer(b));
   }
   RCEmit(int a, int b, int c) {
-    emit<Integer>(a);
-    emit<Integer>(b);
-    emit<Integer>(c);
+    emit(Integer(a));
+    emit(Integer(b));
+    emit(Integer(c));
   }
 };
 #define RCEmit(...) RIPCURRENT_MACRO(RCEmit, __VA_ARGS__)
@@ -67,7 +63,7 @@ RIPCURRENT_NODE(RCMult, Integer, Integer) {
   static std::string UnitTestClassName() { return "RCMult"; }
   int k;
   RCMult(int k = 1) : k(k) {}
-  void f(Integer x) { emit<Integer>(x.value * k); }
+  void f(Integer x) { emit(Integer(x.value * k)); }
 };
 #define RCMult(...) RIPCURRENT_MACRO(RCMult, __VA_ARGS__)
 
@@ -103,19 +99,17 @@ TEST(RipCurrent, TypeStaticAsserts) {
                 "");
   static_assert(sizeof(is_same_or_compile_error<current::ripcurrent::RHSTypes<>, typename rcdump_t::output_t>), "");
 
-  static_assert(
-      sizeof(is_same_or_compile_error<decltype(RCEmit(1, 2, 3)),
-                                      current::ripcurrent::UserCodeImpl<current::ripcurrent::LHSTypes<>,
-                                                                        current::ripcurrent::RHSTypes<Integer>,
-                                                                        rcemit_t>>),
-      "");
+  static_assert(sizeof(is_same_or_compile_error<decltype(RCEmit(1, 2, 3)),
+                                                current::ripcurrent::UserClass<current::ripcurrent::LHSTypes<>,
+                                                                               current::ripcurrent::RHSTypes<Integer>,
+                                                                               rcemit_t>>),
+                "");
 
-  static_assert(
-      sizeof(is_same_or_compile_error<decltype(RCDump(std::ref(result))),
-                                      current::ripcurrent::UserCodeImpl<current::ripcurrent::LHSTypes<Integer>,
-                                                                        current::ripcurrent::RHSTypes<>,
-                                                                        rcdump_t>>),
-      "");
+  static_assert(sizeof(is_same_or_compile_error<decltype(RCDump(std::ref(result))),
+                                                current::ripcurrent::UserClass<current::ripcurrent::LHSTypes<Integer>,
+                                                                               current::ripcurrent::RHSTypes<>,
+                                                                               rcdump_t>>),
+                "");
 }
 
 TEST(RipCurrent, SingleEdgeFlow) {
@@ -123,8 +117,8 @@ TEST(RipCurrent, SingleEdgeFlow) {
 
   std::vector<int> result;
 
-  (RCEmit(1, 2, 3) | RCDump(std::ref(result))).RipCurrent().Join();
-  EXPECT_EQ("1,2,3", current::strings::Join(result, ','));
+  (RCEmit(1, 2, 3) | RCDump(std::ref(result))).RipCurrent().Sync();
+  EXPECT_EQ("1,2,3", Join(result, ','));
 }
 
 TEST(RipCurrent, SingleChainFlow) {
@@ -132,8 +126,8 @@ TEST(RipCurrent, SingleChainFlow) {
 
   std::vector<int> result;
 
-  (RCEmit(1, 2, 3) | RCMult(2) | RCMult(5) | RCMult(10) | RCDump(std::ref(result))).RipCurrent().Join();
-  EXPECT_EQ("100,200,300", current::strings::Join(result, ','));
+  (RCEmit(1, 2, 3) | RCMult(2) | RCMult(5) | RCMult(10) | RCDump(std::ref(result))).RipCurrent().Sync();
+  EXPECT_EQ("100,200,300", Join(result, ','));
 }
 
 TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
@@ -149,9 +143,9 @@ TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
   EXPECT_EQ("... | RCDump(std::ref(result))", dump.Describe());
   EXPECT_EQ("RCEmit(42) | RCDump(std::ref(result))", emit_dump.Describe());
 
-  EXPECT_EQ("", current::strings::Join(result, ','));
-  emit_dump.RipCurrent().Join();
-  EXPECT_EQ("42", current::strings::Join(result, ','));
+  EXPECT_EQ("", Join(result, ','));
+  emit_dump.RipCurrent().Sync();
+  EXPECT_EQ("42", Join(result, ','));
 }
 
 TEST(RipCurrent, OrderDoesNotMatter) {
@@ -164,20 +158,20 @@ TEST(RipCurrent, OrderDoesNotMatter) {
   const auto c = RCDump(std::ref(result));
 
   result.clear();
-  (a | b | b | c).RipCurrent().Join();
-  EXPECT_EQ("4", current::strings::Join(result, ','));
+  (a | b | b | c).RipCurrent().Sync();
+  EXPECT_EQ("4", Join(result, ','));
 
   result.clear();
-  ((a | b) | (b | c)).RipCurrent().Join();
-  EXPECT_EQ("4", current::strings::Join(result, ','));
+  ((a | b) | (b | c)).RipCurrent().Sync();
+  EXPECT_EQ("4", Join(result, ','));
 
   result.clear();
-  ((a | (b | b)) | c).RipCurrent().Join();
-  EXPECT_EQ("4", current::strings::Join(result, ','));
+  ((a | (b | b)) | c).RipCurrent().Sync();
+  EXPECT_EQ("4", Join(result, ','));
 
   result.clear();
-  (a | ((b | b) | c)).RipCurrent().Join();
-  EXPECT_EQ("4", current::strings::Join(result, ','));
+  (a | ((b | b) | c)).RipCurrent().Sync();
+  EXPECT_EQ("4", Join(result, ','));
 }
 
 TEST(RipCurrent, BuildingBlocksCanBeReused) {
@@ -193,17 +187,17 @@ TEST(RipCurrent, BuildingBlocksCanBeReused) {
   current::ripcurrent::RHS<current::ripcurrent::LHSTypes<Integer>> dump1 = RCDump(std::ref(result1));
   current::ripcurrent::RHS<current::ripcurrent::LHSTypes<Integer>> dump2 = RCDump(std::ref(result2));
 
-  (emit1 | mult10 | dump1).RipCurrent().Join();
-  (emit2 | mult10 | dump2).RipCurrent().Join();
-  EXPECT_EQ("10", current::strings::Join(result1, ','));
-  EXPECT_EQ("20", current::strings::Join(result2, ','));
+  (emit1 | mult10 | dump1).RipCurrent().Sync();
+  (emit2 | mult10 | dump2).RipCurrent().Sync();
+  EXPECT_EQ("10", Join(result1, ','));
+  EXPECT_EQ("20", Join(result2, ','));
 
   result1.clear();
   result2.clear();
-  ((emit1 | mult10) | dump1).RipCurrent().Join();
-  ((emit2 | mult10) | dump2).RipCurrent().Join();
-  EXPECT_EQ("10", current::strings::Join(result1, ','));
-  EXPECT_EQ("20", current::strings::Join(result2, ','));
+  ((emit1 | mult10) | dump1).RipCurrent().Sync();
+  ((emit2 | mult10) | dump2).RipCurrent().Sync();
+  EXPECT_EQ("10", Join(result1, ','));
+  EXPECT_EQ("20", Join(result2, ','));
 }
 
 TEST(RipCurrent, SynopsisAndDecorators) {
@@ -426,8 +420,8 @@ CURRENT_STRUCT(String) {
 
 RIPCURRENT_NODE(EmitStringAndInteger, (), (Integer, String)) {  // Note: `()` is same as `void`.
   EmitStringAndInteger() {
-    emit<String>("Answer");
-    emit<Integer>(42);
+    emit(String("Answer"));
+    emit(Integer(42));
   }
 };
 #define EmitStringAndInteger(...) RIPCURRENT_MACRO(EmitStringAndInteger, __VA_ARGS__)
@@ -436,10 +430,10 @@ RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
   const int k;
   MultIntegerOrString(int k = 101) : k(k) {}
   void f(Integer x) {
-    emit<Integer>(x.value * k);
+    emit(Integer(x.value * k));
   }
   void f(String x) {
-    emit<String>("Yo? " + x.value + " Yo!");
+    emit(String("Yo? " + x.value + " Yo!"));
   }
 };
 #define MultIntegerOrString(...) RIPCURRENT_MACRO(MultIntegerOrString, __VA_ARGS__)
@@ -474,14 +468,14 @@ TEST(RipCurrent, CustomTypesFlow) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
-    EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
+    (EmitStringAndInteger() | DumpIntegerAndString(std::ref(result))).RipCurrent().Sync();
+    EXPECT_EQ("'Answer', 42", Join(result, ", "));
   }
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
-    EXPECT_EQ("'Yo? Answer Yo!', 4242", current::strings::Join(result, ", "));
+    (EmitStringAndInteger() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Sync();
+    EXPECT_EQ("'Yo? Answer Yo!', 4242", Join(result, ", "));
   }
 
   {
@@ -489,61 +483,7 @@ TEST(RipCurrent, CustomTypesFlow) {
     (EmitStringAndInteger() | MultIntegerOrString() | MultIntegerOrString(10001) |
      DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
-        .Join();
-    EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", current::strings::Join(result, ", "));
+        .Sync();
+    EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", Join(result, ", "));
   }
-}
-
-namespace ripcurrent_unittest {
-
-RIPCURRENT_NODE(RCHTTPAcceptor, void, Request) {
-  RCHTTPAcceptor(uint16_t port)
-      : scope(HTTP(port).Register("/ripcurrent", [this](Request r) { emit<Request>(std::move(r)); })) {
-    const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
-    EXPECT_EQ("1\n", HTTP(GET(base_url)).body);
-    EXPECT_EQ("2\n", HTTP(HEAD(base_url)).body);
-    EXPECT_EQ("3\n", HTTP(POST(base_url, "OK")).body);
-  }
-  HTTPRoutesScope scope;
-};
-#define RCHTTPAcceptor(...) RIPCURRENT_MACRO(RCHTTPAcceptor, __VA_ARGS__)
-
-RIPCURRENT_NODE(RCHTTPResponder, Request, void) {
-  int index = 0;
-  std::vector<std::string>& calls;
-  // clang-format off
-  // Messes with " & " -- D.K.
-  RCHTTPResponder(std::vector<std::string>& calls) : calls(calls) {}
-  // clang-format on
-  void f(Request r) {
-    if (r.method == "POST") {
-      calls.push_back("POST " + r.body);
-    } else {
-      calls.push_back(r.method);
-    }
-    r(current::ToString(++index) + '\n');
-  }
-};
-#define RCHTTPResponder(...) RIPCURRENT_MACRO(RCHTTPResponder, __VA_ARGS__)
-
-}  // namespace ripcurrent_unittest
-
-TEST(RipCurrent, CanHandleHTTPRequest) {
-  using namespace ripcurrent_unittest;
-  const uint16_t port = FLAGS_ripcurrent_http_test_port;
-
-  std::vector<std::string> calls;
-
-  const auto job = RCHTTPAcceptor(port) | RCHTTPResponder(std::ref(calls));
-  ASSERT_TRUE(calls.empty());
-
-  // Begin running the job.
-  auto scope = std::move(job.RipCurrent().Async());
-
-  // The first three calls are performed from the constructor of `RCHTTPAcceptor`, and thus synchronously.
-  EXPECT_EQ("GET,HEAD,POST OK", current::strings::Join(calls, ','));
-
-  // Now make another call and confirm it goes through all the way.
-  EXPECT_EQ("4\n", HTTP(POST(Printf("http://localhost:%d/ripcurrent", static_cast<int>(port)), "ONE MORE")).body);
-  EXPECT_EQ("GET,HEAD,POST OK,POST ONE MORE", current::strings::Join(calls, ','));
 }
