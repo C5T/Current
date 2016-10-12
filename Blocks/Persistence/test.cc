@@ -203,6 +203,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
         if (!iterator) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -217,6 +218,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
         if (!iterable) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -497,6 +499,7 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
         if (!iterator) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 
@@ -511,6 +514,7 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
         if (!iterable) {
           break;
         }
+        std::this_thread::yield();
       }
     }
 

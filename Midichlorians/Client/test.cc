@@ -141,7 +141,7 @@ TEST(MidichloriansClient, iOSSmokeTest) {
   [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
   while (server.MessagesProcessed() < 5u) {
-    ;  // spin lock.
+    std::this_thread::yield();
   }
 
   EXPECT_EQ(5u, server.Messages().size());

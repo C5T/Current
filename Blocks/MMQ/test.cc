@@ -66,7 +66,7 @@ TEST(InMemoryMQ, SmokeTest) {
     mmq.Publish("two");
     mmq.Publish("three");
     while (c.processed_messages_ != 3) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     EXPECT_EQ("one\ntwo\nthree\n", c.messages_);
     EXPECT_EQ(0u, c.dropped_messages_);
@@ -79,7 +79,7 @@ TEST(InMemoryMQ, SmokeTest) {
     mmpq.Publish("two");
     mmpq.Publish("three");
     while (c.processed_messages_ != 3) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     EXPECT_EQ("one\ntwo\nthree\n", c.messages_);
     EXPECT_EQ(0u, c.dropped_messages_);
@@ -98,7 +98,7 @@ struct SuspendableConsumerImpl {
     EXPECT_EQ(current.index, expected_next_message_index_);
     ++expected_next_message_index_;
     while (suspend_processing_) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     messages_.push_back(s);
     EXPECT_GE(last.index, total_messages_accepted_by_the_queue_);
@@ -141,14 +141,14 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   // Eliminate processing delay and wait until the complete queue of 10 messages is played through.
   c.suspend_processing_ = false;
   while (c.processed_messages_ != 10u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   // Now, to have the consumer observe the index and the counter of the messages,
   // and note that 15 messages, with 0-based indexes [10 .. 25), have not been seen.
   mmq.Publish("Plus one");
   while (c.processed_messages_ != 11u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   // Eleven messages total: ten accepted originally, plus one more published later.
@@ -191,7 +191,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
 
   // Wait until the rest of the queued messages are processed.
   while (c.processed_messages_ != 100u) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
 
   // Confirm that none of the messages were dropped.
@@ -223,7 +223,7 @@ TEST(InMemoryMQ, TimeShouldNotGoBack) {
     mmq.Publish("three", std::chrono::microseconds(3));
     ASSERT_THROW(mmq.Publish("two", std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
     while (c.processed_messages_ != 2) {
-      ;  // Spin lock;
+      std::this_thread::yield();
     }
     EXPECT_EQ("one\nthree\n", c.messages_);
   }
@@ -235,7 +235,7 @@ TEST(InMemoryMQ, TimeShouldNotGoBack) {
     mmpq.Publish("three", std::chrono::microseconds(3));
     ASSERT_THROW(mmpq.Publish("two", std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
     while (c.processed_messages_ != 2) {
-      ;  // Spin lock;
+      std::this_thread::yield();
     }
     EXPECT_EQ("one\nthree\n", c.messages_);
   }
@@ -263,7 +263,7 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
   // Publish "one". It gets to the consumer immediately.
   mmpq.Publish("one", std::chrono::microseconds(1));
   while (c.processed_messages_ != 1) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = one", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -273,7 +273,7 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
   mmpq.PublishIntoTheFuture("three", std::chrono::microseconds(3));
   mmpq.Publish("two", std::chrono::microseconds(2));
   while (c.processed_messages_ != 2) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = one, [3] = two", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1, two @ 2", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -281,7 +281,7 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
   // Finally, publish "four". As it's past "three", the consumer will get both "three" and "four".
   mmpq.Publish("four", std::chrono::microseconds(4));
   while (c.processed_messages_ != 4) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = one, [3] = two, [2] = three, [4] = four", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1, two @ 2, three @ 3, four @ 4", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -309,7 +309,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   // Start with "three": publish and confirm it goes through.
   mmpq.Publish("three", std::chrono::microseconds(3));
   while (c.processed_messages_ != 1) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = three", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("three @ 3", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -318,7 +318,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   mmpq.PublishIntoTheFuture("seven", std::chrono::microseconds(7));
   mmpq.UpdateHead(std::chrono::microseconds(7));
   while (c.processed_messages_ != 2) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = three, [2] = seven", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("three @ 3, seven @ 7", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -337,7 +337,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   // Publish an "ace" at 100.
   mmpq.Publish("ace", std::chrono::microseconds(100));
   while (c.processed_messages_ != 3) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = three, [2] = seven, [3] = ace", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("three @ 3, seven @ 7, ace @ 100", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -350,7 +350,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   // Update HEAD to capture just one of the three, to `t=101`, and confirm "king" does get to the consumer.
   mmpq.UpdateHead(std::chrono::microseconds(101));
   while (c.processed_messages_ != 4) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = three, [2] = seven, [3] = ace, [5] = king", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("three @ 3, seven @ 7, ace @ 100, king @ 101", current::strings::Join(c.messages_by_timestamps_, ", "));
@@ -358,7 +358,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   // Update HEAD to capture the second one of three, to `t=102`, and confirm "queen" does get to the consumer.
   mmpq.UpdateHead(std::chrono::microseconds(102));
   while (c.processed_messages_ != 5) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = three, [2] = seven, [3] = ace, [5] = king, [4] = queen",
             current::strings::Join(c.messages_by_indexes_, ", "));
@@ -369,7 +369,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   // This publish into "present" would force the consumer to process both the outstanding "jack" and the "joker" itself.
   mmpq.Publish("joker", std::chrono::microseconds(1000));
   while (c.processed_messages_ != 7) {
-    ;  // Spin lock;
+    std::this_thread::yield();
   }
   EXPECT_EQ("[1] = three, [2] = seven, [3] = ace, [5] = king, [4] = queen, [6] = jack, [7] = joker",
             current::strings::Join(c.messages_by_indexes_, ", "));

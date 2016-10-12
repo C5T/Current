@@ -472,10 +472,10 @@ TEST(Karl, DeregisterWithNginx) {
   {
     // Must wait for Nginx config reload to take effect.
     while (HTTP(GET(is_prime_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Spin lock.
+      std::this_thread::yield();
     }
     while (HTTP(GET(generator_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Spin lock.
+      std::this_thread::yield();
     }
   }
 }
@@ -498,7 +498,7 @@ TEST(Karl, DisconnectedByTimout) {
     const auto response = HTTP(POST(keepalive_url, claire));
     EXPECT_EQ(200, static_cast<int>(response.code));
     while (karl.ActiveServicesCount() == 0u) {
-      std::this_thread::yield();  // Spin lock.
+      std::this_thread::yield();
     }
     const auto result =
         karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
@@ -553,7 +553,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
     const auto response = HTTP(POST(keepalive_url, claire));
     EXPECT_EQ(200, static_cast<int>(response.code));
     while (karl.ActiveServicesCount() == 0u) {
-      std::this_thread::yield();  // Spin lock.
+      std::this_thread::yield();
     }
     const auto result =
         karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
@@ -688,7 +688,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 
   while (secondary_karl.ActiveServicesCount() == 0u) {
-    std::this_thread::yield();  // Spin lock.
+    std::this_thread::yield();
   }
   // The `generator` service is registered in the secondary `Karl`.
   {
@@ -726,7 +726,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 
   while (primary_karl.ActiveServicesCount() == 0u) {
-    std::this_thread::yield();  // Spin lock.
+    std::this_thread::yield();
   }
   // The `generator` service is again registered as active in the primary `Karl`.
   {
@@ -978,7 +978,7 @@ TEST(Karl, KarlNotifiesUserObject) {
   EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
   while (karl.ActiveServicesCount()) {
-    std::this_thread::yield();  // Spin lock.
+    std::this_thread::yield();
   }
 
   // Now, the timeout test with respect to callbacks.
@@ -996,7 +996,7 @@ TEST(Karl, KarlNotifiesUserObject) {
       const auto response = HTTP(POST(keepalive_url, claire));
       EXPECT_EQ(200, static_cast<int>(response.code));
       while (karl.ActiveServicesCount() != 1u) {
-        std::this_thread::yield();  // Spin lock.
+        std::this_thread::yield();
       }
     }
     expected.push_back("Keepalive: ABCDEF");

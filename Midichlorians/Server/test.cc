@@ -204,7 +204,7 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
   current::time::SetNow(std::chrono::microseconds(112000));
   // Waiting for 3 entries: 1 valid, 1 unparsable and 1 tick.
   while (consumer.EventsAndErrorsTotalCount() < 3u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
   EXPECT_EQ(2u, consumer.EventsCount());
   EXPECT_EQ(1u, consumer.ErrorsCount());
@@ -225,7 +225,7 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
   current::time::SetNow(std::chrono::microseconds(450000));
   // Waiting for 4 more entries: 2 valid, 1 unparsable and 1 tick.
   while (consumer.EventsAndErrorsTotalCount() < 7u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   EXPECT_EQ(5u, consumer.EventsCount());
@@ -270,7 +270,7 @@ TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
   while (consumer.EventsAndErrorsTotalCount() < 5u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   EXPECT_EQ(
@@ -340,7 +340,7 @@ TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
   HTTP(MockGETRequest(server_url, 10, "action", "category"));
 
   while (consumer.EventsAndErrorsTotalCount() < 5u) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   EXPECT_EQ(
