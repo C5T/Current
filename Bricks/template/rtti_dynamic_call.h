@@ -33,7 +33,6 @@ SOFTWARE.
 #include <utility>
 
 #include "is_tuple.h"
-#include "is_unique_ptr.h"
 #include "typelist.h"
 
 #include "../exception.h"
@@ -79,18 +78,40 @@ struct SpecificUncastableTypeException : UncastableTypeException {
       : UncastableTypeException(typeid(BASE).name() + std::string(" -> ") + typeid(DERIVED).name()) {}
 };
 
+enum class DispatcherInputType { ConstReference, Reference, RValueReference };
+
+template <DispatcherInputType, typename BASE, typename F, typename... ARGS>
+struct RTTIDispatcherBase;
+
 template <typename BASE, typename F, typename... ARGS>
-struct RTTIDispatcherBase {
+struct RTTIDispatcherBase<DispatcherInputType::ConstReference, BASE, F, ARGS...> {
   virtual ~RTTIDispatcherBase() = default;
-  virtual void Handle(BASE&&, F&&, ARGS&&...) const { CURRENT_THROW(SpecificUnhandledTypeException<BASE>()); }
+  virtual void HandleByConstReference(const BASE&, F&&, ARGS&&...) const {
+    CURRENT_THROW(SpecificUnhandledTypeException<BASE>());
+  }
+};
+
+template <typename BASE, typename F, typename... ARGS>
+struct RTTIDispatcherBase<DispatcherInputType::Reference, BASE, F, ARGS...> {
+  virtual void HandleByReference(BASE&, F&&, ARGS&&...) const { CURRENT_THROW(SpecificUnhandledTypeException<BASE>()); }
+};
+
+template <typename BASE, typename F, typename... ARGS>
+struct RTTIDispatcherBase<DispatcherInputType::RValueReference, BASE, F, ARGS...> {
+  virtual void HandleByRValueReference(BASE&&, F&&, ARGS&&...) const {
+    CURRENT_THROW(SpecificUnhandledTypeException<BASE>());
+  }
 };
 // LCOV_EXCL_STOP
 
+template <DispatcherInputType, typename BASE, typename F, typename DERIVED, typename... ARGS>
+struct RTTIDispatcher;
+
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
-struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
-  virtual void Handle(BASE&& ref, F&& f, ARGS&&... args) const override {
-    // `auto` to support both `const` and mutable.
-    auto derived = dynamic_cast_preserving_const<DERIVED>(&ref);
+struct RTTIDispatcher<DispatcherInputType::ConstReference, BASE, F, DERIVED, ARGS...>
+    : RTTIDispatcherBase<DispatcherInputType::ConstReference, BASE, F, ARGS...> {
+  virtual void HandleByConstReference(const BASE& ref, F&& f, ARGS&&... args) const override {
+    const auto* derived = dynamic_cast<const DERIVED*>(&ref);
     if (derived) {
       f(*derived, std::forward<ARGS>(args)...);
     } else {
@@ -99,53 +120,90 @@ struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
   }
 };
 
-template <typename BASE, typename F, typename... ARGS>
-using RTTIHandlersMap = std::unordered_map<std::type_index, std::unique_ptr<RTTIDispatcherBase<BASE, F, ARGS...>>>;
-
-template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
-struct PopulateRTTIHandlers {};
-
-template <typename BASE, typename F, typename... ARGS>
-struct PopulateRTTIHandlers<std::tuple<>, BASE, F, ARGS...> {
-  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>&) {}
+template <typename BASE, typename F, typename DERIVED, typename... ARGS>
+struct RTTIDispatcher<DispatcherInputType::Reference, BASE, F, DERIVED, ARGS...>
+    : RTTIDispatcherBase<DispatcherInputType::Reference, BASE, F, ARGS...> {
+  virtual void HandleByReference(BASE& ref, F&& f, ARGS&&... args) const override {
+    auto* derived = dynamic_cast<DERIVED*>(&ref);
+    if (derived) {
+      f(*derived, std::forward<ARGS>(args)...);
+    } else {
+      CURRENT_THROW((SpecificUncastableTypeException<BASE, DERIVED>()));  // LCOV_EXCL_LINE
+    }
+  }
 };
 
-template <typename T, typename... TS, typename BASE, typename F, typename... ARGS>
-struct PopulateRTTIHandlers<std::tuple<T, TS...>, BASE, F, ARGS...> {
-  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>& map) {
+template <typename BASE, typename F, typename DERIVED, typename... ARGS>
+struct RTTIDispatcher<DispatcherInputType::RValueReference, BASE, F, DERIVED, ARGS...>
+    : RTTIDispatcherBase<DispatcherInputType::RValueReference, BASE, F, ARGS...> {
+  virtual void HandleByRValueReference(BASE&& ref, F&& f, ARGS&&... args) const override {
+    auto* derived = dynamic_cast<DERIVED*>(&ref);
+    if (derived) {
+      f(std::move(*derived), std::forward<ARGS>(args)...);
+    } else {
+      CURRENT_THROW((SpecificUncastableTypeException<BASE, DERIVED>()));  // LCOV_EXCL_LINE
+    }
+  }
+};
+
+template <DispatcherInputType DISPATCHER_INPUT_TYPE, typename BASE, typename F, typename... ARGS>
+using RTTIHandlersMap =
+    std::unordered_map<std::type_index, std::unique_ptr<RTTIDispatcherBase<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...>>>;
+
+template <DispatcherInputType, typename TYPELIST, typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers;
+
+template <DispatcherInputType DISPATCHER_INPUT_TYPE, typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, std::tuple<>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...>&) {}
+};
+
+template <DispatcherInputType DISPATCHER_INPUT_TYPE,
+          typename T,
+          typename... TS,
+          typename BASE,
+          typename F,
+          typename... ARGS>
+struct PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, std::tuple<T, TS...>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...>& map) {
     // TODO(dkorolev): Check for duplicate types in input type list? Throw an exception?
-    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<BASE, F, T, ARGS...>());
-    PopulateRTTIHandlers<std::tuple<TS...>, BASE, F, ARGS...>::DoIt(map);
+    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<DISPATCHER_INPUT_TYPE, BASE, F, T, ARGS...>());
+    PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, std::tuple<TS...>, BASE, F, ARGS...>::DoIt(map);
   }
 };
 
 // Support both `std::tuple<>` and `TypeList<>` for now. -- D.K.
 // TODO(dkorolev): Revisit this once we will be retiring `std::tuple<>`'s use as typelist.
-template <typename BASE, typename F, typename... ARGS>
-struct PopulateRTTIHandlers<TypeListImpl<>, BASE, F, ARGS...> {
-  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>&) {}
+template <DispatcherInputType DISPATCHER_INPUT_TYPE, typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, TypeListImpl<>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...>&) {}
 };
 
-template <typename T, typename... TS, typename BASE, typename F, typename... ARGS>
-struct PopulateRTTIHandlers<TypeListImpl<T, TS...>, BASE, F, ARGS...> {
-  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>& map) {
+template <DispatcherInputType DISPATCHER_INPUT_TYPE,
+          typename T,
+          typename... TS,
+          typename BASE,
+          typename F,
+          typename... ARGS>
+struct PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, TypeListImpl<T, TS...>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...>& map) {
     // TODO(dkorolev): Check for duplicate types in input type list? Throw an exception?
-    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<BASE, F, T, ARGS...>());
-    PopulateRTTIHandlers<TypeListImpl<TS...>, BASE, F, ARGS...>::DoIt(map);
+    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<DISPATCHER_INPUT_TYPE, BASE, F, T, ARGS...>());
+    PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, TypeListImpl<TS...>, BASE, F, ARGS...>::DoIt(map);
   }
 };
 
-template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
+template <DispatcherInputType DISPATCHER_INPUT_TYPE, typename TYPELIST, typename BASE, typename F, typename... ARGS>
 struct RTTIPopulatedHandlers {
   static_assert(is_std_tuple<TYPELIST>::value || IsTypeList<TYPELIST>::value, "");
-  RTTIHandlersMap<BASE, F, ARGS...> map;
-  RTTIPopulatedHandlers() { PopulateRTTIHandlers<TYPELIST, BASE, F, ARGS...>::DoIt(map); }
+  RTTIHandlersMap<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...> map;
+  RTTIPopulatedHandlers() { PopulateRTTIHandlers<DISPATCHER_INPUT_TYPE, TYPELIST, BASE, F, ARGS...>::DoIt(map); }
 };
 
-template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
-const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info& type) {
+template <DispatcherInputType DISPATCHER_INPUT_TYPE, typename TYPELIST, typename BASE, typename F, typename... ARGS>
+const RTTIDispatcherBase<DISPATCHER_INPUT_TYPE, BASE, F, ARGS...>* RTTIFindHandler(const std::type_info& type) {
   static_assert(is_std_tuple<TYPELIST>::value || IsTypeList<TYPELIST>::value, "");
-  static RTTIPopulatedHandlers<TYPELIST, BASE, F, ARGS...> singleton;
+  static RTTIPopulatedHandlers<DISPATCHER_INPUT_TYPE, TYPELIST, BASE, F, ARGS...> singleton;
   const auto handler = singleton.map.find(std::type_index(type));
   if (handler != singleton.map.end()) {
     return handler->second.get();
@@ -155,14 +213,29 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
 }
 
 // Returning values from RTTI-dispatched calls is not supported. Pass in another parameter by pointer/reference.
-template <typename TYPELIST, typename BASE, typename... REST>
-void RTTIDynamicCallImpl(BASE&& ref, REST&&... rest) {
-  RTTIFindHandler<TYPELIST, BASE, REST...>(typeid(ref))->Handle(std::forward<BASE>(ref), std::forward<REST>(rest)...);
-}
+template <typename TYPELIST, typename BASE>
+struct RTTIDynamicCallWrapper {
+  template <typename... REST>
+  static void RunHandle(const BASE& ref, REST&&... rest) {
+    RTTIFindHandler<DispatcherInputType::ConstReference, TYPELIST, BASE, REST...>(typeid(ref))
+        ->HandleByConstReference(ref, std::forward<REST>(rest)...);
+  }
+  template <typename... REST>
+  static void RunHandle(BASE& ref, REST&&... rest) {
+    RTTIFindHandler<DispatcherInputType::Reference, TYPELIST, BASE, REST...>(typeid(ref))
+        ->HandleByReference(ref, std::forward<REST>(rest)...);
+  }
+  template <typename... REST>
+  static void RunHandle(BASE&& ref, REST&&... rest) {
+    RTTIFindHandler<DispatcherInputType::RValueReference, TYPELIST, BASE, REST...>(typeid(ref))
+        ->HandleByRValueReference(std::move(ref), std::forward<REST>(rest)...);
+  }
+};
 
 template <typename TYPELIST, typename BASE, typename... REST>
 void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
-  RTTIDynamicCallImpl<TYPELIST>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref)), std::forward<REST>(rest)...);
+  RTTIDynamicCallWrapper<TYPELIST, current::decay<BASE>>::RunHandle(std::forward<BASE>(ref),
+                                                                    std::forward<REST>(rest)...);
 }
 
 }  // namespace metaprogramming

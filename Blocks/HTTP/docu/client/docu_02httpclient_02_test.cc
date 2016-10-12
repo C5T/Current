@@ -34,13 +34,14 @@ DEFINE_int32(docu_net_client_port_02, PickPortForUnitTest(), "");
 
 using current::strings::Printf;
 
+// clang-format off
+
 CURRENT_STRUCT(SimpleType) {
   CURRENT_FIELD(s, std::string);
 };
 
 TEST(Docu, HTTPClient02) {
-const auto scope =
-  HTTP(FLAGS_docu_net_client_port_02).Register("/ok", [](Request r) { r("OK"); });
+const auto scope = HTTP(FLAGS_docu_net_client_port_02).Register("/ok", [](Request r) { r("OK"); });
 #if 1
 EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), "BODY", "text/plain")).body);
 EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), SimpleType())).body);
@@ -53,5 +54,7 @@ EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client
   EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), SimpleType()).body);
 #endif
 }
+
+// clang-format on
   
 #endif  // BLOCKS_HTTP_DOCU_CLIENT_02_TEST_CC
