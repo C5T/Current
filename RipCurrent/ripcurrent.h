@@ -60,9 +60,9 @@ SOFTWARE.
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/remove_parentheses.h"
 
-#include "../Bricks/rtti/dispatcher.h"
 #include "../Bricks/strings/join.h"
 #include "../Bricks/template/typelist.h"
+#include "../Bricks/template/rtti_dynamic_call.h"
 #include "../Bricks/util/lazy_instantiation.h"
 #include "../Bricks/util/singleton.h"
 
@@ -489,8 +489,7 @@ class EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, U
       : scope_(&impl_, next.get()), impl_(std::forward<ARGS>(args)...) {}
 
   void Accept(CurrentSuper&& x) {
-    current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(std::move(x),
-                                                                                                     *this);
+    RTTIDynamicCall<TypeListImpl<LHS_TYPES...>>(std::move(x), *this);
   }
 
   template <typename X>

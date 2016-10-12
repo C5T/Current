@@ -41,6 +41,13 @@ struct CurrentSuper {
   virtual ~CurrentSuper() = default;
 };
 
+// For `unique_ptr<>`-s.
+struct CurrentSuperDeleter {
+  void operator()(CurrentSuper* ptr) {
+    delete ptr;
+  }
+};
+
 // The superclass for all Current structures.
 struct CurrentStruct : CurrentSuper {};
 
@@ -124,6 +131,7 @@ struct CheckIntegrityImplMethodTest {
 
 namespace current {
 using ::crnt::CurrentSuper;
+using ::crnt::CurrentSuperDeleter;
 using ::crnt::CurrentStruct;
 using ::crnt::CurrentVariant;
 namespace sfinae {

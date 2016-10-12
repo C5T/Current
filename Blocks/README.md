@@ -27,19 +27,19 @@ HTTP client supports headers, POST-ing data to and from files, and many other fe
 ### HTTP Server
 ```cpp
 // Simple "OK" endpoint.
-HTTP(port).Register("/ok", [](Request r) {
+const auto scope = HTTP(port).Register("/ok", [](Request r) {
   r("OK");
 });
 ```
 ```cpp
 // Accessing input fields.
-HTTP(port).Register("/demo", [](Request r) {
+const auto scope = HTTP(port).Register("/demo", [](Request r) {
   r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
 });
 ```
 ```cpp
 // Constructing a more complex response.
-HTTP(port).Register("/found", [](Request r) {
+const auto scope = HTTP(port).Register("/found", [](Request r) {
   r("Yes.",
     HTTPResponseCode.Accepted,
     "text/html",
@@ -63,7 +63,7 @@ CURRENT_STRUCT(PennyOutput) {
 }; 
 
 // Doing Penny-level arithmetics for fun and performance testing.
-HTTP(port).Register("/penny", [](Request r) {
+const auto scope = HTTP(port).Register("/penny", [](Request r) {
   try {
     const auto input = ParseJSON<PennyInput>(r.body);
     if (input.op == "add") {
@@ -97,7 +97,7 @@ HTTP(port).Register("/penny", [](Request r) {
 ```
 ```cpp
 // Returning a potentially unlimited response chunk by chunk.
-HTTP(port).Register("/chunked", [](Request r) {
+const auto scope = HTTP(port).Register("/chunked", [](Request r) {
   const size_t n = atoi(r.url.query["n"].c_str());
   const size_t delay_ms = atoi(r.url.query["delay_ms"].c_str());
     
