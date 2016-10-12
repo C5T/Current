@@ -112,9 +112,10 @@ class FilePersister {
   struct end_t {
     uint64_t index;
     std::chrono::microseconds us;
+    std::chrono::microseconds head;
   };
   static_assert(sizeof(std::chrono::microseconds) == 8, "");
-  static_assert(sizeof(end_t) == 16, "");
+  static_assert(sizeof(end_t) == 24, "");
 
  private:
   struct FilePersisterImpl final {
@@ -126,7 +127,6 @@ class FilePersister {
     std::vector<std::streampos> offset;
     std::streamoff head_offset;
     std::vector<std::chrono::microseconds> timestamp;
-    std::chrono::microseconds head_timestamp;
 
     // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
     // http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840
@@ -142,8 +142,7 @@ class FilePersister {
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
-          head_offset(0),
-          head_timestamp(std::chrono::microseconds(0)) {
+          head_offset(0) {
       ValidateFileAndInitializeHead();
       if (appender.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
@@ -152,7 +151,7 @@ class FilePersister {
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
     void ValidateFileAndInitializeHead() {
-      std::ifstream fi(filename);
+      std::ifstream fi(filename);//, std::ios::out | std::ios::in);
       if (!fi.bad()) {
         // Read through all the lines.
         // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
@@ -171,11 +170,20 @@ class FilePersister {
           ;
         }
         const auto& next = cit.Next();
-        end.store({next.index, next.us - std::chrono::microseconds(1)});
+        auto head = next.us - std::chrono::microseconds(1);
+        if (head_offset) {
+          fi.seekg(head_offset, std::ios_base::beg);
+          std::string line;
+          std::getline(fi, line);
+          const auto us = std::chrono::microseconds(current::FromString<int64_t>(line));
+          if (us > head) {
+            head = us;
+          }
+        }
+        end.store({next.index, next.us - std::chrono::microseconds(1), head});
       } else {
-        end.store({0ull, std::chrono::microseconds(0)});
+        end.store({0ull, std::chrono::microseconds(0), std::chrono::microseconds(0)});
       }
-      InitializeHead();
     }
 
     enum class DIRECTIVE_TYPE : int { HEAD, SCHEMA, NAMESPACE };
@@ -196,23 +204,6 @@ class FilePersister {
         }
       }
       return true;
-    }
-
-    void InitializeHead() {
-      auto iterator = end.load();
-      if (iterator.index) {
-        head_timestamp = iterator.us;
-      }
-      if (head_offset) {
-        std::ifstream fi(filename);
-        fi.seekg(head_offset, std::ios_base::beg);
-        std::string line;
-        std::getline(fi, line);
-        const auto head_us = std::chrono::microseconds(current::FromString<int64_t>(line));
-        if (head_us > head_timestamp) {
-          head_timestamp = head_us;
-        }
-      }
     }
   };
 
@@ -350,12 +341,11 @@ class FilePersister {
 
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    auto& head = file_persister_impl_->head_timestamp;
-    if (head.count() && !(timestamp > head)) {
-      CURRENT_THROW(InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
-    }
     end_t iterator = file_persister_impl_->end.load();
-    iterator.us = timestamp;
+    if (iterator.head.count() && !(timestamp > iterator.head)) {
+      CURRENT_THROW(InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
+    }
+    iterator.us = iterator.head = timestamp;
     const auto current = idxts_t(iterator.index, iterator.us);
     {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
@@ -366,28 +356,29 @@ class FilePersister {
     }
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.index;
-    file_persister_impl_->end.store(iterator);
-    head = timestamp;
     file_persister_impl_->head_offset = 0;
+    file_persister_impl_->end.store(iterator);
     return current;
   }
 
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
-    auto& head = file_persister_impl_->head_timestamp;
-    if (head.count() && !(timestamp > head)) {
-      CURRENT_THROW(InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
+    end_t iterator = file_persister_impl_->end.load();
+    if (iterator.head.count() && !(timestamp > iterator.head)) {
+      CURRENT_THROW(InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
+    iterator.head = timestamp;
+    const auto head_str = Printf(constants::kHeadFromatString, timestamp.count());
     if (file_persister_impl_->head_offset) {
       std::fstream fo(file_persister_impl_->filename, std::ios::out | std::ios::in);
       fo.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
-      fo << Printf(constants::kHeadFromatString, timestamp.count());
+      fo << head_str;
     } else {
       auto& appender = file_persister_impl_->appender;
       appender << constants::kDirectiveMarker << "HEAD\t";
       file_persister_impl_->head_offset = appender.tellp();
-      appender << Printf(constants::kHeadFromatString, timestamp.count());
+      appender << head_str;
     }
-    head = timestamp;
+    file_persister_impl_->end.store(iterator);
   }
 
   bool Empty() const noexcept { return !file_persister_impl_->end.load().index; }
@@ -402,12 +393,11 @@ class FilePersister {
     }
   }
 
-  std::chrono::microseconds CurrentHead() const { return file_persister_impl_->head_timestamp; }
+  std::chrono::microseconds CurrentHead() const { return file_persister_impl_->end.load().head; }
 
   bool HeadDetached() const {
-    const auto head = file_persister_impl_->head_timestamp;
     const auto iterator = file_persister_impl_->end.load();
-    return head.count() && (!iterator.index || head > iterator.us);
+    return iterator.head.count() && (!iterator.index || iterator.head > iterator.us);
   }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
