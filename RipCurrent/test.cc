@@ -515,9 +515,8 @@ RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
 
 RIPCURRENT_NODE(RCHTTPResponder, RequestContainer, void) {
   std::vector<std::string>& requests;
-  RCHTTPResponder(std::vector<std::string> & requests) : requests(requests) {}
   // clang-format off
-  // (Messes with the next line and puts a space between `RequestContainer` and `&&`. -- D.K.
+  RCHTTPResponder(std::vector<std::string>& requests) : requests(requests) {}
   void f(RequestContainer&& e) {
     if (e.request.method == "POST") {
       requests.push_back("POST " + e.request.body);
