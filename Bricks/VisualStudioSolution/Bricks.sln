@@ -7,8 +7,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dflags", "..\dflags\dflags.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "strings", "..\strings\strings.vcxproj", "{10C07647-D46A-471C-BE56-451B8320CA91}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rtti", "..\rtti\rtti.vcxproj", "{E1527F22-19DA-4ECE-9211-E82124CC719E}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "util", "..\util\util.vcxproj", "{E6E1AA5F-CA1D-4CA8-B06E-ABB7B396FEFB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "time", "..\time\time.vcxproj", "{0F872F9D-B681-479E-9A4C-FEB022FA7085}"

@@ -60,9 +60,9 @@ SOFTWARE.
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/remove_parentheses.h"
 
-#include "../Bricks/rtti/dispatcher.h"
 #include "../Bricks/strings/join.h"
 #include "../Bricks/template/typelist.h"
+#include "../Bricks/template/rtti_dynamic_call.h"
 #include "../Bricks/util/lazy_instantiation.h"
 #include "../Bricks/util/singleton.h"
 
@@ -273,7 +273,7 @@ class SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
 
   void Dismiss() const { MarkAs(BlockUsageBit::Dismissed); }
 
-  // For expressive initialized lists of shared instances.
+  // For expressive initializer lists of shared instances.
   const SharedDefinition& GetUniqueDefinition() const { return *this; }
   const UniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>& GetDefinition() const {
     return *unique_definition_.get();
@@ -283,22 +283,22 @@ class SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
   mutable std::shared_ptr<impl_t> unique_definition_;
 };
 
-class GenericEntriesConsumer {
+class GenericEmitDestination {
  public:
-  virtual ~GenericEntriesConsumer() = default;
-  virtual void ConsumeEntry(const CurrentSuper&) = 0;
+  virtual ~GenericEmitDestination() = default;
+  virtual void OnEmitted(CurrentSuper&&) = 0;
 };
 
 template <class LHS_TYPELIST>
-class EntriesConsumer;
+class EmitDestination;
 
 template <class... LHS_XS>
-class EntriesConsumer<LHSTypes<LHS_XS...>> : public GenericEntriesConsumer {};
+class EmitDestination<LHSTypes<LHS_XS...>> : public GenericEmitDestination {};
 
 template <>
-class EntriesConsumer<LHSTypes<>> : public GenericEntriesConsumer {
+class EmitDestination<LHSTypes<>> : public GenericEmitDestination {
  public:
-  void ConsumeEntry(const CurrentSuper&) override {
+  void OnEmitted(CurrentSuper&&) override {
     std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
     CURRENT_ASSERT(false);
   }
@@ -306,11 +306,10 @@ class EntriesConsumer<LHSTypes<>> : public GenericEntriesConsumer {
 
 // Run context for RipCurrent allows to run it in background, foreground, or scoped.
 // TODO(dkorolev): Only supports `.Sync()` now. Implement everything else.
-class RipCurrentRunContext final {
+class RipCurrentScope final {
  public:
-  explicit RipCurrentRunContext(const std::string& error_message)
-      : sync_called_(false), error_message_(error_message) {}
-  RipCurrentRunContext(RipCurrentRunContext&& rhs) : error_message_(rhs.error_message_) {
+  explicit RipCurrentScope(const std::string& error_message) : sync_called_(false), error_message_(error_message) {}
+  RipCurrentScope(RipCurrentScope&& rhs) : error_message_(rhs.error_message_) {
     CURRENT_ASSERT(!rhs.sync_called_);
     rhs.sync_called_ = true;
   }
@@ -318,7 +317,7 @@ class RipCurrentRunContext final {
     CURRENT_ASSERT(!sync_called_);
     sync_called_ = true;
   }
-  ~RipCurrentRunContext() {
+  ~RipCurrentScope() {
     if (!sync_called_) {
       current::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);  // LCOV_EXCL_LINE
     }
@@ -330,13 +329,12 @@ class RipCurrentRunContext final {
 };
 
 template <class LHS_TYPELIST, class RHS_TYPELIST>
-class InstanceBeingRun;
+class SubCurrentScope;
 
 template <class... LHS_TYPES, class... RHS_TYPES>
-class InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
-    : public EntriesConsumer<LHSTypes<LHS_TYPES...>> {
+class SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> : public EmitDestination<LHSTypes<LHS_TYPES...>> {
  public:
-  virtual ~InstanceBeingRun() = default;
+  virtual ~SubCurrentScope() = default;
 };
 
 // Template logic to wrap the above implementations into abstract classes of proper templated types.
@@ -356,8 +354,8 @@ class AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
 
   explicit AbstractCurrent(definition_t definition) : definition_t(definition) {}
   virtual ~AbstractCurrent() = default;
-  virtual std::shared_ptr<InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> SpawnAndRun(
-      std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>>) const = 0;
+  virtual std::shared_ptr<SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> SpawnAndRun(
+      std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>>) const = 0;
 
   Traits UnderlyingType() const;  // Never called, used from `decltype()`.
 };
@@ -377,21 +375,21 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
   explicit SharedCurrent(std::shared_ptr<super_t> spawner)
       : super_t(spawner->GetUniqueDefinition()), shared_impl_spawner_(spawner) {}
 
-  std::shared_ptr<InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> SpawnAndRun(
-      std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next) const override {
+  std::shared_ptr<SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> SpawnAndRun(
+      std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next) const override {
     return shared_impl_spawner_->SpawnAndRun(next);
   }
 
   // User-facing `RipCurrent()` method.
   template <int IN_N = sizeof...(LHS_TYPES), int OUT_N = sizeof...(RHS_TYPES)>
-  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentRunContext> RipCurrent() {
-    SpawnAndRun(std::make_shared<EntriesConsumer<LHSTypes<>>>());
+  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentScope> RipCurrent() {
+    SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>());
 
     // TODO(dkorolev): Return proper run context. So far, just require `.Sync()` to be called on it.
     std::ostringstream os;
     os << "RipCurrent run context was left hanging. Call `.Sync()`, or, well, something else. -- D.K.\n";
     super_t::GetDefinition().FullDescription(os);
-    return std::move(RipCurrentRunContext(os.str()));
+    return std::move(RipCurrentScope(os.str()));
   }
 
  private:
@@ -399,23 +397,23 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
 };
 
 // Helper code to initialize the next handler in the chain before the user code is constructed.
-// TL;DR: The user should be able to use `emit()` from constructor, no strings attached. Thus,
-// the destination for this `emit()` should be initialized before the user code is.
-class NextHandlerContainerBase {
+// The user should be able to use `emit()` right away from the constructor, no strings attached.
+// Thus, the destination for this `emit()` should be initialized before the user code is. Hence an extra base class.
+class AbstractHasEmit {
  public:
-  virtual ~NextHandlerContainerBase() = default;
+  virtual ~AbstractHasEmit() = default;
 };
 
-class NextHandlersCollection final {
+class EventConsumersManager final {
  public:
-  void Add(const NextHandlerContainerBase* key, GenericEntriesConsumer* value) {
+  void Add(const AbstractHasEmit* key, GenericEmitDestination* value) {
     std::lock_guard<std::mutex> lock(mutex_);
     CURRENT_ASSERT(key);
     CURRENT_ASSERT(value);
     CURRENT_ASSERT(!map_.count(key));
     map_[key] = value;
   }
-  void Remove(const NextHandlerContainerBase* key, GenericEntriesConsumer* value) {
+  void Remove(const AbstractHasEmit* key, GenericEmitDestination* value) {
     std::lock_guard<std::mutex> lock(mutex_);
     CURRENT_ASSERT(key);
     CURRENT_ASSERT(value);
@@ -423,193 +421,194 @@ class NextHandlersCollection final {
     CURRENT_ASSERT(map_[key] == value);
     map_.erase(key);
   }
-  template <typename T>
-  T* Get(const NextHandlerContainerBase* key) {
+  template <typename SPECIFIC_EMITTER_TYPE>
+  SPECIFIC_EMITTER_TYPE* Get(const AbstractHasEmit* key) {
     std::lock_guard<std::mutex> lock(mutex_);
     CURRENT_ASSERT(key);
     CURRENT_ASSERT(map_.count(key));
-    GenericEntriesConsumer* result = map_[key];
-    T* result2 = dynamic_cast<T*>(result);
-    CURRENT_ASSERT(result2);
-    return result2;
+    GenericEmitDestination* result = map_[key];
+    SPECIFIC_EMITTER_TYPE* specific_result = dynamic_cast<SPECIFIC_EMITTER_TYPE*>(result);
+    CURRENT_ASSERT(specific_result);
+    return specific_result;
   }
 
-  class Scope final {
+  class EventConsumerLifetimeScope final {
    public:
-    explicit Scope(const NextHandlerContainerBase* key, GenericEntriesConsumer* value) : key(key), value(value) {
-      Singleton<NextHandlersCollection>().Add(key, value);
+    explicit EventConsumerLifetimeScope(const AbstractHasEmit* key, GenericEmitDestination* value)
+        : key(key), value(value) {
+      Singleton<EventConsumersManager>().Add(key, value);
     }
-    ~Scope() { Singleton<NextHandlersCollection>().Remove(key, value); }
+    ~EventConsumerLifetimeScope() { Singleton<EventConsumersManager>().Remove(key, value); }
 
    private:
-    const NextHandlerContainerBase* const key;
-    GenericEntriesConsumer* const value;
+    const AbstractHasEmit* const key;
+    GenericEmitDestination* const value;
 
-    Scope() = delete;
-    Scope(const Scope&) = delete;
-    Scope(Scope&&) = delete;
-    Scope& operator=(const Scope&) = delete;
-    Scope& operator=(Scope&&) = delete;
+    EventConsumerLifetimeScope() = delete;
+    EventConsumerLifetimeScope(const EventConsumerLifetimeScope&) = delete;
+    EventConsumerLifetimeScope(EventConsumerLifetimeScope&&) = delete;
+    EventConsumerLifetimeScope& operator=(const EventConsumerLifetimeScope&) = delete;
+    EventConsumerLifetimeScope& operator=(EventConsumerLifetimeScope&&) = delete;
   };
 
  private:
   std::mutex mutex_;
-  std::map<const NextHandlerContainerBase*, GenericEntriesConsumer*> map_;
+  std::map<const AbstractHasEmit*, GenericEmitDestination*> map_;
 };
 
 template <class LHS_TYPELIST>
-class NextHandlerContainer;
+class HasEmit;
 
 template <class... NEXT_TYPES>
-class NextHandlerContainer<LHSTypes<NEXT_TYPES...>> : public NextHandlerContainerBase {
+class HasEmit<LHSTypes<NEXT_TYPES...>> : public AbstractHasEmit {
  public:
-  NextHandlerContainer() : next_handler_(Singleton<NextHandlersCollection>().template Get<next_handler_t>(this)) {}
-  virtual ~NextHandlerContainer() = default;
+  using emit_destination_t = EmitDestination<LHSTypes<NEXT_TYPES...>>;
+
+  HasEmit() : next_handler_(Singleton<EventConsumersManager>().template Get<emit_destination_t>(this)) {}
+  virtual ~HasEmit() = default;
 
  protected:
   template <typename T>
-  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(const T& x) const {
-    next_handler_->ConsumeEntry(x);
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(T&& x) const {
+    next_handler_->OnEmitted(std::forward<T>(x));
   }
 
  private:
-  using next_handler_t = EntriesConsumer<LHSTypes<NEXT_TYPES...>>;
-  EntriesConsumer<LHSTypes<NEXT_TYPES...>>* const next_handler_;
+  EmitDestination<LHSTypes<NEXT_TYPES...>>* const next_handler_;
 };
 
 template <typename LHS_TYPELIST, typename RHS_TYPELIST, typename USER_CLASS>
-class NextHandlerInitializer;
+class EventConsumerInitializer;
 
 template <class... LHS_TYPES, class... RHS_TYPES, typename USER_CLASS>
-class NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> final {
+class EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> final {
  public:
+  // TODO(dkorolev): Owned/borrowed instead of `.get()`.
   template <typename... ARGS>
-  NextHandlerInitializer(std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next, ARGS&&... args)
+  EventConsumerInitializer(std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next, ARGS&&... args)
       : scope_(&impl_, next.get()), impl_(std::forward<ARGS>(args)...) {}
 
-  template <typename X>
-  void operator()(const X& x) {
-    impl_.f(x);
+  void Accept(CurrentSuper&& x) {
+    RTTIDynamicCall<TypeListImpl<LHS_TYPES...>>(std::move(x), *this);
   }
 
-  void operator()(const CurrentSuper&) {
+  template <typename X>
+  void operator()(X&& x) {
+    impl_.f(std::forward<X>(x));
+  }
+
+  void operator()(CurrentSuper&&) {
     // Should define this method to make sure the RTTI call compiles.
     // Assuming type list magic is done right at compile time (TODO(dkorolev): !), it should never get called.
     CURRENT_ASSERT(false);
   }
 
-  void Accept(const CurrentSuper& x) {
-    current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(x, *this);
-  }
-
  private:
-  const NextHandlersCollection::Scope scope_;
+  const EventConsumersManager::EventConsumerLifetimeScope scope_;
   USER_CLASS impl_;
 };
 
 // Base classes for user-defined code, for `is_base_of<>` `static_assert()`-s.
 template <class LHS_TYPELIST, class RHS_TYPELIST>
-class UserClassTopLevelBase;
+class UserCodeBase;
 
 template <class... LHS_TYPES, class... RHS_TYPES>
-class UserClassTopLevelBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {};
+class UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {};
 
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class UserClassBase;
+class UserCode;
 
 template <class... LHS_TYPES, class... RHS_TYPES, typename USER_CLASS>
-class UserClassBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
-    : public UserClassTopLevelBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>,
-      public NextHandlerContainer<LHSTypes<RHS_TYPES...>> {
+class UserCode<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
+    : public UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>, public HasEmit<LHSTypes<RHS_TYPES...>> {
  public:
-  virtual ~UserClassBase() = default;
+  virtual ~UserCode() = default;
   using input_t = LHSTypes<LHS_TYPES...>;
   using output_t = RHSTypes<RHS_TYPES...>;
 };
 
 // Helper code to support the declaration and running of user-defined classes.
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class UserClassInstantiator;
+class UserCodeInstantiator;
 
 template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
-class UserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
+class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
     : public AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
-  static_assert(
-      std::is_base_of<UserClassTopLevelBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>, USER_CLASS>::value,
-      "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
+  static_assert(std::is_base_of<UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>, USER_CLASS>::value,
+                "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
 
-  using input_t = LHSTypes<LHS_TYPES...>;
-  using output_t = RHSTypes<RHS_TYPES...>;
+  using instantiator_input_t = LHSTypes<LHS_TYPES...>;
+  using instantiator_output_t = RHSTypes<RHS_TYPES...>;
 
   template <class ARGS_AS_TUPLE>
-  UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : AbstractCurrent<input_t, output_t>(definition),
+  UserCodeInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
+      : AbstractCurrent<instantiator_input_t, instantiator_output_t>(definition),
         lazy_instance_(current::DelayedInstantiateWithExtraParameterFromTuple<
-            NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
-            std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>>>(std::forward<ARGS_AS_TUPLE>(params))) {}
+            EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
+            std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>>>(std::forward<ARGS_AS_TUPLE>(params))) {}
 
-  class Instance final : public InstanceBeingRun<input_t, output_t> {
+  class Scope final : public SubCurrentScope<instantiator_input_t, instantiator_output_t> {
    public:
-    virtual ~Instance() = default;
+    virtual ~Scope() = default;
 
-    explicit Instance(const current::LazilyInstantiated<
-                          NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
-                          std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>>>& lazy_instance,
-                      std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next)
+    explicit Scope(const current::LazilyInstantiated<
+                       EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
+                       std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>>>& lazy_instance,
+                   std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next)
         : next_(next), spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
 
-    void ConsumeEntry(const CurrentSuper& x) override { spawned_user_class_instance_->Accept(x); }
+    void OnEmitted(CurrentSuper&& x) override { spawned_user_class_instance_->Accept(std::move(x)); }
 
    private:
-    std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next_;
-    std::unique_ptr<NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>>
+    std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next_;
+    std::unique_ptr<EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>>
         spawned_user_class_instance_;
   };
 
-  std::shared_ptr<InstanceBeingRun<input_t, output_t>> SpawnAndRun(
-      std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next) const override {
-    return std::make_shared<Instance>(lazy_instance_, next);
+  std::shared_ptr<SubCurrentScope<instantiator_input_t, instantiator_output_t>> SpawnAndRun(
+      std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next) const override {
+    return std::make_shared<Scope>(lazy_instance_, next);
   }
 
  private:
-  current::LazilyInstantiated<NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
-                              std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>>> lazy_instance_;
+  current::LazilyInstantiated<EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
+                              std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>>> lazy_instance_;
 };
 
-// `SharedUserClassInstantiator` is the `shared_ptr<>` holder of the wrapper class
+// `SharedUserCodeInstantiator` is the `shared_ptr<>` holder of the wrapper class
 // containing initialization parameters for the user class.
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class UserClass;
+class UserCodeImpl;
 
 template <class LHS_TYPELIST, class RHS_TYPELIST, typename USER_CLASS>
-class SharedUserClassInstantiator;
+class SharedUserCodeInstantiator;
 
 template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
-class SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> {
+class SharedUserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS> {
  public:
-  using impl_t = UserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
+  using impl_t = UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
   template <class ARGS_AS_TUPLE>
-  SharedUserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
+  SharedUserCodeInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
       : shared_spawner_(std::make_shared<impl_t>(definition, std::forward<ARGS_AS_TUPLE>(params))) {}
 
  private:
-  friend class UserClass<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
+  friend class UserCodeImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
   std::shared_ptr<impl_t> shared_spawner_;
 };
 
-// `UserClass<LHSTypes<...>, RHSTypes<...>, IMPL>`
-// initializes `SharedUserClassInstantiator<LHSTypes<...>, RHSTypes<...>, IMPL>`
+// `UserCodeImpl<LHSTypes<...>, RHSTypes<...>, IMPL>`
+// initializes `SharedUserCodeInstantiator<LHSTypes<...>, RHSTypes<...>, IMPL>`
 // before constructing the parent `SharedCurrent<LHSTypes<...>, RHSTypes<...>>` object, thus
 // allowing the latter to reuse the `shared_ptr<>` containing the user code constructed in the former.
 template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
-class UserClass<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
-    : public SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
+class UserCodeImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
+    : public SharedUserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
       public SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
-  using impl_t = SharedUserClassInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
+  using impl_t = SharedUserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
   template <class ARGS_AS_TUPLE>
-  UserClass(Definition definition, ARGS_AS_TUPLE&& params)
+  UserCodeImpl(Definition definition, ARGS_AS_TUPLE&& params)
       : impl_t(definition, std::forward<ARGS_AS_TUPLE>(params)),
         SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>(impl_t::shared_spawner_) {}
 
@@ -635,27 +634,27 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
     into.MarkAs(BlockUsageBit::UsedInLargerBlock);
   }
 
-  class Instance final : public InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
+  class Scope final : public SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
    public:
-    virtual ~Instance() = default;
+    virtual ~Scope() = default;
 
-    Instance(const SharedSequenceImpl* self, std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next)
+    Scope(const SharedSequenceImpl* self, std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next)
         : next_(next), into_(self->Into().SpawnAndRun(next_)), from_(self->From().SpawnAndRun(into_)) {
       self->MarkAs(BlockUsageBit::Run);
     }
 
-    void ConsumeEntry(const CurrentSuper& x) override { from_->ConsumeEntry(x); }
+    void OnEmitted(CurrentSuper&& x) override { from_->OnEmitted(std::move(x)); }
 
    private:
     // Construction / destruction order matters: { next, into, from }.
-    std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next_;
-    std::shared_ptr<InstanceBeingRun<LHSTypes<VIA_X, VIA_XS...>, RHSTypes<RHS_TYPES...>>> into_;
-    std::shared_ptr<InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<VIA_X, VIA_XS...>>> from_;
+    std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next_;
+    std::shared_ptr<SubCurrentScope<LHSTypes<VIA_X, VIA_XS...>, RHSTypes<RHS_TYPES...>>> into_;
+    std::shared_ptr<SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<VIA_X, VIA_XS...>>> from_;
   };
 
-  std::shared_ptr<InstanceBeingRun<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> SpawnAndRun(
-      std::shared_ptr<EntriesConsumer<LHSTypes<RHS_TYPES...>>> next) const override {
-    return std::make_shared<Instance>(this, next);
+  std::shared_ptr<SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> SpawnAndRun(
+      std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next) const override {
+    return std::make_shared<Scope>(this, next);
   }
 
  protected:
@@ -706,19 +705,19 @@ using E2E = SharedCurrent<LHSTypes<>, RHSTypes<>>;
 }  // namespace current
 
 // Macros to wrap user code into RipCurrent building blocks.
-#define RIPCURRENT_NODE(USER_CLASS, LHS_TS, RHS_TS)                                                                \
-  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                                      \
-    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                             \
-  };                                                                                                               \
-  struct USER_CLASS final                                                                                          \
-      : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                                                        \
-        ::current::ripcurrent::UserClassBase<::current::ripcurrent::VoidOrLHS<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
-                                             ::current::ripcurrent::VoidOrRHS<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
-                                             USER_CLASS>
+#define RIPCURRENT_NODE(USER_CLASS, LHS_TS, RHS_TS)                                                           \
+  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                                 \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                        \
+  };                                                                                                          \
+  struct USER_CLASS final                                                                                     \
+      : USER_CLASS##_RIPCURRENT_CLASS_NAME,                                                                   \
+        ::current::ripcurrent::UserCode<::current::ripcurrent::VoidOrLHS<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
+                                        ::current::ripcurrent::VoidOrRHS<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
+                                        USER_CLASS>
 
-#define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                    \
-  ::current::ripcurrent::UserClass<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \
-      ::current::ripcurrent::Definition(#USER_CLASS "(" #__VA_ARGS__ ")", __FILE__, __LINE__),               \
+#define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                       \
+  ::current::ripcurrent::UserCodeImpl<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \
+      ::current::ripcurrent::Definition(#USER_CLASS "(" #__VA_ARGS__ ")", __FILE__, __LINE__),                  \
       std::make_tuple(__VA_ARGS__))
 
 // A helper macro to extract the underlying type of the user class, now registered as a RipCurrent block type.

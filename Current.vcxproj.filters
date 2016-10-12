@@ -165,10 +165,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB24}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Bricks\rtti">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB25}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Header Files\Bricks\strings">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB26}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
@@ -734,9 +730,6 @@
       <Filter>Header Files\Bricks\template</Filter>
     </ClInclude>
     <ClInclude Include="Bricks\template\is_tuple.h">
-      <Filter>Header Files\Bricks\template</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\template\is_unique_ptr.h">
       <Filter>Header Files\Bricks\template</Filter>
     </ClInclude>
     <ClInclude Include="Bricks\template\mapreduce.h">

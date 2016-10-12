@@ -270,8 +270,6 @@
     <ClInclude Include="Bricks\net\http\impl\server.h" />
     <ClInclude Include="Bricks\net\tcp\tcp.h" />
     <ClInclude Include="Bricks\net\tcp\impl\posix.h" />
-    <ClInclude Include="Bricks\rtti\dispatcher.h" />
-    <ClInclude Include="Bricks\rtti\exceptions.h" />
     <ClInclude Include="Bricks\strings\chunk.h" />
     <ClInclude Include="Bricks\strings\distance.h" />
     <ClInclude Include="Bricks\strings\fixed_size_serializer.h" />
@@ -286,7 +284,6 @@
     <ClInclude Include="Bricks\template\decay.h" />
     <ClInclude Include="Bricks\template\enable_if.h" />
     <ClInclude Include="Bricks\template\is_tuple.h" />
-    <ClInclude Include="Bricks\template\is_unique_ptr.h" />
     <ClInclude Include="Bricks\template\mapreduce.h" />
     <ClInclude Include="Bricks\template\metaprogramming.h" />
     <ClInclude Include="Bricks\template\pod.h" />

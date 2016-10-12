@@ -203,32 +203,34 @@ namespace rtti_unittest {
     // Need a virtual base.
     virtual ~BASE() = default;
   };
-  
+
   struct A : virtual BASE {
-    int a = 101;
-    void foo(std::ostream& os) {
-      a += 1000;
-      os << "mutable a=" << a << std::endl;
+    int a = 100;
+    void foo(std::ostringstream& os) {
+      ++a;
+      os << "mutable a=" << a;
     }
-    void foo(std::ostream& os) const {
-      os << "a=" << a << std::endl;
-    }
+    void foo(std::ostringstream& os) const { os << "const a=" << a; }
   };
-  
+
   // Inherit from `A` as well, just to show that we can.
   struct B : virtual A, virtual BASE {
-    int b = 102;
-    void bar(std::ostream& os) const {
-      os << "b=" << b << std::endl;
+    int b = 200;
+    void bar(std::ostringstream& os) {
+      ++b;
+      os << "mutable b=" << b;
     }
+    void bar(std::ostringstream& os) const { os << "const b=" << b; }
   };
 
   // Even more "multiple" inheritance.
   struct C : virtual A, virtual B, virtual BASE {
-    int c = 103;
-    void baz(std::ostream& os) const {
-      os << "c=" << c << std::endl;
+    int c = 300;
+    void baz(std::ostringstream& os) {
+      ++c;
+      os << "mutable c=" << c;
     }
+    void baz(std::ostringstream& os) const { os << "const c=" << c; }
   };
 }  // namespace rtti_unittest
 
@@ -246,82 +248,168 @@ using namespace rtti_unittest;
   BASE& mutable_pb = b;
   
   struct call_foo_bar {
-    void operator()(const A& a) {
-      a.foo(os);
-    }
+    void operator()(const A& a) { a.foo(os); }
     void operator()(A& a) {
       // Mutable version.
       a.foo(os);
     }
-    void operator()(const B& b) {
+    void operator()(const B& b) { b.bar(os); }
+    void operator()(B& b) {
+      // Mutable version.
       b.bar(os);
     }
     std::ostringstream os;
-  } foo_bar;
-  
-  RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
-  RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
-  EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
-  RTTIDynamicCall<TypeList<A, B>>(mutable_pa, foo_bar);
-  RTTIDynamicCall<TypeList<A, B>>(mutable_pb, foo_bar);
-  EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\n", foo_bar.os.str());
-  RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
-  RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
-  EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\na=1101\nb=102\n", foo_bar.os.str());
-  
+  };
+
+  {
+    call_foo_bar foo_bar;
+    RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
+    EXPECT_EQ("const a=100", foo_bar.os.str());
+  }
+
+  {
+    call_foo_bar foo_bar;
+    RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
+    EXPECT_EQ("const b=200", foo_bar.os.str());
+  }
+  {
+    call_foo_bar foo_bar;
+    RTTIDynamicCall<TypeList<A, B>>(mutable_pa, foo_bar);
+    EXPECT_EQ("mutable a=101", foo_bar.os.str());
+  }
+  {
+    call_foo_bar foo_bar;
+    RTTIDynamicCall<TypeList<A, B>>(mutable_pb, foo_bar);
+    EXPECT_EQ("mutable b=201", foo_bar.os.str());
+  }
+  {
+    call_foo_bar foo_bar;
+    RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
+    EXPECT_EQ("const a=101", foo_bar.os.str());
+  }
+  {
+    call_foo_bar foo_bar;
+    RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
+    EXPECT_EQ("const b=201", foo_bar.os.str());
+  }
+
   struct call_bar_baz {
-    void operator()(const B& b) {
-      b.bar(os);
-    }
-    void operator()(const C& c) {
-      c.baz(os);
-    }
+    void operator()(const B& b) { b.bar(os); }
+    void operator()(const C& c) { c.baz(os); }
     std::ostringstream os;
-  } bar_baz;
-  
-  RTTIDynamicCall<TypeList<B, C>>(const_pb, bar_baz);
-  RTTIDynamicCall<TypeList<B, C>>(const_pc, bar_baz);
-  EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
+  };
+
+  {
+    call_bar_baz bar_baz;
+    RTTIDynamicCall<TypeList<B, C>>(const_pb, bar_baz);
+    EXPECT_EQ("const b=201", bar_baz.os.str());
+  }
+  {
+    call_bar_baz bar_baz;
+    RTTIDynamicCall<TypeList<B, C>>(const_pc, bar_baz);
+    EXPECT_EQ("const c=300", bar_baz.os.str());
+  }
 
   struct call_foo_baz {
-    void operator()(const A& a) {
-      a.foo(os);
-    }
+    void operator()(const A& a) { a.foo(os); }
     void operator()(A& a) {
       // Mutable version.
       a.foo(os);
     }
-    void operator()(const C& c) {
+    void operator()(const C& c) { c.baz(os); }
+    void operator()(C& c) {
+      // Mutable version.
       c.baz(os);
     }
     void operator()(const A& a, int x, const std::string& y) {
       a.foo(os);
-      os << "[" << x << "]['" << y << "']\n";
+      os << ", [" << x << "]['" << y << "']";
+    }
+    void operator()(A& a, int x, const std::string& y) {
+      // Mutable version.
+      a.foo(os);
+      os << ", [" << x << "]['" << y << "']";
     }
     void operator()(const C& c, int x, const std::string& y) {
       c.baz(os);
-      os << "[" << x << "]['" << y << "']\n";
+      os << ", [" << x << "]['" << y << "']";
+    }
+    void operator()(C& c, int x, const std::string& y) {
+      // Mutable version.
+      c.baz(os);
+      os << ", [" << x << "]['" << y << "']";
     }
     std::ostringstream os;
   };
-  
+
   std::unique_ptr<BASE> unique_a(new A());
   std::unique_ptr<BASE> unique_c(new C());
-  call_foo_baz foo_baz;
-  RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz);
-  RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz);
-  EXPECT_EQ("mutable a=1101\nc=103\n", foo_baz.os.str());
-  RTTIDynamicCall<TypeList<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
-  RTTIDynamicCall<TypeList<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
-  EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\n", foo_baz.os.str());
-  RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz);
-  RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz);
-  EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\nmutable a=2101\nc=103\n", foo_baz.os.str());
-  
-  call_foo_baz foo_baz2;
-  RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz2, 1, std::string("one"));
-  RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz2, 2, std::string("two"));
-  EXPECT_EQ("a=2101\n[1]['one']\nc=103\n[2]['two']\n", foo_baz2.os.str());
+  BASE* ptr_a = &*unique_a;
+  BASE* ptr_c = &*unique_c;
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*ptr_a, foo_baz);
+    EXPECT_EQ("mutable a=101", foo_baz.os.str());
+  }
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*ptr_c, foo_baz);
+    EXPECT_EQ("mutable c=301", foo_baz.os.str());
+  }
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
+    EXPECT_EQ("mutable a=102", foo_baz.os.str());
+  }
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
+    EXPECT_EQ("mutable c=302", foo_baz.os.str());
+  }
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*ptr_a, foo_baz);
+    EXPECT_EQ("mutable a=103", foo_baz.os.str());
+  }
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*ptr_c, foo_baz);
+    EXPECT_EQ("mutable c=303", foo_baz.os.str());
+  }
+
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*ptr_a, foo_baz, 1, std::string("one"));
+    EXPECT_EQ("mutable a=104, [1]['one']", foo_baz.os.str());
+  }
+  {
+    call_foo_baz foo_baz;
+    RTTIDynamicCall<TypeList<A, C>>(*ptr_c, foo_baz, 2, std::string("two"));
+    EXPECT_EQ("mutable c=304, [2]['two']", foo_baz.os.str());
+  }
+
+  struct call_foo_bar_by_rvalue_reference {
+    void operator()(A&& a) { a.foo(os); }
+    void operator()(B&& b) { b.bar(os); }
+    std::ostringstream os;
+  };
+
+  {
+    call_foo_bar_by_rvalue_reference foo_bar;
+    A a;
+    RTTIDynamicCall<TypeList<A, B>>(std::move(a), foo_bar);
+    EXPECT_EQ("mutable a=101", foo_bar.os.str());
+  }
+
+  {
+    call_foo_bar foo_bar_1;
+    call_foo_bar_by_rvalue_reference foo_bar_2;
+    B b;
+    RTTIDynamicCall<TypeList<A, B>>(b, foo_bar_1);
+    RTTIDynamicCall<TypeList<A, B>>(std::move(b), foo_bar_2);
+    EXPECT_EQ("mutable b=201", foo_bar_1.os.str());
+    EXPECT_EQ("mutable b=202", foo_bar_2.os.str());
+  }
 
 // TODO(dkorolev): Test all the corner cases with exceptions, wrong base types, etc.
 }
