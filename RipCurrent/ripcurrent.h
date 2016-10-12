@@ -60,7 +60,7 @@ SOFTWARE.
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/remove_parentheses.h"
 
-#include "../Bricks/rtti/dispatcher.h"
+#include "../Bricks/template/rtti_dynamic_call.h"
 #include "../Bricks/strings/join.h"
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/util/lazy_instantiation.h"
@@ -499,7 +499,7 @@ class NextHandlerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USE
   }
 
   void Accept(const CurrentSuper& x) {
-    current::rtti::RuntimeTypeListDispatcher<CurrentSuper, TypeListImpl<LHS_TYPES...>>::DispatchCall(x, *this);
+    RTTIDynamicCall<TypeListImpl<LHS_TYPES...>>(x, *this);
   }
 
  private:
