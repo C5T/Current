@@ -472,10 +472,12 @@ TEST(Karl, DeregisterWithNginx) {
   {
     // Must wait for Nginx config reload to take effect.
     while (HTTP(GET(is_prime_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      std::this_thread::yield();
+      // Spin lock, exprerimentally confirmed to be better than `std::this_thread::yield()` here.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     while (HTTP(GET(generator_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      std::this_thread::yield();
+      // Spin lock, exprerimentally confirmed to be better than `std::this_thread::yield()` here.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
 }
