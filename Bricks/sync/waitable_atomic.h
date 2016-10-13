@@ -110,9 +110,10 @@ class WaitableAtomicImpl {
     using data_t = DATA;
     enum { IS_INTRUSIVE = false };
 
-    BasicImpl() : data_() {}
+    template<typename... ARGS>
+    BasicImpl(ARGS&&... args) : data_(std::forward<ARGS>(args)...) {}
 
-    explicit BasicImpl(const DATA& data) : data_(data) {}
+    BasicImpl(const DATA& data) : data_(data) {}
 
     template <typename POINTER>
     struct NotifyIfMutable {
@@ -190,7 +191,7 @@ class WaitableAtomicImpl {
     bool Wait(std::function<bool(const data_t&)> predicate) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
       if (!predicate(data_)) {
-        const data_t& data = std::ref(data_);
+        const data_t& data = data_;
         data_condition_variable_.wait(lock, [&predicate, &data] { return predicate(data); });
       }
       return true;
@@ -200,7 +201,7 @@ class WaitableAtomicImpl {
     bool WaitFor(std::function<bool(const data_t&)> predicate, T duration) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
       if (!predicate(data_)) {
-        const data_t& data = std::ref(data_);
+        const data_t& data = data_;
         data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); });
       }
       return true;
@@ -290,7 +291,7 @@ class WaitableAtomicImpl {
         return false;
       } else {
         if (!predicate(BasicImpl::data_)) {
-          const data_t& data = std::ref(BasicImpl::data_);
+          const data_t& data = BasicImpl::data_;
           BasicImpl::data_condition_variable_.wait(
               lock, [this, &predicate, &data] { return destructing_ || predicate(data); });
         }
@@ -338,7 +339,7 @@ class WaitableAtomicImpl {
     IntrusiveImpl(IntrusiveImpl&&) = delete;
   };
 
-  typedef typename std::conditional<INTRUSIVE, IntrusiveImpl, BasicImpl>::type type;
+  using type = typename std::conditional<INTRUSIVE, IntrusiveImpl, BasicImpl>::type;
 };
 
 template <typename DATA, bool INTRUSIVE = false>
