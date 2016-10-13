@@ -378,7 +378,6 @@ class StreamImpl {
                   return;
                 }
               }
-              head = e.idx_ts.us;
               if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
                       subscriber_,
                       [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
@@ -389,6 +388,7 @@ class StreamImpl {
               }
             }
             index = size;
+            head = Value(head_idx.idxts).us;
           }
           if (size > begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
             return;

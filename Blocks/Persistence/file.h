@@ -110,8 +110,8 @@ class FilePersister {
  protected:
   // { last_published_index + 1, last_published_us + 1us }, or { 0, 0us } for an empty persister.
   struct end_t {
-    uint64_t index;
-    std::chrono::microseconds us;
+    uint64_t next_index;
+    std::chrono::microseconds last_entry_us;
     std::chrono::microseconds head;
   };
   static_assert(sizeof(std::chrono::microseconds) == 8, "");
@@ -122,7 +122,7 @@ class FilePersister {
     const std::string filename;
     std::ofstream appender;
 
-    // `offset.size() == end.index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
+    // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
     std::mutex mutex;
     std::vector<std::streampos> offset;
     std::streamoff head_offset;
@@ -343,17 +343,17 @@ class FilePersister {
     if (iterator.head.count() && !(timestamp > iterator.head)) {
       CURRENT_THROW(InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
-    iterator.us = iterator.head = timestamp;
-    const auto current = idxts_t(iterator.index, iterator.us);
+    iterator.last_entry_us = iterator.head = timestamp;
+    const auto current = idxts_t(iterator.next_index, iterator.last_entry_us);
     {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.index);
-      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.index);
+      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.next_index);
+      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.next_index);
       file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
       file_persister_impl_->timestamp.push_back(timestamp);
     }
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
-    ++iterator.index;
+    ++iterator.next_index;
     file_persister_impl_->head_offset = 0;
     file_persister_impl_->end.store(iterator);
     return current;
@@ -379,13 +379,13 @@ class FilePersister {
     file_persister_impl_->end.store(iterator);
   }
 
-  bool Empty() const noexcept { return !file_persister_impl_->end.load().index; }
-  uint64_t Size() const noexcept { return file_persister_impl_->end.load().index; }
+  bool Empty() const noexcept { return !file_persister_impl_->end.load().next_index; }
+  uint64_t Size() const noexcept { return file_persister_impl_->end.load().next_index; }
 
   idxts_t LastPublishedIndexAndTimestamp() const {
     const auto iterator = file_persister_impl_->end.load();
-    if (iterator.index) {
-      return idxts_t(iterator.index - 1, iterator.us);
+    if (iterator.next_index) {
+      return idxts_t(iterator.next_index - 1, iterator.last_entry_us);
     } else {
       CURRENT_THROW(NoEntriesPublishedYet());
     }
@@ -393,8 +393,8 @@ class FilePersister {
 
   head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
     const auto iterator = file_persister_impl_->end.load();
-    if (iterator.index) {
-      return head_optidxts_t(iterator.head, iterator.index - 1, iterator.us);
+    if (iterator.next_index) {
+      return head_optidxts_t(iterator.head, iterator.next_index - 1, iterator.last_entry_us);
     } else {
       return head_optidxts_t(iterator.head);
     }
@@ -428,7 +428,7 @@ class FilePersister {
   }
 
   IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
-    const uint64_t current_size = file_persister_impl_->end.load().index;
+    const uint64_t current_size = file_persister_impl_->end.load().next_index;
     if (end_index == static_cast<uint64_t>(-1)) {
       end_index = current_size;
     }
