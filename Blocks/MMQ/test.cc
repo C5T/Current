@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME
+
 #include "mmq.h"
 #include "mmpq.h"
 
@@ -40,6 +42,8 @@ using current::mmq::MMPQ;
 using current::ss::EntryResponse;
 
 TEST(InMemoryMQ, SmokeTest) {
+  current::time::ResetToZero();
+
   struct ConsumerImpl {
     std::string messages_;
     size_t expected_next_message_index_ = 1u;
@@ -115,6 +119,8 @@ struct SuspendableConsumerImpl {
 using SuspendableConsumer = current::ss::EntrySubscriber<SuspendableConsumerImpl, std::string>;
 
 TEST(InMemoryMQ, DropOnOverflowTest) {
+  current::time::ResetToZero();
+
   SuspendableConsumer c;
 
   // Queue with 10 at most messages in the buffer.
@@ -163,6 +169,8 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
 }
 
 TEST(InMemoryMQ, WaitOnOverflowTest) {
+  current::time::ResetToZero();
+
   SuspendableConsumer c;
   c.SetProcessingDelayMillis(1u);
 
@@ -203,6 +211,8 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
 }
 
 TEST(InMemoryMQ, TimeShouldNotGoBack) {
+  current::time::ResetToZero();
+
   struct ConsumerImpl {
     std::string messages_;
     std::atomic_size_t processed_messages_;
@@ -242,6 +252,8 @@ TEST(InMemoryMQ, TimeShouldNotGoBack) {
 }
 
 TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
+  current::time::ResetToZero();
+
   struct ConsumerImpl {
     std::vector<std::string> messages_by_indexes_;
     std::vector<std::string> messages_by_timestamps_;
@@ -288,6 +300,8 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
 }
 
 TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
+  current::time::ResetToZero();
+
   struct ConsumerImpl {
     std::vector<std::string> messages_by_indexes_;
     std::vector<std::string> messages_by_timestamps_;
