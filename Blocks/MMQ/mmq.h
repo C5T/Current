@@ -104,7 +104,7 @@ class MMQImpl {
   template <current::locks::MutexLockStatus MLS>
   idxts_t DoPublish(const message_t& message, std::chrono::microseconds timestamp) {
     if (CHECK_TIMESTAMP_MONOTONICITY) {
-      if (!(timestamp > last_idx_ts_.us)) {
+      if (last_idx_ts_.us.count() && !(timestamp > last_idx_ts_.us)) {
         CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
       }
     }
@@ -121,7 +121,7 @@ class MMQImpl {
   template <current::locks::MutexLockStatus MLS>
   idxts_t DoPublish(message_t&& message, std::chrono::microseconds timestamp) {
     if (CHECK_TIMESTAMP_MONOTONICITY) {
-      if (!(timestamp > last_idx_ts_.us)) {
+      if (last_idx_ts_.us.count() && !(timestamp > last_idx_ts_.us)) {
         CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
       }
     }
