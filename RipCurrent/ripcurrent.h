@@ -424,8 +424,7 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
     std::ostringstream os;
     super_t::GetDefinition().FullDescription(os);
 
-    return std::move(
-        RipCurrentScope(std::move(SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>())), os.str()));
+    return RipCurrentScope(std::move(SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>())), os.str());
   }
 
  private:
