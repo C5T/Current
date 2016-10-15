@@ -153,7 +153,7 @@ class FilePersister {
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
     void ValidateFileAndInitializeHead() {
-      std::ifstream fi(filename);  //, std::ios::out | std::ios::in);
+      std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
         // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
