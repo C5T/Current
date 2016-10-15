@@ -176,7 +176,11 @@ class FilePersister {
           std::getline(fi, line);
           const auto us = std::chrono::microseconds(current::FromString<int64_t>(line));
           if (us > head) {
+            // TODO(grixa): handle the case when after the head directive there is another one.
             head = us;
+          } else {
+            // An "expired" head directive can't be the last line in the file, so we shouldn't rewrite it.
+            head_offset = 0;
           }
         }
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
