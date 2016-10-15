@@ -112,7 +112,7 @@ struct SherlockTestProcessorImpl {
 
   EntryResponse operator()(const Record& entry, idxts_t current, idxts_t last) {
     while (wait_) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     if (!data_.results_.empty()) {
       data_.results_ += ",";
@@ -144,7 +144,7 @@ struct SherlockTestProcessorImpl {
 
   TerminationResponse Terminate() {
     while (wait_) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     if (!data_.results_.empty()) {
       data_.results_ += ",";
@@ -257,7 +257,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   std::atomic_bool wait(true);
   std::thread delayed_publish_thread([&baz_stream, &wait]() {
     while (wait) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     baz_stream.Publish(7, std::chrono::microseconds(1));
     baz_stream.Publish(8, std::chrono::microseconds(2));
@@ -314,10 +314,10 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
           EXPECT_EQ(0u, d.seen_);
           p.SetWait(false);
           while (d.seen_ < 3u) {
-            ;  // Spin lock.
+            std::this_thread::yield();
           }
           while (scope3) {
-            ;  // Spin lock.
+            std::this_thread::yield();
           }
         }
         EXPECT_FALSE(scope3);
@@ -550,7 +550,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     const current::sherlock::StreamImpl<RecordWithTimestamp>::SubscriberScope<RecordsCollector> scope(
         exposed_stream.Subscribe(collector));
     while (collector.count_ < 4u) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
   }
   EXPECT_EQ(4u, s.size());
@@ -732,7 +732,7 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   });
 
   while (chunks_count < 100) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   ASSERT_TRUE(!subscription_id.empty());
@@ -793,7 +793,7 @@ TEST(Sherlock, PersistsToFile) {
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
   while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   EXPECT_EQ(sherlock_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
@@ -833,7 +833,7 @@ TEST(Sherlock, ParsesFromFile) {
       p2.SetMax(3u);
       const auto scope = parsed.Subscribe(p2);
       while (static_cast<bool>(scope)) {
-        ;  // Spin lock.
+        std::this_thread::yield();
       }
       EXPECT_FALSE(static_cast<bool>(scope));
       EXPECT_EQ(3u, d2.seen_);
@@ -1043,7 +1043,7 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
     stream.Publish(4, std::chrono::microseconds(400));
 
     while (d.seen_ < 3u) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     EXPECT_EQ(3u, d.seen_);
     EXPECT_EQ("1,3,4", d.results_);

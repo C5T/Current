@@ -128,7 +128,7 @@ class MemoryPersister {
     std::lock_guard<std::mutex> lock(container_->mutex);
     const std::chrono::microseconds expected = container_->head;
     if (expected.count() && !(timestamp > expected)) {
-      CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
+      CURRENT_THROW(ss::InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
     }
     const auto index = static_cast<uint64_t>(container_->entries.size());
     container_->entries.emplace_back(timestamp, std::forward<E>(entry));
@@ -140,7 +140,7 @@ class MemoryPersister {
     std::lock_guard<std::mutex> lock(container_->mutex);
     const std::chrono::microseconds expected = container_->head;
     if (expected.count() && !(timestamp > expected)) {
-      CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
+      CURRENT_THROW(ss::InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
     }
     container_->head = timestamp;
   }

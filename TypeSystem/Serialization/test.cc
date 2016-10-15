@@ -1161,40 +1161,69 @@ CURRENT_STRUCT(StructToPatch) {
   CURRENT_FIELD(a, int64_t, 0);
   CURRENT_FIELD(b, std::string);
   CURRENT_FIELD(c, Optional<std::string>);
+  CURRENT_FIELD(d, std::chrono::microseconds);
+  CURRENT_FIELD(e, Enum, Enum::DEFAULT);
 };
 }  // namespace serialization_test
 
 TEST(Serialization, PatchObjectWithJSON) {
+  using serialization_test::Enum;
   using serialization_test::StructToPatch;
 
-  auto s = ParseJSON<StructToPatch>("{\"a\":1,\"b\":\"one\",\"c\":null}");
+  auto s = ParseJSON<StructToPatch>("{\"a\":1,\"b\":\"one\",\"c\":null,\"d\":100,\"e\":0}");
   EXPECT_EQ(1, s.a);
   EXPECT_EQ("one", s.b);
   EXPECT_FALSE(Exists(s.c));
+  EXPECT_EQ(100, s.d.count());
+  EXPECT_EQ(Enum::DEFAULT, s.e);
 
   PatchObjectWithJSON(s, "{}");
   EXPECT_EQ(1, s.a);
   EXPECT_EQ("one", s.b);
   EXPECT_FALSE(Exists(s.c));
+  EXPECT_EQ(100, s.d.count());
+  EXPECT_EQ(Enum::DEFAULT, s.e);
 
   PatchObjectWithJSON(s, "{\"a\":2}");
   EXPECT_EQ(2, s.a);
   EXPECT_EQ("one", s.b);
   EXPECT_FALSE(Exists(s.c));
+  EXPECT_EQ(100, s.d.count());
+  EXPECT_EQ(Enum::DEFAULT, s.e);
 
   PatchObjectWithJSON(s, "{\"b\":\"two\"}");
   EXPECT_EQ(2, s.a);
   EXPECT_EQ("two", s.b);
   EXPECT_FALSE(Exists(s.c));
+  EXPECT_EQ(100, s.d.count());
+  EXPECT_EQ(Enum::DEFAULT, s.e);
 
   PatchObjectWithJSON(s, "{\"c\":\"test\"}");
   EXPECT_EQ(2, s.a);
   EXPECT_EQ("two", s.b);
-  EXPECT_TRUE(Exists(s.c));
+  ASSERT_TRUE(Exists(s.c));
   EXPECT_EQ("test", Value(s.c));
+  EXPECT_EQ(100, s.d.count());
+  EXPECT_EQ(Enum::DEFAULT, s.e);
+
+  PatchObjectWithJSON(s, "{\"d\":200}");
+  EXPECT_EQ(2, s.a);
+  EXPECT_EQ("two", s.b);
+  ASSERT_TRUE(Exists(s.c));
+  EXPECT_EQ("test", Value(s.c));
+  EXPECT_EQ(200, s.d.count());
+  EXPECT_EQ(Enum::DEFAULT, s.e);
+
+  PatchObjectWithJSON(s, "{\"e\":100}");
+  EXPECT_EQ(2, s.a);
+  EXPECT_EQ("two", s.b);
+  ASSERT_TRUE(Exists(s.c));
+  EXPECT_EQ("test", Value(s.c));
+  EXPECT_EQ(200, s.d.count());
+  EXPECT_EQ(Enum::SET, s.e);
 
   PatchObjectWithJSON(s, "{}");
-  EXPECT_TRUE(Exists(s.c));
+  ASSERT_TRUE(Exists(s.c));
   EXPECT_EQ("test", Value(s.c));
 
   PatchObjectWithJSON(s, "{\"c\":null}");

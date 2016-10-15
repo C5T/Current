@@ -15,18 +15,13 @@ HTTP server and client, JSON and binary serialization, visualization and other c
   [tar.gz](https://github.com/C5T/Current/archive/v1.0.tar.gz),
   [zip](https://github.com/C5T/Current/archive/v1.0.zip).
 
-  HTTP server and client API-s, RapidJSON for JSON serialization, [gnuplot](http://www.gnuplot.info/) and [plotutils](http://www.gnu.org/software/plotutils/) ports, file system and string manipulation methods, a command line flags parsing tool and a header-only port of [GoogleTest](http://code.google.com/p/googletest/).
+  HTTP server and client API-s, [Cereal](http://uscilab.github.io/cereal/) for binary and JSON serialization, [gnuplot](http://www.gnuplot.info/) and [plotutils](http://www.gnu.org/software/plotutils/) ports, file system and string manipulation methods, a command line flags parsing tool and a header-only port of [GoogleTest](http://code.google.com/p/googletest/).
 
   Cross-platform, tested on Linux, Mac and Windows. 100% unit tested.
 
   Header-only C++11 with no external library dependencies.
 
 # Documentation
-
-## RapidJSON
-
-TBD
-
 ## Visualization Library
 
 Bricks has C++ bindings for [`gnuplot`](http://www.gnuplot.info/), [`#include "Bricks/graph/gnuplot.h"`](https://github.com/Current/C5T/blob/master/Bricks/graph/gnuplot.h) to use it.
@@ -264,31 +259,31 @@ struct BASE {
   // Need a virtual base.
   virtual ~BASE() = default;
 };
-
 struct A : virtual BASE {
-  int a = 101;
-  void foo(std::ostream& os) {
-    a += 1000;
-    os << "mutable a=" << a << std::endl;
+  int a = 100;
+  void foo(std::ostringstream& os) {
+    ++a;
+    os << "mutable a=" << a;
   }
-  void foo(std::ostream& os) const {
-    os << "a=" << a << std::endl;
-  }
+  void foo(std::ostringstream& os) const { os << "const a=" << a; }
 };
-
 // Inherit from `A` as well, just to show that we can.
 struct B : virtual A, virtual BASE {
-  int b = 102;
-  void bar(std::ostream& os) const {
-    os << "b=" << b << std::endl;
+  int b = 200;
+  void bar(std::ostringstream& os) {
+    ++b;
+    os << "mutable b=" << b;
   }
+  void bar(std::ostringstream& os) const { os << "const b=" << b; }
 };
 // Even more "multiple" inheritance.
 struct C : virtual A, virtual B, virtual BASE {
-  int c = 103;
-  void baz(std::ostream& os) const {
-    os << "c=" << c << std::endl;
+  int c = 300;
+  void baz(std::ostringstream& os) {
+    ++c;
+    os << "mutable c=" << c;
   }
+  void baz(std::ostringstream& os) const { os << "const c=" << c; }
 };
 A a;
 B b;
@@ -302,138 +297,149 @@ BASE& mutable_pa = a;
 BASE& mutable_pb = b;
 
 struct call_foo_bar {
-  void operator()(const A& a) {
-    a.foo(os);
-  }
+  void operator()(const A& a) { a.foo(os); }
   void operator()(A& a) {
     // Mutable version.
     a.foo(os);
   }
-  void operator()(const B& b) {
+  void operator()(const B& b) { b.bar(os); }
+  void operator()(B& b) {
+    // Mutable version.
     b.bar(os);
   }
   std::ostringstream os;
-} foo_bar;
-
-RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
-RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
-EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
-RTTIDynamicCall<TypeList<A, B>>(mutable_pa, foo_bar);
-RTTIDynamicCall<TypeList<A, B>>(mutable_pb, foo_bar);
-EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\n", foo_bar.os.str());
-RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
-RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
-EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\na=1101\nb=102\n", foo_bar.os.str());
-
+};
+{
+  call_foo_bar foo_bar;
+  RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
+  EXPECT_EQ("const a=100", foo_bar.os.str());
+}
+{
+  call_foo_bar foo_bar;
+  RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
+  EXPECT_EQ("const b=200", foo_bar.os.str());
+}
+{
+  call_foo_bar foo_bar;
+  RTTIDynamicCall<TypeList<A, B>>(mutable_pa, foo_bar);
+  EXPECT_EQ("mutable a=101", foo_bar.os.str());
+}
+{
+  call_foo_bar foo_bar;
+  RTTIDynamicCall<TypeList<A, B>>(mutable_pb, foo_bar);
+  EXPECT_EQ("mutable b=201", foo_bar.os.str());
+}
+{
+  call_foo_bar foo_bar;
+  RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
+  EXPECT_EQ("const a=101", foo_bar.os.str());
+}
+{
+  call_foo_bar foo_bar;
+  RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
+  EXPECT_EQ("const b=201", foo_bar.os.str());
+}
 struct call_bar_baz {
-  void operator()(const B& b) {
-    b.bar(os);
-  }
-  void operator()(const C& c) {
-    c.baz(os);
-  }
+  void operator()(const B& b) { b.bar(os); }
+  void operator()(const C& c) { c.baz(os); }
   std::ostringstream os;
-} bar_baz;
-
-RTTIDynamicCall<TypeList<B, C>>(const_pb, bar_baz);
-RTTIDynamicCall<TypeList<B, C>>(const_pc, bar_baz);
-EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
+};
+{
+  call_bar_baz bar_baz;
+  RTTIDynamicCall<TypeList<B, C>>(const_pb, bar_baz);
+  EXPECT_EQ("const b=201", bar_baz.os.str());
+}
+{
+  call_bar_baz bar_baz;
+  RTTIDynamicCall<TypeList<B, C>>(const_pc, bar_baz);
+  EXPECT_EQ("const c=300", bar_baz.os.str());
+}
 struct call_foo_baz {
-  void operator()(const A& a) {
-    a.foo(os);
-  }
+  void operator()(const A& a) { a.foo(os); }
   void operator()(A& a) {
     // Mutable version.
     a.foo(os);
   }
-  void operator()(const C& c) {
+  void operator()(const C& c) { c.baz(os); }
+  void operator()(C& c) {
+    // Mutable version.
     c.baz(os);
   }
   void operator()(const A& a, int x, const std::string& y) {
     a.foo(os);
-    os << "[" << x << "]['" << y << "']\n";
+    os << ", [" << x << "]['" << y << "']";
+  }
+  void operator()(A& a, int x, const std::string& y) {
+    // Mutable version.
+    a.foo(os);
+    os << ", [" << x << "]['" << y << "']";
   }
   void operator()(const C& c, int x, const std::string& y) {
     c.baz(os);
-    os << "[" << x << "]['" << y << "']\n";
+    os << ", [" << x << "]['" << y << "']";
+  }
+  void operator()(C& c, int x, const std::string& y) {
+    // Mutable version.
+    c.baz(os);
+    os << ", [" << x << "]['" << y << "']";
   }
   std::ostringstream os;
 };
-
 std::unique_ptr<BASE> unique_a(new A());
 std::unique_ptr<BASE> unique_c(new C());
-call_foo_baz foo_baz;
-RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz);
-RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz);
-EXPECT_EQ("mutable a=1101\nc=103\n", foo_baz.os.str());
-RTTIDynamicCall<TypeList<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
-RTTIDynamicCall<TypeList<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
-EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\n", foo_baz.os.str());
-RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz);
-RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz);
-EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\nmutable a=2101\nc=103\n", foo_baz.os.str());
-
-call_foo_baz foo_baz2;
-RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz2, 1, std::string("one"));
-RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz2, 2, std::string("two"));
-EXPECT_EQ("a=2101\n[1]['one']\nc=103\n[2]['two']\n", foo_baz2.os.str());
-```
-## Run-Time Type Dispatching
-
-Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
-
-This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
-
-Use the [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/C5T/Current/blob/Bricks/master/rtti/dispatcher.h) header to run the code snippets below.
-
-`TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
-```cpp
-// The example below uses `Printf()`, include it.
-#include "strings/printf.h"
-using current::strings::Printf;
- 
-struct ExampleBase {
-  virtual ~ExampleBase() = default;
+BASE* ptr_a = &*unique_a;
+BASE* ptr_c = &*unique_c;
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*ptr_a, foo_baz);
+  EXPECT_EQ("mutable a=101", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*ptr_c, foo_baz);
+  EXPECT_EQ("mutable c=301", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
+  EXPECT_EQ("mutable a=102", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
+  EXPECT_EQ("mutable c=302", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*ptr_a, foo_baz);
+  EXPECT_EQ("mutable a=103", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*ptr_c, foo_baz);
+  EXPECT_EQ("mutable c=303", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*ptr_a, foo_baz, 1, std::string("one"));
+  EXPECT_EQ("mutable a=104, [1]['one']", foo_baz.os.str());
+}
+{
+  call_foo_baz foo_baz;
+  RTTIDynamicCall<TypeList<A, C>>(*ptr_c, foo_baz, 2, std::string("two"));
+  EXPECT_EQ("mutable c=304, [2]['two']", foo_baz.os.str());
+}
+struct call_foo_bar_by_rvalue_reference {
+  void operator()(A&& a) { a.foo(os); }
+  void operator()(B&& b) { b.bar(os); }
+  std::ostringstream os;
 };
-
-struct ExampleInt : ExampleBase {
-  int i;
-  explicit ExampleInt(int i) : i(i) {}
-};
-
-struct ExampleString : ExampleBase {
-  std::string s;
-  explicit ExampleString(const std::string& s) : s(s) {}
-};
-
-struct ExampleMoo : ExampleBase {
-};
-
-struct ExampleProcessor {
-  std::string result;
-  void operator()(const ExampleBase&) { result = "unknown"; }
-  void operator()(const ExampleInt& x) { result = Printf("int %d", x.i); }
-  void operator()(const ExampleString& x) { result = Printf("string '%s'", x.s.c_str()); }
-  void operator()(const ExampleMoo&) { result = "moo!"; }
-};
-
-using current::rtti::RuntimeTupleDispatcher;
-typedef RuntimeTupleDispatcher<ExampleBase,
-                               tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
-
-ExampleProcessor processor;
-
-Dispatcher::DispatchCall(ExampleBase(), processor);
-EXPECT_EQ(processor.result, "unknown");
-
-Dispatcher::DispatchCall(ExampleInt(42), processor);
-EXPECT_EQ(processor.result, "int 42");
-
-Dispatcher::DispatchCall(ExampleString("foo"), processor);
-EXPECT_EQ(processor.result, "string 'foo'");
-
-Dispatcher::DispatchCall(ExampleMoo(), processor);
-EXPECT_EQ(processor.result, "moo!");
+{
+  call_foo_bar_by_rvalue_reference foo_bar;
+  A a;
+  RTTIDynamicCall<TypeList<A, B>>(std::move(a), foo_bar);
+  EXPECT_EQ("mutable a=101", foo_bar.os.str());
+}
 ```
 ## Command Line Parsing: `dflags`
 

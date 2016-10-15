@@ -40,7 +40,6 @@ SOFTWARE.
 #include "variant.h"
 
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/template/is_unique_ptr.h"
 
 namespace current {
 

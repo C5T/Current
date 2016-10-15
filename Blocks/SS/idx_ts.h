@@ -26,7 +26,11 @@ SOFTWARE.
 #ifndef BLOCKS_SS_IDX_TS_H
 #define BLOCKS_SS_IDX_TS_H
 
+#include "../../port.h"
+
 #include <chrono>
+
+#include "exceptions.h"
 
 #include "../../TypeSystem/optional.h"
 #include "../../TypeSystem/struct.h"

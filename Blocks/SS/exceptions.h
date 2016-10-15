@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,17 +22,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_RTTI_EXCEPTIONS_H
-#define BRICKS_RTTI_EXCEPTIONS_H
+#ifndef BLOCKS_SS_EXCEPTIONS_H
+#define BLOCKS_SS_EXCEPTIONS_H
 
-#include "../exception.h"
+#include "../../port.h"
+#include "../../Bricks/exception.h"
+
+#include <chrono>
 
 namespace current {
-namespace rtti {
+namespace ss {
 
-struct UnrecognizedPolymorphicType : Exception {};
+struct InconsistentIndexOrTimestampException : Exception {
+  using Exception::Exception;
+};
 
-}  // namespace rtti
+struct InconsistentIndexException : InconsistentIndexOrTimestampException {
+  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
+  InconsistentIndexException(uint64_t expected, uint64_t found) {
+    using current::strings::Printf;
+    SetWhat(Printf("Expecting index %llu, seeing %llu.", expected, found));
+  }
+};
+
+struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
+  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
+  InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found) {
+    using current::strings::Printf;
+    SetWhat(Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count()));
+  }
+};
+
+}  // namespace current::ss
 }  // namespace current
 
-#endif  // BRICKS_RTTI_EXCEPTIONS_H
+#endif  // BLOCKS_SS_EXCEPTIONS_H
