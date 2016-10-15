@@ -651,15 +651,15 @@ class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_
    private:
     class ThreadMessageCounters {
      public:
-      ThreadMessageCounters(int published, int processed) : published_(published), processed_(processed) {}
+      ThreadMessageCounters(size_t published, size_t processed) : published_(published), processed_(processed) {}
       void ReportMessagePublished() { ++published_; }
       void ReportMessageNotQuitePublished() { --published_; }
       void ReportMessageProcessed() { ++processed_; }
       bool ProcessedEverything() const { return published_ == processed_; }
 
      private:
-      int published_;
-      int processed_;
+      size_t published_;
+      size_t processed_;
     };
     using instance_t = EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
     using waitable_counters_t = WaitableAtomic<ThreadMessageCounters>;
@@ -844,7 +844,7 @@ struct PassImpl final : UserCode<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImp
   }
 };
 
-// Note: `struct Pass` will only be used if the uses chooses it over the `RIPCURRENT_PASS` one. The latter option
+// Note: `struct Pass` will only be used if the user chooses it over the `RIPCURRENT_PASS` one. The latter option
 // includes the names of the types in the type list into the description, which is better for practical purposes.
 template <typename T, typename... TS>
 struct Pass : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImpl<T, TS...>> {
