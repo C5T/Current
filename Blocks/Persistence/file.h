@@ -52,6 +52,7 @@ namespace impl {
 
 namespace constants {
 constexpr const char kDirectiveMarker = '#';
+constexpr const char* kHeadDirective = "head";
 constexpr const char* kHeadFromatString = "%020lld\n";
 }  // namespace current::persistence::impl::constants
 
@@ -197,14 +198,9 @@ class FilePersister {
         return false;
       }
 
-      static const std::map<std::string, DIRECTIVE_TYPE> supported_directives = {
-          {"HEAD", DIRECTIVE_TYPE::HEAD}, {"SCHEMA", DIRECTIVE_TYPE::SCHEMA}, {"NAMESPACE", DIRECTIVE_TYPE::NAMESPACE}};
       const size_t tab_pos = line.find('\t');
-      if (tab_pos != std::string::npos) {
-        const auto cit = supported_directives.find(line.substr(1, tab_pos));
-        if (cit != supported_directives.end() && cit->second == DIRECTIVE_TYPE::HEAD) {
-          head_offset = std::streamoff(fi.tellg()) + tab_pos + 1;
-        }
+      if (tab_pos != std::string::npos && line.substr(1, tab_pos) == constants::kHeadDirective) {
+        head_offset = std::streamoff(fi.tellg()) + tab_pos + 1;
       }
       return true;
     }
