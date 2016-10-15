@@ -506,16 +506,16 @@ class HasEmit<LHSTypes<NEXT_TYPES...>> : public AbstractHasEmit {
   template <typename T, typename... ARGS>
   std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, T>::value> emit(ARGS&&... args) const {
     // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
-    next_handler_->OnThreadUnsafeEmitted(
-        std::move(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release())), time::Now());
+    next_handler_->OnThreadUnsafeEmitted(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release()),
+                                         time::Now());
   }
 
   template <typename T, typename... ARGS>
   std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, T>::value> post(std::chrono::microseconds t,
                                                                                  ARGS&&... args) const {
     // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
-    next_handler_->OnThreadUnsafeEmitted(
-        std::move(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release())), t);
+    next_handler_->OnThreadUnsafeEmitted(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release()),
+                                         t);
   }
 
   template <typename T, typename... ARGS>
@@ -523,7 +523,7 @@ class HasEmit<LHSTypes<NEXT_TYPES...>> : public AbstractHasEmit {
                                                                                      ARGS&&... args) const {
     // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
     next_handler_->OnThreadUnsafeScheduled(
-        std::move(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release())), t);
+        movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release()), t);
   }
 
   void head(std::chrono::microseconds t) const { next_handler_->OnThreadUnsafeHeadUpdated(t); }
