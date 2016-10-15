@@ -76,7 +76,7 @@ class MMPQ {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t Publish(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    if (!(timestamp > last_idx_ts_.us)) {
+    if (last_idx_ts_.us.count() && !(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
     ++last_idx_ts_.index;
@@ -89,7 +89,7 @@ class MMPQ {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    if (!(timestamp > last_idx_ts_.us)) {
+    if (last_idx_ts_.us.count() && !(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
     ++last_idx_ts_.index;
@@ -102,7 +102,7 @@ class MMPQ {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void UpdateHead(std::chrono::microseconds timestamp = current::time::Now()) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    if (!(timestamp > last_idx_ts_.us)) {
+    if (last_idx_ts_.us.count() && !(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
     last_idx_ts_.us = timestamp;
