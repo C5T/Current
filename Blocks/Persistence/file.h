@@ -69,32 +69,34 @@ class IteratorOverFileOfPersistedEntries {
     }
   }
 
-  template <typename F>
-  bool ProcessNextEntry(F&& f) {
-    do {
-      if (!std::getline(fi_, line_)) {
-        return false;
+  template <typename F1, typename F2>
+  bool ProcessNextEntry(F1&& onEntry, F2&& onDirective) {
+    if (std::getline(fi_, line_)) {
+      const size_t tab_pos = line_.find('\t');
+      if (tab_pos == std::string::npos) {
+        CURRENT_THROW(MalformedEntryException(line_));
       }
-      // Skip directives and empty lines.
-    } while (line_.empty() || line_[0] == constants::kDirectiveMarker);
-    const size_t tab_pos = line_.find('\t');
-    if (tab_pos == std::string::npos) {
-      CURRENT_THROW(MalformedEntryException(line_));
+      if (line_[0] != constants::kDirectiveMarker) {
+        const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
+        if (current.index != next_.index) {
+          // Indexes must be strictly continuous.
+          CURRENT_THROW(ss::InconsistentIndexException(next_.index, current.index));
+        }
+        if (current.us < next_.us) {
+          // Timestamps must monotonically increase.
+          CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
+        }
+        onEntry(current, line_.c_str() + tab_pos + 1);
+        next_ = current;
+        ++next_.index;
+        ++next_.us;
+      } else {
+        onDirective(line_.substr(1, tab_pos).c_str(), line_.c_str() + tab_pos + 1);
+      }
+      return true;
+    } else {
+      return false;
     }
-    const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
-    if (current.index != next_.index) {
-      // Indexes must be strictly continuous.
-      CURRENT_THROW(ss::InconsistentIndexException(next_.index, current.index));
-    }
-    if (current.us < next_.us) {
-      // Timestamps must monotonically increase.
-      CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
-    }
-    f(current, line_.c_str() + tab_pos + 1);
-    next_ = current;
-    ++next_.index;
-    ++next_.us;
-    return true;
   }
 
   // Return the absolute lowest possible next entry to scan or publish.
@@ -158,51 +160,39 @@ class FilePersister {
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
-        while (fi.peek() == constants::kDirectiveMarker
-                   ? ProcessDirective(fi)
-                   : cit.ProcessNextEntry([&](const idxts_t& current, const char*) {
-                     CURRENT_ASSERT(current.index == offset.size());
-                     CURRENT_ASSERT(current.index == timestamp.size());
-                     offset.push_back(current_offset);
-                     timestamp.push_back(current.us);
-                     current_offset = fi.tellg();
-                   })) {
+        auto head = std::chrono::microseconds(-1);
+        while (cit.ProcessNextEntry(
+            [&](const idxts_t& current, const char*) {
+              CURRENT_ASSERT(current.index == offset.size());
+              CURRENT_ASSERT(current.index == timestamp.size());
+              if (!(current.us > head)) {
+                CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), current.us));
+              }
+              offset.push_back(current_offset);
+              timestamp.push_back(current.us);
+              current_offset = fi.tellg();
+              head = current.us;
+              head_offset = 0;
+            },
+            [&](const char* key, const char* value) {
+              if (key == constants::kHeadDirective) {
+                const auto us = std::chrono::microseconds(current::FromString<int64_t>(value));
+                if (!(us > head)) {
+                  CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
+                }
+                head = us;
+                head_offset = std::streamoff(fi.tellg()) - strlen(value);
+              } else {
+                head_offset = 0;
+              }
+            })) {
           ;
         }
         const auto& next = cit.Next();
-        auto head = next.us - std::chrono::microseconds(1);
-        if (head_offset) {
-          fi.seekg(head_offset, std::ios_base::beg);
-          std::string line;
-          std::getline(fi, line);
-          const auto us = std::chrono::microseconds(current::FromString<int64_t>(line));
-          if (us > head) {
-            // TODO(grixa): handle the case when after the head directive there is another one.
-            head = us;
-          } else {
-            // An "expired" head directive can't be the last line in the file, so we shouldn't rewrite it.
-            head_offset = 0;
-          }
-        }
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
       } else {
         end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
       }
-    }
-
-    enum class DIRECTIVE_TYPE : int { HEAD, SCHEMA, NAMESPACE };
-
-    bool ProcessDirective(std::ifstream& fi) {
-      std::string line;
-      if (!std::getline(fi, line)) {
-        return false;
-      }
-
-      const size_t tab_pos = line.find('\t');
-      if (tab_pos != std::string::npos && line.substr(1, tab_pos) == constants::kHeadDirective) {
-        head_offset = std::streamoff(fi.tellg()) + tab_pos + 1;
-      }
-      return true;
     }
   };
 
@@ -269,15 +259,17 @@ class FilePersister {
         Entry result;
         bool found = false;
         while (!found) {
-          if (!(cit_->ProcessNextEntry([this, &found, &result](const idxts_t& cursor, const char* json) {
-                if (cursor.index == i_) {
-                  found = true;
-                  result.idx_ts = cursor;
-                  result.entry = ParseJSON<ENTRY>(json);
-                } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
-                  CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
-                }
-              }))) {
+          if (!(cit_->ProcessNextEntry(
+                  [this, &found, &result](const idxts_t& cursor, const char* json) {
+                    if (cursor.index == i_) {
+                      found = true;
+                      result.idx_ts = cursor;
+                      result.entry = ParseJSON<ENTRY>(json);
+                    } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
+                      CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
+                    }
+                  },
+                  [](const char*, const char*) {}))) {
             // End of file. Should never happen as long as the user only iterates over valid ranges.
             CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
