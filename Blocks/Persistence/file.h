@@ -74,6 +74,7 @@ class IteratorOverFileOfPersistedEntries {
       if (!std::getline(fi_, line_)) {
         return false;
       }
+      // Skip directives and empty lines.
     } while (line_.empty() || line_[0] == constants::kDirectiveMarker);
     const size_t tab_pos = line_.find('\t');
     if (tab_pos == std::string::npos) {
@@ -108,7 +109,7 @@ class IteratorOverFileOfPersistedEntries {
 template <typename ENTRY>
 class FilePersister {
  protected:
-  // { last_published_index + 1, last_published_us + 1us }, or { 0, 0us } for an empty persister.
+  // { last_published_index + 1, last_published_us, current_head_us }, or { 0, 0us, 0us } for an empty persister.
   struct end_t {
     uint64_t next_index;
     std::chrono::microseconds last_entry_us;
