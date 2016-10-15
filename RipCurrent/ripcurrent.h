@@ -340,7 +340,7 @@ class RipCurrentScope final {
   RipCurrentScope(RipCurrentScope&& rhs)
       : scope_(std::move(rhs.scope_)),
         legitimately_terminated_(rhs.legitimately_terminated_),
-        description_as_text_(rhs.description_as_text_) {
+        description_as_text_(std::move(rhs.description_as_text_)) {
     rhs.legitimately_terminated_ = true;
   }
   void Join() {
