@@ -365,7 +365,7 @@ class FilePersister {
       fo << head_str;
     } else {
       auto& appender = file_persister_impl_->appender;
-      appender << constants::kDirectiveMarker << "HEAD\t";
+      appender << constants::kDirectiveMarker << constants::kHeadDirective << '\t';
       file_persister_impl_->head_offset = appender.tellp();
       appender << head_str;
     }
