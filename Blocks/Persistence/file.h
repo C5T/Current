@@ -110,7 +110,7 @@ class IteratorOverFileOfPersistedEntries {
 template <typename ENTRY>
 class FilePersister {
  protected:
-  // { last_published_index + 1, last_published_us, current_head_us }, or { 0, 0us, 0us } for an empty persister.
+  // { last_published_index + 1, last_published_us, current_head_us }, or { 0, -1us, -1us } for an empty persister.
   struct end_t {
     uint64_t next_index;
     std::chrono::microseconds last_entry_us;
@@ -186,7 +186,7 @@ class FilePersister {
         }
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
       } else {
-        end.store({0ull, std::chrono::microseconds(0), std::chrono::microseconds(0)});
+        end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
       }
     }
 
@@ -341,7 +341,7 @@ class FilePersister {
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     end_t iterator = file_persister_impl_->end.load();
-    if (iterator.head.count() && !(timestamp > iterator.head)) {
+    if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
     iterator.last_entry_us = iterator.head = timestamp;
@@ -362,7 +362,7 @@ class FilePersister {
 
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
     end_t iterator = file_persister_impl_->end.load();
-    if (iterator.head.count() && !(timestamp > iterator.head)) {
+    if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
     iterator.head = timestamp;
