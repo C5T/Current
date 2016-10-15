@@ -28,16 +28,17 @@ SOFTWARE.
 // Building blocks can be output-only ("LHS"), input-only ("RHS"), in/out ("VIA"), or end-to-end ("E2E").
 // No buliding block, simple or composite, can be left hanging. Each one should be used, run, described,
 // or dismissed.
-// End-to-end blocks can be run with `(...).RipCurrent().Sync()`. TODO(dkorolev): Not only `.Sync()`.
+//
+// End-to-end blocks can be run with `(...).RipCurrent().Join()`. Another option is to save the return value
+// of `(...).RipCurrent()` into some `scope` variable, which must be `.Join()`-ed at a later time. Finally,
+// the `scope` variable can be called `.Async()` on, which would eliminate the need to explicitly call `.Join()`
+// at the end of its lifetime; and the syntax of `auto scope = (...).RipCurrent().Async();` is supported as well.
 //
 // HI-PRI:
 // TODO(dkorolev): ParseFileByLines() and/or TailFileForever() as possible LHS.
 // TODO(dkorolev): Sherlock listener as possible LHS.
-// TODO(dkorolev): MMQ.
-// TODO(dkorolev): Threads and joins, run forever.
 // TODO(dkorolev): The `+`-combiner.
 // TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`, `| ~foo`).
-// TODO(dkorolev): Run scoping strategies others than `.Sync()`.
 //
 // LO-PRI:
 // TODO(dkorolev): Add debug output counters / HTTP endpoint for # of messages per typeid.
@@ -60,14 +61,19 @@ SOFTWARE.
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/remove_parentheses.h"
 
+#include "../Blocks/MMQ/mmpq.h"
+
 #include "../Bricks/strings/join.h"
-#include "../Bricks/template/typelist.h"
+#include "../Bricks/sync/waitable_atomic.h"
 #include "../Bricks/template/rtti_dynamic_call.h"
+#include "../Bricks/template/typelist.h"
 #include "../Bricks/util/lazy_instantiation.h"
 #include "../Bricks/util/singleton.h"
 
 namespace current {
 namespace ripcurrent {
+
+using movable_message_t = std::unique_ptr<CurrentSuper, CurrentSuperDeleter>;
 
 template <typename... TS>
 class LHSTypes;
@@ -286,7 +292,9 @@ class SharedDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
 class GenericEmitDestination {
  public:
   virtual ~GenericEmitDestination() = default;
-  virtual void OnEmitted(CurrentSuper&&) = 0;
+  virtual void OnThreadUnsafeEmitted(movable_message_t&&, std::chrono::microseconds) = 0;
+  virtual void OnThreadUnsafeScheduled(movable_message_t&&, std::chrono::microseconds) = 0;
+  virtual void OnThreadUnsafeHeadUpdated(std::chrono::microseconds) = 0;
 };
 
 template <class LHS_TYPELIST>
@@ -298,34 +306,18 @@ class EmitDestination<LHSTypes<LHS_XS...>> : public GenericEmitDestination {};
 template <>
 class EmitDestination<LHSTypes<>> : public GenericEmitDestination {
  public:
-  void OnEmitted(CurrentSuper&&) override {
+  void OnThreadUnsafeEmitted(movable_message_t&&, std::chrono::microseconds) override {
     std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
     CURRENT_ASSERT(false);
   }
-};
-
-// Run context for RipCurrent allows to run it in background, foreground, or scoped.
-// TODO(dkorolev): Only supports `.Sync()` now. Implement everything else.
-class RipCurrentScope final {
- public:
-  explicit RipCurrentScope(const std::string& error_message) : sync_called_(false), error_message_(error_message) {}
-  RipCurrentScope(RipCurrentScope&& rhs) : error_message_(rhs.error_message_) {
-    CURRENT_ASSERT(!rhs.sync_called_);
-    rhs.sync_called_ = true;
+  void OnThreadUnsafeScheduled(movable_message_t&&, std::chrono::microseconds) override {
+    std::cerr << "Not expecting any entries to be sent to a non-consuming \"consumer\".\n";
+    CURRENT_ASSERT(false);
   }
-  void Sync() {
-    CURRENT_ASSERT(!sync_called_);
-    sync_called_ = true;
+  virtual void OnThreadUnsafeHeadUpdated(std::chrono::microseconds) override {
+    std::cerr << "Not expecting HEAD to be updated for a non-consuming \"consumer\".\n";
+    CURRENT_ASSERT(false);
   }
-  ~RipCurrentScope() {
-    if (!sync_called_) {
-      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);  // LCOV_EXCL_LINE
-    }
-  }
-
- private:
-  bool sync_called_ = false;
-  std::string error_message_;
 };
 
 template <class LHS_TYPELIST, class RHS_TYPELIST>
@@ -335,6 +327,52 @@ template <class... LHS_TYPES, class... RHS_TYPES>
 class SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> : public EmitDestination<LHSTypes<LHS_TYPES...>> {
  public:
   virtual ~SubCurrentScope() = default;
+};
+
+// The run context for RipCurrent to allow running it synchronously (via `.RipCurrent().Join()`), or
+// asyncronously (via `auto scope = (...).RipCurrent(); ... scope.Join()`).
+class RipCurrentScope final {
+ public:
+  using scope_t = SubCurrentScope<LHSTypes<>, RHSTypes<>>;
+
+  RipCurrentScope(std::shared_ptr<scope_t> scope, const std::string& description_as_text)
+      : scope_(scope), legitimately_terminated_(false), description_as_text_(description_as_text) {}
+  RipCurrentScope(RipCurrentScope&& rhs)
+      : scope_(std::move(rhs.scope_)),
+        legitimately_terminated_(rhs.legitimately_terminated_),
+        description_as_text_(std::move(rhs.description_as_text_)) {
+    rhs.legitimately_terminated_ = true;
+  }
+  void Join() {
+    if (legitimately_terminated_) {
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+          "Attempted to call `RipCurrent::Join()` on a scope that has already been legitimately taken care of.\n" +
+          description_as_text_);  // LCOV_EXCL_LINE
+    }
+    legitimately_terminated_ = true;
+    scope_ = nullptr;
+  }
+  RipCurrentScope& Async() {
+    if (legitimately_terminated_) {
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+          "Attempted to call `RipCurrent::Async()` on a scope that has already been legitimately taken care of.\n" +
+          description_as_text_);  // LCOV_EXCL_LINE
+    }
+    legitimately_terminated_ = true;
+    return *this;
+  }
+  ~RipCurrentScope() {
+    if (!legitimately_terminated_) {
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+          "RipCurrent run context was left hanging. Call `.Join()` or `.Async()` on it.\n" +
+          description_as_text_);  // LCOV_EXCL_LINE
+    }
+  }
+
+ private:
+  std::shared_ptr<scope_t> scope_;
+  bool legitimately_terminated_ = false;
+  std::string description_as_text_;
 };
 
 // Template logic to wrap the above implementations into abstract classes of proper templated types.
@@ -382,14 +420,11 @@ class SharedCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
 
   // User-facing `RipCurrent()` method.
   template <int IN_N = sizeof...(LHS_TYPES), int OUT_N = sizeof...(RHS_TYPES)>
-  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentScope> RipCurrent() {
-    SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>());
-
-    // TODO(dkorolev): Return proper run context. So far, just require `.Sync()` to be called on it.
+  std::enable_if_t<IN_N == 0 && OUT_N == 0, RipCurrentScope> RipCurrent() const {
     std::ostringstream os;
-    os << "RipCurrent run context was left hanging. Call `.Sync()`, or, well, something else. -- D.K.\n";
     super_t::GetDefinition().FullDescription(os);
-    return std::move(RipCurrentScope(os.str()));
+
+    return RipCurrentScope(SpawnAndRun(std::make_shared<EmitDestination<LHSTypes<>>>()), os.str());
   }
 
  private:
@@ -468,13 +503,33 @@ class HasEmit<LHSTypes<NEXT_TYPES...>> : public AbstractHasEmit {
   virtual ~HasEmit() = default;
 
  protected:
-  template <typename T>
-  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, current::decay<T>>::value> emit(T&& x) const {
-    next_handler_->OnEmitted(std::forward<T>(x));
+  template <typename T, typename... ARGS>
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, T>::value> emit(ARGS&&... args) const {
+    // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
+    next_handler_->OnThreadUnsafeEmitted(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release()),
+                                         time::Now());
   }
 
+  template <typename T, typename... ARGS>
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, T>::value> post(std::chrono::microseconds t,
+                                                                                 ARGS&&... args) const {
+    // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
+    next_handler_->OnThreadUnsafeEmitted(movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release()),
+                                         t);
+  }
+
+  template <typename T, typename... ARGS>
+  std::enable_if_t<TypeListContains<TypeListImpl<NEXT_TYPES...>, T>::value> schedule(std::chrono::microseconds t,
+                                                                                     ARGS&&... args) const {
+    // A seemingly unnecessary `release()` is due to `std::make_unique()` not supporting a custom deleter. -- D.K
+    next_handler_->OnThreadUnsafeScheduled(
+        movable_message_t(std::make_unique<T>(std::forward<ARGS>(args)...).release()), t);
+  }
+
+  void head(std::chrono::microseconds t) const { next_handler_->OnThreadUnsafeHeadUpdated(t); }
+
  private:
-  EmitDestination<LHSTypes<NEXT_TYPES...>>* const next_handler_;
+  emit_destination_t* next_handler_;
 };
 
 template <typename LHS_TYPELIST, typename RHS_TYPELIST, typename USER_CLASS>
@@ -488,8 +543,8 @@ class EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, U
   EventConsumerInitializer(std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next, ARGS&&... args)
       : scope_(&impl_, next.get()), impl_(std::forward<ARGS>(args)...) {}
 
-  void Accept(CurrentSuper&& x) {
-    RTTIDynamicCall<TypeListImpl<LHS_TYPES...>>(std::move(x), *this);
+  void OnThreadSafeEmitted(movable_message_t&& x) {
+    RTTIDynamicCall<TypeListImpl<LHS_TYPES...>, CurrentSuper>(std::move(*x), *this);
   }
 
   template <typename X>
@@ -550,20 +605,83 @@ class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_
 
   class Scope final : public SubCurrentScope<instantiator_input_t, instantiator_output_t> {
    public:
-    virtual ~Scope() = default;
-
     explicit Scope(const current::LazilyInstantiated<
                        EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>,
                        std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>>>& lazy_instance,
                    std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next)
-        : next_(next), spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)) {}
+        : next_(next),
+          spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(next_)),
+          waitable_counters_(0u, 0u),
+          single_threaded_processor_(waitable_counters_, *spawned_user_class_instance_),
+          mmq_(single_threaded_processor_) {}
 
-    void OnEmitted(CurrentSuper&& x) override { spawned_user_class_instance_->Accept(std::move(x)); }
+    virtual ~Scope() {
+      // TODO(dkorolev): Consider other termination strategies, not just the plain "process everything" one.
+      waitable_counters_.Wait([](const ThreadMessageCounters& p) { return p.ProcessedEverything(); });
+    }
+
+    void OnThreadUnsafeEmitted(movable_message_t&& x, std::chrono::microseconds t) override {
+      waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessagePublished(); });
+      try {
+        mmq_.Publish(std::move(x), t);
+      } catch (const ss::InconsistentTimestampException& e) {
+        current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.What());
+        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotQuitePublished(); });
+      }
+    }
+
+    void OnThreadUnsafeScheduled(movable_message_t&& x, std::chrono::microseconds t) override {
+      waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessagePublished(); });
+      try {
+        mmq_.PublishIntoTheFuture(std::move(x), t);
+      } catch (const ss::InconsistentTimestampException& e) {
+        current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.What());
+        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotQuitePublished(); });
+      }
+    }
+
+    virtual void OnThreadUnsafeHeadUpdated(std::chrono::microseconds t) override {
+      try {
+        mmq_.UpdateHead(t);
+      } catch (const ss::InconsistentTimestampException& e) {
+        current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.What());
+      }
+    }
 
    private:
+    class ThreadMessageCounters {
+     public:
+      ThreadMessageCounters(size_t published, size_t processed) : published_(published), processed_(processed) {}
+      void ReportMessagePublished() { ++published_; }
+      void ReportMessageNotQuitePublished() { --published_; }
+      void ReportMessageProcessed() { ++processed_; }
+      bool ProcessedEverything() const { return published_ == processed_; }
+
+     private:
+      size_t published_;
+      size_t processed_;
+    };
+    using instance_t = EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>;
+    using waitable_counters_t = WaitableAtomic<ThreadMessageCounters>;
+
+    struct SingleThreadedProcessorImpl {
+      SingleThreadedProcessorImpl(waitable_counters_t& waitable_counters, instance_t& instance)
+          : waitable_counters_(waitable_counters), instance_(instance) {}
+      ss::EntryResponse operator()(movable_message_t&& e, idxts_t, idxts_t) {
+        instance_.OnThreadSafeEmitted(std::move(e));
+        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageProcessed(); });
+        return ss::EntryResponse::More;
+      }
+      waitable_counters_t& waitable_counters_;
+      instance_t& instance_;
+    };
+    using single_threaded_processor_t = current::ss::EntrySubscriber<SingleThreadedProcessorImpl, movable_message_t>;
+
     std::shared_ptr<EmitDestination<LHSTypes<RHS_TYPES...>>> next_;
-    std::unique_ptr<EventConsumerInitializer<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>>
-        spawned_user_class_instance_;
+    std::unique_ptr<instance_t> spawned_user_class_instance_;
+    waitable_counters_t waitable_counters_;
+    single_threaded_processor_t single_threaded_processor_;
+    mmq::MMPQ<movable_message_t, single_threaded_processor_t> mmq_;
   };
 
   std::shared_ptr<SubCurrentScope<instantiator_input_t, instantiator_output_t>> SpawnAndRun(
@@ -643,7 +761,17 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
       self->MarkAs(BlockUsageBit::Run);
     }
 
-    void OnEmitted(CurrentSuper&& x) override { from_->OnEmitted(std::move(x)); }
+    void OnThreadUnsafeEmitted(movable_message_t&& x, std::chrono::microseconds t) override {
+      from_->OnThreadUnsafeEmitted(std::move(x), t);
+    }
+
+    void OnThreadUnsafeScheduled(movable_message_t&& x, std::chrono::microseconds t) override {
+      from_->OnThreadUnsafeScheduled(std::move(x), t);
+    }
+
+    virtual void OnThreadUnsafeHeadUpdated(std::chrono::microseconds t) override {
+      from_->OnThreadUnsafeHeadUpdated(t);
+    }
 
    private:
     // Construction / destruction order matters: { next, into, from }.
@@ -701,6 +829,29 @@ using RHS = SharedCurrent<LHS_TYPELIST, RHSTypes<>>;
 
 using E2E = SharedCurrent<LHSTypes<>, RHSTypes<>>;
 
+// The `RIPCURRENT_PASS` built-in building block.
+template <typename T, typename... TS>
+struct PassImplClassName {
+  static const char* RIPCURRENT_CLASS_NAME() { return "PassImpl"; }
+};
+
+template <typename T, typename... TS>
+struct PassImpl final : UserCode<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImplClassName<T, TS...>> {
+  using super_t = UserCode<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImplClassName<T, TS...>>;
+  template <typename X>
+  void f(X&& x) {
+    super_t::template emit<current::decay<X>>(std::forward<X>(x));
+  }
+};
+
+// Note: `struct Pass` will only be used if the user chooses it over the `RIPCURRENT_PASS` one. The latter option
+// includes the names of the types in the type list into the description, which is better for practical purposes.
+template <typename T, typename... TS>
+struct Pass : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImpl<T, TS...>> {
+  using super_t = UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImpl<T, TS...>>;
+  Pass() : super_t(Definition("PASS", __FILE__, __LINE__), std::make_tuple()) {}
+};
+
 }  // namespace current::ripcurrent
 }  // namespace current
 
@@ -719,6 +870,13 @@ using E2E = SharedCurrent<LHSTypes<>, RHSTypes<>>;
   ::current::ripcurrent::UserCodeImpl<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \
       ::current::ripcurrent::Definition(#USER_CLASS "(" #__VA_ARGS__ ")", __FILE__, __LINE__),                  \
       std::make_tuple(__VA_ARGS__))
+
+// A shortcut for `current::ripcurrent::Pass<...>()`, with the benefit of listing types as RipCurrent node name.
+#define RIPCURRENT_PASS(...)                                                                                     \
+  ::current::ripcurrent::UserCodeImpl<::current::ripcurrent::LHSTypes<CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)>,  \
+                                      ::current::ripcurrent::RHSTypes<CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)>,  \
+                                      ::current::ripcurrent::PassImpl<CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)>>( \
+      ::current::ripcurrent::Definition("Pass(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple())
 
 // A helper macro to extract the underlying type of the user class, now registered as a RipCurrent block type.
 #define RIPCURRENT_UNDERLYING_TYPE(USER_CLASS) decltype(USER_CLASS.UnderlyingType())
