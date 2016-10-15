@@ -651,7 +651,7 @@ class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_
    private:
     class ThreadMessageCounters {
      public:
-      ThreadMessageCounters(int a, int b) : published_(a), processed_(b) {}
+      ThreadMessageCounters(int published, int processed) : published_(published), processed_(processed) {}
       void ReportMessagePublished() { ++published_; }
       void ReportMessageNotQuitePublished() { --published_; }
       void ReportMessageProcessed() { ++processed_; }
