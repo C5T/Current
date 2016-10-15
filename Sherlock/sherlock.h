@@ -354,7 +354,7 @@ class StreamImpl {
     }
 
     void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
-      auto head = std::chrono::microseconds(0);
+      auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
       bool terminate_sent = false;

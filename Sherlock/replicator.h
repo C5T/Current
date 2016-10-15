@@ -146,7 +146,6 @@ class SubscribableRemoteStream final {
         } catch (StreamTerminatedBySubscriber&) {
           break;
         } catch (current::Exception& e) {
-          printf("Exception! (\"%s\"", e.what());
         }
         carried_over_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();

@@ -134,7 +134,7 @@ struct SherlockTestProcessorImpl {
 
   EntryResponse operator()(std::chrono::microseconds ts) {
     while (wait_) {
-      ;  // Spin lock.
+      std::this_thread::yield();
     }
     data_.head_ = ts;
     return EntryResponse::More;
