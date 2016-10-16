@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "../MidichloriansDataDictionary.h"
 
+#include "../../Bricks/template/typelist.h"
 #include "../../Blocks/HTTP/request.h"
 #include "../../TypeSystem/struct.h"
 
@@ -35,24 +36,12 @@ namespace current {
 namespace midichlorians {
 namespace server {
 
-// TODO(mz+dk): move `TypeListCat` to Bricks?
-template <typename LHS, typename RHS>
-struct TypeListCatImpl;
-
-template <typename... LHS, typename... RHS>
-struct TypeListCatImpl<TypeListImpl<LHS...>, TypeListImpl<RHS...>> {
-  using result = TypeListImpl<LHS..., RHS...>;
-};
-
-template <typename... TS>
-using TypeListCat = typename TypeListCatImpl<TS...>::result;
-
 using current::midichlorians::ios::ios_events_t;
 using current::midichlorians::web::web_events_t;
 
 using ios_variant_t = Variant<ios_events_t>;
 using web_variant_t = Variant<web_events_t>;
-using event_variant_t = Variant<TypeListCat<ios_events_t, web_events_t>>;
+using event_variant_t = Variant<current::metaprogramming::TypeListCat<ios_events_t, web_events_t>>;
 
 // clang-format off
 CURRENT_STRUCT(LogEntryBase) {
