@@ -102,16 +102,31 @@ struct TypeListCatImpl<TypeListImpl<LHS...>, TypeListImpl<RHS...>> : DuplicateTy
   using result = TypeListImpl<LHS..., RHS...>;
 };
 
-template <typename LHS_TYPELIST, typename RHS_TYPELIST>
-struct TypeListCatWindowsWrapper;
+template <typename... INPUT_TYPELISTS>
+struct TypeListCatWrapper;
 
-template <typename... LHS, typename... RHS>
-struct TypeListCatWindowsWrapper<TypeListImpl<LHS...>, TypeListImpl<RHS...>> {
-  using result = typename TypeListCatImpl<TypeListImpl<LHS...>, TypeListImpl<RHS...>>::result;
+template <>
+struct TypeListCatWrapper<> {
+  using result = TypeListImpl<>;
 };
 
-template <typename LHS_TYPELIST, typename RHS_TYPELIST>
-using TypeListCat = typename TypeListCatWindowsWrapper<LHS_TYPELIST, RHS_TYPELIST>::result;
+template <typename TYPELIST>
+struct TypeListCatWrapper<TYPELIST> {
+  using result = TYPELIST;
+};
+
+template <typename A, typename B>
+struct TypeListCatWrapper<A, B> {
+  using result = typename TypeListCatImpl<A, B>::result;
+};
+
+template <typename A, typename X, typename... XS>
+struct TypeListCatWrapper<A, X, XS...> {
+  using result = typename TypeListCatWrapper<typename TypeListCatWrapper<A, X>::result, XS...>::result;
+};
+
+template <typename... INPUT_TYPELISTS>
+using TypeListCat = typename TypeListCatWrapper<INPUT_TYPELISTS...>::result;
 
 static_assert(std::is_same<TypeListImpl<>, TypeListCat<TypeListImpl<>, TypeListImpl<>>>::value, "");
 static_assert(std::is_same<TypeListImpl<int>, TypeListCat<TypeListImpl<int>, TypeListImpl<>>>::value, "");
@@ -122,8 +137,14 @@ static_assert(
 static_assert(
     std::is_same<TypeListImpl<int, char, double>, TypeListCat<TypeListImpl<int, char>, TypeListImpl<double>>>::value,
     "");
+static_assert(std::is_same<TypeListImpl<>, TypeListCat<>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListCat<TypeListImpl<int>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int, char, double>,
+                           TypeListCat<TypeListImpl<int>, TypeListImpl<char>, TypeListImpl<double>>>::value,
+              "");
 
-// `TypeListUnion` creates a `TypeList<{common part of LHS.. and RHS...}>`. It's a `TypeListCat` that allows duplicates.
+// `TypeListUnion` creates a `TypeList<{types belonging to either LHS.. or RHS...}>`.
+// It's a `TypeListCat` that allows duplicates.
 template <typename RESULT, typename LHS, typename RHS>
 struct TypeListUnionImpl;
 
@@ -163,16 +184,31 @@ struct TypeListUnionImpl<RESULTING_TYPELIST, TypeListImpl<>, TypeListImpl<>> {
   using result = RESULTING_TYPELIST;
 };
 
-template <typename LHS_TYPELIST, typename RHS_TYPELIST>
-struct TypeListUnionWindowsWrapper;
+template <typename...>
+struct TypeListUnionWrapper;
 
-template <typename... LHS, typename... RHS>
-struct TypeListUnionWindowsWrapper<TypeListImpl<LHS...>, TypeListImpl<RHS...>> {
-  using result = typename TypeListUnionImpl<TypeListImpl<>, TypeListImpl<LHS...>, TypeListImpl<RHS...>>::result;
+template <>
+struct TypeListUnionWrapper<> {
+  using result = TypeListImpl<>;
 };
 
-template <typename LHS_TYPELIST, typename RHS_TYPELIST>
-using TypeListUnion = typename TypeListUnionWindowsWrapper<LHS_TYPELIST, RHS_TYPELIST>::result;
+template <typename TYPELIST>
+struct TypeListUnionWrapper<TYPELIST> {
+  using result = TYPELIST;
+};
+
+template <typename A, typename B>
+struct TypeListUnionWrapper<A, B> {
+  using result = typename TypeListUnionImpl<TypeListImpl<>, A, B>::result;
+};
+
+template <typename A, typename X, typename... XS>
+struct TypeListUnionWrapper<A, X, XS...> {
+  using result = typename TypeListUnionWrapper<typename TypeListUnionWrapper<A, X>::result, XS...>::result;
+};
+
+template <typename... TYPELISTS>
+using TypeListUnion = typename TypeListUnionWrapper<TYPELISTS...>::result;
 
 static_assert(std::is_same<TypeListImpl<>, TypeListUnion<TypeListImpl<>, TypeListImpl<>>>::value, "");
 static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>, TypeListImpl<>>>::value, "");
@@ -181,6 +217,14 @@ static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>, T
 static_assert(std::is_same<TypeListImpl<int, char, double>,
                            TypeListUnion<TypeListImpl<int, char>, TypeListImpl<char, double>>>::value,
               "");
+static_assert(std::is_same<TypeListImpl<>, TypeListUnion<>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>, TypeListImpl<int>, TypeListImpl<int>>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int, char>,
+                 TypeListUnion<TypeListImpl<int>, TypeListImpl<char>, TypeListImpl<int>, TypeListImpl<char>>>::value,
+    "");
 
 // `FlattenImpl<TypeListImpl<LHS...>, TypeListImpl<REST...>>` flattens all the types from `REST...`
 // and appends them to `TypeListImpl<LHS...>`.
