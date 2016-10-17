@@ -35,6 +35,10 @@ namespace ripcurrent {
 
 using movable_message_t = std::unique_ptr<CurrentSuper, CurrentSuperDeleter>;
 
+#if 0
+
+// "Debug-compilation" mode, slower to compile.
+
 template <typename... TS>
 class LHSTypes;
 
@@ -97,6 +101,65 @@ struct RHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
 
 template <typename T>
 using RHSTypesFromTypeList = typename RHSTypesFromTypeListImpl<T>::type;
+
+#else
+
+// Faster compilation with less type differentiation.
+
+template<typename... TS> using LHSTypes = TypeListImpl<TS...>;
+template<typename... TS> using RHSTypes = TypeListImpl<TS...>;
+template<typename... TS> using VIATypes = TypeListImpl<TS...>;
+template<typename... TS> using ThreadUnsafeOutgoingTypes = TypeListImpl<TS...>;
+template<typename... TS> using ThreadSafeIncomingTypes = TypeListImpl<TS...>;
+
+template <typename... TS>
+struct VoidOrLHSTypesImpl {
+  using type = LHSTypes<TS...>;
+};
+
+template <>
+struct VoidOrLHSTypesImpl<void> {
+  using type = LHSTypes<>;
+};
+
+template <typename... TS>
+using VoidOrLHSTypes = typename VoidOrLHSTypesImpl<TS...>::type;
+
+template <typename... TS>
+struct VoidOrRHSTypesImpl {
+  using type = RHSTypes<TS...>;
+};
+
+template <>
+struct VoidOrRHSTypesImpl<void> {
+  using type = RHSTypes<>;
+};
+
+template <typename... TS>
+using VoidOrRHSTypes = typename VoidOrRHSTypesImpl<TS...>::type;
+
+template <typename T>
+struct LHSTypesFromTypeListImpl;
+
+template <typename... TS>
+struct LHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
+  using type = LHSTypes<TS...>;
+};
+
+template <typename T>
+using LHSTypesFromTypeList = typename LHSTypesFromTypeListImpl<T>::type;
+
+template <typename T>
+struct RHSTypesFromTypeListImpl;
+
+template <typename... TS>
+struct RHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
+  using type = RHSTypes<TS...>;
+};
+
+template <typename T>
+using RHSTypesFromTypeList = typename RHSTypesFromTypeListImpl<T>::type;
+#endif
 
 // A singleton wrapping error handling logic, to allow mocking for the unit test.
 class RipCurrentMockableErrorHandler {

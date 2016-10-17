@@ -35,7 +35,6 @@ SOFTWARE.
 //
 // HI-PRI:
 // TODO(dkorolev): Benchmark.
-// TODO(dkorolev): In non-paranoid compilation mode, replace all `LHSTypes<...>` etc. by plain `TypeListImpl<...>`-s.
 // TODO(dkorolev): ParseFileByLines() and/or TailFileForever() as possible LHS.
 // TODO(dkorolev): Sherlock listener as possible LHS.
 // TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`, `| ~foo`).
