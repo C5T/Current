@@ -60,23 +60,22 @@ static_assert(TypeListSize<TypeListImpl<int>>::value == 1, "");
 static_assert(TypeListSize<TypeListImpl<int, int>>::value == 2, "");
 static_assert(TypeListSize<TypeListImpl<int, int, int>>::value == 3, "");
 
-// `TypeListContains<TypeListImpl<TS...>, T>::value` is true iff `T` is contained in `TS...`.
-template <typename TYPE_LIST_IMPL, typename TYPE>
-struct TypeListContains {};
-
+// `DuplicateTypeInTypeList` and `ConfirmTypeListContainsNoDuplicates` are just compile-error-readable names
+// for two helper classes that wrap contained types and inherit from all the wrapped types respectively.
+// The trick used in `TypeListContains` and `TypeListCat` is that a type can't be listed twice as a base class.
 template <typename T>
-struct TypeListContains<TypeListImpl<>, T> {
-  enum { value = false };
-};
+struct DuplicateTypeInTypeList {};
 
-template <typename T, typename... TS>
-struct TypeListContains<TypeListImpl<T, TS...>, T> {
-  enum { value = true };
-};
+template <typename... TS>
+struct ConfirmTypeListContainsNoDuplicates : DuplicateTypeInTypeList<TS>... {};
 
-template <typename LHS, typename... REST, typename T>
-struct TypeListContains<TypeListImpl<LHS, REST...>, T> {
-  enum { value = TypeListContains<TypeListImpl<REST...>, T>::value };
+// `TypeListContains<TypeListImpl<TS...>, T>::value` is true iff `T` is contained in `TS...`.`
+template <typename TYPE_LIST_IMPL, typename TYPE>
+struct TypeListContains;
+
+template <typename... TS, typename T>
+struct TypeListContains<TypeListImpl<TS...>, T> {
+  enum { value = std::is_base_of<DuplicateTypeInTypeList<T>, ConfirmTypeListContainsNoDuplicates<TS...>>::value };
 };
 
 static_assert(!TypeListContains<TypeListImpl<>, int>::value, "");
@@ -89,9 +88,143 @@ static_assert(TypeListContains<TypeListImpl<char, int, double>, char>::value, ""
 static_assert(TypeListContains<TypeListImpl<int, char, double>, char>::value, "");
 static_assert(TypeListContains<TypeListImpl<int, double, char>, char>::value, "");
 
-static_assert(TypeListContains<TypeListImpl<char, int, int>, char>::value, "");
-static_assert(TypeListContains<TypeListImpl<int, char, int>, char>::value, "");
-static_assert(TypeListContains<TypeListImpl<int, int, char>, char>::value, "");
+static_assert(TypeListContains<TypeListImpl<char, int>, char>::value, "");
+static_assert(TypeListContains<TypeListImpl<int, char>, char>::value, "");
+
+// `TypeListCat` creates a `TypeList<LHS..., RHS...>` given `TypeList<LHS...>` and `TypeList<RHS...>`.
+// By design, it would fail at compile tim if `LHS...` and `RHS...` have at least one shared type.
+template <typename LHS, typename RHS>
+struct TypeListCatImpl;
+
+template <typename... LHS, typename... RHS>
+struct TypeListCatImpl<TypeListImpl<LHS...>, TypeListImpl<RHS...>> : DuplicateTypeInTypeList<LHS>...,
+                                                                     DuplicateTypeInTypeList<RHS>... {
+  using result = TypeListImpl<LHS..., RHS...>;
+};
+
+template <typename... INPUT_TYPELISTS>
+struct TypeListCatWrapper;
+
+template <>
+struct TypeListCatWrapper<> {
+  using result = TypeListImpl<>;
+};
+
+template <typename TYPELIST>
+struct TypeListCatWrapper<TYPELIST> {
+  using result = TYPELIST;
+};
+
+template <typename A, typename B>
+struct TypeListCatWrapper<A, B> {
+  using result = typename TypeListCatImpl<A, B>::result;
+};
+
+template <typename A, typename X, typename... XS>
+struct TypeListCatWrapper<A, X, XS...> {
+  using result = typename TypeListCatWrapper<typename TypeListCatWrapper<A, X>::result, XS...>::result;
+};
+
+template <typename... INPUT_TYPELISTS>
+using TypeListCat = typename TypeListCatWrapper<INPUT_TYPELISTS...>::result;
+
+static_assert(std::is_same<TypeListImpl<>, TypeListCat<TypeListImpl<>, TypeListImpl<>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListCat<TypeListImpl<int>, TypeListImpl<>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListCat<TypeListImpl<>, TypeListImpl<int>>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int, char, double>, TypeListCat<TypeListImpl<int>, TypeListImpl<char, double>>>::value,
+    "");
+static_assert(
+    std::is_same<TypeListImpl<int, char, double>, TypeListCat<TypeListImpl<int, char>, TypeListImpl<double>>>::value,
+    "");
+static_assert(std::is_same<TypeListImpl<>, TypeListCat<>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListCat<TypeListImpl<int>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int, char, double>,
+                           TypeListCat<TypeListImpl<int>, TypeListImpl<char>, TypeListImpl<double>>>::value,
+              "");
+
+// `TypeListUnion` creates a `TypeList<{types belonging to either LHS.. or RHS...}>`.
+// It's a `TypeListCat` that allows duplicates.
+template <typename RESULT, typename LHS, typename RHS>
+struct TypeListUnionImpl;
+
+template <typename RESULTING_TYPELIST, typename T, bool CONTAINS, typename SLACK1, typename SLACK2>
+struct TypeListUnionImplAppendIfNotPresent;
+
+template <typename RESULTING_TYPELIST, typename T, typename SLACK1, typename SLACK2>
+struct TypeListUnionImplAppendIfNotPresent<RESULTING_TYPELIST, T, true, SLACK1, SLACK2> {
+  using result = typename TypeListUnionImpl<RESULTING_TYPELIST, SLACK1, SLACK2>::result;
+};
+
+template <typename... RESULTING_TYPES, typename T, typename SLACK1, typename SLACK2>
+struct TypeListUnionImplAppendIfNotPresent<TypeListImpl<RESULTING_TYPES...>, T, false, SLACK1, SLACK2> {
+  using result = typename TypeListUnionImpl<TypeListImpl<RESULTING_TYPES..., T>, SLACK1, SLACK2>::result;
+};
+
+template <typename RESULTING_TYPELIST, typename RHS_TYPELIST, typename T, typename... TS>
+struct TypeListUnionImpl<RESULTING_TYPELIST, TypeListImpl<T, TS...>, RHS_TYPELIST> {
+  using result = typename TypeListUnionImplAppendIfNotPresent<RESULTING_TYPELIST,
+                                                              T,
+                                                              TypeListContains<RESULTING_TYPELIST, T>::value,
+                                                              TypeListImpl<TS...>,
+                                                              RHS_TYPELIST>::result;
+};
+
+template <typename RESULTING_TYPELIST, typename T, typename... TS>
+struct TypeListUnionImpl<RESULTING_TYPELIST, TypeListImpl<>, TypeListImpl<T, TS...>> {
+  using result = typename TypeListUnionImplAppendIfNotPresent<RESULTING_TYPELIST,
+                                                              T,
+                                                              TypeListContains<RESULTING_TYPELIST, T>::value,
+                                                              TypeListImpl<>,
+                                                              TypeListImpl<TS...>>::result;
+};
+
+template <typename RESULTING_TYPELIST>
+struct TypeListUnionImpl<RESULTING_TYPELIST, TypeListImpl<>, TypeListImpl<>> {
+  using result = RESULTING_TYPELIST;
+};
+
+template <typename...>
+struct TypeListUnionWrapper;
+
+template <>
+struct TypeListUnionWrapper<> {
+  using result = TypeListImpl<>;
+};
+
+template <typename TYPELIST>
+struct TypeListUnionWrapper<TYPELIST> {
+  using result = TYPELIST;
+};
+
+template <typename A, typename B>
+struct TypeListUnionWrapper<A, B> {
+  using result = typename TypeListUnionImpl<TypeListImpl<>, A, B>::result;
+};
+
+template <typename A, typename X, typename... XS>
+struct TypeListUnionWrapper<A, X, XS...> {
+  using result = typename TypeListUnionWrapper<typename TypeListUnionWrapper<A, X>::result, XS...>::result;
+};
+
+template <typename... TYPELISTS>
+using TypeListUnion = typename TypeListUnionWrapper<TYPELISTS...>::result;
+
+static_assert(std::is_same<TypeListImpl<>, TypeListUnion<TypeListImpl<>, TypeListImpl<>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>, TypeListImpl<>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<>, TypeListImpl<int>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>, TypeListImpl<int>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int, char, double>,
+                           TypeListUnion<TypeListImpl<int, char>, TypeListImpl<char, double>>>::value,
+              "");
+static_assert(std::is_same<TypeListImpl<>, TypeListUnion<>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int>, TypeListUnion<TypeListImpl<int>, TypeListImpl<int>, TypeListImpl<int>>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int, char>,
+                 TypeListUnion<TypeListImpl<int>, TypeListImpl<char>, TypeListImpl<int>, TypeListImpl<char>>>::value,
+    "");
 
 // `FlattenImpl<TypeListImpl<LHS...>, TypeListImpl<REST...>>` flattens all the types from `REST...`
 // and appends them to `TypeListImpl<LHS...>`.
@@ -137,60 +270,17 @@ static_assert(std::is_same<TypeListImpl<int, double>, Flatten<TypeListImpl<TypeL
 static_assert(
     std::is_same<TypeListImpl<int, double>, Flatten<TypeListImpl<TypeListImpl<TypeListImpl<int>>, double>>>::value, "");
 
-// `DeduplicateImpl<TypeListImpl<LHS...>, TypeListImpl<REST...>>` appends the types from `REST...`
-// that are not yet present in `LHS...` to `LHS...`.
-// It expects a flattened list of types as the second parameter.
-template <typename LHS, typename REST>
-struct DeduplicateImpl {};
-
-template <typename... LHS>
-struct DeduplicateImpl<TypeListImpl<LHS...>, TypeListImpl<>> {
-  using unique = TypeListImpl<LHS...>;
-};
-
-template <typename... LHS, typename T, typename... REST>
-struct DeduplicateImpl<TypeListImpl<LHS...>, TypeListImpl<T, REST...>> {
-  using unique =
-      typename std::conditional<TypeListContains<TypeListImpl<LHS...>, T>::value,
-                                typename DeduplicateImpl<TypeListImpl<LHS...>, TypeListImpl<REST...>>::unique,
-                                typename DeduplicateImpl<TypeListImpl<LHS..., T>, TypeListImpl<REST...>>::unique>::type;
-};
-
-// `DeduplicateImplExtractor<>` makes sure the top-level `Deduplicate<>` below
-// can only be invoked on `TypeListImpl<>`-s.
-template <typename T>
-struct DeduplicateImplExtractor {};
-
-template <typename... TS>
-struct DeduplicateImplExtractor<TypeListImpl<TS...>> {
-  using extracted_unique = typename DeduplicateImpl<TypeListImpl<>, TypeListImpl<TS...>>::unique;
-};
-
-// User-facing `Deduplicate<TypeListImpl<TS...>>` deduplicates `TS...`.
-template <typename INPUT_TYPELIST>
-using Deduplicate = typename DeduplicateImplExtractor<INPUT_TYPELIST>::extracted_unique;
-
-static_assert(std::is_same<TypeListImpl<>, Deduplicate<TypeListImpl<>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, Deduplicate<TypeListImpl<int>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, Deduplicate<TypeListImpl<int, int>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, Deduplicate<TypeListImpl<int, int, int>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int, double>, Deduplicate<TypeListImpl<int, double>>>::value, "");
-static_assert(
-    std::is_same<TypeListImpl<int, double>, Deduplicate<TypeListImpl<int, int, int, double, double, double>>>::value,
-    "");
-static_assert(std::is_same<TypeListImpl<int, double>, Deduplicate<TypeListImpl<int, double, int>>>::value, "");
-static_assert(std::is_same<TypeListImpl<double, int>, Deduplicate<TypeListImpl<double, int, double>>>::value, "");
-
-// Performance alert, @dkorolev @mzhurovich 12/5/2015.
+// Performance alert, @dkorolev @mzhurovich 12/5/2015. Revisited and kept the semantics same. -- D.K. 10/15/2015.
 // The implementation of `TypeList` deduplication+flattening is very inefficient as of now.
 // We are making the default behavior of `TypeList` a non-deduplicating non-flattening one, and introducing
 // a special syntax of `SlowTypeList` for the case where deduplication and/or flattening is indeed requred.
 
-// User-facing `TypeList<TS...>` creates a type list that contains the union of all passed in types,
+// User-facing `SlowTypeList<TS...>` creates a type list that contains the union of all passed in types,
 // performing flattening and deduplication of all input types.
 template <typename... TS>
-using SlowTypeList = Deduplicate<Flatten<TypeListImpl<TS...>>>;
+using SlowTypeList = TypeListUnion<TypeListImpl<>, Flatten<TypeListImpl<TS...>>>;
 
+// User-facing `TypeList<TS...>` assumes `TS...` are unique and not-nested.
 template <typename... TS>
 using TypeList = TypeListImpl<TS...>;
 
