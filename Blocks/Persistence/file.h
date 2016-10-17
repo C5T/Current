@@ -93,6 +93,8 @@ class IteratorOverFileOfPersistedEntries {
         ++next_.index;
         ++next_.us;
       } else {
+        // A directive always starts with kDirectiveMarker ('#'), which is immediately
+        // followed by the directive type and value, divided by the tab symbol.
         line_[tab_pos] = '\0';
         onDirective(line_.c_str() + 1, line_.c_str() + tab_pos + 1);
       }
@@ -197,6 +199,8 @@ class FilePersister {
           ;
         }
         const auto& next = cit.Next();
+        // The `next.us` stores the closest possible next entry timestamp,
+        // so the last processed entry timestamp is always 1us less.
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
       } else {
         end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
