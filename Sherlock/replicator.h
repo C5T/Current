@@ -145,7 +145,7 @@ class SubscribableRemoteStream final {
                           [this]() {}));
         } catch (StreamTerminatedBySubscriber&) {
           break;
-        } catch (current::Exception& e) {
+        } catch (current::Exception&) {
         }
         carried_over_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();

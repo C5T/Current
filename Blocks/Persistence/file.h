@@ -53,7 +53,7 @@ namespace impl {
 namespace constants {
 constexpr const char kDirectiveMarker = '#';
 constexpr const char* kHeadDirective = "head";
-constexpr const char* kHeadFromatString = "%020lld\n";
+constexpr const char* kHeadFromatString = "%020lld";
 }  // namespace current::persistence::impl::constants
 
 // An iterator to read a file line by line, extracting tab-separated `idxts_t index` and `const char* data`.
@@ -91,7 +91,8 @@ class IteratorOverFileOfPersistedEntries {
         ++next_.index;
         ++next_.us;
       } else {
-        onDirective(line_.substr(1, tab_pos).c_str(), line_.c_str() + tab_pos + 1);
+        line_[tab_pos] = '\0';
+        onDirective(line_.c_str() + 1, line_.c_str() + tab_pos + 1);
       }
       return true;
     } else {
@@ -175,7 +176,7 @@ class FilePersister {
               head_offset = 0;
             },
             [&](const char* key, const char* value) {
-              if (key == constants::kHeadDirective) {
+              if (!strcmp(key, constants::kHeadDirective)) {
                 const auto us = std::chrono::microseconds(current::FromString<int64_t>(value));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
@@ -367,7 +368,7 @@ class FilePersister {
       auto& appender = file_persister_impl_->appender;
       appender << constants::kDirectiveMarker << constants::kHeadDirective << '\t';
       file_persister_impl_->head_offset = appender.tellp();
-      appender << head_str;
+      appender << head_str << std::endl;
     }
     file_persister_impl_->end.store(iterator);
   }
