@@ -374,7 +374,6 @@ class AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
 
   virtual std::shared_ptr<SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>> Run(
       std::shared_ptr<BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<RHS_TYPES...>>>) const = 0;
-  //      std::shared_ptr<BlockIncomingInterface<ThreadSafeIncomingTypes<RHS_TYPES...>>>) const = 0;
 
   struct Traits final {
     using input_t = LHSTypes<LHS_TYPES...>;
