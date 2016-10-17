@@ -299,14 +299,13 @@ class SubCurrentScope;
 
 template <class... LHS_TYPES, class... RHS_TYPES>
 class SubCurrentScope<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>
-    //: public BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<LHS_TYPES...>> {
     : public BlockIncomingInterface<ThreadSafeIncomingTypes<LHS_TYPES...>> {
  public:
   virtual ~SubCurrentScope() = default;
 };
 
 // The run context of a presently running RipCurrent flow.
-// RTipCurrent can be run synchronously (via `.RipCurrent().Join()`), or
+// RipCurrent can be run synchronously (via `.RipCurrent().Join()`), or
 // asyncronously (via `auto scope = (...).RipCurrent(); ... scope.Join()`).
 class RipCurrentScope final {
  public:
@@ -521,7 +520,7 @@ class CallsGeneratingBlock<LHSTypes<EMITTED_TYPES...>> : public GenericCallsGene
 //    Those entries are assumed thread safe, and are proxied directly to the user code's `.f()` method.
 // 2) It requires the `next_` parameter, which is a `BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<RHS_TYPES...>>`.
 //    Prior to instantiating user class, it uses the `BlockCallsConsumersManager::CallsConsumerLifetimeScope` mechanism
-//    to enable use code to make the calls to `emit<>`, `post<>`, `schedule<>`, and `head<>` from its constructor.
+//    to enable user code to make the calls to `emit<>`, `post<>`, `schedule<>`, and `head<>` from its constructor.
 template <class LHS_TYPES, class RHS_TYPES, class USER_CLASS>
 class UserClassInstantiator;
 
@@ -877,7 +876,6 @@ class SharedParallelImpl<LHSTypes<AB_LHS...>,
 
      private:
       Scope* self_;
-      movable_message_t x_;
     };
 
     void OnThreadSafeMessage(movable_message_t&& x) override {

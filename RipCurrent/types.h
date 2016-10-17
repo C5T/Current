@@ -106,11 +106,16 @@ using RHSTypesFromTypeList = typename RHSTypesFromTypeListImpl<T>::type;
 
 // Faster compilation with less type differentiation.
 
-template<typename... TS> using LHSTypes = TypeListImpl<TS...>;
-template<typename... TS> using RHSTypes = TypeListImpl<TS...>;
-template<typename... TS> using VIATypes = TypeListImpl<TS...>;
-template<typename... TS> using ThreadUnsafeOutgoingTypes = TypeListImpl<TS...>;
-template<typename... TS> using ThreadSafeIncomingTypes = TypeListImpl<TS...>;
+template <typename... TS>
+using LHSTypes = TypeListImpl<TS...>;
+template <typename... TS>
+using RHSTypes = TypeListImpl<TS...>;
+template <typename... TS>
+using VIATypes = TypeListImpl<TS...>;
+template <typename... TS>
+using ThreadUnsafeOutgoingTypes = TypeListImpl<TS...>;
+template <typename... TS>
+using ThreadSafeIncomingTypes = TypeListImpl<TS...>;
 
 template <typename... TS>
 struct VoidOrLHSTypesImpl {
@@ -142,7 +147,7 @@ template <typename T>
 struct LHSTypesFromTypeListImpl;
 
 template <typename... TS>
-struct LHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
+struct LHSTypesFromTypeListImpl<TypeListImpl<TS...> > {
   using type = LHSTypes<TS...>;
 };
 
@@ -153,7 +158,7 @@ template <typename T>
 struct RHSTypesFromTypeListImpl;
 
 template <typename... TS>
-struct RHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
+struct RHSTypesFromTypeListImpl<TypeListImpl<TS...> > {
   using type = RHSTypes<TS...>;
 };
 
