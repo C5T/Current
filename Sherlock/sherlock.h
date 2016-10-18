@@ -36,6 +36,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 #include "stream_data.h"
+#include "signature.h"
 #include "pubsub.h"
 
 #include "../TypeSystem/struct.h"
@@ -114,13 +115,6 @@ enum class StreamDataAuthority : bool { Own = true, External = false };
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
-struct SherlockNamespaceName {
-  const std::string namespace_name;
-  const std::string top_level_name;
-  explicit SherlockNamespaceName(const std::string& namespace_name, const std::string& top_level_name)
-      : namespace_name(namespace_name), top_level_name(top_level_name) {}
-};
-
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {
  public:
@@ -183,10 +177,10 @@ class StreamImpl {
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
-  StreamImpl(const SherlockNamespaceName& exposed_namespace)
+  StreamImpl(const SherlockNamespaceName& namespace_name)
       : own_data_(),
-        schema_exposed_namespace_name_(exposed_namespace.namespace_name),
-        schema_top_level_name_(exposed_namespace.top_level_name),
+        schema_exposed_namespace_name_(namespace_name.exposed_namespace),
+        schema_top_level_name_(namespace_name.top_level_name),
         schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
@@ -199,10 +193,10 @@ class StreamImpl {
         authority_(StreamDataAuthority::Own) {}
 
   template <typename X, typename... XS>
-  StreamImpl(const SherlockNamespaceName& exposed_namespace, X&& x, XS&&... xs)
+  StreamImpl(const SherlockNamespaceName& namespace_name, X&& x, XS&&... xs)
       : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
-        schema_exposed_namespace_name_(exposed_namespace.namespace_name),
-        schema_top_level_name_(exposed_namespace.top_level_name),
+        schema_exposed_namespace_name_(namespace_name.exposed_namespace),
+        schema_top_level_name_(namespace_name.top_level_name),
         schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
