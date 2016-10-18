@@ -439,13 +439,39 @@ CURRENT_STRUCT(String) {
   CURRENT_CONSTRUCTOR(String)(const std::string& value = "") : value(value) {}
 };
 
-RIPCURRENT_NODE(EmitStringAndInteger, (), (Integer, String)) {  // Note: `()` is same as `void`.
-  EmitStringAndInteger() {
+CURRENT_STRUCT(Bool) {
+  CURRENT_FIELD(flag, bool);
+  CURRENT_CONSTRUCTOR(Bool)(bool flag = false) : flag(flag) {}
+};
+
+RIPCURRENT_NODE(EmitString, (), String) {  // Note: `()` is same as `void`.
+  EmitString() {
+    emit<String>("Answer");
+  }
+};
+#define EmitString(...) RIPCURRENT_MACRO(EmitString, __VA_ARGS__)
+
+RIPCURRENT_NODE(EmitBool, (), Bool) {  // Note: `()` is same as `void`.
+  EmitBool(bool value = true) {
+    emit<Bool>(value);
+  }
+};
+#define EmitBool(...) RIPCURRENT_MACRO(EmitBool, __VA_ARGS__)
+
+RIPCURRENT_NODE(EmitInteger, (), Integer) {  // Note: Intentionally somewhat duplicates `RCEmit`. -- D.K.
+  EmitInteger() {
+    emit<Integer>(42);
+  }
+};
+#define EmitInteger(...) RIPCURRENT_MACRO(EmitInteger, __VA_ARGS__)
+
+RIPCURRENT_NODE(EmitIntegerAndString, (), (Integer, String)) {  // Note: `()` is same as `void`.
+  EmitIntegerAndString() {
     emit<String>("Answer");
     emit<Integer>(42);
   }
 };
-#define EmitStringAndInteger(...) RIPCURRENT_MACRO(EmitStringAndInteger, __VA_ARGS__)
+#define EmitIntegerAndString(...) RIPCURRENT_MACRO(EmitIntegerAndString, __VA_ARGS__)
 
 RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
   const int k;
@@ -459,7 +485,40 @@ RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
 };
 #define MultIntegerOrString(...) RIPCURRENT_MACRO(MultIntegerOrString, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {  // Note: `()` is same as `void`.
+RIPCURRENT_NODE(DumpInteger, Integer, ()) {
+  std::vector<std::string>* ptr;
+  DumpInteger() : ptr(nullptr) {}  // LCOV_EXCL_LINE
+  DumpInteger(std::vector<std::string>& ref) : ptr(&ref) {}
+  void f(Integer x) {
+    CURRENT_ASSERT(ptr);
+    ptr->push_back(current::ToString(x.value));
+  }
+};
+#define DumpInteger(...) RIPCURRENT_MACRO(DumpInteger, __VA_ARGS__)
+
+RIPCURRENT_NODE(DumpString, String, ()) {
+  std::vector<std::string>* ptr;
+  DumpString() : ptr(nullptr) {}  // LCOV_EXCL_LINE
+  DumpString(std::vector<std::string>& ref) : ptr(&ref) {}
+  void f(String s) {
+    CURRENT_ASSERT(ptr);
+    ptr->push_back("'" + s.value + "'");
+  }
+};
+#define DumpString(...) RIPCURRENT_MACRO(DumpString, __VA_ARGS__)
+
+RIPCURRENT_NODE(DumpBool, Bool, ()) {
+  std::vector<std::string>* ptr;
+  DumpBool() : ptr(nullptr) {}  // LCOV_EXCL_LINE
+  DumpBool(std::vector<std::string>& ref) : ptr(&ref) {}
+  void f(Bool b) {
+    CURRENT_ASSERT(ptr);
+    ptr->push_back(b.flag ? "True" : "False");
+  }
+};
+#define DumpBool(...) RIPCURRENT_MACRO(DumpBool, __VA_ARGS__)
+
+RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {
   std::vector<std::string>* ptr;
   DumpIntegerAndString() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpIntegerAndString(std::vector<std::string>& ref) : ptr(&ref) {}
@@ -480,7 +539,7 @@ RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {  // Note: `()` is
 TEST(RipCurrent, CustomTypesIntrospection) {
   using namespace ripcurrent_unittest;
 
-  EXPECT_EQ("EmitStringAndInteger() => { Integer, String } | ...", (EmitStringAndInteger()).DescribeWithTypes());
+  EXPECT_EQ("EmitIntegerAndString() => { Integer, String } | ...", (EmitIntegerAndString()).DescribeWithTypes());
   EXPECT_EQ("... | { Integer, String } => DumpIntegerAndString()", (DumpIntegerAndString()).DescribeWithTypes());
 }
 
@@ -491,23 +550,144 @@ TEST(RipCurrent, CustomTypesFlow) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
+    (EmitIntegerAndString() | RIPCURRENT_DROP(Integer, String)).RipCurrent().Join();
+    EXPECT_EQ("", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    (EmitIntegerAndString() | RIPCURRENT_PASS(Integer, String) | RIPCURRENT_DROP(Integer, String)).RipCurrent().Join();
+    EXPECT_EQ("", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    (EmitIntegerAndString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
     EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
   }
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
+    (EmitIntegerAndString() | MultIntegerOrString() | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
     EXPECT_EQ("'Yo? Answer Yo!', 4242", current::strings::Join(result, ", "));
   }
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | MultIntegerOrString() | MultIntegerOrString(10001) |
+    (EmitIntegerAndString() | MultIntegerOrString() | MultIntegerOrString(10001) |
      DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
         .Join();
     EXPECT_EQ("'Yo? Yo? Answer Yo! Yo!', 42424242", current::strings::Join(result, ", "));
+  }
+}
+
+TEST(RipCurrent, PlusIntrospection) {
+  using namespace ripcurrent_unittest;
+
+  EXPECT_EQ("EmitInteger() + EmitString() | DumpInteger() + DumpString()",
+            ((EmitInteger() + EmitString()) | (DumpInteger() + DumpString())).Describe());
+
+  EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | DumpInteger() + DumpString() + DumpBool()",
+            ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + DumpString() + DumpBool())).Describe());
+
+  EXPECT_EQ(
+      "EmitInteger() + EmitString() + EmitBool() | Pass(Integer) + Pass(String) + Pass(Bool) | DumpInteger() + "
+      "DumpString() + DumpBool()",
+      ((EmitInteger() + EmitString() + EmitBool()) |
+       (RIPCURRENT_PASS(Integer) + RIPCURRENT_PASS(String) + RIPCURRENT_PASS(Bool)) |
+       (DumpInteger() + DumpString() + DumpBool())).Describe());
+
+  EXPECT_EQ(
+      "EmitInteger() + EmitString() + EmitBool() | Pass(Integer, String, Bool) | DumpInteger() + DumpString() + "
+      "DumpBool()",
+      ((EmitInteger() + EmitString() + EmitBool()) | RIPCURRENT_PASS(Integer, String, Bool) |
+       (DumpInteger() + DumpString() + DumpBool())).Describe());
+
+  EXPECT_EQ(
+      "EmitInteger() + EmitString() + EmitBool() | Pass(Integer, String) + DumpBool() | DumpInteger() + DumpString()",
+      ((EmitInteger() + EmitString() + EmitBool()) | (RIPCURRENT_PASS(Integer, String) + DumpBool()) |
+       (DumpInteger() + DumpString())).Describe());
+
+  EXPECT_EQ(
+      "EmitInteger() + EmitString() + EmitBool() | DumpInteger() + Pass(String, Bool) | Pass(String) + DumpBool() | "
+      "DumpString()",
+      ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + RIPCURRENT_PASS(String, Bool)) |
+       ((RIPCURRENT_PASS(String) + DumpBool()) | DumpString())).Describe());
+
+  EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | DumpInteger() + Drop(String, Bool)",
+            ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + RIPCURRENT_DROP(String, Bool))).Describe());
+
+  EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | Pass(Integer) + Drop(String, Bool) | Drop(Integer)",
+            ((EmitInteger() + EmitString() + EmitBool()) | (RIPCURRENT_PASS(Integer) + RIPCURRENT_DROP(String, Bool)) |
+             RIPCURRENT_DROP(Integer)).Describe());
+
+  EXPECT_EQ("EmitInteger() + EmitString() => { Integer, String } | ...",
+            (EmitInteger() + EmitString()).DescribeWithTypes());
+
+  EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() => { Integer, String, Bool } | ...",
+            (EmitInteger() + EmitString() + EmitBool()).DescribeWithTypes());
+
+  EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() => { Integer, String, Bool } | ...",
+            ((EmitInteger() + EmitString()) + EmitBool()).DescribeWithTypes());
+
+  EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() => { Integer, String, Bool } | ...",
+            (EmitInteger() + (EmitString() + EmitBool())).DescribeWithTypes());
+
+  EXPECT_EQ("... | { Integer, String } => DumpInteger() + DumpString()",
+            (DumpInteger() + DumpString()).DescribeWithTypes());
+}
+
+TEST(RipCurrent, PlusFlow) {
+  current::time::ResetToZero();
+
+  using namespace ripcurrent_unittest;
+
+  {
+    std::vector<std::string> result;
+    (EmitIntegerAndString() | (RIPCURRENT_DROP(Integer) + RIPCURRENT_DROP(String))).RipCurrent().Join();
+    EXPECT_EQ("", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    ((EmitInteger() + EmitString()) | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
+    EXPECT_EQ("42, 'Answer'", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    ((EmitInteger() + EmitString()) | (DumpInteger(std::ref(result)) + DumpString(std::ref(result))))
+        .RipCurrent()
+        .Join();
+    EXPECT_EQ("42, 'Answer'", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    ((EmitInteger() + EmitString() + EmitBool()) |
+     (DumpInteger(std::ref(result)) + DumpString(std::ref(result)) + DumpBool(std::ref(result))))
+        .RipCurrent()
+        .Join();
+    EXPECT_EQ("42, 'Answer', True", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    ((EmitInteger() + EmitBool(false) + EmitString() + EmitBool(true)) |
+     (DumpInteger(std::ref(result)) + (DumpBool(std::ref(result)) + DumpString(std::ref(result)))))
+        .RipCurrent()
+        .Join();
+    EXPECT_EQ("42, False, 'Answer', True", current::strings::Join(result, ", "));
+  }
+
+  {
+    std::vector<std::string> result;
+    ((EmitInteger() + EmitBool() + EmitString()) | (RIPCURRENT_DROP(Integer, Bool) + RIPCURRENT_PASS(String)) |
+     DumpString(std::ref(result)))
+        .RipCurrent()
+        .Join();
+    EXPECT_EQ("'Answer'", current::strings::Join(result, ", "));
   }
 }
 
@@ -546,7 +726,7 @@ TEST(RipCurrent, Passthrough) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | ManuallyImplementedGenericPassThrough1() | DumpIntegerAndString(std::ref(result)))
+    (EmitIntegerAndString() | ManuallyImplementedGenericPassThrough1() | DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
         .Join();
     EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
@@ -554,7 +734,7 @@ TEST(RipCurrent, Passthrough) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | ManuallyImplementedGenericPassThrough2() | DumpIntegerAndString(std::ref(result)))
+    (EmitIntegerAndString() | ManuallyImplementedGenericPassThrough2() | DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
         .Join();
     EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
@@ -562,7 +742,7 @@ TEST(RipCurrent, Passthrough) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | current::ripcurrent::Pass<Integer, String>() | DumpIntegerAndString(std::ref(result)))
+    (EmitIntegerAndString() | current::ripcurrent::Pass<Integer, String>() | DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
         .Join();
     EXPECT_EQ("'Answer', 42", current::strings::Join(result, ", "));
@@ -570,7 +750,7 @@ TEST(RipCurrent, Passthrough) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | ManuallyImplementedGenericPassThrough1() | ManuallyImplementedGenericPassThrough2() |
+    (EmitIntegerAndString() | ManuallyImplementedGenericPassThrough1() | ManuallyImplementedGenericPassThrough2() |
      DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
         .Join();
@@ -579,7 +759,7 @@ TEST(RipCurrent, Passthrough) {
 
   {
     std::vector<std::string> result;
-    (EmitStringAndInteger() | current::ripcurrent::Pass<Integer, String>() | ManuallyImplementedGenericPassThrough1() |
+    (EmitIntegerAndString() | current::ripcurrent::Pass<Integer, String>() | ManuallyImplementedGenericPassThrough1() |
      ManuallyImplementedGenericPassThrough2() | RIPCURRENT_PASS(Integer, String) |
      current::ripcurrent::Pass<Integer, String>() | DumpIntegerAndString(std::ref(result)))
         .RipCurrent()
