@@ -50,6 +50,10 @@ struct NoEntriesPublishedYet : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
+struct InvalidStreamSignature : PersistenceException {
+  using PersistenceException::PersistenceException;
+};
+
 struct PersistenceMemoryBlockNoLongerAvailable : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };

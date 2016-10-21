@@ -39,6 +39,8 @@ SOFTWARE.
 
 #include "../SS/persister.h"
 
+#include "../../Sherlock/signature.h"
+
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
 
@@ -58,7 +60,7 @@ class MemoryPersister {
   };
 
  public:
-  MemoryPersister() : container_() {}
+  MemoryPersister(const current::sherlock::SherlockNamespaceName&) : container_() {}
 
   class IterableRange {
    public:

@@ -45,6 +45,8 @@ SOFTWARE.
 #include "../../Bricks/sync/scope_owned.h"
 #include "../../Bricks/util/atomic_that_works.h"
 
+#include "../../Sherlock/signature.h"
+
 namespace current {
 namespace persistence {
 
@@ -52,6 +54,7 @@ namespace impl {
 
 namespace constants {
 constexpr const char kDirectiveMarker = '#';
+constexpr const char* kSignatureDirective = "signature";
 constexpr const char* kHeadDirective = "head";
 constexpr const char* kHeadFromatString = "%020lld";
 constexpr const size_t kHeadValueLength = 20u;
@@ -149,19 +152,19 @@ class FilePersister {
     FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
-    explicit FilePersisterImpl(const std::string& filename)
+    explicit FilePersisterImpl(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           rewriter(filename, std::ofstream::in | std::ofstream::out),
           head_offset(0) {
-      ValidateFileAndInitializeHead();
+      ValidateFileAndInitializeHead(namespace_name);
       if (appender.bad() || rewriter.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    void ValidateFileAndInitializeHead() {
+    void ValidateFileAndInitializeHead(const current::sherlock::SherlockNamespaceName& namespace_name) {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -194,6 +197,12 @@ class FilePersister {
                 head_offset = std::streamoff(fi.tellg()) - constants::kHeadValueLength;
               } else {
                 head_offset = 0;
+                if (!strcmp(key, constants::kSignatureDirective)) {
+                  const auto signature = ParseJSON<current::sherlock::SherlockNamespaceName>(value);
+                  if (signature != namespace_name) {
+                    CURRENT_THROW(InvalidStreamSignature());
+                  }
+                }
               }
             })) {
           ;
@@ -215,7 +224,7 @@ class FilePersister {
   FilePersister& operator=(const FilePersister&) = delete;
   FilePersister& operator=(FilePersister&&) = delete;
 
-  explicit FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
+  explicit FilePersister(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename) : file_persister_impl_(namespace_name, filename) {}
 
   class IterableRange {
    public:
