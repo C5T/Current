@@ -138,6 +138,7 @@ class GenericDictionary {
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
     key_t OuterKeyForPartialHypermediaCollectionView() const { return iterator->first; }
+    key_t key() const { return iterator->first; }
     const T& operator*() const { return iterator->second; }
     const T* operator->() const { return &iterator->second; }
   };

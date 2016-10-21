@@ -36,6 +36,12 @@ namespace rest {
 
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
+const std::string kRESTfulExportURLQueryParameter = "export";
+
+enum class FieldExportFormat {
+  Simple,   // Single entry JSON/one JSON per line, no timestamps.
+  Detailed  // Single JSON/array of `DetailedExportEntry<>`-s.
+};
 
 // TODO(dkorolev): The whole `FieldTypeDependentImpl` section below to be moved to `semantics.h`.
 template <typename>
@@ -222,7 +228,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
   const std::string field_name;
   Optional<url_key_t> get_url_key;
   const StorageRole role;
-  const bool export_requested;
+  Optional<FieldExportFormat> requested_export_fmt;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
                   immutable_fields_t fields,
@@ -230,28 +236,28 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
                   const StorageRole role,
-                  const bool export_requested)
+                  const Optional<FieldExportFormat>& requested_export_fmt)
       : RESTfulGenericInput<STORAGE>(input),
         fields(fields),
         field(field),
         field_name(field_name),
         get_url_key(get_url_key),
         role(role),
-        export_requested(export_requested) {}
+        requested_export_fmt(requested_export_fmt) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
                   immutable_fields_t fields,
                   const field_t& field,
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
                   const StorageRole role,
-                  const bool export_requested)
+                  const Optional<FieldExportFormat>& requested_export_fmt)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
         fields(fields),
         field(field),
         field_name(field_name),
         get_url_key(get_url_key),
         role(role),
-        export_requested(export_requested) {}
+        requested_export_fmt(requested_export_fmt) {}
 };
 
 // A dedicated "GETInput" for the GETs over row or col of a matrix container.

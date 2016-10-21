@@ -138,10 +138,17 @@ struct PerFieldRESTfulHandlerGenerator {
       const auto storage_role = storage.GetRole();
       if (request.method == "GET") {
         GETHandler handler;
-        const bool export_requested = request.url.query.has("export");
+        Optional<FieldExportFormat> requested_export_fmt;
+        if (request.url.query.has(kRESTfulExportURLQueryParameter)) {
+          if (request.url.query[kRESTfulExportURLQueryParameter] == "detailed") {
+            requested_export_fmt = FieldExportFormat::Detailed;
+          } else {
+            requested_export_fmt = FieldExportFormat::Simple;
+          }
+        }
         handler.Enter(std::move(request),
                       // Capture by reference since this lambda is run synchronously.
-                      [&storage, &handler, &generic_input, &field_name, export_requested](
+                      [&storage, &handler, &generic_input, &field_name, requested_export_fmt](
                           Request request,
                           const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
                         const specific_field_t& field =
@@ -149,7 +156,7 @@ struct PerFieldRESTfulHandlerGenerator {
                         generic_input.storage
                             .ReadOnlyTransaction(
                                  // Capture local variables by value for safe async transactions.
-                                 [&storage, handler, generic_input, &field, url_key, field_name, export_requested](
+                                 [&storage, handler, generic_input, &field, url_key, field_name, requested_export_fmt](
                                      immutable_fields_t fields) -> Response {
                                    using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
                                    const GETInput input(std::move(generic_input),
@@ -158,7 +165,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                                         field_name,
                                                         url_key,
                                                         storage.GetRole(),
-                                                        export_requested);
+                                                        requested_export_fmt);
                                    return handler.Run(input);
                                  },
                                  std::move(request))

@@ -234,6 +234,44 @@ CURRENT_STRUCT_T(HypermediaRESTCollectionResponse) {
   CURRENT_FIELD(data, std::vector<T>);
 };
 
+// The most simple way to pass universal dictionary/matrix key and entry to the templated Current struct.
+template <typename KEY, typename ENTRY>
+struct DetailedExportEntryHelper {
+  using key_t = KEY;
+  using entry_t = const ENTRY&;
+  key_t key;
+  entry_t entry;
+  DetailedExportEntryHelper(key_t key, entry_t entry) : key(key), entry(entry) {}
+};
+
+// Required for templated Current structs using `T::something` :(
+template <typename T>
+struct DetailedExportEntryHelperWrapper {
+  using key_t = typename T::key_t;
+  using entry_t = typename T::entry_t;
+};
+
+template <>
+struct DetailedExportEntryHelperWrapper<int> {
+  using key_t = int;
+  using entry_t = int;
+};
+
+// `T` = `DetailedExportEntryHelper<KEY, ENTRY>`.
+// NOTE: This structure uses const reference to avoid copying entries, thus serving as a "view" for
+// serialization purposes only.
+CURRENT_STRUCT_T(HypermediaRESTDetailedExportEntry) {
+  CURRENT_FIELD(key, typename DetailedExportEntryHelperWrapper<T>::key_t);
+  CURRENT_FIELD(timestamp_us, std::chrono::microseconds, std::chrono::microseconds(0));
+  CURRENT_FIELD(timestamp_http, std::string);
+  CURRENT_FIELD(data, typename DetailedExportEntryHelperWrapper<T>::entry_t);
+  CURRENT_CONSTRUCTOR_T(HypermediaRESTDetailedExportEntry)(std::chrono::microseconds timestamp, const T& helper)
+      : key(helper.key),
+        timestamp_us(timestamp),
+        timestamp_http(FormatDateTimeAsIMFFix(timestamp)),
+        data(helper.entry) {}
+};
+
 using HypermediaRESTGenericResponse = generic::RESTGenericResponse;
 
 }  // namespace current::storage::rest:hypermedia

@@ -123,6 +123,8 @@ struct Structured {
                                     semantics::key_completeness::FullKey,
                                     FIELD_SEMANTICS,
                                     semantics::key_completeness::DictionaryOrMatrixCompleteKey) const {
+      using detailed_export_helper_t = hypermedia::DetailedExportEntryHelper<KEY, ENTRY>;
+      using detailed_export_entry_t = hypermedia::HypermediaRESTDetailedExportEntry<detailed_export_helper_t>;
       if (Exists(input.get_url_key)) {
         // View a resource under a specific, complete, key.
         const auto url_key_value = Value(input.get_url_key);
@@ -130,20 +132,24 @@ struct Structured {
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
           const auto& value = Value(result);
-          if (!input.export_requested) {
+          const auto last_modified = input.field.LastModified(key);
+          if (!Exists(input.requested_export_fmt)) {
             const std::string url_collection =
                 input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
             const std::string url =
                 url_collection + '/' + field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
             Response response = RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
-            const auto last_modified = input.field.LastModified(key);
             if (Exists(last_modified)) {
               response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
             }
             return response;
           } else {
-            // Export requested via `?export`, dump the raw JSON record.
-            return value;
+            // Export requested via `?export`, dump the record using appropriate format.
+            if (input.requested_export_fmt == FieldExportFormat::Detailed) {
+              return detailed_export_entry_t(Value(last_modified), detailed_export_helper_t(key, value));
+            } else {
+              return value;
+            }
           }
         } else {
           return ErrorResponse(
@@ -152,7 +158,7 @@ struct Structured {
               HTTPResponseCode.NotFound);
         }
       } else {
-        if (!input.export_requested) {
+        if (!Exists(input.requested_export_fmt)) {
           // Top-level field view, identical for dictionaries and matrices.
           // Pass `url` twice, as `pagination_url` and `collection_url` are the same for this format.
           const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
@@ -172,8 +178,23 @@ struct Structured {
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.
             std::ostringstream result;
-            for (const auto& element : input.field) {
-              result << JSON<JSONFormat::Minimalistic>(element) << '\n';
+            if (input.requested_export_fmt == FieldExportFormat::Detailed) {
+              result << '[';
+              for (auto cit = input.field.begin(); cit != input.field.end(); ++cit) {
+                const auto last_modified = input.field.LastModified(cit.key());
+                CURRENT_ASSERT(Exists(last_modified));
+                const auto detailed_entry =
+                    detailed_export_entry_t(Value(last_modified), detailed_export_helper_t(cit.key(), *cit));
+                result << JSON<JSONFormat::Minimalistic>(detailed_entry) << ',';
+              }
+              if (result.tellp() > 1) {
+                result.seekp(-1, std::ios_base::cur);
+              }
+              result << "]\n";
+            } else {
+              for (const auto& element : input.field) {
+                result << JSON<JSONFormat::Minimalistic>(element) << '\n';
+              }
             }
             return result.str();
           }
