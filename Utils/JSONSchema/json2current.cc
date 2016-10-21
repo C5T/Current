@@ -40,9 +40,7 @@ int main(int argc, char** argv) {
 
   try {
     current::FileSystem::WriteStringToFile(
-        current::utils::JSONSchemaAsCurrentStructs(current::FileSystem::ReadFileAsString(FLAGS_input),
-                                                   FLAGS_top_level_struct_name),
-        FLAGS_output.c_str());
+        current::utils::JSONSchemaAsCurrentStructs(FLAGS_input, FLAGS_top_level_struct_name), FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {
     std::cerr << e.What() << std::endl;

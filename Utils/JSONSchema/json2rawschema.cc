@@ -34,9 +34,9 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   try {
-    current::FileSystem::WriteStringToFile(JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(
-                                               current::FileSystem::ReadFileAsString(FLAGS_input))),
-                                           FLAGS_output.c_str());
+    current::FileSystem::WriteStringToFile(
+        JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(FLAGS_input)),
+        FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {
     std::cerr << e.What() << std::endl;

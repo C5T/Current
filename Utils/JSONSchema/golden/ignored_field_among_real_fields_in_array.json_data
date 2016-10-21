@@ -1,16 +1,1 @@
-[
-  {
-    "a": "foo",
-    "b": null,
-    "c": "bar"
-  },
-  {
-    "a": "foo",
-    "b": [],
-    "c": "bar"
-  },
-  {
-    "a": "foo",
-    "c": "bar"
-  }
-]
+[ { "a": "foo", "b": null, "c": "bar" }, { "a": "foo", "b": [], "c": "bar" }, { "a": "foo", "c": "bar" } ]

@@ -29,7 +29,6 @@ SOFTWARE.
 #include "infer.h"
 
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/file/file.h"
 
 DEFINE_string(input, "input_data.json", "The name of the input file containing the JSON to parse.");
 
@@ -43,10 +42,8 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   try {
-    current::FileSystem::WriteStringToFile(
-        current::utils::DescribeSchema(current::FileSystem::ReadFileAsString(FLAGS_input),
-                                       FLAGS_number_of_example_values),
-        FLAGS_output.c_str());
+    current::FileSystem::WriteStringToFile(current::utils::DescribeSchema(FLAGS_input, FLAGS_number_of_example_values),
+                                           FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {
     std::cerr << e.What() << std::endl;

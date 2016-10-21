@@ -52,22 +52,24 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
   const std::vector<std::string> cases = ListGoldenFilesWithExtension(golden_dir, "json_data");
   for (const auto& test : cases) {
     const std::string filename_prefix = current::FileSystem::JoinPath("golden", test);
-    const std::string json = current::FileSystem::ReadFileAsString(filename_prefix + ".json_data");
+    const std::string file_name = filename_prefix + ".json_data";
     if (!FLAGS_regenerate_golden_inferred_schemas) {
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".raw"),
-                JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)))
+                JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name)))
           << "While running test case `" << test << "`.";
-      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"), current::utils::DescribeSchema(json))
+      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),
+                current::utils::DescribeSchema(file_name))
           << "While running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".schema"),
-                current::utils::JSONSchemaAsCurrentStructs(json))
+                current::utils::JSONSchemaAsCurrentStructs(file_name))
           << "While running test case `" << test << "`.";
     } else {
       current::FileSystem::WriteStringToFile(
-          JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)),
+          JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name)),
           (filename_prefix + ".raw").c_str());
-      current::FileSystem::WriteStringToFile(current::utils::DescribeSchema(json), (filename_prefix + ".tsv").c_str());
-      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsCurrentStructs(json),
+      current::FileSystem::WriteStringToFile(current::utils::DescribeSchema(file_name),
+                                             (filename_prefix + ".tsv").c_str());
+      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsCurrentStructs(file_name),
                                              (filename_prefix + ".schema").c_str());
     }
   }

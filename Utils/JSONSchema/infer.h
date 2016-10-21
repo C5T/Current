@@ -35,6 +35,8 @@ SOFTWARE.
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Serialization/json.h"
 
+#include "../../Bricks/file/file.h"
+
 namespace current {
 namespace utils {
 
@@ -352,10 +354,6 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
   }
 }
 
-inline impl::Schema SchemaFromJSON(const rapidjson::Document& document) {
-  return impl::RecursivelyInferSchema(document);
-}
-
 class HumanReadableSchemaExporter {
  public:
   HumanReadableSchemaExporter(const Schema& schema, std::ostringstream& os, size_t number_of_example_values)
@@ -384,9 +382,9 @@ class HumanReadableSchemaExporter {
       std::sort(sorted.begin(), sorted.end());
       std::vector<std::string> sorted_as_strings;
       for (const auto& e : sorted) {
-        sorted_as_strings.push_back('`' + e.second + "` : " + current::ToString(-e.first));
+        sorted_as_strings.push_back('`' + e.second + "` : " + ToString(-e.first));
       }
-      os_ << '\t' << current::strings::Join(sorted_as_strings, ", ");
+      os_ << '\t' << strings::Join(sorted_as_strings, ", ");
     }
     os_ << '\n';
   }
@@ -420,7 +418,7 @@ class HumanReadableSchemaExporter {
     } else {
       os_ << x.fields.size() << " fields";
     }
-    os_ << '\t' << current::strings::Join(fields, ", ") << '\n';
+    os_ << '\t' << strings::Join(fields, ", ") << '\n';
 
     for (const auto& f : x.fields) {
       path_ = save_path.empty() ? f.first : (save_path + '.' + f.first);
@@ -520,36 +518,50 @@ class SchemaToCurrentStructPrinter {
   }
 };
 
-}  // namespace impl
-
-inline impl::Schema InferRawSchemaFromJSON(const std::string& json) {
+inline Schema SchemaFromOneJSON(const std::string& json) {
   rapidjson::Document document;
   if (document.Parse<0>(json.c_str()).HasParseError()) {
     CURRENT_THROW(InferSchemaParseJSONException());
   }
-  return impl::SchemaFromJSON(document);
+  return impl::RecursivelyInferSchema(document);
 }
 
-inline std::string DescribeSchema(const std::string& json, const size_t number_of_example_values = 20u) {
-  rapidjson::Document document;
-  if (document.Parse<0>(json.c_str()).HasParseError()) {
-    CURRENT_THROW(InferSchemaParseJSONException());
-  }
-  const impl::Schema schema = impl::SchemaFromJSON(document);
+inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name) {
+  bool first = true;
+  impl::Schema schema;
+  FileSystem::ReadFileByLines(file_name,
+                              [&first, &schema](std::string&& json) {
+                                rapidjson::Document document;
+                                // `&json[0]` to pass a mutable string.
+                                if (document.Parse<0>(&json[0]).HasParseError()) {
+                                  CURRENT_THROW(InferSchemaParseJSONException());
+                                }
+                                if (first) {
+                                  schema = impl::RecursivelyInferSchema(document);
+                                  first = false;
+                                } else {
+                                  impl::Schema lhs = schema;
+                                  const impl::Schema rhs = impl::RecursivelyInferSchema(document);
+                                  CallReduce(lhs, rhs, schema);  // The last parameter is the output one.
+                                }
+                              });
+  return schema;
+}
+
+}  // namespace impl
+
+inline std::string DescribeSchema(const std::string& file_name, const size_t number_of_example_values = 20u) {
   std::ostringstream result;
-  impl::HumanReadableSchemaExporter exporter(schema, result, number_of_example_values);
+  impl::HumanReadableSchemaExporter exporter(
+      impl::SchemaFromOneJSONPerLineFile(file_name), result, number_of_example_values);
   return result.str();
 }
 
-inline std::string JSONSchemaAsCurrentStructs(const std::string& json,
+inline std::string JSONSchemaAsCurrentStructs(const std::string& file_name,
                                               const std::string& top_level_struct_name = "Schema") {
-  rapidjson::Document document;
-  if (document.Parse<0>(json.c_str()).HasParseError()) {
-    CURRENT_THROW(InferSchemaParseJSONException());
-  }
-  const impl::Schema schema = impl::SchemaFromJSON(document);
   std::ostringstream result;
-  impl::SchemaToCurrentStructPrinter printer(schema, result, top_level_struct_name);
+  impl::SchemaToCurrentStructPrinter printer(
+      impl::SchemaFromOneJSONPerLineFile(file_name), result, top_level_struct_name);
   return result.str();
 }
 
