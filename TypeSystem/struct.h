@@ -198,7 +198,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   struct CRTH<s> {                                                                 \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;           \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }         \
-    typedef CSTI_##s<int, ::crnt::r::FC> CURRENT_FIELD_COUNT_STRUCT;               \
+    typedef CSTI_##s<::crnt::r::DummyT, ::crnt::r::FC> CURRENT_FIELD_COUNT_STRUCT; \
     using FIELD_INDEX_BASE = ::crnt::r::FIELD_INDEX_BASE_IMPL<CRTH<s>>;            \
   };                                                                               \
   struct CURRENT_STRUCT_T_SUPER_HELPER_##s {                                       \
@@ -226,19 +226,19 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     using FIELD_INDEX_BASE = ::crnt::r::FIELD_INDEX_BASE_IMPL<CRH<s>>;   \
   }
 
-#define CURRENT_STRUCT_T_HELPERS(s, super)                                 \
-  template <typename T, typename INSTANTIATION_TYPE>                       \
-  struct CSTI_##s;                                                         \
-  template <typename T>                                                    \
-  using s = CSTI_##s<T, ::crnt::r::DF>;                                    \
-  template <template <typename> class>                                     \
-  struct CRTH;                                                             \
-  template <>                                                              \
-  struct CRTH<s> {                                                         \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;   \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; } \
-    typedef CSTI_##s<int, ::crnt::r::FC> CURRENT_FIELD_COUNT_STRUCT;       \
-    using FIELD_INDEX_BASE = ::crnt::r::FIELD_INDEX_BASE_IMPL<CRTH<s>>;    \
+#define CURRENT_STRUCT_T_HELPERS(s, super)                                         \
+  template <typename T, typename INSTANTIATION_TYPE>                               \
+  struct CSTI_##s;                                                                 \
+  template <typename T>                                                            \
+  using s = CSTI_##s<T, ::crnt::r::DF>;                                            \
+  template <template <typename> class>                                             \
+  struct CRTH;                                                                     \
+  template <>                                                                      \
+  struct CRTH<s> {                                                                 \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;           \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }         \
+    typedef CSTI_##s<::crnt::r::DummyT, ::crnt::r::FC> CURRENT_FIELD_COUNT_STRUCT; \
+    using FIELD_INDEX_BASE = ::crnt::r::FIELD_INDEX_BASE_IMPL<CRTH<s>>;            \
   }
 
 #endif  // CURRENT_WINDOWS

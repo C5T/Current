@@ -252,7 +252,7 @@ struct DetailedExportEntryHelperWrapper {
 };
 
 template <>
-struct DetailedExportEntryHelperWrapper<int> {
+struct DetailedExportEntryHelperWrapper<current::reflection::DummyTemplateType> {
   using key_t = int;
   using entry_t = int;
 };
