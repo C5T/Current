@@ -33,6 +33,8 @@ DEFINE_string(output,
               ".current/output_schema.h",
               "The name of the output file to dump the schema as a compilable collection of `CURRENT_STRUCT`-s.");
 
+DEFINE_string(ignore, "", "The colon-separated list of JSON paths to ignore during schema inference.");
+
 DEFINE_string(top_level_struct_name, "Schema", "The name of a top-level `CURRENT_STRUCT` to expose the schema under.");
 
 int main(int argc, char** argv) {
@@ -40,7 +42,11 @@ int main(int argc, char** argv) {
 
   try {
     current::FileSystem::WriteStringToFile(
-        current::utils::JSONSchemaAsCurrentStructs(FLAGS_input, FLAGS_top_level_struct_name), FLAGS_output.c_str());
+        current::utils::JSONSchemaAsCurrentStructs(
+            FLAGS_input,
+            current::utils::TrackPath(current::utils::TrackPathIgnoreList(FLAGS_ignore)),
+            FLAGS_top_level_struct_name),
+        FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {
     std::cerr << e.What() << std::endl;

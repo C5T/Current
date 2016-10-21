@@ -29,13 +29,15 @@ SOFTWARE.
 
 DEFINE_string(input, "input_data.json", "The name of the input file containing the JSON to parse.");
 DEFINE_string(output, "output_schema.json", "The name of the output file to dump the raw schema of ths input JSON.");
+DEFINE_string(ignore, "", "The colon-separated list of JSON paths to ignore during schema inference.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   try {
     current::FileSystem::WriteStringToFile(
-        JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(FLAGS_input)),
+        JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(
+            FLAGS_input, current::utils::TrackPath(current::utils::TrackPathIgnoreList(FLAGS_ignore)))),
         FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {

@@ -40,6 +40,40 @@ SOFTWARE.
 namespace current {
 namespace utils {
 
+struct DoNotTrackPath {
+  DoNotTrackPath() = default;
+  DoNotTrackPath Member(const std::string& unused_name) const {
+    static_cast<void>(unused_name);
+    return DoNotTrackPath();
+  }
+  DoNotTrackPath ArrayElement(size_t unused_index) const {
+    static_cast<void>(unused_index);
+    return DoNotTrackPath();
+  }
+  operator bool() const { return true; }
+};
+
+struct TrackPathIgnoreList {
+  std::unordered_set<std::string> ignore_list;
+  TrackPathIgnoreList(const std::string& value) {
+    for (const auto& path : strings::Split(value, ":;, \t\n")) {
+      ignore_list.insert(path);
+    }
+  }
+  bool IsIgnored(const std::string& path) const { return ignore_list.count(path) ? true : false; }
+};
+
+struct TrackPath {
+  const std::string path;
+  const TrackPathIgnoreList* ignore = nullptr;
+  TrackPath() = default;
+  TrackPath(const TrackPathIgnoreList& ignore) : ignore(&ignore) {}
+  TrackPath(const std::string path, const TrackPathIgnoreList* ignore) : path(path), ignore(ignore) {}
+  TrackPath Member(const std::string& name) const { return TrackPath(path + '.' + name, ignore); }
+  TrackPath ArrayElement(size_t index) const { return TrackPath(path + '[' + ToString(index) + ']', ignore); }
+  operator bool() const { return ignore ? !ignore->IsIgnored(path) : true; }
+};
+
 // LCOV_EXCL_START
 struct InferSchemaException : Exception {
   using Exception::Exception;
@@ -57,8 +91,12 @@ struct InferSchemaTopLevelEmptyArrayIsNotAllowed : InferSchemaInputException {};
 struct InferSchemaArrayOfNullsOrEmptyArraysIsNotAllowed : InferSchemaInputException {};
 struct InferSchemaUnsupportedTypeException : InferSchemaInputException {};
 struct InferSchemaInvalidCPPIdentifierException : InferSchemaInputException {
-  explicit InferSchemaInvalidCPPIdentifierException(const std::string& id)
+  template <typename PATH>
+  explicit InferSchemaInvalidCPPIdentifierException(const std::string& id, const PATH&)
       : InferSchemaInputException("Invalid C++ identifier used as the key in JSON: '" + id + "'.") {}
+  explicit InferSchemaInvalidCPPIdentifierException(const std::string& id, const TrackPath& path)
+      : InferSchemaInputException("Invalid C++ identifier used as the key in JSON: '" + id + "', at '" + path.path +
+                                  "'.") {}
 };
 
 struct InferSchemaIncompatibleTypesBase : InferSchemaInputException {
@@ -292,7 +330,8 @@ struct Reduce<Array, Array> {
   }
 };
 
-inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
+template <typename PATH>
+inline Schema RecursivelyInferSchema(const rapidjson::Value& value, const PATH& path) {
   // Note: Empty arrays are silently ignored. Their schema can not be inferred.
   //       If the only value for certain field is an empty array, this field will not be output.
   //       If certain field has possible values other than empty array, they will be used, as `Optional<>`.
@@ -302,10 +341,13 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
       const auto& inner = cit->value;
       if (!(inner.IsArray() && inner.Empty())) {
         const std::string key = std::string(cit->name.GetString(), cit->name.GetStringLength());
-        if (!IsValidCPPIdentifier(key)) {
-          CURRENT_THROW(InferSchemaInvalidCPPIdentifierException(key));
+        const PATH next_path = path.Member(key);
+        if (next_path) {
+          if (!IsValidCPPIdentifier(key)) {
+            CURRENT_THROW(InferSchemaInvalidCPPIdentifierException(key, path));
+          }
+          object.fields[key] = RecursivelyInferSchema(inner, next_path);
         }
-        object.fields[key] = RecursivelyInferSchema(inner);
       }
     }
     return object;
@@ -315,10 +357,11 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
     } else {
       Array array;
       bool first = true;
-      for (auto cit = value.Begin(); cit != value.End(); ++cit) {
+      size_t array_index = 0u;
+      for (auto cit = value.Begin(); cit != value.End(); ++cit, ++array_index) {
         const auto& inner = *cit;
         if (!(inner.IsArray() && inner.Empty())) {
-          const auto element = RecursivelyInferSchema(inner);
+          const auto element = RecursivelyInferSchema(inner, path.ArrayElement(array_index));
           Schema& destination = array.element;
           if (first) {
             first = false;
@@ -335,7 +378,7 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
     }
   } else if (value.IsString()) {
     return String(std::string(value.GetString(), value.GetStringLength()));
-#if 0  // Hack. -- D.K.
+#if 1  // Hack. -- D.K.
   } else if (value.IsNumber()) {
     return String(current::ToString(value.GetDouble()));
 #endif
@@ -501,7 +544,7 @@ class SchemaToCurrentStructPrinter {
     }
   };
 
-  SchemaToCurrentStructPrinter(const Schema& schema, std::ostringstream& os, const std::string& top_level_struct_name) {
+  void Print(const Schema& schema, std::ostringstream& os, const std::string& top_level_struct_name) {
     os << "// Autogenerated schema inferred from input JSON data.\n";
 
     std::string type;
@@ -518,30 +561,32 @@ class SchemaToCurrentStructPrinter {
   }
 };
 
-inline Schema SchemaFromOneJSON(const std::string& json) {
+template <typename PATH = DoNotTrackPath>
+inline Schema SchemaFromOneJSON(const std::string& json, const PATH& path = PATH()) {
   rapidjson::Document document;
   if (document.Parse<0>(json.c_str()).HasParseError()) {
     CURRENT_THROW(InferSchemaParseJSONException());
   }
-  return impl::RecursivelyInferSchema(document);
+  return impl::RecursivelyInferSchema(document, path);
 }
 
-inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name) {
+template <typename PATH = DoNotTrackPath>
+inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name, const PATH& path = PATH()) {
   bool first = true;
   impl::Schema schema;
   FileSystem::ReadFileByLines(file_name,
-                              [&first, &schema](std::string&& json) {
+                              [&path, &first, &schema](std::string&& json) {
                                 rapidjson::Document document;
                                 // `&json[0]` to pass a mutable string.
                                 if (document.Parse<0>(&json[0]).HasParseError()) {
                                   CURRENT_THROW(InferSchemaParseJSONException());
                                 }
                                 if (first) {
-                                  schema = impl::RecursivelyInferSchema(document);
+                                  schema = impl::RecursivelyInferSchema(document, path);
                                   first = false;
                                 } else {
                                   impl::Schema lhs = schema;
-                                  const impl::Schema rhs = impl::RecursivelyInferSchema(document);
+                                  const impl::Schema rhs = impl::RecursivelyInferSchema(document, path);
                                   CallReduce(lhs, rhs, schema);  // The last parameter is the output one.
                                 }
                               });
@@ -550,18 +595,23 @@ inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name) {
 
 }  // namespace impl
 
-inline std::string DescribeSchema(const std::string& file_name, const size_t number_of_example_values = 20u) {
+template <typename PATH = DoNotTrackPath>
+inline std::string DescribeSchema(const std::string& file_name,
+                                  const PATH& path = PATH(),
+                                  const size_t number_of_example_values = 20u) {
   std::ostringstream result;
   impl::HumanReadableSchemaExporter exporter(
-      impl::SchemaFromOneJSONPerLineFile(file_name), result, number_of_example_values);
+      impl::SchemaFromOneJSONPerLineFile(file_name, path), result, number_of_example_values);
   return result.str();
 }
 
+template <typename PATH = DoNotTrackPath>
 inline std::string JSONSchemaAsCurrentStructs(const std::string& file_name,
+                                              const PATH& path = PATH(),
                                               const std::string& top_level_struct_name = "Schema") {
   std::ostringstream result;
-  impl::SchemaToCurrentStructPrinter printer(
-      impl::SchemaFromOneJSONPerLineFile(file_name), result, top_level_struct_name);
+  impl::SchemaToCurrentStructPrinter().Print(
+      impl::SchemaFromOneJSONPerLineFile(file_name, path), result, top_level_struct_name);
   return result.str();
 }
 

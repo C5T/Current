@@ -34,6 +34,8 @@ DEFINE_string(input, "input_data.json", "The name of the input file containing t
 
 DEFINE_string(output, ".current/output_schema.tsv", "The name of the output file to dump the schema as TSV.");
 
+DEFINE_string(ignore, "", "The colon-separated list of JSON paths to ignore during schema inference.");
+
 DEFINE_int32(number_of_example_values,
              20,
              "Dump string values and their counters if the number of distinct ones is no greater than this one.");
@@ -42,8 +44,11 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   try {
-    current::FileSystem::WriteStringToFile(current::utils::DescribeSchema(FLAGS_input, FLAGS_number_of_example_values),
-                                           FLAGS_output.c_str());
+    current::FileSystem::WriteStringToFile(
+        current::utils::DescribeSchema(FLAGS_input,
+                                       current::utils::TrackPath(current::utils::TrackPathIgnoreList(FLAGS_ignore)),
+                                       FLAGS_number_of_example_values),
+        FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {
     std::cerr << e.What() << std::endl;
