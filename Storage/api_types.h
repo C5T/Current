@@ -39,8 +39,8 @@ const std::string kRESTfulSchemaURLComponent = "schema";
 const std::string kRESTfulExportURLQueryParameter = "export";
 
 enum class FieldExportFormat {
-  Simple,   // Single entry JSON/one JSON per line, no timestamps.
-  Detailed  // Single JSON/array of `DetailedExportEntry<>`-s.
+  Simple,   // Single entry object JSON or one JSON per line for collections, no timestamps.
+  Detailed  // Entries wrapped in `DetailedExportEntry<>`, single JSON object or JSON array for collections.
 };
 
 // TODO(dkorolev): The whole `FieldTypeDependentImpl` section below to be moved to `semantics.h`.

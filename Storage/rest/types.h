@@ -234,7 +234,7 @@ CURRENT_STRUCT_T(HypermediaRESTCollectionResponse) {
   CURRENT_FIELD(data, std::vector<T>);
 };
 
-// The most simple way to pass universal dictionary/matrix key and entry to the templated Current struct.
+// The simplest way to pass universal dictionary/matrix key and entry to the templated Current struct.
 template <typename KEY, typename ENTRY>
 struct DetailedExportEntryHelper {
   using key_t = KEY;
