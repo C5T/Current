@@ -142,12 +142,16 @@ inline std::string MaybeOptionalHumanReadableType(bool has_nulls, const std::str
 // Inferred JSON types for fields.
 // Internally, the type is maintained along with the histogram of its values seen.
 CURRENT_STRUCT(String) {
-  CURRENT_FIELD(values, (std::map<std::string, uint32_t>));
+  CURRENT_FIELD(top_values, (std::unordered_map<std::string, uint32_t>));
+  CURRENT_FIELD(top_values_inverted, (std::set<std::pair<uint32_t, std::string>>));
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
   CURRENT_DEFAULT_CONSTRUCTOR(String) {}
-  CURRENT_CONSTRUCTOR(String)(const std::string& string) { values[string] = 1; }
+  CURRENT_CONSTRUCTOR(String)(const std::string& string) {
+    top_values[string] = 1;
+    top_values_inverted.emplace(1, string);
+  }
 
   // LCOV_EXCL_START
   std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "std::string"); }
@@ -183,7 +187,7 @@ CURRENT_STRUCT(Array) {
 };
 
 CURRENT_STRUCT(Object) {
-  CURRENT_FIELD(fields, (std::map<std::string, Schema>));
+  CURRENT_FIELD(fields, (std::unordered_map<std::string, Schema>));
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
@@ -266,8 +270,18 @@ template <>
 struct Reduce<String, String> {
   static Schema DoIt(const String& lhs, const String& rhs) {
     String result(lhs);
-    for (const auto& counter : rhs.values) {
-      result.values[counter.first] += counter.second;
+    for (const auto& counter : rhs.top_values) {
+      result.top_values[counter.first] += counter.second;
+    }
+    result.top_values_inverted.clear();
+    for (const auto& counter : result.top_values) {
+      result.top_values_inverted.emplace(counter.second, counter.first);
+    }
+    // Keep the "distinct values" map of of manageable size.
+    while (result.top_values_inverted.size() > 100u) {
+      auto iterator = result.top_values_inverted.begin();
+      result.top_values.erase(iterator->second);
+      result.top_values_inverted.erase(iterator);
     }
     result.instances += rhs.instances;
     result.nulls += rhs.nulls;
@@ -297,6 +311,8 @@ struct Reduce<Object, Object> {
     for (const auto& cit : rhs.fields) {
       rhs_fields.push_back(cit.first);
     }
+    std::sort(lhs_fields.begin(), lhs_fields.end());
+    std::sort(rhs_fields.begin(), rhs_fields.end());
     std::vector<std::string> union_fields;
     std::set_union(
         lhs_fields.begin(), lhs_fields.end(), rhs_fields.begin(), rhs_fields.end(), std::back_inserter(union_fields));
@@ -409,27 +425,24 @@ class HumanReadableSchemaExporter {
 
   void operator()(const String& x) {
     os_ << path_ << "\tString\t" << x.instances << '\t' << x.nulls << '\t';
-    if (x.values.empty()) {
+    if (x.top_values.empty()) {
       os_ << "no values";
-    } else if (x.values.size() == 1) {
+    } else if (x.top_values.size() == 1) {
       os_ << "1 distinct value";
     } else {
-      os_ << x.values.size() << " distinct values";
+      os_ << x.top_values.size() << "++ distinct values";
     }
-    if (x.values.size() <= number_of_example_values_) {
-      // Output most common values of this [string] field, if there aren't too many of them.
-      std::vector<std::pair<int, std::string>> sorted;
-      for (const auto& s : x.values) {
-        sorted.emplace_back(-static_cast<int>(s.second), s.first);
+    // Output most common values of this [string] field, if there aren't too many of them.
+    std::vector<std::string> sorted_as_strings;
+    size_t total = 0u;
+    for (auto rit = x.top_values_inverted.rbegin(); rit != x.top_values_inverted.rend(); ++rit) {
+      sorted_as_strings.push_back('`' + rit->second + "` : " + ToString(rit->first));
+      ++total;
+      if (total >= number_of_example_values_) {
+        break;
       }
-      std::sort(sorted.begin(), sorted.end());
-      std::vector<std::string> sorted_as_strings;
-      for (const auto& e : sorted) {
-        sorted_as_strings.push_back('`' + e.second + "` : " + ToString(-e.first));
-      }
-      os_ << '\t' << strings::Join(sorted_as_strings, ", ");
     }
-    os_ << '\n';
+    os_ << '\t' << strings::Join(sorted_as_strings, ", ") << '\n';
   }
 
   void operator()(const Bool& x) {
