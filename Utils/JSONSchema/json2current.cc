@@ -29,14 +29,11 @@ SOFTWARE.
 
 DEFINE_string(input, "input_data.json", "The name of the input file containing the JSON to parse.");
 
-DEFINE_string(
-    output,
-    ".current/output_schema.h",
-    "The name of the output file to dump the schema as a compilable collection of `CURRENT_STRUCT`-s.");
+DEFINE_string(output,
+              ".current/output_schema.h",
+              "The name of the output file to dump the schema as a compilable collection of `CURRENT_STRUCT`-s.");
 
-DEFINE_string(top_level_struct_name,
-              "Schema",
-              "The name of a top-level `CURRENT_STRUCT` to expose the schema under.");
+DEFINE_string(top_level_struct_name, "Schema", "The name of a top-level `CURRENT_STRUCT` to expose the schema under.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);

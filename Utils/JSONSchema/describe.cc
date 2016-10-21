@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// Takes a free-form, and, if its schema is strict, describes it in a human-readable format.
+// The output format is a TSV, but only in a sense it can be copy-pasted into a spreadsheet editor
+// for other humans to understand. By no means it's a TSV view of the incoming JSON.
+
 #include "infer.h"
 
 #include "../../Bricks/dflags/dflags.h"
@@ -31,18 +35,17 @@ DEFINE_string(input, "input_data.json", "The name of the input file containing t
 
 DEFINE_string(output, ".current/output_schema.tsv", "The name of the output file to dump the schema as TSV.");
 
-DEFINE_int32(
-    number_of_example_values,
-    20,
-    "Dump string values and their counters if the number of distinct ones is no greater than this one.");
+DEFINE_int32(number_of_example_values,
+             20,
+             "Dump string values and their counters if the number of distinct ones is no greater than this one.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   try {
     current::FileSystem::WriteStringToFile(
-        current::utils::JSONSchemaAsTSV(current::FileSystem::ReadFileAsString(FLAGS_input),
-                                        FLAGS_number_of_example_values),
+        current::utils::DescribeSchema(current::FileSystem::ReadFileAsString(FLAGS_input),
+                                       FLAGS_number_of_example_values),
         FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {

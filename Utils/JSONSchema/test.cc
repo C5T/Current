@@ -30,9 +30,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_bool(regenerate_golden_inferred_schemas,
-            false,
-            "Set to 'true' to re-generate golden inferred schema files.");
+DEFINE_bool(regenerate_golden_inferred_schemas, false, "Set to 'true' to re-generate golden inferred schema files.");
 
 static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& dir, const std::string& ext) {
   std::vector<std::string> names;
@@ -40,8 +38,7 @@ static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& 
   current::FileSystem::ScanDir(dir,
                                [&](const std::string& filename) {
                                  if (filename.length() >= suffix.length()) {
-                                   const std::string prefix =
-                                       filename.substr(0, filename.length() - suffix.length());
+                                   const std::string prefix = filename.substr(0, filename.length() - suffix.length());
                                    if (prefix + suffix == filename) {
                                      names.push_back(prefix);
                                    }
@@ -60,8 +57,7 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".raw"),
                 JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)))
           << "While running test case `" << test << "`.";
-      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),
-                current::utils::JSONSchemaAsTSV(json))
+      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"), current::utils::DescribeSchema(json))
           << "While running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".schema"),
                 current::utils::JSONSchemaAsCurrentStructs(json))
@@ -70,8 +66,7 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
       current::FileSystem::WriteStringToFile(
           JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)),
           (filename_prefix + ".raw").c_str());
-      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsTSV(json),
-                                             (filename_prefix + ".tsv").c_str());
+      current::FileSystem::WriteStringToFile(current::utils::DescribeSchema(json), (filename_prefix + ".tsv").c_str());
       current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsCurrentStructs(json),
                                              (filename_prefix + ".schema").c_str());
     }
