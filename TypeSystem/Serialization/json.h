@@ -33,8 +33,11 @@ SOFTWARE.
 #include "json/optional.h"
 #include "json/pair.h"
 #include "json/primitives.h"
+#include "json/set.h"
 #include "json/struct.h"
 #include "json/typeid.h"
+#include "json/unordered_map.h"
+#include "json/unordered_set.h"
 #include "json/variant.h"
 #include "json/vector.h"
 

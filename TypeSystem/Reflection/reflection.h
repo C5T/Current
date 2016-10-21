@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <typeindex>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "exceptions.h"
 #include "types.h"
@@ -111,6 +112,28 @@ struct ReflectorImpl {
     ReflectedType operator()(TypeSelector<std::map<TK, TV>>) {
       ReflectedType_Map result(Value<ReflectedTypeBase>(Reflector().ReflectType<TK>()).type_id,
                                Value<ReflectedTypeBase>(Reflector().ReflectType<TV>()).type_id);
+      result.type_id = CalculateTypeID(result);
+      return ReflectedType(std::move(result));
+    }
+
+    template <typename TK, typename TV>
+    ReflectedType operator()(TypeSelector<std::unordered_map<TK, TV>>) {
+      ReflectedType_UnorderedMap result(Value<ReflectedTypeBase>(Reflector().ReflectType<TK>()).type_id,
+                                        Value<ReflectedTypeBase>(Reflector().ReflectType<TV>()).type_id);
+      result.type_id = CalculateTypeID(result);
+      return ReflectedType(std::move(result));
+    }
+
+    template <typename TV>
+    ReflectedType operator()(TypeSelector<std::set<TV>>) {
+      ReflectedType_Set result(Value<ReflectedTypeBase>(Reflector().ReflectType<TV>()).type_id);
+      result.type_id = CalculateTypeID(result);
+      return ReflectedType(std::move(result));
+    }
+
+    template <typename TV>
+    ReflectedType operator()(TypeSelector<std::unordered_set<TV>>) {
+      ReflectedType_UnorderedSet result(Value<ReflectedTypeBase>(Reflector().ReflectType<TV>()).type_id);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
     }
@@ -261,6 +284,27 @@ struct ReflectorImpl {
         }
         if (m.value_type == from_) {
           m.value_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_UnorderedMap& m) const {
+        if (m.key_type == from_) {
+          m.key_type = to_;
+        }
+        if (m.value_type == from_) {
+          m.value_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_Set& s) const {
+        if (s.value_type == from_) {
+          s.value_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_UnorderedSet& s) const {
+        if (s.value_type == from_) {
+          s.value_type = to_;
         }
       }
 

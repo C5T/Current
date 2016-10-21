@@ -140,7 +140,7 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `o4` | `null` or Array of Integer (32-bit signed) |
 | `o5` | `null` or Array of `A` |
 | `o6` | Pair of String and `null` or `A` |
-| `o7` | Map of String into `null` or `A` |
+| `o7` | Ordered map of String into `null` or `A` |
 
 
 ### `FullTest`
