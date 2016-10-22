@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
 
+#include <map>
+#include <set>
 #include <typeindex>
 #include <unordered_map>
 #include <unordered_set>
