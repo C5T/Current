@@ -111,7 +111,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_map<TK, TV,
         destination.emplace(std::move(k), std::move(v));
       }
     } else if (!json::JSONPatchMode<J>::value || (json_parser && !json_parser.Current().IsArray())) {
-      throw JSONSchemaException("[unordeed_]map as array", json_parser);  // LCOV_EXCL_LINE
+      throw JSONSchemaException("[unordered_]map as array", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };
