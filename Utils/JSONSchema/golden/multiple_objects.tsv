@@ -4,5 +4,5 @@ Schema.b	Bool	3	0	1 false, 2 true
 Schema.optional	Array	1	1
 Schema.optional[]	Object	2	0	2 fields	maybe, string
 Schema.optional[].maybe	Bool	1	1	0 false, 1 true
-Schema.optional[].string	String	2	0	2 distinct values	`s` : 1, `s2` : 1
-Schema.s	String	3	0	3 distinct values	`another string` : 1, `duh` : 1, `string` : 1
+Schema.optional[].string	String	2	0	2 distinct values	`s2` : 1, `s` : 1
+Schema.s	String	3	0	3 distinct values	`string` : 1, `duh` : 1, `another string` : 1

@@ -54,9 +54,13 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
     const std::string filename_prefix = current::FileSystem::JoinPath("golden", test);
     const std::string file_name = filename_prefix + ".json_data";
     if (!FLAGS_regenerate_golden_inferred_schemas) {
-      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".raw"),
-                JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name)))
-          << "While running test case `" << test << "`.";
+      // Must parse the file, as the order of fields in JSON-infied `unordered_*` is not guaranteed.
+      EXPECT_EQ(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name),
+                (ParseJSON<current::utils::impl::Schema, JSONFormat::Minimalistic>(
+                    current::FileSystem::ReadFileAsString(filename_prefix + ".raw"))))
+          << "Expected:\n" << current::utils::impl::SchemaFromOneJSONPerLineFile(file_name) << "\nActual:\n"
+          << JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name))
+          << "\nWhile running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),
                 current::utils::DescribeSchema(file_name))
           << "While running test case `" << test << "`.";

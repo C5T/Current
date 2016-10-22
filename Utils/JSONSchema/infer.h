@@ -114,6 +114,8 @@ struct InferSchemaIncompatibleTypes : InferSchemaIncompatibleTypesBase {
 
 namespace impl {
 
+constexpr static size_t kNumberOfUniqueValuesToTrack = 100u;
+
 inline bool IsValidCPPIdentifier(const std::string& s) {
   if (s.empty()) {
     return false;  // LCOV_EXCL_LINE
@@ -142,15 +144,15 @@ inline std::string MaybeOptionalHumanReadableType(bool has_nulls, const std::str
 // Inferred JSON types for fields.
 // Internally, the type is maintained along with the histogram of its values seen.
 CURRENT_STRUCT(String) {
-  CURRENT_FIELD(top_values, (std::unordered_map<std::string, uint32_t>));
-  CURRENT_FIELD(top_values_inverted, (std::set<std::pair<uint32_t, std::string>>));
+  CURRENT_FIELD(values, (std::unordered_map<std::string, uint32_t>));
+  CURRENT_FIELD(counters, (std::set<std::pair<uint32_t, std::string>>));
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
   CURRENT_DEFAULT_CONSTRUCTOR(String) {}
   CURRENT_CONSTRUCTOR(String)(const std::string& string) {
-    top_values[string] = 1;
-    top_values_inverted.emplace(1, string);
+    values[string] = 1;
+    counters.emplace(1, string);
   }
 
   // LCOV_EXCL_START
@@ -270,18 +272,18 @@ template <>
 struct Reduce<String, String> {
   static Schema DoIt(const String& lhs, const String& rhs) {
     String result(lhs);
-    for (const auto& counter : rhs.top_values) {
-      result.top_values[counter.first] += counter.second;
+    for (const auto& counter : rhs.values) {
+      result.values[counter.first] += counter.second;
     }
-    result.top_values_inverted.clear();
-    for (const auto& counter : result.top_values) {
-      result.top_values_inverted.emplace(counter.second, counter.first);
+    result.counters.clear();
+    for (const auto& counter : result.values) {
+      result.counters.emplace(counter.second, counter.first);
     }
     // Keep the "distinct values" map of of manageable size.
-    while (result.top_values_inverted.size() > 100u) {
-      auto iterator = result.top_values_inverted.begin();
-      result.top_values.erase(iterator->second);
-      result.top_values_inverted.erase(iterator);
+    while (result.counters.size() > kNumberOfUniqueValuesToTrack) {
+      auto iterator = result.counters.begin();
+      result.values.erase(iterator->second);
+      result.counters.erase(iterator);
     }
     result.instances += rhs.instances;
     result.nulls += rhs.nulls;
@@ -425,17 +427,19 @@ class HumanReadableSchemaExporter {
 
   void operator()(const String& x) {
     os_ << path_ << "\tString\t" << x.instances << '\t' << x.nulls << '\t';
-    if (x.top_values.empty()) {
+    if (x.values.empty()) {
       os_ << "no values";
-    } else if (x.top_values.size() == 1) {
+    } else if (x.values.size() == 1) {
       os_ << "1 distinct value";
+    } else if (x.values.size() < kNumberOfUniqueValuesToTrack) {
+      os_ << x.values.size() << " distinct values";
     } else {
-      os_ << x.top_values.size() << "++ distinct values";
+      os_ << x.values.size() << "++ distinct values";
     }
     // Output most common values of this [string] field, if there aren't too many of them.
     std::vector<std::string> sorted_as_strings;
     size_t total = 0u;
-    for (auto rit = x.top_values_inverted.rbegin(); rit != x.top_values_inverted.rend(); ++rit) {
+    for (auto rit = x.counters.rbegin(); rit != x.counters.rend(); ++rit) {
       sorted_as_strings.push_back('`' + rit->second + "` : " + ToString(rit->first));
       ++total;
       if (total >= number_of_example_values_) {
@@ -461,10 +465,12 @@ class HumanReadableSchemaExporter {
   void operator()(const Object& x) {
     const auto save_path = path_;
 
-    std::vector<std::string> fields;
+    std::vector<std::string> ordered_fields;
     for (const auto& f : x.fields) {
-      fields.push_back(f.first);
+      ordered_fields.push_back(f.first);
     }
+
+    std::sort(ordered_fields.begin(), ordered_fields.end());
 
     os_ << path_ << "\tObject\t" << x.instances << '\t' << x.nulls << '\t';
     if (x.fields.empty()) {
@@ -474,9 +480,11 @@ class HumanReadableSchemaExporter {
     } else {
       os_ << x.fields.size() << " fields";
     }
-    os_ << '\t' << strings::Join(fields, ", ") << '\n';
 
-    for (const auto& f : x.fields) {
+    os_ << '\t' << strings::Join(ordered_fields, ", ") << '\n';
+
+    for (const auto& ordered_f : ordered_fields) {
+      const auto f = *x.fields.find(ordered_f);
       path_ = save_path.empty() ? f.first : (save_path + '.' + f.first);
       f.second.Call(*this);
     }
@@ -534,6 +542,7 @@ class SchemaToCurrentStructPrinter {
         field_name = input_field.first;
         input_field.second.Call(Printer(os, prefix + '_' + field_name, type, comment));
       }
+      std::sort(output_fields.begin(), output_fields.end());
       os << '\n';
       os << "CURRENT_STRUCT(" << output_type << ") {\n";
       for (const auto& f : output_fields) {

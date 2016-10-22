@@ -1,1 +1,1 @@
-{"Array":{"element":{"String":{"values":{"thing":1,"this":1,"works":1},"instances":3,"nulls":2}},"instances":1,"nulls":0}}
+{"Array":{"element":{"String":{"values":{"works":1,"thing":1,"this":1},"counters":[[1,"thing"],[1,"this"],[1,"works"]],"instances":3,"nulls":2}},"instances":1,"nulls":0}}
