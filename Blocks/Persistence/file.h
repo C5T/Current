@@ -54,9 +54,9 @@ namespace constants {
 constexpr const char kDirectiveMarker = '#';
 constexpr const char* kHeadDirective = "head";
 constexpr const char* kHeadFromatString = "%020lld";
-constexpr const size_t kHeadValueLength = 20u;
-typedef int64_t head_value_t;
 }  // namespace current::persistence::impl::constants
+
+typedef int64_t head_value_t;
 
 // An iterator to read a file line by line, extracting tab-separated `idxts_t index` and `const char* data`.
 // Validates the entries come in the right order of 0-based indexes, and with strictly increasing timestamps.
@@ -124,13 +124,12 @@ class FilePersister {
     std::chrono::microseconds head;
   };
   static_assert(sizeof(std::chrono::microseconds) == 8, "");
-  static_assert(sizeof(end_t) == 24, "");
 
  private:
   struct FilePersisterImpl final {
     const std::string filename;
     std::ofstream appender;
-    std::fstream rewriter;
+    std::fstream head_rewriter;
 
     // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
     std::mutex mutex;
@@ -152,10 +151,10 @@ class FilePersister {
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
-          rewriter(filename, std::ofstream::in | std::ofstream::out),
+          head_rewriter(filename, std::ofstream::in | std::ofstream::out),
           head_offset(0) {
       ValidateFileAndInitializeHead();
-      if (appender.bad() || rewriter.bad()) {
+      if (appender.bad() || head_rewriter.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
@@ -185,16 +184,16 @@ class FilePersister {
             },
             [&](const char* key, const char* value) {
               if (!strcmp(key, constants::kHeadDirective)) {
-                const auto us = std::chrono::microseconds(current::FromString<constants::head_value_t>(value));
+                const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
                 }
                 head = us;
-                CURRENT_ASSERT(constants::kHeadValueLength == strlen(value));
-                head_offset = std::streamoff(fi.tellg()) - constants::kHeadValueLength;
+                head_offset = std::streamoff(current_offset) + strlen(key) + 2;
               } else {
                 head_offset = 0;
               }
+              current_offset = fi.tellg();
             })) {
           ;
         }
@@ -372,7 +371,7 @@ class FilePersister {
     iterator.head = timestamp;
     const auto head_str = Printf(constants::kHeadFromatString, timestamp.count());
     if (file_persister_impl_->head_offset) {
-      auto& rewriter = file_persister_impl_->rewriter;
+      auto& rewriter = file_persister_impl_->head_rewriter;
       rewriter.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
       rewriter << head_str << std::endl;
     } else {

@@ -265,8 +265,11 @@ TEST(PersistenceLayer, File) {
     impl.Publish(StorableString("meh"));
     EXPECT_EQ(3u, impl.Size());
 
-    current::time::SetNow(std::chrono::microseconds(600));
+    current::time::SetNow(std::chrono::microseconds(550));
     EXPECT_EQ(500, impl.CurrentHead().count());
+    impl.UpdateHead();
+    EXPECT_EQ(550, impl.CurrentHead().count());
+    current::time::SetNow(std::chrono::microseconds(600));
     impl.UpdateHead();
     EXPECT_EQ(600, impl.CurrentHead().count());
 
@@ -302,9 +305,14 @@ TEST(PersistenceLayer, File) {
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
     }
 
+    current::time::SetNow(std::chrono::microseconds(998));
+    EXPECT_EQ(600, impl.CurrentHead().count());
+    impl.UpdateHead();
+    EXPECT_EQ(998, impl.CurrentHead().count());
     current::time::SetNow(std::chrono::microseconds(999));
     impl.Publish(StorableString("blah"));
     EXPECT_EQ(4u, impl.Size());
+    EXPECT_EQ(999, impl.CurrentHead().count());
 
     {
       std::vector<std::string> all_four;
