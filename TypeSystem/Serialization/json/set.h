@@ -46,14 +46,16 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::set<T>> {
   }
 };
 
-template <class JSON_FORMAT, typename TT, typename TA>
-struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::set<TT, TA>> {
-  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::set<TT, TA>& destination) {
+template <class JSON_FORMAT, typename T, typename TA>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::set<T, TA>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::set<T, TA>& destination) {
+    destination.clear();
     if (json_parser && json_parser.Current().IsArray()) {
       const size_t size = json_parser.Current().Size();
-      destination.resize(size);
       for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
-        json_parser.Inner(&json_parser.Current()[i], destination[i], "[", static_cast<int>(i), "]");
+        T element;
+        json_parser.Inner(&json_parser.Current()[i], element, "[", static_cast<int>(i), "]");
+        destination.insert(std::move(element));
       }
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
       throw JSONSchemaException("array", json_parser);  // LCOV_EXCL_LINE

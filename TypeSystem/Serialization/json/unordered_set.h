@@ -50,11 +50,13 @@ template <class JSON_FORMAT, typename T, class HASH, class EQ, class ALLOCATOR>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_set<T, HASH, EQ, ALLOCATOR>> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
                             std::unordered_set<T, HASH, EQ, ALLOCATOR>& destination) {
+    destination.clear();
     if (json_parser && json_parser.Current().IsArray()) {
       const size_t size = json_parser.Current().Size();
-      destination.resize(size);
       for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
-        json_parser.Inner(&json_parser.Current()[i], destination[i], "[", static_cast<int>(i), "]");
+        T element;
+        json_parser.Inner(&json_parser.Current()[i], element, "[", static_cast<int>(i), "]");
+        destination.insert(std::move(element));
       }
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
       throw JSONSchemaException("array", json_parser);  // LCOV_EXCL_LINE
