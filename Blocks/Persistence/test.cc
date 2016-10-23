@@ -364,7 +364,7 @@ TEST(PersistenceLayer, FileDirectives) {
     EXPECT_EQ(0u, impl.Size());
     EXPECT_EQ(-1, impl.CurrentHead().count());
     const auto head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
-    ASSERT_EQ(false, Exists(head_idxts.idxts));
+    ASSERT_FALSE(Exists(head_idxts.idxts));
     EXPECT_EQ(-1, head_idxts.head.count());
   }
 
@@ -384,7 +384,7 @@ TEST(PersistenceLayer, FileDirectives) {
     impl.UpdateHead();
     EXPECT_EQ(2, impl.CurrentHead().count());
     const auto head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
-    ASSERT_EQ(false, Exists(head_idxts.idxts));
+    ASSERT_FALSE(Exists(head_idxts.idxts));
     EXPECT_EQ(2, head_idxts.head.count());
   }
   EXPECT_EQ(
@@ -410,7 +410,7 @@ TEST(PersistenceLayer, FileDirectives) {
     EXPECT_EQ(3u, impl.Size());
     EXPECT_EQ(600, impl.CurrentHead().count());
     auto head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
-    ASSERT_EQ(true, Exists(head_idxts.idxts));
+    ASSERT_TRUE(Exists(head_idxts.idxts));
     EXPECT_EQ(2u, Value(head_idxts.idxts).index);
     EXPECT_EQ(500, Value(head_idxts.idxts).us.count());
     EXPECT_EQ(600, head_idxts.head.count());
@@ -429,7 +429,7 @@ TEST(PersistenceLayer, FileDirectives) {
     EXPECT_EQ(4u, impl.Size());
     EXPECT_EQ(999, impl.CurrentHead().count());
     head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
-    ASSERT_EQ(true, Exists(head_idxts.idxts));
+    ASSERT_TRUE(Exists(head_idxts.idxts));
     EXPECT_EQ(3u, Value(head_idxts.idxts).index);
     EXPECT_EQ(800, Value(head_idxts.idxts).us.count());
     EXPECT_EQ(999, head_idxts.head.count());
