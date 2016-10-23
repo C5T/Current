@@ -52,7 +52,7 @@ namespace impl {
 
 namespace constants {
 constexpr const char kDirectiveMarker = '#';
-constexpr const char* kHeadDirective = "head";
+constexpr const char* kHeadDirective = "#head";
 constexpr const char* kHeadFromatString = "%020lld";
 }  // namespace current::persistence::impl::constants
 
@@ -74,11 +74,13 @@ class IteratorOverFileOfPersistedEntries {
   template <typename F1, typename F2>
   bool ProcessNextEntry(F1&& on_entry, F2&& on_directive) {
     if (std::getline(fi_, line_)) {
-      const size_t tab_pos = line_.find('\t');
-      if (tab_pos == std::string::npos) {
-        CURRENT_THROW(MalformedEntryException(line_));
-      }
+      // A directive always starts with kDirectiveMarker ('#'),
+      // an entry - with JSON-serialized `idxts_t` object
       if (line_[0] != constants::kDirectiveMarker) {
+        const size_t tab_pos = line_.find('\t');
+        if (tab_pos == std::string::npos) {
+          CURRENT_THROW(MalformedEntryException(line_));
+        }
         const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
         if (current.index != next_.index) {
           // Indexes must be strictly continuous.
@@ -93,10 +95,7 @@ class IteratorOverFileOfPersistedEntries {
         ++next_.index;
         ++next_.us;
       } else {
-        // A directive always starts with kDirectiveMarker ('#'), which is immediately
-        // followed by the directive type and value, divided by the tab symbol.
-        line_[tab_pos] = '\0';
-        on_directive(line_.c_str() + 1, line_.c_str() + tab_pos + 1);
+        on_directive(line_);
       }
       return true;
     } else {
@@ -182,14 +181,17 @@ class FilePersister {
               head = current.us;
               head_offset = 0;
             },
-            [&](const char* key, const char* value) {
-              if (!strcmp(key, constants::kHeadDirective)) {
-                const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value));
+            [&](const std::string& value) {
+              static const auto head_key_length = strlen(constants::kHeadDirective);
+              if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
+                auto offset = head_key_length;
+                while (offset < value.length() && (value[offset] == '\t' || value[offset] == ' ')) ++offset;
+                const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
                 }
                 head = us;
-                head_offset = std::streamoff(current_offset) + strlen(key) + 2;
+                head_offset = std::streamoff(current_offset) + offset;
               } else {
                 head_offset = 0;
               }
@@ -280,7 +282,7 @@ class FilePersister {
                       CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
                     }
                   },
-                  [](const char*, const char*) {}))) {
+                  [](const std::string&) {}))) {
             // End of file. Should never happen as long as the user only iterates over valid ranges.
             CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
@@ -376,7 +378,7 @@ class FilePersister {
       rewriter << head_str << std::endl;
     } else {
       auto& appender = file_persister_impl_->appender;
-      appender << constants::kDirectiveMarker << constants::kHeadDirective << '\t';
+      appender << constants::kHeadDirective << '\t';
       file_persister_impl_->head_offset = appender.tellp();
       appender << head_str << std::endl;
     }
