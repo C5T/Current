@@ -72,7 +72,7 @@ class IteratorOverFileOfPersistedEntries {
   }
 
   template <typename F1, typename F2>
-  bool ProcessNextEntry(F1&& onEntry, F2&& onDirective) {
+  bool ProcessNextEntry(F1&& on_entry, F2&& on_directive) {
     if (std::getline(fi_, line_)) {
       const size_t tab_pos = line_.find('\t');
       if (tab_pos == std::string::npos) {
@@ -88,7 +88,7 @@ class IteratorOverFileOfPersistedEntries {
           // Timestamps must monotonically increase.
           CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
         }
-        onEntry(current, line_.c_str() + tab_pos + 1);
+        on_entry(current, line_.c_str() + tab_pos + 1);
         next_ = current;
         ++next_.index;
         ++next_.us;
@@ -96,7 +96,7 @@ class IteratorOverFileOfPersistedEntries {
         // A directive always starts with kDirectiveMarker ('#'), which is immediately
         // followed by the directive type and value, divided by the tab symbol.
         line_[tab_pos] = '\0';
-        onDirective(line_.c_str() + 1, line_.c_str() + tab_pos + 1);
+        on_directive(line_.c_str() + 1, line_.c_str() + tab_pos + 1);
       }
       return true;
     } else {

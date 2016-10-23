@@ -773,8 +773,8 @@ const std::string sherlock_golden_data =
 
 // clang-format off
 const std::string sherlock_golden_data_chunks[] = {
-  "{\"index\":0,\"u","s\":100}\t{\"x\":1}\r",
-  "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n"
+  "{\"index\":0,\"u","s\":100}\t{\"x\":1}\r","\n"
+  "{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n"
   "{\"us\"",":3","00}\n"
   "{\"index\":2,\"us\":400}\t{\"x","\":3}\n"
   "{\"us\":500}\n"

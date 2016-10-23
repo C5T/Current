@@ -49,7 +49,8 @@ CURRENT_STRUCT(IndexAndTimestamp) {
   CURRENT_CONSTRUCTOR(IndexAndTimestamp)(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
 };
 
-// The same as `IndexAndTimestamp`, but with optional index member.
+// An index and timestamp of an entry or a timestamp of the current head.
+// In the latter case the `index` member is unset.
 CURRENT_STRUCT(TimestampAndOptionalIndex) {
   CURRENT_FIELD(us, std::chrono::microseconds);
   CURRENT_FIELD(index, Optional<uint64_t>);
@@ -59,6 +60,9 @@ CURRENT_STRUCT(TimestampAndOptionalIndex) {
   CURRENT_CONSTRUCTOR(TimestampAndOptionalIndex)(std::chrono::microseconds us, uint64_t index) : us(us), index(index) {}
 };
 
+// The `head` is either the timestamp of the last published entry or of the last `UpdateHead()` call,
+// depending on whether the last entry was published after the last `UpdateHead()` call or not.
+// The `idxts` stores the timestamp and index of the last published entry, it is unset if there were no entries yet.
 CURRENT_STRUCT(HeadAndOptionalIndexAndTimestamp) {
   CURRENT_FIELD(head, std::chrono::microseconds);
   CURRENT_FIELD(idxts, Optional<IndexAndTimestamp>);
