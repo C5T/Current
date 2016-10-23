@@ -133,7 +133,7 @@ struct Structured {
         if (Exists(result)) {
           const auto& value = Value(result);
           const auto last_modified = input.field.LastModified(key);
-          if (!Exists(input.requested_export_fmt)) {
+          if (!Exists(input.requested_export_params)) {
             const std::string url_collection =
                 input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
             const std::string url =
@@ -145,7 +145,7 @@ struct Structured {
             return response;
           } else {
             // Export requested via `?export`, dump the record using appropriate format.
-            if (input.requested_export_fmt == FieldExportFormat::Detailed) {
+            if (Value(input.requested_export_params).format == FieldExportFormat::Detailed) {
               return detailed_export_entry_t(Value(last_modified), detailed_export_helper_t(key, value));
             } else {
               return value;
@@ -158,7 +158,7 @@ struct Structured {
               HTTPResponseCode.NotFound);
         }
       } else {
-        if (!Exists(input.requested_export_fmt)) {
+        if (!Exists(input.requested_export_params)) {
           // Top-level field view, identical for dictionaries and matrices.
           // Pass `url` twice, as `pagination_url` and `collection_url` are the same for this format.
           const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name;
@@ -177,24 +177,31 @@ struct Structured {
             // Sadly, the `Response` must be returned.
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.
+            const auto& export_params = Value(input.requested_export_params);
+            const auto hasher = CurrentHashFunction<KEY>();
             std::ostringstream result;
-            if (input.requested_export_fmt == FieldExportFormat::Detailed) {
+            if (export_params.format == FieldExportFormat::Detailed) {
               result << '[';
-              for (auto cit = input.field.begin(); cit != input.field.end(); ++cit) {
+            }
+            for (auto cit = input.field.begin(); cit != input.field.end(); ++cit) {
+              if (export_params.nshards > 1u && (hasher(cit.key()) % export_params.nshards) != export_params.shard) {
+                continue;
+              }
+              if (export_params.format == FieldExportFormat::Detailed) {
                 const auto last_modified = input.field.LastModified(cit.key());
                 CURRENT_ASSERT(Exists(last_modified));
                 const auto detailed_entry =
                     detailed_export_entry_t(Value(last_modified), detailed_export_helper_t(cit.key(), *cit));
                 result << JSON<JSONFormat::Minimalistic>(detailed_entry) << ',';
+              } else {
+                result << JSON<JSONFormat::Minimalistic>(*cit) << '\n';
               }
+            }
+            if (export_params.format == FieldExportFormat::Detailed) {
               if (result.tellp() > 1) {
                 result.seekp(-1, std::ios_base::cur);
               }
               result << "]\n";
-            } else {
-              for (const auto& element : input.field) {
-                result << JSON<JSONFormat::Minimalistic>(element) << '\n';
-              }
             }
             return result.str();
           }

@@ -138,39 +138,41 @@ struct PerFieldRESTfulHandlerGenerator {
       const auto storage_role = storage.GetRole();
       if (request.method == "GET") {
         GETHandler handler;
-        Optional<FieldExportFormat> requested_export_fmt;
+        Optional<FieldExportParams> requested_export_params;
         if (request.url.query.has(kRESTfulExportURLQueryParameter)) {
+          FieldExportParams params;
           if (request.url.query[kRESTfulExportURLQueryParameter] == "detailed") {
-            requested_export_fmt = FieldExportFormat::Detailed;
-          } else {
-            requested_export_fmt = FieldExportFormat::Simple;
+            params.format = FieldExportFormat::Detailed;
           }
+          params.nshards = FromString<uint32_t>(request.url.query.get(kRESTfulExportNShardsURLQueryParameter, "0"));
+          params.shard = FromString<uint32_t>(request.url.query.get(kRESTfulExportShardURLQueryParameter, "0"));
+          requested_export_params = std::move(params);
         }
-        handler.Enter(std::move(request),
-                      // Capture by reference since this lambda is run synchronously.
-                      [&storage, &handler, &generic_input, &field_name, requested_export_fmt](
-                          Request request,
-                          const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
-                        const specific_field_t& field =
-                            generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
-                        generic_input.storage
-                            .ReadOnlyTransaction(
-                                 // Capture local variables by value for safe async transactions.
-                                 [&storage, handler, generic_input, &field, url_key, field_name, requested_export_fmt](
-                                     immutable_fields_t fields) -> Response {
-                                   using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
-                                   const GETInput input(std::move(generic_input),
-                                                        fields,
-                                                        field,
-                                                        field_name,
-                                                        url_key,
-                                                        storage.GetRole(),
-                                                        requested_export_fmt);
-                                   return handler.Run(input);
-                                 },
-                                 std::move(request))
-                            .Detach();
-                      });
+        handler.Enter(
+            std::move(request),
+            // Capture by reference since this lambda is run synchronously.
+            [&storage, &handler, &generic_input, &field_name, requested_export_params](
+                Request request,
+                const Optional<typename field_type_dependent_t<specific_field_t>::url_key_t>& url_key) {
+              const specific_field_t& field = generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
+              generic_input.storage
+                  .ReadOnlyTransaction(
+                       // Capture local variables by value for safe async transactions.
+                       [&storage, handler, generic_input, &field, url_key, field_name, requested_export_params](
+                           immutable_fields_t fields) -> Response {
+                         using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
+                         const GETInput input(std::move(generic_input),
+                                              fields,
+                                              field,
+                                              field_name,
+                                              url_key,
+                                              storage.GetRole(),
+                                              requested_export_params);
+                         return handler.Run(input);
+                       },
+                       std::move(request))
+                  .Detach();
+            });
       } else if (request.method == "POST" && storage_role == StorageRole::Master) {
         POSTHandler handler;
         handler.Enter(
