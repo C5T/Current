@@ -765,6 +765,12 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 }
 
 const std::string sherlock_golden_data =
+    "#signature\t{\"exposed_namespace\":\"SherlockSchema\",\"top_level_name\":\"TopLevelTransaction\",\"schema\":{"
+    "\"types\":[[\"T9000000000000000033\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000033\"},\"\":"
+    "\"T9202934106479999325\"}],[\"T9209980947553411947\",{\"ReflectedType_Struct\":{\"type_id\":"
+    "\"T9209980947553411947\",\"native_name\":\"Record\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_"
+    "id\":\"T9000000000000000033\",\"name\":\"x\",\"description\":null}]},\"\":\"T9206858900297712816\"}]],\"order\":["
+    "\"T9209980947553411947\"]}}\n"
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
     "#head\t00000000000000000300\n"
@@ -805,7 +811,7 @@ TEST(Sherlock, PersistsToFile) {
   persisted.UpdateHead();
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
-  while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
+  while (current::FileSystem::GetFileSize(persistence_file_name) < sherlock_golden_data.size()) {
     std::this_thread::yield();
   }
 
