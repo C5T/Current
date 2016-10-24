@@ -54,12 +54,12 @@ namespace impl {
 
 namespace constants {
 constexpr const char kDirectiveMarker = '#';
-constexpr const char* kSignatureDirective = "signature";
-constexpr const char* kHeadDirective = "head";
+constexpr const char* kSignatureDirective = "#signature";
+constexpr const char* kHeadDirective = "#head";
 constexpr const char* kHeadFromatString = "%020lld";
-constexpr const size_t kHeadValueLength = 20u;
-typedef int64_t head_value_t;
 }  // namespace current::persistence::impl::constants
+
+typedef int64_t head_value_t;
 
 // An iterator to read a file line by line, extracting tab-separated `idxts_t index` and `const char* data`.
 // Validates the entries come in the right order of 0-based indexes, and with strictly increasing timestamps.
@@ -75,13 +75,15 @@ class IteratorOverFileOfPersistedEntries {
   }
 
   template <typename F1, typename F2>
-  bool ProcessNextEntry(F1&& onEntry, F2&& onDirective) {
+  bool ProcessNextEntry(F1&& on_entry, F2&& on_directive) {
     if (std::getline(fi_, line_)) {
-      const size_t tab_pos = line_.find('\t');
-      if (tab_pos == std::string::npos) {
-        CURRENT_THROW(MalformedEntryException(line_));
-      }
+      // A directive always starts with kDirectiveMarker ('#'),
+      // an entry - with JSON-serialized `idxts_t` object
       if (line_[0] != constants::kDirectiveMarker) {
+        const size_t tab_pos = line_.find('\t');
+        if (tab_pos == std::string::npos) {
+          CURRENT_THROW(MalformedEntryException(line_));
+        }
         const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
         if (current.index != next_.index) {
           // Indexes must be strictly continuous.
@@ -91,15 +93,12 @@ class IteratorOverFileOfPersistedEntries {
           // Timestamps must monotonically increase.
           CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
         }
-        onEntry(current, line_.c_str() + tab_pos + 1);
+        on_entry(current, line_.c_str() + tab_pos + 1);
         next_ = current;
         ++next_.index;
         ++next_.us;
       } else {
-        // A directive always starts with kDirectiveMarker ('#'), which is immediately
-        // followed by the directive type and value, divided by the tab symbol.
-        line_[tab_pos] = '\0';
-        onDirective(line_.c_str() + 1, line_.c_str() + tab_pos + 1);
+        on_directive(line_);
       }
       return true;
     } else {
@@ -127,13 +126,12 @@ class FilePersister {
     std::chrono::microseconds head;
   };
   static_assert(sizeof(std::chrono::microseconds) == 8, "");
-  static_assert(sizeof(end_t) == 24, "");
 
  private:
   struct FilePersisterImpl final {
     const std::string filename;
     std::ofstream appender;
-    std::fstream rewriter;
+    std::fstream head_rewriter;
 
     // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
     std::mutex mutex;
@@ -155,10 +153,10 @@ class FilePersister {
     explicit FilePersisterImpl(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
-          rewriter(filename, std::ofstream::in | std::ofstream::out),
+          head_rewriter(filename, std::ofstream::in | std::ofstream::out),
           head_offset(0) {
       ValidateFileAndInitializeHead(namespace_name);
-      if (appender.bad() || rewriter.bad()) {
+      if (appender.bad() || head_rewriter.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
@@ -186,24 +184,30 @@ class FilePersister {
               head = current.us;
               head_offset = 0;
             },
-            [&](const char* key, const char* value) {
-              if (!strcmp(key, constants::kHeadDirective)) {
-                const auto us = std::chrono::microseconds(current::FromString<constants::head_value_t>(value));
+            [&](const std::string& value) {
+              static const auto head_key_length = strlen(constants::kHeadDirective);
+              if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
+                auto offset = head_key_length;
+                while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
                 }
                 head = us;
-                CURRENT_ASSERT(constants::kHeadValueLength == strlen(value));
-                head_offset = std::streamoff(fi.tellg()) - constants::kHeadValueLength;
+                head_offset = std::streamoff(current_offset) + offset;
               } else {
                 head_offset = 0;
-                if (!strcmp(key, constants::kSignatureDirective)) {
-                  const auto signature = ParseJSON<current::sherlock::SherlockNamespaceName>(value);
+                static const auto signature_key_length = strlen(constants::kSignatureDirective);
+                if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
+                  auto offset = signature_key_length;
+                  while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                  const auto signature = ParseJSON<current::sherlock::SherlockNamespaceName>(value.c_str() + offset);
                   if (signature != namespace_name) {
                     CURRENT_THROW(InvalidStreamSignature());
                   }
                 }
               }
+              current_offset = fi.tellg();
             })) {
           ;
         }
@@ -290,7 +294,7 @@ class FilePersister {
                       CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
                     }
                   },
-                  [](const char*, const char*) {}))) {
+                  [](const std::string&) {}))) {
             // End of file. Should never happen as long as the user only iterates over valid ranges.
             CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
@@ -381,12 +385,12 @@ class FilePersister {
     iterator.head = timestamp;
     const auto head_str = Printf(constants::kHeadFromatString, timestamp.count());
     if (file_persister_impl_->head_offset) {
-      auto& rewriter = file_persister_impl_->rewriter;
+      auto& rewriter = file_persister_impl_->head_rewriter;
       rewriter.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
       rewriter << head_str << std::endl;
     } else {
       auto& appender = file_persister_impl_->appender;
-      appender << constants::kDirectiveMarker << constants::kHeadDirective << '\t';
+      appender << constants::kHeadDirective << '\t';
       file_persister_impl_->head_offset = appender.tellp();
       appender << head_str << std::endl;
     }

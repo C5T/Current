@@ -147,6 +147,11 @@ TEST(PersistenceLayer, MemoryExceptions) {
     current::time::ResetToZero();
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
+    impl.UpdateHead(std::chrono::microseconds(4));
+    current::time::SetNow(std::chrono::microseconds(3));
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -156,6 +161,11 @@ TEST(PersistenceLayer, MemoryExceptions) {
     IMPL impl(namespace_name);
     impl.Publish("2");
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
+    current::time::SetNow(std::chrono::microseconds(4));
+    impl.UpdateHead();
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -270,8 +280,11 @@ TEST(PersistenceLayer, File) {
     impl.Publish(StorableString("meh"));
     EXPECT_EQ(3u, impl.Size());
 
-    current::time::SetNow(std::chrono::microseconds(600));
+    current::time::SetNow(std::chrono::microseconds(550));
     EXPECT_EQ(500, impl.CurrentHead().count());
+    impl.UpdateHead();
+    EXPECT_EQ(550, impl.CurrentHead().count());
+    current::time::SetNow(std::chrono::microseconds(600));
     impl.UpdateHead();
     EXPECT_EQ(600, impl.CurrentHead().count());
 
@@ -307,9 +320,14 @@ TEST(PersistenceLayer, File) {
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
     }
 
+    current::time::SetNow(std::chrono::microseconds(998));
+    EXPECT_EQ(600, impl.CurrentHead().count());
+    impl.UpdateHead();
+    EXPECT_EQ(998, impl.CurrentHead().count());
     current::time::SetNow(std::chrono::microseconds(999));
     impl.Publish(StorableString("blah"));
     EXPECT_EQ(4u, impl.Size());
+    EXPECT_EQ(999, impl.CurrentHead().count());
 
     {
       std::vector<std::string> all_four;
@@ -333,6 +351,104 @@ TEST(PersistenceLayer, File) {
     }
     EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
   }
+}
+
+TEST(PersistenceLayer, FileDirectives) {
+  using namespace persistence_test;
+
+  using IMPL = current::persistence::File<StorableString>;
+
+  const auto namespace_name = current::sherlock::SherlockNamespaceName("namespace", "top_level_name");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  {
+    // An empty file - no entries and head equals -1us.
+    IMPL impl(namespace_name, persistence_file_name);
+    EXPECT_EQ(0u, impl.Size());
+    EXPECT_EQ(-1, impl.CurrentHead().count());
+    const auto head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
+    ASSERT_FALSE(Exists(head_idxts.idxts));
+    EXPECT_EQ(-1, head_idxts.head.count());
+  }
+
+  {
+    current::time::ResetToZero();
+
+    // A file consisting only of directives.
+    current::FileSystem::WriteStringToFile(
+        "#head 0000000000000000001\n"
+        "#unknown_directive\t\tblah\n",
+        persistence_file_name.c_str());
+    // Skip unknown directives.
+    IMPL impl(namespace_name, persistence_file_name);
+    EXPECT_EQ(1, impl.CurrentHead().count());
+    // Append a new head directive, because after the last one there was another directive.
+    current::time::SetNow(std::chrono::microseconds(2));
+    impl.UpdateHead();
+    EXPECT_EQ(2, impl.CurrentHead().count());
+    const auto head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
+    ASSERT_FALSE(Exists(head_idxts.idxts));
+    EXPECT_EQ(2, head_idxts.head.count());
+  }
+  EXPECT_EQ(
+      "#head 0000000000000000001\n"
+      "#unknown_directive\t\tblah\n"
+      "#head\t00000000000000000002\n",
+      current::FileSystem::ReadFileAsString(persistence_file_name));
+
+  {
+    current::time::ResetToZero();
+
+    current::FileSystem::WriteStringToFile(
+        "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+        "#head\t00000000000000000300\n"
+        "#some_other_directive\n"
+        "#head  00000000000000000400\n"
+        "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
+        "#head\t \t00000000000000000600\n",
+        persistence_file_name.c_str());
+    // Several head directives with different key-value delimeters.
+    IMPL impl(namespace_name, persistence_file_name);
+    EXPECT_EQ(3u, impl.Size());
+    EXPECT_EQ(600, impl.CurrentHead().count());
+    auto head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
+    ASSERT_TRUE(Exists(head_idxts.idxts));
+    EXPECT_EQ(2u, Value(head_idxts.idxts).index);
+    EXPECT_EQ(500, Value(head_idxts.idxts).us.count());
+    EXPECT_EQ(600, head_idxts.head.count());
+
+    // Rewrite the last head directive.
+    current::time::SetNow(std::chrono::microseconds(700));
+    impl.UpdateHead();
+    EXPECT_EQ(700, impl.CurrentHead().count());
+    current::time::SetNow(std::chrono::microseconds(800));
+
+    impl.Publish(StorableString("new"));
+    EXPECT_EQ(800, impl.CurrentHead().count());
+    // Append a new head directive, because there was an entry after the last one.
+    current::time::SetNow(std::chrono::microseconds(999));
+    impl.UpdateHead();
+    EXPECT_EQ(4u, impl.Size());
+    EXPECT_EQ(999, impl.CurrentHead().count());
+    head_idxts = impl.HeadAndLastPublishedIndexAndTimestamp();
+    ASSERT_TRUE(Exists(head_idxts.idxts));
+    EXPECT_EQ(3u, Value(head_idxts.idxts).index);
+    EXPECT_EQ(800, Value(head_idxts.idxts).us.count());
+    EXPECT_EQ(999, head_idxts.head.count());
+  }
+  EXPECT_EQ(
+      "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+      "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "#head\t00000000000000000300\n"
+      "#some_other_directive\n"
+      "#head  00000000000000000400\n"
+      "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
+      "#head\t \t00000000000000000700\n"
+      "{\"index\":3,\"us\":800}\t{\"s\":\"new\"}\n"
+      "#head\t00000000000000000999\n",
+      current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
 TEST(PersistenceLayer, FileExceptions) {
@@ -362,6 +478,11 @@ TEST(PersistenceLayer, FileExceptions) {
     current::time::ResetToZero();
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
+    impl.UpdateHead(std::chrono::microseconds(4));
+    current::time::SetNow(std::chrono::microseconds(3));
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
   }
 
   {
@@ -372,6 +493,11 @@ TEST(PersistenceLayer, FileExceptions) {
     IMPL impl(namespace_name, persistence_file_name);
     impl.Publish("2");
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
+    current::time::SetNow(std::chrono::microseconds(4));
+    impl.UpdateHead();
+    ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
+    ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
   }
 
   {

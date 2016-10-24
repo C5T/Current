@@ -773,8 +773,8 @@ const std::string sherlock_golden_data =
 
 // clang-format off
 const std::string sherlock_golden_data_chunks[] = {
-  "{\"index\":0,\"u","s\":100}\t{\"x\":1}\r",
-  "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n"
+  "{\"index\":0,\"u","s\":100}\t{\"x\":1}\r","\n"
+  "{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n"
   "{\"us\"",":3","00}\n"
   "{\"index\":2,\"us\":400}\t{\"x","\":3}\n"
   "{\"us\":500}\n"
@@ -791,17 +791,17 @@ TEST(Sherlock, PersistsToFile) {
 
   auto persisted = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
-  current::time::SetNow(std::chrono::microseconds(100u));
+  current::time::SetNow(std::chrono::microseconds(100));
   persisted.Publish(1);
-  current::time::SetNow(std::chrono::microseconds(200u));
+  current::time::SetNow(std::chrono::microseconds(200));
   persisted.Publish(2);
-  current::time::SetNow(std::chrono::microseconds(300u));
+  current::time::SetNow(std::chrono::microseconds(300));
   persisted.UpdateHead();
-  current::time::SetNow(std::chrono::microseconds(400u));
+  current::time::SetNow(std::chrono::microseconds(400));
   persisted.Publish(3);
-  current::time::SetNow(std::chrono::microseconds(450u));
+  current::time::SetNow(std::chrono::microseconds(450));
   persisted.UpdateHead();
-  current::time::SetNow(std::chrono::microseconds(500u));
+  current::time::SetNow(std::chrono::microseconds(500));
   persisted.UpdateHead();
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
