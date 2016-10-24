@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Takes a free-form, and, if its schema is strict, describes it in a human-readable format.
+// Takes a free-form JSON, and, if its schema is strict, describes it in a human-readable format.
 // The output format is a TSV, but only in a sense it can be copy-pasted into a spreadsheet editor
 // for other humans to understand. By no means it's a TSV view of the incoming JSON.
 

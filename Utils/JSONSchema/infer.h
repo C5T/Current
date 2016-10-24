@@ -56,8 +56,8 @@ struct DoNotTrackPath {
 struct TrackPathIgnoreList {
   std::unordered_set<std::string> ignore_list;
   TrackPathIgnoreList(const std::string& value) {
-    for (const auto& path : strings::Split(value, ":;, \t\n")) {
-      ignore_list.insert(path);
+    for (auto&& path : strings::Split(value, ":;, \t\n")) {
+      ignore_list.emplace(std::move(path));
     }
   }
   bool IsIgnored(const std::string& path) const { return ignore_list.count(path) ? true : false; }
@@ -68,7 +68,7 @@ struct TrackPath {
   const TrackPathIgnoreList* ignore = nullptr;
   TrackPath() = default;
   TrackPath(const TrackPathIgnoreList& ignore) : ignore(&ignore) {}
-  TrackPath(const std::string path, const TrackPathIgnoreList* ignore) : path(path), ignore(ignore) {}
+  TrackPath(const std::string& path, const TrackPathIgnoreList* ignore) : path(path), ignore(ignore) {}
   TrackPath Member(const std::string& name) const { return TrackPath(path + '.' + name, ignore); }
   TrackPath ArrayElement(size_t index) const { return TrackPath(path + '[' + ToString(index) + ']', ignore); }
   operator bool() const { return ignore ? !ignore->IsIgnored(path) : true; }
