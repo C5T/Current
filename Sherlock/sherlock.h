@@ -173,21 +173,21 @@ class StreamImpl {
 
   StreamImpl()
       : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(),
+        own_data_(schema_namespace_name_),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   StreamImpl(const SherlockNamespaceName& namespace_name)
       : schema_namespace_name_(namespace_name),
         schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(),
+        own_data_(schema_namespace_name_),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, SherlockNamespaceName>::value>>
   StreamImpl(X&& x, XS&&... xs)
       : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
+        own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
@@ -195,7 +195,7 @@ class StreamImpl {
   StreamImpl(const SherlockNamespaceName& namespace_name, X&& x, XS&&... xs)
       : schema_namespace_name_(namespace_name),
         schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
+        own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 

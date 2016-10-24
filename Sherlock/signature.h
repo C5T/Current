@@ -36,6 +36,10 @@ CURRENT_STRUCT(SherlockNamespaceName) {
   CURRENT_DEFAULT_CONSTRUCTOR(SherlockNamespaceName) {}
   CURRENT_CONSTRUCTOR(SherlockNamespaceName)(const std::string& exposed_namespace, const std::string& top_level_name)
       : exposed_namespace(exposed_namespace), top_level_name(top_level_name) {}
+  bool operator==(const SherlockNamespaceName& rhs) const {
+    return exposed_namespace == rhs.exposed_namespace && top_level_name == rhs.top_level_name;
+  }
+  bool operator!=(const SherlockNamespaceName& rhs) const { return !operator==(rhs); }
 };
 
 CURRENT_STRUCT(SherlockSignature, SherlockNamespaceName) {
@@ -46,6 +50,10 @@ CURRENT_STRUCT(SherlockSignature, SherlockNamespaceName) {
       : SherlockNamespaceName(exposed_namespace, top_level_name), schema(schema) {}
   CURRENT_CONSTRUCTOR(SherlockSignature)(const SherlockNamespaceName& namespace_name, const std::string& schema)
       : SherlockNamespaceName(namespace_name), schema(schema) {}
+  bool operator==(const SherlockSignature& rhs) const {
+    return SherlockNamespaceName::operator==(rhs) && schema == rhs.schema;
+  }
+  bool operator!=(const SherlockSignature& rhs) const { return !operator==(rhs); }
 };
 
 }  // namespace current
