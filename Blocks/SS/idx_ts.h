@@ -60,8 +60,8 @@ CURRENT_STRUCT(TimestampAndOptionalIndex) {
   CURRENT_CONSTRUCTOR(TimestampAndOptionalIndex)(std::chrono::microseconds us, uint64_t index) : us(us), index(index) {}
 };
 
-// The `head` is either the timestamp of the last published entry or of the last `UpdateHead()` call,
-// depending on whether the last entry was published after the last `UpdateHead()` call or not.
+// The `head` is the timestamp of either the last published entry or the last `UpdateHead()` call,
+// depending on whether the most recent update was `.Publish()` or `.UpdateHead()`.
 // The `idxts` stores the timestamp and index of the last published entry, it is unset if there were no entries yet.
 CURRENT_STRUCT(HeadAndOptionalIndexAndTimestamp) {
   CURRENT_FIELD(head, std::chrono::microseconds);

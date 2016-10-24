@@ -185,7 +185,7 @@ class FilePersister {
               static const auto head_key_length = strlen(constants::kHeadDirective);
               if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
                 auto offset = head_key_length;
-                while (offset < value.length() && (value[offset] == '\t' || value[offset] == ' ')) ++offset;
+                while (offset < value.length() && std::isspace(value[offset])) ++offset;
                 const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));

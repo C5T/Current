@@ -341,7 +341,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         return ss::EntryResponse::Done;
       }
       if (!params_.array && !params_.entries_only) {
-        http_response_(JSON<J>(ts_optidx_t(us)) + "\n");
+        http_response_(JSON<J>(ts_optidx_t(us)) + '\n');
       }
     }
     return ss::EntryResponse::More;

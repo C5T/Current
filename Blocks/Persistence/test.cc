@@ -145,9 +145,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
     ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
-    current::time::SetNow(std::chrono::microseconds(4));
-    impl.UpdateHead();
-    current::time::ResetToZero();
+    impl.UpdateHead(std::chrono::microseconds(4));
     current::time::SetNow(std::chrono::microseconds(3));
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
     ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
@@ -474,9 +472,7 @@ TEST(PersistenceLayer, FileExceptions) {
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
     ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
-    current::time::SetNow(std::chrono::microseconds(4));
-    impl.UpdateHead();
-    current::time::ResetToZero();
+    impl.UpdateHead(std::chrono::microseconds(4));
     current::time::SetNow(std::chrono::microseconds(3));
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
     ASSERT_THROW(impl.UpdateHead(), current::ss::InconsistentTimestampException);
