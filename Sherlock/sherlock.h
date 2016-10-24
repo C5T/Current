@@ -36,7 +36,6 @@ SOFTWARE.
 
 #include "exceptions.h"
 #include "stream_data.h"
-#include "signature.h"
 #include "pubsub.h"
 
 #include "../TypeSystem/struct.h"
@@ -45,6 +44,7 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
 #include "../Blocks/SS/ss.h"
+#include "../Blocks/SS/signature.h"
 
 #include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/time/chrono.h"
@@ -177,14 +177,14 @@ class StreamImpl {
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
-  StreamImpl(const SherlockNamespaceName& namespace_name)
+  StreamImpl(const ss::StreamNamespaceName& namespace_name)
       : schema_namespace_name_(namespace_name),
         schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
         own_data_(schema_namespace_name_),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
-  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, SherlockNamespaceName>::value>>
+  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, ss::StreamNamespaceName>::value>>
   StreamImpl(X&& x, XS&&... xs)
       : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
         own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
@@ -192,7 +192,7 @@ class StreamImpl {
         authority_(StreamDataAuthority::Own) {}
 
   template <typename X, typename... XS>
-  StreamImpl(const SherlockNamespaceName& namespace_name, X&& x, XS&&... xs)
+  StreamImpl(const ss::StreamNamespaceName& namespace_name, X&& x, XS&&... xs)
       : schema_namespace_name_(namespace_name),
         schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
         own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
@@ -582,8 +582,8 @@ class StreamImpl {
  private:
   struct FillPerLanguageSchema {
     SherlockSchema& schema_ref;
-    const SherlockNamespaceName& namespace_name;
-    explicit FillPerLanguageSchema(SherlockSchema& schema, const SherlockNamespaceName& namespace_name)
+    const ss::StreamNamespaceName& namespace_name;
+    explicit FillPerLanguageSchema(SherlockSchema& schema, const ss::StreamNamespaceName& namespace_name)
         : schema_ref(schema), namespace_name(namespace_name) {}
     template <current::reflection::Language language>
     void PerLanguage() {
@@ -593,7 +593,7 @@ class StreamImpl {
     }
   };
 
-  static SherlockSchema StaticConstructSchemaAsObject(const SherlockNamespaceName& namespace_name) {
+  static SherlockSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
     SherlockSchema schema;
 
     schema.type_name = current::reflection::CurrentTypeName<entry_t>();
@@ -610,8 +610,8 @@ class StreamImpl {
   }
 
  private:
-  const SherlockNamespaceName schema_namespace_name_ =
-      SherlockNamespaceName(constants::kDefaultNamespaceName, constants::kDefaultTopLevelName);
+  const ss::StreamNamespaceName schema_namespace_name_ =
+      ss::StreamNamespaceName(constants::kDefaultNamespaceName, constants::kDefaultTopLevelName);
   const SherlockSchema schema_as_object_;
   const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
                                                      HTTPResponseCode.OK,

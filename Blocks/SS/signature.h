@@ -22,34 +22,34 @@
  SOFTWARE.
  *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_SIGNATURE_H
-#define CURRENT_SHERLOCK_SIGNATURE_H
+#ifndef BLOCKS_SS_SIGNATURE_H
+#define BLOCKS_SS_SIGNATURE_H
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/struct.h"
+#include "../../TypeSystem/Schema/schema.h"
 
 namespace current {
-namespace sherlock {
+namespace ss {
 
-CURRENT_STRUCT(SherlockNamespaceName) {
+CURRENT_STRUCT(StreamNamespaceName) {
   CURRENT_FIELD(exposed_namespace, std::string);
   CURRENT_FIELD(top_level_name, std::string);
-  CURRENT_DEFAULT_CONSTRUCTOR(SherlockNamespaceName) {}
-  CURRENT_CONSTRUCTOR(SherlockNamespaceName)(const std::string& exposed_namespace, const std::string& top_level_name)
+  CURRENT_DEFAULT_CONSTRUCTOR(StreamNamespaceName) {}
+  CURRENT_CONSTRUCTOR(StreamNamespaceName)(const std::string& exposed_namespace, const std::string& top_level_name)
       : exposed_namespace(exposed_namespace), top_level_name(top_level_name) {}
 };
 
-CURRENT_STRUCT(SherlockSignature, SherlockNamespaceName) {
+CURRENT_STRUCT(StreamSignature, StreamNamespaceName) {
   CURRENT_FIELD(schema, reflection::SchemaInfo);
-  CURRENT_DEFAULT_CONSTRUCTOR(SherlockSignature) {}
-  CURRENT_CONSTRUCTOR(SherlockSignature)(
+  CURRENT_DEFAULT_CONSTRUCTOR(StreamSignature) {}
+  CURRENT_CONSTRUCTOR(StreamSignature)(
       const std::string& exposed_namespace, const std::string& top_level_name, const reflection::SchemaInfo& schema)
     : SUPER(exposed_namespace, top_level_name), schema(schema) {}
-  CURRENT_CONSTRUCTOR(SherlockSignature)(const SherlockNamespaceName& namespace_name, const reflection::SchemaInfo& schema)
+  CURRENT_CONSTRUCTOR(StreamSignature)(const StreamNamespaceName& namespace_name, const reflection::SchemaInfo& schema)
     : SUPER(namespace_name), schema(std::move(schema)) {}
 };
 
+}  // namespace ss
 }  // namespace current
-}  // namespace sherlock
 
-#endif  // CURRENT_SHERLOCK_SIGNATURE_H
+#endif  // BLOCKS_SS_SIGNATURE_H

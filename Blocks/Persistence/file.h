@@ -38,11 +38,11 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../SS/persister.h"
+#include "../SS/signature.h"
 
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
 #include "../../Bricks/util/atomic_that_works.h"
-#include "../../Sherlock/signature.h"
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Serialization/json.h"
 
@@ -149,7 +149,7 @@ class FilePersister {
     FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
-    explicit FilePersisterImpl(const sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
+    explicit FilePersisterImpl(const ss::StreamNamespaceName& namespace_name, const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           head_rewriter(filename, std::ofstream::in | std::ofstream::out),
@@ -161,7 +161,7 @@ class FilePersister {
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    void ValidateFileAndInitializeHead(const sherlock::SherlockNamespaceName& namespace_name) {
+    void ValidateFileAndInitializeHead(const ss::StreamNamespaceName& namespace_name) {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -172,7 +172,7 @@ class FilePersister {
         auto head = std::chrono::microseconds(-1);
         reflection::StructSchema struct_schema;
         struct_schema.AddType<ENTRY>();
-        const auto signature = JSON(sherlock::SherlockSignature(namespace_name, struct_schema.GetSchemaInfo()));
+        const auto signature = JSON(ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo()));
         while (cit.ProcessNextEntry(
             [&](const idxts_t& current, const char*) {
               CURRENT_ASSERT(current.index == offset.size());
@@ -232,7 +232,7 @@ class FilePersister {
   FilePersister& operator=(const FilePersister&) = delete;
   FilePersister& operator=(FilePersister&&) = delete;
 
-  explicit FilePersister(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
+  explicit FilePersister(const ss::StreamNamespaceName& namespace_name, const std::string& filename)
       : file_persister_impl_(namespace_name, filename) {}
 
   class IterableRange {
