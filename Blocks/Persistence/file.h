@@ -149,7 +149,8 @@ class FilePersister {
     FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
-    explicit FilePersisterImpl(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
+    explicit FilePersisterImpl(const current::sherlock::SherlockNamespaceName& namespace_name,
+                               const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           head_rewriter(filename, std::ofstream::in | std::ofstream::out),
@@ -170,6 +171,10 @@ class FilePersister {
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
         auto head = std::chrono::microseconds(-1);
+        current::reflection::StructSchema struct_schema;
+        struct_schema.AddType<ENTRY>();
+        const auto signature =
+            current::sherlock::SherlockSignature(namespace_name, JSON(struct_schema.GetSchemaInfo()));
         while (cit.ProcessNextEntry(
             [&](const idxts_t& current, const char*) {
               CURRENT_ASSERT(current.index == offset.size());
@@ -201,10 +206,7 @@ class FilePersister {
                   auto offset = signature_key_length;
                   while (offset < value.length() && std::isspace(value[offset])) ++offset;
                   const auto actual_signature = ParseJSON<current::sherlock::SherlockSignature>(value.c_str() + offset);
-                  current::reflection::StructSchema struct_schema;
-                  struct_schema.AddType<ENTRY>();
-                  const auto required_signature = current::sherlock::SherlockSignature(namespace_name, JSON(struct_schema.GetSchemaInfo()));
-                  if (actual_signature != required_signature) {
+                  if (actual_signature != signature) {
                     CURRENT_THROW(InvalidStreamSignature());
                   }
                 }
@@ -217,6 +219,9 @@ class FilePersister {
         // The `next.us` stores the closest possible next entry timestamp,
         // so the last processed entry timestamp is always 1us less.
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
+        if (!current_offset) {
+          appender << constants::kSignatureDirective << '\t' << JSON(signature) << std::endl;
+        }
       } else {
         end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
       }
@@ -230,7 +235,8 @@ class FilePersister {
   FilePersister& operator=(const FilePersister&) = delete;
   FilePersister& operator=(FilePersister&&) = delete;
 
-  explicit FilePersister(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename) : file_persister_impl_(namespace_name, filename) {}
+  explicit FilePersister(const current::sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
+      : file_persister_impl_(namespace_name, filename) {}
 
   class IterableRange {
    public:

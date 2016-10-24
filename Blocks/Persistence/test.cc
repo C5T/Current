@@ -249,7 +249,7 @@ TEST(PersistenceLayer, File) {
   using namespace persistence_test;
 
   using IMPL = current::persistence::File<StorableString>;
-  
+
   const auto namespace_name = current::sherlock::SherlockNamespaceName("namespace", "top_level_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
@@ -299,6 +299,13 @@ TEST(PersistenceLayer, File) {
   }
 
   EXPECT_EQ(
+      "#signature\t{\"exposed_namespace\":\"namespace\",\"top_level_name\":\"top_level_name\",\"schema\":\"{"
+      "\\\"types\\\":[[\\\"T9000000000000000042\\\",{\\\"ReflectedType_Primitive\\\":{\\\"type_id\\\":"
+      "\\\"T9000000000000000042\\\"},\\\"\\\":\\\"T9202934106479999325\\\"}],[\\\"T9204688078345823986\\\",{"
+      "\\\"ReflectedType_Struct\\\":{\\\"type_id\\\":\\\"T9204688078345823986\\\",\\\"native_name\\\":"
+      "\\\"StorableString\\\",\\\"super_id\\\":\\\"T1\\\",\\\"template_id\\\":null,\\\"fields\\\":[{\\\"type_id\\\":"
+      "\\\"T9000000000000000042\\\",\\\"name\\\":\\\"s\\\",\\\"description\\\":null}]},\\\"\\\":"
+      "\\\"T9206858900297712816\\\"}]],\\\"order\\\":[\\\"T9204688078345823986\\\"]}\"}\n"
       "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
       "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
       "#head\t00000000000000000300\n"
@@ -464,7 +471,7 @@ TEST(PersistenceLayer, FileExceptions) {
 
   static_assert(!current::ss::IsPublisher<int>::value, "");
   static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
-  
+
   const auto namespace_name = current::sherlock::SherlockNamespaceName("namespace", "top_level_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
