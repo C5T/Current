@@ -39,13 +39,12 @@ SOFTWARE.
 
 #include "../SS/persister.h"
 
-#include "../../TypeSystem/Serialization/json.h"
-
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
 #include "../../Bricks/util/atomic_that_works.h"
-
 #include "../../Sherlock/signature.h"
+#include "../../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/Serialization/json.h"
 
 namespace current {
 namespace persistence {
@@ -201,8 +200,11 @@ class FilePersister {
                 if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
                   auto offset = signature_key_length;
                   while (offset < value.length() && std::isspace(value[offset])) ++offset;
-                  const auto signature = ParseJSON<current::sherlock::SherlockNamespaceName>(value.c_str() + offset);
-                  if (signature != namespace_name) {
+                  const auto actual_signature = ParseJSON<current::sherlock::SherlockSignature>(value.c_str() + offset);
+                  current::reflection::StructSchema struct_schema;
+                  struct_schema.AddType<ENTRY>();
+                  const auto required_signature = current::sherlock::SherlockSignature(namespace_name, JSON(struct_schema.GetSchemaInfo()));
+                  if (actual_signature != required_signature) {
                     CURRENT_THROW(InvalidStreamSignature());
                   }
                 }

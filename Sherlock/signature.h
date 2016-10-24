@@ -47,9 +47,9 @@ CURRENT_STRUCT(SherlockSignature, SherlockNamespaceName) {
   CURRENT_DEFAULT_CONSTRUCTOR(SherlockSignature) {}
   CURRENT_CONSTRUCTOR(SherlockSignature)(
       const std::string& exposed_namespace, const std::string& top_level_name, const std::string& schema)
-      : SherlockNamespaceName(exposed_namespace, top_level_name), schema(schema) {}
+      : SUPER(exposed_namespace, top_level_name), schema(schema) {}
   CURRENT_CONSTRUCTOR(SherlockSignature)(const SherlockNamespaceName& namespace_name, const std::string& schema)
-      : SherlockNamespaceName(namespace_name), schema(schema) {}
+      : SUPER(namespace_name), schema(schema) {}
   bool operator==(const SherlockSignature& rhs) const {
     return SherlockNamespaceName::operator==(rhs) && schema == rhs.schema;
   }
