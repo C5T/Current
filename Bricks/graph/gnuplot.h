@@ -27,9 +27,9 @@ SOFTWARE.
 #ifndef BRICKS_GRAPH_GNUPLOT_H
 #define BRICKS_GRAPH_GNUPLOT_H
 
-#include <vector>
-#include <string>
 #include <map>
+#include <string>
+#include <vector>
 
 #include "../file/file.h"
 #include "../strings/util.h"

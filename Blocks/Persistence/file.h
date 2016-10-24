@@ -32,8 +32,8 @@ SOFTWARE.
 #define BLOCKS_PERSISTENCE_FILE_H
 
 #include <atomic>
-#include <functional>
 #include <fstream>
+#include <functional>
 
 #include "exceptions.h"
 
@@ -41,8 +41,8 @@ SOFTWARE.
 
 #include "../../TypeSystem/Serialization/json.h"
 
-#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/atomic_that_works.h"
 
 namespace current {

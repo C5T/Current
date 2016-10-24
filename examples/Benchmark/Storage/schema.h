@@ -1,5 +1,5 @@
-#include "../../../Storage/storage.h"
 #include "../../../Storage/persister/sherlock.h"
+#include "../../../Storage/storage.h"
 
 CURRENT_ENUM(EntryID, uint64_t);
 

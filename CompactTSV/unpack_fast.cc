@@ -39,13 +39,15 @@ int main(int argc, char** argv) {
   CURRENT_ASSERT(!FLAGS_input.empty());
   const auto contents = current::FileSystem::ReadFileAsString(FLAGS_input);
 
-  CompactTSV::Unpack([](const std::vector<std::pair<const char*, size_t>>& v) {
-    for (size_t i = 0; i < v.size(); ++i) {
-      if (i) {
-        fputc('\t', stdout);
-      }
-      fwrite(v[i].first, 1, v[i].second, stdout);
-    }
-    fputc('\n', stdout);
-  }, contents);
+  CompactTSV::Unpack(
+      [](const std::vector<std::pair<const char*, size_t>>& v) {
+        for (size_t i = 0; i < v.size(); ++i) {
+          if (i) {
+            fputc('\t', stdout);
+          }
+          fwrite(v[i].first, 1, v[i].second, stdout);
+        }
+        fputc('\n', stdout);
+      },
+      contents);
 }

@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef IRIS_H
 #define IRIS_H
 
-#include "../../TypeSystem/struct.h"
 #include "../../Storage/storage.h"
+#include "../../TypeSystem/struct.h"
 
 CURRENT_STRUCT(LabeledFlower) {
   CURRENT_FIELD(key, uint64_t);
@@ -38,8 +38,8 @@ CURRENT_STRUCT(LabeledFlower) {
   CURRENT_FIELD(label, std::string);
 
   CURRENT_DEFAULT_CONSTRUCTOR(LabeledFlower) {}
-  CURRENT_CONSTRUCTOR(LabeledFlower)(
-      size_t key, double sl, double sw, double pl, double pw, const std::string& label)
+  CURRENT_CONSTRUCTOR(LabeledFlower)
+  (size_t key, double sl, double sw, double pl, double pw, const std::string& label)
       : key(key), SL(sl), SW(sw), PL(pl), PW(pw), label(label) {}
 };
 

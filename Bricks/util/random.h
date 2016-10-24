@@ -27,8 +27,8 @@ SOFTWARE.
 
 #include <random>
 
-#include "singleton.h"
 #include "../time/chrono.h"
+#include "singleton.h"
 
 namespace current {
 namespace random {

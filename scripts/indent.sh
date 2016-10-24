@@ -6,4 +6,4 @@
 (find . -name "*.cc" ; find . -name "*.h") \
 | grep -v "/.current/" | grep -v "/3rdparty/" \
 | grep -v "/docu_" \
-| xargs clang-format-3.6 -i
+| xargs clang-format -i

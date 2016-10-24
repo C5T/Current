@@ -30,8 +30,8 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_CRC32_H
 #define BRICKS_UTIL_CRC32_H
 
-#include <string>
 #include <cstring>
+#include <string>
 
 namespace current {
 

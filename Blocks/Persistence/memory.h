@@ -39,8 +39,8 @@ SOFTWARE.
 
 #include "../SS/persister.h"
 
-#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/time/chrono.h"
 
 namespace current {
 namespace persistence {

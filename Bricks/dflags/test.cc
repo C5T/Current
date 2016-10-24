@@ -26,8 +26,8 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-#include <string>
 #include <sstream>
+#include <string>
 
 TEST(DFlags, DefinesAFlag) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;

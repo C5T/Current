@@ -30,9 +30,9 @@ SOFTWARE.
 
 #include "idx_ts.h"
 
-#include "../../TypeSystem/variant.h"
-#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/locks.h"
+#include "../../Bricks/time/chrono.h"
+#include "../../TypeSystem/variant.h"
 
 namespace current {
 namespace ss {
@@ -46,8 +46,7 @@ template <typename IMPL, typename ENTRY>
 class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
   template <typename... ARGS>
-  explicit EntryPublisher(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  explicit EntryPublisher(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPublisher() {}
 
   using MutexLockStatus = current::locks::MutexLockStatus;
@@ -105,8 +104,7 @@ template <typename IMPL, typename ENTRY>
 class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
  public:
   template <typename... ARGS>
-  EntrySubscriber(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  EntrySubscriber(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntrySubscriber() {}
 
   EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) { return IMPL::operator()(e, current, last); }

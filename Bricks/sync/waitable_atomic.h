@@ -111,8 +111,7 @@ class WaitableAtomicImpl {
     enum { IS_INTRUSIVE = false };
 
     template <typename... ARGS>
-    BasicImpl(ARGS&&... args)
-        : data_(std::forward<ARGS>(args)...) {}
+    BasicImpl(ARGS&&... args) : data_(std::forward<ARGS>(args)...) {}
 
     BasicImpl(const DATA& data) : data_(data) {}
 
@@ -138,9 +137,8 @@ class WaitableAtomicImpl {
         bool mark_as_unmodified_;
       };
 
-      using impl_t = typename std::conditional<std::is_const<POINTER>::value,
-                                               ImmutableAccessorDoesNotNotify,
-                                               MutableAccessorDoesNotify>::type;
+      using impl_t = typename std::
+          conditional<std::is_const<POINTER>::value, ImmutableAccessorDoesNotNotify, MutableAccessorDoesNotify>::type;
     };
 
     // A generic implementation for both mutable and immutable scoped accessors.
@@ -149,9 +147,8 @@ class WaitableAtomicImpl {
      public:
       using parent_t = PARENT;
       using optional_notifier_t = typename NotifyIfMutable<PARENT>::impl_t;
-      using data_t = typename std::conditional<std::is_const<parent_t>::value,
-                                               const typename parent_t::data_t,
-                                               typename parent_t::data_t>::type;
+      using data_t = typename std::
+          conditional<std::is_const<parent_t>::value, const typename parent_t::data_t, typename parent_t::data_t>::type;
 
       explicit ScopedAccessorImpl(parent_t* parent)
           : ScopedUniqueLock(parent->data_mutex_), optional_notifier_t(parent), pdata_(&parent->data_) {}

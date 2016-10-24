@@ -29,9 +29,9 @@ SOFTWARE.
 #include "../port.h"
 
 #ifndef CURRENT_HAS_THREAD_LOCAL
+#include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
 #include <cstdlib>
 #include <iostream>
-#include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
 #endif
 
 namespace current {

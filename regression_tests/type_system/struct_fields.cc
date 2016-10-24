@@ -41,7 +41,7 @@ TEST(TypeTest, StructFields) {
   using namespace type_test;
   using current::reflection::StructSchema;
   using current::reflection::Language;
-  
+
   StructWithManyFields foo;
   foo.z1 = 42u;
   EXPECT_EQ(42u, foo.z1);

@@ -42,10 +42,10 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 
 #include "../../Bricks/dflags/dflags.h"
+#include "../../Bricks/file/file.h"
 #include "../../Bricks/strings/join.h"
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/util/singleton.h"
-#include "../../Bricks/file/file.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -215,21 +215,19 @@ TEST(HTTPAPI, URLParameters) {
 }
 
 TEST(HTTPAPI, HeadersAndCookies) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/headers_and_cookies",
-                                   [](Request r) {
-                                     EXPECT_TRUE(r.headers.Has("Header1"));
-                                     EXPECT_TRUE(r.headers.Has("Header2"));
-                                     EXPECT_EQ("foo", r.headers["Header1"].value);
-                                     EXPECT_EQ("bar", r.headers["Header2"].value);
-                                     EXPECT_EQ("x=1; y=2", r.headers.CookiesAsString());
-                                     Response response("OK");
-                                     response.headers.Set("X-Current-H1", "header1");
-                                     response.SetCookie("cookie1", "value1");
-                                     response.headers.Set("X-Current-H2", "header2");
-                                     response.SetCookie("cookie2", "value2");
-                                     r(response);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/headers_and_cookies", [](Request r) {
+    EXPECT_TRUE(r.headers.Has("Header1"));
+    EXPECT_TRUE(r.headers.Has("Header2"));
+    EXPECT_EQ("foo", r.headers["Header1"].value);
+    EXPECT_EQ("bar", r.headers["Header2"].value);
+    EXPECT_EQ("x=1; y=2", r.headers.CookiesAsString());
+    Response response("OK");
+    response.headers.Set("X-Current-H1", "header1");
+    response.SetCookie("cookie1", "value1");
+    response.headers.Set("X-Current-H2", "header2");
+    response.SetCookie("cookie2", "value2");
+    r(response);
+  });
   const auto response = HTTP(GET(Printf("http://localhost:%d/headers_and_cookies", FLAGS_net_api_test_port))
                                  .SetHeader("Header1", "foo")
                                  .SetCookie("x", "1")
@@ -244,16 +242,14 @@ TEST(HTTPAPI, HeadersAndCookies) {
 }
 
 TEST(HTTPAPI, ConnectionIPAndPort) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/foo",
-                                   [](Request r) {
-                                     const auto& c = r.connection;
-                                     EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
-                                     EXPECT_EQ(FLAGS_net_api_test_port, c.LocalIPAndPort().port);
-                                     EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
-                                     EXPECT_LT(0, c.RemoteIPAndPort().port);
-                                     r("bar", HTTPResponseCode.OK);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) {
+    const auto& c = r.connection;
+    EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
+    EXPECT_EQ(FLAGS_net_api_test_port, c.LocalIPAndPort().port);
+    EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
+    EXPECT_LT(0, c.RemoteIPAndPort().port);
+    r("bar", HTTPResponseCode.OK);
+  });
   const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -263,12 +259,9 @@ TEST(HTTPAPI, ConnectionIPAndPort) {
 }
 
 TEST(HTTPAPI, RespondsWithString) {
-  const auto scope =
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/responds_with_string",
-                    [](Request r) {
-                      r("test_string", HTTPResponseCode.OK, "application/json", Headers({{"foo", "bar"}}));
-                    });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/responds_with_string", [](Request r) {
+    r("test_string", HTTPResponseCode.OK, "application/json", Headers({{"foo", "bar"}}));
+  });
   const string url = Printf("http://localhost:%d/responds_with_string", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -279,15 +272,9 @@ TEST(HTTPAPI, RespondsWithString) {
 }
 
 TEST(HTTPAPI, RespondsWithObject) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/responds_with_object",
-                                   [](Request r) {
-                                     r(HTTPAPITestObject(),
-                                       "test_object",
-                                       HTTPResponseCode.OK,
-                                       "application/json",
-                                       Headers({{"foo", "bar"}}));
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/responds_with_object", [](Request r) {
+    r(HTTPAPITestObject(), "test_object", HTTPResponseCode.OK, "application/json", Headers({{"foo", "bar"}}));
+  });
   const string url = Printf("http://localhost:%d/responds_with_object", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -315,12 +302,9 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, Redirect) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/from",
-                                   [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/to"}}));
-                                   }) +
-                     HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/from", [](Request r) {
+    r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/to"}}));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
   // Redirect allowed when `.AllowRedirects()` is set.
@@ -331,21 +315,13 @@ TEST(HTTPAPI, Redirect) {
 }
 
 TEST(HTTPAPI, RedirectLoop) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/p1",
-                                   [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p2"}}));
-                                   }) +
-                     HTTP(FLAGS_net_api_test_port)
-                         .Register("/p2",
-                                   [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p3"}}));
-                                   }) +
-                     HTTP(FLAGS_net_api_test_port)
-                         .Register("/p3",
-                                   [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p1"}}));
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/p1", [](Request r) {
+    r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p2"}}));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/p2", [](Request r) {
+    r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p3"}}));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/p3", [](Request r) {
+    r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p1"}}));
+  });
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
 }
 #endif
@@ -402,33 +378,31 @@ struct ShouldReduceDelayBetweenChunksSingleton {
 };
 // Test various HTTP client modes.
 TEST(HTTPAPI, GetToFile) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/stars",
-                                   [](Request r) {
-                                     const size_t n = atoi(r.url.query["n"].c_str());
-                                     auto response = r.connection.SendChunkedHTTPResponse();
-                                     const auto sleep = []() {
-                                       const uint64_t delay_between_chunks = []() {
-                                         bool& reduce = Singleton<ShouldReduceDelayBetweenChunksSingleton>().yes;
-                                         if (!reduce) {
-                                           reduce = true;
-                                           return 10;
-                                         } else {
-                                           return 1;
-                                         }
-                                       }();
-                                       std::this_thread::sleep_for(std::chrono::milliseconds(delay_between_chunks));
-                                     };
-                                     sleep();
-                                     for (size_t i = 0; i < n; ++i) {
-                                       response.Send("*");
-                                       sleep();
-                                       response.Send(std::vector<char>({'a', 'b'}));
-                                       sleep();
-                                       response.Send(std::vector<uint8_t>({0x31, 0x32}));
-                                       sleep();
-                                     }
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/stars", [](Request r) {
+    const size_t n = atoi(r.url.query["n"].c_str());
+    auto response = r.connection.SendChunkedHTTPResponse();
+    const auto sleep = []() {
+      const uint64_t delay_between_chunks = []() {
+        bool& reduce = Singleton<ShouldReduceDelayBetweenChunksSingleton>().yes;
+        if (!reduce) {
+          reduce = true;
+          return 10;
+        } else {
+          return 1;
+        }
+      }();
+      std::this_thread::sleep_for(std::chrono::milliseconds(delay_between_chunks));
+    };
+    sleep();
+    for (size_t i = 0; i < n; ++i) {
+      response.Send("*");
+      sleep();
+      response.Send(std::vector<char>({'a', 'b'}));
+      sleep();
+      response.Send(std::vector<uint8_t>({0x31, 0x32}));
+      sleep();
+    }
+  });
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
@@ -441,16 +415,14 @@ TEST(HTTPAPI, GetToFile) {
 }
 
 TEST(HTTPAPI, ChunkedResponseWithHeaders) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/chunked_with_header",
-                                   [](Request r) {
-                                     EXPECT_EQ("GET", r.method);
-                                     auto response = r.connection.SendChunkedHTTPResponse(
-                                         HTTPResponseCode.OK, "text/plain", Headers({{"header", "yeah"}}));
-                                     response.Send("A");
-                                     response.Send("B");
-                                     response.Send("C");
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/chunked_with_header", [](Request r) {
+    EXPECT_EQ("GET", r.method);
+    auto response =
+        r.connection.SendChunkedHTTPResponse(HTTPResponseCode.OK, "text/plain", Headers({{"header", "yeah"}}));
+    response.Send("A");
+    response.Send("B");
+    response.Send("C");
+  });
   const auto response = HTTP(GET(Printf("http://localhost:%d/chunked_with_header", FLAGS_net_api_test_port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("ABC", response.body);
@@ -461,15 +433,13 @@ TEST(HTTPAPI, ChunkedResponseWithHeaders) {
 // A hacky way to get back the response chunk by chunk. TODO(dkorolev): `ChunkedGET`.
 TEST(HTTPAPI, GetByChunksPrototype) {
   // Handler returning the result chunk by chunk.
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/chunks",
-                                   [](Request r) {
-                                     auto response = r.connection.SendChunkedHTTPResponse(
-                                         HTTPResponseCode.OK, "text/plain", Headers({{"header", "oh-well"}}));
-                                     response.Send("1\n");
-                                     response.Send("23\n");
-                                     response.Send("456\n");
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/chunks", [](Request r) {
+    auto response =
+        r.connection.SendChunkedHTTPResponse(HTTPResponseCode.OK, "text/plain", Headers({{"header", "oh-well"}}));
+    response.Send("1\n");
+    response.Send("23\n");
+    response.Send("456\n");
+  });
   const string url = Printf("http://localhost:%d/chunks", FLAGS_net_api_test_port);
   {
     // A conventional GET, ignoring chunk boundaries and concatenating all the data together.
@@ -531,10 +501,12 @@ TEST(HTTPAPI, GetByChunksPrototype) {
 
     std::vector<std::string> headers;
     std::vector<std::string> chunk_by_chunk_response;
-    const auto header_callback =
-        [&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); };
-    const auto chunk_callback =
-        [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); };
+    const auto header_callback = [&headers](const std::string& k, const std::string& v) {
+      headers.push_back(k + '=' + v);
+    };
+    const auto chunk_callback = [&chunk_by_chunk_response](const std::string& s) {
+      chunk_by_chunk_response.push_back(s);
+    };
     const auto done_callback = [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); };
 
     current::http::GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver> client(
@@ -566,93 +538,84 @@ TEST(HTTPAPI, GetByChunksPrototype) {
 }
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/post",
-                                   [](Request r) {
-                                     ASSERT_FALSE(r.body.empty());
-                                     r("Data: " + r.body);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_FALSE(r.body.empty());
+    r("Data: " + r.body);
+  });
   const auto response =
       HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
   EXPECT_EQ("Data: No shit!", response.body);
 }
 
 TEST(HTTPAPI, PostAStringAsString) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/post_string",
-                                   [](Request r) {
-                                     ASSERT_FALSE(r.body.empty());
-                                     EXPECT_EQ("POST", r.method);
-                                     r(r.body);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/post_string", [](Request r) {
+    ASSERT_FALSE(r.body.empty());
+    EXPECT_EQ("POST", r.method);
+    r(r.body);
+  });
   EXPECT_EQ("std::string",
             HTTP(POST(Printf("http://localhost:%d/post_string", FLAGS_net_api_test_port),
                       std::string("std::string"),
-                      "text/plain")).body);
+                      "text/plain"))
+                .body);
 }
 
 TEST(HTTPAPI, PostAStringAsConstCharPtr) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/post_const_char_ptr",
-                                   [](Request r) {
-                                     ASSERT_FALSE(r.body.empty());
-                                     EXPECT_EQ("POST", r.method);
-                                     r(r.body);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/post_const_char_ptr", [](Request r) {
+    ASSERT_FALSE(r.body.empty());
+    EXPECT_EQ("POST", r.method);
+    r(r.body);
+  });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("http://localhost:%d/post_const_char_ptr", FLAGS_net_api_test_port),
                       static_cast<const char*>("const char*"),
-                      "text/plain")).body);
+                      "text/plain"))
+                .body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsString) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/respond_with_std_string",
-                                   [](Request r) {
-                                     EXPECT_EQ("POST", r.method);
-                                     EXPECT_EQ("", r.body);
-                                     r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string", [](Request r) {
+    EXPECT_EQ("POST", r.method);
+    EXPECT_EQ("", r.body);
+    r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
+  });
   EXPECT_EQ("std::string",
             HTTP(POST(Printf("http://localhost:%d/respond_with_std_string", FLAGS_net_api_test_port), "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
-  const auto scope =
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/respond_with_const_char_ptr",
-                    [](Request r) {
-                      EXPECT_EQ("", r.body);
-                      r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
-                    });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
+    EXPECT_EQ("", r.body);
+    r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
+  });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port), "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/respond_with_std_string_via_request_directly",
-                                   [](Request r) {
-                                     EXPECT_EQ("", r.body);
-                                     r(std::string("std::string"), HTTPResponseCode.OK);
-                                   });
+  const auto scope =
+      HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string_via_request_directly", [](Request r) {
+        EXPECT_EQ("", r.body);
+        r(std::string("std::string"), HTTPResponseCode.OK);
+      });
   EXPECT_EQ(
       "std::string",
-      HTTP(POST(Printf("http://localhost:%d/respond_with_std_string_via_request_directly", FLAGS_net_api_test_port),
-                "")).body);
+      HTTP(
+          POST(Printf("http://localhost:%d/respond_with_std_string_via_request_directly", FLAGS_net_api_test_port), ""))
+          .body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/respond_with_const_char_ptr_via_request_directly",
-                                   [](Request r) {
-                                     EXPECT_EQ("", r.body);
-                                     r(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
-                                   });
+  const auto scope =
+      HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr_via_request_directly", [](Request r) {
+        EXPECT_EQ("", r.body);
+        r(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
+      });
   EXPECT_EQ(
       "const char*",
       HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr_via_request_directly", FLAGS_net_api_test_port),
-                "")).body);
+                ""))
+          .body);
 }
 
 CURRENT_STRUCT(SerializableObject) {
@@ -674,12 +637,10 @@ TEST(HTTPAPI, PostFromInvalidFile) {
 #endif
 
 TEST(HTTPAPI, PostFromFileToBuffer) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/post",
-                                   [](Request r) {
-                                     ASSERT_FALSE(r.body.empty());
-                                     r("Voila: " + r.body);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_FALSE(r.body.empty());
+    r("Voila: " + r.body);
+  });
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
@@ -691,12 +652,10 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
 }
 
 TEST(HTTPAPI, PostFromBufferToFile) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/post",
-                                   [](Request r) {
-                                     ASSERT_FALSE(r.body.empty());
-                                     r("Meh: " + r.body);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_FALSE(r.body.empty());
+    r("Meh: " + r.body);
+  });
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
@@ -707,12 +666,10 @@ TEST(HTTPAPI, PostFromBufferToFile) {
 }
 
 TEST(HTTPAPI, PostFromFileToFile) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/post",
-                                   [](Request r) {
-                                     ASSERT_FALSE(r.body.empty());
-                                     r("Phew: " + r.body);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_FALSE(r.body.empty());
+    r("Phew: " + r.body);
+  });
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
@@ -729,13 +686,11 @@ TEST(HTTPAPI, PostFromFileToFile) {
 }
 
 TEST(HTTPAPI, HeadRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/head",
-                                   [](Request r) {
-                                     EXPECT_EQ("HEAD", r.method);
-                                     ASSERT_TRUE(r.body.empty());
-                                     r("", HTTPResponseCode.OK, "text/html", Headers({{"foo", "bar"}}));
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/head", [](Request r) {
+    EXPECT_EQ("HEAD", r.method);
+    ASSERT_TRUE(r.body.empty());
+    r("", HTTPResponseCode.OK, "text/html", Headers({{"foo", "bar"}}));
+  });
   const auto response = HTTP(HEAD(Printf("http://localhost:%d/head", FLAGS_net_api_test_port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_TRUE(response.body.empty());
@@ -744,35 +699,32 @@ TEST(HTTPAPI, HeadRequest) {
 }
 
 TEST(HTTPAPI, DeleteRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/delete",
-                                   [](Request r) {
-                                     EXPECT_EQ("DELETE", r.method);
-                                     ASSERT_TRUE(r.body.empty());
-                                     SerializableObject object;
-                                     r(object);
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/delete", [](Request r) {
+    EXPECT_EQ("DELETE", r.method);
+    ASSERT_TRUE(r.body.empty());
+    SerializableObject object;
+    r(object);
+  });
   const auto response = HTTP(DELETE(Printf("http://localhost:%d/delete", FLAGS_net_api_test_port)));
   EXPECT_EQ("42:foo", ParseJSON<SerializableObject>(response.body).AsString());
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, PatchRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/patch",
-                                   [](Request r) {
-                                     EXPECT_EQ("PATCH", r.method);
-                                     EXPECT_EQ("test", r.body);
-                                     r("Patch OK.");
-                                   });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/patch", [](Request r) {
+    EXPECT_EQ("PATCH", r.method);
+    EXPECT_EQ("test", r.body);
+    r("Patch OK.");
+  });
   const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", FLAGS_net_api_test_port), "test"));
   EXPECT_EQ("Patch OK.", response.body);
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, UserAgent) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
-                         .Register("/ua", [](Request r) { r("TODO(dkorolev): Actually get passed in user agent."); });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/ua", [](Request r) {
+    r("TODO(dkorolev): Actually get passed in user agent.");
+  });
   const string url = Printf("http://localhost:%d/ua", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url).UserAgent("Blah"));
   EXPECT_EQ(url, response.url);
@@ -841,47 +793,25 @@ TEST(HTTPAPI, ServeDirOnlyServesFilesOfKnownMIMEType) {
 TEST(HTTPAPI, ResponseSmokeTest) {
   const auto send_response = [](const Response& response, Request request) { request(response); };
 
-  const auto scope =
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response1", [send_response](Request r) { send_response(Response("foo"), std::move(r)); }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register(
-              "/response2",
-              [send_response](Request r) { send_response(Response("bar", HTTPResponseCode.Accepted), std::move(r)); }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response3",
-                    [send_response](Request r) {
-                      send_response(Response("baz", HTTPResponseCode.NotFound, "text/blah"), std::move(r));
-                    }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response4",
-                    [send_response](Request r) {
-                      send_response(Response(SerializableObject(), HTTPResponseCode.Accepted), std::move(r));
-                    }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response5",
-                    [send_response](Request r) {
-                      send_response(Response(SerializableObject(), "meh").Code(HTTPResponseCode.Created), std::move(r));
-                    }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response6",
-                    [send_response](Request r) {
-                      send_response(Response().Body("OK").Code(HTTPResponseCode.OK), std::move(r));
-                    }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response7",
-                    [send_response](Request r) {
-                      send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK),
-                                    std::move(r));
-                    }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response8",
-                    [send_response](Request r) { send_response(Response(HTTPResponseCode.Created), std::move(r)); }) +
-      HTTP(FLAGS_net_api_test_port)
-          .Register("/response9",
-                    [send_response](Request r) {
-                      send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
-                    });
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/response1", [send_response](Request r) {
+    send_response(Response("foo"), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response2", [send_response](Request r) {
+    send_response(Response("bar", HTTPResponseCode.Accepted), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response3", [send_response](Request r) {
+    send_response(Response("baz", HTTPResponseCode.NotFound, "text/blah"), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response4", [send_response](Request r) {
+    send_response(Response(SerializableObject(), HTTPResponseCode.Accepted), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response5", [send_response](Request r) {
+    send_response(Response(SerializableObject(), "meh").Code(HTTPResponseCode.Created), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response6", [send_response](Request r) {
+    send_response(Response().Body("OK").Code(HTTPResponseCode.OK), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response7", [send_response](Request r) {
+    send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response8", [send_response](Request r) {
+    send_response(Response(HTTPResponseCode.Created), std::move(r));
+  }) + HTTP(FLAGS_net_api_test_port).Register("/response9", [send_response](Request r) {
+    send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
+  });
 
   const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", FLAGS_net_api_test_port)));
   EXPECT_EQ(200, static_cast<int>(response1.code));

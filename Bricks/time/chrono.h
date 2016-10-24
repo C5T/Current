@@ -38,9 +38,9 @@ SOFTWARE.
 
 #include "../exception.h"
 
-#include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
 #include "../strings/util.h"
+#include "../util/singleton.h"
 
 #ifdef CURRENT_WINDOWS
 #define timegm _mkgmtime
@@ -103,8 +103,9 @@ struct EpochClockGuaranteeingMonotonicity {
   mutable std::mutex mutex;
   inline std::chrono::microseconds Now() const {
     std::lock_guard<std::mutex> lock(mutex);
-    const uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                                std::chrono::system_clock::now().time_since_epoch()).count();
+    const uint64_t now_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     monotonic_now_us = std::max(monotonic_now_us + 1, now_us);
     return std::chrono::microseconds(monotonic_now_us);
   }
@@ -210,8 +211,9 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
       tm.tm_isdst = 0;
       tt = ::timegm(&tm);
     }
-    const auto result = std::chrono::time_point_cast<std::chrono::microseconds>(
-                            std::chrono::system_clock::from_time_t(tt)).time_since_epoch();
+    const auto result =
+        std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt))
+            .time_since_epoch();
     if (padding == time::SecondsToMicrosecondsPadding::Lower) {
       return result;
     } else {

@@ -28,8 +28,8 @@ SOFTWARE.
 #include "../../port.h"
 
 #include "codes.h"
-#include "mime_type.h"
 #include "default_messages.h"
+#include "mime_type.h"
 
 #if defined(CURRENT_POSIX) || defined(CURRENT_APPLE) || defined(CURRENT_JAVA) || defined(CURRENT_WINDOWS)
 #include "impl/server.h"

@@ -30,9 +30,9 @@ SOFTWARE.
 
 #include "macros.h"
 
+#include "../optional.h"
 #include "../struct.h"
 #include "../variant.h"
-#include "../optional.h"
 
 #include "../../Bricks/template/pod.h"
 

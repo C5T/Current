@@ -27,8 +27,8 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "../TypeSystem/struct.h"
 #include "../Bricks/template/typelist.h"
+#include "../TypeSystem/struct.h"
 
 namespace current {
 namespace ripcurrent {

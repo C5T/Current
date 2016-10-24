@@ -34,8 +34,8 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/time/chrono.h"
 
-#include "../TypeSystem/struct.h"
 #include "../TypeSystem/Serialization/json.h"
+#include "../TypeSystem/struct.h"
 
 // Initial version of `LogEntry` structure.
 CURRENT_STRUCT(LogEntry) {
@@ -80,30 +80,28 @@ class EventCollectorHTTPServer {
         last_event_t_(0u),
         events_pushed_(0u),
         timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this),
-        http_route_scope_(HTTP(http_port_)
-                              .Register(route_,
-                                        [this](Request r) {
-                                          LogEntryWithHeaders entry;
-                                          {
-                                            const auto now = current::time::Now();
-                                            std::lock_guard<std::mutex> lock(mutex_);
-                                            entry.t = now.count();
-                                            entry.m = r.method;
-                                            entry.u = r.url.url_without_parameters;
-                                            entry.q = r.url.AllQueryParameters();
-                                            entry.h = r.headers.AsMap();
-                                            entry.c = r.headers.CookiesAsString();
-                                            entry.b = r.body;
-                                            entry.f = r.url.fragment;
-                                            ostream_ << JSON(entry) << std::endl;
-                                            ++events_pushed_;
-                                            last_event_t_ = now;
-                                            if (callback_) {
-                                              callback_(entry);
-                                            }
-                                          }
-                                          r(response_text_);
-                                        })) {}
+        http_route_scope_(HTTP(http_port_).Register(route_, [this](Request r) {
+          LogEntryWithHeaders entry;
+          {
+            const auto now = current::time::Now();
+            std::lock_guard<std::mutex> lock(mutex_);
+            entry.t = now.count();
+            entry.m = r.method;
+            entry.u = r.url.url_without_parameters;
+            entry.q = r.url.AllQueryParameters();
+            entry.h = r.headers.AsMap();
+            entry.c = r.headers.CookiesAsString();
+            entry.b = r.body;
+            entry.f = r.url.fragment;
+            ostream_ << JSON(entry) << std::endl;
+            ++events_pushed_;
+            last_event_t_ = now;
+            if (callback_) {
+              callback_(entry);
+            }
+          }
+          r(response_text_);
+        })) {}
 
   EventCollectorHTTPServer(const EventCollectorHTTPServer&) = delete;
   EventCollectorHTTPServer(EventCollectorHTTPServer&&) = delete;

@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef BLOCKS_SELFMODIFYINGCONFIG_EXCEPTIONS_H
 #define BLOCKS_SELFMODIFYINGCONFIG_EXCEPTIONS_H
 
-#include "../port.h"
 #include "../../Bricks/exception.h"
+#include "../port.h"
 
 namespace current {
 

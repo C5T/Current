@@ -36,9 +36,9 @@ SOFTWARE.
 #include "types.h"
 
 #include "../optional.h"
-#include "../variant.h"
 #include "../struct.h"
 #include "../timestamp.h"
+#include "../variant.h"
 
 #include "../../Bricks/template/call_all_constructors.h"
 #include "../../Bricks/util/comparators.h"
@@ -158,9 +158,8 @@ struct ReflectorImpl {
     ReflectedType operator()(TypeSelector<VariantImpl<NAME, TypeListImpl<TS...>>>) {
       ReflectedType_Variant result;
       result.name = VariantImpl<NAME, TypeListImpl<TS...>>::VariantName();
-      current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
-                                                           ReflectedType_Variant,
-                                                           TypeListImpl<TS...>>(result);
+      current::metaprogramming::
+          call_all_constructors_with<ReflectVariantCase, ReflectedType_Variant, TypeListImpl<TS...>>(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
     }

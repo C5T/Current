@@ -28,9 +28,9 @@ SOFTWARE.
 #ifndef BLOCKS_HTTP_TYPES_H
 #define BLOCKS_HTTP_TYPES_H
 
-#include <mutex>
-#include <memory>
 #include <map>
+#include <memory>
+#include <mutex>
 #include <string>
 
 #include "../../Bricks/net/exceptions.h"
@@ -133,8 +133,7 @@ struct POST : HTTPRequestBase<POST> {
   std::string content_type;
 
   template <typename T>
-  POST(const std::string& url, T&& body, const std::string& content_type = "")
-      : HTTPRequestBase(url) {
+  POST(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
     FillBody<POST, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
@@ -152,8 +151,7 @@ struct PUT : HTTPRequestBase<PUT> {
   std::string content_type;
 
   template <typename T>
-  PUT(const std::string& url, T&& body, const std::string& content_type = "")
-      : HTTPRequestBase(url) {
+  PUT(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
     FillBody<PUT, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
@@ -163,8 +161,7 @@ struct PATCH : HTTPRequestBase<PATCH> {
   std::string content_type;
 
   template <typename T>
-  PATCH(const std::string& url, T&& body, const std::string& content_type = "")
-      : HTTPRequestBase(url) {
+  PATCH(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
     FillBody<PATCH, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };

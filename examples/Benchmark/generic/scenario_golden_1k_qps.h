@@ -28,8 +28,8 @@ SOFTWARE.
 #include "../../../port.h"
 
 #include <chrono>
-#include <thread>
 #include <mutex>
+#include <thread>
 
 #include "benchmark.h"
 
