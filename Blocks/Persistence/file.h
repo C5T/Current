@@ -200,6 +200,10 @@ class FilePersister {
                 head = us;
                 head_offset = std::streamoff(current_offset) + offset;
               } else if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
+                // The signature could be only at the beginning of the file.
+                if (current_offset != 0) {
+                  CURRENT_THROW(InvalidSignaturePosition());
+                }
                 auto offset = signature_key_length;
                 while (offset < value.length() && std::isspace(value[offset])) ++offset;
                 if (value.compare(offset, signature.length(), signature)) {
