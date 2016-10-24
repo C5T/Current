@@ -149,8 +149,7 @@ class FilePersister {
     FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
-    explicit FilePersisterImpl(const current::sherlock::SherlockNamespaceName& namespace_name,
-                               const std::string& filename)
+    explicit FilePersisterImpl(const sherlock::SherlockNamespaceName& namespace_name, const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           head_rewriter(filename, std::ofstream::in | std::ofstream::out),
@@ -162,7 +161,7 @@ class FilePersister {
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    void ValidateFileAndInitializeHead(const current::sherlock::SherlockNamespaceName& namespace_name) {
+    void ValidateFileAndInitializeHead(const sherlock::SherlockNamespaceName& namespace_name) {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -171,10 +170,9 @@ class FilePersister {
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
         auto head = std::chrono::microseconds(-1);
-        current::reflection::StructSchema struct_schema;
+        reflection::StructSchema struct_schema;
         struct_schema.AddType<ENTRY>();
-        const auto signature =
-            current::sherlock::SherlockSignature(namespace_name, JSON(struct_schema.GetSchemaInfo()));
+        const auto signature = JSON(sherlock::SherlockSignature(namespace_name, struct_schema.GetSchemaInfo()));
         while (cit.ProcessNextEntry(
             [&](const idxts_t& current, const char*) {
               CURRENT_ASSERT(current.index == offset.size());
@@ -205,8 +203,7 @@ class FilePersister {
                 if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
                   auto offset = signature_key_length;
                   while (offset < value.length() && std::isspace(value[offset])) ++offset;
-                  const auto actual_signature = ParseJSON<current::sherlock::SherlockSignature>(value.c_str() + offset);
-                  if (actual_signature != signature) {
+                  if (value.compare(offset, signature.length(), signature)) {
                     CURRENT_THROW(InvalidStreamSignature());
                   }
                 }
@@ -220,7 +217,7 @@ class FilePersister {
         // so the last processed entry timestamp is always 1us less.
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
         if (!current_offset) {
-          appender << constants::kSignatureDirective << '\t' << JSON(signature) << std::endl;
+          appender << constants::kSignatureDirective << '\t' << signature << std::endl;
         }
       } else {
         end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
