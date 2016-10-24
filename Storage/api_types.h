@@ -36,6 +36,21 @@ namespace rest {
 
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
+const std::string kRESTfulExportURLQueryParameter = "export";
+// Additional URL query parameters for the `export` mode.
+const std::string kRESTfulExportNShardsURLQueryParameter = "nshards";  // Number of shards.
+const std::string kRESTfulExportShardURLQueryParameter = "shard";      // Shard to export.
+
+enum class FieldExportFormat {
+  Simple,   // Single entry object JSON or one JSON per line for collections, no timestamps.
+  Detailed  // Entries wrapped in `DetailedExportEntry<>`, single JSON object or JSON array for collections.
+};
+
+struct FieldExportParams {
+  FieldExportFormat format = FieldExportFormat::Simple;
+  uint32_t nshards = 0u;
+  uint32_t shard = 0u;
+};
 
 // TODO(dkorolev): The whole `FieldTypeDependentImpl` section below to be moved to `semantics.h`.
 template <typename>
@@ -222,7 +237,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
   const std::string field_name;
   Optional<url_key_t> get_url_key;
   const StorageRole role;
-  const bool export_requested;
+  Optional<FieldExportParams> requested_export_params;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
                   immutable_fields_t fields,
@@ -230,28 +245,28 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
                   const StorageRole role,
-                  const bool export_requested)
+                  const Optional<FieldExportParams>& requested_export_params)
       : RESTfulGenericInput<STORAGE>(input),
         fields(fields),
         field(field),
         field_name(field_name),
         get_url_key(get_url_key),
         role(role),
-        export_requested(export_requested) {}
+        requested_export_params(requested_export_params) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
                   immutable_fields_t fields,
                   const field_t& field,
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
                   const StorageRole role,
-                  const bool export_requested)
+                  const Optional<FieldExportParams>& requested_export_params)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
         fields(fields),
         field(field),
         field_name(field_name),
         get_url_key(get_url_key),
         role(role),
-        export_requested(export_requested) {}
+        requested_export_params(requested_export_params) {}
 };
 
 // A dedicated "GETInput" for the GETs over row or col of a matrix container.
