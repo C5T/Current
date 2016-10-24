@@ -377,15 +377,20 @@ TEST(PersistenceLayer, FileDirectives) {
     ASSERT_FALSE(Exists(head_idxts.idxts));
     EXPECT_EQ(-1, head_idxts.head.count());
   }
+  current::reflection::StructSchema struct_schema;
+  struct_schema.AddType<StorableString>();
+  const std::string signature =
+      "#signature\t" + JSON(current::ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo())) + '\n';
+  EXPECT_EQ(signature, current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
     current::time::ResetToZero();
 
     // A file consisting only of directives.
-    current::FileSystem::WriteStringToFile(
-        "#head 0000000000000000001\n"
-        "#unknown_directive\t\tblah\n",
-        persistence_file_name.c_str());
+    current::FileSystem::WriteStringToFile(signature +
+                                               "#head 0000000000000000001\n"
+                                               "#unknown_directive\t\tblah\n",
+                                           persistence_file_name.c_str());
     // Skip unknown directives.
     IMPL impl(namespace_name, persistence_file_name);
     EXPECT_EQ(1, impl.CurrentHead().count());
@@ -397,11 +402,11 @@ TEST(PersistenceLayer, FileDirectives) {
     ASSERT_FALSE(Exists(head_idxts.idxts));
     EXPECT_EQ(2, head_idxts.head.count());
   }
-  EXPECT_EQ(
-      "#head 0000000000000000001\n"
-      "#unknown_directive\t\tblah\n"
-      "#head\t00000000000000000002\n",
-      current::FileSystem::ReadFileAsString(persistence_file_name));
+  EXPECT_EQ(signature +
+                "#head 0000000000000000001\n"
+                "#unknown_directive\t\tblah\n"
+                "#head\t00000000000000000002\n",
+            current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
     current::time::ResetToZero();
@@ -473,6 +478,21 @@ TEST(PersistenceLayer, FileExceptions) {
 
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+
+  {
+    // Invalid signature.
+    using INVALID_IMPL = current::persistence::File<StorableString>;
+    current::reflection::StructSchema invalid_schema;
+    invalid_schema.AddType<std::string>();
+    const auto another_namespace = current::ss::StreamNamespaceName("namespace_invalid", "top_level_invalid");
+    const std::string signature =
+        "#signature\t" + JSON(current::ss::StreamSignature(namespace_name, invalid_schema.GetSchemaInfo())) + '\n';
+    current::FileSystem::WriteStringToFile(signature + "{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n",
+                                           persistence_file_name.c_str());
+    ASSERT_NO_THROW(IMPL(namespace_name, persistence_file_name));
+    ASSERT_THROW(IMPL(another_namespace, persistence_file_name), current::persistence::InvalidStreamSignature);
+    ASSERT_THROW(INVALID_IMPL(namespace_name, persistence_file_name), current::persistence::InvalidStreamSignature);
+  }
 
   {
     current::time::ResetToZero();

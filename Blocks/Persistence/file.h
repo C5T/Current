@@ -188,6 +188,8 @@ class FilePersister {
             },
             [&](const std::string& value) {
               static const auto head_key_length = strlen(constants::kHeadDirective);
+              static const auto signature_key_length = strlen(constants::kSignatureDirective);
+              head_offset = 0;
               if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
                 auto offset = head_key_length;
                 while (offset < value.length() && std::isspace(value[offset])) ++offset;
@@ -197,15 +199,11 @@ class FilePersister {
                 }
                 head = us;
                 head_offset = std::streamoff(current_offset) + offset;
-              } else {
-                head_offset = 0;
-                static const auto signature_key_length = strlen(constants::kSignatureDirective);
-                if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
-                  auto offset = signature_key_length;
-                  while (offset < value.length() && std::isspace(value[offset])) ++offset;
-                  if (value.compare(offset, signature.length(), signature)) {
-                    CURRENT_THROW(InvalidStreamSignature());
-                  }
+              } else if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
+                auto offset = signature_key_length;
+                while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                if (value.compare(offset, signature.length(), signature)) {
+                  CURRENT_THROW(InvalidStreamSignature());
                 }
               }
               current_offset = fi.tellg();
