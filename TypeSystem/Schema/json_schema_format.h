@@ -38,16 +38,19 @@ namespace variant_clean_type_names {
 // clang-format off
 
 CURRENT_FORWARD_DECLARE_STRUCT(primitive);
-CURRENT_FORWARD_DECLARE_STRUCT(key);         // a.k.a. `CURRENT_ENUM()`.
-CURRENT_FORWARD_DECLARE_STRUCT(array);       // a.k.a. `vector<>`.
-CURRENT_FORWARD_DECLARE_STRUCT(dictionary);  // a.k.a. `map<>`.
-CURRENT_FORWARD_DECLARE_STRUCT(pair);        // a.k.a. `std::pair<>`.
-CURRENT_FORWARD_DECLARE_STRUCT(optional);    // a.k.a. `Optional<>`.
-CURRENT_FORWARD_DECLARE_STRUCT(algebraic);   // a.k.a. `Variant<>.
-CURRENT_FORWARD_DECLARE_STRUCT(object);      // a.k.a. `CURRENT_STRUCT()`.
+CURRENT_FORWARD_DECLARE_STRUCT(key);                   // a.k.a. `CURRENT_ENUM()`.
+CURRENT_FORWARD_DECLARE_STRUCT(array);                 // a.k.a. `vector<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(ordered_dictionary);    // a.k.a. `map<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(unordered_dictionary);  // a.k.a. `unordered_map<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(ordered_set);           // a.k.a. `set<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(unordered_set);         // a.k.a. `unordered_set<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(pair);                  // a.k.a. `std::pair<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(optional);              // a.k.a. `Optional<>`.
+CURRENT_FORWARD_DECLARE_STRUCT(algebraic);             // a.k.a. `Variant<>.
+CURRENT_FORWARD_DECLARE_STRUCT(object);                // a.k.a. `CURRENT_STRUCT()`.
 CURRENT_FORWARD_DECLARE_STRUCT(error);
 
-using type_variant_t = Variant<primitive, key, array, dictionary, pair, optional, algebraic, object, error>;
+using type_variant_t = Variant<primitive, key, array, ordered_dictionary, unordered_dictionary, ordered_set, unordered_set, pair, optional, algebraic, object, error>;
 
 CURRENT_STRUCT(primitive) {
   CURRENT_FIELD(type, std::string);
@@ -64,9 +67,22 @@ CURRENT_STRUCT(array) {
   CURRENT_FIELD(element, type_variant_t);
 };
 
-CURRENT_STRUCT(dictionary) {
+CURRENT_STRUCT(ordered_dictionary) {
   CURRENT_FIELD(from, type_variant_t);
   CURRENT_FIELD(into, type_variant_t);
+};
+
+CURRENT_STRUCT(unordered_dictionary) {
+  CURRENT_FIELD(from, type_variant_t);
+  CURRENT_FIELD(into, type_variant_t);
+};
+
+CURRENT_STRUCT(ordered_set) {
+  CURRENT_FIELD(of, type_variant_t);
+};
+
+CURRENT_STRUCT(unordered_set) {
+  CURRENT_FIELD(of, type_variant_t);
 };
 
 CURRENT_STRUCT(pair) {

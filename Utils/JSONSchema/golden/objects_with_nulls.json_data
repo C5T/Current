@@ -1,5 +1,1 @@
-[
-  {"x":"a","y":null,"z":null,"p":"q"},
-  {"x":null,"y":"b","z":null,"p":"q"},
-  {"x":null,"y":null,"z":"c","p":"q"}
-]
+[ {"x":"a","y":null,"z":null,"p":"q"}, {"x":null,"y":"b","z":null,"p":"q"}, {"x":null,"y":null,"z":"c","p":"q"} ]

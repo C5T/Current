@@ -837,7 +837,7 @@
       {
         "field": "o7",
         "as": {
-          "dictionary": {
+          "ordered_dictionary": {
             "from": {
               "primitive": {
                 "type": "std::string",

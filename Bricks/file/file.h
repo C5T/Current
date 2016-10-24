@@ -88,6 +88,22 @@ struct FileSystem {
     }
   }
 
+  template <typename F>
+  static inline void ReadFileByLines(const std::string& file_name, F&& f) {
+    try {
+      std::ifstream fi(file_name);
+      if (fi.bad()) {
+        CURRENT_THROW(CannotReadFileException(file_name));
+      }
+      std::string line;
+      while (std::getline(fi, line)) {
+        f(std::move(line));
+      }
+    } catch (const std::ifstream::failure&) {
+      CURRENT_THROW(CannotReadFileException(file_name));
+    }
+  }
+
   // `file_name` is `const char*` to require users do `.c_str()` on it.
   // This reduces the risk of accidentally passing `file_name` and `contents` in the wrong order,
   // since `contents` should naturally be a C++ string supporting '\0'-s, while `file_name` does not have to.

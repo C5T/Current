@@ -57,10 +57,12 @@ constexpr uint64_t TYPEID_STRUCT_PREFIX   = 920u;
 constexpr uint64_t TYPEID_OPTIONAL_PREFIX = 921u;
 constexpr uint64_t TYPEID_VARIANT_PREFIX  = 922u;
 // STL containers prefixes.
-constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
-constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
-constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
-constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
+constexpr uint64_t TYPEID_VECTOR_PREFIX         = 931u;
+constexpr uint64_t TYPEID_SET_PREFIX            = 932u;
+constexpr uint64_t TYPEID_PAIR_PREFIX           = 933u;
+constexpr uint64_t TYPEID_MAP_PREFIX            = 934u;
+constexpr uint64_t TYPEID_UNORDERED_SET_PREFIX  = 935u;
+constexpr uint64_t TYPEID_UNORDERED_MAP_PREFIX  = 936u;
 
 // Range of possible TypeID-s for each prefix.
 constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
@@ -74,10 +76,12 @@ constexpr uint64_t TYPEID_STRUCT_TYPE   = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREF
 constexpr uint64_t TYPEID_OPTIONAL_TYPE = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
 constexpr uint64_t TYPEID_VARIANT_TYPE  = TYPEID_TYPE_RANGE * TYPEID_VARIANT_PREFIX;
 // Base TypeID-s for STL containers.
-constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
-constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
-constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
-constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_TYPE_RANGE * TYPEID_MAP_PREFIX;
+constexpr uint64_t TYPEID_VECTOR_TYPE        = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
+constexpr uint64_t TYPEID_SET_TYPE           = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
+constexpr uint64_t TYPEID_PAIR_TYPE          = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
+constexpr uint64_t TYPEID_MAP_TYPE           = TYPEID_TYPE_RANGE * TYPEID_MAP_PREFIX;
+constexpr uint64_t TYPEID_UNORDERED_SET_TYPE = TYPEID_TYPE_RANGE * TYPEID_UNORDERED_SET_PREFIX;
+constexpr uint64_t TYPEID_UNORDERED_MAP_TYPE = TYPEID_TYPE_RANGE * TYPEID_UNORDERED_MAP_PREFIX;
 // clang-format on
 
 // clang-format off
@@ -126,6 +130,24 @@ CURRENT_STRUCT(ReflectedType_Map, ReflectedTypeBase) {
   CURRENT_FIELD(value_type, TypeID);
   CURRENT_CONSTRUCTOR(ReflectedType_Map)(TypeID rk = TypeID::UninitializedType, TypeID rv = TypeID::UninitializedType)
       : key_type(rk), value_type(rv) {}
+};
+
+CURRENT_STRUCT(ReflectedType_UnorderedMap, ReflectedTypeBase) {
+  CURRENT_FIELD(key_type, TypeID);
+  CURRENT_FIELD(value_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_UnorderedMap)(TypeID rk = TypeID::UninitializedType,
+                                                  TypeID rv = TypeID::UninitializedType)
+      : key_type(rk), value_type(rv) {}
+};
+
+CURRENT_STRUCT(ReflectedType_Set, ReflectedTypeBase) {
+  CURRENT_FIELD(value_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_Set)(TypeID rv = TypeID::UninitializedType) : value_type(rv) {}
+};
+
+CURRENT_STRUCT(ReflectedType_UnorderedSet, ReflectedTypeBase) {
+  CURRENT_FIELD(value_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_UnorderedSet)(TypeID rv = TypeID::UninitializedType) : value_type(rv) {}
 };
 
 CURRENT_STRUCT(ReflectedType_Pair, ReflectedTypeBase) {
@@ -181,6 +203,9 @@ using ReflectedType = Variant<ReflectedType_Primitive,
                               ReflectedType_Enum,
                               ReflectedType_Vector,
                               ReflectedType_Map,
+                              ReflectedType_UnorderedMap,
+                              ReflectedType_Set,
+                              ReflectedType_UnorderedSet,
                               ReflectedType_Pair,
                               ReflectedType_Optional,
                               ReflectedType_Variant,
@@ -220,6 +245,25 @@ inline TypeID CalculateTypeID(const ReflectedType_Map& m) {
   CURRENT_ASSERT(m.value_type != TypeID::UninitializedType);
   uint64_t hash = ROL64(m.key_type, 5u) ^ ROL64(m.value_type, 11u);
   return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_UnorderedMap& m) {
+  CURRENT_ASSERT(m.key_type != TypeID::UninitializedType);
+  CURRENT_ASSERT(m.value_type != TypeID::UninitializedType);
+  uint64_t hash = ROL64(m.key_type, 5u) ^ ROL64(m.value_type, 11u);
+  return static_cast<TypeID>(TYPEID_UNORDERED_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Set& s) {
+  CURRENT_ASSERT(s.value_type != TypeID::UninitializedType);
+  uint64_t hash = ROL64(s.value_type, 5u) ^ ROL64(s.value_type, 11u);
+  return static_cast<TypeID>(TYPEID_SET_TYPE + hash % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_UnorderedSet& s) {
+  CURRENT_ASSERT(s.value_type != TypeID::UninitializedType);
+  uint64_t hash = ROL64(s.value_type, 5u) ^ ROL64(s.value_type, 11u);
+  return static_cast<TypeID>(TYPEID_UNORDERED_SET_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {

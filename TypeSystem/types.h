@@ -43,9 +43,7 @@ struct CurrentSuper {
 
 // For `unique_ptr<>`-s.
 struct CurrentSuperDeleter {
-  void operator()(CurrentSuper* ptr) {
-    delete ptr;
-  }
+  void operator()(CurrentSuper* ptr) { delete ptr; }
 };
 
 // The superclass for all Current structures.

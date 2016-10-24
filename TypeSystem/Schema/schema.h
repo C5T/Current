@@ -323,6 +323,16 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             oss_ << "std::map<" << self_.TypeName(m.key_type, nmspc_) << ", " << self_.TypeName(m.value_type, nmspc_)
                  << '>';
           }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            oss_ << "std::unordered_map<" << self_.TypeName(m.key_type, nmspc_) << ", "
+                 << self_.TypeName(m.value_type, nmspc_) << '>';
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            oss_ << "std::set<" << self_.TypeName(s.value_type, nmspc_) << '>';
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            oss_ << "std::unordered_set<" << self_.TypeName(s.value_type, nmspc_) << '>';
+          }
           void operator()(const ReflectedType_Pair& p) const {
             oss_ << "std::pair<" << self_.TypeName(p.first_type, nmspc_) << ", "
                  << self_.TypeName(p.second_type, nmspc_) << '>';
@@ -599,6 +609,9 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_UnorderedMap&) const {}
+    void operator()(const ReflectedType_Set&) const {}
+    void operator()(const ReflectedType_UnorderedSet&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant& v) const {
       typename CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::OptionalNamespaceScope scope(os_, v.type_id);
@@ -675,8 +688,21 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(v.element_type)) << " array";
           }
           void operator()(const ReflectedType_Map& m) const {
+            // TODO(dkorolev): Use an ordered dictionary in .NET one day.
             oss_ << "System.Collections.Generic.Dictionary<" << SanitizeFSharpSymbol(self_.TypeName(m.key_type)) << ", "
                  << self_.TypeName(m.value_type) << '>';
+          }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            oss_ << "System.Collections.Generic.Dictionary<" << SanitizeFSharpSymbol(self_.TypeName(m.key_type)) << ", "
+                 << self_.TypeName(m.value_type) << '>';
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            // TODO(dkorolev): I don't know what I'm doing here.
+            oss_ << "System.Collections.Generic.OrderedSet<" << self_.TypeName(s.value_type) << '>';
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            // TODO(dkorolev): I don't know what I'm doing here.
+            oss_ << "System.Collections.Generic.UnorderedSet<" << self_.TypeName(s.value_type) << '>';
           }
           void operator()(const ReflectedType_Pair& p) const {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(p.first_type)) << " * "
@@ -710,6 +736,9 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_UnorderedMap&) const {}
+    void operator()(const ReflectedType_Set&) const {}
+    void operator()(const ReflectedType_UnorderedSet&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant& v) const {
       os_ << "\ntype " << SanitizeFSharpSymbol(v.name) << " =\n";
@@ -798,7 +827,16 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
             oss_ << "Array of " << self_.TypeName(v.element_type);
           }
           void operator()(const ReflectedType_Map& m) const {
-            oss_ << "Map of " << self_.TypeName(m.key_type) << " into " << self_.TypeName(m.value_type);
+            oss_ << "Ordered map of " << self_.TypeName(m.key_type) << " into " << self_.TypeName(m.value_type);
+          }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            oss_ << "Unordered map of " << self_.TypeName(m.key_type) << " into " << self_.TypeName(m.value_type);
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            oss_ << "Ordered set of " << self_.TypeName(s.value_type);
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            oss_ << "Unordered set of " << self_.TypeName(s.value_type);
           }
           void operator()(const ReflectedType_Pair& p) const {
             oss_ << "Pair of " << self_.TypeName(p.first_type) << " and " << self_.TypeName(p.second_type);
@@ -835,6 +873,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_UnorderedMap&) const {}
+    void operator()(const ReflectedType_Set&) const {}
+    void operator()(const ReflectedType_UnorderedSet&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant& v) const {
       std::vector<std::string> cases;
@@ -950,9 +991,25 @@ struct LanguageSyntaxImpl<Language::JSON> final {
             result_ = result;
           }
           void operator()(const ReflectedType_Map& m) const {
-            variant_clean_type_names::dictionary result;
+            variant_clean_type_names::ordered_dictionary result;
             result.from = self_.TypeDescriptionForJSON(m.key_type);
             result.into = self_.TypeDescriptionForJSON(m.value_type);
+            result_ = result;
+          }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            variant_clean_type_names::unordered_dictionary result;
+            result.from = self_.TypeDescriptionForJSON(m.key_type);
+            result.into = self_.TypeDescriptionForJSON(m.value_type);
+            result_ = result;
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            variant_clean_type_names::ordered_set result;
+            result.of = self_.TypeDescriptionForJSON(s.value_type);
+            result_ = result;
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            variant_clean_type_names::unordered_set result;
+            result.of = self_.TypeDescriptionForJSON(s.value_type);
             result_ = result;
           }
           void operator()(const ReflectedType_Pair& p) const {
@@ -1001,6 +1058,9 @@ struct LanguageSyntaxImpl<Language::JSON> final {
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_UnorderedMap&) const {}
+    void operator()(const ReflectedType_Set&) const {}
+    void operator()(const ReflectedType_UnorderedSet&) const {}
     void operator()(const ReflectedType_Optional&) const {}
 
     void operator()(const ReflectedType_Variant& v) const {
@@ -1154,6 +1214,31 @@ struct StructSchema final {
         Reflector().ReflectedTypeByTypeID(m.key_type).Call(*this);
         Reflector().ReflectedTypeByTypeID(m.value_type).Call(*this);
         schema_.order.push_back(m.type_id);
+      }
+    }
+
+    void operator()(const ReflectedType_UnorderedMap& m) {
+      if (!schema_.types.count(m.type_id)) {
+        schema_.types.emplace(m.type_id, m);
+        Reflector().ReflectedTypeByTypeID(m.key_type).Call(*this);
+        Reflector().ReflectedTypeByTypeID(m.value_type).Call(*this);
+        schema_.order.push_back(m.type_id);
+      }
+    }
+
+    void operator()(const ReflectedType_Set& s) {
+      if (!schema_.types.count(s.type_id)) {
+        schema_.types.emplace(s.type_id, s);
+        Reflector().ReflectedTypeByTypeID(s.value_type).Call(*this);
+        schema_.order.push_back(s.type_id);
+      }
+    }
+
+    void operator()(const ReflectedType_UnorderedSet& s) {
+      if (!schema_.types.count(s.type_id)) {
+        schema_.types.emplace(s.type_id, s);
+        Reflector().ReflectedTypeByTypeID(s.value_type).Call(*this);
+        schema_.order.push_back(s.type_id);
       }
     }
 
