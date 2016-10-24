@@ -26,8 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PRIMITIVES_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PRIMITIVES_H
 
-#include <string>
 #include <chrono>
+#include <string>
 
 #include "json.h"
 

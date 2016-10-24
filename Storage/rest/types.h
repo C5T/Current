@@ -26,8 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_TYPES_H
 #define CURRENT_STORAGE_REST_TYPES_H
 
-#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
+#include "../../TypeSystem/struct.h"
 
 #include "../../Blocks/HTTP/api.h"
 
@@ -43,8 +43,8 @@ CURRENT_STRUCT(RESTTopLevel) {
   CURRENT_FIELD(url_data, (std::map<std::string, std::string>));
   CURRENT_FIELD(up, bool);
 
-  CURRENT_CONSTRUCTOR(RESTTopLevel)(const std::string& url_prefix = "", bool up = false)
-      : url(url_prefix), url_status(url_prefix + "/status"), up(up) {}
+  CURRENT_CONSTRUCTOR(RESTTopLevel)
+  (const std::string& url_prefix = "", bool up = false) : url(url_prefix), url_status(url_prefix + "/status"), up(up) {}
 };
 
 CURRENT_STRUCT(RESTStatus) {
@@ -61,7 +61,8 @@ CURRENT_STRUCT(RESTError) {
 
   CURRENT_DEFAULT_CONSTRUCTOR(RESTError) {}
   CURRENT_CONSTRUCTOR(RESTError)(const std::string& name, const std::string& message) : name(name), message(message) {}
-  CURRENT_CONSTRUCTOR(RESTError)(const std::string& name, const std::string& message, const details_t& details)
+  CURRENT_CONSTRUCTOR(RESTError)
+  (const std::string& name, const std::string& message, const details_t& details)
       : name(name), message(message), details(details) {}
 };
 
@@ -77,9 +78,10 @@ CURRENT_STRUCT(RESTGenericResponse) {
 
   CURRENT_DEFAULT_CONSTRUCTOR(RESTGenericResponse) {}
   CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success) : success(success) {}
-  CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success, const std::string& message)
-      : success(success), message(message) {}
-  CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success, const std::string& message, const RESTError& error)
+  CURRENT_CONSTRUCTOR(RESTGenericResponse)
+  (bool success, const std::string& message) : success(success), message(message) {}
+  CURRENT_CONSTRUCTOR(RESTGenericResponse)
+  (bool success, const std::string& message, const RESTError& error)
       : success(success), message(message), error(error) {}
   CURRENT_CONSTRUCTOR(RESTGenericResponse)(bool success, const RESTError& error) : success(success), error(error) {}
 };
@@ -89,11 +91,11 @@ CURRENT_STRUCT(RESTResourceUpdateResponse, RESTGenericResponse) {
 
   CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success = true) : SUPER(success) {}
   CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success, const std::string& message) : SUPER(success, message) {}
-  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(
-      bool success, const std::string& message, const std::string& resource_url)
+  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)
+  (bool success, const std::string& message, const std::string& resource_url)
       : SUPER(success, message), resource_url(resource_url) {}
-  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)(bool success, const std::string& message, const RESTError& error)
-      : SUPER(success, message, error) {}
+  CURRENT_CONSTRUCTOR(RESTResourceUpdateResponse)
+  (bool success, const std::string& message, const RESTError& error) : SUPER(success, message, error) {}
 };
 
 }  // namespace current::storage::rest::generic
@@ -177,10 +179,10 @@ CURRENT_STRUCT(SimpleRESTContainerResponse, generic::RESTGenericResponse) {
   CURRENT_FIELD(data, std::vector<std::string>);
 
   CURRENT_DEFAULT_CONSTRUCTOR(SimpleRESTContainerResponse) : SUPER(true) {}
-  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)(const std::string& url, const std::vector<std::string>& data)
-      : SUPER(true), url(url), data(data) {}
-  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)(const std::string& url, std::vector<std::string>&& data)
-      : SUPER(true), url(url), data(std::move(data)) {}
+  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)
+  (const std::string& url, const std::vector<std::string>& data) : SUPER(true), url(url), data(data) {}
+  CURRENT_CONSTRUCTOR(SimpleRESTContainerResponse)
+  (const std::string& url, std::vector<std::string>&& data) : SUPER(true), url(url), data(std::move(data)) {}
 };
 
 }  // namespace current::storage::rest:simple
@@ -204,8 +206,8 @@ CURRENT_STRUCT_T(HypermediaRESTSingleRecordResponse) {
   CURRENT_FIELD(data, T);
 
   CURRENT_DEFAULT_CONSTRUCTOR_T(HypermediaRESTSingleRecordResponse) {}
-  CURRENT_CONSTRUCTOR_T(HypermediaRESTSingleRecordResponse)(
-      const std::string& url, const std::string& url_directory, const T& data)
+  CURRENT_CONSTRUCTOR_T(HypermediaRESTSingleRecordResponse)
+  (const std::string& url, const std::string& url_directory, const T& data)
       : url(url), url_full(url + "?full"), url_brief(url + "?brief"), url_directory(url_directory), data(data) {}
 };
 
@@ -265,7 +267,8 @@ CURRENT_STRUCT_T(HypermediaRESTDetailedExportEntry) {
   CURRENT_FIELD(timestamp_us, std::chrono::microseconds, std::chrono::microseconds(0));
   CURRENT_FIELD(timestamp_http, std::string);
   CURRENT_FIELD(data, typename DetailedExportEntryHelperWrapper<T>::entry_cref_t);
-  CURRENT_CONSTRUCTOR_T(HypermediaRESTDetailedExportEntry)(std::chrono::microseconds timestamp, const T& helper)
+  CURRENT_CONSTRUCTOR_T(HypermediaRESTDetailedExportEntry)
+  (std::chrono::microseconds timestamp, const T& helper)
       : key(helper.key),
         timestamp_us(timestamp),
         timestamp_http(FormatDateTimeAsIMFFix(timestamp)),

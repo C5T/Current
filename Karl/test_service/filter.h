@@ -28,8 +28,8 @@ SOFTWARE.
 #include "http_subscriber.h"
 #include "schema.h"
 
-#include "../karl.h"
 #include "../claire.h"
+#include "../karl.h"
 #include "../locator.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -47,7 +47,7 @@ class ServiceFilter final {
         http_scope_(HTTP(port).Register("/primes", stream_primes_) +
                     HTTP(port).Register("/composites", stream_composites_)),
         http_stream_subscriber_(source_annotated_numbers_stream_,
-                                [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
+                                [this](idxts_t, Number&& n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {
     claire_.BoilerplateStatus().cloud_instance_name = "Computer";
     claire_.BoilerplateStatus().cloud_availability_group = "Earth";

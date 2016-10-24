@@ -35,11 +35,11 @@ SOFTWARE.
 #include <thread>
 
 #include "exceptions.h"
-#include "stream_data.h"
 #include "pubsub.h"
+#include "stream_data.h"
 
-#include "../TypeSystem/struct.h"
 #include "../TypeSystem/Schema/schema.h"
+#include "../TypeSystem/struct.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
@@ -95,8 +95,8 @@ CURRENT_STRUCT(SubscribableSherlockSchema) {
   CURRENT_FIELD(top_level_name, std::string);
   CURRENT_FIELD(namespace_name, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
-  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
-      current::reflection::TypeID type_id, const std::string& top_level_name, const std::string& namespace_name)
+  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)
+  (current::reflection::TypeID type_id, const std::string& top_level_name, const std::string& namespace_name)
       : type_id(type_id), top_level_name(top_level_name), namespace_name(namespace_name) {}
   bool operator==(const SubscribableSherlockSchema& rhs) const {
     return type_id == rhs.type_id && namespace_name == rhs.namespace_name && top_level_name == rhs.top_level_name;
@@ -511,14 +511,12 @@ class StreamImpl {
             subscription_id, scoped_data, std::move(r), std::move(request_params));
 
         current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-            Subscribe(*http_chunked_subscriber,
-                      begin_idx,
-                      [this, &data, subscription_id]() {
-                        // NOTE: Need to figure out when and where to lock.
-                        // Chat w/ Max about the logic to clean up completed listeners.
-                        // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                        data.http_subscriptions[subscription_id].second = nullptr;
-                      });
+            Subscribe(*http_chunked_subscriber, begin_idx, [this, &data, subscription_id]() {
+              // NOTE: Need to figure out when and where to lock.
+              // Chat w/ Max about the logic to clean up completed listeners.
+              // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
+              data.http_subscriptions[subscription_id].second = nullptr;
+            });
 
         {
           std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);

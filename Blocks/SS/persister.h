@@ -42,8 +42,7 @@ template <typename IMPL, typename ENTRY>
 class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
  public:
   template <typename... ARGS>
-  explicit EntryPersister(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  explicit EntryPersister(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPersister() {}
 
   IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {

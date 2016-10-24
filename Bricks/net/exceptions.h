@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_NET_EXCEPTIONS_H
 #define BRICKS_NET_EXCEPTIONS_H
 
-#include "../port.h"
 #include "../exception.h"
+#include "../port.h"
 
 namespace current {
 namespace net {

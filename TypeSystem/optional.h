@@ -39,11 +39,11 @@ SOFTWARE.
 
 #include <memory>
 
-#include "types.h"
 #include "exceptions.h"
+#include "types.h"
 
-#include "../Bricks/template/enable_if.h"
 #include "../Bricks/template/decay.h"
+#include "../Bricks/template/enable_if.h"
 
 namespace current {
 

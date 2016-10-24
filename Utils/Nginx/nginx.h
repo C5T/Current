@@ -89,10 +89,10 @@ CURRENT_STRUCT(NginxManagerMagicNumbers) {
   CURRENT_FIELD(endpoint_number, std::string);
   CURRENT_FIELD(response_number, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(NginxManagerMagicNumbers)
-      : endpoint_number(SHA256("Random location " +
-                               ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))),
-        response_number(SHA256("Random response " +
-                               ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))) {}
+      : endpoint_number(
+            SHA256("Random location " + ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))),
+        response_number(
+            SHA256("Random response " + ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))) {}
 };
 
 class NginxManager {
@@ -149,8 +149,7 @@ class NginxManager {
       }
     }
     if (!updated) {
-      std::cerr << "Nginx hasn't properly reloaded config file '" << config_file_ << "'\nAborting."
-                << std::endl;
+      std::cerr << "Nginx hasn't properly reloaded config file '" << config_file_ << "'\nAborting." << std::endl;
       std::exit(-1);
     }
   }

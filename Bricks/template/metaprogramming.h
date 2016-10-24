@@ -27,14 +27,14 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
 #define BRICKS_TEMPLATE_METAPROGRAMMING_H
 
+#include "combine.h"
 #include "decay.h"
-#include "pod.h"
+#include "enable_if.h"
 #include "is_tuple.h"
 #include "mapreduce.h"
-#include "combine.h"
+#include "pod.h"
 #include "rtti_dynamic_call.h"
-#include "weed.h"
 #include "typelist.h"
-#include "enable_if.h"
+#include "weed.h"
 
 #endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H

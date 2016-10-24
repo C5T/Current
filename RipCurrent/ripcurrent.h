@@ -59,8 +59,8 @@ SOFTWARE.
 #include <tuple>
 #include <vector>
 
-#include "../TypeSystem/struct.h"
 #include "../TypeSystem/remove_parentheses.h"
+#include "../TypeSystem/struct.h"
 
 #include "../Blocks/MMQ/mmpq.h"
 
@@ -592,8 +592,8 @@ class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_
   UserCodeInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
       : AbstractCurrent<instantiator_input_t, instantiator_output_t>(definition),
         lazy_instance_(current::DelayedInstantiateWithExtraParameterFromTuple<
-            UserClassInstantiator<instantiator_input_t, instantiator_output_t, USER_CLASS>,
-            std::shared_ptr<BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<RHS_TYPES...>>>>(
+                       UserClassInstantiator<instantiator_input_t, instantiator_output_t, USER_CLASS>,
+                       std::shared_ptr<BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<RHS_TYPES...>>>>(
             std::forward<ARGS_AS_TUPLE>(params))) {}
 
   class Scope final : public SubCurrentScope<instantiator_input_t, instantiator_output_t> {

@@ -99,9 +99,7 @@ struct UserNicknamesReadModel {
     return current::ss::EntryResponse::More;
   }
 
-  current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
-    return current::ss::EntryResponse::More;
-  }
+  current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return current::ss::EntryResponse::More; }
 
   current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
 };
@@ -134,8 +132,7 @@ int main(int argc, char** argv) {
 
     std::cerr << "Read model:\n\tcurl '" << url << "/nickname?id=skywalker'" << std::flush << std::endl;
   } else {
-    std::cerr << "Demo Embedded Event Log DB running on localhost:" << FLAGS_db_demo_port << std::flush
-              << std::endl;
+    std::cerr << "Demo Embedded Event Log DB running on localhost:" << FLAGS_db_demo_port << std::flush << std::endl;
   }
 
   HTTP(FLAGS_db_demo_port).Register("/healthz", [](Request r) { r("OK\n"); });
@@ -145,54 +142,42 @@ int main(int argc, char** argv) {
   using reflection::StructSchema;
   using reflection::Language;
 
-  HTTP(FLAGS_db_demo_port)
-      .Register("/schema.h",
-                [](Request r) {
-                  StructSchema schema;
-                  schema.AddType<Event>();
-                  r(schema.GetSchemaInfo().Describe<Language::CPP>(),
-                    HTTPResponseCode.OK,
-                    "text/plain; charset=us-ascii");
-                });
+  HTTP(FLAGS_db_demo_port).Register("/schema.h", [](Request r) {
+    StructSchema schema;
+    schema.AddType<Event>();
+    r(schema.GetSchemaInfo().Describe<Language::CPP>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+  });
 
-  HTTP(FLAGS_db_demo_port)
-      .Register("/schema.fs",
-                [](Request r) {
-                  StructSchema schema;
-                  schema.AddType<Event>();
-                  r(schema.GetSchemaInfo().Describe<Language::FSharp>(),
-                    HTTPResponseCode.OK,
-                    "text/plain; charset=us-ascii");
-                });
+  HTTP(FLAGS_db_demo_port).Register("/schema.fs", [](Request r) {
+    StructSchema schema;
+    schema.AddType<Event>();
+    r(schema.GetSchemaInfo().Describe<Language::FSharp>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+  });
 
-  HTTP(FLAGS_db_demo_port)
-      .Register("/schema.json",
-                [](Request r) {
-                  StructSchema schema;
-                  schema.AddType<Event>();
-                  r(schema.GetSchemaInfo());
-                });
+  HTTP(FLAGS_db_demo_port).Register("/schema.json", [](Request r) {
+    StructSchema schema;
+    schema.AddType<Event>();
+    r(schema.GetSchemaInfo());
+  });
 
   // Subscribe.
   HTTP(FLAGS_db_demo_port).Register("/data", stream);
 
   // Publish.
-  HTTP(FLAGS_db_demo_port)
-      .Register("/publish",
-                [&stream](Request r) {
-                  if (r.method == "POST") {
-                    try {
-                      auto event = ParseJSON<Event>(r.body);
-                      SetMicroTimestamp(event, time::Now());
-                      stream.Publish(std::move(event));
-                      r("", HTTPResponseCode.NoContent);
-                    } catch (const Exception& e) {
-                      r(Error(e.What()), HTTPResponseCode.BadRequest);
-                    }
-                  } else {
-                    r(Error("This request should be a POST."), HTTPResponseCode.MethodNotAllowed);
-                  }
-                });
+  HTTP(FLAGS_db_demo_port).Register("/publish", [&stream](Request r) {
+    if (r.method == "POST") {
+      try {
+        auto event = ParseJSON<Event>(r.body);
+        SetMicroTimestamp(event, time::Now());
+        stream.Publish(std::move(event));
+        r("", HTTPResponseCode.NoContent);
+      } catch (const Exception& e) {
+        r(Error(e.What()), HTTPResponseCode.BadRequest);
+      }
+    } else {
+      r(Error("This request should be a POST."), HTTPResponseCode.MethodNotAllowed);
+    }
+  });
 
   // Read model.
   current::ss::StreamSubscriber<UserNicknamesReadModel, Event> read_model(FLAGS_db_demo_port);

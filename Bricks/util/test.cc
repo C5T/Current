@@ -31,12 +31,12 @@ SOFTWARE.
 #include "iterator.h"
 #include "lazy_instantiation.h"
 #include "make_scope_guard.h"
+#include "object_interface.h"
 #include "random.h"
 #include "rol.h"
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
-#include "object_interface.h"
 
 #include "../exception.h"
 #include "../file/file.h"
@@ -193,11 +193,10 @@ TEST(Util, MakePointerScopeGuard) {
     EXPECT_EQ("custom_guarded_pointer\n", story);
     {
       Instance* pointer = new Instance(story);
-      const auto guard = current::MakePointerScopeGuard(pointer,
-                                                        [&story](Instance* p) {
-                                                          story += "guarded_delete\n";
-                                                          delete p;
-                                                        });
+      const auto guard = current::MakePointerScopeGuard(pointer, [&story](Instance* p) {
+        story += "guarded_delete\n";
+        delete p;
+      });
       EXPECT_EQ("custom_guarded_pointer\nconstructed\n", story);
     }
     EXPECT_EQ("custom_guarded_pointer\nconstructed\nguarded_delete\ndestructed\n", story);
@@ -355,10 +354,9 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
   bool result = false;
   std::thread thread([&signal, &counter, &mutex, &result]() {
     std::unique_lock<std::mutex> lock(mutex);
-    result = signal.WaitUntil(lock,
-                              [&counter]() {
-                                return counter > 1000u;  // Not going to happen in this test.
-                              });
+    result = signal.WaitUntil(lock, [&counter]() {
+      return counter > 1000u;  // Not going to happen in this test.
+    });
   });
 
   bool repeat = true;
@@ -709,8 +707,7 @@ template <typename T>
 struct ObjectContainer {
   T object;
   template <typename... ARGS>
-  ObjectContainer(ARGS&&... args)
-      : object(std::forward<ARGS>(args)...) {}
+  ObjectContainer(ARGS&&... args) : object(std::forward<ARGS>(args)...) {}
 };
 
 template <typename T>
@@ -719,8 +716,7 @@ struct ExampleObjectInterface : private ObjectContainer<T>, public CURRENT_OBJEC
   using methods_wrapper_t = CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<T>;
 
   template <typename... ARGS>
-  ExampleObjectInterface(ARGS&&... args)
-      : object_container_t(std::forward<ARGS>(args)...) {
+  ExampleObjectInterface(ARGS&&... args) : object_container_t(std::forward<ARGS>(args)...) {
     methods_wrapper_t::CURRENT_IMPLEMENTATION_POINTER = &(object_container_t::object);
   }
 };
@@ -742,8 +738,7 @@ template <typename T>
 struct NamespacedObjectContainer {
   T object;
   template <typename... ARGS>
-  NamespacedObjectContainer(ARGS&&... args)
-      : object(std::forward<ARGS>(args)...) {}
+  NamespacedObjectContainer(ARGS&&... args) : object(std::forward<ARGS>(args)...) {}
 };
 
 template <typename T>
@@ -753,8 +748,7 @@ struct NamespacedExampleObjectInterface : private NamespacedObjectContainer<T>,
   using methods_wrapper_t = CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<T>;
 
   template <typename... ARGS>
-  NamespacedExampleObjectInterface(ARGS&&... args)
-      : object_container_t(std::forward<ARGS>(args)...) {
+  NamespacedExampleObjectInterface(ARGS&&... args) : object_container_t(std::forward<ARGS>(args)...) {
     methods_wrapper_t::CURRENT_IMPLEMENTATION_POINTER = &(object_container_t::object);
   }
 };
@@ -785,7 +779,8 @@ TEST(ObjectInterface, Smoke) {
   }
   {
     object_with_interface_test_namespace::NamespacedExampleObjectInterface<
-        object_with_interface_test_namespace::NamespacedObjectWithInterface> o;
+        object_with_interface_test_namespace::NamespacedObjectWithInterface>
+        o;
     EXPECT_EQ(1, o.total_calls());
     EXPECT_EQ(2, o.total_calls());
     EXPECT_EQ(3, o.total_calls());

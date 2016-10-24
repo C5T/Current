@@ -37,25 +37,21 @@ CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, FullName, into.full_name = fro
 CURRENT_VARIANT_EVOLVER(CustomEvolver, SchemaFrom, ShrinkingVariant, SchemaInto) {
   CURRENT_COPY_CASE(CustomTypeA);
   CURRENT_COPY_CASE(CustomTypeB);
-  CURRENT_EVOLVE_CASE(CustomTypeC,
-                       {
-                         typename INTO::CustomTypeA value;
-                         value.a = from.c + 1;
-                         into = std::move(value);
-                       });
+  CURRENT_EVOLVE_CASE(CustomTypeC, {
+    typename INTO::CustomTypeA value;
+    value.a = from.c + 1;
+    into = std::move(value);
+  });
 };
 
 // `WithFieldsToRemove` has changed. Need to copy over `.foo` and `.bar`, and process `.baz`.
-CURRENT_STRUCT_EVOLVER(CustomEvolver,
-                       SchemaFrom,
-                       WithFieldsToRemove,
-                       {
-                         CURRENT_COPY_FIELD(foo);
-                         CURRENT_COPY_FIELD(bar);
-                         if (!from.baz.empty()) {
-                           into.foo += ' ' + current::strings::Join(from.baz, ' ');
-                         }
-                       });
+CURRENT_STRUCT_EVOLVER(CustomEvolver, SchemaFrom, WithFieldsToRemove, {
+  CURRENT_COPY_FIELD(foo);
+  CURRENT_COPY_FIELD(bar);
+  if (!from.baz.empty()) {
+    into.foo += ' ' + current::strings::Join(from.baz, ' ');
+  }
+});
 
 TEST(TypeEvolution, SchemaFrom) {
   current::reflection::StructSchema struct_schema;
@@ -106,9 +102,8 @@ TEST(TypeEvolution, Data) {
     typename SchemaInto::TopLevel into;
 
     ParseJSON(line, from);
-    current::type_evolution::Evolve<SchemaFrom,
-                                    typename SchemaFrom::TopLevel,
-                                    current::type_evolution::CustomEvolver>::template Go<SchemaInto>(from, into);
+    current::type_evolution::Evolve<SchemaFrom, typename SchemaFrom::TopLevel, current::type_evolution::CustomEvolver>::
+        template Go<SchemaInto>(from, into);
 
     golden_from.push_back(JSON(from));
     golden_into.push_back(JSON(into));

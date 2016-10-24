@@ -33,8 +33,8 @@ SOFTWARE.
 #include "current_build.h.mock"
 #endif
 
-#include "../TypeSystem/struct.h"
 #include "../TypeSystem/optional.h"
+#include "../TypeSystem/struct.h"
 #include "../TypeSystem/variant.h"
 
 #include "../Blocks/URL/url.h"

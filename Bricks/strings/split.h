@@ -35,8 +35,8 @@ SOFTWARE.
 #include "chunk.h"
 
 #include "../exception.h"
-#include "../template/enable_if.h"
 #include "../template/decay.h"
+#include "../template/enable_if.h"
 #include "../template/weed.h"
 
 namespace current {

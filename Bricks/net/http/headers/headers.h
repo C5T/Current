@@ -34,9 +34,9 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
-#include "../../../time/chrono.h"
 #include "../../../strings/split.h"
 #include "../../../strings/util.h"
+#include "../../../time/chrono.h"
 
 namespace current {
 namespace net {
@@ -190,9 +190,9 @@ struct Headers final {
 
   Headers(const std::string& header, const std::string& value) { Set(header, value); }
   Headers(std::initializer_list<std::pair<std::string, std::string>> initializer) {
-    std::for_each(initializer.begin(),
-                  initializer.end(),
-                  [this](const std::pair<std::string, std::string>& h) { Set(h.first, h.second); });
+    std::for_each(initializer.begin(), initializer.end(), [this](const std::pair<std::string, std::string>& h) {
+      Set(h.first, h.second);
+    });
   }
 
   // Can `Set()` / `Get()` / `Has()` headers.

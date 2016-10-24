@@ -27,8 +27,8 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <string>
 #include <cstdarg>
+#include <string>
 
 namespace current {
 namespace strings {

@@ -84,8 +84,7 @@ struct Response {
   Response& operator=(Response&&) = default;
 
   template <typename... ARGS>
-  Response(ARGS&&... args)
-      : initialized(true) {
+  Response(ARGS&&... args) : initialized(true) {
     Construct(std::forward<ARGS>(args)...);
   }
 

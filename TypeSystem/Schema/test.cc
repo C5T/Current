@@ -33,8 +33,8 @@ SOFTWARE.
 #include "../Evolution/type_evolution.h"
 
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/strings/strings.h"
 #include "../../Bricks/file/file.h"
+#include "../../Bricks/strings/strings.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 

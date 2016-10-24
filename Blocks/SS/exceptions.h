@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef BLOCKS_SS_EXCEPTIONS_H
 #define BLOCKS_SS_EXCEPTIONS_H
 
-#include "../../port.h"
 #include "../../Bricks/exception.h"
+#include "../../port.h"
 
 #include <chrono>
 

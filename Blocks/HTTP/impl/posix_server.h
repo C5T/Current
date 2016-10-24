@@ -29,21 +29,21 @@ SOFTWARE.
 #define BLOCKS_HTTP_IMPL_POSIX_SERVER_H
 
 #include <atomic>
-#include <string>
+#include <iostream>  // TODO(dkorolev): More robust logging here.
 #include <map>
 #include <memory>
+#include <string>
 #include <thread>
-#include <iostream>  // TODO(dkorolev): More robust logging here.
 
-#include "../types.h"
 #include "../request.h"
+#include "../types.h"
 
 #include "../../URL/url.h"
 
 #include "../../../Bricks/net/exceptions.h"
 #include "../../../Bricks/net/http/http.h"
-#include "../../../Bricks/time/chrono.h"
 #include "../../../Bricks/strings/printf.h"
+#include "../../../Bricks/time/chrono.h"
 #include "../../../Bricks/util/accumulative_scoped_deleter.h"
 
 namespace current {
@@ -203,21 +203,19 @@ class HTTPServerPOSIX final {
 
   HTTPRoutesScope ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
     HTTPRoutesScope scope;
-    current::FileSystem::ScanDir(
-        dir,
-        [this, &dir, &route_prefix, &scope](const std::string& file) {
-          const std::string content_type(current::net::GetFileMimeType(file, ""));
-          if (!content_type.empty()) {
-            // TODO(dkorolev): Wrap keeping file contents into a singleton
-            // that keeps a map from a (SHA256) hash to the contents.
-            auto static_file_server = std::make_unique<StaticFileServer>(
-                current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)), content_type);
-            scope += Register(route_prefix + file, *static_file_server);
-            static_file_servers_.push_back(std::move(static_file_server));
-          } else {
-            CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
-          }
-        });
+    current::FileSystem::ScanDir(dir, [this, &dir, &route_prefix, &scope](const std::string& file) {
+      const std::string content_type(current::net::GetFileMimeType(file, ""));
+      if (!content_type.empty()) {
+        // TODO(dkorolev): Wrap keeping file contents into a singleton
+        // that keeps a map from a (SHA256) hash to the contents.
+        auto static_file_server = std::make_unique<StaticFileServer>(
+            current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)), content_type);
+        scope += Register(route_prefix + file, *static_file_server);
+        static_file_servers_.push_back(std::move(static_file_server));
+      } else {
+        CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
+      }
+    });
     return scope;
   }
 

@@ -24,17 +24,13 @@ SOFTWARE.
 
 #include "../../current.h"
 
-template<class T, current::reflection::Language L>
+template <class T, current::reflection::Language L>
 void DumpSchema() {
   current::reflection::StructSchema schema;
   schema.AddType<T>();
   std::cout << schema.GetSchemaInfo().Describe<L>();
 }
 
-CURRENT_STRUCT(CurrentType) {
-  CURRENT_FIELD(foo, std::string);
-};
+CURRENT_STRUCT(CurrentType) { CURRENT_FIELD(foo, std::string); };
 
-int main() {
-  DumpSchema<CurrentType, current::reflection::Language::Markdown>();
-}
+int main() { DumpSchema<CurrentType, current::reflection::Language::Markdown>(); }

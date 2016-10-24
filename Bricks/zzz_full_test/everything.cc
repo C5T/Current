@@ -6,8 +6,8 @@
 
 #include "port.h"  // To have `std::{min/max}` work in Visual Studio, need port.h before STL headers.
 
-#include "../Bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../Bricks/dflags/dflags.h"
 
 #define CURRENT_MOCK_TIME
 

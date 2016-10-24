@@ -25,11 +25,11 @@ SOFTWARE.
 
 #define CURRENT_MOCK_TIME
 
-#include "sherlock.h"
 #include "replicator.h"
+#include "sherlock.h"
 
-#include <string>
 #include <atomic>
+#include <string>
 #include <thread>
 
 #include "../TypeSystem/struct.h"
@@ -40,8 +40,8 @@ SOFTWARE.
 
 #include "../Bricks/strings/strings.h"
 
-#include "../Bricks/time/chrono.h"
 #include "../Bricks/dflags/dflags.h"
+#include "../Bricks/time/chrono.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -64,9 +64,8 @@ CURRENT_STRUCT(Record) {
 CURRENT_STRUCT(RecordWithTimestamp) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(t, std::chrono::microseconds);
-  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
-                                           std::chrono::microseconds t = std::chrono::microseconds(0ull))
-      : s(s), t(t) {}
+  CURRENT_CONSTRUCTOR(RecordWithTimestamp)
+  (std::string s = "", std::chrono::microseconds t = std::chrono::microseconds(0ull)) : s(s), t(t) {}
   CURRENT_USE_FIELD_AS_TIMESTAMP(t);
 };
 
@@ -845,36 +844,34 @@ TEST(Sherlock, ParseArbitrarilySplitChunks) {
   // Simulate subscription to sherlock stream.
   const auto scope =
       HTTP(FLAGS_sherlock_http_test_port)
-          .Register("/log",
-                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                    [](Request r) {
-                      EXPECT_EQ("GET", r.method);
-                      const std::string subscription_id = "fake_subscription";
-                      if (r.url.query.has("terminate")) {
-                        EXPECT_EQ(r.url.query["terminate"], subscription_id);
-                      } else if (r.url.query.has("i")) {
-                        const auto ind = current::FromString<uint64_t>(r.url.query["i"]);
-                        auto response = r.connection.SendChunkedHTTPResponse(
-                            HTTPResponseCode.OK,
-                            "text/plain",
-                            current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
-                        if (ind == 0u) {
-                          for (const auto& chunk : sherlock_golden_data_chunks) {
-                            response.Send(chunk);
-                          }
-                        } else {
-                          EXPECT_EQ(3u, ind);
-                        }
-                      } else {
-                        EXPECT_EQ(1u, r.url_path_args.size());
-                        EXPECT_EQ("schema.simple", r.url_path_args[0]);
-                        r(current::sherlock::SubscribableSherlockSchema(
-                            Value<current::reflection::ReflectedTypeBase>(
-                                current::reflection::Reflector().ReflectType<Record>()).type_id,
-                            "Record",
-                            "Namespace"));
-                      }
-                    });
+          .Register("/log", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, [](Request r) {
+            EXPECT_EQ("GET", r.method);
+            const std::string subscription_id = "fake_subscription";
+            if (r.url.query.has("terminate")) {
+              EXPECT_EQ(r.url.query["terminate"], subscription_id);
+            } else if (r.url.query.has("i")) {
+              const auto ind = current::FromString<uint64_t>(r.url.query["i"]);
+              auto response = r.connection.SendChunkedHTTPResponse(
+                  HTTPResponseCode.OK,
+                  "text/plain",
+                  current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
+              if (ind == 0u) {
+                for (const auto& chunk : sherlock_golden_data_chunks) {
+                  response.Send(chunk);
+                }
+              } else {
+                EXPECT_EQ(3u, ind);
+              }
+            } else {
+              EXPECT_EQ(1u, r.url_path_args.size());
+              EXPECT_EQ("schema.simple", r.url_path_args[0]);
+              r(current::sherlock::SubscribableSherlockSchema(
+                  Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<Record>())
+                      .type_id,
+                  "Record",
+                  "Namespace"));
+            }
+          });
 
   // Replicate data via subscription to the fake stream.
   current::sherlock::SubscribableRemoteStream<Record> remote_stream(

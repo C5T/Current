@@ -26,24 +26,23 @@ SOFTWARE.
 
 #include "infer.h"
 
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../../Bricks/dflags/dflags.h"
+#include "../../Bricks/file/file.h"
 
 DEFINE_bool(regenerate_golden_inferred_schemas, false, "Set to 'true' to re-generate golden inferred schema files.");
 
 static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& dir, const std::string& ext) {
   std::vector<std::string> names;
   const std::string suffix = '.' + ext;
-  current::FileSystem::ScanDir(dir,
-                               [&](const std::string& filename) {
-                                 if (filename.length() >= suffix.length()) {
-                                   const std::string prefix = filename.substr(0, filename.length() - suffix.length());
-                                   if (prefix + suffix == filename) {
-                                     names.push_back(prefix);
-                                   }
-                                 }
-                               });
+  current::FileSystem::ScanDir(dir, [&](const std::string& filename) {
+    if (filename.length() >= suffix.length()) {
+      const std::string prefix = filename.substr(0, filename.length() - suffix.length());
+      if (prefix + suffix == filename) {
+        names.push_back(prefix);
+      }
+    }
+  });
   return names;
 }
 
@@ -58,7 +57,8 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
       EXPECT_EQ(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name),
                 (ParseJSON<current::utils::impl::Schema, JSONFormat::Minimalistic>(
                     current::FileSystem::ReadFileAsString(filename_prefix + ".raw"))))
-          << "Expected:\n" << current::utils::impl::SchemaFromOneJSONPerLineFile(file_name) << "\nActual:\n"
+          << "Expected:\n"
+          << current::utils::impl::SchemaFromOneJSONPerLineFile(file_name) << "\nActual:\n"
           << JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name))
           << "\nWhile running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),

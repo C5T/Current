@@ -26,8 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H
 
-#include <type_traits>
 #include <map>
+#include <type_traits>
 
 #include "json.h"
 

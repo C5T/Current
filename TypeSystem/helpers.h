@@ -53,8 +53,8 @@ SOFTWARE.
 
 #include <memory>
 
-#include "types.h"
 #include "typename.h"
+#include "types.h"
 
 #include "../Bricks/template/decay.h"
 
@@ -150,10 +150,11 @@ struct PowerfulValueImplCaller<T, T, true> {
 
 struct DefaultValueInvokation {};
 template <typename OUTPUT = DefaultValueInvokation, typename INPUT>
-auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
-    typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
-    INPUT,
-    sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::declval<INPUT>())) {
+auto Value(INPUT&& x)
+    -> decltype(PowerfulValueImplCaller<
+                typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
+                INPUT,
+                sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::declval<INPUT>())) {
   return PowerfulValueImplCaller<
       typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
       INPUT,

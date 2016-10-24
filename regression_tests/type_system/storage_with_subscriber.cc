@@ -24,8 +24,8 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
+#include "../../Storage/storage.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -59,9 +59,7 @@ TEST(TypeTest, Storage) {
       return current::ss::EntryResponse::Done;
     }
 
-    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
-      return current::ss::EntryResponse::More;
-    }
+    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() { return current::ss::EntryResponse::More; }
 
     current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Wait; }
   };

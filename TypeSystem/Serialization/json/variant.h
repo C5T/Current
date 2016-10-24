@@ -31,8 +31,8 @@ SOFTWARE.
 #include "primitives.h"
 #include "typeid.h"
 
-#include "../../variant.h"
 #include "../../Reflection/reflection.h"
+#include "../../variant.h"
 
 #include "../../../Bricks/template/call_all_constructors.h"
 #include "../../../Bricks/template/enable_if.h"
@@ -248,9 +248,8 @@ class JSONVariantPerStyle<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
   class Impl {
    public:
     Impl() {
-      current::metaprogramming::call_all_constructors_with<Registerer,
-                                                           deserializers_map_t,
-                                                           typename VARIANT::typelist_t>(deserializers_);
+      current::metaprogramming::
+          call_all_constructors_with<Registerer, deserializers_map_t, typename VARIANT::typelist_t>(deserializers_);
     }
 
     void DoLoadVariant(JSONParser<JSON_FORMAT>& json_parser, VARIANT& destination) const {

@@ -35,18 +35,18 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include "favicon.h"
 #include "request.h"
 #include "response.h"
 #include "types.h"
-#include "favicon.h"
 
-#include "../../Bricks/util/singleton.h"
 #include "../../Bricks/template/weed.h"
+#include "../../Bricks/util/singleton.h"
 
 #if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
+#include "chunked_response_parser.h"
 #include "impl/posix_client.h"
 #include "impl/posix_server.h"
-#include "chunked_response_parser.h"
 using HTTP_CLIENT = current::http::HTTPClientPOSIX;
 using CHUNKED_HTTP_CLIENT = current::http::GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver>;
 #elif defined(CURRENT_APPLE) && !defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)

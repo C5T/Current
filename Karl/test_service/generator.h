@@ -29,8 +29,8 @@ SOFTWARE.
 
 #include <atomic>
 
-#include "../karl.h"
 #include "../claire.h"
+#include "../karl.h"
 
 #include "schema.h"
 

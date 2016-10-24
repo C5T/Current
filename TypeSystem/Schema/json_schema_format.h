@@ -27,8 +27,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SCHEMA_JSON_SCHEMA_FORMAT_CC
 #define CURRENT_TYPE_SYSTEM_SCHEMA_JSON_SCHEMA_FORMAT_CC
 
-#include "../struct.h"
 #include "../Reflection/types.h"  // TypeID.
+#include "../struct.h"
 
 namespace current {
 namespace reflection {
