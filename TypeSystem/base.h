@@ -33,6 +33,9 @@ namespace r {
 struct DF {};
 struct FC {};
 
+// Special type used as `T` in templated Current structs instantiation along with `FC`.
+struct DummyT {};
+
 // Dummy type for `FC` instantiation type.
 struct CountFieldsImplementationType {
   template <typename... T>
@@ -69,6 +72,7 @@ namespace current {
 namespace reflection {
 using DeclareFields = ::crnt::r::DF;
 using CountFields = ::crnt::r::FC;
+using DummyTemplateType = ::crnt::r::DummyT;
 using ::crnt::r::CountFieldsImplementationType;
 using ::crnt::r::FieldTypeAndName;
 using ::crnt::r::FieldTypeAndNameAndIndex;

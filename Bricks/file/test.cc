@@ -122,6 +122,11 @@ TEST(File, FileStringOperations) {
   FileSystem::WriteStringToFile(" TEST", fn.c_str(), true);
   EXPECT_EQ("ANOTHER TEST", FileSystem::ReadFileAsString(fn));
 
+  FileSystem::WriteStringToFile("\nand a few\nmore\nlines", fn.c_str(), true);
+  std::vector<std::string> lines;
+  FileSystem::ReadFileByLines(fn, [&lines](std::string&& s) { lines.emplace_back(std::move(s)); });
+  EXPECT_EQ("ANOTHER TEST, and a few, more, lines", current::strings::Join(lines, ", "));
+
   FileSystem::RmFile(fn);
   FileSystem::MkDir(fn);
   EXPECT_TRUE(FileSystem::IsDir(fn));

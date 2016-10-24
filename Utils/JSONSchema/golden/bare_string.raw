@@ -1,1 +1,1 @@
-{"String":{"values":{"foo":1},"instances":1,"nulls":0}}
+{"String":{"values":{"foo":1},"counters":[[1,"foo"]],"instances":1,"nulls":0}}

@@ -1,1 +1,1 @@
-{"Object":{"fields":{"a":{"String":{"values":{"foo":1},"instances":1,"nulls":0}},"b":{"Null":{"occurrences":1}},"c":{"String":{"values":{"bar":1},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}
+{"Object":{"fields":{"b":{"Null":{"occurrences":1}},"c":{"String":{"values":{"bar":1},"counters":[[1,"bar"]],"instances":1,"nulls":0}},"a":{"String":{"values":{"foo":1},"counters":[[1,"foo"]],"instances":1,"nulls":0}}},"instances":1,"nulls":0}}

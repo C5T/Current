@@ -30,9 +30,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_bool(regenerate_golden_inferred_schemas,
-            false,
-            "Set to 'true' to re-generate golden inferred schema files.");
+DEFINE_bool(regenerate_golden_inferred_schemas, false, "Set to 'true' to re-generate golden inferred schema files.");
 
 static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& dir, const std::string& ext) {
   std::vector<std::string> names;
@@ -40,8 +38,7 @@ static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& 
   current::FileSystem::ScanDir(dir,
                                [&](const std::string& filename) {
                                  if (filename.length() >= suffix.length()) {
-                                   const std::string prefix =
-                                       filename.substr(0, filename.length() - suffix.length());
+                                   const std::string prefix = filename.substr(0, filename.length() - suffix.length());
                                    if (prefix + suffix == filename) {
                                      names.push_back(prefix);
                                    }
@@ -55,24 +52,28 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
   const std::vector<std::string> cases = ListGoldenFilesWithExtension(golden_dir, "json_data");
   for (const auto& test : cases) {
     const std::string filename_prefix = current::FileSystem::JoinPath("golden", test);
-    const std::string json = current::FileSystem::ReadFileAsString(filename_prefix + ".json_data");
+    const std::string file_name = filename_prefix + ".json_data";
     if (!FLAGS_regenerate_golden_inferred_schemas) {
-      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".raw"),
-                JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)))
-          << "While running test case `" << test << "`.";
+      // Must parse the file, as the order of fields in JSON-ified `unordered_*` is not guaranteed.
+      EXPECT_EQ(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name),
+                (ParseJSON<current::utils::impl::Schema, JSONFormat::Minimalistic>(
+                    current::FileSystem::ReadFileAsString(filename_prefix + ".raw"))))
+          << "Expected:\n" << current::utils::impl::SchemaFromOneJSONPerLineFile(file_name) << "\nActual:\n"
+          << JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name))
+          << "\nWhile running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),
-                current::utils::JSONSchemaAsTSV(json))
+                current::utils::DescribeSchema(file_name))
           << "While running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".schema"),
-                current::utils::JSONSchemaAsCurrentStructs(json))
+                current::utils::JSONSchemaAsCurrentStructs(file_name))
           << "While running test case `" << test << "`.";
     } else {
       current::FileSystem::WriteStringToFile(
-          JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)),
+          JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name)),
           (filename_prefix + ".raw").c_str());
-      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsTSV(json),
+      current::FileSystem::WriteStringToFile(current::utils::DescribeSchema(file_name),
                                              (filename_prefix + ".tsv").c_str());
-      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsCurrentStructs(json),
+      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsCurrentStructs(file_name),
                                              (filename_prefix + ".schema").c_str());
     }
   }

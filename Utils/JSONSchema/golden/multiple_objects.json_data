@@ -1,0 +1,3 @@
+{"s":"string","b":true}
+{"s":"another string","b":false}
+{"s":"duh","b":true,"optional":[{"string":"s","maybe":true},{"string":"s2"}]}

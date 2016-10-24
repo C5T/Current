@@ -267,6 +267,20 @@ TEST(WaitableAtomic, Smoke) {
   EXPECT_EQ(copy_of_object.y + 1u, object.MutableUse([](Object& object) { return ++object.y; }));
 }
 
+TEST(WaitableAtomic, ProxyConstructor) {
+  using current::WaitableAtomic;
+
+  struct NonDefaultConstructibleObject {
+    int a;
+    int b;
+    NonDefaultConstructibleObject(int a, int b) : a(a), b(b) {}
+    int APlusB() const { return a + b; }
+  };
+
+  WaitableAtomic<NonDefaultConstructibleObject> object(1, 1);
+  EXPECT_EQ(2, object.GetValue().APlusB());
+}
+
 TEST(WaitableAtomic, IntrusiveClientsCanBeTransferred) {
   using current::WaitableAtomic;
   using current::IntrusiveClient;
