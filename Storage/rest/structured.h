@@ -144,7 +144,7 @@ struct Structured {
             }
             return response;
           } else {
-            // Export requested via `?export`, dump the record using appropriate format.
+            // Export requested via `?export`, dump the record using the appropriate format.
             if (Value(input.requested_export_params).format == FieldExportFormat::Detailed) {
               return detailed_export_entry_t(Value(last_modified), detailed_export_helper_t(key, value));
             } else {

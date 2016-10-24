@@ -37,7 +37,7 @@ namespace rest {
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
 const std::string kRESTfulExportURLQueryParameter = "export";
-// Additional URL query parameters for `export` mode.
+// Additional URL query parameters for the `export` mode.
 const std::string kRESTfulExportNShardsURLQueryParameter = "nshards";  // Number of shards.
 const std::string kRESTfulExportShardURLQueryParameter = "shard";      // Shard to export.
 
