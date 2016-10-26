@@ -163,7 +163,8 @@ CURRENT_STRUCT(String) {
 CURRENT_STRUCT(Integer) {
   CURRENT_FIELD(sum, int64_t, 0);           // Assume the sum would fit an int64. Because why not? -- D.K.
   CURRENT_FIELD(sum_squares, double, 0.0);  // Need double as squares of large numbers won't fit.
-  CURRENT_FIELD(nonnegative, bool, true);
+  CURRENT_FIELD(can_be_unsigned, bool, true);
+  CURRENT_FIELD(can_be_microseconds, bool, false);
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
@@ -171,11 +172,17 @@ CURRENT_STRUCT(Integer) {
   CURRENT_CONSTRUCTOR(Integer)(int64_t value) {
     sum = value;
     sum_squares = 1.0 * value * value;
-    nonnegative = (value >= 0);
+    can_be_unsigned = (value >= 0);
+    // clang-format off
+    const int64_t year_1980 =  315561600ll * 1000000ll;  // $(date -d "Jan 1 1980" +%s)
+    const int64_t year_2250 = 8835984000ll * 1000000ll;  // $(date -d "Jan 1 2250" +%s)
+    // clang-format on
+    can_be_microseconds = (value >= year_1980 && value < year_2250);
   }
 
   std::string CPPType() const {
-    return nonnegative ? "uint64_t" : "int64_t";  // TODO(dkorolev): Lower resolution?
+    // TODO(dkorolev): Integers of less than 64 bits?
+    return can_be_microseconds ? "std::chrono::microseconds" : can_be_unsigned ? "uint64_t" : "int64_t";
   }
 
   // LCOV_EXCL_START
@@ -381,7 +388,8 @@ struct Reduce<Integer, Integer> {
     Integer result(lhs);
     result.sum += rhs.sum;
     result.sum_squares += rhs.sum_squares;
-    result.nonnegative &= rhs.nonnegative;
+    result.can_be_unsigned &= rhs.can_be_unsigned;
+    result.can_be_microseconds &= rhs.can_be_microseconds;
     result.instances += rhs.instances;
     result.nulls += rhs.nulls;
     return result;

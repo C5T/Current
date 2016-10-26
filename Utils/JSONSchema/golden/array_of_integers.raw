@@ -1,1 +1,1 @@
-{"Array":{"element":{"Integer":{"sum":6,"sum_squares":14.0,"nonnegative":true,"instances":3,"nulls":0}},"instances":1,"nulls":0}}
+{"Array":{"element":{"Integer":{"sum":6,"sum_squares":14.0,"can_be_unsigned":true,"can_be_microseconds":false,"instances":3,"nulls":0}},"instances":1,"nulls":0}}

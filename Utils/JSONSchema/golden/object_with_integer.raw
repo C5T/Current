@@ -1,1 +1,1 @@
-{"Object":{"fields":{"a":{"Integer":{"sum":42,"sum_squares":1764.0,"nonnegative":true,"instances":1,"nulls":0}}},"instances":1,"nulls":0}}
+{"Object":{"fields":{"a":{"Integer":{"sum":42,"sum_squares":1764.0,"can_be_unsigned":true,"can_be_microseconds":false,"instances":1,"nulls":0}}},"instances":1,"nulls":0}}
