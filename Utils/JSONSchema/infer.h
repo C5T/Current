@@ -160,6 +160,52 @@ CURRENT_STRUCT(String) {
   // LCOV_EXCL_STOP
 };
 
+CURRENT_STRUCT(Integer) {
+  CURRENT_FIELD(sum, int64_t, 0);           // Assume the sum would fit an int64. Because why not? -- D.K.
+  CURRENT_FIELD(sum_squares, double, 0.0);  // Need double as squares of large numbers won't fit.
+  CURRENT_FIELD(nonnegative, bool, true);
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(Integer) {}
+  CURRENT_CONSTRUCTOR(Integer)(int64_t value) {
+    sum = value;
+    sum_squares = 1.0 * value * value;
+    nonnegative = (value >= 0);
+  }
+
+  std::string CPPType() const {
+    return nonnegative ? "uint64_t" : "int64_t";  // TODO(dkorolev): Lower resolution?
+  }
+
+  // LCOV_EXCL_START
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, CPPType()); }
+  // LCOV_EXCL_STOP
+};
+
+CURRENT_STRUCT(Double) {
+  CURRENT_FIELD(sum, double, 0);
+  CURRENT_FIELD(sum_squares, double, 0.0);
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(Double) {}
+  CURRENT_CONSTRUCTOR(Double)(double value) {
+    sum = value;
+    sum_squares = value * value;
+  }
+  CURRENT_CONSTRUCTOR(Double)(const Integer& integer) {
+    sum = integer.sum;
+    sum_squares = integer.sum_squares;
+    instances = integer.instances;
+    nulls = integer.nulls;
+  }
+
+  // LCOV_EXCL_START
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "double"); }
+  // LCOV_EXCL_STOP
+};
+
 CURRENT_STRUCT(Bool) {
   CURRENT_FIELD(values_false, uint32_t, 0);
   CURRENT_FIELD(values_true, uint32_t, 0);
@@ -186,7 +232,7 @@ CURRENT_STRUCT(Null) { CURRENT_FIELD(occurrences, uint32_t, 1); };
 CURRENT_FORWARD_DECLARE_STRUCT(Array);
 CURRENT_FORWARD_DECLARE_STRUCT(Object);
 
-using Schema = Variant<Uninitialized, String, Bool, Null, Array, Object>;
+using Schema = Variant<Uninitialized, String, Integer, Double, Bool, Null, Array, Object>;
 
 CURRENT_STRUCT(Array) {
   CURRENT_FIELD(element, Schema, Uninitialized());
@@ -330,6 +376,41 @@ struct Reduce<Bool, Bool> {
 };
 
 template <>
+struct Reduce<Integer, Integer> {
+  static Schema DoIt(const Integer& lhs, const Integer& rhs) {
+    Integer result(lhs);
+    result.sum += rhs.sum;
+    result.sum_squares += rhs.sum_squares;
+    result.nonnegative &= rhs.nonnegative;
+    result.instances += rhs.instances;
+    result.nulls += rhs.nulls;
+    return result;
+  }
+};
+
+template <>
+struct Reduce<Double, Double> {
+  static Schema DoIt(const Double& lhs, const Double& rhs) {
+    Double result(lhs);
+    result.sum += rhs.sum;
+    result.sum_squares += rhs.sum_squares;
+    result.instances += rhs.instances;
+    result.nulls += rhs.nulls;
+    return result;
+  }
+};
+
+template <>
+struct Reduce<Integer, Double> {
+  static Schema DoIt(const Integer& lhs, const Double& rhs) { return Reduce<Double, Double>::DoIt(lhs, rhs); }
+};
+
+template <>
+struct Reduce<Double, Integer> {
+  static Schema DoIt(const Double& lhs, const Integer& rhs) { return Reduce<Double, Double>::DoIt(lhs, rhs); }
+};
+
+template <>
 struct Reduce<Object, Object> {
   static Schema DoIt(const Object& lhs, const Object& rhs) {
     std::vector<std::string> lhs_fields;
@@ -416,10 +497,12 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value, const PATH& 
     }
   } else if (value.IsString()) {
     return String(std::string(value.GetString(), value.GetStringLength()));
-#if 1  // Hack. -- D.K.
   } else if (value.IsNumber()) {
-    return String(current::ToString(value.GetDouble()));
-#endif
+    if (value.IsInt64()) {
+      return Integer(value.GetInt64());
+    } else {
+      return Double(value.GetDouble());
+    }
   } else if (value.IsBool()) {
     Bool result;
     if (!value.IsTrue()) {
@@ -469,6 +552,24 @@ class HumanReadableSchemaExporter {
       }
     }
     os_ << '\t' << strings::Join(sorted_as_strings, ", ") << '\n';
+  }
+
+  template <typename T>
+  void DumpMeanAndStddev(const T& x) {
+    const uint64_t n = x.instances;
+    const double mean = 1.0 * x.sum / n;
+    const double stddev = std::sqrt((1.0 * x.sum_squares / n) - (mean * mean));
+    os_ << "\tMean " << mean << ", StdDev " << stddev << '\n';
+  }
+
+  void operator()(const Integer& x) {
+    os_ << path_ << "\tInteger\t" << x.instances << '\t' << x.nulls;
+    DumpMeanAndStddev(x);
+  }
+
+  void operator()(const Double& x) {
+    os_ << path_ << "\tDouble\t" << x.instances << '\t' << x.nulls;
+    DumpMeanAndStddev(x);
   }
 
   void operator()(const Bool& x) {
@@ -542,6 +643,15 @@ class SchemaToCurrentStructPrinter {
     }
 
     void operator()(const String& x) { output_type = x.nulls ? "Optional<std::string>" : "std::string"; }
+
+    void operator()(const Integer& x) {
+      output_type = x.CPPType();
+      if (x.nulls) {
+        output_type = "Optional<" + output_type + '>';
+      }
+    }
+
+    void operator()(const Double& x) { output_type = x.nulls ? "Optional<double>" : "double"; }
 
     void operator()(const Bool& x) { output_type = x.nulls ? "Optional<bool>" : "bool"; }
 

@@ -1,0 +1,3 @@
+Field	Type	Set	Unset/Null	Values	Details
+Schema	Object	1	0	1 field	a
+Schema.a	Integer	1	0	Mean 42, StdDev 0
