@@ -170,16 +170,26 @@ CURRENT_STRUCT(Bool) {
   // LCOV_EXCL_STOP
 };
 
+// Note: `Uninitialized` is a special type. It's introduced to make folds functionally uniform,
+// eliminating the need for an extra `bool first` variable.
+// clang-format off
+CURRENT_STRUCT(Uninitialized) {
+  std::string HumanReadableType() const {
+    return "Uninitialized";
+  }
+};
+// clang-format on
+
 // Note: The `Null` type is largely ephemeral. Top-level "null" is still not allowed in input JSONs.
 CURRENT_STRUCT(Null) { CURRENT_FIELD(occurrences, uint32_t, 1); };
 
 CURRENT_FORWARD_DECLARE_STRUCT(Array);
 CURRENT_FORWARD_DECLARE_STRUCT(Object);
 
-using Schema = Variant<String, Bool, Null, Array, Object>;
+using Schema = Variant<Uninitialized, String, Bool, Null, Array, Object>;
 
 CURRENT_STRUCT(Array) {
-  CURRENT_FIELD(element, Schema);
+  CURRENT_FIELD(element, Schema, Uninitialized());
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
@@ -226,6 +236,19 @@ struct RHSExpander {
   void operator()(const RHS& rhs) {
     result = Reduce<LHS, RHS>::DoIt(lhs, rhs);
   }
+
+  void operator()(const Uninitialized&) { result = lhs; }
+};
+
+template <>
+struct RHSExpander<Uninitialized> {
+  Schema& result;
+  RHSExpander(const Uninitialized&, Schema& result) : result(result) {}
+
+  template <typename RHS>
+  void operator()(const RHS& rhs) {
+    result = rhs;
+  }
 };
 
 struct LHSExpander {
@@ -239,7 +262,11 @@ struct LHSExpander {
   }
 };
 
-inline void CallReduce(const Schema& lhs, const Schema& rhs, Schema& result) { lhs.Call(LHSExpander(rhs, result)); }
+inline Schema CallReduce(const Schema& lhs, const Schema& rhs) {
+  Schema result;
+  lhs.Call(LHSExpander(rhs, result));
+  return result;
+}
 
 template <>
 struct Reduce<Null, Null> {
@@ -324,11 +351,11 @@ struct Reduce<Object, Object> {
       const auto& lhs_cit = lhs.fields.find(f);
       const auto& rhs_cit = rhs.fields.find(f);
       if (lhs_cit == lhs.fields.end()) {
-        CallReduce(rhs_cit->second, Null(), intermediate);
+        intermediate = CallReduce(rhs_cit->second, Null());
       } else if (rhs_cit == rhs.fields.end()) {
-        CallReduce(lhs_cit->second, Null(), intermediate);
+        intermediate = CallReduce(lhs_cit->second, Null());
       } else {
-        CallReduce(lhs_cit->second, rhs_cit->second, intermediate);
+        intermediate = CallReduce(lhs_cit->second, rhs_cit->second);
       }
     }
     object.instances = lhs.instances + rhs.instances;
@@ -340,8 +367,8 @@ struct Reduce<Object, Object> {
 template <>
 struct Reduce<Array, Array> {
   static Schema DoIt(const Array& lhs, const Array& rhs) {
-    Array array(lhs);
-    CallReduce(lhs.element, rhs.element, array.element);
+    Array array;
+    array.element = CallReduce(lhs.element, rhs.element);
     array.instances = lhs.instances + rhs.instances;
     array.nulls = lhs.nulls + rhs.nulls;
     return array;
@@ -374,22 +401,15 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value, const PATH& 
       CURRENT_THROW(InferSchemaTopLevelEmptyArrayIsNotAllowed());
     } else {
       Array array;
-      bool first = true;
       size_t array_index = 0u;
       for (auto cit = value.Begin(); cit != value.End(); ++cit, ++array_index) {
         const auto& inner = *cit;
         if (!(inner.IsArray() && inner.Empty())) {
           const auto element = RecursivelyInferSchema(inner, path.ArrayElement(array_index));
-          Schema& destination = array.element;
-          if (first) {
-            first = false;
-            destination = element;
-          } else {
-            CallReduce(destination, element, destination);
-          }
+          array.element = CallReduce(array.element, element);
         }
       }
-      if (first) {
+      if (Exists<Uninitialized>(array.element)) {
         CURRENT_THROW(InferSchemaArrayOfNullsOrEmptyArraysIsNotAllowed());
       }
       return array;
@@ -422,6 +442,8 @@ class HumanReadableSchemaExporter {
     os_ << "Field\tType\tSet\tUnset/Null\tValues\tDetails\n";
     schema.Call(*this);
   }
+
+  void operator()(const Uninitialized&) { os_ << path_ << "\tUninitialized\tN/A\n"; }
 
   void operator()(const Null& x) { os_ << path_ << "\tNull\t" << x.occurrences << '\n'; }
 
@@ -508,6 +530,11 @@ class SchemaToCurrentStructPrinter {
 
     Printer(std::ostream& os, const std::string& prefix, std::string& output_type, std::string& output_comment)
         : os(os), prefix(prefix), output_type(output_type), output_comment(output_comment) {}
+
+    void operator()(const Uninitialized&) {
+      output_type = "";
+      output_comment = "uninitialized node detected, ignored in the schema.";
+    }
 
     void operator()(const Null&) {
       output_type = "";
@@ -607,9 +634,7 @@ inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name, const P
                                   schema = impl::RecursivelyInferSchema(document, path);
                                   first = false;
                                 } else {
-                                  impl::Schema lhs = schema;
-                                  const impl::Schema rhs = impl::RecursivelyInferSchema(document, path);
-                                  CallReduce(lhs, rhs, schema);  // The last parameter is the output one.
+                                  schema = CallReduce(schema, impl::RecursivelyInferSchema(document, path));
                                 }
                               });
   return schema;
