@@ -1029,6 +1029,25 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
       ::current::ripcurrent::Definition(#USER_CLASS "(" #__VA_ARGS__ ")", __FILE__, __LINE__),                  \
       std::make_tuple(__VA_ARGS__))
 
+// The macros for templated RipCurrent nodes.
+#define RIPCURRENT_NODE_T(USER_CLASS_T, LHS_TS, RHS_TS)                                                            \
+  struct USER_CLASS_T##_RIPCURRENT_CLASS_NAME {                                                                    \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS_T "<T>"; }                                     \
+  };                                                                                                               \
+  template <typename T>                                                                                            \
+  struct USER_CLASS_T final                                                                                        \
+      : USER_CLASS_T##_RIPCURRENT_CLASS_NAME,                                                                      \
+        ::current::ripcurrent::UserCode<::current::ripcurrent::VoidOrLHSTypes<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
+                                        ::current::ripcurrent::VoidOrRHSTypes<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
+                                        USER_CLASS_T<T>>
+
+#define RIPCURRENT_MACRO_T(USER_CLASS, T, ...)                                                         \
+  ::current::ripcurrent::UserCodeImpl<typename USER_CLASS<T>::input_t,                                 \
+                                      typename USER_CLASS<T>::output_t,                                \
+                                      USER_CLASS<T>>(                                                  \
+      ::current::ripcurrent::Definition(#USER_CLASS "<" #T ">(" #__VA_ARGS__ ")", __FILE__, __LINE__), \
+      std::make_tuple(__VA_ARGS__))
+
 // A shortcut for `current::ripcurrent::Pass<...>()`, with the benefit of listing types as RipCurrent node name.
 #define RIPCURRENT_PASS(...)                                                                                     \
   ::current::ripcurrent::UserCodeImpl<::current::ripcurrent::LHSTypes<CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)>,  \
@@ -1044,6 +1063,7 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
       ::current::ripcurrent::Definition("Drop(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple())
 
 // A helper macro to extract the underlying type of the user class, now registered as a RipCurrent block type.
-#define RIPCURRENT_UNDERLYING_TYPE(USER_CLASS) decltype(USER_CLASS.UnderlyingType())
+// Use `__VA_ARGS__` to support templated constructs with commas inside them.
+#define RIPCURRENT_UNDERLYING_TYPE(...) decltype((CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)).UnderlyingType())
 
 #endif  // CURRENT_RIPCURRENT_RIPCURRENT_H

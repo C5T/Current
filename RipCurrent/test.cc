@@ -978,3 +978,47 @@ TEST(RipCurrent, SchedulingEventsIntoTheFutureAndUpdatingHead) {
   }
   EXPECT_EQ("11,12,17,19", current::strings::Join(result, ','));
 }
+
+namespace ripcurrent_unittest {
+
+// clang-format off
+RIPCURRENT_NODE_T(TemplatedEmitter, void, T) {
+  TemplatedEmitter() {
+    // emit(T());
+  }
+};
+// clang-format on
+#define TemplatedEmitter(...) RIPCURRENT_MACRO_T(TemplatedEmitter, __VA_ARGS__)
+
+}  // namespace ripcurrent_unittest
+
+TEST(RipCurrent, TemplateStaticAsserts) {
+  using namespace ripcurrent_unittest;
+
+  using integer_emitter_t = RIPCURRENT_UNDERLYING_TYPE(TemplatedEmitter(Integer));
+
+  static_assert(sizeof(is_same_or_compile_error<current::ripcurrent::LHSTypes<>, typename integer_emitter_t::input_t>),
+                "");
+  static_assert(
+      sizeof(is_same_or_compile_error<current::ripcurrent::RHSTypes<Integer>, typename integer_emitter_t::output_t>),
+      "");
+
+  using string_emitter_t = RIPCURRENT_UNDERLYING_TYPE(TemplatedEmitter(String));
+
+  static_assert(sizeof(is_same_or_compile_error<current::ripcurrent::LHSTypes<>, typename string_emitter_t::input_t>),
+                "");
+  static_assert(
+      sizeof(is_same_or_compile_error<current::ripcurrent::RHSTypes<String>, typename string_emitter_t::output_t>), "");
+}
+
+TEST(RipCurrent, TemplateDescriptions) {
+  using namespace ripcurrent_unittest;
+
+  const auto integer_emitter = TemplatedEmitter(Integer);
+  const auto string_emitter = TemplatedEmitter(String);
+
+  EXPECT_EQ("TemplatedEmitter<Integer>() | ...", integer_emitter.Describe());
+  EXPECT_EQ("TemplatedEmitter<Integer>() => { Integer } | ...", integer_emitter.DescribeWithTypes());
+  EXPECT_EQ("TemplatedEmitter<String>() | ...", string_emitter.Describe());
+  EXPECT_EQ("TemplatedEmitter<String>() => { String } | ...", string_emitter.DescribeWithTypes());
+}
