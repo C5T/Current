@@ -160,6 +160,59 @@ CURRENT_STRUCT(String) {
   // LCOV_EXCL_STOP
 };
 
+CURRENT_STRUCT(Integer) {
+  CURRENT_FIELD(sum, int64_t, 0);           // Assume the sum would fit an int64. Because why not? -- D.K.
+  CURRENT_FIELD(sum_squares, double, 0.0);  // Need double as squares of large numbers won't fit.
+  CURRENT_FIELD(can_be_unsigned, bool, true);
+  CURRENT_FIELD(can_be_microseconds, bool, false);
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(Integer) {}
+  CURRENT_CONSTRUCTOR(Integer)(int64_t value) {
+    sum = value;
+    sum_squares = 1.0 * value * value;
+    can_be_unsigned = (value >= 0);
+    // clang-format off
+    const int64_t year_1980 =  315561600ll * 1000000ll;  // $(date -d "Jan 1 1980" +%s)
+    const int64_t year_2250 = 8835984000ll * 1000000ll;  // $(date -d "Jan 1 2250" +%s)
+    // clang-format on
+    can_be_microseconds = (value >= year_1980 && value < year_2250);
+  }
+
+  std::string CPPType() const {
+    // TODO(dkorolev): Integers of less than 64 bits?
+    return can_be_microseconds ? "std::chrono::microseconds" : can_be_unsigned ? "uint64_t" : "int64_t";
+  }
+
+  // LCOV_EXCL_START
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, CPPType()); }
+  // LCOV_EXCL_STOP
+};
+
+CURRENT_STRUCT(Double) {
+  CURRENT_FIELD(sum, double, 0);
+  CURRENT_FIELD(sum_squares, double, 0.0);
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(Double) {}
+  CURRENT_CONSTRUCTOR(Double)(double value) {
+    sum = value;
+    sum_squares = value * value;
+  }
+  CURRENT_CONSTRUCTOR(Double)(const Integer& integer) {
+    sum = integer.sum;
+    sum_squares = integer.sum_squares;
+    instances = integer.instances;
+    nulls = integer.nulls;
+  }
+
+  // LCOV_EXCL_START
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "double"); }
+  // LCOV_EXCL_STOP
+};
+
 CURRENT_STRUCT(Bool) {
   CURRENT_FIELD(values_false, uint32_t, 0);
   CURRENT_FIELD(values_true, uint32_t, 0);
@@ -170,16 +223,26 @@ CURRENT_STRUCT(Bool) {
   // LCOV_EXCL_STOP
 };
 
+// Note: `Uninitialized` is a special type. It's introduced to make folds functionally uniform,
+// eliminating the need for an extra `bool first` variable.
+// clang-format off
+CURRENT_STRUCT(Uninitialized) {
+  std::string HumanReadableType() const {
+    return "Uninitialized";
+  }
+};
+// clang-format on
+
 // Note: The `Null` type is largely ephemeral. Top-level "null" is still not allowed in input JSONs.
 CURRENT_STRUCT(Null) { CURRENT_FIELD(occurrences, uint32_t, 1); };
 
 CURRENT_FORWARD_DECLARE_STRUCT(Array);
 CURRENT_FORWARD_DECLARE_STRUCT(Object);
 
-using Schema = Variant<String, Bool, Null, Array, Object>;
+using Schema = Variant<Uninitialized, String, Integer, Double, Bool, Null, Array, Object>;
 
 CURRENT_STRUCT(Array) {
-  CURRENT_FIELD(element, Schema);
+  CURRENT_FIELD(element, Schema, Uninitialized());
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
@@ -226,6 +289,19 @@ struct RHSExpander {
   void operator()(const RHS& rhs) {
     result = Reduce<LHS, RHS>::DoIt(lhs, rhs);
   }
+
+  void operator()(const Uninitialized&) { result = lhs; }
+};
+
+template <>
+struct RHSExpander<Uninitialized> {
+  Schema& result;
+  RHSExpander(const Uninitialized&, Schema& result) : result(result) {}
+
+  template <typename RHS>
+  void operator()(const RHS& rhs) {
+    result = rhs;
+  }
 };
 
 struct LHSExpander {
@@ -239,7 +315,11 @@ struct LHSExpander {
   }
 };
 
-inline void CallReduce(const Schema& lhs, const Schema& rhs, Schema& result) { lhs.Call(LHSExpander(rhs, result)); }
+inline Schema CallReduce(const Schema& lhs, const Schema& rhs) {
+  Schema result;
+  lhs.Call(LHSExpander(rhs, result));
+  return result;
+}
 
 template <>
 struct Reduce<Null, Null> {
@@ -303,6 +383,42 @@ struct Reduce<Bool, Bool> {
 };
 
 template <>
+struct Reduce<Integer, Integer> {
+  static Schema DoIt(const Integer& lhs, const Integer& rhs) {
+    Integer result(lhs);
+    result.sum += rhs.sum;
+    result.sum_squares += rhs.sum_squares;
+    result.can_be_unsigned &= rhs.can_be_unsigned;
+    result.can_be_microseconds &= rhs.can_be_microseconds;
+    result.instances += rhs.instances;
+    result.nulls += rhs.nulls;
+    return result;
+  }
+};
+
+template <>
+struct Reduce<Double, Double> {
+  static Schema DoIt(const Double& lhs, const Double& rhs) {
+    Double result(lhs);
+    result.sum += rhs.sum;
+    result.sum_squares += rhs.sum_squares;
+    result.instances += rhs.instances;
+    result.nulls += rhs.nulls;
+    return result;
+  }
+};
+
+template <>
+struct Reduce<Integer, Double> {
+  static Schema DoIt(const Integer& lhs, const Double& rhs) { return Reduce<Double, Double>::DoIt(lhs, rhs); }
+};
+
+template <>
+struct Reduce<Double, Integer> {
+  static Schema DoIt(const Double& lhs, const Integer& rhs) { return Reduce<Double, Double>::DoIt(lhs, rhs); }
+};
+
+template <>
 struct Reduce<Object, Object> {
   static Schema DoIt(const Object& lhs, const Object& rhs) {
     std::vector<std::string> lhs_fields;
@@ -324,11 +440,11 @@ struct Reduce<Object, Object> {
       const auto& lhs_cit = lhs.fields.find(f);
       const auto& rhs_cit = rhs.fields.find(f);
       if (lhs_cit == lhs.fields.end()) {
-        CallReduce(rhs_cit->second, Null(), intermediate);
+        intermediate = CallReduce(rhs_cit->second, Null());
       } else if (rhs_cit == rhs.fields.end()) {
-        CallReduce(lhs_cit->second, Null(), intermediate);
+        intermediate = CallReduce(lhs_cit->second, Null());
       } else {
-        CallReduce(lhs_cit->second, rhs_cit->second, intermediate);
+        intermediate = CallReduce(lhs_cit->second, rhs_cit->second);
       }
     }
     object.instances = lhs.instances + rhs.instances;
@@ -340,8 +456,8 @@ struct Reduce<Object, Object> {
 template <>
 struct Reduce<Array, Array> {
   static Schema DoIt(const Array& lhs, const Array& rhs) {
-    Array array(lhs);
-    CallReduce(lhs.element, rhs.element, array.element);
+    Array array;
+    array.element = CallReduce(lhs.element, rhs.element);
     array.instances = lhs.instances + rhs.instances;
     array.nulls = lhs.nulls + rhs.nulls;
     return array;
@@ -374,32 +490,27 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value, const PATH& 
       CURRENT_THROW(InferSchemaTopLevelEmptyArrayIsNotAllowed());
     } else {
       Array array;
-      bool first = true;
       size_t array_index = 0u;
       for (auto cit = value.Begin(); cit != value.End(); ++cit, ++array_index) {
         const auto& inner = *cit;
         if (!(inner.IsArray() && inner.Empty())) {
           const auto element = RecursivelyInferSchema(inner, path.ArrayElement(array_index));
-          Schema& destination = array.element;
-          if (first) {
-            first = false;
-            destination = element;
-          } else {
-            CallReduce(destination, element, destination);
-          }
+          array.element = CallReduce(array.element, element);
         }
       }
-      if (first) {
+      if (Exists<Uninitialized>(array.element)) {
         CURRENT_THROW(InferSchemaArrayOfNullsOrEmptyArraysIsNotAllowed());
       }
       return array;
     }
   } else if (value.IsString()) {
     return String(std::string(value.GetString(), value.GetStringLength()));
-#if 1  // Hack. -- D.K.
   } else if (value.IsNumber()) {
-    return String(current::ToString(value.GetDouble()));
-#endif
+    if (value.IsInt64()) {
+      return Integer(value.GetInt64());
+    } else {
+      return Double(value.GetDouble());
+    }
   } else if (value.IsBool()) {
     Bool result;
     if (!value.IsTrue()) {
@@ -422,6 +533,8 @@ class HumanReadableSchemaExporter {
     os_ << "Field\tType\tSet\tUnset/Null\tValues\tDetails\n";
     schema.Call(*this);
   }
+
+  void operator()(const Uninitialized&) { os_ << path_ << "\tUninitialized\tN/A\n"; }
 
   void operator()(const Null& x) { os_ << path_ << "\tNull\t" << x.occurrences << '\n'; }
 
@@ -447,6 +560,24 @@ class HumanReadableSchemaExporter {
       }
     }
     os_ << '\t' << strings::Join(sorted_as_strings, ", ") << '\n';
+  }
+
+  template <typename T>
+  void DumpMeanAndStddev(const T& x) {
+    const uint64_t n = x.instances;
+    const double mean = 1.0 * x.sum / n;
+    const double stddev = std::sqrt((1.0 * x.sum_squares / n) - (mean * mean));
+    os_ << "\tMean " << mean << ", StdDev " << stddev << '\n';
+  }
+
+  void operator()(const Integer& x) {
+    os_ << path_ << "\tInteger\t" << x.instances << '\t' << x.nulls;
+    DumpMeanAndStddev(x);
+  }
+
+  void operator()(const Double& x) {
+    os_ << path_ << "\tDouble\t" << x.instances << '\t' << x.nulls;
+    DumpMeanAndStddev(x);
   }
 
   void operator()(const Bool& x) {
@@ -509,12 +640,26 @@ class SchemaToCurrentStructPrinter {
     Printer(std::ostream& os, const std::string& prefix, std::string& output_type, std::string& output_comment)
         : os(os), prefix(prefix), output_type(output_type), output_comment(output_comment) {}
 
+    void operator()(const Uninitialized&) {
+      output_type = "";
+      output_comment = "uninitialized node detected, ignored in the schema.";
+    }
+
     void operator()(const Null&) {
       output_type = "";
       output_comment = "`null`-s and/or empty arrays, ignored in the schema.";
     }
 
     void operator()(const String& x) { output_type = x.nulls ? "Optional<std::string>" : "std::string"; }
+
+    void operator()(const Integer& x) {
+      output_type = x.CPPType();
+      if (x.nulls) {
+        output_type = "Optional<" + output_type + '>';
+      }
+    }
+
+    void operator()(const Double& x) { output_type = x.nulls ? "Optional<double>" : "double"; }
 
     void operator()(const Bool& x) { output_type = x.nulls ? "Optional<bool>" : "bool"; }
 
@@ -607,9 +752,7 @@ inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name, const P
                                   schema = impl::RecursivelyInferSchema(document, path);
                                   first = false;
                                 } else {
-                                  impl::Schema lhs = schema;
-                                  const impl::Schema rhs = impl::RecursivelyInferSchema(document, path);
-                                  CallReduce(lhs, rhs, schema);  // The last parameter is the output one.
+                                  schema = CallReduce(schema, impl::RecursivelyInferSchema(document, path));
                                 }
                               });
   return schema;
