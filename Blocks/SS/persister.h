@@ -65,14 +65,19 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   //   return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   // }
 
-  bool Empty() const noexcept { return IMPL::Empty(); }
-  uint64_t Size() const noexcept { return IMPL::Size(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  bool Empty() const noexcept { return IMPL::template Empty<MLS>(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  uint64_t Size() const noexcept { return IMPL::template Size<MLS>(); }
 
-  idxts_t LastPublishedIndexAndTimestamp() const { return IMPL::LastPublishedIndexAndTimestamp(); }
-  std::chrono::microseconds CurrentHead() const { return IMPL::CurrentHead(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  idxts_t LastPublishedIndexAndTimestamp() const { return IMPL::template LastPublishedIndexAndTimestamp<MLS>(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  std::chrono::microseconds CurrentHead() const { return IMPL::template CurrentHead<MLS>(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
-    return IMPL::IndexRangeByTimestampRange(from, till);
+    return IMPL::template IndexRangeByTimestampRange<MLS>(from, till);
   }
   using IterableRange = typename IMPL::IterableRange;
 
