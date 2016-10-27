@@ -1681,6 +1681,8 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
       current::time::SetNow(std::chrono::microseconds(203));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
+    current::time::SetNow(std::chrono::microseconds(300));
+    master_storage.InternalExposeStream().UpdateHead();
   }
 
   // Confirm empty transactions are not persisted.
@@ -1717,7 +1719,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
   {
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    while (replicated_stream.InternalExposePersister().Size() < 2u) {
+    while (replicated_stream.InternalExposePersister().CurrentHead() != std::chrono::microseconds(300)) {
       std::this_thread::yield();
     }
   }
@@ -1769,6 +1771,8 @@ class StorageSherlockTestProcessorImpl {
       return EntryResponse::Done;
     }
   }
+
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
   TerminationResponse Terminate() const {
     if (allow_terminate_) {

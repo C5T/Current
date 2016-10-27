@@ -331,6 +331,22 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     return result;
   }
 
+  ss::EntryResponse operator()(std::chrono::microseconds us) {
+    if (time_to_terminate_) {
+      return ss::EntryResponse::Done;
+    }
+    if (serving_) {
+      // Stop serving if the limit on timestamp is exceeded.
+      if (to_timestamp_.count() && us > to_timestamp_) {
+        return ss::EntryResponse::Done;
+      }
+      if (!params_.array && !params_.entries_only) {
+        http_response_(JSON<J>(ts_optidx_t(us)) + '\n');
+      }
+    }
+    return ss::EntryResponse::More;
+  }
+
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
   // whether we should terminate or no depends on `nowait`.
   ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {

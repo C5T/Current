@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 
+#include "../../TypeSystem/optional.h"
 #include "../../TypeSystem/struct.h"
 
 namespace current {
@@ -48,9 +49,42 @@ CURRENT_STRUCT(IndexAndTimestamp) {
   CURRENT_CONSTRUCTOR(IndexAndTimestamp)(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
 };
 
+// An index and timestamp of an entry or a timestamp of the current head.
+// In the latter case the `index` member is unset.
+CURRENT_STRUCT(TimestampAndOptionalIndex) {
+  CURRENT_FIELD(us, std::chrono::microseconds);
+  CURRENT_FIELD(index, Optional<uint64_t>);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(us);
+  CURRENT_DEFAULT_CONSTRUCTOR(TimestampAndOptionalIndex) : us(0) {}
+  CURRENT_CONSTRUCTOR(TimestampAndOptionalIndex)(std::chrono::microseconds us) : us(us) {}
+  CURRENT_CONSTRUCTOR(TimestampAndOptionalIndex)(std::chrono::microseconds us, uint64_t index) : us(us), index(index) {}
+};
+
+// The `head` is the timestamp of either the last published entry or the last `UpdateHead()` call,
+// depending on whether the most recent update was `.Publish()` or `.UpdateHead()`.
+// The `idxts` stores the timestamp and index of the last published entry, it is unset if there were no entries yet.
+CURRENT_STRUCT(HeadAndOptionalIndexAndTimestamp) {
+  CURRENT_FIELD(head, std::chrono::microseconds);
+  CURRENT_FIELD(idxts, Optional<IndexAndTimestamp>);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(head);
+  CURRENT_DEFAULT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp) : head(0) {}
+  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(std::chrono::microseconds head) : head(head) {}
+  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(std::chrono::microseconds head, IndexAndTimestamp idxts)
+      : head(head), idxts(idxts) {
+    CURRENT_ASSERT(head >= idxts.us);
+  }
+  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(
+      std::chrono::microseconds head, uint64_t index, std::chrono::microseconds us)
+      : head(head), idxts(IndexAndTimestamp(index, us)) {
+    CURRENT_ASSERT(head >= us);
+  }
+};
+
 }  // namespace current::ss
 }  // namespace current
 
 using idxts_t = current::ss::IndexAndTimestamp;
+using ts_optidx_t = current::ss::TimestampAndOptionalIndex;
+using head_optidxts_t = current::ss::HeadAndOptionalIndexAndTimestamp;
 
 #endif  // BLOCKS_SS_IDX_TS_H

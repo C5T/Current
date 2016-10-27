@@ -49,6 +49,15 @@ namespace current {
 namespace persistence {
 
 namespace impl {
+
+namespace constants {
+constexpr const char kDirectiveMarker = '#';
+constexpr const char* kHeadDirective = "#head";
+constexpr const char* kHeadFromatString = "%020lld";
+}  // namespace current::persistence::impl::constants
+
+typedef int64_t head_value_t;
+
 // An iterator to read a file line by line, extracting tab-separated `idxts_t index` and `const char* data`.
 // Validates the entries come in the right order of 0-based indexes, and with strictly increasing timestamps.
 template <typename ENTRY>
@@ -62,26 +71,32 @@ class IteratorOverFileOfPersistedEntries {
     }
   }
 
-  template <typename F>
-  bool ProcessNextEntry(F&& f) {
+  template <typename F1, typename F2>
+  bool ProcessNextEntry(F1&& on_entry, F2&& on_directive) {
     if (std::getline(fi_, line_)) {
-      const size_t tab_pos = line_.find('\t');
-      if (tab_pos == std::string::npos) {
-        CURRENT_THROW(MalformedEntryException(line_));
+      // A directive always starts with kDirectiveMarker ('#'),
+      // an entry - with JSON-serialized `idxts_t` object
+      if (line_[0] != constants::kDirectiveMarker) {
+        const size_t tab_pos = line_.find('\t');
+        if (tab_pos == std::string::npos) {
+          CURRENT_THROW(MalformedEntryException(line_));
+        }
+        const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
+        if (current.index != next_.index) {
+          // Indexes must be strictly continuous.
+          CURRENT_THROW(ss::InconsistentIndexException(next_.index, current.index));
+        }
+        if (current.us < next_.us) {
+          // Timestamps must monotonically increase.
+          CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
+        }
+        on_entry(current, line_.c_str() + tab_pos + 1);
+        next_ = current;
+        ++next_.index;
+        ++next_.us;
+      } else {
+        on_directive(line_);
       }
-      const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
-      if (current.index != next_.index) {
-        // Indexes must be strictly continuous.
-        CURRENT_THROW(ss::InconsistentIndexException(next_.index, current.index));
-      }
-      if (current.us < next_.us) {
-        // Timestamps must monotonically increase.
-        CURRENT_THROW(ss::InconsistentTimestampException(next_.us, current.us));
-      }
-      f(current, line_.c_str() + tab_pos + 1);
-      next_ = current;
-      ++next_.index;
-      ++next_.us;
       return true;
     } else {
       return false;
@@ -101,22 +116,24 @@ class IteratorOverFileOfPersistedEntries {
 template <typename ENTRY>
 class FilePersister {
  protected:
-  // { last_published_index + 1, last_published_us + 1us }, or { 0, 0us } for an empty persister.
+  // { last_published_index + 1, last_published_us, current_head_us }, or { 0, -1us, -1us } for an empty persister.
   struct end_t {
-    uint64_t index;
-    std::chrono::microseconds us;
+    uint64_t next_index;
+    std::chrono::microseconds last_entry_us;
+    std::chrono::microseconds head;
   };
   static_assert(sizeof(std::chrono::microseconds) == 8, "");
-  static_assert(sizeof(end_t) == 16, "");
 
  private:
   struct FilePersisterImpl final {
     const std::string filename;
     std::ofstream appender;
+    std::fstream head_rewriter;
 
-    // `offset.size() == end.index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
+    // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
     std::mutex mutex;
     std::vector<std::streampos> offset;
+    std::streamoff head_offset;
     std::vector<std::chrono::microseconds> timestamp;
 
     // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
@@ -133,16 +150,16 @@ class FilePersister {
     explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
-          end(ValidateFileAndInitializeNext(filename, offset, timestamp)) {
-      if (appender.bad()) {
+          head_rewriter(filename, std::ofstream::in | std::ofstream::out),
+          head_offset(0) {
+      ValidateFileAndInitializeHead();
+      if (appender.bad() || head_rewriter.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    static end_t ValidateFileAndInitializeNext(const std::string& filename,
-                                               std::vector<std::streampos>& offset,
-                                               std::vector<std::chrono::microseconds>& timestamp) {
+    void ValidateFileAndInitializeHead() {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -150,19 +167,44 @@ class FilePersister {
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
-        while (cit.ProcessNextEntry([&fi, &offset, &timestamp, &current_offset](const idxts_t& current, const char*) {
-          CURRENT_ASSERT(current.index == offset.size());
-          CURRENT_ASSERT(current.index == timestamp.size());
-          offset.push_back(current_offset);
-          timestamp.push_back(current.us);
-          current_offset = fi.tellg();
-        })) {
+        auto head = std::chrono::microseconds(-1);
+        while (cit.ProcessNextEntry(
+            [&](const idxts_t& current, const char*) {
+              CURRENT_ASSERT(current.index == offset.size());
+              CURRENT_ASSERT(current.index == timestamp.size());
+              if (!(current.us > head)) {
+                CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), current.us));
+              }
+              offset.push_back(current_offset);
+              timestamp.push_back(current.us);
+              current_offset = fi.tellg();
+              head = current.us;
+              head_offset = 0;
+            },
+            [&](const std::string& value) {
+              static const auto head_key_length = strlen(constants::kHeadDirective);
+              if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
+                auto offset = head_key_length;
+                while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
+                if (!(us > head)) {
+                  CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
+                }
+                head = us;
+                head_offset = std::streamoff(current_offset) + offset;
+              } else {
+                head_offset = 0;
+              }
+              current_offset = fi.tellg();
+            })) {
           ;
         }
-        const auto& end = cit.Next();
-        return end_t{end.index, end.us};
+        const auto& next = cit.Next();
+        // The `next.us` stores the closest possible next entry timestamp,
+        // so the last processed entry timestamp is always 1us less.
+        end.store({next.index, next.us - std::chrono::microseconds(1), head});
       } else {
-        return end_t{0ull, std::chrono::microseconds(0)};
+        end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
       }
     }
   };
@@ -230,15 +272,17 @@ class FilePersister {
         Entry result;
         bool found = false;
         while (!found) {
-          if (!(cit_->ProcessNextEntry([this, &found, &result](const idxts_t& cursor, const char* json) {
-                if (cursor.index == i_) {
-                  found = true;
-                  result.idx_ts = cursor;
-                  result.entry = ParseJSON<ENTRY>(json);
-                } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
-                  CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
-                }
-              }))) {
+          if (!(cit_->ProcessNextEntry(
+                  [this, &found, &result](const idxts_t& cursor, const char* json) {
+                    if (cursor.index == i_) {
+                      found = true;
+                      result.idx_ts = cursor;
+                      result.entry = ParseJSON<ENTRY>(json);
+                    } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
+                      CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
+                    }
+                  },
+                  [](const std::string&) {}))) {
             // End of file. Should never happen as long as the user only iterates over valid ranges.
             CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
@@ -302,36 +346,67 @@ class FilePersister {
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     end_t iterator = file_persister_impl_->end.load();
-    if (timestamp < iterator.us) {
-      CURRENT_THROW(ss::InconsistentTimestampException(iterator.us, timestamp));
+    if (!(timestamp > iterator.head)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
-    iterator.us = timestamp;
-    const auto current = idxts_t(iterator.index, iterator.us);
+    iterator.last_entry_us = iterator.head = timestamp;
+    const auto current = idxts_t(iterator.next_index, iterator.last_entry_us);
     {
       std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.index);
-      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.index);
+      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.next_index);
+      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.next_index);
       file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
       file_persister_impl_->timestamp.push_back(timestamp);
     }
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
-    ++iterator.index;
-    iterator.us += std::chrono::microseconds(1);
+    ++iterator.next_index;
+    file_persister_impl_->head_offset = 0;
     file_persister_impl_->end.store(iterator);
     return current;
   }
 
-  bool Empty() const noexcept { return !file_persister_impl_->end.load().index; }
-  uint64_t Size() const noexcept { return file_persister_impl_->end.load().index; }
+  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+    end_t iterator = file_persister_impl_->end.load();
+    if (!(timestamp > iterator.head)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
+    }
+    iterator.head = timestamp;
+    const auto head_str = Printf(constants::kHeadFromatString, timestamp.count());
+    if (file_persister_impl_->head_offset) {
+      auto& rewriter = file_persister_impl_->head_rewriter;
+      rewriter.seekp(file_persister_impl_->head_offset, std::ios_base::beg);
+      rewriter << head_str << std::endl;
+    } else {
+      auto& appender = file_persister_impl_->appender;
+      appender << constants::kHeadDirective << '\t';
+      file_persister_impl_->head_offset = appender.tellp();
+      appender << head_str << std::endl;
+    }
+    file_persister_impl_->end.store(iterator);
+  }
+
+  bool Empty() const noexcept { return !file_persister_impl_->end.load().next_index; }
+  uint64_t Size() const noexcept { return file_persister_impl_->end.load().next_index; }
 
   idxts_t LastPublishedIndexAndTimestamp() const {
     const auto iterator = file_persister_impl_->end.load();
-    if (iterator.index) {
-      return idxts_t(iterator.index - 1, iterator.us - std::chrono::microseconds(1));
+    if (iterator.next_index) {
+      return idxts_t(iterator.next_index - 1, iterator.last_entry_us);
     } else {
       CURRENT_THROW(NoEntriesPublishedYet());
     }
   }
+
+  head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
+    const auto iterator = file_persister_impl_->end.load();
+    if (iterator.next_index) {
+      return head_optidxts_t(iterator.head, iterator.next_index - 1, iterator.last_entry_us);
+    } else {
+      return head_optidxts_t(iterator.head);
+    }
+  }
+
+  std::chrono::microseconds CurrentHead() const noexcept { return file_persister_impl_->end.load().head; }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
@@ -359,7 +434,7 @@ class FilePersister {
   }
 
   IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
-    const uint64_t current_size = file_persister_impl_->end.load().index;
+    const uint64_t current_size = file_persister_impl_->end.load().next_index;
     if (end_index == static_cast<uint64_t>(-1)) {
       end_index = current_size;
     }

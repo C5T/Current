@@ -98,6 +98,9 @@ struct UserNicknamesReadModel {
     }
     return current::ss::EntryResponse::More;
   }
+  current::ss::EntryResponse operator()(std::chrono::microseconds) const {
+    return current::ss::EntryResponse::More;
+  }
 
   current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
     return current::ss::EntryResponse::More;

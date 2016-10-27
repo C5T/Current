@@ -158,6 +158,18 @@ class StreamImpl {
       }
     }
 
+    template <current::locks::MutexLockStatus MLS>
+    void DoUpdateHead(const std::chrono::microseconds us = current::time::Now()) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        data.persistence.UpdateHead(us);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+      } catch (const current::sync::InDestructingModeException&) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+    }
+
     operator bool() const { return data_; }
 
    private:
@@ -234,6 +246,15 @@ class StreamImpl {
     std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
+    } else {
+      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
+    }
+  }
+
+  void UpdateHead(const std::chrono::microseconds us = current::time::Now()) {
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
+    if (publisher_) {
+      return publisher_->template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
     } else {
       CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
     }
@@ -333,6 +354,7 @@ class StreamImpl {
     }
 
     void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
+      auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
       bool terminate_sent = false;
@@ -345,30 +367,41 @@ class StreamImpl {
             return;
           }
         }
-        size = bare_data.persistence.Size();
-        if (size > index) {
-          for (const auto& e : bare_data.persistence.Iterate(index, size)) {
-            if (!terminate_sent && terminate_signal_) {
-              terminate_sent = true;
-              if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+        auto head_idx = bare_data.persistence.HeadAndLastPublishedIndexAndTimestamp();
+        size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
+        if (head_idx.head > head) {
+          if (size > index) {
+            for (const auto& e : bare_data.persistence.Iterate(index, size)) {
+              if (!terminate_sent && terminate_signal_) {
+                terminate_sent = true;
+                if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+                  return;
+                }
+              }
+              if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
+                      subscriber_,
+                      [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
+                      e.entry,
+                      e.idx_ts,
+                      bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
                 return;
               }
             }
-            if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
-                    subscriber_,
-                    [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
-                    e.entry,
-                    e.idx_ts,
-                    bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
-              return;
-            }
+            index = size;
+            head = Value(head_idx.idxts).us;
           }
-          index = size;
+          if (size > begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
+            return;
+          }
+          head = head_idx.head;
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(
-              lock, [this, &bare_data, &index]() { return terminate_signal_ || bare_data.persistence.Size() > index; });
+          terminate_signal_.WaitUntil(lock,
+                                      [this, &bare_data, &index, &begin_idx, &head]() {
+                                        return terminate_signal_ || bare_data.persistence.Size() > index ||
+                                               (index > begin_idx && bare_data.persistence.CurrentHead() > head);
+                                      });
         }
       }
     }

@@ -54,6 +54,7 @@ class MemoryPersister {
     using entry_t = std::pair<std::chrono::microseconds, ENTRY>;
     std::mutex mutex;
     std::deque<entry_t> entries;
+    std::chrono::microseconds head = std::chrono::microseconds(-1);
   };
 
  public:
@@ -125,15 +126,23 @@ class MemoryPersister {
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     std::lock_guard<std::mutex> lock(container_->mutex);
-    if (!container_->entries.empty()) {
-      const std::chrono::microseconds expected = container_->entries.back().first;
-      if (!(timestamp > expected)) {
-        CURRENT_THROW(ss::InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
-      }
+    const auto head = container_->head;
+    if (!(timestamp > head)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
     const auto index = static_cast<uint64_t>(container_->entries.size());
     container_->entries.emplace_back(timestamp, std::forward<E>(entry));
+    container_->head = timestamp;
     return idxts_t(index, timestamp);
+  }
+
+  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    const auto head = container_->head;
+    if (!(timestamp > head)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
+    }
+    container_->head = timestamp;
   }
 
   bool Empty() const noexcept {
@@ -153,6 +162,20 @@ class MemoryPersister {
     } else {
       CURRENT_THROW(NoEntriesPublishedYet());
     }
+  }
+
+  head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    if (!container_->entries.empty()) {
+      return head_optidxts_t(container_->head, container_->entries.size() - 1, container_->entries.back().first);
+    } else {
+      return head_optidxts_t(container_->head);
+    }
+  }
+
+  std::chrono::microseconds CurrentHead() const noexcept {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    return container_->head;
   }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,

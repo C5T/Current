@@ -81,6 +81,7 @@ struct Data final {
   std::atomic_bool subscriber_alive_;
   std::atomic_size_t seen_;
   std::string results_;
+  std::chrono::microseconds head_;
   Data() : subscriber_alive_(false), seen_(0u) {}
 };
 
@@ -122,6 +123,20 @@ struct SherlockTestProcessorImpl {
     } else {
       data_.results_ += current::ToString(entry.x);
     }
+    data_.head_ = current.us;
+    ++data_.seen_;
+    if (data_.seen_ < max_to_process_) {
+      return EntryResponse::More;
+    } else {
+      return EntryResponse::Done;
+    }
+  }
+
+  EntryResponse operator()(std::chrono::microseconds ts) {
+    while (wait_) {
+      std::this_thread::yield();
+    }
+    data_.head_ = ts;
     ++data_.seen_;
     if (data_.seen_ < max_to_process_) {
       return EntryResponse::More;
@@ -336,6 +351,8 @@ struct RecordsCollectorImpl {
     ++count_;
     return EntryResponse::More;
   }
+
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
   static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
 
@@ -750,13 +767,19 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 const std::string sherlock_golden_data =
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
-    "{\"index\":2,\"us\":300}\t{\"x\":3}\n";
+    "#head\t00000000000000000300\n"
+    "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
+    "#head\t00000000000000000500\n";
 
+// clang-format off
 const std::string sherlock_golden_data_chunks[] = {
-    "{\"index\":0,\"u",
-    "s\":100}\t{\"x\":1}\r",
-    "\n{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n{\"index\":2,\"us\":300}\t{\"x",
-    "\":3}\n"};
+  "{\"index\":0,\"u","s\":100}\t{\"x\":1}\r","\n"
+  "{\"index\":1,\"us\":200}\t{\"x\":2}\n\r\n"
+  "{\"us\"",":3","00}\n"
+  "{\"index\":2,\"us\":400}\t{\"x","\":3}\n"
+  "{\"us\":500}\n"
+};
+// clang-format on
 
 TEST(Sherlock, PersistsToFile) {
   current::time::ResetToZero();
@@ -768,12 +791,18 @@ TEST(Sherlock, PersistsToFile) {
 
   auto persisted = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
-  current::time::SetNow(std::chrono::microseconds(100u));
+  current::time::SetNow(std::chrono::microseconds(100));
   persisted.Publish(1);
-  current::time::SetNow(std::chrono::microseconds(200u));
+  current::time::SetNow(std::chrono::microseconds(200));
   persisted.Publish(2);
-  current::time::SetNow(std::chrono::microseconds(300u));
+  current::time::SetNow(std::chrono::microseconds(300));
+  persisted.UpdateHead();
+  current::time::SetNow(std::chrono::microseconds(400));
   persisted.Publish(3);
+  current::time::SetNow(std::chrono::microseconds(450));
+  persisted.UpdateHead();
+  current::time::SetNow(std::chrono::microseconds(500));
+  persisted.UpdateHead();
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
   while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
@@ -799,9 +828,10 @@ TEST(Sherlock, ParsesFromFile) {
     ASSERT_FALSE(d.subscriber_alive_);
     SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
-    p.SetMax(3u);
-    parsed.Subscribe(p);  // A blocking call until the subscriber processes three entries.
-    EXPECT_EQ(3u, d.seen_);
+    p.SetMax(4u);
+    parsed.Subscribe(p);  // A blocking call until the subscriber processes three entries and one head update.
+    EXPECT_EQ(4u, d.seen_);
+    EXPECT_EQ(500, d.head_.count());
     ASSERT_TRUE(d.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
@@ -814,19 +844,20 @@ TEST(Sherlock, ParsesFromFile) {
       ASSERT_FALSE(d2.subscriber_alive_);
       SherlockTestProcessor p2(d2, false, true);
       ASSERT_TRUE(d2.subscriber_alive_);
-      p2.SetMax(3u);
+      p2.SetMax(4u);
       const auto scope = parsed.Subscribe(p2);
       while (static_cast<bool>(scope)) {
         std::this_thread::yield();
       }
       EXPECT_FALSE(static_cast<bool>(scope));
-      EXPECT_EQ(3u, d2.seen_);
+      EXPECT_EQ(4u, d2.seen_);
+      EXPECT_EQ(500, d2.head_.count());
       EXPECT_TRUE(d2.subscriber_alive_);
     }
     EXPECT_FALSE(d2.subscriber_alive_);
   }
 
-  const std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
+  const std::vector<std::string> expected_values{"[0:100,2:400] 1", "[1:200,2:400] 2", "[2:400,2:400] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
@@ -917,6 +948,8 @@ TEST(Sherlock, SubscribeWithFilterByType) {
       results_.push_back("Y=" + current::ToString(another_record.y));
       return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
     }
+
+    EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
     TerminationResponse Terminate() const { return TerminationResponse::Wait; }
 
