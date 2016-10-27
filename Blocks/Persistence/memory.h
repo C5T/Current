@@ -39,8 +39,9 @@ SOFTWARE.
 
 #include "../SS/persister.h"
 
-#include "../../Bricks/time/chrono.h"
+#include "../../Bricks/sync/locks.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/time/chrono.h"
 
 namespace current {
 namespace persistence {
@@ -52,7 +53,7 @@ class MemoryPersister {
  private:
   struct Container {
     using entry_t = std::pair<std::chrono::microseconds, ENTRY>;
-    std::mutex mutex;
+    std::mutex mutex;  // Guards `entries` and `head`.
     std::deque<entry_t> entries;
     std::chrono::microseconds head = std::chrono::microseconds(-1);
   };
@@ -123,9 +124,9 @@ class MemoryPersister {
     const uint64_t end_;
   };
 
-  template <typename E>
+  template <current::locks::MutexLockStatus MLS, typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex);
     const auto head = container_->head;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
@@ -136,8 +137,9 @@ class MemoryPersister {
     return idxts_t(index, timestamp);
   }
 
+  template <current::locks::MutexLockStatus MLS>
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex);
     const auto head = container_->head;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
