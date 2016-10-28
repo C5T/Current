@@ -479,7 +479,7 @@ template <class EMITTED_TYPES>
 class CallsGeneratingBlock;
 
 template <class... EMITTED_TYPES>
-class CallsGeneratingBlock<LHSTypes<EMITTED_TYPES...>> : public GenericCallsGeneratingBlock {
+class CallsGeneratingBlock<EmittableTypes<EMITTED_TYPES...>> : public GenericCallsGeneratingBlock {
  public:
   using outgoing_interface_t = BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<EMITTED_TYPES...>>;
 
@@ -567,7 +567,7 @@ class UserCode;
 template <class... LHS_TYPES, class... RHS_TYPES, typename USER_CLASS>
 class UserCode<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
     : public UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>,
-      public CallsGeneratingBlock<LHSTypes<RHS_TYPES...>> {
+      public CallsGeneratingBlock<EmittableTypes<RHS_TYPES...>> {
  public:
   virtual ~UserCode() = default;
   using input_t = LHSTypes<LHS_TYPES...>;
