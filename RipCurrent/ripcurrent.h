@@ -34,10 +34,9 @@ SOFTWARE.
 // at the end of its lifetime; and the syntax of `auto scope = (...).RipCurrent().Async();` is supported as well.
 //
 // HI-PRI:
-// TODO(dkorolev): Benchmark.
-// TODO(dkorolev): ParseFileByLines() and/or TailFileForever() as possible LHS.
-// TODO(dkorolev): Sherlock listener as possible LHS.
-// TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`, `| ~foo`).
+// TOOD(dkorolev): Add `RipCurrent/builtin` for our standard flow blocks library.
+//                 Some `ParseFileByLines<T>()`, `SherlockSubscriber<T>()`, `Dump<T>()`, `CountDistinct<T>()` would be
+//                 prime candidates.
 //
 // LO-PRI:
 // TODO(dkorolev): Add debug output counters / HTTP endpoint for # of messages per typeid.
