@@ -1,7 +1,7 @@
 Field	Type	Set	Unset/Null	Values	Details
 Schema	Array	1	0
 Schema[]	Object	3	0	4 fields	p, x, y, z
-Schema[].p	String	3	0	1 distinct value	`q` : 3
-Schema[].x	String	1	2	1 distinct value	`a` : 1
-Schema[].y	String	1	2	1 distinct value	`b` : 1
-Schema[].z	String	1	1	1 distinct value	`c` : 1
+Schema[].p	String	3	0	1 distinct value, "q":3
+Schema[].x	String	1	2	1 distinct value, "a":1
+Schema[].y	String	1	2	1 distinct value, "b":1
+Schema[].z	String	1	1	1 distinct value, "c":1

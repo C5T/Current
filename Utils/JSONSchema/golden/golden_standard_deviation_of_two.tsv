@@ -1,4 +1,4 @@
 Field	Type	Set	Unset/Null	Values	Details
 Schema	Object	8	0	2 fields	comment, x
-Schema.comment	String	1	1	1 distinct value	`standard deviation must be two` : 1
+Schema.comment	String	1	1	1 distinct value, "standard deviation must be two":1
 Schema.x	Integer	7	1	Mean 4, StdDev 2

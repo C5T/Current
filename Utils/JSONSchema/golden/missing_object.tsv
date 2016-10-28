@@ -2,4 +2,4 @@ Field	Type	Set	Unset/Null	Values	Details
 Schema	Array	1	0
 Schema[]	Object	2	0	1 field	x
 Schema[].x	Object	1	1	1 field	a
-Schema[].x.a	String	1	0	1 distinct value	`b` : 1
+Schema[].x.a	String	1	0	1 distinct value, "b":1

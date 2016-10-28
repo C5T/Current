@@ -549,17 +549,16 @@ class HumanReadableSchemaExporter {
     } else {
       os_ << x.values.size() << "++ distinct values";
     }
-    // Output most common values of this [string] field, if there aren't too many of them.
-    std::vector<std::string> sorted_as_strings;
+    // Dump the most common values for this [string] field, only the top ones if there aren't too many of them.
     size_t total = 0u;
     for (auto rit = x.counters.rbegin(); rit != x.counters.rend(); ++rit) {
-      sorted_as_strings.push_back('`' + rit->second + "` : " + ToString(rit->first));
+      os_ << ", " << JSON(rit->second) << ':' << rit->first;  // `JSON()` to quote the string and escape '\n' and '\t'.
       ++total;
       if (total >= number_of_example_values_) {
         break;
       }
     }
-    os_ << '\t' << strings::Join(sorted_as_strings, ", ") << '\n';
+    os_ << '\n';
   }
 
   template <typename T>
