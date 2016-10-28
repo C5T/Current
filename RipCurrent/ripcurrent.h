@@ -1066,4 +1066,9 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
 // Use `__VA_ARGS__` to support templated constructs with commas inside them.
 #define RIPCURRENT_UNDERLYING_TYPE(...) decltype((CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)).UnderlyingType())
 
+// Because `emit<T>` isn't directly visible from a template-instantiated class. Oh well. -- D.K.
+#define RIPCURRENT_TEMPLATED_EMIT(TS, T, ...)  \
+  ::current::ripcurrent::CallsGeneratingBlock< \
+      ::current::ripcurrent::EmittableTypes<CURRENT_REMOVE_PARENTHESES(TS)>>::template emit<T>(__VA_ARGS__)
+
 #endif  // CURRENT_RIPCURRENT_RIPCURRENT_H

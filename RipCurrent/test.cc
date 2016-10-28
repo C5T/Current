@@ -989,7 +989,7 @@ namespace ripcurrent_unittest {
 RIPCURRENT_NODE_T(TemplatedEmitter, void, T) {
   TemplatedEmitter() {
     // Too bad we need this ugly syntax for now. -- D.K.
-    current::ripcurrent::CallsGeneratingBlock<current::ripcurrent::EmittableTypes<T>>::template emit<T>(LifeUniverseAndEverything());
+    RIPCURRENT_TEMPLATED_EMIT((T), T, LifeUniverseAndEverything());
   }
 };
 // clang-format on
