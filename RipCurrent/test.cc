@@ -46,9 +46,12 @@ DEFINE_uint16(ripcurrent_http_test_port, PickPortForUnitTest(), "Local port to u
 // clang-format off
 namespace ripcurrent_unittest {
 
+struct LifeUniverseAndEverything {};
+
 CURRENT_STRUCT(Integer) {
   CURRENT_FIELD(value, int32_t);
   CURRENT_CONSTRUCTOR(Integer)(int32_t value = 0) : value(value) {}
+  CURRENT_CONSTRUCTOR(Integer)(LifeUniverseAndEverything) : value(42) {}
 };
 
 // `RCEmit`: The emitter of events. Emits the integers passed to its constructor.
@@ -437,6 +440,7 @@ namespace ripcurrent_unittest {
 CURRENT_STRUCT(String) {
   CURRENT_FIELD(value, std::string);
   CURRENT_CONSTRUCTOR(String)(const std::string& value = "") : value(value) {}
+  CURRENT_CONSTRUCTOR(String)(LifeUniverseAndEverything) : value("The Answer") {}
 };
 
 CURRENT_STRUCT(Bool) {
@@ -984,7 +988,8 @@ namespace ripcurrent_unittest {
 // clang-format off
 RIPCURRENT_NODE_T(TemplatedEmitter, void, T) {
   TemplatedEmitter() {
-    // emit(T());
+    // Too bad we need this ugly syntax for now. -- D.K.
+    current::ripcurrent::CallsGeneratingBlock<current::ripcurrent::LHSTypes<T>>::template emit<T>(LifeUniverseAndEverything());
   }
 };
 // clang-format on
@@ -992,7 +997,7 @@ RIPCURRENT_NODE_T(TemplatedEmitter, void, T) {
 
 }  // namespace ripcurrent_unittest
 
-TEST(RipCurrent, TemplateStaticAsserts) {
+TEST(RipCurrent, TemplatedStaticAsserts) {
   using namespace ripcurrent_unittest;
 
   using integer_emitter_t = RIPCURRENT_UNDERLYING_TYPE(TemplatedEmitter(Integer));
@@ -1011,7 +1016,7 @@ TEST(RipCurrent, TemplateStaticAsserts) {
       sizeof(is_same_or_compile_error<current::ripcurrent::RHSTypes<String>, typename string_emitter_t::output_t>), "");
 }
 
-TEST(RipCurrent, TemplateDescriptions) {
+TEST(RipCurrent, TemplatedDescriptions) {
   using namespace ripcurrent_unittest;
 
   const auto integer_emitter = TemplatedEmitter(Integer);
@@ -1021,4 +1026,12 @@ TEST(RipCurrent, TemplateDescriptions) {
   EXPECT_EQ("TemplatedEmitter<Integer>() => { Integer } | ...", integer_emitter.DescribeWithTypes());
   EXPECT_EQ("TemplatedEmitter<String>() | ...", string_emitter.Describe());
   EXPECT_EQ("TemplatedEmitter<String>() => { String } | ...", string_emitter.DescribeWithTypes());
+}
+
+TEST(RipCurrent, TemplatedFlow) {
+  using namespace ripcurrent_unittest;
+
+  std::vector<std::string> result;
+  ((TemplatedEmitter(Integer) + TemplatedEmitter(String)) | DumpIntegerAndString(std::ref(result))).RipCurrent().Join();
+  EXPECT_EQ("42, 'The Answer'", current::strings::Join(result, ", "));
 }
