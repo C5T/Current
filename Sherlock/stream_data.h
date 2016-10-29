@@ -103,16 +103,16 @@ struct StreamData {
 
   using http_subscriptions_t =
       std::unordered_map<std::string, std::pair<SubscriberScope, std::unique_ptr<AbstractSubscriberObject>>>;
+  std::mutex publish_mutex;
   persistence_layer_t persistence;
   current::WaitableTerminateSignalBulkNotifier notifier;
-  std::mutex publish_mutex;
 
   http_subscriptions_t http_subscriptions;
   std::mutex http_subscriptions_mutex;
 
   template <typename... ARGS>
   StreamData(ARGS&&... args)
-      : persistence(std::forward<ARGS>(args)...) {}
+      : persistence(publish_mutex, std::forward<ARGS>(args)...) {}
 
   static std::string GenerateRandomHTTPSubscriptionID() {
     return current::SHA256("sherlock_http_subscription_" +
