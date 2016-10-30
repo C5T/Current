@@ -58,7 +58,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::set<T, TA>> {
         destination.insert(std::move(element));
       }
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
-      throw JSONSchemaException("array", json_parser);  // LCOV_EXCL_LINE
+      throw JSONSchemaException("set as array", json_parser);  // LCOV_EXCL_LINE
     }
   }
 };

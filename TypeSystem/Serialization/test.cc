@@ -43,8 +43,10 @@ namespace serialization_test {
 
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
+// clang-fromat off
 CURRENT_STRUCT(Empty){};
 CURRENT_STRUCT(AlternativeEmpty){};
+// clang-format on
 
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
@@ -58,6 +60,8 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_CONSTRUCTOR(Serializable)(int i) : i(i), s(""), b(false), e(Enum::DEFAULT) {}
 
   bool operator<(const Serializable& rhs) const { return i < rhs.i; }
+  bool operator==(const Serializable& rhs) const { return i == rhs.i; }
+  size_t Hash() const { return std::hash<uint64_t>()(i); }
 };
 
 CURRENT_STRUCT(Int) { CURRENT_FIELD(x, int32_t, 0); };
@@ -91,6 +95,18 @@ CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int3
 CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
 
 CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
+
+CURRENT_STRUCT(WithTrivialUnorderedMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
+
+CURRENT_STRUCT(WithNontrivialUnorderedMap) {
+  CURRENT_FIELD(q, (std::unordered_map<Serializable, std::string, current::CurrentHashFunction<Serializable>>));
+};
+
+CURRENT_STRUCT(WithTrivialSet) { CURRENT_FIELD(s, (std::set<std::string>)); };
+
+CURRENT_STRUCT(WithNontrivialUnorderedSet) {
+  CURRENT_FIELD(s, (std::unordered_set<Serializable, current::CurrentHashFunction<Serializable>>));
+};
 
 CURRENT_STRUCT(WithOptional) {
   CURRENT_FIELD(i, Optional<int>);
@@ -200,7 +216,129 @@ TEST(Serialization, Binary) {
 }
 #endif
 
-TEST(Serialization, JSON) {
+TEST(JSONSerialization, CPPTypes) {
+  // `bool`.
+  EXPECT_EQ("true", JSON(true));
+  EXPECT_TRUE(ParseJSON<bool>("true"));
+  ASSERT_THROW(ParseJSON<bool>("1"), JSONSchemaException);
+
+  EXPECT_EQ("false", JSON(false));
+  EXPECT_FALSE(ParseJSON<bool>("false"));
+  ASSERT_THROW(ParseJSON<bool>("0"), JSONSchemaException);
+  ASSERT_THROW(ParseJSON<bool>(""), InvalidJSONException);
+
+  // `int`.
+  EXPECT_EQ("42", JSON(42));
+  EXPECT_EQ(42, ParseJSON<int>("42"));
+
+  // `std::string`.
+  EXPECT_EQ("\"forty two\"", JSON("forty two"));
+  EXPECT_EQ("forty two", ParseJSON<std::string>("\"forty two\""));
+
+  EXPECT_EQ("\"a\\u0000b\"", JSON(std::string("a\0b", 3)));
+  EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>("\"c\\u0000d\""));
+
+  // `std::vector<>`.
+  EXPECT_EQ("[]", JSON(std::vector<uint64_t>()));
+  EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
+  EXPECT_EQ("[[\"one\",\"two\"],[\"three\",\"four\"]]",
+            JSON(std::vector<std::vector<std::string>>({{"one", "two"}, {"three", "four"}})));
+  EXPECT_EQ(4u, ParseJSON<std::vector<std::vector<std::string>>>("[[],[],[],[]]").size());
+  EXPECT_EQ("blah", ParseJSON<std::vector<std::vector<std::string>>>("[[],[\"\",\"blah\"],[],[]]")[1][1]);
+
+  // `std::map<>`.
+  using map_int_int = std::map<int, int>;
+  using map_string_int = std::map<std::string, int>;
+  EXPECT_EQ("[]", JSON(map_int_int()));
+  EXPECT_EQ("{}", JSON(map_string_int()));
+
+  EXPECT_EQ(3u, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").size());
+  EXPECT_EQ(16, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").at(4));
+  ASSERT_THROW(ParseJSON<map_int_int>("{}"), JSONSchemaException);
+
+  try {
+    ParseJSON<map_int_int>("{}");
+    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ("Expected map as array, got: {}", e.What());
+  }
+
+  EXPECT_EQ(2u, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").size());
+  EXPECT_EQ(2, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").at("b"));
+  ASSERT_THROW(ParseJSON<map_string_int>("[]"), JSONSchemaException);
+  try {
+    ParseJSON<map_string_int>("[]");
+    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ("Expected map as object, got: []", e.What());
+  }
+
+  // `std::set<>`.
+  using set_int = std::set<int>;
+  using unordered_set_string = std::unordered_set<std::string>;
+  EXPECT_EQ("[]", JSON(set_int()));
+  EXPECT_EQ("[]", JSON(unordered_set_string()));
+
+  EXPECT_EQ(3u, ParseJSON<set_int>("[1,3,5]").size());
+  EXPECT_EQ(3u, ParseJSON<set_int>("[1,3,5,3,5,1]").size());
+  EXPECT_EQ(2u, ParseJSON<unordered_set_string>("[\"Foo\",\"Bar\"]").size());
+  EXPECT_EQ(2u, ParseJSON<unordered_set_string>("[\"Foo\",\"Foo\",\"Bar\",\"Bar\"]").size());
+
+  try {
+    ParseJSON<set_int>("{}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ("Expected set as array, got: {}", e.What());
+  }
+}
+
+#if 0
+// TODO(dkorolev): DIMA FIXME binary format.
+TEST(Serialization, OptionalAsBinary) {
+  using namespace serialization_test;
+
+  const std::string tmp_file = current::FileSystem::GenTmpFileName();
+  const auto tmp_file_remover = current::FileSystem::ScopedRmFile(tmp_file);
+  {
+    std::ofstream ofs(tmp_file);
+    WithOptional with_optional;
+    SaveIntoBinary(ofs, with_optional);
+
+    with_optional.i = 42;
+    SaveIntoBinary(ofs, with_optional);
+
+    with_optional.b = true;
+    SaveIntoBinary(ofs, with_optional);
+
+    with_optional.i = nullptr;
+    SaveIntoBinary(ofs, with_optional);
+  }
+  {
+    std::ifstream ifs(tmp_file);
+    const auto parsed_empty = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_FALSE(Exists(parsed_empty.i));
+    ASSERT_FALSE(Exists(parsed_empty.b));
+
+    const auto parsed_with_i = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_TRUE(Exists(parsed_with_i.i));
+    ASSERT_FALSE(Exists(parsed_with_i.b));
+    EXPECT_EQ(42, Value(parsed_with_i.i));
+
+    const auto parsed_with_both = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_TRUE(Exists(parsed_with_both.i));
+    ASSERT_TRUE(Exists(parsed_with_both.b));
+    EXPECT_EQ(42, Value(parsed_with_both.i));
+    EXPECT_TRUE(Value(parsed_with_both.b));
+
+    const auto parsed_with_b = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_FALSE(Exists(parsed_with_b.i));
+    ASSERT_TRUE(Exists(parsed_with_b.b));
+    EXPECT_TRUE(Value(parsed_with_b.b));
+  }
+}
+#endif
+
+TEST(JSONSerialization, CurrentStructs) {
   using namespace serialization_test;
 
   // Simple serialization.
@@ -233,7 +371,7 @@ TEST(Serialization, JSON) {
   complex_object.q = "bar";
   complex_object.v.push_back("one");
   complex_object.v.push_back("two");
-  complex_object.z = Clone(simple_object);
+  complex_object.z = simple_object;
 
   const std::string complex_object_as_json = JSON(complex_object);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
@@ -323,17 +461,47 @@ TEST(Serialization, JSON) {
     EXPECT_EQ("LLandP", parsed.m.at("spock"));
     EXPECT_EQ("MTFBWY", parsed.m.at("jedi"));
   }
+  // Serializing an `std::unordered_map<>` with simple key type, which becomes a JSON object.
+  {
+    WithTrivialUnorderedMap with_unordered_map;
+    EXPECT_EQ("{\"m\":{}}", JSON(with_unordered_map));
+    with_unordered_map.m["foo"] = "fizz";
+    with_unordered_map.m["bar"] = "buzz";
+    const std::set<std::string> valid_jsons{"{\"m\":{\"bar\":\"buzz\",\"foo\":\"fizz\"}}",
+                                            "{\"m\":{\"foo\":\"fizz\",\"bar\":\"buzz\"}}"};
+    EXPECT_EQ(1u, valid_jsons.count(JSON(with_unordered_map))) << JSON(with_unordered_map);
+  }
+  {
+    const auto parsed = ParseJSON<WithTrivialUnorderedMap>("{\"m\":{}}");
+    ASSERT_TRUE(parsed.m.empty());
+  }
+  {
+    try {
+      ParseJSON<WithTrivialUnorderedMap>("{\"m\":[]}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected map as object for `m`, got: []"), e.what());
+    }
+  }
+  {
+    const auto parsed = ParseJSON<WithTrivialUnorderedMap>("{\"m\":{\"spock\":\"LLandP\",\"jedi\":\"MTFBWY\"}}");
+    ASSERT_EQ(2u, parsed.m.size());
+    EXPECT_EQ("LLandP", parsed.m.at("spock"));
+    EXPECT_EQ("MTFBWY", parsed.m.at("jedi"));
+  }
+
   // Serializing an `std::map<>` with complex key type, which becomes a JSON array of arrays.
   {
     WithNontrivialMap with_nontrivial_map;
     EXPECT_EQ("{\"q\":[]}", JSON(with_nontrivial_map));
-    with_nontrivial_map.q[Clone(simple_object)] = "wow";
+    with_nontrivial_map.q[simple_object] = "wow";
     EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"]]}", JSON(with_nontrivial_map));
     with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
     EXPECT_EQ(
-        "{\"q\":[[{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},\"yes\"],[{\"i\":1000,\"s\":\"foo\",\"b\":true,"
-        "\"e\":100},\"wow\"]]"
-        "}",
+        "{\"q\":["
+        "[{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},\"yes\"],"
+        "[{\"i\":1000,\"s\":\"foo\",\"b\":true,"\"e\":100},\"wow\"]"
+        "]}",
         JSON(with_nontrivial_map));
   }
   {
@@ -349,7 +517,6 @@ TEST(Serialization, JSON) {
     }
   }
   {
-    // FIXME(dkorolev): Forgetting the `bool` in the JSON below results in bad exception messages.
     const auto parsed = ParseJSON<WithNontrivialMap>(
         "{\"q\":[[{\"i\":3,\"s\":\"three\",\"b\":true,\"e\":100},\"prime\"],[{\"i\":4,\"s\":\"four\",\"b\":"
         "false,\"e\":0},"
@@ -358,9 +525,116 @@ TEST(Serialization, JSON) {
     EXPECT_EQ("prime", parsed.q.at(Serializable(3, "", true, Enum::SET)));
     EXPECT_EQ("composite", parsed.q.at(Serializable(4, "", false, Enum::DEFAULT)));
   }
+  // Serializing an `std::unordered_map<>` with complex key type, which becomes a JSON array of arrays.
+  {
+    WithNontrivialUnorderedMap with_nontrivial_unordered_map;
+    EXPECT_EQ("{\"q\":[]}", JSON(with_nontrivial_unordered_map));
+    with_nontrivial_unordered_map.q[simple_object] = "wow";
+    EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"]]}",
+              JSON(with_nontrivial_unordered_map));
+    with_nontrivial_unordered_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
+    const std::set<std::string> valid_jsons{
+        "{\"q\":["
+        "[{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},\"yes\"],"
+        "[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"]"
+        "]}",
+        "{\"q\":["
+        "[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"],"
+        "[{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},\"yes\"]"
+        "]}"};
+    EXPECT_EQ(1u, valid_jsons.count(JSON(with_nontrivial_unordered_map))) << JSON(with_nontrivial_unordered_map);
+  }
+  {
+    const auto parsed = ParseJSON<WithNontrivialUnorderedMap>("{\"q\":[]}");
+    ASSERT_TRUE(parsed.q.empty());
+  }
+  {
+    try {
+      ParseJSON<WithNontrivialUnorderedMap>("{\"q\":{}}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected [unordered_]map as array for `q`, got: {}"), e.what());
+    }
+  }
+  {
+    const auto parsed = ParseJSON<WithNontrivialUnorderedMap>(
+        "{\"q\":["
+        "[{\"i\":3,\"s\":\"three\",\"b\":true,\"e\":100},\"prime\"],"
+        "[{\"i\":4,\"s\":\"four\",\"b\":false,\"e\":0},\"composite\"]"
+        "]}");
+    ASSERT_EQ(2u, parsed.q.size());
+    EXPECT_EQ("prime", parsed.q.at(Serializable(3, "", true, Enum::SET)));
+    EXPECT_EQ("composite", parsed.q.at(Serializable(4, "", false, Enum::DEFAULT)));
+  }
+
+  // Serializing `std::set<std::string>` as JSON array.
+  {
+    WithTrivialSet with_set;
+    EXPECT_EQ("{\"s\":[]}", JSON(with_set));
+    with_set.s.insert("foo");
+    with_set.s.insert("bar");
+    EXPECT_EQ("{\"s\":[\"bar\",\"foo\"]}", JSON(with_set));
+  }
+  {
+    const auto parsed = ParseJSON<WithTrivialSet>("{\"s\":[]}");
+    ASSERT_TRUE(parsed.s.empty());
+  }
+  {
+    try {
+      ParseJSON<WithTrivialSet>("{\"s\":{}}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected set as array for `s`, got: {}"), e.what());
+    }
+  }
+  {
+    const auto parsed = ParseJSON<WithTrivialSet>("{\"s\":[\"Star\",\"Wars\"]}");
+    ASSERT_EQ(2u, parsed.s.size());
+    EXPECT_EQ(1u, parsed.s.count("Star"));
+    EXPECT_EQ(1u, parsed.s.count("Wars"));
+  }
+  // Serializing `std::unordered_set<Serializable>` as JSON array.
+  {
+    WithNontrivialUnorderedSet with_unordered_set;
+    EXPECT_EQ("{\"s\":[]}", JSON(with_unordered_set));
+    with_unordered_set.s.insert(simple_object);
+    with_unordered_set.s.insert(Serializable(1, "one", false, Enum::DEFAULT));
+    const std::set<std::string> valid_jsons{
+        "{\"s\":["
+        "{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},"
+        "{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100}"
+        "]}",
+        "{\"s\":["
+        "{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},"
+        "{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0}"
+        "]}"};
+    EXPECT_EQ(1u, valid_jsons.count(JSON(with_unordered_set))) << JSON(with_unordered_set);
+  }
+  {
+    const auto parsed = ParseJSON<WithNontrivialUnorderedSet>("{\"s\":[]}");
+    ASSERT_TRUE(parsed.s.empty());
+  }
+  {
+    try {
+      ParseJSON<WithNontrivialUnorderedSet>("{\"s\":{}}");
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected [unordered_]set as array for `s`, got: {}"), e.what());
+    }
+  }
+  {
+    const auto parsed = ParseJSON<WithNontrivialUnorderedSet>(
+        "{\"s\":["
+        "{\"i\":3,\"s\":\"three\",\"b\":true,\"e\":100},"
+        "{\"i\":4,\"s\":\"four\",\"b\":false,\"e\":0}"
+        "]}");
+    ASSERT_EQ(2u, parsed.s.size());
+    EXPECT_EQ(1u, parsed.s.count(Serializable(3, "", true, Enum::SET)));
+    EXPECT_EQ(1u, parsed.s.count(Serializable(4, "", false, Enum::DEFAULT)));
+  }
 }
 
-TEST(Serialization, JSONExceptions) {
+TEST(JSONSerialization, Exceptions) {
   using namespace serialization_test;
 
   // Invalid JSONs.
@@ -465,7 +739,7 @@ TEST(Serialization, JSONExceptions) {
   }
 }
 
-TEST(Serialization, StructSchemaSerialization) {
+TEST(JSONSerialization, StructSchema) {
   using namespace serialization_test;
   using current::reflection::TypeID;
   using current::reflection::Reflector;
@@ -505,105 +779,55 @@ TEST(Serialization, StructSchemaSerialization) {
       loaded_schema.Describe<Language::CPP>(false));
 }
 
-TEST(Serialization, JSONForCppTypes) {
-  EXPECT_EQ("true", JSON(true));
-  EXPECT_TRUE(ParseJSON<bool>("true"));
-  ASSERT_THROW(ParseJSON<bool>("1"), JSONSchemaException);
+TEST(JSONSerialization, Time) {
+  using namespace serialization_test;
 
-  EXPECT_EQ("false", JSON(false));
-  EXPECT_FALSE(ParseJSON<bool>("false"));
-  ASSERT_THROW(ParseJSON<bool>("0"), JSONSchemaException);
-  ASSERT_THROW(ParseJSON<bool>(""), InvalidJSONException);
-
-  EXPECT_EQ("42", JSON(42));
-  EXPECT_EQ(42, ParseJSON<int>("42"));
-
-  EXPECT_EQ("\"forty two\"", JSON("forty two"));
-  EXPECT_EQ("forty two", ParseJSON<std::string>("\"forty two\""));
-
-  EXPECT_EQ("\"a\\u0000b\"", JSON(std::string("a\0b", 3)));
-  EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>("\"c\\u0000d\""));
-
-  EXPECT_EQ("[]", JSON(std::vector<uint64_t>()));
-  EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
-  EXPECT_EQ("[[\"one\",\"two\"],[\"three\",\"four\"]]",
-            JSON(std::vector<std::vector<std::string>>({{"one", "two"}, {"three", "four"}})));
-  EXPECT_EQ(4u, ParseJSON<std::vector<std::vector<std::string>>>("[[],[],[],[]]").size());
-  EXPECT_EQ("blah", ParseJSON<std::vector<std::vector<std::string>>>("[[],[\"\",\"blah\"],[],[]]")[1][1]);
-
-  using map_int_int = std::map<int, int>;
-  using map_string_int = std::map<std::string, int>;
-  EXPECT_EQ("[]", JSON(map_int_int()));
-  EXPECT_EQ("{}", JSON(map_string_int()));
-
-  EXPECT_EQ(3u, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").size());
-  EXPECT_EQ(16, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").at(4));
-  ASSERT_THROW(ParseJSON<map_int_int>("{}"), JSONSchemaException);
-  try {
-    ParseJSON<map_int_int>("{}");
-    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-  } catch (const JSONSchemaException& e) {
-    EXPECT_EQ("Expected map as array, got: {}", std::string(e.what()));
+  {
+    WithTime zero;
+    EXPECT_EQ("{\"number\":0,\"micros\":0}", JSON(zero));
   }
 
-  EXPECT_EQ(2u, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").size());
-  EXPECT_EQ(2, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").at("b"));
-  ASSERT_THROW(ParseJSON<map_string_int>("[]"), JSONSchemaException);
-  try {
-    ParseJSON<map_string_int>("[]");
-    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-  } catch (const JSONSchemaException& e) {
-    EXPECT_EQ("Expected map as object, got: []", std::string(e.what()));
+  {
+    WithTime one;
+    one.number = 1ull;
+    one.micros = std::chrono::microseconds(2);
+    EXPECT_EQ("{\"number\":1,\"micros\":2}", JSON(one));
+  }
+
+  {
+    const auto parsed = ParseJSON<WithTime>("{\"number\":3,\"micros\":4}");
+    EXPECT_EQ(3ull, parsed.number);
+    EXPECT_EQ(4ll, parsed.micros.count());
   }
 }
 
 #if 0
 // TODO(dkorolev): DIMA FIXME binary format.
-TEST(Serialization, OptionalAsBinary) {
+TEST(Serialization, TimeAsBinary) {
   using namespace serialization_test;
 
-  const std::string tmp_file = current::FileSystem::GenTmpFileName();
-  const auto tmp_file_remover = current::FileSystem::ScopedRmFile(tmp_file);
   {
-    std::ofstream ofs(tmp_file);
-    WithOptional with_optional;
-    SaveIntoBinary(ofs, with_optional);
-
-    with_optional.i = 42;
-    SaveIntoBinary(ofs, with_optional);
-
-    with_optional.b = true;
-    SaveIntoBinary(ofs, with_optional);
-
-    with_optional.i = nullptr;
-    SaveIntoBinary(ofs, with_optional);
+    WithTime zero;
+    std::ostringstream oss;
+    SaveIntoBinary(oss, zero);
+    EXPECT_EQ(16u, oss.str().length());
   }
+
   {
-    std::ifstream ifs(tmp_file);
-    const auto parsed_empty = LoadFromBinary<WithOptional>(ifs);
-    ASSERT_FALSE(Exists(parsed_empty.i));
-    ASSERT_FALSE(Exists(parsed_empty.b));
-
-    const auto parsed_with_i = LoadFromBinary<WithOptional>(ifs);
-    ASSERT_TRUE(Exists(parsed_with_i.i));
-    ASSERT_FALSE(Exists(parsed_with_i.b));
-    EXPECT_EQ(42, Value(parsed_with_i.i));
-
-    const auto parsed_with_both = LoadFromBinary<WithOptional>(ifs);
-    ASSERT_TRUE(Exists(parsed_with_both.i));
-    ASSERT_TRUE(Exists(parsed_with_both.b));
-    EXPECT_EQ(42, Value(parsed_with_both.i));
-    EXPECT_TRUE(Value(parsed_with_both.b));
-
-    const auto parsed_with_b = LoadFromBinary<WithOptional>(ifs);
-    ASSERT_FALSE(Exists(parsed_with_b.i));
-    ASSERT_TRUE(Exists(parsed_with_b.b));
-    EXPECT_TRUE(Value(parsed_with_b.b));
+    WithTime one;
+    one.number = 5ull;
+    one.micros = std::chrono::microseconds(6);
+    std::ostringstream oss;
+    SaveIntoBinary(oss, one);
+    std::istringstream iss(oss.str());
+    const auto parsed = LoadFromBinary<WithTime>(iss);
+    EXPECT_EQ(5ull, parsed.number);
+    EXPECT_EQ(6ll, parsed.micros.count());
   }
 }
 #endif
 
-TEST(Serialization, OptionalAsJSON) {
+TEST(JSONSerialization, Optional) {
   using namespace serialization_test;
 
   WithOptional with_optional;
@@ -660,7 +884,7 @@ TEST(Serialization, OptionalAsJSON) {
   }
 }
 
-TEST(Serialization, VariantAsJSON) {
+TEST(JSONSerialization, Variant) {
   using namespace serialization_test;
   using namespace serialization_test::named_variant;
 
@@ -765,7 +989,7 @@ TEST(Serialization, VariantAsJSON) {
   }
 }
 
-TEST(Serialization, NamedVariantAsJSON) {
+TEST(JSONSerialization, NamedVariant) {
   using namespace serialization_test::named_variant;
 
   {
@@ -846,7 +1070,7 @@ TEST(Serialization, NamedVariantAsJSON) {
   }
 }
 
-TEST(Serialization, PairsInNewtonsoftJSONFSharpFormat) {
+TEST(JSONSerialization, PairsInNewtonsoftJSONFSharpFormat) {
   auto a = std::make_pair(1, 2);
   EXPECT_EQ("[1,2]", JSON(a));
   EXPECT_EQ("{\"Item1\":1,\"Item2\":2}", JSON<JSONFormat::NewtonsoftFSharp>(a));
@@ -854,7 +1078,7 @@ TEST(Serialization, PairsInNewtonsoftJSONFSharpFormat) {
   EXPECT_EQ(JSON(a), JSON(ParseJSON<decltype(a), JSONFormat::NewtonsoftFSharp>(JSON<JSONFormat::NewtonsoftFSharp>(a))));
 };
 
-TEST(Serialization, OptionalInVariousFormats) {
+TEST(JSONSerialization, OptionalInVariousFormats) {
   using namespace serialization_test;
 
   WithOptional object;
@@ -876,7 +1100,7 @@ TEST(Serialization, OptionalInVariousFormats) {
   EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::NewtonsoftFSharp>("{}").b));
 }
 
-TEST(Serialization, LiberalOptionalForFSharp) {
+TEST(JSONSerialization, LiberalOptionalForFSharp) {
   using serialization_test::WithOptional;
 
   EXPECT_FALSE(Exists(ParseJSON<Optional<bool>, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"None\"}")));
@@ -891,7 +1115,7 @@ TEST(Serialization, LiberalOptionalForFSharp) {
                JSONSchemaException);
 }
 
-TEST(Serialization, VariantNullOmittedInMinimalisticFormat) {
+TEST(JSONSerialization, VariantNullOmittedInMinimalisticFormat) {
   using namespace serialization_test;
 
   EXPECT_EQ("{}", JSON<JSONFormat::Minimalistic>(ContainsVariant()));
@@ -902,54 +1126,6 @@ TEST(Serialization, VariantNullOmittedInMinimalisticFormat) {
   EXPECT_EQ("null", JSON<JSONFormat::Minimalistic>(Variant<Empty>()));
   EXPECT_EQ("null", JSON(Variant<Empty>()));
 }
-
-TEST(Serialization, TimeAsJSON) {
-  using namespace serialization_test;
-
-  {
-    WithTime zero;
-    EXPECT_EQ("{\"number\":0,\"micros\":0}", JSON(zero));
-  }
-
-  {
-    WithTime one;
-    one.number = 1ull;
-    one.micros = std::chrono::microseconds(2);
-    EXPECT_EQ("{\"number\":1,\"micros\":2}", JSON(one));
-  }
-
-  {
-    const auto parsed = ParseJSON<WithTime>("{\"number\":3,\"micros\":4}");
-    EXPECT_EQ(3ull, parsed.number);
-    EXPECT_EQ(4ll, parsed.micros.count());
-  }
-}
-
-#if 0
-// TODO(dkorolev): DIMA FIXME binary format.
-TEST(Serialization, TimeAsBinary) {
-  using namespace serialization_test;
-
-  {
-    WithTime zero;
-    std::ostringstream oss;
-    SaveIntoBinary(oss, zero);
-    EXPECT_EQ(16u, oss.str().length());
-  }
-
-  {
-    WithTime one;
-    one.number = 5ull;
-    one.micros = std::chrono::microseconds(6);
-    std::ostringstream oss;
-    SaveIntoBinary(oss, one);
-    std::istringstream iss(oss.str());
-    const auto parsed = LoadFromBinary<WithTime>(iss);
-    EXPECT_EQ(5ull, parsed.number);
-    EXPECT_EQ(6ll, parsed.micros.count());
-  }
-}
-#endif
 
 namespace serialization_test {
 
@@ -983,7 +1159,7 @@ CURRENT_STRUCT_T(DerivedTemplatedValue, DummyBaseClass) {
 
 }  // namespace serialization_test
 
-TEST(Serialization, TemplatedValue) {
+TEST(JSONSerialization, TemplatedValue) {
   using namespace serialization_test;
 
   EXPECT_EQ("{\"value\":1}", JSON(TemplatedValue<uint64_t>(1)));
@@ -1018,7 +1194,7 @@ TEST(Serialization, TemplatedValue) {
                 "{\"base\":43,\"derived\":{\"i\":1,\"s\":\"\",\"b\":true,\"e\":0}}").base);
 }
 
-TEST(Serialization, SimpleTemplatedUsage) {
+TEST(JSONSerialization, SimpleTemplatedUsage) {
   using namespace serialization_test;
 
   SimpleTemplatedUsage object;
@@ -1031,7 +1207,7 @@ TEST(Serialization, SimpleTemplatedUsage) {
   EXPECT_EQ("passed", result.t.value);
 }
 
-TEST(Serialization, ComplexTemplatedUsage) {
+TEST(JSONSerialization, ComplexTemplatedUsage) {
   using namespace serialization_test;
 
   {
@@ -1057,7 +1233,7 @@ TEST(Serialization, ComplexTemplatedUsage) {
   }
 }
 
-TEST(Serialization, VariantWithTemplatedStructs) {
+TEST(JSONSerialization, VariantWithTemplatedStructs) {
   using namespace serialization_test;
   using complex_variant_t = Variant<ComplexTemplatedUsage<int32_t>, ComplexTemplatedUsage<std::string>>;
 
@@ -1112,7 +1288,7 @@ CURRENT_STRUCT(CrashingStruct) {
 
 }  // namespace serialization_test
 
-TEST(Serialization, JSONCrashTests) {
+TEST(JSONSerialization, JSONCrashTests) {
   EXPECT_EQ("{\"i\":0,\"o\":null,\"e\":0}", JSON(serialization_test::CrashingStruct()));
 
   {
@@ -1166,7 +1342,7 @@ CURRENT_STRUCT(StructToPatch) {
 };
 }  // namespace serialization_test
 
-TEST(Serialization, PatchObjectWithJSON) {
+TEST(JSONSerialization, PatchObjectWithJSON) {
   using serialization_test::Enum;
   using serialization_test::StructToPatch;
 
@@ -1230,7 +1406,7 @@ TEST(Serialization, PatchObjectWithJSON) {
   EXPECT_FALSE(Exists(s.c));
 }
 
-TEST(Serialization, IntegerZeroIsADouble) {
+TEST(JSONSerialization, IntegerZeroIsADouble) {
   using namespace serialization_test;
 
   EXPECT_EQ("{\"x\":0}", JSON(Int()));
