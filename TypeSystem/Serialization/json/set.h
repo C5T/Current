@@ -34,9 +34,10 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 
-template <class JSON_FORMAT, typename T>
-struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::set<T>> {
-  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::set<T>& value) {
+template <class JSON_FORMAT, typename T, class EQ, class ALLOCATOR>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::set<T, EQ, ALLOCATOR>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier,
+                          const std::set<T, EQ, ALLOCATOR>& value) {
     json_stringifier.Current().SetArray();
     for (const auto& element : value) {
       rapidjson::Value element_to_push;
@@ -46,9 +47,9 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::set<T>> {
   }
 };
 
-template <class JSON_FORMAT, typename T, typename TA>
-struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::set<T, TA>> {
-  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::set<T, TA>& destination) {
+template <class JSON_FORMAT, typename T, class EQ, class ALLOCATOR>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::set<T, EQ, ALLOCATOR>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::set<T, EQ, ALLOCATOR>& destination) {
     destination.clear();
     if (json_parser && json_parser.Current().IsArray()) {
       const size_t size = json_parser.Current().Size();
