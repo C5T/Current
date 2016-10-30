@@ -34,10 +34,9 @@ SOFTWARE.
 // at the end of its lifetime; and the syntax of `auto scope = (...).RipCurrent().Async();` is supported as well.
 //
 // HI-PRI:
-// TODO(dkorolev): Benchmark.
-// TODO(dkorolev): ParseFileByLines() and/or TailFileForever() as possible LHS.
-// TODO(dkorolev): Sherlock listener as possible LHS.
-// TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`, `| ~foo`).
+// TOOD(dkorolev): Add `RipCurrent/builtin` for our standard flow blocks library.
+//                 Some `ParseFileByLines<T>()`, `SherlockSubscriber<T>()`, `Dump<T>()`, `CountDistinct<T>()` would be
+//                 prime candidates.
 //
 // LO-PRI:
 // TODO(dkorolev): Add debug output counters / HTTP endpoint for # of messages per typeid.
@@ -479,7 +478,7 @@ template <class EMITTED_TYPES>
 class CallsGeneratingBlock;
 
 template <class... EMITTED_TYPES>
-class CallsGeneratingBlock<LHSTypes<EMITTED_TYPES...>> : public GenericCallsGeneratingBlock {
+class CallsGeneratingBlock<EmittableTypes<EMITTED_TYPES...>> : public GenericCallsGeneratingBlock {
  public:
   using outgoing_interface_t = BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<EMITTED_TYPES...>>;
 
@@ -567,7 +566,7 @@ class UserCode;
 template <class... LHS_TYPES, class... RHS_TYPES, typename USER_CLASS>
 class UserCode<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
     : public UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>,
-      public CallsGeneratingBlock<LHSTypes<RHS_TYPES...>> {
+      public CallsGeneratingBlock<EmittableTypes<RHS_TYPES...>> {
  public:
   virtual ~UserCode() = default;
   using input_t = LHSTypes<LHS_TYPES...>;
@@ -1029,6 +1028,25 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
       ::current::ripcurrent::Definition(#USER_CLASS "(" #__VA_ARGS__ ")", __FILE__, __LINE__),                  \
       std::make_tuple(__VA_ARGS__))
 
+// The macros for templated RipCurrent nodes.
+#define RIPCURRENT_NODE_T(USER_CLASS_T, LHS_TS, RHS_TS)                                                            \
+  struct USER_CLASS_T##_RIPCURRENT_CLASS_NAME {                                                                    \
+    static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS_T "<T>"; }                                     \
+  };                                                                                                               \
+  template <typename T>                                                                                            \
+  struct USER_CLASS_T final                                                                                        \
+      : USER_CLASS_T##_RIPCURRENT_CLASS_NAME,                                                                      \
+        ::current::ripcurrent::UserCode<::current::ripcurrent::VoidOrLHSTypes<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
+                                        ::current::ripcurrent::VoidOrRHSTypes<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
+                                        USER_CLASS_T<T>>
+
+#define RIPCURRENT_MACRO_T(USER_CLASS, T, ...)                                                         \
+  ::current::ripcurrent::UserCodeImpl<typename USER_CLASS<T>::input_t,                                 \
+                                      typename USER_CLASS<T>::output_t,                                \
+                                      USER_CLASS<T>>(                                                  \
+      ::current::ripcurrent::Definition(#USER_CLASS "<" #T ">(" #__VA_ARGS__ ")", __FILE__, __LINE__), \
+      std::make_tuple(__VA_ARGS__))
+
 // A shortcut for `current::ripcurrent::Pass<...>()`, with the benefit of listing types as RipCurrent node name.
 #define RIPCURRENT_PASS(...)                                                                                     \
   ::current::ripcurrent::UserCodeImpl<::current::ripcurrent::LHSTypes<CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)>,  \
@@ -1044,6 +1062,12 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
       ::current::ripcurrent::Definition("Drop(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple())
 
 // A helper macro to extract the underlying type of the user class, now registered as a RipCurrent block type.
-#define RIPCURRENT_UNDERLYING_TYPE(USER_CLASS) decltype(USER_CLASS.UnderlyingType())
+// Use `__VA_ARGS__` to support templated constructs with commas inside them.
+#define RIPCURRENT_UNDERLYING_TYPE(...) decltype((CURRENT_REMOVE_PARENTHESES(__VA_ARGS__)).UnderlyingType())
+
+// Because `emit<T>` isn't directly visible from a template-instantiated class. Oh well. -- D.K.
+#define RIPCURRENT_TEMPLATED_EMIT(TS, T, ...)  \
+  ::current::ripcurrent::CallsGeneratingBlock< \
+      ::current::ripcurrent::EmittableTypes<CURRENT_REMOVE_PARENTHESES(TS)>>::template emit<T>(__VA_ARGS__)
 
 #endif  // CURRENT_RIPCURRENT_RIPCURRENT_H

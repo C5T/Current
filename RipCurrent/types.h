@@ -75,6 +75,9 @@ template <typename... TS>
 class VIATypes;
 
 template <typename... TS>
+class EmittableTypes;
+
+template <typename... TS>
 class ThreadUnsafeOutgoingTypes;
 
 template <typename... TS>
@@ -112,6 +115,8 @@ template <typename... TS>
 using RHSTypes = TypeListImpl<TS...>;
 template <typename... TS>
 using VIATypes = TypeListImpl<TS...>;
+template <typename... TS>
+using EmittableTypes = TypeListImpl<TS...>;
 template <typename... TS>
 using ThreadUnsafeOutgoingTypes = TypeListImpl<TS...>;
 template <typename... TS>
