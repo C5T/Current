@@ -500,7 +500,7 @@ TEST(JSONSerialization, CurrentStructs) {
     EXPECT_EQ(
         "{\"q\":["
         "[{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},\"yes\"],"
-        "[{\"i\":1000,\"s\":\"foo\",\"b\":true,"\"e\":100},\"wow\"]"
+        "[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"]"
         "]}",
         JSON(with_nontrivial_map));
   }
