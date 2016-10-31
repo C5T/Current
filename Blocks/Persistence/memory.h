@@ -186,11 +186,10 @@ class MemoryPersister {
     return container_->head;
   }
 
-  template <current::locks::MutexLockStatus MLS>
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex);
+    std::lock_guard<std::mutex> lock(container_->mutex);
     const auto begin_it =
         std::lower_bound(container_->entries.begin(),
                          container_->entries.end(),

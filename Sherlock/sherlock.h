@@ -138,8 +138,6 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        // Note: It's a different mutex that is locked, but the persistence layer is owned by this Sherlock stream,
-        //       or the user assumes full responsibility if they use `InternalExposePersister()`.
         const auto result =
             data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
@@ -154,8 +152,6 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        // Note: It's a different mutex that is locked, but the persistence layer is owned by this Sherlock stream,
-        //       or the user assumes full responsibility if they use `InternalExposePersister()`.
         const auto result =
             data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
@@ -170,8 +166,6 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        // Note: It's a different mutex that is locked, but the persistence layer is owned by this Sherlock stream,
-        //       or the user assumes full responsibility if they use `InternalExposePersister()`.
         data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
       } catch (const current::sync::InDestructingModeException&) {

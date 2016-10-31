@@ -392,12 +392,12 @@ class FilePersister {
     file_persister_impl_->end.store(iterator);
   }
 
-  template <current::locks::MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus>
   bool Empty() const noexcept { return !file_persister_impl_->end.load().next_index; }
-  template <current::locks::MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus>
   uint64_t Size() const noexcept { return file_persister_impl_->end.load().next_index; }
 
-  template <current::locks::MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus>
   idxts_t LastPublishedIndexAndTimestamp() const {
     const auto iterator = file_persister_impl_->end.load();
     if (iterator.next_index) {
@@ -416,14 +416,13 @@ class FilePersister {
     }
   }
 
-  template <current::locks::MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus>
   std::chrono::microseconds CurrentHead() const noexcept { return file_persister_impl_->end.load().head; }
 
-  template <current::locks::MutexLockStatus MLS>
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
-    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex);
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
     const auto begin_it =
         std::lower_bound(file_persister_impl_->timestamp.begin(),
                          file_persister_impl_->timestamp.end(),
