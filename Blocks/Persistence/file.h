@@ -397,7 +397,6 @@ class FilePersister {
   template <current::locks::MutexLockStatus>
   uint64_t Size() const noexcept { return file_persister_impl_->end.load().next_index; }
 
-  template <current::locks::MutexLockStatus>
   idxts_t LastPublishedIndexAndTimestamp() const {
     const auto iterator = file_persister_impl_->end.load();
     if (iterator.next_index) {

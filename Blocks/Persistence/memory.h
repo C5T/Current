@@ -161,9 +161,8 @@ class MemoryPersister {
     return static_cast<uint64_t>(container_->entries.size());
   }
 
-  template <current::locks::MutexLockStatus MLS>
   idxts_t LastPublishedIndexAndTimestamp() const {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex);
+    std::lock_guard<std::mutex> lock(container_->mutex);
     if (!container_->entries.empty()) {
       return idxts_t(container_->entries.size() - 1, container_->entries.back().first);
     } else {
