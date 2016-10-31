@@ -43,9 +43,9 @@ namespace serialization_test {
 
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
-// clang-fromat off
-CURRENT_STRUCT(Empty){};
-CURRENT_STRUCT(AlternativeEmpty){};
+// clang-format off
+CURRENT_STRUCT(Empty) {};
+CURRENT_STRUCT(AlternativeEmpty) {};
 // clang-format on
 
 CURRENT_STRUCT(Serializable) {
@@ -59,8 +59,8 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s, bool b, Enum e) : i(i), s(s), b(b), e(e) {}
   CURRENT_CONSTRUCTOR(Serializable)(int i) : i(i), s(""), b(false), e(Enum::DEFAULT) {}
 
-  bool operator<(const Serializable& rhs) const { return i < rhs.i; }
   bool operator==(const Serializable& rhs) const { return i == rhs.i; }
+  bool operator<(const Serializable& rhs) const { return i < rhs.i; }
   size_t Hash() const { return std::hash<uint64_t>()(i); }
 };
 
@@ -232,13 +232,13 @@ TEST(JSONSerialization, CPPTypes) {
   EXPECT_EQ(42, ParseJSON<int>("42"));
 
   // `std::string`.
-  EXPECT_EQ("\"forty two\"", JSON("forty two"));
-  EXPECT_EQ("forty two", ParseJSON<std::string>("\"forty two\""));
+  EXPECT_EQ("\"zero\\tone\\n\"", JSON("zero\tone\n"));
+  EXPECT_EQ("zero\tone\n", ParseJSON<std::string>("\"zero\\tone\\n\""));
 
   EXPECT_EQ("\"a\\u0000b\"", JSON(std::string("a\0b", 3)));
   EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>("\"c\\u0000d\""));
 
-  // `std::vector<>`.
+  // `std::vector<>` is always serialized as array.
   EXPECT_EQ("[]", JSON(std::vector<uint64_t>()));
   EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
   EXPECT_EQ("[[\"one\",\"two\"],[\"three\",\"four\"]]",
@@ -246,46 +246,46 @@ TEST(JSONSerialization, CPPTypes) {
   EXPECT_EQ(4u, ParseJSON<std::vector<std::vector<std::string>>>("[[],[],[],[]]").size());
   EXPECT_EQ("blah", ParseJSON<std::vector<std::vector<std::string>>>("[[],[\"\",\"blah\"],[],[]]")[1][1]);
 
-  // `std::map<>`.
-  using map_int_int = std::map<int, int>;
-  using map_string_int = std::map<std::string, int>;
-  EXPECT_EQ("[]", JSON(map_int_int()));
-  EXPECT_EQ("{}", JSON(map_string_int()));
+  // `std::map<>` is serialized as object for string keys, and as array of pairs for other key types.
+  using map_int_int_t = std::map<int, int>;
+  using map_string_int_t = std::map<std::string, int>;
+  EXPECT_EQ("[]", JSON(map_int_int_t()));
+  EXPECT_EQ("{}", JSON(map_string_int_t()));
 
-  EXPECT_EQ(3u, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").size());
-  EXPECT_EQ(16, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").at(4));
-  ASSERT_THROW(ParseJSON<map_int_int>("{}"), JSONSchemaException);
+  EXPECT_EQ(3u, ParseJSON<map_int_int_t>("[[2,4],[3,9],[4,16]]").size());
+  EXPECT_EQ(16, ParseJSON<map_int_int_t>("[[2,4],[3,9],[4,16]]").at(4));
+  ASSERT_THROW(ParseJSON<map_int_int_t>("{}"), JSONSchemaException);
 
   try {
-    ParseJSON<map_int_int>("{}");
+    ParseJSON<map_int_int_t>("{}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ("Expected map as array, got: {}", e.What());
   }
 
-  EXPECT_EQ(2u, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").size());
-  EXPECT_EQ(2, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").at("b"));
-  ASSERT_THROW(ParseJSON<map_string_int>("[]"), JSONSchemaException);
+  EXPECT_EQ(2u, ParseJSON<map_string_int_t>("{\"a\":1,\"b\":2}").size());
+  EXPECT_EQ(2, ParseJSON<map_string_int_t>("{\"a\":1,\"b\":2}").at("b"));
+  ASSERT_THROW(ParseJSON<map_string_int_t>("[]"), JSONSchemaException);
   try {
-    ParseJSON<map_string_int>("[]");
+    ParseJSON<map_string_int_t>("[]");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ("Expected map as object, got: []", e.What());
   }
 
-  // `std::set<>`.
-  using set_int = std::set<int>;
-  using unordered_set_string = std::unordered_set<std::string>;
-  EXPECT_EQ("[]", JSON(set_int()));
-  EXPECT_EQ("[]", JSON(unordered_set_string()));
+  // `std::set<>` is serialized as array.
+  using set_int_t = std::set<int>;
+  using unordered_set_string_t = std::unordered_set<std::string>;
+  EXPECT_EQ("[]", JSON(set_int_t()));
+  EXPECT_EQ("[]", JSON(unordered_set_string_t()));
 
-  EXPECT_EQ(3u, ParseJSON<set_int>("[1,3,5]").size());
-  EXPECT_EQ(3u, ParseJSON<set_int>("[1,3,5,3,5,1]").size());
-  EXPECT_EQ(2u, ParseJSON<unordered_set_string>("[\"Foo\",\"Bar\"]").size());
-  EXPECT_EQ(2u, ParseJSON<unordered_set_string>("[\"Foo\",\"Foo\",\"Bar\",\"Bar\"]").size());
+  EXPECT_EQ(3u, ParseJSON<set_int_t>("[1,3,5]").size());
+  EXPECT_EQ(3u, ParseJSON<set_int_t>("[1,3,5,3,5,1]").size());
+  EXPECT_EQ(2u, ParseJSON<unordered_set_string_t>("[\"Foo\",\"Bar\"]").size());
+  EXPECT_EQ(2u, ParseJSON<unordered_set_string_t>("[\"Foo\",\"Foo\",\"Bar\",\"Bar\"]").size());
 
   try {
-    ParseJSON<set_int>("{}");
+    ParseJSON<set_int_t>("{}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ("Expected set as array, got: {}", e.What());
@@ -447,6 +447,7 @@ TEST(JSONSerialization, CurrentStructs) {
     const auto parsed = ParseJSON<WithTrivialMap>("{\"m\":{}}");
     ASSERT_TRUE(parsed.m.empty());
   }
+  // `map<string, ...>` should be serialized as object.
   {
     try {
       ParseJSON<WithTrivialMap>("{\"m\":[]}");
@@ -475,6 +476,7 @@ TEST(JSONSerialization, CurrentStructs) {
     const auto parsed = ParseJSON<WithTrivialUnorderedMap>("{\"m\":{}}");
     ASSERT_TRUE(parsed.m.empty());
   }
+  // `unordered_map<string, ...>` should be serialized as object.
   {
     try {
       ParseJSON<WithTrivialUnorderedMap>("{\"m\":[]}");
@@ -508,6 +510,7 @@ TEST(JSONSerialization, CurrentStructs) {
     const auto parsed = ParseJSON<WithNontrivialMap>("{\"q\":[]}");
     ASSERT_TRUE(parsed.q.empty());
   }
+  // `map<Serializable, ...>` should be serialized as array.
   {
     try {
       ParseJSON<WithNontrivialMap>("{\"q\":{}}");
@@ -548,6 +551,7 @@ TEST(JSONSerialization, CurrentStructs) {
     const auto parsed = ParseJSON<WithNontrivialUnorderedMap>("{\"q\":[]}");
     ASSERT_TRUE(parsed.q.empty());
   }
+  // `unordered_map<Serializable, ...>` should be serialized as array.
   {
     try {
       ParseJSON<WithNontrivialUnorderedMap>("{\"q\":{}}");
