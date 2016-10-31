@@ -192,7 +192,9 @@ class FilePersister {
               head_offset = 0;
               if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
                 auto offset = head_key_length;
-                while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                while (offset < value.length() && std::isspace(value[offset])) {
+                  ++offset;
+                }
                 const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
@@ -200,14 +202,16 @@ class FilePersister {
                 head = us;
                 head_offset = std::streamoff(current_offset) + offset;
               } else if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
-                // The signature could be only at the beginning of the file.
+                // The signature, if present, should be at the beginning of the file.
                 if (current_offset != 0) {
-                  CURRENT_THROW(InvalidSignaturePosition());
+                  CURRENT_THROW(InvalidSignatureLocation());
                 }
                 auto offset = signature_key_length;
-                while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                while (offset < value.length() && std::isspace(value[offset])) {
+                  ++offset;
+                }
                 if (value.compare(offset, signature.length(), signature)) {
-                  CURRENT_THROW(InvalidStreamSignature());
+                  CURRENT_THROW(InvalidStreamSignature(signature, value.substr(offset)));
                 }
               }
               current_offset = fi.tellg();
@@ -218,6 +222,7 @@ class FilePersister {
         // The `next.us` stores the closest possible next entry timestamp,
         // so the last processed entry timestamp is always 1us less.
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
+        // Append the signature if there is neither entries nor directives in the file.
         if (!current_offset) {
           appender << constants::kSignatureDirective << '\t' << signature << std::endl;
         }

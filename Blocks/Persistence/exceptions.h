@@ -51,10 +51,11 @@ struct NoEntriesPublishedYet : PersistenceException {
 };
 
 struct InvalidStreamSignature : PersistenceException {
-  using PersistenceException::PersistenceException;
+  explicit InvalidStreamSignature(const std::string& expected, const std::string& actual)
+      : PersistenceException("Invalid signature,\nexpected:\n`" + expected + "`\nactual:\n`" + actual + "`.") {}
 };
 
-struct InvalidSignaturePosition : PersistenceException {
+struct InvalidSignatureLocation : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 

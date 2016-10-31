@@ -478,34 +478,6 @@ TEST(PersistenceLayer, FileExceptions) {
 
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
-  current::reflection::StructSchema invalid_schema;
-  invalid_schema.AddType<std::string>();
-  const std::string signature =
-      "#signature\t" + JSON(current::ss::StreamSignature(namespace_name, invalid_schema.GetSchemaInfo())) + '\n';
-
-  {
-    // Invalid signature.
-    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
-    using INVALID_IMPL = current::persistence::File<StorableString>;
-    const auto another_namespace = current::ss::StreamNamespaceName("namespace_invalid", "top_level_invalid");
-    current::FileSystem::WriteStringToFile(signature + "{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n",
-                                           persistence_file_name.c_str());
-    ASSERT_NO_THROW(IMPL(namespace_name, persistence_file_name));
-    ASSERT_THROW(IMPL(another_namespace, persistence_file_name), current::persistence::InvalidStreamSignature);
-    ASSERT_THROW(INVALID_IMPL(namespace_name, persistence_file_name), current::persistence::InvalidStreamSignature);
-  }
-
-  {
-    // Signature in the middle of data.
-    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
-    current::FileSystem::WriteStringToFile("{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n" + signature,
-                                           persistence_file_name.c_str());
-    ASSERT_THROW(IMPL(namespace_name, persistence_file_name), current::persistence::InvalidSignaturePosition);
-    current::FileSystem::WriteStringToFile("#any_other_directive\n" + signature, persistence_file_name.c_str());
-    ASSERT_THROW(IMPL(namespace_name, persistence_file_name), current::persistence::InvalidSignaturePosition);
-    current::FileSystem::WriteStringToFile(signature + signature, persistence_file_name.c_str());
-    ASSERT_THROW(IMPL(namespace_name, persistence_file_name), current::persistence::InvalidSignaturePosition);
-  }
 
   {
     current::time::ResetToZero();
@@ -559,6 +531,43 @@ TEST(PersistenceLayer, FileExceptions) {
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+  }
+}
+
+TEST(PersistenceLayer, FileSignatureExceptions) {
+  using namespace persistence_test;
+
+  using IMPL = current::persistence::File<std::string>;
+
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  current::reflection::StructSchema invalid_schema;
+  invalid_schema.AddType<std::string>();
+  const std::string signature =
+      "#signature\t" + JSON(current::ss::StreamSignature(namespace_name, invalid_schema.GetSchemaInfo())) + '\n';
+
+  {
+    // Invalid signature.
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    using INVALID_IMPL = current::persistence::File<StorableString>;
+    const auto another_namespace = current::ss::StreamNamespaceName("namespace_invalid", "top_level_invalid");
+    current::FileSystem::WriteStringToFile(signature + "{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n",
+                                           persistence_file_name.c_str());
+    ASSERT_NO_THROW(IMPL(namespace_name, persistence_file_name));
+    ASSERT_THROW(IMPL(another_namespace, persistence_file_name), current::persistence::InvalidStreamSignature);
+    ASSERT_THROW(INVALID_IMPL(namespace_name, persistence_file_name), current::persistence::InvalidStreamSignature);
+  }
+
+  {
+    // Signature in the middle of data.
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile("{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n" + signature,
+                                           persistence_file_name.c_str());
+    ASSERT_THROW(IMPL(namespace_name, persistence_file_name), current::persistence::InvalidSignatureLocation);
+    current::FileSystem::WriteStringToFile("#any_other_directive\n" + signature, persistence_file_name.c_str());
+    ASSERT_THROW(IMPL(namespace_name, persistence_file_name), current::persistence::InvalidSignatureLocation);
+    current::FileSystem::WriteStringToFile(signature + signature, persistence_file_name.c_str());
+    ASSERT_THROW(IMPL(namespace_name, persistence_file_name), current::persistence::InvalidSignatureLocation);
   }
 }
 
