@@ -224,7 +224,7 @@ class FilePersister {
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
         // Append the signature if there is neither entries nor directives in the file.
         if (!current_offset) {
-          appender << constants::kSignatureDirective << '\t' << signature << std::endl;
+          appender << constants::kSignatureDirective << ' ' << signature << std::endl;
         }
       } else {
         end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
@@ -402,7 +402,7 @@ class FilePersister {
       rewriter << head_str << std::endl;
     } else {
       auto& appender = file_persister_impl_->appender;
-      appender << constants::kHeadDirective << '\t';
+      appender << constants::kHeadDirective << ' ';
       file_persister_impl_->head_offset = appender.tellp();
       appender << head_str << std::endl;
     }

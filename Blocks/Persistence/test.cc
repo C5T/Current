@@ -299,7 +299,7 @@ TEST(PersistenceLayer, File) {
   }
 
   EXPECT_EQ(
-      "#signature\t{\"exposed_namespace\":\"namespace\",\"top_level_name\":\"top_level_name\",\"schema\":{\"types\":[["
+      "#signature {\"exposed_namespace\":\"namespace\",\"top_level_name\":\"top_level_name\",\"schema\":{\"types\":[["
       "\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000042\"},\"\":"
       "\"T9202934106479999325\"}],[\"T9204688078345823986\",{\"ReflectedType_Struct\":{\"type_id\":"
       "\"T9204688078345823986\",\"native_name\":\"StorableString\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":"
@@ -307,9 +307,9 @@ TEST(PersistenceLayer, File) {
       "\"order\":[\"T9204688078345823986\"]}}\n"
       "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
       "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
-      "#head\t00000000000000000300\n"
+      "#head 00000000000000000300\n"
       "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
-      "#head\t00000000000000000600\n",
+      "#head 00000000000000000600\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -380,7 +380,7 @@ TEST(PersistenceLayer, FileDirectives) {
   current::reflection::StructSchema struct_schema;
   struct_schema.AddType<StorableString>();
   const std::string signature =
-      "#signature\t" + JSON(current::ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo())) + '\n';
+      "#signature " + JSON(current::ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo())) + '\n';
   EXPECT_EQ(signature, current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -388,7 +388,7 @@ TEST(PersistenceLayer, FileDirectives) {
 
     // A file consisting only of directives.
     current::FileSystem::WriteStringToFile(signature +
-                                               "#head 0000000000000000001\n"
+                                               "#head\t0000000000000000001\n"
                                                "#unknown_directive\t\tblah\n",
                                            persistence_file_name.c_str());
     // Skip unknown directives.
@@ -403,9 +403,9 @@ TEST(PersistenceLayer, FileDirectives) {
     EXPECT_EQ(2, head_idxts.head.count());
   }
   EXPECT_EQ(signature +
-                "#head 0000000000000000001\n"
+                "#head\t0000000000000000001\n"
                 "#unknown_directive\t\tblah\n"
-                "#head\t00000000000000000002\n",
+                "#head 00000000000000000002\n",
             current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -458,7 +458,7 @@ TEST(PersistenceLayer, FileDirectives) {
       "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
       "#head\t \t00000000000000000700\n"
       "{\"index\":3,\"us\":800}\t{\"s\":\"new\"}\n"
-      "#head\t00000000000000000999\n",
+      "#head 00000000000000000999\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
@@ -544,7 +544,7 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
   current::reflection::StructSchema invalid_schema;
   invalid_schema.AddType<std::string>();
   const std::string signature =
-      "#signature\t" + JSON(current::ss::StreamSignature(namespace_name, invalid_schema.GetSchemaInfo())) + '\n';
+      "#signature " + JSON(current::ss::StreamSignature(namespace_name, invalid_schema.GetSchemaInfo())) + '\n';
 
   {
     // Invalid signature.

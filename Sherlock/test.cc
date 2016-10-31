@@ -765,7 +765,7 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 }
 
 const std::string sherlock_golden_data =
-    "#signature\t{\"exposed_namespace\":\"SherlockSchema\",\"top_level_name\":\"TopLevelTransaction\",\"schema\":{"
+    "#signature {\"exposed_namespace\":\"SherlockSchema\",\"top_level_name\":\"TopLevelTransaction\",\"schema\":{"
     "\"types\":[[\"T9000000000000000033\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000033\"},\"\":"
     "\"T9202934106479999325\"}],[\"T9209980947553411947\",{\"ReflectedType_Struct\":{\"type_id\":"
     "\"T9209980947553411947\",\"native_name\":\"Record\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_"
@@ -773,9 +773,9 @@ const std::string sherlock_golden_data =
     "\"T9209980947553411947\"]}}\n"
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
-    "#head\t00000000000000000300\n"
+    "#head 00000000000000000300\n"
     "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
-    "#head\t00000000000000000500\n";
+    "#head 00000000000000000500\n";
 
 // clang-format off
 const std::string sherlock_golden_data_chunks[] = {
