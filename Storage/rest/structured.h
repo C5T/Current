@@ -41,6 +41,11 @@ namespace storage {
 namespace rest {
 namespace generic {
 
+const std::string kLastModifiedHeader = "Last-Modified";
+const std::string kCurrentLastModifiedHeader = "X-Current-Last-Modified";
+const std::string kIfUnmodifiedSinceHeader = "If-Unmodified-Since";
+const std::string kCurrentIfUnmodifiedSinceHeader = "X-Current-If-Unmodified-Since";
+
 template <typename RESPONSE_FORMATTER>
 struct Structured {
   template <class HTTP_VERB, typename OPERATION, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -73,14 +78,26 @@ struct Structured {
   // Returns `false` on error.
   static bool ExtractIfUnmodifiedSinceOrRespondWithError(Request& request,
                                                          Optional<std::chrono::microseconds>& destination) {
-    if (request.headers.Has("If-Unmodified-Since")) {
-      const auto& header_value = request.headers.Get("If-Unmodified-Since");
+    // If `X-Current-If-Unmodified-Since` header is set, traditional `If-Unmodified-Since` is ignored.
+    if (request.headers.Has(kCurrentIfUnmodifiedSinceHeader)) {
+      const auto& header_value = request.headers.Get(kCurrentIfUnmodifiedSinceHeader);
+      const auto parsed_us = current::FromString<std::chrono::microseconds>(header_value);
+      if (parsed_us.count() > 0) {
+        destination = parsed_us;
+      } else {
+        request(ErrorResponseObject(InvalidHeaderError(
+                    "Invalid microsecond timestamp value.", kCurrentIfUnmodifiedSinceHeader, header_value)),
+                HTTPResponseCode.BadRequest);
+        return false;
+      }
+    } else if (request.headers.Has(kIfUnmodifiedSinceHeader)) {
+      const auto& header_value = request.headers.Get(kIfUnmodifiedSinceHeader);
       try {
         destination = net::http::ParseHTTPDate(header_value);
       } catch (const current::net::http::InvalidHTTPDateException&) {
-        request(
-            ErrorResponseObject(InvalidHeaderError("Unparsable datetime value.", "If-Unmodified-Since", header_value)),
-            HTTPResponseCode.BadRequest);
+        request(ErrorResponseObject(
+                    InvalidHeaderError("Unparsable datetime value.", kIfUnmodifiedSinceHeader, header_value)),
+                HTTPResponseCode.BadRequest);
         return false;
       }
     } else {
@@ -140,7 +157,8 @@ struct Structured {
                 url_collection + '/' + field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
             Response response = RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
             if (Exists(last_modified)) {
-              response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+              response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
+              response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
             }
             return response;
           } else {
@@ -289,7 +307,8 @@ struct Structured {
         auto response = Response(RESTResourceUpdateResponse(true, "Resource created.", url), HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
         if (Exists(last_modified)) {
-          response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
+          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
         }
         return response;
       } else {
@@ -347,7 +366,8 @@ struct Structured {
         }
         const auto last_modified = input.field.LastModified(input.entry_key);
         if (Exists(last_modified)) {
-          response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
+          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
         }
         return response;
       } else {
@@ -413,7 +433,8 @@ struct Structured {
             Response response(hypermedia_response, HTTPResponseCode.OK);
             const auto last_modified = input.field.LastModified(input.patch_key);
             if (Exists(last_modified)) {
-              response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+              response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
+              response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
             }
             return response;
           }
@@ -467,7 +488,8 @@ struct Structured {
       if (existed) {
         const auto last_modified = input.field.LastModified(input.delete_key);
         if (Exists(last_modified)) {
-          response.SetHeader("Last-Modified", FormatDateTimeAsIMFFix(Value(last_modified)));
+          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
+          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
         }
       }
       return response;
