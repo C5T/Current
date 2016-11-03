@@ -155,7 +155,9 @@ inline generic::RESTError ResourceWasModifiedError(const std::string& message,
   return generic::RESTError("ResourceWasModifiedError",
                             message,
                             {{"requested_date", FormatDateTimeAsIMFFix(requested)},
-                             {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)}});
+                             {"requested_us", ToString(requested)},
+                             {"resource_last_modified_date", FormatDateTimeAsIMFFix(last_modified)},
+                             {"resource_last_modified_us", ToString(last_modified)}});
 }
 
 }  // namespace current::storage::rest::helpers
