@@ -157,8 +157,9 @@ struct Structured {
                 url_collection + '/' + field_type_dependent_t<PARTICULAR_FIELD>::FormatURLKey(url_key_value);
             Response response = RESPONSE_FORMATTER::BuildResponseForResource(context, url, url_collection, value);
             if (Exists(last_modified)) {
-              response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
-              response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
+              const auto last_modified_value = Value(last_modified);
+              response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(last_modified_value));
+              response.SetHeader(kCurrentLastModifiedHeader, current::ToString(last_modified_value));
             }
             return response;
           } else {
@@ -307,8 +308,9 @@ struct Structured {
         auto response = Response(RESTResourceUpdateResponse(true, "Resource created.", url), HTTPResponseCode.Created);
         const auto last_modified = input.field.LastModified(entry_key);
         if (Exists(last_modified)) {
-          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
-          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
+          const auto last_modified_value = Value(last_modified);
+          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(last_modified_value));
+          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(last_modified_value));
         }
         return response;
       } else {
@@ -366,8 +368,9 @@ struct Structured {
         }
         const auto last_modified = input.field.LastModified(input.entry_key);
         if (Exists(last_modified)) {
-          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
-          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
+          const auto last_modified_value = Value(last_modified);
+          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(last_modified_value));
+          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(last_modified_value));
         }
         return response;
       } else {
@@ -433,8 +436,9 @@ struct Structured {
             Response response(hypermedia_response, HTTPResponseCode.OK);
             const auto last_modified = input.field.LastModified(input.patch_key);
             if (Exists(last_modified)) {
-              response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
-              response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
+              const auto last_modified_value = Value(last_modified);
+              response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(last_modified_value));
+              response.SetHeader(kCurrentLastModifiedHeader, current::ToString(last_modified_value));
             }
             return response;
           }
@@ -488,8 +492,9 @@ struct Structured {
       if (existed) {
         const auto last_modified = input.field.LastModified(input.delete_key);
         if (Exists(last_modified)) {
-          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(Value(last_modified)));
-          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(Value(last_modified)));
+          const auto last_modified_value = Value(last_modified);
+          response.SetHeader(kLastModifiedHeader, FormatDateTimeAsIMFFix(last_modified_value));
+          response.SetHeader(kCurrentLastModifiedHeader, current::ToString(last_modified_value));
         }
       }
       return response;
