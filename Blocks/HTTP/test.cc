@@ -926,3 +926,26 @@ TEST(HTTPAPI, ResponseSmokeTest) {
     static_cast<void>(response);
   }
 }
+
+TEST(HTTPAPI, PayloadTooLarge) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/enough_is_enough",
+                                   [](Request r) {
+                                     ASSERT_FALSE(r.body.empty());
+                                     EXPECT_EQ("POST", r.method);
+                                     r("Fits.\n");
+                                   });
+
+  {
+    const auto response = HTTP(POST(Printf("http://localhost:%d/enough_is_enough", FLAGS_net_api_test_port),
+                                    std::string(16 * 1024 * 1024, '.')));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("Fits.\n", response.body);
+  }
+  {
+    const auto response = HTTP(POST(Printf("http://localhost:%d/enough_is_enough", FLAGS_net_api_test_port),
+                                    std::string(16 * 1024 * 1024 + 1, '.')));
+    EXPECT_EQ(413, static_cast<int>(response.code));
+    EXPECT_EQ("<h1>ENTITY TOO LARGE</h1>\n", response.body);
+  }
+}

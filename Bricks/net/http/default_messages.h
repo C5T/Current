@@ -39,6 +39,7 @@ namespace net {
 inline std::string DefaultFourOhFourMessage() { return "<h1>NOT FOUND</h1>\n"; }
 inline std::string DefaultInternalServerErrorMessage() { return "<h1>INTERNAL SERVER ERROR</h1>\n"; }
 inline std::string DefaultMethodNotAllowedMessage() { return "<h1>METHOD NOT ALLOWED</h1>\n"; }
+inline std::string DefaultRequestEntityTooLargeMessage() { return "<h1>ENTITY TOO LARGE</h1>\n"; }
 
 }  // namespace net
 }  // namespace current

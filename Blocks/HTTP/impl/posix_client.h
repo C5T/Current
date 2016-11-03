@@ -101,9 +101,16 @@ class GenericHTTPClientPOSIX final {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
       if (!request_body_contents_.empty()) {
-        connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n", true);
-        connection.BlockingWrite("\r\n", true);
-        connection.BlockingWrite(request_body_contents_, false);
+        try {
+          connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n", true);
+          connection.BlockingWrite("\r\n", true);
+          connection.BlockingWrite(request_body_contents_, false);
+        } catch (const net::SocketCouldNotWriteEverythingException&) {
+          if (request_body_contents_.length() <= net::constants::kMaxHTTPPayloadSizeInBytes) {
+            // Swallow the `SocketCouldNotWriteEverythingException` exception for huge payloads, which Current rejects.
+            throw;
+          }
+        }
       } else {
         connection.BlockingWrite("\r\n", false);
       }

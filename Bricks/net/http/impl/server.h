@@ -78,7 +78,115 @@ inline static const http::Headers DefaultJSONHTTPHeaders() {
   return http::Headers({{"Access-Control-Allow-Origin", "*"}});
 }
 
+#ifndef CURRENT_MAX_HTTP_PAYLOAD
+constexpr const size_t kMaxHTTPPayloadSizeInBytes = 1024 * 1024 * 16;
+#else
+constexpr const size_t kMaxHTTPPayloadSizeInBytes = CURRENT_MAX_HTTP_PAYLOAD;
+#endif  // CURRENT_MAX_HTTP_PAYLOAD
+
 }  // namespace constants
+
+// HTTP response helpers. Used from both `GenericHTTPRequestData` and `GenericHTTPServerConnection`.
+struct HTTPResponder {
+  typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
+  static void PrepareHTTPResponseHeader(std::ostream& os,
+                                        ConnectionType connection_type,
+                                        HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                                        const std::string& content_type = constants::kDefaultContentType,
+                                        const http::Headers& extra_headers = http::Headers()) {
+    os << "HTTP/1.1 " << static_cast<int>(code);
+    os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
+    os << "Content-Type: " << content_type << constants::kCRLF;
+    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;
+    for (const auto& cit : extra_headers) {
+      os << cit.header << ": " << cit.value << constants::kCRLF;
+    }
+    for (const auto& cit : extra_headers.cookies) {
+      os << "Set-Cookie: " << cit.first << '=' << cit.second.value;
+      for (const auto& cit2 : cit.second.params) {
+        os << "; " << cit2.first;
+        if (!cit2.second.empty()) {
+          os << '=' + cit2.second;
+        }
+      }
+      os << constants::kCRLF;
+    }
+  }
+
+  // The actual implementation of sending the HTTP response.
+  template <typename T>
+  static void SendHTTPResponseImpl(Connection& connection,
+                                   const T& begin,
+                                   const T& end,
+                                   HTTPResponseCodeValue code,
+                                   const std::string& content_type,
+                                   const http::Headers& extra_headers) {
+    std::ostringstream os;
+    PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
+    os << "Content-Length: " << (end - begin) << constants::kCRLF << constants::kCRLF;
+    connection.BlockingWrite(os.str(), true);
+    connection.BlockingWrite(begin, end, false);
+  }
+
+  // Only support STL containers of chars and bytes, this does not yet cover std::string.
+  template <typename T>
+  static ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& begin,
+      const T& end,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = constants::kDefaultContentType,
+      const http::Headers& extra_headers = http::Headers()) {
+    SendHTTPResponseImpl(connection, begin, end, code, content_type, extra_headers);
+  }
+  template <typename T>
+  static ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      T&& container,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = constants::kDefaultContentType,
+      const http::Headers& extra_headers = http::Headers()) {
+    SendHTTPResponseImpl(connection, container.begin(), container.end(), code, content_type, extra_headers);
+  }
+
+  // Special case to handle std::string.
+  static void SendHTTPResponse(Connection& connection,
+                               const std::string& string,
+
+                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                               const std::string& content_type = constants::kDefaultContentType,
+                               const http::Headers& extra_headers = http::Headers()) {
+    SendHTTPResponseImpl(connection, string.begin(), string.end(), code, content_type, extra_headers);
+  }
+
+  // Support `CURRENT_STRUCT`-s.
+  template <class T>
+  static ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
+      Connection& connection,
+      T&& object,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = constants::kDefaultJSONContentType,
+      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = JSON(std::forward<T>(object)) + '\n';
+    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
+  }
+
+  // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
+  // (For backwards compatibility only, really. -- D.K.)
+  template <class T>
+  static ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
+      Connection& connection,
+      T&& object,
+      const std::string& name,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = constants::kDefaultJSONContentType,
+      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
+    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
+  }
+};
 
 // HTTPDefaultHelper handles headers and chunked transfers.
 // One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.
@@ -127,8 +235,7 @@ class GenericHTTPRequestData : public HELPER {
       Connection& c,
       const typename HELPER::ConstructionParams& params = typename HELPER::ConstructionParams(),
       const int intial_buffer_size = 1600,
-      const double buffer_growth_k = 1.95,
-      const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+      const double buffer_growth_k = 1.95)
       : HELPER(params), buffer_(intial_buffer_size) {
     // `offset` is the number of bytes read into `buffer_` so far.
     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
@@ -255,6 +362,11 @@ class GenericHTTPRequestData : public HELPER {
             HELPER::OnHeader(key, value);
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
+              if (body_length > constants::kMaxHTTPPayloadSizeInBytes) {
+                HTTPResponder::SendHTTPResponse(
+                    c, net::DefaultRequestEntityTooLargeMessage(), HTTPResponseCode.RequestEntityTooLarge, "text/html");
+                CURRENT_THROW(HTTPPayloadTooLarge());
+              }
             } else if (HeaderNameEquals(key, constants::kHTTPMethodOverrideHeaderKey)) {
               method_ = current::strings::ToUpper(value);
             } else if (HeaderNameEquals(key, constants::kTransferEncodingHeaderKey)) {
@@ -273,13 +385,9 @@ class GenericHTTPRequestData : public HELPER {
             if (body_length != static_cast<size_t>(-1)) {
               // Has HTTP body to parse.
               length_cap = body_offset + body_length;
-              // Resize the buffer to be able to get the contents of HTTP body without extra resizes,
-              // while being careful to not be open to extra-large mistakenly or maliciously set
-              // Content-Length.
               // Keep in mind that `buffer_` should have the size of `length_cap + 1`, to include the `\0'.
               if (length_cap + 1 > buffer_.size()) {
-                const size_t delta_size = length_cap + 1 - buffer_.size();
-                buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length));
+                buffer_.resize(length_cap + 1);
               }
               if (length_cap > offset) {
                 const size_t bytes_to_read = length_cap - offset;
@@ -372,9 +480,8 @@ class GenericHTTPRequestData : public HELPER {
 using HTTPRequestData = GenericHTTPRequestData<HTTPDefaultHelper>;
 
 template <class HTTP_REQUEST_DATA>
-class GenericHTTPServerConnection final {
+class GenericHTTPServerConnection final : public HTTPResponder {
  public:
-  typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
   GenericHTTPServerConnection(
@@ -388,14 +495,14 @@ class GenericHTTPServerConnection final {
       // It's also a good place for a breakpoint to tell the source of that exception.
       // LCOV_EXCL_START
       try {
-        SendHTTPResponse(DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
+        HTTPResponder::SendHTTPResponse(
+            connection_, DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
       } catch (const Exception& e) {
         // No exception should ever leave the destructor.
         if (message_.RawPath() == "/healthz") {
           // Report nothing for "/healthz", since it's an internal URL, also used by the tests
           // to poke the serving thread before shutting down the server. There is nothing exceptional
-          // with not responding to "/healthz", really -- it just means that the server is not healthy, duh. --
-          // D.K.
+          // with not responding to "/healthz", really -- it just means that the server is not healthy, duh. -- D.K.
         } else {
           std::cerr << "An exception occurred while trying to send \"INTERNAL SERVER ERROR\"\n";
           std::cerr << "In: " << message_.Method() << ' ' << message_.RawPath() << std::endl;
@@ -406,100 +513,13 @@ class GenericHTTPServerConnection final {
     }
   }
 
-  inline static void PrepareHTTPResponseHeader(std::ostream& os,
-                                               ConnectionType connection_type,
-                                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                                               const std::string& content_type = constants::kDefaultContentType,
-                                               const http::Headers& extra_headers = http::Headers()) {
-    os << "HTTP/1.1 " << static_cast<int>(code);
-    os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
-    os << "Content-Type: " << content_type << constants::kCRLF;
-    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;
-    for (const auto& cit : extra_headers) {
-      os << cit.header << ": " << cit.value << constants::kCRLF;
-    }
-    for (const auto& cit : extra_headers.cookies) {
-      os << "Set-Cookie: " << cit.first << '=' << cit.second.value;
-      for (const auto& cit2 : cit.second.params) {
-        os << "; " << cit2.first;
-        if (!cit2.second.empty()) {
-          os << '=' + cit2.second;
-        }
-      }
-      os << constants::kCRLF;
-    }
-  }
-
-  // The actual implementation of sending the HTTP response.
-  template <typename T>
-  inline void SendHTTPResponseImpl(const T& begin,
-                                   const T& end,
-                                   HTTPResponseCodeValue code,
-                                   const std::string& content_type,
-                                   const http::Headers& extra_headers) {
+  template <typename... ARGS>
+  void SendHTTPResponse(ARGS&&... args) {
     if (responded_) {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
-      responded_ = true;
-      std::ostringstream os;
-      PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
-      os << "Content-Length: " << (end - begin) << constants::kCRLF << constants::kCRLF;
-      connection_.BlockingWrite(os.str(), true);
-      connection_.BlockingWrite(begin, end, false);
+      HTTPResponder::SendHTTPResponse(connection_, std::forward<ARGS>(args)...);
     }
-  }
-
-  // Only support STL containers of chars and bytes, this does not yet cover std::string.
-  template <typename T>
-  inline ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
-      const T& begin,
-      const T& end,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultContentType,
-      const http::Headers& extra_headers = http::Headers()) {
-    SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
-  }
-  template <typename T>
-  inline ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
-      T&& container,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultContentType,
-      const http::Headers& extra_headers = http::Headers()) {
-    SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
-  }
-
-  // Special case to handle std::string.
-  inline void SendHTTPResponse(const std::string& string,
-                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                               const std::string& content_type = constants::kDefaultContentType,
-                               const http::Headers& extra_headers = http::Headers()) {
-    SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
-  }
-
-  // Support `CURRENT_STRUCT`-s.
-  template <class T>
-  inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
-      T&& object,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
-    // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = JSON(std::forward<T>(object)) + '\n';
-    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
-  }
-
-  // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
-  // (For backwards compatibility only, really. -- D.K.)
-  template <class T>
-  inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
-      T&& object,
-      const std::string& name,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
-    // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
-    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
   // The wrapper to send HTTP response in chunks.
