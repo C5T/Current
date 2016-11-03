@@ -78,7 +78,7 @@ struct Structured {
   // Returns `false` on error.
   static bool ExtractIfUnmodifiedSinceOrRespondWithError(Request& request,
                                                          Optional<std::chrono::microseconds>& destination) {
-    // If `X-Current-If-Unmodified-Since` header is set, traditional `If-Unmodified-Since` is ignored.
+    // If the `X-Current-If-Unmodified-Since` header is set, the traditional `If-Unmodified-Since` is ignored.
     if (request.headers.Has(kCurrentIfUnmodifiedSinceHeader)) {
       const auto& header_value = request.headers.Get(kCurrentIfUnmodifiedSinceHeader);
       const auto parsed_us = current::FromString<std::chrono::microseconds>(header_value);
