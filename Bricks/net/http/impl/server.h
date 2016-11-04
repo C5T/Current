@@ -519,6 +519,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       HTTPResponder::SendHTTPResponse(connection_, std::forward<ARGS>(args)...);
+      responded_ = true;
     }
   }
 
