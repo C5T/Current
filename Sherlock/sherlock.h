@@ -93,14 +93,14 @@ CURRENT_STRUCT(SherlockSchema) {
 
 CURRENT_STRUCT(SubscribableSherlockSchema) {
   CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
-  CURRENT_FIELD(top_level_name, std::string);
+  CURRENT_FIELD(entry_name, std::string);
   CURRENT_FIELD(namespace_name, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
   CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
-      current::reflection::TypeID type_id, const std::string& top_level_name, const std::string& namespace_name)
-      : type_id(type_id), top_level_name(top_level_name), namespace_name(namespace_name) {}
+      current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
+      : type_id(type_id), entry_name(entry_name), namespace_name(namespace_name) {}
   bool operator==(const SubscribableSherlockSchema& rhs) const {
-    return type_id == rhs.type_id && namespace_name == rhs.namespace_name && top_level_name == rhs.top_level_name;
+    return type_id == rhs.type_id && namespace_name == rhs.namespace_name && entry_name == rhs.entry_name;
   }
   bool operator!=(const SubscribableSherlockSchema& rhs) const { return !operator==(rhs); }
 };
@@ -491,8 +491,8 @@ class StreamImpl {
           r(schema_as_http_response_);
         } else if (schema_format == "simple") {
           r(SubscribableSherlockSchema(schema_as_object_.type_id,
-                                       schema_namespace_name_.top_level_name,
-                                       schema_namespace_name_.exposed_namespace));
+                                       schema_namespace_name_.entry_name,
+                                       schema_namespace_name_.namespace_name));
         } else {
           const auto cit = schema_as_object_.language.find(schema_format);
           if (cit != schema_as_object_.language.end()) {
@@ -588,8 +588,8 @@ class StreamImpl {
     template <current::reflection::Language language>
     void PerLanguage() {
       schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
-          current::reflection::NamespaceToExpose(namespace_name.exposed_namespace)
-              .template AddType<entry_t>(namespace_name.top_level_name));
+          current::reflection::NamespaceToExpose(namespace_name.namespace_name)
+              .template AddType<entry_t>(namespace_name.entry_name));
     }
   };
 

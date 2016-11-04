@@ -61,7 +61,7 @@ TEST(PersistenceLayer, Memory) {
   using namespace persistence_test;
 
   using IMPL = current::persistence::Memory<std::string>;
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
 
   {
     IMPL impl(namespace_name);
@@ -137,7 +137,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
   static_assert(!current::ss::IsPersister<int>::value, "");
   static_assert(!current::ss::IsEntryPersister<IMPL, int>::value, "");
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
 
   {
     current::time::ResetToZero();
@@ -189,7 +189,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
   using namespace persistence_test;
   using IMPL = current::persistence::Memory<std::string>;
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   auto p = std::make_unique<IMPL>(namespace_name);
   p->Publish("1", std::chrono::microseconds(1));
   p->Publish("2", std::chrono::microseconds(2));
@@ -250,7 +250,7 @@ TEST(PersistenceLayer, File) {
 
   using IMPL = current::persistence::File<StorableString>;
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
@@ -299,7 +299,7 @@ TEST(PersistenceLayer, File) {
   }
 
   EXPECT_EQ(
-      "#signature {\"exposed_namespace\":\"namespace\",\"top_level_name\":\"top_level_name\",\"schema\":{\"types\":[["
+      "#signature {\"namespace_name\":\"namespace\",\"entry_name\":\"entry_name\",\"schema\":{\"types\":[["
       "\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000042\"},\"\":"
       "\"T9202934106479999325\"}],[\"T9204688078345823986\",{\"ReflectedType_Struct\":{\"type_id\":"
       "\"T9204688078345823986\",\"native_name\":\"StorableString\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":"
@@ -364,7 +364,7 @@ TEST(PersistenceLayer, FileDirectives) {
 
   using IMPL = current::persistence::File<StorableString>;
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
@@ -476,7 +476,7 @@ TEST(PersistenceLayer, FileExceptions) {
   static_assert(!current::ss::IsPublisher<int>::value, "");
   static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
   {
@@ -539,7 +539,7 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
 
   using IMPL = current::persistence::File<std::string>;
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   current::reflection::StructSchema invalid_schema;
   invalid_schema.AddType<std::string>();
@@ -636,7 +636,7 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
 TEST(PersistenceLayer, MemoryIteratorPerformanceTest) {
   using namespace persistence_test;
   using IMPL = current::persistence::Memory<StorableString>;
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   IMPL impl(namespace_name);
   IteratorPerformanceTest(impl);
 }
@@ -644,7 +644,7 @@ TEST(PersistenceLayer, MemoryIteratorPerformanceTest) {
 TEST(PersistenceLayer, FileIteratorPerformanceTest) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<StorableString>;
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   {
@@ -662,7 +662,7 @@ TEST(PersistenceLayer, FileIteratorPerformanceTest) {
 TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<std::string>;
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
@@ -727,7 +727,7 @@ TEST(PersistenceLayer, Exceptions) {
   using current::ss::InconsistentIndexException;
   using current::persistence::MalformedEntryException;
 
-  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "top_level_name");
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
   // Malformed entry during replay.

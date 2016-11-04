@@ -765,7 +765,7 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 }
 
 const std::string sherlock_golden_data =
-    "#signature {\"exposed_namespace\":\"SherlockSchema\",\"top_level_name\":\"TopLevelTransaction\",\"schema\":{"
+    "#signature {\"namespace_name\":\"SherlockSchema\",\"entry_name\":\"TopLevelTransaction\",\"schema\":{"
     "\"types\":[[\"T9000000000000000033\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000033\"},\"\":"
     "\"T9202934106479999325\"}],[\"T9209980947553411947\",{\"ReflectedType_Struct\":{\"type_id\":"
     "\"T9209980947553411947\",\"native_name\":\"Record\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_"
