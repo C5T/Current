@@ -490,9 +490,8 @@ class StreamImpl {
         if (schema_format.empty()) {
           r(schema_as_http_response_);
         } else if (schema_format == "simple") {
-          r(SubscribableSherlockSchema(schema_as_object_.type_id,
-                                       schema_namespace_name_.entry_name,
-                                       schema_namespace_name_.namespace_name));
+          r(SubscribableSherlockSchema(
+              schema_as_object_.type_id, schema_namespace_name_.entry_name, schema_namespace_name_.namespace_name));
         } else {
           const auto cit = schema_as_object_.language.find(schema_format);
           if (cit != schema_as_object_.language.end()) {

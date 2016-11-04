@@ -192,7 +192,7 @@ class FilePersister {
               head_offset = 0;
               if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
                 auto offset = head_key_length;
-                while (offset < value.length() && std::isspace(value[offset])) {
+                while (std::isspace(value[offset])) {
                   ++offset;
                 }
                 const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
@@ -207,7 +207,7 @@ class FilePersister {
                   CURRENT_THROW(InvalidSignatureLocation());
                 }
                 auto offset = signature_key_length;
-                while (offset < value.length() && std::isspace(value[offset])) {
+                while (std::isspace(value[offset])) {
                   ++offset;
                 }
                 if (value.compare(offset, signature.length(), signature)) {

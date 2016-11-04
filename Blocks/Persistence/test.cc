@@ -298,19 +298,17 @@ TEST(PersistenceLayer, File) {
     }
   }
 
-  EXPECT_EQ(
-      "#signature {\"namespace_name\":\"namespace\",\"entry_name\":\"entry_name\",\"schema\":{\"types\":[["
-      "\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000042\"},\"\":"
-      "\"T9202934106479999325\"}],[\"T9204688078345823986\",{\"ReflectedType_Struct\":{\"type_id\":"
-      "\"T9204688078345823986\",\"native_name\":\"StorableString\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":"
-      "[{\"type_id\":\"T9000000000000000042\",\"name\":\"s\",\"description\":null}]},\"\":\"T9206858900297712816\"}]],"
-      "\"order\":[\"T9204688078345823986\"]}}\n"
-      "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
-      "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
-      "#head 00000000000000000300\n"
-      "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
-      "#head 00000000000000000600\n",
-      current::FileSystem::ReadFileAsString(persistence_file_name));
+  current::reflection::StructSchema struct_schema;
+  struct_schema.AddType<StorableString>();
+  const std::string signature =
+      "#signature " + JSON(current::ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo())) + '\n';
+  EXPECT_EQ(signature +
+                "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+                "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+                "#head 00000000000000000300\n"
+                "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n"
+                "#head 00000000000000000600\n",
+            current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
     // Confirm the data has been saved and can be replayed.
@@ -559,7 +557,7 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
   }
 
   {
-    // Signature in the middle of data.
+    // Signature in the middle of the data file, not at the top.
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     current::FileSystem::WriteStringToFile("{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n" + signature,
                                            persistence_file_name.c_str());
