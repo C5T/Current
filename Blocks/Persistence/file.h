@@ -344,8 +344,9 @@ class FilePersister {
   };
 
   template <typename E>
-  idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+  idxts_t DoPublish(E&& entry, const std::chrono::microseconds us) {
     end_t iterator = file_persister_impl_->end.load();
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
@@ -365,8 +366,9 @@ class FilePersister {
     return current;
   }
 
-  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+  void DoUpdateHead(const std::chrono::microseconds us) {
     end_t iterator = file_persister_impl_->end.load();
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }

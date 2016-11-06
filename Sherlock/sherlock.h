@@ -233,7 +233,7 @@ class StreamImpl {
     rhs.authority_ = StreamDataAuthority::External;
   }
 
-  idxts_t Publish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
+  idxts_t Publish(const entry_t& entry, const std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
@@ -242,7 +242,7 @@ class StreamImpl {
     }
   }
 
-  idxts_t Publish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
+  idxts_t Publish(entry_t&& entry, const std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
@@ -251,7 +251,7 @@ class StreamImpl {
     }
   }
 
-  void UpdateHead(const std::chrono::microseconds us = current::time::Now()) {
+  void UpdateHead(const std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);

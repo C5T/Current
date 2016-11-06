@@ -46,13 +46,13 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPersister() {}
 
-  IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
+  IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     return IMPL::DoPublish(e, us);
   }
-  IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
+  IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     return IMPL::DoPublish(std::move(e), us);
   }
-  void UpdateHead(std::chrono::microseconds us = current::time::Now()) { return IMPL::DoUpdateHead(us); }
+  void UpdateHead(std::chrono::microseconds us = std::chrono::microseconds(-1)) { return IMPL::DoUpdateHead(us); }
 
   // template <typename... ARGS>
   // IndexAndTimestamp Emplace(ARGS&&... args) {

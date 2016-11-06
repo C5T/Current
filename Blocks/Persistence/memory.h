@@ -124,9 +124,10 @@ class MemoryPersister {
   };
 
   template <typename E>
-  idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+  idxts_t DoPublish(E&& entry, const std::chrono::microseconds us) {
     std::lock_guard<std::mutex> lock(container_->mutex);
     const auto head = container_->head;
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
@@ -136,8 +137,9 @@ class MemoryPersister {
     return idxts_t(index, timestamp);
   }
 
-  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+  void DoUpdateHead(const std::chrono::microseconds us) {
     std::lock_guard<std::mutex> lock(container_->mutex);
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     const auto head = container_->head;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));

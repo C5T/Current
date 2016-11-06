@@ -102,7 +102,8 @@ class MMQImpl {
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
   template <current::locks::MutexLockStatus MLS>
-  idxts_t DoPublish(const message_t& message, std::chrono::microseconds timestamp) {
+  idxts_t DoPublish(const message_t& message, std::chrono::microseconds us) {
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (CHECK_TIMESTAMP_MONOTONICITY) {
       if (!(timestamp > last_idx_ts_.us)) {
         CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
@@ -119,7 +120,8 @@ class MMQImpl {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t DoPublish(message_t&& message, std::chrono::microseconds timestamp) {
+  idxts_t DoPublish(message_t&& message, std::chrono::microseconds us) {
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (CHECK_TIMESTAMP_MONOTONICITY) {
       if (!(timestamp > last_idx_ts_.us)) {
         CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));

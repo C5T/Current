@@ -52,15 +52,15 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
 
   using MutexLockStatus = current::locks::MutexLockStatus;
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
+  idxts_t Publish(const ENTRY& e, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     return IMPL::template DoPublish<MLS>(e, us);
   }
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
+  idxts_t Publish(ENTRY&& e, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     return IMPL::template DoPublish<MLS>(std::move(e), us);
   }
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  void UpdateHead(std::chrono::microseconds us = current::time::Now()) {
+  void UpdateHead(std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     IMPL::template DoUpdateHead<MLS>(us);
   }
 

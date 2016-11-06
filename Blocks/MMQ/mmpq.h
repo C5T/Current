@@ -74,8 +74,9 @@ class MMPQ {
   // NOTE(dkorolev): `std::enable_if_t<std::is_same<message_t, current::decay<T>>::value, idxts_t>` can't convert
   // `const char*` into an `std::string`, which is essential, as, unlike MMQ, MMPQ is not an `ss::EntryPublisher<>`.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t Publish(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
+  idxts_t Publish(T&& message, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
@@ -87,8 +88,9 @@ class MMPQ {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds timestamp = current::time::Now()) {
+  idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
@@ -100,8 +102,9 @@ class MMPQ {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  void UpdateHead(std::chrono::microseconds timestamp = current::time::Now()) {
+  void UpdateHead(std::chrono::microseconds us = std::chrono::microseconds(-1)) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
