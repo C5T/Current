@@ -63,8 +63,7 @@ namespace mmq {
 template <typename MESSAGE,
           typename CONSUMER,
           size_t DEFAULT_BUFFER_SIZE = 1024,
-          bool DROP_ON_OVERFLOW = false,
-          bool CHECK_TIMESTAMP_MONOTONICITY = true>
+          bool DROP_ON_OVERFLOW = false>
 class MMQImpl {
   static_assert(current::ss::IsEntrySubscriber<CONSUMER, MESSAGE>::value, "");
 
@@ -102,12 +101,9 @@ class MMQImpl {
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
   template <current::locks::MutexLockStatus MLS>
-  idxts_t DoPublish(const message_t& message, std::chrono::microseconds us) {
-    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
-    if (CHECK_TIMESTAMP_MONOTONICITY) {
-      if (!(timestamp > last_idx_ts_.us)) {
-        CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
-      }
+  idxts_t DoPublish(const message_t& message, std::chrono::microseconds timestamp) {
+    if (timestamp.count() >= 0 && !(timestamp > last_idx_ts_.us)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
     const std::pair<bool, size_t> index = CircularBufferAllocate(timestamp);
     if (index.first) {
@@ -120,12 +116,9 @@ class MMQImpl {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t DoPublish(message_t&& message, std::chrono::microseconds us) {
-    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
-    if (CHECK_TIMESTAMP_MONOTONICITY) {
-      if (!(timestamp > last_idx_ts_.us)) {
-        CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
-      }
+  idxts_t DoPublish(message_t&& message, std::chrono::microseconds timestamp) {
+    if (timestamp.count() >= 0 && !(timestamp > last_idx_ts_.us)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
     const std::pair<bool, size_t> index = CircularBufferAllocate(timestamp);
     if (index.first) {
@@ -212,7 +205,7 @@ class MMQImpl {
       // Regular case.
       const size_t index = head_;
       ++last_idx_ts_.index;
-      last_idx_ts_.us = timestamp;
+      last_idx_ts_.us = timestamp.count() >= 0 ? timestamp : current::time::Now();
       Increment(head_);
       circular_buffer_[index].status = Entry::BEING_IMPORTED;
       circular_buffer_[index].index_timestamp = last_idx_ts_;
@@ -244,7 +237,7 @@ class MMQImpl {
     }
     const size_t index = head_;
     ++last_idx_ts_.index;
-    last_idx_ts_.us = timestamp;
+    last_idx_ts_.us = timestamp.count() >= 0 ? timestamp : current::time::Now();
     Increment(head_);
     circular_buffer_[index].status = Entry::BEING_IMPORTED;
     circular_buffer_[index].index_timestamp = last_idx_ts_;
@@ -294,10 +287,9 @@ class MMQImpl {
 template <typename MESSAGE,
           typename CONSUMER,
           size_t DEFAULT_BUFFER_SIZE = 1024,
-          bool DROP_ON_OVERFLOW = false,
-          bool CHECK_TIMESTAMP_MONOTONICITY = true>
+          bool DROP_ON_OVERFLOW = false>
 using MMQ =
-    ss::EntryPublisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW, CHECK_TIMESTAMP_MONOTONICITY>,
+    ss::EntryPublisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>,
                        MESSAGE>;
 
 }  // namespace mmq
