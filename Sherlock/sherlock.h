@@ -133,7 +133,7 @@ class StreamImpl {
     explicit StreamPublisher(ScopeOwned<stream_data_t>& data) : data_(data, []() {}) {}
 
     template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
+    idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us) {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
@@ -146,7 +146,7 @@ class StreamImpl {
     }
 
     template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
+    idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us) {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
@@ -159,7 +159,7 @@ class StreamImpl {
     }
 
     template <current::locks::MutexLockStatus MLS>
-    void DoUpdateHead(const std::chrono::microseconds us = current::time::Now()) {
+    void DoUpdateHead(const std::chrono::microseconds us) {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
