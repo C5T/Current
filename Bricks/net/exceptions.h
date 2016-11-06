@@ -91,8 +91,9 @@ struct HTTPException : NetworkException {
 struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
 struct CannotServeStaticFilesOfUnknownMIMEType : HTTPException {
-  CannotServeStaticFilesOfUnknownMIMEType(const std::string& what) : HTTPException(what) {}
+  using HTTPException::HTTPException;
 };
+struct HTTPPayloadTooLarge : HTTPException {};
 
 // AttemptedToSendHTTPResponseMoreThanOnce is a user code exception; not really an HTTP one.
 struct AttemptedToSendHTTPResponseMoreThanOnce : Exception {};
