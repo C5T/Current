@@ -51,10 +51,10 @@ class SubscribableRemoteStream final {
 
   class RemoteStream final {
    public:
-    RemoteStream(const std::string& url, const std::string& top_level_name, const std::string& namespace_name)
+    RemoteStream(const std::string& url, const std::string& entry_name, const std::string& namespace_name)
         : url_(url),
           schema_(Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<entry_t>()).type_id,
-                  top_level_name,
+                  entry_name,
                   namespace_name) {}
 
     void CheckSchema() const {
@@ -249,9 +249,9 @@ class SubscribableRemoteStream final {
   }
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url,
-                                    const std::string& top_level_name,
+                                    const std::string& entry_name,
                                     const std::string& namespace_name)
-      : stream_(remote_stream_url, top_level_name, namespace_name) {
+      : stream_(remote_stream_url, entry_name, namespace_name) {
     stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
   }
 

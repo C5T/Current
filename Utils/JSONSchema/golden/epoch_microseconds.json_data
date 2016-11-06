@@ -1,0 +1,4 @@
+{"us":430124400000000,"comment":"date -d 'Aug 19 1983' +'%s000000'"}
+{"us":745743600000000,"comment":"date -d 'Aug 19 1993' +'%s000000'"}
+{"us":1376895600000000,"comment":"date -d 'Aug 19 2013' +'%s000000'"}
+{"comment":"expecting std::chrono::microseconds in this test"}

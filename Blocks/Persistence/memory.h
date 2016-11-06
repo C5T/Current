@@ -38,6 +38,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../SS/persister.h"
+#include "../SS/signature.h"
 
 #include "../../Bricks/sync/locks.h"
 #include "../../Bricks/sync/scope_owned.h"
@@ -57,11 +58,11 @@ class MemoryPersister {
     std::deque<entry_t> entries;
     std::chrono::microseconds head = std::chrono::microseconds(-1);
 
-    Container(std::mutex& mutex): mutex(mutex) {}
+    Container(std::mutex& mutex) : mutex(mutex) {}
   };
 
  public:
-  MemoryPersister(std::mutex& mutex) : container_(mutex) {}
+  MemoryPersister(std::mutex& mutex, const ss::StreamNamespaceName&) : container_(mutex) {}
 
   class IterableRange {
    public:

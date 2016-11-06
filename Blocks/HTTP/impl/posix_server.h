@@ -296,8 +296,8 @@ class HTTPServerPOSIX final {
         }
         if (handler) {
           // OK, here's the tricky part with error handling and exceptions in this multithreaded world.
-          // * On the one hand, connection should be std::move-d into the request,
-          //   since it might end up being served in another thread, via a message queue, etc..
+          // * On the one hand, the connection should be std::move-d into the request,
+          //   since it might end up being served in another thread, via a message queue, etc.
           //   Thus, the user code is responsible for closing the connection.
           //   Not to mention that the std::move-d away connection can easily outlive this scope.
           // * On the other hand, if an exception occurs in user code, we need to return a 500,
@@ -325,6 +325,8 @@ class HTTPServerPOSIX final {
           connection->SendHTTPResponse(
               current::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
         }
+      } catch (const current::net::HTTPPayloadTooLarge&) {
+        // The `HTTPPayloadTooLarge` situation, if emerged, is already handled with an "413 ENTITY TOO LARGE" response.
       } catch (const current::net::EmptySocketException&) {  // LCOV_EXCL_LINE
         // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
