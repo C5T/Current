@@ -149,9 +149,8 @@ class MemoryPersister {
     container_->head = timestamp;
   }
 
-  template <current::locks::MutexLockStatus MLS>
   bool Empty() const noexcept {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex);
+    std::lock_guard<std::mutex> lock(container_->mutex);
     return container_->entries.empty();
   }
 

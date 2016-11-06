@@ -392,7 +392,6 @@ class FilePersister {
     file_persister_impl_->end.store(iterator);
   }
 
-  template <current::locks::MutexLockStatus>
   bool Empty() const noexcept { return !file_persister_impl_->end.load().next_index; }
   template <current::locks::MutexLockStatus>
   uint64_t Size() const noexcept { return file_persister_impl_->end.load().next_index; }
