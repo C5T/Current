@@ -50,6 +50,15 @@ struct NoEntriesPublishedYet : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
+struct InvalidStreamSignature : PersistenceException {
+  explicit InvalidStreamSignature(const std::string& expected, const std::string& actual)
+      : PersistenceException("Invalid signature,\nexpected:\n`" + expected + "`\nactual:\n`" + actual + "`.") {}
+};
+
+struct InvalidSignatureLocation : PersistenceException {
+  using PersistenceException::PersistenceException;
+};
+
 struct PersistenceMemoryBlockNoLongerAvailable : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };

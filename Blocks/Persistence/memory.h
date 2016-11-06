@@ -38,6 +38,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../SS/persister.h"
+#include "../SS/signature.h"
 
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
@@ -58,7 +59,7 @@ class MemoryPersister {
   };
 
  public:
-  MemoryPersister() : container_() {}
+  MemoryPersister(const ss::StreamNamespaceName&) : container_() {}
 
   class IterableRange {
    public:
