@@ -46,6 +46,7 @@ SOFTWARE.
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/SS/signature.h"
 
+#include "../Bricks/sync/locks.h"
 #include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
@@ -131,7 +132,10 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.Publish(entry, us);
+        // Note: It's a different mutex that is locked, but the persistence layer is owned by this Sherlock stream,
+        //       or the user assumes full responsibility if they use `InternalExposePersister()`.
+        const auto result =
+            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -144,7 +148,10 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.Publish(std::move(entry), us);
+        // Note: It's a different mutex that is locked, but the persistence layer is owned by this Sherlock stream,
+        //       or the user assumes full responsibility if they use `InternalExposePersister()`.
+        const auto result =
+            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -157,7 +164,9 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        data.persistence.UpdateHead(us);
+        // Note: It's a different mutex that is locked, but the persistence layer is owned by this Sherlock stream,
+        //       or the user assumes full responsibility if they use `InternalExposePersister()`.
+        data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
       } catch (const current::sync::InDestructingModeException&) {
         CURRENT_THROW(StreamInGracefulShutdownException());

@@ -40,8 +40,9 @@ SOFTWARE.
 #include "../SS/persister.h"
 #include "../SS/signature.h"
 
-#include "../../Bricks/time/chrono.h"
+#include "../../Bricks/sync/locks.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/atomic_that_works.h"
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Serialization/json.h"
@@ -133,7 +134,7 @@ class FilePersister {
     std::fstream head_rewriter;
 
     // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
-    std::mutex mutex;
+    std::mutex mutex;  // Guards `offset`, `head_offset` and `timestamp`.
     std::vector<std::streampos> offset;
     std::streamoff head_offset;
     std::vector<std::chrono::microseconds> timestamp;
@@ -367,29 +368,34 @@ class FilePersister {
     const std::streampos begin_offset_;
   };
 
-  template <typename E>
+  template <current::locks::MutexLockStatus MLS, typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex);
+
     end_t iterator = file_persister_impl_->end.load();
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
+
     iterator.last_entry_us = iterator.head = timestamp;
     const auto current = idxts_t(iterator.next_index, iterator.last_entry_us);
-    {
-      std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.next_index);
-      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.next_index);
-      file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
-      file_persister_impl_->timestamp.push_back(timestamp);
-    }
+    CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.next_index);
+    CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.next_index);
+    file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
+    file_persister_impl_->timestamp.push_back(timestamp);
+
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.next_index;
     file_persister_impl_->head_offset = 0;
     file_persister_impl_->end.store(iterator);
+
     return current;
   }
 
+  template <current::locks::MutexLockStatus MLS>
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex);
+
     end_t iterator = file_persister_impl_->end.load();
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));

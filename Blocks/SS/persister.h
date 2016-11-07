@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "idx_ts.h"
 
+#include "../../Bricks/sync/locks.h"
 #include "../../Bricks/time/chrono.h"
 
 namespace current {
@@ -46,13 +47,18 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPersister() {}
 
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoPublish(e, us);
+    return IMPL::template DoPublish<MLS>(e, us);
   }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoPublish(std::move(e), us);
+    return IMPL::template DoPublish<MLS>(std::move(e), us);
   }
-  void UpdateHead(std::chrono::microseconds us = current::time::Now()) { return IMPL::DoUpdateHead(us); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  void UpdateHead(std::chrono::microseconds us = current::time::Now()) {
+    return IMPL::template DoUpdateHead<MLS>(us);
+  }
 
   // template <typename... ARGS>
   // IndexAndTimestamp Emplace(ARGS&&... args) {
