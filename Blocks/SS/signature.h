@@ -44,9 +44,9 @@ CURRENT_STRUCT(StreamSignature, StreamNamespaceName) {
   CURRENT_DEFAULT_CONSTRUCTOR(StreamSignature) {}
   CURRENT_CONSTRUCTOR(StreamSignature)(
       const std::string& namespace_name, const std::string& entry_name, const reflection::SchemaInfo& schema)
-    : SUPER(namespace_name, entry_name), schema(schema) {}
+      : SUPER(namespace_name, entry_name), schema(schema) {}
   CURRENT_CONSTRUCTOR(StreamSignature)(const StreamNamespaceName& namespace_name, const reflection::SchemaInfo& schema)
-    : SUPER(namespace_name), schema(std::move(schema)) {}
+      : SUPER(namespace_name), schema(std::move(schema)) {}
 };
 
 }  // namespace ss

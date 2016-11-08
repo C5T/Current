@@ -134,7 +134,7 @@ class FilePersister {
     std::fstream head_rewriter;
 
     // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
-    std::mutex& mutex;  // Guards `offset`, `head_offset` and `timestamp`.
+    std::mutex& mutex_ref;  // Guards `offset`, `head_offset` and `timestamp`.
     std::vector<std::streampos> offset;
     std::streamoff head_offset;
     std::vector<std::chrono::microseconds> timestamp;
@@ -150,13 +150,13 @@ class FilePersister {
     FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
-    explicit FilePersisterImpl(std::mutex& mutex,
+    explicit FilePersisterImpl(std::mutex& mutex_ref,
                                const ss::StreamNamespaceName& namespace_name,
                                const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           head_rewriter(filename, std::ofstream::in | std::ofstream::out),
-          mutex(mutex),
+          mutex_ref(mutex_ref),
           head_offset(0) {
       ValidateFileAndInitializeHead(namespace_name);
       if (appender.bad() || head_rewriter.bad()) {
@@ -243,8 +243,10 @@ class FilePersister {
   FilePersister& operator=(const FilePersister&) = delete;
   FilePersister& operator=(FilePersister&&) = delete;
 
-  explicit FilePersister(std::mutex& mutex, const ss::StreamNamespaceName& namespace_name, const std::string& filename)
-      : file_persister_impl_(mutex, namespace_name, filename) {}
+  explicit FilePersister(std::mutex& mutex_ref,
+                         const ss::StreamNamespaceName& namespace_name,
+                         const std::string& filename)
+      : file_persister_impl_(mutex_ref, namespace_name, filename) {}
 
   class IterableRange {
    public:
@@ -373,7 +375,7 @@ class FilePersister {
 
   template <current::locks::MutexLockStatus MLS, typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
 
     end_t iterator = file_persister_impl_->end.load();
     if (!(timestamp > iterator.head)) {
@@ -397,7 +399,7 @@ class FilePersister {
 
   template <current::locks::MutexLockStatus MLS>
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
-    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
 
     end_t iterator = file_persister_impl_->end.load();
     if (!(timestamp > iterator.head)) {
@@ -450,7 +452,7 @@ class FilePersister {
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
-    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
     const auto begin_it =
         std::lower_bound(file_persister_impl_->timestamp.begin(),
                          file_persister_impl_->timestamp.end(),
@@ -487,7 +489,7 @@ class FilePersister {
     if (end_index < begin_index) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
     CURRENT_ASSERT(file_persister_impl_->offset.size() >=
                    current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
     return IterableRange(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);

@@ -67,9 +67,13 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
 
   bool Empty() const noexcept { return IMPL::Empty(); }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  uint64_t Size() const noexcept { return IMPL::template Size<MLS>(); }
+  uint64_t Size() const noexcept {
+    return IMPL::template Size<MLS>();
+  }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  std::chrono::microseconds CurrentHead() const { return IMPL::template CurrentHead<MLS>(); }
+  std::chrono::microseconds CurrentHead() const {
+    return IMPL::template CurrentHead<MLS>();
+  }
 
   idxts_t LastPublishedIndexAndTimestamp() const { return IMPL::LastPublishedIndexAndTimestamp(); }
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
