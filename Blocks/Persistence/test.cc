@@ -62,10 +62,10 @@ TEST(PersistenceLayer, Memory) {
 
   using IMPL = current::persistence::Memory<std::string>;
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
 
   {
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name);
     EXPECT_EQ(0u, impl.Size());
 
@@ -115,6 +115,7 @@ TEST(PersistenceLayer, Memory) {
   {
     // Obviously, no state is shared for `Memory` implementation.
     // The data starts from ground zero.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name);
     EXPECT_EQ(0u, impl.Size());
   }
@@ -139,12 +140,12 @@ TEST(PersistenceLayer, MemoryExceptions) {
   static_assert(!current::ss::IsPersister<int>::value, "");
   static_assert(!current::ss::IsEntryPersister<IMPL, int>::value, "");
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
 
   {
     current::time::ResetToZero();
     // Time goes back.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name);
     impl.Publish("2", std::chrono::microseconds(2));
     current::time::ResetToZero();
@@ -161,6 +162,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
     current::time::ResetToZero();
     // Time staying the same is as bad as time going back.
     current::time::SetNow(std::chrono::microseconds(3));
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name);
     impl.Publish("2");
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
@@ -172,12 +174,14 @@ TEST(PersistenceLayer, MemoryExceptions) {
   }
 
   {
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name);
     ASSERT_THROW(impl.LastPublishedIndexAndTimestamp(), current::persistence::NoEntriesPublishedYet);
   }
 
   {
     current::time::ResetToZero();
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name);
     impl.Publish("1", std::chrono::microseconds(1));
     impl.Publish("2", std::chrono::microseconds(2));
@@ -254,12 +258,12 @@ TEST(PersistenceLayer, File) {
 
   using IMPL = current::persistence::File<StorableString>;
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     EXPECT_EQ(0u, impl.Size());
     current::time::SetNow(std::chrono::microseconds(100));
@@ -317,6 +321,7 @@ TEST(PersistenceLayer, File) {
 
   {
     // Confirm the data has been saved and can be replayed.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     EXPECT_EQ(3u, impl.Size());
 
@@ -350,6 +355,7 @@ TEST(PersistenceLayer, File) {
 
   {
     // Confirm the added, fourth, entry, has been appended properly with respect to replaying the file.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     EXPECT_EQ(4u, impl.Size());
 
@@ -367,13 +373,13 @@ TEST(PersistenceLayer, FileDirectives) {
 
   using IMPL = current::persistence::File<StorableString>;
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
     // An empty file - no entries and head equals -1us.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     EXPECT_EQ(0u, impl.Size());
     EXPECT_EQ(-1, impl.CurrentHead().count());
@@ -396,6 +402,7 @@ TEST(PersistenceLayer, FileDirectives) {
                                                "#unknown_directive\t\tblah\n",
                                            persistence_file_name.c_str());
     // Skip unknown directives.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     EXPECT_EQ(1, impl.CurrentHead().count());
     // Append a new head directive, because after the last one there was another directive.
@@ -425,6 +432,7 @@ TEST(PersistenceLayer, FileDirectives) {
         "#head\t \t00000000000000000600\n",
         persistence_file_name.c_str());
     // Several head directives with different key-value delimeters.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     EXPECT_EQ(3u, impl.Size());
     EXPECT_EQ(600, impl.CurrentHead().count());
@@ -480,7 +488,6 @@ TEST(PersistenceLayer, FileExceptions) {
   static_assert(!current::ss::IsPublisher<int>::value, "");
   static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
@@ -488,6 +495,7 @@ TEST(PersistenceLayer, FileExceptions) {
     current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     // Time goes back.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     current::time::SetNow(std::chrono::microseconds(2));
     impl.Publish("2");
@@ -506,6 +514,7 @@ TEST(PersistenceLayer, FileExceptions) {
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     // Time staying the same is as bad as time going back.
     current::time::SetNow(std::chrono::microseconds(3));
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     impl.Publish("2");
     ASSERT_THROW(impl.Publish("1"), current::ss::InconsistentTimestampException);
@@ -519,6 +528,7 @@ TEST(PersistenceLayer, FileExceptions) {
   {
     current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     ASSERT_THROW(impl.LastPublishedIndexAndTimestamp(), current::persistence::NoEntriesPublishedYet);
   }
@@ -526,6 +536,7 @@ TEST(PersistenceLayer, FileExceptions) {
   {
     current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     current::time::SetNow(std::chrono::microseconds(1));
     impl.Publish("1");
@@ -544,7 +555,6 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
 
   using IMPL = current::persistence::File<std::string>;
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   current::reflection::StructSchema invalid_schema;
@@ -559,6 +569,7 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
     const auto another_namespace = current::ss::StreamNamespaceName("namespace_invalid", "top_level_invalid");
     current::FileSystem::WriteStringToFile(signature + "{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n",
                                            persistence_file_name.c_str());
+    std::mutex mutex;
     ASSERT_NO_THROW(IMPL(mutex, namespace_name, persistence_file_name));
     ASSERT_THROW(IMPL(mutex, another_namespace, persistence_file_name), current::persistence::InvalidStreamSignature);
     ASSERT_THROW(INVALID_IMPL(mutex, namespace_name, persistence_file_name),
@@ -570,6 +581,7 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     current::FileSystem::WriteStringToFile("{\"index\":0,\"us\":1}\t{\"s\":\"foo\"}\n" + signature,
                                            persistence_file_name.c_str());
+    std::mutex mutex;
     ASSERT_THROW(IMPL(mutex, namespace_name, persistence_file_name), current::persistence::InvalidSignatureLocation);
     current::FileSystem::WriteStringToFile("#any_other_directive\n" + signature, persistence_file_name.c_str());
     ASSERT_THROW(IMPL(mutex, namespace_name, persistence_file_name), current::persistence::InvalidSignatureLocation);
@@ -652,17 +664,18 @@ TEST(PersistenceLayer, MemoryIteratorPerformanceTest) {
 TEST(PersistenceLayer, FileIteratorPerformanceTest) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<StorableString>;
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   {
     // First, run the proper test.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     IteratorPerformanceTest(impl);
   }
   {
     // Then, test file resume logic as well.
+    std::mutex mutex;
     IMPL impl(mutex, namespace_name, persistence_file_name);
     IteratorPerformanceTest(impl, false);
   }
@@ -737,7 +750,6 @@ TEST(PersistenceLayer, Exceptions) {
   using current::ss::InconsistentIndexException;
   using current::persistence::MalformedEntryException;
 
-  std::mutex mutex;
   const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
@@ -745,6 +757,7 @@ TEST(PersistenceLayer, Exceptions) {
   {
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     current::FileSystem::WriteStringToFile("Malformed entry", persistence_file_name.c_str());
+    std::mutex mutex;
     EXPECT_THROW(IMPL impl(mutex, namespace_name, persistence_file_name), MalformedEntryException);
   }
   // Inconsistent index during replay.
@@ -754,6 +767,7 @@ TEST(PersistenceLayer, Exceptions) {
         "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
         "{\"index\":0,\"us\":200}\t{\"s\":\"bar\"}\n",
         persistence_file_name.c_str());
+    std::mutex mutex;
     EXPECT_THROW(IMPL impl(mutex, namespace_name, persistence_file_name), InconsistentIndexException);
   }
   // Inconsistent timestamp during replay.
@@ -763,6 +777,7 @@ TEST(PersistenceLayer, Exceptions) {
         "{\"index\":0,\"us\":150}\t{\"s\":\"foo\"}\n"
         "{\"index\":1,\"us\":150}\t{\"s\":\"bar\"}\n",
         persistence_file_name.c_str());
+    std::mutex mutex;
     EXPECT_THROW(IMPL impl(mutex, namespace_name, persistence_file_name), InconsistentTimestampException);
   }
 }
