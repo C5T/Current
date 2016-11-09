@@ -581,7 +581,7 @@ class StreamImpl {
     }
   }
 
-  persistence_layer_t& InternalExposePersister() {
+  persistence_layer_t& Persister() {
     return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
   }
 

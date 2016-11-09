@@ -1228,7 +1228,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       // implemented explicitly, side-by-side with and without type evolution. -- D.K.
       //
       // TODO(dkorolev): These `Internal*()` should go away.
-      const auto& persister = pre_evolution_storage.InternalExposeStream().InternalExposePersister();
+      const auto& persister = pre_evolution_storage.InternalExposeStream().Persister();
       ASSERT_EQ(persister.Size(), 2u) << "Must have exactly two transactions persisted.";
 
       for (const auto& e : persister.Iterate()) {
