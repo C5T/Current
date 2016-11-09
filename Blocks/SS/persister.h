@@ -65,7 +65,8 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   //   return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   // }
 
-  bool Empty() const noexcept { return IMPL::Empty(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  bool Empty() const noexcept { return IMPL::template Empty<MLS>(); }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   uint64_t Size() const noexcept {
     return IMPL::template Size<MLS>();
