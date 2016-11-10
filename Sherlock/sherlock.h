@@ -46,6 +46,7 @@ SOFTWARE.
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/SS/signature.h"
 
+#include "../Bricks/sync/locks.h"
 #include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
@@ -131,7 +132,8 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.Publish(entry, us);
+        const auto result =
+            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -144,7 +146,8 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.Publish(std::move(entry), us);
+        const auto result =
+            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -157,7 +160,7 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        data.persistence.UpdateHead(us);
+        data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
       } catch (const current::sync::InDestructingModeException&) {
         CURRENT_THROW(StreamInGracefulShutdownException());
@@ -388,11 +391,15 @@ class StreamImpl {
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(lock,
-                                      [this, &bare_data, &index, &begin_idx, &head]() {
-                                        return terminate_signal_ || bare_data.persistence.Size() > index ||
-                                               (index > begin_idx && bare_data.persistence.CurrentHead() > head);
-                                      });
+          terminate_signal_.WaitUntil(
+              lock,
+              [this, &bare_data, &index, &begin_idx, &head]() {
+                return terminate_signal_ ||
+                       bare_data.persistence.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                       (index > begin_idx &&
+                        bare_data.persistence.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
+                            head);
+              });
         }
       }
     }
@@ -574,7 +581,7 @@ class StreamImpl {
     }
   }
 
-  persistence_layer_t& InternalExposePersister() {
+  persistence_layer_t& Persister() {
     return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
   }
 

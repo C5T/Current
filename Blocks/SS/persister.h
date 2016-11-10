@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "idx_ts.h"
 
+#include "../../Bricks/sync/locks.h"
 #include "../../Bricks/time/chrono.h"
 
 namespace current {
@@ -46,24 +47,36 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPersister() {}
 
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoPublish(e, us);
+    return IMPL::template DoPublish<MLS>(e, us);
   }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoPublish(std::move(e), us);
+    return IMPL::template DoPublish<MLS>(std::move(e), us);
   }
-  void UpdateHead(std::chrono::microseconds us = current::time::Now()) { return IMPL::DoUpdateHead(us); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  void UpdateHead(std::chrono::microseconds us = current::time::Now()) {
+    return IMPL::template DoUpdateHead<MLS>(us);
+  }
 
   // template <typename... ARGS>
   // IndexAndTimestamp Emplace(ARGS&&... args) {
   //   return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   // }
 
-  bool Empty() const noexcept { return IMPL::Empty(); }
-  uint64_t Size() const noexcept { return IMPL::Size(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  bool Empty() const noexcept { return IMPL::template Empty<MLS>(); }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  uint64_t Size() const noexcept {
+    return IMPL::template Size<MLS>();
+  }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  std::chrono::microseconds CurrentHead() const {
+    return IMPL::template CurrentHead<MLS>();
+  }
 
   idxts_t LastPublishedIndexAndTimestamp() const { return IMPL::LastPublishedIndexAndTimestamp(); }
-  std::chrono::microseconds CurrentHead() const { return IMPL::CurrentHead(); }
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     return IMPL::IndexRangeByTimestampRange(from, till);

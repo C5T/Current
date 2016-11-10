@@ -368,8 +368,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>(
-      current::ss::StreamNamespaceName("Sherlock", "Transaction"));
+  auto exposed_stream =
+      current::sherlock::Stream<RecordWithTimestamp>(current::ss::StreamNamespaceName("Sherlock", "Transaction"));
   // Expose stream via HTTP.
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
   const auto scope =
@@ -922,7 +922,7 @@ TEST(Sherlock, ParseArbitrarilySplitChunks) {
 
   {
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    while (replicated_stream.InternalExposePersister().Size() < 3u) {
+    while (replicated_stream.Persister().Size() < 3u) {
       std::this_thread::yield();
     }
   }

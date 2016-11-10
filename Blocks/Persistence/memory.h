@@ -40,8 +40,9 @@ SOFTWARE.
 #include "../SS/persister.h"
 #include "../SS/signature.h"
 
-#include "../../Bricks/time/chrono.h"
+#include "../../Bricks/sync/locks.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/time/chrono.h"
 
 namespace current {
 namespace persistence {
@@ -53,13 +54,15 @@ class MemoryPersister {
  private:
   struct Container {
     using entry_t = std::pair<std::chrono::microseconds, ENTRY>;
-    std::mutex mutex;
+    std::mutex& mutex_ref;  // Guards `entries` and `head`.
     std::deque<entry_t> entries;
     std::chrono::microseconds head = std::chrono::microseconds(-1);
+
+    Container(std::mutex& mutex_ref) : mutex_ref(mutex_ref) {}
   };
 
  public:
-  MemoryPersister(const ss::StreamNamespaceName&) : container_() {}
+  MemoryPersister(std::mutex& mutex_ref, const ss::StreamNamespaceName&) : container_(mutex_ref) {}
 
   class IterableRange {
    public:
@@ -84,7 +87,7 @@ class MemoryPersister {
         if (!valid_) {
           CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
         }
-        std::lock_guard<std::mutex> lock(container_->mutex);
+        std::lock_guard<std::mutex> lock(container_->mutex_ref);
         return Entry(i_, container_->entries[i_]);
       }
       void operator++() {
@@ -124,9 +127,9 @@ class MemoryPersister {
     const uint64_t end_;
   };
 
-  template <typename E>
+  template <current::locks::MutexLockStatus MLS, typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
     const auto head = container_->head;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
@@ -137,8 +140,9 @@ class MemoryPersister {
     return idxts_t(index, timestamp);
   }
 
+  template <current::locks::MutexLockStatus MLS>
   void DoUpdateHead(const std::chrono::microseconds timestamp) {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
     const auto head = container_->head;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
@@ -146,18 +150,20 @@ class MemoryPersister {
     container_->head = timestamp;
   }
 
+  template <current::locks::MutexLockStatus MLS>
   bool Empty() const noexcept {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
     return container_->entries.empty();
   }
 
+  template <current::locks::MutexLockStatus MLS>
   uint64_t Size() const noexcept {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
     return static_cast<uint64_t>(container_->entries.size());
   }
 
   idxts_t LastPublishedIndexAndTimestamp() const {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    std::lock_guard<std::mutex> lock(container_->mutex_ref);
     if (!container_->entries.empty()) {
       return idxts_t(container_->entries.size() - 1, container_->entries.back().first);
     } else {
@@ -166,7 +172,7 @@ class MemoryPersister {
   }
 
   head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    std::lock_guard<std::mutex> lock(container_->mutex_ref);
     if (!container_->entries.empty()) {
       return head_optidxts_t(container_->head, container_->entries.size() - 1, container_->entries.back().first);
     } else {
@@ -174,15 +180,16 @@ class MemoryPersister {
     }
   }
 
+  template <current::locks::MutexLockStatus MLS>
   std::chrono::microseconds CurrentHead() const noexcept {
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
     return container_->head;
   }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
-    std::lock_guard<std::mutex> lock(container_->mutex);
+    std::lock_guard<std::mutex> lock(container_->mutex_ref);
     const auto begin_it =
         std::lower_bound(container_->entries.begin(),
                          container_->entries.end(),
@@ -206,7 +213,7 @@ class MemoryPersister {
 
   IterableRange Iterate(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
-      std::lock_guard<std::mutex> lock(container_->mutex);
+      std::lock_guard<std::mutex> lock(container_->mutex_ref);
       return static_cast<uint64_t>(container_->entries.size());
     }();
 
