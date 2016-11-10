@@ -131,7 +131,7 @@ inline void PerformReplayBenchmark(const std::string& file,
     stream_t stream(file);
     PublisherAcquirer acquirer;
     stream.MovePublisherTo(acquirer);
-    const uint64_t stream_size = stream.InternalExposePersister().Size();
+    const uint64_t stream_size = stream.Persister().Size();
     const auto stream_initialized = current::time::Now();
     std::vector<subscriber_t> subscribers(subscribers_count);
     std::vector<current::sherlock::SubscriberScope> sub_scopes;
@@ -162,7 +162,7 @@ inline void PerformReplayBenchmark(const std::string& file,
     // Bare persister iteration.
     {
       std::vector<std::thread> threads(subscribers_count);
-      const auto& persister = stream.InternalExposePersister();
+      const auto& persister = stream.Persister();
       const auto begin = current::time::Now();
       for (auto& t : threads) {
         t = std::thread([&]() {

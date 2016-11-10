@@ -97,7 +97,7 @@ double RunIteration() {
   for (uint32_t x = 1; x <= FLAGS_m; ++x) {
     streams[0]->Publish(Event(x));
   }
-  while (streams.back()->InternalExposePersister().Size() != FLAGS_m) {
+  while (streams.back()->Persister().Size() != FLAGS_m) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 

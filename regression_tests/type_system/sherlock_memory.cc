@@ -47,7 +47,7 @@ TEST(TypeTest, Sherlock) {
 
 #include "include/sherlock.cc"
 
-  EXPECT_EQ(entries_count, stream.InternalExposePersister().Size());
+  EXPECT_EQ(entries_count, stream.Persister().Size());
 }
 
 #endif  // CURRENT_COVERAGE_REPORT_MODE

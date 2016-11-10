@@ -84,7 +84,7 @@ struct EventStore final {
           readonly_nonstorage_event_log.Publish(e, idx_ts.us);
         }),
         readonly_stream_follower_scope(full_event_log.template Subscribe<EXTRA_TYPE>(readonly_stream_follower)),
-        readonly_nonstorage_event_log_persister(readonly_nonstorage_event_log.InternalExposePersister()),
+        readonly_nonstorage_event_log_persister(readonly_nonstorage_event_log.Persister()),
         http_routes_scope(HTTP(port).Register(url_prefix + "/up", [](Request r) { r("UP!\n"); }) +
                           HTTP(port).Register(url_prefix + "/event",
                                               URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
