@@ -325,7 +325,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       fields.karl.Add(self_info);
     }).Wait();
     if (state_update_thread_.joinable()) {
-      update_thread_condition_variable_.notify_one();
+      {
+        std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
+        update_thread_condition_variable_.notify_one();
+      }
       state_update_thread_.join();
     } else {
       // TODO(dkorolev), #FIXME_DIMA: This should not happen.
@@ -394,10 +397,11 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         const auto wait_interval =
             parameters_.service_timeout_interval - (current::time::Now() - most_recent_keepalive_time);
         if (wait_interval.count() > 0) {
-          update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
+          update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1),
+                                                     [this]() { return destructing_.load(); });
         }
       } else {
-        update_thread_condition_variable_.wait(lock);
+        update_thread_condition_variable_.wait(lock, [this]() { return destructing_.load(); });
       }
 #endif
     }
