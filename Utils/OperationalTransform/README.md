@@ -2,7 +2,7 @@
 
 This utility parses the edit history of a pad encoded as an Operational Transform JSON.
 
-To test it end-to-end, I've created a new CoderPad.io snippet.
+To test it end-to-end, I've created a new [CoderPad.io](https://coderpad.io/) snippet.
 
 * The pad can be accessed via [this link](https://coderpad.io/NPNNAZ2G).
 * The `golden/data.ot` file has been crawled form [this URL](https://coderpad.firebaseio.com/NPNNAZ2G/history.json).
