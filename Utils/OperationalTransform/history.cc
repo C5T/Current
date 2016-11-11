@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
       if (first_seen_timestamp == std::chrono::microseconds(0)) {
         first_seen_timestamp = timestamp;
         std::cout << "### Pad\nStarted " << current::FormatDateTime<current::time::TimeRepresentation::Local>(timestamp)
-                  << " local time, " << current::FormatDateTime<current::time::TimeRepresentation::Local>(timestamp)
+                  << " local time, " << current::FormatDateTime<current::time::TimeRepresentation::UTC>(timestamp)
                   << " UTC." << std::endl;
       }
       if (at.count()) {

@@ -20,7 +20,7 @@ cd Current/Utils/OperationalTransform
 NDEBUG=1 make
 ```
 
-## At certain cutoff
+## Example: at certain cutoff
 
 Synopsis:
 ```
@@ -28,7 +28,7 @@ Synopsis:
 ```
 
 ### Pad
-Started 2016/11/10 17:58:27 local time, 2016/11/10 17:58:27 UTC.
+Started 2016/11/10 17:58:27 local time, 2016/11/11 01:58:27 UTC.
 ### 15s into the code
 ```
 def say_hello():
@@ -37,7 +37,7 @@ def say_hello():
 say_hello()
 ```
 
-# At certain intervals
+## Example: at certain intervals
 
 Synopsis:
 ```
@@ -45,7 +45,7 @@ Synopsis:
 ```
 
 ### Pad
-Started 2016/11/10 17:58:27 local time, 2016/11/10 17:58:27 UTC.
+Started 2016/11/10 17:58:27 local time, 2016/11/11 01:58:27 UTC.
 ### 0s into the code
 ```
 def say_hello():

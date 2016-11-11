@@ -81,23 +81,23 @@ typename std::result_of<decltype(&PROCESSOR::Final)(PROCESSOR*, const std::deque
     }
 
     const uint64_t timestamp = timestamp_value.GetUint64();
-    auto caret_iterator = rope.begin();
+    int caret = 0;
     for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(array_value.Size()); ++i) {
       const auto& element = array_value[i];
       if (element.IsString()) {
         const auto s = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(
             element.GetString(), element.GetString() + element.GetStringLength());
-        rope.insert(caret_iterator, s.begin(), s.end());
-        caret_iterator += s.length();
+        rope.insert(rope.begin() + caret, s.begin(), s.end());
+        caret += s.length();
       } else {
         if (!element.IsNumber()) {
           CURRENT_THROW(OTParseException("OT element is not a string or number."));
         }
         const int v = element.GetInt();
         if (v > 0) {
-          caret_iterator += v;
+          caret += v;
         } else {
-          rope.erase(caret_iterator, caret_iterator + (-v));
+          rope.erase(rope.begin() + caret, rope.begin() + caret + (-v));
         }
       }
     }
