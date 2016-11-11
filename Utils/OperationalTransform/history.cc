@@ -52,9 +52,13 @@ int main(int argc, char** argv) {
       if (at.count()) {
         // `--at_m` is set, dump the contents at the timestamp of this number of minutes into coding.
         if ((timestamp - first_seen_timestamp) >= at) {
+          std::string contents = current::utils::ot::AsUTF8String(rope);
+          if (contents.empty() || contents.back() != '\n') {
+            contents += '\n';
+          }
           std::cout << "### " << current::strings::TimeIntervalAsHumanReadableString(timestamp - first_seen_timestamp)
                     << " into the code\n```\n";
-          std::cout << current::utils::ot::AsUTF8String(rope);
+          std::cout << contents;
           std::cout << "```" << std::endl;
           done_with_output = true;
           return false;
@@ -65,9 +69,13 @@ int main(int argc, char** argv) {
         // `--at_m` is not set, dump the contents periodically.
         if (timestamp - marker >= interval) {
           marker = timestamp;
+          std::string contents = current::utils::ot::AsUTF8String(rope);
+          if (contents.empty() || contents.back() != '\n') {
+            contents += '\n';
+          }
           std::cout << "### " << current::strings::TimeIntervalAsHumanReadableString(timestamp - first_seen_timestamp)
                     << " into the code\n```\n";
-          std::cout << current::utils::ot::AsUTF8String(rope);
+          std::cout << contents;
           std::cout << "```" << std::endl;
         }
         return true;
@@ -75,10 +83,14 @@ int main(int argc, char** argv) {
     }
     void Final(const std::deque<wchar_t>& rope) const {
       if (!done_with_output) {
+        std::string contents = current::utils::ot::AsUTF8String(rope);
+        if (contents.empty() || contents.back() != '\n') {
+          contents += '\n';
+        }
         std::cout << "### Result after the total of "
                   << current::strings::TimeIntervalAsHumanReadableString(last_seen_timestamp - first_seen_timestamp)
                   << " of coding\n```\n";
-        std::cout << current::utils::ot::AsUTF8String(rope);
+        std::cout << contents;
         std::cout << "```" << std::endl;
       }
     }
