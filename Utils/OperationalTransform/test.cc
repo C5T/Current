@@ -27,8 +27,18 @@ SOFTWARE.
 #include "../../Bricks/file/file.h"
 #include "../../3rdparty/gtest/gtest-main.h"
 
+#if defined(CURRENT_APPLE) || !defined(__clang__)  // `libstdc++` doesn't have `#include <codecvt>` yet.
+
 TEST(OperationalTransform, Golden) {
   EXPECT_EQ(current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath("golden", "data.txt")),
             current::utils::ot::OT(
                 current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath("golden", "data.ot"))));
 }
+
+#else
+
+TEST(OperationalTransform, DISABLED_GoldenTestDueToNoHeaderInLibStdCPlusPlus) {
+  // Will print a yellow "You have 1 disabled test." to the console. That's all we need.
+}
+
+#endif  // defined(CURRENT_APPLE) || !defined(__clang__)

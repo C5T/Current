@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef UTILS_OPERATIONAL_TRANSFORM_H
 #define UTILS_OPERATIONAL_TRANSFORM_H
 
+#if defined(CURRENT_APPLE) || !defined(__clang__)  // `libstdc++` doesn't have `#include <codecvt>` yet.
+
 #include "../../port.h"
 
 #include "../../TypeSystem/Serialization/json.h"
@@ -123,5 +125,7 @@ inline std::string OT(const std::string& json) {
 }  // namespace current::utils::ot
 }  // namespace current::utils
 }  // namespace current
+
+#endif  // defined(CURRENT_APPLE) || !defined(__clang__)
 
 #endif  // UTILS_OPERATIONAL_TRANSFORM_H

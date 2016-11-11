@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#if defined(CURRENT_APPLE) || !defined(__clang__)  // `libstdc++` doesn't have `#include <codecvt>` yet.
+
 #include "ot.h"
 
 #include "../../Bricks/dflags/dflags.h"
@@ -40,3 +42,14 @@ int main(int argc, char** argv) {
     current::FileSystem::WriteStringToFile(utf8_output, FLAGS_output.c_str());
   }
 }
+
+#else
+
+#include <iostream>
+
+int main() {
+  std::cerr << "Requires `g++` or Mac OS." << std::endl;
+  return -1;
+}
+
+#endif  // defined(CURRENT_APPLE) || !defined(__clang__)
