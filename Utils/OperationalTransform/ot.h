@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef UTILS_OPERATIONAL_TRANSFORM_H
-#define UTILS_OPERATIONAL_TRANSFORM_H
-
-#if defined(CURRENT_APPLE) || !defined(__clang__)  // `libstdc++` doesn't have `#include <codecvt>` yet.
+#ifndef UTILS_OPERATIONAL_TRANSFORMATION_H
+#define UTILS_OPERATIONAL_TRANSFORMATION_H
 
 #include "../../port.h"
+
+#ifdef HAS_CODECVT_HEADER
 
 #include "../../TypeSystem/Serialization/json.h"
 
@@ -126,6 +126,6 @@ inline std::string OT(const std::string& json) {
 }  // namespace current::utils
 }  // namespace current
 
-#endif  // defined(CURRENT_APPLE) || !defined(__clang__)
+#endif  // HAS_CODECVT_HEADER
 
-#endif  // UTILS_OPERATIONAL_TRANSFORM_H
+#endif  // UTILS_OPERATIONAL_TRANSFORMATION_H

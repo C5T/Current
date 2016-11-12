@@ -231,6 +231,12 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 #define CURRENT_ASSERT(expr) ((expr) ? static_cast<void>(0) : CURRENT_ASSERTION_FAILED(#expr, __FILE__, __LINE__))
 #endif
 
+// The pain of the `<codecvt>` header compatibility. Although standard in C++11, GCC on Linux only has it in >= 5.1.
+
+#if defined(CURRENT_APPLE) || defined(CURRENT_WINDOWS) || defined(__clang__) || !(defined(__GNUC__)) || (__GNUC__ > 5) || (__GNUC__ == 5 && __GNUC_MINOR__ >= 1)
+#define HAS_CODECVT_HEADER
+#endif
+
 // The `FEWER_COMPILE_TIME_CHECKS` macro, when set, moves more checks from compile time to run time.
 // Pro: Faster and less RAM-demanding compilation. Con: Some type errors may go unnoticed.
 // TODO(dkorolev)+TODO(mzhurovich): We'd like to bind this to `!NDEBUG`, but let's keep it on by default for now.

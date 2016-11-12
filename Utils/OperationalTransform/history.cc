@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#if defined(CURRENT_APPLE) || !defined(__clang__)  // `libstdc++` doesn't have `#include <codecvt>` yet.
-
 #include "ot.h"
+
+#ifdef HAS_CODECVT_HEADER
 
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/file/file.h"
@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
 #include <iostream>
 
 int main() {
-  std::cerr << "Requires `g++` or Mac OS." << std::endl;
+  std::cerr << "Requires g++ >= 5.1 or a different compiler." << std::endl;
   return -1;
 }
 
-#endif  // defined(CURRENT_APPLE) || !defined(__clang__)
+#endif  // HAS_CODECVT_HEADER
