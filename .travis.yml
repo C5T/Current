@@ -28,6 +28,7 @@ matrix:
             - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
             - llvm-toolchain-precise-3.6
           packages:
+            - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-3.6
             - gnuplot
 
@@ -57,6 +58,7 @@ matrix:
             - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
             - llvm-toolchain-precise-3.6
           packages:
+            - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-3.6
             - gnuplot
 
