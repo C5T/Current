@@ -111,8 +111,7 @@ class WaitableAtomicImpl {
     enum { IS_INTRUSIVE = false };
 
     template <typename... ARGS>
-    BasicImpl(ARGS&&... args)
-        : data_(std::forward<ARGS>(args)...) {}
+    BasicImpl(ARGS&&... args) : data_(std::forward<ARGS>(args)...) {}
 
     BasicImpl(const DATA& data) : data_(data) {}
 

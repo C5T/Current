@@ -31,8 +31,8 @@ SOFTWARE.
 
 #include "../../debug_log.h"
 
-#include "../../../util/singleton.h"
 #include "../../../template/enable_if.h"
+#include "../../../util/singleton.h"
 
 #include <cstring>
 #include <string>
@@ -41,8 +41,8 @@ SOFTWARE.
 
 #ifndef CURRENT_WINDOWS
 
-#include <errno.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>

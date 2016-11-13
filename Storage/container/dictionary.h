@@ -76,25 +76,22 @@ class GenericDictionary {
       const T& previous_object = map_iterator->second;
       CURRENT_ASSERT(lm_iterator != last_modified_.end());
       const auto previous_timestamp = lm_iterator->second;
-      journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             last_modified_[key] = previous_timestamp;
-                             map_[key] = previous_object;
-                           });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_object, previous_timestamp]() {
+        last_modified_[key] = previous_timestamp;
+        map_[key] = previous_object;
+      });
     } else {
       if (lm_iterator != last_modified_.end()) {
         const auto previous_timestamp = lm_iterator->second;
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key, previous_timestamp]() {
-                               last_modified_[key] = previous_timestamp;
-                               map_.erase(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_timestamp]() {
+          last_modified_[key] = previous_timestamp;
+          map_.erase(key);
+        });
       } else {
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key]() {
-                               last_modified_.erase(key);
-                               map_.erase(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() {
+          last_modified_.erase(key);
+          map_.erase(key);
+        });
       }
     }
     last_modified_[key] = now;
@@ -109,11 +106,10 @@ class GenericDictionary {
       const auto lm_iterator = last_modified_.find(key);
       CURRENT_ASSERT(lm_iterator != last_modified_.end());
       const auto previous_timestamp = lm_iterator->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             last_modified_[key] = previous_timestamp;
-                             map_[key] = previous_object;
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        last_modified_[key] = previous_timestamp;
+        map_[key] = previous_object;
+      });
       last_modified_[key] = now;
       map_.erase(key);
     }

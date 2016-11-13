@@ -28,8 +28,8 @@ SOFTWARE.
 #include "http_subscriber.h"
 #include "schema.h"
 
-#include "../karl.h"
 #include "../claire.h"
+#include "../karl.h"
 #include "../locator.h"
 
 #include "../../Blocks/HTTP/api.h"

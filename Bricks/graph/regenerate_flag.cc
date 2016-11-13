@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_GRAPH_REGENERATE_FLAG_H
 #define BRICKS_GRAPH_REGENERATE_FLAG_H
 
-#include "../dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../dflags/dflags.h"
 
 DEFINE_bool(regenerate_golden_graphs, false, "Set to 'true' to re-generate golden and docu files.");
 

@@ -30,9 +30,9 @@ SOFTWARE.
 #include "../port.h"
 
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <string>
-#include <cstring>
 
 #include <errno.h>
 

@@ -28,8 +28,8 @@ SOFTWARE.
 
 #include "../MidichloriansDataDictionary.h"
 
-#include "../../Bricks/template/typelist.h"
 #include "../../Blocks/HTTP/request.h"
+#include "../../Bricks/template/typelist.h"
 #include "../../TypeSystem/struct.h"
 
 namespace current {

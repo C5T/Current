@@ -36,9 +36,9 @@
 
 #include <string>
 
-#include "../../../port.h"
 #include "../../../Bricks/util/singleton.h"
 #include "../../../TypeSystem/Serialization/json.h"
+#include "../../../port.h"
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."
@@ -49,8 +49,8 @@
 #define COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 #include "../../MidichloriansDataDictionary.h"
 
-#import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
+#import <Foundation/Foundation.h>
 
 using current::midichlorians::ios::iOSBaseEvent;
 using current::midichlorians::ios::iOSFirstLaunchEvent;

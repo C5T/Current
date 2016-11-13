@@ -36,14 +36,14 @@ SOFTWARE.
 #endif
 
 #include <atomic>
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 
-#include "schema_claire.h"
-#include "locator.h"
 #include "exceptions.h"
+#include "locator.h"
 #include "respond_with_schema.h"
+#include "schema_claire.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -374,10 +374,9 @@ class GenericClaire final : private DummyClaireNotifiable {
       const std::chrono::microseconds now = current::time::Now();
 
       if (projected_next_keepalive > now) {
-        keepalive_condition_variable_.wait_for(
-            lock,
-            projected_next_keepalive - now,
-            [this]() { return destructing_.load() || keepalive_thread_force_wakeup_.load(); });
+        keepalive_condition_variable_.wait_for(lock, projected_next_keepalive - now, [this]() {
+          return destructing_.load() || keepalive_thread_force_wakeup_.load();
+        });
       }
 
       if (destructing_) {

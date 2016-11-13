@@ -35,16 +35,16 @@ SOFTWARE.
 #include <thread>
 
 #include "exceptions.h"
-#include "stream_data.h"
 #include "pubsub.h"
+#include "stream_data.h"
 
-#include "../TypeSystem/struct.h"
 #include "../TypeSystem/Schema/schema.h"
+#include "../TypeSystem/struct.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
-#include "../Blocks/SS/ss.h"
 #include "../Blocks/SS/signature.h"
+#include "../Blocks/SS/ss.h"
 
 #include "../Bricks/sync/locks.h"
 #include "../Bricks/sync/scope_owned.h"
@@ -97,8 +97,8 @@ CURRENT_STRUCT(SubscribableSherlockSchema) {
   CURRENT_FIELD(entry_name, std::string);
   CURRENT_FIELD(namespace_name, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
-  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
-      current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
+  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)
+  (current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
       : type_id(type_id), entry_name(entry_name), namespace_name(namespace_name) {}
   bool operator==(const SubscribableSherlockSchema& rhs) const {
     return type_id == rhs.type_id && namespace_name == rhs.namespace_name && entry_name == rhs.entry_name;
@@ -391,15 +391,13 @@ class StreamImpl {
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(
-              lock,
-              [this, &bare_data, &index, &begin_idx, &head]() {
-                return terminate_signal_ ||
-                       bare_data.persistence.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
-                       (index > begin_idx &&
-                        bare_data.persistence.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
-                            head);
-              });
+          terminate_signal_.WaitUntil(lock, [this, &bare_data, &index, &begin_idx, &head]() {
+            return terminate_signal_ ||
+                   bare_data.persistence.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                   (index > begin_idx &&
+                    bare_data.persistence.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
+                        head);
+          });
         }
       }
     }
@@ -542,14 +540,12 @@ class StreamImpl {
             subscription_id, scoped_data, std::move(r), std::move(request_params));
 
         current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-            Subscribe(*http_chunked_subscriber,
-                      begin_idx,
-                      [this, &data, subscription_id]() {
-                        // NOTE: Need to figure out when and where to lock.
-                        // Chat w/ Max about the logic to clean up completed listeners.
-                        // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                        data.http_subscriptions[subscription_id].second = nullptr;
-                      });
+            Subscribe(*http_chunked_subscriber, begin_idx, [this, &data, subscription_id]() {
+              // NOTE: Need to figure out when and where to lock.
+              // Chat w/ Max about the logic to clean up completed listeners.
+              // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
+              data.http_subscriptions[subscription_id].second = nullptr;
+            });
 
         {
           std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
@@ -581,9 +577,7 @@ class StreamImpl {
     }
   }
 
-  persistence_layer_t& Persister() {
-    return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
-  }
+  persistence_layer_t& Persister() { return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence; }
 
  private:
   struct FillPerLanguageSchema {

@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "url.h"
 
-#include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../../Bricks/dflags/dflags.h"
 
 using namespace current::url;
 

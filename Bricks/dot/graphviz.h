@@ -29,16 +29,16 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <vector>
-#include <string>
 #include <sstream>
+#include <string>
+#include <vector>
 
-#include "../util/singleton.h"
 #include "../file/file.h"
 #include "../strings/printf.h"
+#include "../util/singleton.h"
 
-#include "../../TypeSystem/optional.h"
 #include "../../TypeSystem/helpers.h"
+#include "../../TypeSystem/optional.h"
 
 namespace current {
 namespace graphviz {
@@ -250,8 +250,8 @@ struct GenericGraph {
     const auto output_file_deleter = current::FileSystem::ScopedRmFile(output_file_name);
 
     current::FileSystem::WriteStringToFile(AsDOT(), input_file_name.c_str());
-    CURRENT_ASSERT(!::system(current::strings::Printf(
-                                 "dot -T svg %s -o %s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
+    CURRENT_ASSERT(!::system(
+        current::strings::Printf("dot -T svg %s -o %s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
     return current::FileSystem::ReadFileAsString(output_file_name.c_str());
   }
 };

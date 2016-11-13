@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../../current.h"
 #include "../../../Bricks/dflags/dflags.h"
+#include "../../../current.h"
 
 #include "server.h"
 

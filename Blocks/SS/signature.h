@@ -25,8 +25,8 @@
 #ifndef BLOCKS_SS_SIGNATURE_H
 #define BLOCKS_SS_SIGNATURE_H
 
-#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/struct.h"
 
 namespace current {
 namespace ss {
@@ -35,17 +35,19 @@ CURRENT_STRUCT(StreamNamespaceName) {
   CURRENT_FIELD(namespace_name, std::string);
   CURRENT_FIELD(entry_name, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(StreamNamespaceName) {}
-  CURRENT_CONSTRUCTOR(StreamNamespaceName)(const std::string& namespace_name, const std::string& entry_name)
+  CURRENT_CONSTRUCTOR(StreamNamespaceName)
+  (const std::string& namespace_name, const std::string& entry_name)
       : namespace_name(namespace_name), entry_name(entry_name) {}
 };
 
 CURRENT_STRUCT(StreamSignature, StreamNamespaceName) {
   CURRENT_FIELD(schema, reflection::SchemaInfo);
   CURRENT_DEFAULT_CONSTRUCTOR(StreamSignature) {}
-  CURRENT_CONSTRUCTOR(StreamSignature)(
-      const std::string& namespace_name, const std::string& entry_name, const reflection::SchemaInfo& schema)
+  CURRENT_CONSTRUCTOR(StreamSignature)
+  (const std::string& namespace_name, const std::string& entry_name, const reflection::SchemaInfo& schema)
       : SUPER(namespace_name, entry_name), schema(schema) {}
-  CURRENT_CONSTRUCTOR(StreamSignature)(const StreamNamespaceName& namespace_name, const reflection::SchemaInfo& schema)
+  CURRENT_CONSTRUCTOR(StreamSignature)
+  (const StreamNamespaceName& namespace_name, const reflection::SchemaInfo& schema)
       : SUPER(namespace_name), schema(std::move(schema)) {}
 };
 

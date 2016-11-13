@@ -26,8 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
 #include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Reflection/reflection.h"
+#include "../../TypeSystem/Schema/schema.h"
 
 #include "../../Bricks/file/file.h"
 

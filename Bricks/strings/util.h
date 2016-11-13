@@ -33,8 +33,8 @@ SOFTWARE.
 
 #include "is_string_type.h"
 
-#include "../template/enable_if.h"
 #include "../template/decay.h"
+#include "../template/enable_if.h"
 
 namespace current {
 namespace strings {
@@ -233,7 +233,7 @@ inline OUTPUT FromString(INPUT&& input) {
 inline std::string FromString(const std::string& input) { return input; }
 
 template <size_t N>
-constexpr ENABLE_IF<(N > 0), size_t> CompileTimeStringLength(char const(&)[N]) {
+constexpr ENABLE_IF<(N > 0), size_t> CompileTimeStringLength(char const (&)[N]) {
   return N - 1;
 }
 

@@ -272,13 +272,12 @@ struct Plain {
       explicit LanguageIterator(registerer_t registerer) : registerer(registerer) {}
       template <current::reflection::Language LANGUAGE>
       void PerLanguage() {
-        registerer('.' + current::ToString(LANGUAGE),
-                   [](Request r) {
-                     // TODO(dkorolev): Add caching one day.
-                     reflection::StructSchema underlying_type_schema;
-                     underlying_type_schema.AddType<entry_t>();
-                     r(underlying_type_schema.GetSchemaInfo().Describe<LANGUAGE>());
-                   });
+        registerer('.' + current::ToString(LANGUAGE), [](Request r) {
+          // TODO(dkorolev): Add caching one day.
+          reflection::StructSchema underlying_type_schema;
+          underlying_type_schema.AddType<entry_t>();
+          r(underlying_type_schema.GetSchemaInfo().Describe<LANGUAGE>());
+        });
       }
     };
 

@@ -24,7 +24,7 @@ SOFTWARE.
 
 #define OLD_SCHEMA
 
-#include "flags.h"
 #include "gen_schema.h"
+#include "flags.h"
 
 GEN_SCHEMA(from, "SchemaFrom");

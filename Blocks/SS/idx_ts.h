@@ -69,12 +69,12 @@ CURRENT_STRUCT(HeadAndOptionalIndexAndTimestamp) {
   CURRENT_USE_FIELD_AS_TIMESTAMP(head);
   CURRENT_DEFAULT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp) : head(0) {}
   CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(std::chrono::microseconds head) : head(head) {}
-  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(std::chrono::microseconds head, IndexAndTimestamp idxts)
-      : head(head), idxts(idxts) {
+  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)
+  (std::chrono::microseconds head, IndexAndTimestamp idxts) : head(head), idxts(idxts) {
     CURRENT_ASSERT(head >= idxts.us);
   }
-  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(
-      std::chrono::microseconds head, uint64_t index, std::chrono::microseconds us)
+  CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)
+  (std::chrono::microseconds head, uint64_t index, std::chrono::microseconds us)
       : head(head), idxts(IndexAndTimestamp(index, us)) {
     CURRENT_ASSERT(head >= us);
   }

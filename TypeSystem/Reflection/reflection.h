@@ -36,9 +36,9 @@ SOFTWARE.
 #include "types.h"
 
 #include "../optional.h"
-#include "../variant.h"
 #include "../struct.h"
 #include "../timestamp.h"
+#include "../variant.h"
 
 #include "../../Bricks/template/call_all_constructors.h"
 #include "../../Bricks/util/comparators.h"

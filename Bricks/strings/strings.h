@@ -27,14 +27,14 @@ SOFTWARE.
 
 #include "chunk.h"
 #include "distance.h"
+#include "escape.h"
 #include "fixed_size_serializer.h"
 #include "is_string_type.h"
 #include "join.h"
 #include "printf.h"
-#include "split.h"
-#include "util.h"
 #include "rounding.h"
+#include "split.h"
 #include "time.h"
-#include "escape.h"
+#include "util.h"
 
 #endif  // BRICKS_STRINGS_STRINGS_H

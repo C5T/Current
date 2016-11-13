@@ -176,16 +176,14 @@ struct URLParametersExtractor {
     const size_t question_mark_index = url.find('?');
     if (question_mark_index != std::string::npos) {
       auto& v = parameters_vector;
-      current::strings::Split(url.substr(question_mark_index + 1),
-                              '&',
-                              [&v](const std::string& chunk) {
-                                const size_t i = chunk.find('=');
-                                if (i != std::string::npos) {
-                                  v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
-                                } else {
-                                  v.emplace_back(chunk, "");
-                                }
-                              });
+      current::strings::Split(url.substr(question_mark_index + 1), '&', [&v](const std::string& chunk) {
+        const size_t i = chunk.find('=');
+        if (i != std::string::npos) {
+          v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
+        } else {
+          v.emplace_back(chunk, "");
+        }
+      });
       for (auto& it : parameters_vector) {
         it.first = DecodeURIComponent(it.first);
         it.second = DecodeURIComponent(it.second);
@@ -286,10 +284,9 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
   static bool IsPathValidToRegister(const std::string& path) {
     const std::set<char> valid_nonalnum_chars{
         '/', '-', '.', '_', '~', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@'};
-    return find_if(path.begin(),
-                   path.end(),
-                   [&valid_nonalnum_chars](char c) { return !(isalnum(c) || valid_nonalnum_chars.count(c)); }) ==
-           path.end();
+    return find_if(path.begin(), path.end(), [&valid_nonalnum_chars](char c) {
+             return !(isalnum(c) || valid_nonalnum_chars.count(c));
+           }) == path.end();
   }
 };
 

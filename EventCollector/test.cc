@@ -25,8 +25,8 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <string>
 #include <sstream>
+#include <string>
 #include <thread>
 
 #define CURRENT_MOCK_TIME  // `SetNow()`.
@@ -35,8 +35,8 @@ SOFTWARE.
 
 #include "../Bricks/strings/printf.h"
 
-#include "../Bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../Bricks/dflags/dflags.h"
 
 DEFINE_int32(event_collector_test_port, PickPortForUnitTest(), "Local port to run the test.");
 
@@ -129,7 +129,8 @@ TEST(EventCollector, Headers) {
   EXPECT_EQ("=",
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")
-                     .SetHeader("baz", "meh")).body);
+                     .SetHeader("baz", "meh"))
+                .body);
   auto e = ParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ("bar", e.h["foo"]);
   EXPECT_EQ("meh", e.h["baz"]);

@@ -26,11 +26,11 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_PERSISTER_SHERLOCK_H
 #define CURRENT_STORAGE_PERSISTER_SHERLOCK_H
 
-#include "common.h"
+#include "../../Sherlock/sherlock.h"
 #include "../base.h"
 #include "../exceptions.h"
 #include "../transaction.h"
-#include "../../Sherlock/sherlock.h"
+#include "common.h"
 
 #include "../../Bricks/sync/locks.h"
 

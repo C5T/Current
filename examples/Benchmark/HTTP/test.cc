@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "server.h"
 
-#include "../../../Bricks/dflags/dflags.h"
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../../../Bricks/dflags/dflags.h"
 
 DEFINE_int32(benchmark_test_local_port, PickPortForUnitTest(), "The local port to spawn test server on.");
 

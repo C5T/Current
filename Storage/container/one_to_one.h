@@ -31,9 +31,9 @@ SOFTWARE.
 
 #include "../base.h"
 
-#include "../../TypeSystem/optional.h"
 #include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
 #include "../../Bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
+#include "../../TypeSystem/optional.h"
 
 namespace current {
 namespace storage {
@@ -74,10 +74,9 @@ class GenericOneToOne {
       const T& previous_object = *(map_cit->second);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
     } else {
       const auto cit_row = forward_.find(row);
       const auto cit_col = transposed_.find(col);
@@ -127,11 +126,10 @@ class GenericOneToOne {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
       } else {
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key]() {
-                               last_modified_.erase(key);
-                               DoEraseWithoutTouchingLastModified(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() {
+          last_modified_.erase(key);
+          DoEraseWithoutTouchingLastModified(key);
+        });
       }
     }
     DoUpdateWithLastModified(now, key, object);
@@ -146,10 +144,9 @@ class GenericOneToOne {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -164,10 +161,9 @@ class GenericOneToOne {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -181,10 +177,9 @@ class GenericOneToOne {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }

@@ -21,10 +21,12 @@ inline void GenerateTestData(const std::string& file, uint32_t size) {
   current::FileSystem::RmFile(file, current::FileSystem::RmFileParameters::Silent);
   storage_t storage(file);
   for (uint32_t i = 0u; i < size; ++i) {
-    storage.ReadWriteTransaction([i](MutableFields<storage_t> fields) {
-      Entry entry(static_cast<EntryID>(i), current::SHA256(current::ToString(i)));
-      fields.entries.Add(entry);
-    }).Go();
+    storage
+        .ReadWriteTransaction([i](MutableFields<storage_t> fields) {
+          Entry entry(static_cast<EntryID>(i), current::SHA256(current::ToString(i)));
+          fields.entries.Add(entry);
+        })
+        .Go();
   }
 }
 
@@ -52,9 +54,7 @@ struct RawLogSubscriberImpl {
     return EntryResponse::More;
   }
 
-  EntryResponse operator()(std::chrono::microseconds) const {
-    return EntryResponse::More;
-  }
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
   TerminationResponse Terminate() {
     terminating_ = true;
@@ -111,8 +111,7 @@ inline void PerformReplayBenchmark(const std::string& file,
     const auto end = current::time::Now();
     std::cout << "* Stream initialization: " << (stream_initialized - begin).count() / 1000 << " ms\n";
     if (subscribers_count) {
-      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000
-                << " ms\n";
+      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000 << " ms\n";
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
     report.owning_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
@@ -145,16 +144,16 @@ inline void PerformReplayBenchmark(const std::string& file,
     storage_t storage(stream);
     // Spin lock checking the number of imported entries.
     while (storage_size < stream_size) {
-      storage.ReadOnlyTransaction([&storage_size](ImmutableFields<storage_t> fields) {
-        storage_size = fields.entries.Size();
-      }).Go();
+      storage
+          .ReadOnlyTransaction(
+              [&storage_size](ImmutableFields<storage_t> fields) { storage_size = fields.entries.Size(); })
+          .Go();
       std::this_thread::sleep_for(spin_lock_sleep);
     }
     const auto end = current::time::Now();
     std::cout << "* Stream initialization: " << (stream_initialized - begin).count() / 1000 << " ms\n";
     if (subscribers_count) {
-      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000
-                << " ms\n";
+      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000 << " ms\n";
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
     report.following_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
@@ -257,42 +256,42 @@ int main(int argc, char** argv) {
                                     .ImageSize(1000)
                                     .OutputFormat("pngcairo")
                                     .Plot(WithMeta([&report](Plotter p) {
-                                      for (size_t i = 0; i < report.subs.size(); ++i) {
-                                        p(report.subs[i], 1e-3 * report.owning_storage_replay_ms[i]);
-                                      }
-                                    })
+                                            for (size_t i = 0; i < report.subs.size(); ++i) {
+                                              p(report.subs[i], 1e-3 * report.owning_storage_replay_ms[i]);
+                                            }
+                                          })
                                               .LineWidth(5)
                                               .Color("rgb '#B90000'")
                                               .Name("Owning storage"))
                                     .Plot(WithMeta([&report](Plotter p) {
-                                      for (size_t i = 0; i < report.subs.size(); ++i) {
-                                        p(report.subs[i], 1e-3 * report.following_storage_replay_ms[i]);
-                                      }
-                                    })
+                                            for (size_t i = 0; i < report.subs.size(); ++i) {
+                                              p(report.subs[i], 1e-3 * report.following_storage_replay_ms[i]);
+                                            }
+                                          })
                                               .LineWidth(5)
                                               .Color("rgb '#0000B9'")
                                               .Name("Following storage"))
                                     .Plot(WithMeta([&report](Plotter p) {
-                                      for (size_t i = 0; i < report.subs.size(); ++i) {
-                                        p(report.subs[i], 1e-3 * report.raw_persister_replay_ms[i]);
-                                      }
-                                    })
+                                            for (size_t i = 0; i < report.subs.size(); ++i) {
+                                              p(report.subs[i], 1e-3 * report.raw_persister_replay_ms[i]);
+                                            }
+                                          })
                                               .LineWidth(5)
                                               .Color("rgb '#008080'")
                                               .Name("Persister iterators"))
                                     .Plot(WithMeta([&report](Plotter p) {
-                                      for (size_t i = 0; i < report.subs.size(); ++i) {
-                                        p(report.subs[i], 1e-3 * report.raw_file_scan_ms[i]);
-                                      }
-                                    })
+                                            for (size_t i = 0; i < report.subs.size(); ++i) {
+                                              p(report.subs[i], 1e-3 * report.raw_file_scan_ms[i]);
+                                            }
+                                          })
                                               .LineWidth(5)
                                               .Color("rgb '#404040'")
                                               .Name("File scan w/o parsing"))
                                     .Plot(WithMeta([&report](Plotter p) {
-                                      for (size_t i = 0; i < report.subs.size(); ++i) {
-                                        p(report.subs[i], 1e-3 * report.parsing_file_scan_ms[i]);
-                                      }
-                                    })
+                                            for (size_t i = 0; i < report.subs.size(); ++i) {
+                                              p(report.subs[i], 1e-3 * report.parsing_file_scan_ms[i]);
+                                            }
+                                          })
                                               .LineWidth(5)
                                               .Color("rgb '#00B900'")
                                               .Name("File scan with parsing"));

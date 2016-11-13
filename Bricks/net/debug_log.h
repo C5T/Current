@@ -37,8 +37,8 @@ SOFTWARE.
 // A somewhat dirty yet safe implementation of a thread-safe logger that can be enabled via a #define.
 #include <cstdio>
 #include <iostream>
-#include <thread>
 #include <mutex>
+#include <thread>
 #include "../util/singleton.h"
 struct DebugLogMutex {
   std::mutex mutex;

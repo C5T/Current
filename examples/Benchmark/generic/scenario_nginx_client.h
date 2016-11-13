@@ -63,13 +63,12 @@ SCENARIO(simple_nginx_client, "Use Current's HTTP client to access an nginx-cont
     for (uint16_t port = FLAGS_nginx_client_local_port;
          port <= std::max(FLAGS_nginx_client_local_port, FLAGS_nginx_client_local_top_port);
          ++port) {
-      current::nginx::NginxManager nginx(FLAGS_nginx_client_config_file_prefix +
-                                         current::strings::ToString(port));
+      current::nginx::NginxManager nginx(FLAGS_nginx_client_config_file_prefix + current::strings::ToString(port));
 
       current::nginx::config::ServerDirective server_directive(port);
       server_directive.CreateLocation(FLAGS_nginx_client_local_route)
-          .Add(SimpleDirective(
-              "return", "200 \"" + current::strings::EscapeForCPlusPlus(FLAGS_nginx_client_test_body) + '\"'));
+          .Add(SimpleDirective("return",
+                               "200 \"" + current::strings::EscapeForCPlusPlus(FLAGS_nginx_client_test_body) + '\"'));
 
       std::cerr << "nginx setup on port " << port << " ...";
       nginx.UpdateConfig(std::move(server_directive));

@@ -28,10 +28,10 @@ SOFTWARE.
 
 #include <fstream>
 
-#include "common.h"
+#include "../../TypeSystem/Serialization/json.h"
 #include "../base.h"
 #include "../exceptions.h"
-#include "../../TypeSystem/Serialization/json.h"
+#include "common.h"
 
 namespace current {
 namespace storage {

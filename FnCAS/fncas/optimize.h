@@ -27,14 +27,14 @@ SOFTWARE.
 #define FNCAS_OPTIMIZE_H
 
 #include <algorithm>
-#include <numeric>
 #include <map>
+#include <numeric>
 #include <string>
 
 #include "base.h"
 #include "differentiate.h"
-#include "node.h"
 #include "mathutil.h"
+#include "node.h"
 
 namespace fncas {
 
@@ -152,8 +152,9 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
       const auto candidate_point(SumVectors(current_point, g, -step));
       return std::make_pair(fi(candidate_point), candidate_point);
     };
-    current_point = std::min(try_step(0.01 * step_factor_),
-                             std::min(try_step(0.05 * step_factor_), try_step(0.2 * step_factor_))).second;
+    current_point =
+        std::min(try_step(0.01 * step_factor_), std::min(try_step(0.05 * step_factor_), try_step(0.2 * step_factor_)))
+            .second;
   }
 
   return OptimizationResult{fi(current_point), current_point};

@@ -1192,10 +1192,12 @@ TEST(JSONSerialization, TemplatedValue) {
   EXPECT_EQ(43, ParseJSON<DerivedTemplatedValue<std::string>>("{\"base\":43,\"derived\":\"meh\"}").base);
   EXPECT_EQ(100ull,
             ParseJSON<DerivedTemplatedValue<Serializable>>(
-                "{\"base\":1,\"derived\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}").derived.i);
+                "{\"base\":1,\"derived\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}")
+                .derived.i);
   EXPECT_EQ(43,
             ParseJSON<DerivedTemplatedValue<Serializable>>(
-                "{\"base\":43,\"derived\":{\"i\":1,\"s\":\"\",\"b\":true,\"e\":0}}").base);
+                "{\"base\":43,\"derived\":{\"i\":1,\"s\":\"\",\"b\":true,\"e\":0}}")
+                .base);
 }
 
 TEST(JSONSerialization, SimpleTemplatedUsage) {

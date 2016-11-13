@@ -25,14 +25,14 @@ SOFTWARE.
 #ifndef BRICKS_STRINGS_JOIN_H
 #define BRICKS_STRINGS_JOIN_H
 
-#include <vector>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include "util.h"
 
-#include "../template/enable_if.h"
 #include "../template/decay.h"
+#include "../template/enable_if.h"
 
 namespace current {
 namespace strings {

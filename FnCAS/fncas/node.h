@@ -27,13 +27,13 @@
 #define FNCAS_NODE_H
 
 #include <cmath>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <map>
 #include <stack>
 #include <string>
 #include <vector>
-#include <exception>
 
 #include "base.h"
 
