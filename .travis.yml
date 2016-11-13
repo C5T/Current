@@ -19,16 +19,16 @@ matrix:
     - script: make individual_tests
       env:
       - NDEBUG=0
-      - CPLUSPLUS=clang++-3.8
-      compiler: "clang++-3.8, Job: make individual_tests"
+      - CPLUSPLUS=clang++-3.6
+      compiler: "clang++-3.6, Job: make individual_tests"
       os: linux
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.8 gnuplot` w/o this.
-            - llvm-toolchain-precise-3.8
+            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
+            - llvm-toolchain-precise-3.6
           packages:
-            - clang-3.8
+            - clang-3.6
             - gnuplot
 
     - script: make individual_tests
@@ -48,16 +48,16 @@ matrix:
     - script: make individual_tests
       env:
       - NDEBUG=1
-      - CPLUSPLUS=clang++-3.8
-      compiler: "clang++-3.8, Job: make individual_tests"
+      - CPLUSPLUS=clang++-3.6
+      compiler: "clang++-3.6, Job: make individual_tests"
       os: linux
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.8 gnuplot` w/o this.
-            - llvm-toolchain-precise-3.8
+            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
+            - llvm-toolchain-precise-3.6
           packages:
-            - clang-3.3.8
+            - clang-3.3.6
             - gnuplot
 
     - script:
@@ -85,21 +85,21 @@ matrix:
     - script:
       - mkdir local_bin
       - ln -sf $(which g++-5) local_bin/g++
-      - ln -sf $(which clang++-3.8) local_bin/clang++
+      - ln -sf $(which clang++-3.6) local_bin/clang++
       - export PATH=$PWD/local_bin:$PATH
       - make check
       env:
       - MAKE_CHECK=1
-      compiler: "g++-5 && clang++-3.8, Job: make check"
+      compiler: "g++-5 && clang++-3.6, Job: make check"
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
+            - llvm-toolchain-precise-3.6
           packages:
             - g++-5
-            - clang-3.8
+            - clang-3.6
 
     - script: make check
       env:
@@ -122,17 +122,17 @@ matrix:
 
     - script: make typesystem_compilation_test
       env:
-      - CPLUSPLUS=clang++-3.8
+      - CPLUSPLUS=clang++-3.6
       - NDEBUG=1
-      compiler: "clang++-3.8, Job: make typesystem_compilation_test"
+      compiler: "clang++-3.6, Job: make typesystem_compilation_test"
       os: linux
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.8` w/o this.
-            - llvm-toolchain-precise-3.8
+            - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6` w/o this.
+            - llvm-toolchain-precise-3.6
           packages:
-            - clang-3.8
+            - clang-3.6
 
     - script: make typesystem_compilation_test
       env:
