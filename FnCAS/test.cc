@@ -279,7 +279,7 @@ TEST(FNCAS, OptimizationOfRosenbrockUsingConjugateGradient) {
   EXPECT_NEAR(1.0, result.point[1], 1e-6);
 }
 
-TEST(FNCAS, OptimizationOfHimmelbaluUsingCojugateGradient) {
+TEST(FNCAS, OptimizationOfHimmelblauUsingCojugateGradient) {
   fncas::ConjugateGradientOptimizer<HimmelblauFunction> optimizer;
   const auto min1 = optimizer.Optimize({5.0, 5.0});
   EXPECT_NEAR(0.0, min1.value, 1e-6);

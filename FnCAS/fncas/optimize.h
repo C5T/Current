@@ -181,7 +181,7 @@ class GradientDescentOptimizerBT : noncopyable {
     for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
       auto direction = gi(current_point);
       fncas::FlipSign(direction);  // Going against the gradient to minimize the function.
-      current_point = BackTracking(fi, gi, current_point, direction, bt_alpha_, bt_beta_, bt_max_steps_);
+      current_point = Backtracking(fi, gi, current_point, direction, bt_alpha_, bt_beta_, bt_max_steps_);
 
       // Simple early stopping by the norm of the gradient.
       if (std::sqrt(fncas::L2Norm(direction)) < grad_eps_ && iteration >= min_steps_) {
@@ -255,7 +255,7 @@ class ConjugateGradientOptimizer : noncopyable {
 
     for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
       // Backtracking line search.
-      const auto new_point = fncas::BackTracking(fi, gi, current_point, s, bt_alpha_, bt_beta_, bt_max_steps_);
+      const auto new_point = fncas::Backtracking(fi, gi, current_point, s, bt_alpha_, bt_beta_, bt_max_steps_);
       const auto new_gradient = gi(new_point);
 
       // Calculating direction for the next step.
