@@ -36,6 +36,8 @@ SOFTWARE.
 #include "node.h"
 #include "mathutil.h"
 
+#include "../../Bricks/template/decay.h"
+
 namespace fncas {
 
 struct OptimizationResult {
@@ -85,11 +87,12 @@ class GradientDescentOptimizer : noncopyable {
   GradientDescentOptimizer(F& f) : f_reference_(f) {}
   GradientDescentOptimizer(const OptimizerParameters& params, F& f) : f_reference_(f) { InitializeParams(params); }
 
-  template <typename... ARGS>
-  GradientDescentOptimizer(const OptimizerParameters& params, ARGS&&... args)
-      : f_instance_(std::make_unique<F>(std::forward<ARGS>(args)...)), f_reference_(*f_instance_) {
-    InitializeParams(params);
-  }
+  template <typename ARG,
+            class = std::enable_if_t<!std::is_same<current::decay<ARG>, OptimizerParameters>::value>,
+            typename... ARGS>
+  GradientDescentOptimizer(ARG&& arg, ARGS&&... args)
+      : f_instance_(std::make_unique<F>(std::forward<ARG>(arg), std::forward<ARGS>(args)...)),
+        f_reference_(*f_instance_) {}
 
   template <typename ARG, typename... ARGS>
   GradientDescentOptimizer(const OptimizerParameters& params, ARG&& arg, ARGS&&... args)
@@ -147,11 +150,12 @@ class GradientDescentOptimizerBT : noncopyable {
   GradientDescentOptimizerBT(F& f) : f_reference_(f) {}
   GradientDescentOptimizerBT(const OptimizerParameters& params, F& f) : f_reference_(f) { InitializeParams(params); }
 
-  template <typename... ARGS>
-  GradientDescentOptimizerBT(const OptimizerParameters& params, ARGS&&... args)
-      : f_instance_(std::make_unique<F>(std::forward<ARGS>(args)...)), f_reference_(*f_instance_) {
-    InitializeParams(params);
-  }
+  template <typename ARG,
+            class = std::enable_if_t<!std::is_same<current::decay<ARG>, OptimizerParameters>::value>,
+            typename... ARGS>
+  GradientDescentOptimizerBT(ARG&& arg, ARGS&&... args)
+      : f_instance_(std::make_unique<F>(std::forward<ARG>(arg), std::forward<ARGS>(args)...)),
+        f_reference_(*f_instance_) {}
 
   template <typename ARG, typename... ARGS>
   GradientDescentOptimizerBT(const OptimizerParameters& params, ARG&& arg, ARGS&&... args)
@@ -218,11 +222,12 @@ class ConjugateGradientOptimizer : noncopyable {
   ConjugateGradientOptimizer(F& f) : f_reference_(f) {}
   ConjugateGradientOptimizer(const OptimizerParameters& params, F& f) : f_reference_(f) { InitializeParams(params); }
 
-  template <typename... ARGS>
-  ConjugateGradientOptimizer(const OptimizerParameters& params, ARGS&&... args)
-      : f_instance_(std::make_unique<F>(std::forward<ARGS>(args)...)), f_reference_(*f_instance_) {
-    InitializeParams(params);
-  }
+  template <typename ARG,
+            class = std::enable_if_t<!std::is_same<current::decay<ARG>, OptimizerParameters>::value>,
+            typename... ARGS>
+  ConjugateGradientOptimizer(ARG&& arg, ARGS&&... args)
+      : f_instance_(std::make_unique<F>(std::forward<ARG>(arg), std::forward<ARGS>(args)...)),
+        f_reference_(*f_instance_) {}
 
   template <typename ARG, typename... ARGS>
   ConjugateGradientOptimizer(const OptimizerParameters& params, ARG&& arg, ARGS&&... args)

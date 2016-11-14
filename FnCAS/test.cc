@@ -134,6 +134,20 @@ struct MemberFunction {
   MemberFunction(const MemberFunction&) = delete;
 };
 
+struct MemberFunctionWithReferences {
+  double& a;
+  double& b;
+  MemberFunctionWithReferences(double& a, double& b) : a(a), b(b) {}
+  template <typename T>
+  typename fncas::X2V<T> ObjectiveFunction(const T& x) {
+    const auto dx = x[0] - a;
+    const auto dy = x[1] - b;
+    return exp(0.01 * (dx * dx + dy * dy));
+  }
+  MemberFunctionWithReferences() = default;
+  MemberFunctionWithReferences(const MemberFunctionWithReferences&) = delete;
+};
+
 // An obviously convex function with a single minimum `f(0, 0) == 0`.
 struct PolynomialFunction {
   template <typename X>
@@ -180,7 +194,7 @@ TEST(FNCAS, OptimizationOfAStaticFunction) {
   EXPECT_NEAR(4.0, result.point[1], 1e-3);
 }
 
-TEST(FNCAS, OptimizationOfAMemberFunction1) {
+TEST(FNCAS, OptimizationOfAMemberFunctionSmokeTest) {
   MemberFunction f;
   {
     f.a = 2.0;
@@ -202,7 +216,7 @@ TEST(FNCAS, OptimizationOfAMemberFunction1) {
   }
 }
 
-TEST(FNCAS, OptimizationOfAMemberFunction2) {
+TEST(FNCAS, OptimizationOfAMemberFunctionCapturesFunctionByReference) {
   MemberFunction f;
   fncas::GradientDescentOptimizer<MemberFunction> optimizer(f);
   {
@@ -225,7 +239,7 @@ TEST(FNCAS, OptimizationOfAMemberFunction2) {
   }
 }
 
-TEST(FNCAS, OptimizationOfAMemberFunction3) {
+TEST(FNCAS, OptimizationOfAMemberFunctionConstructsObjectiveFunctionObject) {
   fncas::GradientDescentOptimizer<MemberFunction> optimizer;  // Will construct the object by itself.
   {
     optimizer->a = 2.0;
@@ -239,6 +253,31 @@ TEST(FNCAS, OptimizationOfAMemberFunction3) {
   {
     optimizer->a = 3.0;
     optimizer->b = 4.0;
+    const auto result = optimizer.Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
+}
+
+TEST(FNCAS, OptimizationOfAMemberFunctionForwardsParameters) {
+  double a = 0;
+  double b = 0;
+  // `GradientDescentOptimizer` will construct the instance of `MemberFunctionWithReferences`.
+  fncas::GradientDescentOptimizer<MemberFunctionWithReferences> optimizer(a, b);
+  {
+    a = 2.0;
+    b = 1.0;
+    const auto result = optimizer.Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(2.0, result.point[0], 1e-3);
+    EXPECT_NEAR(1.0, result.point[1], 1e-3);
+  }
+  {
+    a = 3.0;
+    b = 4.0;
     const auto result = optimizer.Optimize({0, 0});
     EXPECT_NEAR(1.0, result.value, 1e-3);
     ASSERT_EQ(2u, result.point.size());
