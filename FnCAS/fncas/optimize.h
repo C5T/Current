@@ -129,7 +129,7 @@ class GradientDescentOptimizer : noncopyable {
   }
 
  private:
-  std::unique_ptr<F> f_instance_;  // The function to optimize: instance of owned by the optimizer.
+  std::unique_ptr<F> f_instance_;  // The function to optimize: instance if owned by the optimizer.
   F& f_reference_;                 // The function to optimize: reference to work with, owned or not owned.
 
   size_t max_steps_ = 5000;   // Maximum number of optimization steps.
@@ -197,7 +197,7 @@ class GradientDescentOptimizerBT : noncopyable {
   }
 
  private:
-  std::unique_ptr<F> f_instance_;  // The function to optimize: instance of owned by the optimizer.
+  std::unique_ptr<F> f_instance_;  // The function to optimize: instance if owned by the optimizer.
   F& f_reference_;                 // The function to optimize: reference to work with, owned or not owned.
 
   size_t min_steps_ = 3;       // Minimum number of optimization steps (ignoring early stopping).
@@ -280,7 +280,7 @@ class ConjugateGradientOptimizer : noncopyable {
   }
 
  private:
-  std::unique_ptr<F> f_instance_;  // The function to optimize: instance of owned by the optimizer.
+  std::unique_ptr<F> f_instance_;  // The function to optimize: instance if owned by the optimizer.
   F& f_reference_;                 // The function to optimize: reference to work with, owned or not owned.
 
   size_t min_steps_ = 3;       // Minimum number of optimization steps (ignoring early stopping).
