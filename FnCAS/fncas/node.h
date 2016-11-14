@@ -372,7 +372,7 @@ struct f_intermediate : f {
 
 // Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
 // Type `V` describes one value (`double`), type `X` describes an array of values (`std::vector<double>`).
-// Synopsis: `X2V<X> f(const X& x)` or `V f(const V2X<V>& x);`.
+// Synopsis: `fncas::X2V<X> f(const X& x)` or `V f(const fncas::V2X<V>& x);`.
 
 template <typename T>
 struct x2v_impl {};
@@ -402,10 +402,6 @@ template <typename V>
 using V2X = typename v2x_impl<V>::type;
 
 }  // namespace fncas
-
-// Support `X2V` and `V2X` in the global namespace as well.
-using fncas::X2V;
-using fncas::V2X;
 
 // Arithmetic operations and mathematical functions are defined outside namespace fncas.
 
