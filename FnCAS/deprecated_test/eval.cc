@@ -166,7 +166,7 @@ typedef action_gen_eval_Xeval<eval::compiled> action_gen_eval_ceval;
 struct action_test_gradient : generic_action {
   std::vector<double> x;
   fncas::g_approximate ga;
-  fncas::g_intermediate gi;
+  std::unique_ptr<fncas::g_intermediate> gi;
   std::vector<double> errors;
   static double error_between(double a, double b) { return fabs(b - a) / std::max(1.0, std::max(fabs(a), fabs(b))); }
   static bool approximate_compare(double a, double b, double eps = 0.03) { return error_between(a, b) < eps; }
@@ -174,12 +174,12 @@ struct action_test_gradient : generic_action {
     x = std::vector<double>(f->dim());
     ga = fncas::g_approximate(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());
     fncas::X argument(f->dim());
-    gi = fncas::g_intermediate(argument, f->eval_as_expression(argument));
+    gi = std::make_unique<fncas::g_intermediate>(argument, f->eval_as_expression(argument));
   }
   bool step() {
     f->gen(x);
     std::vector<double> ra = ga(x);
-    std::vector<double> ri = gi(x);
+    std::vector<double> ri = (*gi)(x);
     CURRENT_ASSERT(ra.size() == ri.size());
     for (size_t i = 0; i < ra.size(); ++i) {
       errors.push_back(error_between(ra[i], ri[i]));

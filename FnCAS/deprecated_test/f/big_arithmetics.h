@@ -2,8 +2,8 @@ struct big_arithmetics : F {
   INCLUDE_IN_PERF_TEST;
   enum { DIM = 100000 };
   template <typename X>
-  static X2V<X> f(const X& x) {
-    X2V<X> r = 0;
+  static fncas::X2V<X> f(const X& x) {
+    fncas::X2V<X> r = 0;
     for (size_t i = 0; i < DIM; ++i) {
       switch (i % 4) {
         case 0:
