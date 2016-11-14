@@ -83,7 +83,7 @@ TEST(FNCAS, GradientsWrapper) {
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
   const fncas::X x(2);
-  fncas::g_intermediate gi = fncas::g_intermediate(x, f(x));
+  const fncas::g_intermediate gi(x, f(x));
   auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(18.0, d_3_3_intermediate[0]);
   EXPECT_EQ(36.0, d_3_3_intermediate[1]);
