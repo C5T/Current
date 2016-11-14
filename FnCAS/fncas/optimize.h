@@ -72,7 +72,7 @@ const T OptimizerParameters::GetValue(std::string name, T default_value) const {
 
 // TODO(mzhurovich+dkorolev): Make different implementation to use functors.
 // Naive gradient descent that tries 3 different step sizes in each iteration.
-// Searches for a local minimum of `F::Compute` function.
+// Searches for a local minimum of `F::ObjectiveFunction` function.
 template <class F>
 class GradientDescentOptimizer : noncopyable {
  public:
@@ -108,7 +108,7 @@ class GradientDescentOptimizer : noncopyable {
   OptimizationResult Optimize(const std::vector<double>& starting_point) {
     const size_t dim = starting_point.size();
     const fncas::X gradient_helper(dim);
-    const fncas::f_intermediate fi(f_reference_.compute(gradient_helper));
+    const fncas::f_intermediate fi(f_reference_.ObjectiveFunction(gradient_helper));
     const fncas::g_intermediate gi(gradient_helper, fi);
     std::vector<double> current_point(starting_point);
 
@@ -134,7 +134,7 @@ class GradientDescentOptimizer : noncopyable {
 };
 
 // Simple gradient descent optimizer with backtracking algorithm.
-// Searches for a local minimum of `F::Compute` function.
+// Searches for a local minimum of `F::ObjectiveFunction` function.
 template <class F>
 class GradientDescentOptimizerBT : noncopyable {
  public:
@@ -174,7 +174,7 @@ class GradientDescentOptimizerBT : noncopyable {
   OptimizationResult Optimize(const std::vector<double>& starting_point) {
     const size_t dim = starting_point.size();
     const fncas::X gradient_helper(dim);
-    const fncas::f_intermediate fi(f_reference_.compute(gradient_helper));
+    const fncas::f_intermediate fi(f_reference_.ObjectiveFunction(gradient_helper));
     const fncas::g_intermediate gi(gradient_helper, fi);
     std::vector<double> current_point(starting_point);
 
@@ -205,7 +205,7 @@ class GradientDescentOptimizerBT : noncopyable {
 };
 
 // Optimizer that uses a combination of conjugate gradient method and
-// backtracking line search to find a local minimum of `F::Compute` function.
+// backtracking line search to find a local minimum of `F::ObjectiveFunction` function.
 template <class F>
 class ConjugateGradientOptimizer : noncopyable {
  public:
@@ -245,7 +245,7 @@ class ConjugateGradientOptimizer : noncopyable {
     // TODO(mzhurovich): Implement a more sophisticated version.
     const size_t dim = starting_point.size();
     const fncas::X gradient_helper(dim);
-    const fncas::f_intermediate fi(f_reference_.compute(gradient_helper));
+    const fncas::f_intermediate fi(f_reference_.ObjectiveFunction(gradient_helper));
     const fncas::g_intermediate gi(gradient_helper, fi);
     std::vector<double> current_point(starting_point);
 
