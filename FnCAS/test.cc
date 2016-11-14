@@ -120,25 +120,24 @@ struct StaticFunction {
   }
 };
 
-/*
-// TODO(dkorolev): Re-add support for member functions optimization.
 // An obviously convex function with a single minimum `f(a, b) == 1`.
 struct MemberFunction {
   double a = 0.0;
   double b = 0.0;
   template <typename T>
-  typename fncas::output<T>::type operator()(const T& x) {
+  typename fncas::X2V<T> compute(const T& x) {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
     return exp(0.01 * (dx * dx + dy * dy));
   }
+  MemberFunction() = default;
+  MemberFunction(const MemberFunction&) = delete;
 };
-*/
 
 // An obviously convex function with a single minimum `f(0, 0) == 0`.
 struct PolynomialFunction {
   template <typename X>
-  static fncas::X2V<X> compute(const X& x) {
+  fncas::X2V<X> compute(const X& x) {
     const double a = 10.0;
     const double b = 0.5;
     return (a * x[0] * x[0] + b * x[1] * x[1]);
@@ -149,7 +148,7 @@ struct PolynomialFunction {
 // Non-convex function with global minimum `f(a, a^2) == 0`.
 struct RosenbrockFunction {
   template <typename X>
-  static fncas::X2V<X> compute(const X& x) {
+  fncas::X2V<X> compute(const X& x) {
     const double a = 1.0;
     const double b = 100.0;
     const auto d1 = (a - x[0]);
@@ -166,7 +165,7 @@ struct RosenbrockFunction {
 // f(3.584428, -1.848126) = 0.0
 struct HimmelblauFunction {
   template <typename X>
-  static fncas::X2V<X> compute(const X& x) {
+  fncas::X2V<X> compute(const X& x) {
     const auto d1 = (x[0] * x[0] + x[1] - 11);
     const auto d2 = (x[0] + x[1] * x[1] - 7);
     return (d1 * d1 + d2 * d2);
@@ -181,19 +180,72 @@ TEST(FNCAS, OptimizationOfAStaticFunction) {
   EXPECT_NEAR(4.0, result.point[1], 1e-3);
 }
 
-/*
-// TODO(dkorolev): Re-add support for member functions optimization.
-TEST(FNCAS, OptimizationOfAMemberFunction) {
+TEST(FNCAS, OptimizationOfAMemberFunction1) {
   MemberFunction f;
-  f.a = 2.0;
-  f.b = 1.0;
-  const auto result = fncas::OptimizeUsingGradientDescent(f, {0, 0}));
-  EXPECT_NEAR(1.0, result.value, 1e-3);
-  ASSERT_EQ(2u, result.point.size());
-  EXPECT_NEAR(2.0, result.point[0], 1e-3);
-  EXPECT_NEAR(1.0, result.point[1], 1e-3);
+  {
+    f.a = 2.0;
+    f.b = 1.0;
+    const auto result = fncas::GradientDescentOptimizer<MemberFunction>(f).Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(2.0, result.point[0], 1e-3);
+    EXPECT_NEAR(1.0, result.point[1], 1e-3);
+  }
+  {
+    f.a = 3.0;
+    f.b = 4.0;
+    const auto result = fncas::GradientDescentOptimizer<MemberFunction>(f).Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
 }
-*/
+
+TEST(FNCAS, OptimizationOfAMemberFunction2) {
+  MemberFunction f;
+  fncas::GradientDescentOptimizer<MemberFunction> optimizer(f);
+  {
+    f.a = 2.0;
+    f.b = 1.0;
+    const auto result = optimizer.Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(2.0, result.point[0], 1e-3);
+    EXPECT_NEAR(1.0, result.point[1], 1e-3);
+  }
+  {
+    f.a = 3.0;
+    f.b = 4.0;
+    const auto result = optimizer.Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
+}
+
+TEST(FNCAS, OptimizationOfAMemberFunction3) {
+  fncas::GradientDescentOptimizer<MemberFunction> optimizer;  // Will construct the object by itself.
+  {
+    optimizer->a = 2.0;
+    optimizer->b = 1.0;
+    const auto result = optimizer.Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(2.0, result.point[0], 1e-3);
+    EXPECT_NEAR(1.0, result.point[1], 1e-3);
+  }
+  {
+    optimizer->a = 3.0;
+    optimizer->b = 4.0;
+    const auto result = optimizer.Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
+}
 
 TEST(FNCAS, OptimizationOfAPolynomialMemberFunction) {
   const auto result = fncas::GradientDescentOptimizer<PolynomialFunction>().Optimize({5.0, 20.0});
