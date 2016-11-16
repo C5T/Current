@@ -286,7 +286,7 @@ class GenericStorageImpl {
     return persister_.InternalExposeStream();
   }
 
-  persister_t& InternalExposePersister() { return persister_; }
+  persister_t& Persister() { return persister_; }
 
   uint64_t TransactionsCount() const { return transactions_count_.GetValue(); }
 

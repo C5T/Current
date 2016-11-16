@@ -32,18 +32,20 @@ SOFTWARE.
 #define BLOCKS_PERSISTENCE_FILE_H
 
 #include <atomic>
-#include <functional>
 #include <fstream>
+#include <functional>
 
 #include "exceptions.h"
 
 #include "../SS/persister.h"
+#include "../SS/signature.h"
 
-#include "../../TypeSystem/Serialization/json.h"
-
-#include "../../Bricks/time/chrono.h"
+#include "../../Bricks/sync/locks.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/atomic_that_works.h"
+#include "../../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/Serialization/json.h"
 
 namespace current {
 namespace persistence {
@@ -52,6 +54,7 @@ namespace impl {
 
 namespace constants {
 constexpr const char kDirectiveMarker = '#';
+constexpr const char* kSignatureDirective = "#signature";
 constexpr const char* kHeadDirective = "#head";
 constexpr const char* kHeadFromatString = "%020lld";
 }  // namespace current::persistence::impl::constants
@@ -131,7 +134,7 @@ class FilePersister {
     std::fstream head_rewriter;
 
     // `offset.size() == end.next_index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
-    std::mutex mutex;
+    std::mutex& mutex_ref;  // Guards `offset`, `head_offset` and `timestamp`.
     std::vector<std::streampos> offset;
     std::streamoff head_offset;
     std::vector<std::chrono::microseconds> timestamp;
@@ -147,19 +150,22 @@ class FilePersister {
     FilePersisterImpl& operator=(const FilePersisterImpl&) = delete;
     FilePersisterImpl& operator=(FilePersisterImpl&&) = delete;
 
-    explicit FilePersisterImpl(const std::string& filename)
+    explicit FilePersisterImpl(std::mutex& mutex_ref,
+                               const ss::StreamNamespaceName& namespace_name,
+                               const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           head_rewriter(filename, std::ofstream::in | std::ofstream::out),
+          mutex_ref(mutex_ref),
           head_offset(0) {
-      ValidateFileAndInitializeHead();
+      ValidateFileAndInitializeHead(namespace_name);
       if (appender.bad() || head_rewriter.bad()) {
         CURRENT_THROW(PersistenceFileNotWritable(filename));
       }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    void ValidateFileAndInitializeHead() {
+    void ValidateFileAndInitializeHead(const ss::StreamNamespaceName& namespace_name) {
       std::ifstream fi(filename);
       if (!fi.bad()) {
         // Read through all the lines.
@@ -168,6 +174,9 @@ class FilePersister {
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
         std::streampos current_offset(0);
         auto head = std::chrono::microseconds(-1);
+        reflection::StructSchema struct_schema;
+        struct_schema.AddType<ENTRY>();
+        const auto signature = JSON(ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo()));
         while (cit.ProcessNextEntry(
             [&](const idxts_t& current, const char*) {
               CURRENT_ASSERT(current.index == offset.size());
@@ -183,17 +192,31 @@ class FilePersister {
             },
             [&](const std::string& value) {
               static const auto head_key_length = strlen(constants::kHeadDirective);
+              static const auto signature_key_length = strlen(constants::kSignatureDirective);
+              head_offset = 0;
               if (!value.compare(0, head_key_length, constants::kHeadDirective)) {
                 auto offset = head_key_length;
-                while (offset < value.length() && std::isspace(value[offset])) ++offset;
+                while (std::isspace(value[offset])) {
+                  ++offset;
+                }
                 const auto us = std::chrono::microseconds(current::FromString<head_value_t>(value.c_str() + offset));
                 if (!(us > head)) {
                   CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), us));
                 }
                 head = us;
                 head_offset = std::streamoff(current_offset) + offset;
-              } else {
-                head_offset = 0;
+              } else if (!value.compare(0, signature_key_length, constants::kSignatureDirective)) {
+                // The signature, if present, should be at the beginning of the file.
+                if (current_offset != 0) {
+                  CURRENT_THROW(InvalidSignatureLocation());
+                }
+                auto offset = signature_key_length;
+                while (std::isspace(value[offset])) {
+                  ++offset;
+                }
+                if (value.compare(offset, signature.length(), signature)) {
+                  CURRENT_THROW(InvalidStreamSignature(signature, value.substr(offset)));
+                }
               }
               current_offset = fi.tellg();
             })) {
@@ -203,6 +226,10 @@ class FilePersister {
         // The `next.us` stores the closest possible next entry timestamp,
         // so the last processed entry timestamp is always 1us less.
         end.store({next.index, next.us - std::chrono::microseconds(1), head});
+        // Append the signature if there is neither entries nor directives in the file.
+        if (!current_offset) {
+          appender << constants::kSignatureDirective << ' ' << signature << std::endl;
+        }
       } else {
         end.store({0ull, std::chrono::microseconds(-1), std::chrono::microseconds(-1)});
       }
@@ -216,7 +243,10 @@ class FilePersister {
   FilePersister& operator=(const FilePersister&) = delete;
   FilePersister& operator=(FilePersister&&) = delete;
 
-  explicit FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
+  explicit FilePersister(std::mutex& mutex_ref,
+                         const ss::StreamNamespaceName& namespace_name,
+                         const std::string& filename)
+      : file_persister_impl_(mutex_ref, namespace_name, filename) {}
 
   class IterableRange {
    public:
@@ -343,30 +373,35 @@ class FilePersister {
     const std::streampos begin_offset_;
   };
 
-  template <typename E>
+  template <current::locks::MutexLockStatus MLS, typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds us) {
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
+
     end_t iterator = file_persister_impl_->end.load();
     const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
+
     iterator.last_entry_us = iterator.head = timestamp;
     const auto current = idxts_t(iterator.next_index, iterator.last_entry_us);
-    {
-      std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
-      CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.next_index);
-      CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.next_index);
-      file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
-      file_persister_impl_->timestamp.push_back(timestamp);
-    }
+    CURRENT_ASSERT(file_persister_impl_->offset.size() == iterator.next_index);
+    CURRENT_ASSERT(file_persister_impl_->timestamp.size() == iterator.next_index);
+    file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
+    file_persister_impl_->timestamp.push_back(timestamp);
+
     file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.next_index;
     file_persister_impl_->head_offset = 0;
     file_persister_impl_->end.store(iterator);
+
     return current;
   }
 
+  template <current::locks::MutexLockStatus MLS>
   void DoUpdateHead(const std::chrono::microseconds us) {
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
+
     end_t iterator = file_persister_impl_->end.load();
     const auto timestamp = us.count() >= 0 ? us : current::time::Now();
     if (!(timestamp > iterator.head)) {
@@ -380,15 +415,21 @@ class FilePersister {
       rewriter << head_str << std::endl;
     } else {
       auto& appender = file_persister_impl_->appender;
-      appender << constants::kHeadDirective << '\t';
+      appender << constants::kHeadDirective << ' ';
       file_persister_impl_->head_offset = appender.tellp();
       appender << head_str << std::endl;
     }
     file_persister_impl_->end.store(iterator);
   }
 
-  bool Empty() const noexcept { return !file_persister_impl_->end.load().next_index; }
-  uint64_t Size() const noexcept { return file_persister_impl_->end.load().next_index; }
+  template <current::locks::MutexLockStatus>
+  bool Empty() const noexcept {
+    return !file_persister_impl_->end.load().next_index;
+  }
+  template <current::locks::MutexLockStatus>
+  uint64_t Size() const noexcept {
+    return file_persister_impl_->end.load().next_index;
+  }
 
   idxts_t LastPublishedIndexAndTimestamp() const {
     const auto iterator = file_persister_impl_->end.load();
@@ -408,12 +449,15 @@ class FilePersister {
     }
   }
 
-  std::chrono::microseconds CurrentHead() const noexcept { return file_persister_impl_->end.load().head; }
+  template <current::locks::MutexLockStatus>
+  std::chrono::microseconds CurrentHead() const noexcept {
+    return file_persister_impl_->end.load().head;
+  }
 
   std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
                                                            std::chrono::microseconds till) const {
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
-    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
     const auto begin_it =
         std::lower_bound(file_persister_impl_->timestamp.begin(),
                          file_persister_impl_->timestamp.end(),
@@ -450,7 +494,7 @@ class FilePersister {
     if (end_index < begin_index) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
     CURRENT_ASSERT(file_persister_impl_->offset.size() >=
                    current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
     return IterableRange(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);

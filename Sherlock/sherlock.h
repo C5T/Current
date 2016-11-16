@@ -44,7 +44,9 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
 #include "../Blocks/SS/ss.h"
+#include "../Blocks/SS/signature.h"
 
+#include "../Bricks/sync/locks.h"
 #include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
@@ -92,14 +94,14 @@ CURRENT_STRUCT(SherlockSchema) {
 
 CURRENT_STRUCT(SubscribableSherlockSchema) {
   CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
-  CURRENT_FIELD(top_level_name, std::string);
+  CURRENT_FIELD(entry_name, std::string);
   CURRENT_FIELD(namespace_name, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
   CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
-      current::reflection::TypeID type_id, const std::string& top_level_name, const std::string& namespace_name)
-      : type_id(type_id), top_level_name(top_level_name), namespace_name(namespace_name) {}
+      current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
+      : type_id(type_id), entry_name(entry_name), namespace_name(namespace_name) {}
   bool operator==(const SubscribableSherlockSchema& rhs) const {
-    return type_id == rhs.type_id && namespace_name == rhs.namespace_name && top_level_name == rhs.top_level_name;
+    return type_id == rhs.type_id && namespace_name == rhs.namespace_name && entry_name == rhs.entry_name;
   }
   bool operator!=(const SubscribableSherlockSchema& rhs) const { return !operator==(rhs); }
 };
@@ -113,13 +115,6 @@ enum class StreamDataAuthority : bool { Own = true, External = false };
 
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
-
-struct SherlockNamespaceName {
-  const std::string namespace_name;
-  const std::string top_level_name;
-  explicit SherlockNamespaceName(const std::string& namespace_name, const std::string& top_level_name)
-      : namespace_name(namespace_name), top_level_name(top_level_name) {}
-};
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {
@@ -137,7 +132,8 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.Publish(entry, us);
+        const auto result =
+            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -150,7 +146,8 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.Publish(std::move(entry), us);
+        const auto result =
+            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -163,7 +160,7 @@ class StreamImpl {
       try {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        data.persistence.UpdateHead(us);
+        data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
         data.notifier.NotifyAllOfExternalWaitableEvent();
       } catch (const current::sync::InDestructingModeException&) {
         CURRENT_THROW(StreamInGracefulShutdownException());
@@ -178,40 +175,37 @@ class StreamImpl {
   using publisher_t = ss::StreamPublisher<StreamPublisher, entry_t>;
 
   StreamImpl()
-      : own_data_(),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+      : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        own_data_(schema_namespace_name_),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
-  StreamImpl(const SherlockNamespaceName& exposed_namespace)
-      : own_data_(),
-        schema_exposed_namespace_name_(exposed_namespace.namespace_name),
-        schema_top_level_name_(exposed_namespace.top_level_name),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+  StreamImpl(const ss::StreamNamespaceName& namespace_name)
+      : schema_namespace_name_(namespace_name),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        own_data_(schema_namespace_name_),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
-  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, SherlockNamespaceName>::value>>
+  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, ss::StreamNamespaceName>::value>>
   StreamImpl(X&& x, XS&&... xs)
-      : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+      : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   template <typename X, typename... XS>
-  StreamImpl(const SherlockNamespaceName& exposed_namespace, X&& x, XS&&... xs)
-      : own_data_(std::forward<X>(x), std::forward<XS>(xs)...),
-        schema_exposed_namespace_name_(exposed_namespace.namespace_name),
-        schema_top_level_name_(exposed_namespace.top_level_name),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+  StreamImpl(const ss::StreamNamespaceName& namespace_name, X&& x, XS&&... xs)
+      : schema_namespace_name_(namespace_name),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
         publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   StreamImpl(StreamImpl&& rhs)
-      : own_data_(std::move(rhs.own_data_)),
-        schema_exposed_namespace_name_(rhs.schema_exposed_namespace_name_),
-        schema_top_level_name_(rhs.schema_top_level_name_),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_exposed_namespace_name_, schema_top_level_name_)),
+      : schema_namespace_name_(rhs.schema_namespace_name_),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        own_data_(std::move(rhs.own_data_)),
         publisher_(std::move(rhs.publisher_)),
         authority_(rhs.authority_) {
     rhs.authority_ = StreamDataAuthority::External;
@@ -397,11 +391,15 @@ class StreamImpl {
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(lock,
-                                      [this, &bare_data, &index, &begin_idx, &head]() {
-                                        return terminate_signal_ || bare_data.persistence.Size() > index ||
-                                               (index > begin_idx && bare_data.persistence.CurrentHead() > head);
-                                      });
+          terminate_signal_.WaitUntil(
+              lock,
+              [this, &bare_data, &index, &begin_idx, &head]() {
+                return terminate_signal_ ||
+                       bare_data.persistence.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                       (index > begin_idx &&
+                        bare_data.persistence.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
+                            head);
+              });
         }
       }
     }
@@ -500,7 +498,7 @@ class StreamImpl {
           r(schema_as_http_response_);
         } else if (schema_format == "simple") {
           r(SubscribableSherlockSchema(
-              schema_as_object_.type_id, schema_top_level_name_, schema_exposed_namespace_name_));
+              schema_as_object_.type_id, schema_namespace_name_.entry_name, schema_namespace_name_.namespace_name));
         } else {
           const auto cit = schema_as_object_.language.find(schema_format);
           if (cit != schema_as_object_.language.end()) {
@@ -583,30 +581,25 @@ class StreamImpl {
     }
   }
 
-  persistence_layer_t& InternalExposePersister() {
+  persistence_layer_t& Persister() {
     return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
   }
 
  private:
-  ScopeOwnedByMe<stream_data_t> own_data_;
-
   struct FillPerLanguageSchema {
     SherlockSchema& schema_ref;
-    const std::string& exposed_namespace_name;
-    const std::string& top_level_name;
-    explicit FillPerLanguageSchema(SherlockSchema& schema,
-                                   const std::string& exposed_namespace_name,
-                                   const std::string& top_level_name)
-        : schema_ref(schema), exposed_namespace_name(exposed_namespace_name), top_level_name(top_level_name) {}
+    const ss::StreamNamespaceName& namespace_name;
+    explicit FillPerLanguageSchema(SherlockSchema& schema, const ss::StreamNamespaceName& namespace_name)
+        : schema_ref(schema), namespace_name(namespace_name) {}
     template <current::reflection::Language language>
     void PerLanguage() {
       schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
-          current::reflection::NamespaceToExpose(exposed_namespace_name).template AddType<entry_t>(top_level_name));
+          current::reflection::NamespaceToExpose(namespace_name.namespace_name)
+              .template AddType<entry_t>(namespace_name.entry_name));
     }
   };
 
-  static SherlockSchema StaticConstructSchemaAsObject(const std::string& exposed_namespace_name,
-                                                      const std::string& top_level_name) {
+  static SherlockSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
     SherlockSchema schema;
 
     schema.type_name = current::reflection::CurrentTypeName<entry_t>();
@@ -617,19 +610,19 @@ class StreamImpl {
     underlying_type_schema.AddType<entry_t>();
     schema.type_schema = underlying_type_schema.GetSchemaInfo();
 
-    current::reflection::ForEachLanguage(FillPerLanguageSchema(schema, exposed_namespace_name, top_level_name));
+    current::reflection::ForEachLanguage(FillPerLanguageSchema(schema, namespace_name));
 
     return schema;
   }
 
  private:
-  const std::string schema_exposed_namespace_name_ = constants::kDefaultNamespaceName;
-  const std::string schema_top_level_name_ = constants::kDefaultTopLevelName;
+  const ss::StreamNamespaceName schema_namespace_name_ =
+      ss::StreamNamespaceName(constants::kDefaultNamespaceName, constants::kDefaultTopLevelName);
   const SherlockSchema schema_as_object_;
   const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
                                                      HTTPResponseCode.OK,
                                                      current::net::constants::kDefaultJSONContentType);
-
+  ScopeOwnedByMe<stream_data_t> own_data_;
   mutable std::mutex publisher_mutex_;
   std::unique_ptr<publisher_t> publisher_;
   StreamDataAuthority authority_;

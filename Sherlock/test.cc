@@ -368,8 +368,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>(
-      current::sherlock::SherlockNamespaceName("Sherlock", "Transaction"));
+  auto exposed_stream =
+      current::sherlock::Stream<RecordWithTimestamp>(current::ss::StreamNamespaceName("Sherlock", "Transaction"));
   // Expose stream via HTTP.
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
   const auto scope =
@@ -764,12 +764,20 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   slow_subscriber.join();
 }
 
-const std::string sherlock_golden_data =
-    "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
-    "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
-    "#head\t00000000000000000300\n"
-    "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
-    "#head\t00000000000000000500\n";
+const std::string golden_signature() {
+  current::reflection::StructSchema struct_schema;
+  struct_schema.AddType<sherlock_unittest::Record>();
+  return "#signature " +
+         JSON(current::ss::StreamSignature("SherlockSchema", "TopLevelTransaction", struct_schema.GetSchemaInfo())) +
+         '\n';
+}
+
+const std::string sherlock_golden_data = golden_signature() +
+                                         "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+                                         "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+                                         "#head 00000000000000000300\n"
+                                         "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
+                                         "#head 00000000000000000500\n";
 
 // clang-format off
 const std::string sherlock_golden_data_chunks[] = {
@@ -805,7 +813,7 @@ TEST(Sherlock, PersistsToFile) {
   persisted.UpdateHead();
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
-  while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
+  while (current::FileSystem::GetFileSize(persistence_file_name) < sherlock_golden_data.size()) {
     std::this_thread::yield();
   }
 
@@ -914,7 +922,7 @@ TEST(Sherlock, ParseArbitrarilySplitChunks) {
 
   {
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    while (replicated_stream.InternalExposePersister().Size() < 3u) {
+    while (replicated_stream.Persister().Size() < 3u) {
       std::this_thread::yield();
     }
   }

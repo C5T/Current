@@ -147,7 +147,7 @@ class SherlockStreamPersisterImpl {
  private:
   template <current::locks::MutexLockStatus MLS>
   void SyncReplayStream(uint64_t from_idx = 0u) {
-    for (const auto& stream_record : stream_used_.InternalExposePersister().Iterate(from_idx)) {
+    for (const auto& stream_record : stream_used_.Persister().Iterate(from_idx)) {
       if (Exists<transaction_t>(stream_record.entry)) {
         const transaction_t& transaction = Value<transaction_t>(stream_record.entry);
         ApplyMutations<MLS>(transaction);

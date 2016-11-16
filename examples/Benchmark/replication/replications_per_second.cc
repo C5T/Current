@@ -43,7 +43,7 @@ CURRENT_STRUCT(Event) {
 
 void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::persistence::Memory>>& output, int) {
   output = std::make_unique<current::sherlock::Stream<Event, current::persistence::Memory>>(
-      current::sherlock::SherlockNamespaceName("Sherlock", "Event"));
+      current::ss::StreamNamespaceName("Sherlock", "Event"));
 }
 
 void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::persistence::File>>& output,
@@ -53,7 +53,7 @@ void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::
       FLAGS_tmpdir, "log-" + current::ToString(index) + '-' + current::ToString(++global_index));
   current::FileSystem::RmFile(fn, current::FileSystem::RmFileParameters::Silent);
   output = std::make_unique<current::sherlock::Stream<Event, current::persistence::File>>(
-      current::sherlock::SherlockNamespaceName("Sherlock", "Event"), fn);
+      current::ss::StreamNamespaceName("Sherlock", "Event"), fn);
 }
 
 template <template <typename> class PERSISTER>
@@ -97,7 +97,7 @@ double RunIteration() {
   for (uint32_t x = 1; x <= FLAGS_m; ++x) {
     streams[0]->Publish(Event(x));
   }
-  while (streams.back()->InternalExposePersister().Size() != FLAGS_m) {
+  while (streams.back()->Persister().Size() != FLAGS_m) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 

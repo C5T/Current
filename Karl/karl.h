@@ -109,7 +109,7 @@ class KarlNginxManager {
     // To spawn Nginx `server` at startup even if the storage is empty.
     static bool first_run = true;
     if (has_nginx_config_file_) {
-      const uint64_t current_stream_size = storage_ref_.InternalExposeStream().InternalExposePersister().Size();
+      const uint64_t current_stream_size = storage_ref_.InternalExposeStream().Persister().Size();
       if (first_run || current_stream_size != last_reflected_state_stream_size_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
         server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));
@@ -298,7 +298,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     // Report this Karl as up and running.
     // Oh, look, I'm doing work in constructor body. Sigh. -- D.K.
     storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
-      const auto& stream_persister = keepalives_stream_.InternalExposePersister();
+      const auto& stream_persister = keepalives_stream_.Persister();
       KarlInfo self_info;
       if (!stream_persister.Empty()) {
         self_info.persisted_keepalives_info = stream_persister.LastPublishedIndexAndTimestamp();
@@ -325,7 +325,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       fields.karl.Add(self_info);
     }).Wait();
     if (state_update_thread_.joinable()) {
-      update_thread_condition_variable_.notify_one();
+      {
+        std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
+        update_thread_condition_variable_.notify_one();
+      }
       state_update_thread_.join();
     } else {
       // TODO(dkorolev), #FIXME_DIMA: This should not happen.
@@ -394,10 +397,11 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         const auto wait_interval =
             parameters_.service_timeout_interval - (current::time::Now() - most_recent_keepalive_time);
         if (wait_interval.count() > 0) {
-          update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
+          update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1),
+                                                     [this]() { return destructing_.load(); });
         }
       } else {
-        update_thread_condition_variable_.wait(lock);
+        update_thread_condition_variable_.wait(lock, [this]() { return destructing_.load(); });
       }
 #endif
     }
@@ -695,7 +699,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     uint64_t index = index_placeholder;
     if (!index) {
       // If no latest keepalive index in cache, go through the whole log.
-      for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
+      for (const auto& e : keepalives_stream_.Persister().Iterate()) {
         if (e.entry.keepalive.codename == codename) {
           index = e.idx_ts.index + 1;
         }
@@ -707,7 +711,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     }
 
     if (index) {
-      const auto e = (*keepalives_stream_.InternalExposePersister().Iterate(index - 1).begin());
+      const auto e = (*keepalives_stream_.Persister().Iterate(index - 1).begin());
       if (!r.url.query.has("nobuild")) {
         r(JSON<JSONFormat::Minimalistic>(
               SnapshotOfKeepalive<runtime_status_variant_t>(e.idx_ts.us - current::time::Now(), e.entry.keepalive)),
@@ -773,7 +777,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     std::map<std::string, std::set<std::string>> codenames_per_service;
     std::map<ClaireServiceKey, std::string> service_key_into_codename;
 
-    for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate(from, to)) {
+    for (const auto& e : keepalives_stream_.Persister().Iterate(from, to)) {
       const claire_status_t& keepalive = e.entry.keepalive;
 
       codenames_to_resolve.insert(keepalive.codename);

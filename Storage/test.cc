@@ -1173,7 +1173,7 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
   Storage storage;
-  const auto& persister = storage.InternalExposeStream().InternalExposePersister();
+  const auto& persister = storage.InternalExposeStream().Persister();
   const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
     return (*persister.Iterate(index, index + 1).begin()).entry;
   };
@@ -1259,7 +1259,7 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
   Storage storage;
-  const auto& persister = storage.InternalExposeStream().InternalExposePersister();
+  const auto& persister = storage.InternalExposeStream().Persister();
   const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
     return (*persister.Iterate(index, index + 1).begin()).entry;
   };
@@ -1357,7 +1357,7 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
   Storage storage;
-  const auto& persister = storage.InternalExposeStream().InternalExposePersister();
+  const auto& persister = storage.InternalExposeStream().Persister();
   const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
     return (*persister.Iterate(index, index + 1).begin()).entry;
   };
@@ -1615,7 +1615,7 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
     stream.MovePublisherTo(stream_publisher_owner);
     // Spawn following storage.
     Storage storage(stream);
-    EXPECT_EQ(3u, storage.InternalExposeStream().InternalExposePersister().Size());
+    EXPECT_EQ(3u, storage.InternalExposeStream().Persister().Size());
     // Wait until the whole log is replayed.
     storage.WaitForTransactionsCount(3u);
     EXPECT_EQ(3u, storage.TransactionsCount());
@@ -1719,7 +1719,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
   {
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    while (replicated_stream.InternalExposePersister().CurrentHead() != std::chrono::microseconds(300)) {
+    while (replicated_stream.Persister().CurrentHead() != std::chrono::microseconds(300)) {
       std::this_thread::yield();
     }
   }

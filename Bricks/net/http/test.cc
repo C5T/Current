@@ -215,7 +215,10 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/header", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse("OK", HTTPResponseCode.OK, c.HTTPRequest().Body(), {{"foo", "bar"}, {"baz", "meh"}});
+    c.SendHTTPResponse("OK",
+                       HTTPResponseCode.OK,
+                       c.HTTPRequest().Body(),
+                       current::net::http::Headers({{"foo", "bar"}, {"baz", "meh"}}));
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("POST /header HTTP/1.1\r\n", true);
