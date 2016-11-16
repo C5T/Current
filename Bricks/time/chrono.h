@@ -32,8 +32,8 @@ SOFTWARE.
 #include <time.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
-#include <mutex>
 #include <thread>
 
 #include "../exception.h"
@@ -58,36 +58,35 @@ struct InconsistentSetNowException : Exception {
 };
 
 struct MockNowImpl {
-  std::chrono::microseconds mock_now_value;
+  std::atomic<std::chrono::microseconds> mock_now_value;
   std::chrono::microseconds max_mock_now_value;
-  std::mutex mutex;
 };
 
 inline const std::chrono::microseconds Now() {
   auto& impl = Singleton<MockNowImpl>();
-  std::lock_guard<std::mutex> lock(impl.mutex);
-  const auto now = impl.mock_now_value;
-  if (impl.mock_now_value < impl.max_mock_now_value) {
-    ++impl.mock_now_value;
-  }
+  std::chrono::microseconds now;
+  do {
+    now = impl.mock_now_value.load();
+  } while (now < impl.max_mock_now_value &&
+           !impl.mock_now_value.compare_exchange_strong(now, now + std::chrono::microseconds(1)));
   return now;
 }
 
 inline void SetNow(std::chrono::microseconds us, std::chrono::microseconds max_us = std::chrono::microseconds(0)) {
   auto& impl = Singleton<MockNowImpl>();
-  std::lock_guard<std::mutex> lock(impl.mutex);
-  if (us >= impl.mock_now_value) {
-    impl.mock_now_value = us;
-    impl.max_mock_now_value = max_us;
-  } else {
-    CURRENT_THROW(InconsistentSetNowException(impl.mock_now_value, us));
-  }
+  std::chrono::microseconds prev_now;
+  do {
+    prev_now = impl.mock_now_value.load();
+    if (us < prev_now) {
+      CURRENT_THROW(InconsistentSetNowException(prev_now, us));
+    }
+  } while (!impl.mock_now_value.compare_exchange_strong(prev_now, us));
+  impl.max_mock_now_value = max_us;
 }
 
 inline void ResetToZero() {
   auto& impl = Singleton<MockNowImpl>();
-  std::lock_guard<std::mutex> lock(impl.mutex);
-  impl.mock_now_value = std::chrono::microseconds(0);
+  impl.mock_now_value.store(std::chrono::microseconds(0));
   impl.max_mock_now_value = std::chrono::microseconds(1000ll * 1000ll * 1000ll);
 }
 
@@ -99,14 +98,21 @@ void SleepUntil(T) {}
 // Since chrono::system_clock is not monotonic, and chrono::steady_clock is not guaranteed to be Epoch,
 // use a simple wrapper around chrono::system_clock to make it strictly increasing.
 struct EpochClockGuaranteeingMonotonicity {
-  mutable uint64_t monotonic_now_us = 0ull;
-  mutable std::mutex mutex;
+  mutable std::atomic<int64_t> monotonic_now_us;
+
+  EpochClockGuaranteeingMonotonicity() : monotonic_now_us(0ll) {}
+
   inline std::chrono::microseconds Now() const {
-    std::lock_guard<std::mutex> lock(mutex);
-    const uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                                std::chrono::system_clock::now().time_since_epoch()).count();
-    monotonic_now_us = std::max(monotonic_now_us + 1, now_us);
-    return std::chrono::microseconds(monotonic_now_us);
+    int64_t now, previous_now;
+    do {
+      now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count();
+      previous_now = monotonic_now_us.load();
+      if (!(now > previous_now)) {
+        now = previous_now + 1;
+      }
+    } while (!monotonic_now_us.compare_exchange_strong(previous_now, now));
+    return std::chrono::microseconds(now);
   }
 };
 
