@@ -25,15 +25,15 @@ SOFTWARE.
 
 #define CURRENT_MOCK_TIME
 
-#include "mmq.h"
 #include "mmpq.h"
+#include "mmq.h"
 
 #include <atomic>
 #include <chrono>
 #include <thread>
 
-#include "../../Bricks/strings/printf.h"
 #include "../../Bricks/strings/join.h"
+#include "../../Bricks/strings/printf.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

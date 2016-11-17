@@ -32,8 +32,8 @@ SOFTWARE.
 
 #include <mutex>
 
-#include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../../Bricks/dflags/dflags.h"
 
 #ifdef CURRENT_APPLE
 
@@ -57,16 +57,15 @@ class Server {
   using events_variant_t = Variant<ios_events_t>;
 
   Server(int http_port, const std::string& http_route)
-      : routes_(HTTP(http_port).Register(http_route,
-                                         [this](Request r) {
-                                           events_variant_t event;
-                                           try {
-                                             event = ParseJSON<events_variant_t>(r.body);
-                                             std::lock_guard<std::mutex> lock(mutex_);
-                                             event.Call(*this);
-                                           } catch (const current::Exception&) {
-                                           }
-                                         })) {}
+      : routes_(HTTP(http_port).Register(http_route, [this](Request r) {
+          events_variant_t event;
+          try {
+            event = ParseJSON<events_variant_t>(r.body);
+            std::lock_guard<std::mutex> lock(mutex_);
+            event.Call(*this);
+          } catch (const current::Exception&) {
+          }
+        })) {}
 
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());

@@ -31,8 +31,8 @@ SOFTWARE.
 #include "primitives.h"
 #include "typeid.h"
 
-#include "../../variant.h"
 #include "../../Reflection/reflection.h"
+#include "../../variant.h"
 
 #include "../../../Bricks/template/call_all_constructors.h"
 #include "../../../Bricks/template/enable_if.h"

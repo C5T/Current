@@ -31,8 +31,8 @@ SOFTWARE.
 #include <memory>
 #include <utility>
 
-#include "../Bricks/template/pod.h"
 #include "../Bricks/template/enable_if.h"
+#include "../Bricks/template/pod.h"
 
 namespace crnt {
 

@@ -111,8 +111,7 @@ struct StreamData {
   std::mutex http_subscriptions_mutex;
 
   template <typename... ARGS>
-  StreamData(ARGS&&... args)
-      : persistence(publish_mutex, std::forward<ARGS>(args)...) {}
+  StreamData(ARGS&&... args) : persistence(publish_mutex, std::forward<ARGS>(args)...) {}
 
   static std::string GenerateRandomHTTPSubscriptionID() {
     return current::SHA256("sherlock_http_subscription_" +

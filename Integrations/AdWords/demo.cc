@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
   }
 
   try {
-    const current::integrations::adwords::conversion_tracking::AdWordsMobileConversionEventsSender sender(
-        params, FLAGS_port);
+    const current::integrations::adwords::conversion_tracking::AdWordsMobileConversionEventsSender sender(params,
+                                                                                                          FLAGS_port);
     if (!FLAGS_rdid.empty()) {
       if (sender.SendConversionEvent(FLAGS_rdid)) {
         return 0;

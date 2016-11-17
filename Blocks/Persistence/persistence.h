@@ -26,8 +26,8 @@ SOFTWARE.
 #ifndef BLOCKS_PERSISTENCE_PERSISTENCE_H
 #define BLOCKS_PERSISTENCE_PERSISTENCE_H
 
-#include "memory.h"
 #include "file.h"
+#include "memory.h"
 
 // Enable legacy names for now. Confirmed Current compiles with the next four lines commented out. -- D.K.
 

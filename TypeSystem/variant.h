@@ -40,13 +40,13 @@ SOFTWARE.
 #endif
 
 #include "base.h"
-#include "helpers.h"
 #include "exceptions.h"
+#include "helpers.h"
 
 #include "../Bricks/template/call_all_constructors.h"
 #include "../Bricks/template/mapreduce.h"
-#include "../Bricks/template/typelist.h"
 #include "../Bricks/template/rtti_dynamic_call.h"
+#include "../Bricks/template/typelist.h"
 
 namespace current {
 

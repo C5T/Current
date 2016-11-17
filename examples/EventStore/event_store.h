@@ -25,17 +25,16 @@ SOFTWARE.
 #ifndef EVENT_STORE_H
 #define EVENT_STORE_H
 
-#include "../../TypeSystem/struct.h"
-#include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
+#include "../../Storage/storage.h"
+#include "../../TypeSystem/struct.h"
 
 #include "../../Blocks/HTTP/api.h"
 
 // Assumptions class `EventStore` makes:
 // * The storage has a field called `events`, type `Dictionary<EVENT_TYPE>`.
 // * The `EXTRA_TYPE` object can be constructed from a `const EVENT_TYPE&`.
-template <template <template <typename...> class, template <typename> class, typename>
-          class CURRENT_STORAGE_TYPE,
+template <template <template <typename...> class, template <typename> class, typename> class CURRENT_STORAGE_TYPE,
           typename EVENT_TYPE,
           typename EXTRA_TYPE,
           template <typename...> class DB_PERSISTER>
@@ -57,13 +56,9 @@ struct EventStore final {
       emitter(e, current);
       return current::ss::EntryResponse::More;
     }
-    current::ss::EntryResponse operator()(std::chrono::microseconds) const {
-      return current::ss::EntryResponse::More;
-    }
+    current::ss::EntryResponse operator()(std::chrono::microseconds) const { return current::ss::EntryResponse::More; }
     static current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
-    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
-      return current::ss::EntryResponse::More;
-    }
+    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() { return current::ss::EntryResponse::More; }
   };
   using readonly_stream_follower_t = current::ss::StreamSubscriber<ReadonlyStreamFollower, EXTRA_TYPE>;
 
@@ -80,9 +75,8 @@ struct EventStore final {
   EventStore(int port, const std::string& url_prefix, ARGS&&... args)
       : full_event_log(std::forward<ARGS>(args)...),
         event_store_storage(full_event_log),
-        readonly_stream_follower([this](const EXTRA_TYPE& e, idxts_t idx_ts) {
-          readonly_nonstorage_event_log.Publish(e, idx_ts.us);
-        }),
+        readonly_stream_follower(
+            [this](const EXTRA_TYPE& e, idxts_t idx_ts) { readonly_nonstorage_event_log.Publish(e, idx_ts.us); }),
         readonly_stream_follower_scope(full_event_log.template Subscribe<EXTRA_TYPE>(readonly_stream_follower)),
         readonly_nonstorage_event_log_persister(readonly_nonstorage_event_log.Persister()),
         http_routes_scope(HTTP(port).Register(url_prefix + "/up", [](Request r) { r("UP!\n"); }) +
@@ -98,16 +92,18 @@ struct EventStore final {
       } else {
         const std::string key = r.url_path_args[0];
         // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
-        event_store_storage.ReadOnlyTransaction(
-                                [key](ImmutableFields<event_store_storage_t> fields) -> Response {
-                                  const auto event = fields.events[key];
-                                  if (Exists(event)) {
-                                    return Value(event);
-                                  } else {
-                                    return Response("Not found.\n", HTTPResponseCode.NotFound);
-                                  }
-                                },
-                                std::move(r)).Wait();
+        event_store_storage
+            .ReadOnlyTransaction(
+                [key](ImmutableFields<event_store_storage_t> fields) -> Response {
+                  const auto event = fields.events[key];
+                  if (Exists(event)) {
+                    return Value(event);
+                  } else {
+                    return Response("Not found.\n", HTTPResponseCode.NotFound);
+                  }
+                },
+                std::move(r))
+            .Wait();
       }
     } else if (r.method == "POST") {
       if (!r.url_path_args.empty()) {
@@ -116,24 +112,25 @@ struct EventStore final {
         try {
           const auto event = ParseJSON<EVENT_TYPE>(r.body);
           // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
-          event_store_storage.ReadWriteTransaction(
-                                  [this, event](MutableFields<event_store_storage_t> fields) -> Response {
-                                    auto existing_event = fields.events[event.key];
-                                    if (Exists(existing_event)) {
-                                      // Ultimately, check the timestamp of an already existing record. -- D.K.
-                                      if (JSON(Value(existing_event)) == JSON(event)) {
-                                        return Response("Already published.\n", HTTPResponseCode.OK);
-                                      } else {
-                                        return Response("Conflict, not publishing.\n",
-                                                        HTTPResponseCode.Conflict);
-                                      }
-                                    } else {
-                                      fields.events.Add(event);
-                                      full_event_log.Publish(EXTRA_TYPE(event));
-                                      return Response("Created.\n", HTTPResponseCode.Created);
-                                    }
-                                  },
-                                  std::move(r)).Wait();
+          event_store_storage
+              .ReadWriteTransaction(
+                  [this, event](MutableFields<event_store_storage_t> fields) -> Response {
+                    auto existing_event = fields.events[event.key];
+                    if (Exists(existing_event)) {
+                      // Ultimately, check the timestamp of an already existing record. -- D.K.
+                      if (JSON(Value(existing_event)) == JSON(event)) {
+                        return Response("Already published.\n", HTTPResponseCode.OK);
+                      } else {
+                        return Response("Conflict, not publishing.\n", HTTPResponseCode.Conflict);
+                      }
+                    } else {
+                      fields.events.Add(event);
+                      full_event_log.Publish(EXTRA_TYPE(event));
+                      return Response("Created.\n", HTTPResponseCode.Created);
+                    }
+                  },
+                  std::move(r))
+              .Wait();
         } catch (const TypeSystemParseJSONException& e) {
           r(std::string("JSON parse error:\n") + e.what() + '\n', HTTPResponseCode.BadRequest);
         }

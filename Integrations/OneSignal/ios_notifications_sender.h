@@ -29,8 +29,8 @@ SOFTWARE.
 
 #include "../../Blocks/HTTP/api.h"
 
-#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Serialization/json.h"
+#include "../../TypeSystem/struct.h"
 
 namespace current {
 namespace integrations {

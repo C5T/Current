@@ -56,8 +56,7 @@ int main(int argc, char** argv) {
       while (NowInSeconds() < timestamp_end) {
         const int a = current::random::RandomIntegral(-1000000, +1000000);
         const int b = current::random::RandomIntegral(-1000000, +1000000);
-        const auto r =
-            HTTP(GET(strings::Printf(FLAGS_url.c_str(), FLAGS_port) + strings::Printf("?a=%d&b=%d", a, b)));
+        const auto r = HTTP(GET(strings::Printf(FLAGS_url.c_str(), FLAGS_port) + strings::Printf("?a=%d&b=%d", a, b)));
         CURRENT_ASSERT(r.code == HTTPResponseCode.OK);
         CURRENT_ASSERT(ParseJSON<AddResult>(r.body).sum == a + b);
         ++queries_;

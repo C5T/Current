@@ -43,8 +43,7 @@ template <typename IMPL, typename ENTRY>
 class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
  public:
   template <typename... ARGS>
-  explicit EntryPersister(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  explicit EntryPersister(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPersister() {}
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
@@ -66,7 +65,9 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   // }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  bool Empty() const noexcept { return IMPL::template Empty<MLS>(); }
+  bool Empty() const noexcept {
+    return IMPL::template Empty<MLS>();
+  }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   uint64_t Size() const noexcept {
     return IMPL::template Size<MLS>();

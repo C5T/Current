@@ -31,13 +31,13 @@ SOFTWARE.
 #include "../types.h"
 
 #include <memory>
-#include <string>
 #include <set>
+#include <string>
 
 #include "../../URL/url.h"
 
-#include "../../../Bricks/net/http/http.h"
 #include "../../../Bricks/file/file.h"
+#include "../../../Bricks/net/http/http.h"
 
 namespace current {
 namespace http {

@@ -26,16 +26,16 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 
-#include <string>
-#include <sstream>
-#include <vector>
 #include <map>
 #include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "../base.h"
 #include "../enum.h"
-#include "../struct.h"
 #include "../optional.h"
+#include "../struct.h"
 #include "../variant.h"
 
 #include "../../Bricks/strings/util.h"
@@ -114,8 +114,8 @@ CURRENT_STRUCT(ReflectedType_Primitive, ReflectedTypeBase) {
 CURRENT_STRUCT(ReflectedType_Enum, ReflectedTypeBase) {
   CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(underlying_type, TypeID);
-  CURRENT_CONSTRUCTOR(ReflectedType_Enum)(const std::string& name = "", TypeID rt = TypeID::UninitializedType)
-      : name(name), underlying_type(rt) {
+  CURRENT_CONSTRUCTOR(ReflectedType_Enum)
+  (const std::string& name = "", TypeID rt = TypeID::UninitializedType) : name(name), underlying_type(rt) {
     ReflectedTypeBase::type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + current::CRC32(name));
   }
 };
@@ -128,16 +128,15 @@ CURRENT_STRUCT(ReflectedType_Vector, ReflectedTypeBase) {
 CURRENT_STRUCT(ReflectedType_Map, ReflectedTypeBase) {
   CURRENT_FIELD(key_type, TypeID);
   CURRENT_FIELD(value_type, TypeID);
-  CURRENT_CONSTRUCTOR(ReflectedType_Map)(TypeID rk = TypeID::UninitializedType, TypeID rv = TypeID::UninitializedType)
-      : key_type(rk), value_type(rv) {}
+  CURRENT_CONSTRUCTOR(ReflectedType_Map)
+  (TypeID rk = TypeID::UninitializedType, TypeID rv = TypeID::UninitializedType) : key_type(rk), value_type(rv) {}
 };
 
 CURRENT_STRUCT(ReflectedType_UnorderedMap, ReflectedTypeBase) {
   CURRENT_FIELD(key_type, TypeID);
   CURRENT_FIELD(value_type, TypeID);
-  CURRENT_CONSTRUCTOR(ReflectedType_UnorderedMap)(TypeID rk = TypeID::UninitializedType,
-                                                  TypeID rv = TypeID::UninitializedType)
-      : key_type(rk), value_type(rv) {}
+  CURRENT_CONSTRUCTOR(ReflectedType_UnorderedMap)
+  (TypeID rk = TypeID::UninitializedType, TypeID rv = TypeID::UninitializedType) : key_type(rk), value_type(rv) {}
 };
 
 CURRENT_STRUCT(ReflectedType_Set, ReflectedTypeBase) {
@@ -153,8 +152,8 @@ CURRENT_STRUCT(ReflectedType_UnorderedSet, ReflectedTypeBase) {
 CURRENT_STRUCT(ReflectedType_Pair, ReflectedTypeBase) {
   CURRENT_FIELD(first_type, TypeID);
   CURRENT_FIELD(second_type, TypeID);
-  CURRENT_CONSTRUCTOR(ReflectedType_Pair)(TypeID rf = TypeID::UninitializedType, TypeID rs = TypeID::UninitializedType)
-      : first_type(rf), second_type(rs) {}
+  CURRENT_CONSTRUCTOR(ReflectedType_Pair)
+  (TypeID rf = TypeID::UninitializedType, TypeID rs = TypeID::UninitializedType) : first_type(rf), second_type(rs) {}
 };
 
 CURRENT_STRUCT(ReflectedType_Optional, ReflectedTypeBase) {
@@ -173,8 +172,8 @@ CURRENT_STRUCT(ReflectedType_Struct_Field) {
   CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(description, Optional<std::string>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct_Field){};
-  CURRENT_CONSTRUCTOR(ReflectedType_Struct_Field)(
-      TypeID type_id, const std::string& name, const Optional<std::string> description)
+  CURRENT_CONSTRUCTOR(ReflectedType_Struct_Field)
+  (TypeID type_id, const std::string& name, const Optional<std::string> description)
       : type_id(type_id), name(name), description(description) {}
 };
 

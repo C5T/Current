@@ -600,31 +600,36 @@ TEST(RipCurrent, PlusIntrospection) {
       "DumpString() + DumpBool()",
       ((EmitInteger() + EmitString() + EmitBool()) |
        (RIPCURRENT_PASS(Integer) + RIPCURRENT_PASS(String) + RIPCURRENT_PASS(Bool)) |
-       (DumpInteger() + DumpString() + DumpBool())).Describe());
+       (DumpInteger() + DumpString() + DumpBool()))
+          .Describe());
 
   EXPECT_EQ(
       "EmitInteger() + EmitString() + EmitBool() | Pass(Integer, String, Bool) | DumpInteger() + DumpString() + "
       "DumpBool()",
       ((EmitInteger() + EmitString() + EmitBool()) | RIPCURRENT_PASS(Integer, String, Bool) |
-       (DumpInteger() + DumpString() + DumpBool())).Describe());
+       (DumpInteger() + DumpString() + DumpBool()))
+          .Describe());
 
   EXPECT_EQ(
       "EmitInteger() + EmitString() + EmitBool() | Pass(Integer, String) + DumpBool() | DumpInteger() + DumpString()",
       ((EmitInteger() + EmitString() + EmitBool()) | (RIPCURRENT_PASS(Integer, String) + DumpBool()) |
-       (DumpInteger() + DumpString())).Describe());
+       (DumpInteger() + DumpString()))
+          .Describe());
 
   EXPECT_EQ(
       "EmitInteger() + EmitString() + EmitBool() | DumpInteger() + Pass(String, Bool) | Pass(String) + DumpBool() | "
       "DumpString()",
       ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + RIPCURRENT_PASS(String, Bool)) |
-       ((RIPCURRENT_PASS(String) + DumpBool()) | DumpString())).Describe());
+       ((RIPCURRENT_PASS(String) + DumpBool()) | DumpString()))
+          .Describe());
 
   EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | DumpInteger() + Drop(String, Bool)",
             ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + RIPCURRENT_DROP(String, Bool))).Describe());
 
   EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | Pass(Integer) + Drop(String, Bool) | Drop(Integer)",
             ((EmitInteger() + EmitString() + EmitBool()) | (RIPCURRENT_PASS(Integer) + RIPCURRENT_DROP(String, Bool)) |
-             RIPCURRENT_DROP(Integer)).Describe());
+             RIPCURRENT_DROP(Integer))
+                .Describe());
 
   EXPECT_EQ("EmitInteger() + EmitString() => { Integer, String } | ...",
             (EmitInteger() + EmitString()).DescribeWithTypes());
@@ -800,8 +805,8 @@ CURRENT_STRUCT(RequestContainer) {
 
 RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
   RCHTTPAcceptor(uint16_t port)
-      : scope(HTTP(port)
-                  .Register("/ripcurrent", [this](Request request) { emit<RequestContainer>(std::move(request)); })) {
+      : scope(HTTP(port).Register("/ripcurrent",
+                                  [this](Request request) { emit<RequestContainer>(std::move(request)); })) {
     const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
     EXPECT_EQ("1\n", HTTP(GET(base_url)).body);
     EXPECT_EQ("2\n", HTTP(HEAD(base_url)).body);

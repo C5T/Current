@@ -38,16 +38,16 @@
 
 #ifdef FNCAS_JIT
 
+#include <iostream>
 #include <sstream>
 #include <stack>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include <dlfcn.h>
 
-#include "../../Bricks/strings/printf.h"
 #include "../../Bricks/file/file.h"
+#include "../../Bricks/strings/printf.h"
 
 #include "base.h"
 #include "node.h"
@@ -99,8 +99,7 @@ struct compiled_expression : noncopyable {
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
     if (retval) {
-      std::cerr << command << std::endl
-                << retval << std::endl;
+      std::cerr << command << std::endl << retval << std::endl;
       exit(-1);
     }
   }

@@ -63,8 +63,8 @@ SOFTWARE.
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 namespace current {
 namespace strings {
@@ -75,8 +75,7 @@ class Chunk {
   Chunk(const char* s, size_t n) : S(s), N(n) { CURRENT_ASSERT(S[N] == '\0'); }
   Chunk(const char* s) : S(s), N(strlen(s)) {}
   template <int L>
-  Chunk(const char s[L])
-      : S(s), N(L - 1) {
+  Chunk(const char s[L]) : S(s), N(L - 1) {
     // The above line break is `clang-format`, not me. -- D.K.
     CURRENT_ASSERT(S[N] == '\0');
   }
@@ -190,12 +189,12 @@ class UniqueChunk final : public Chunk {
 #define DEFINE_COMPARATOR(OP) \
   bool operator OP(const UniqueChunk& rhs) const { return S OP rhs.S; }
   // It's `clang-format` inserting those spaces between the operator and closing parenthesis; not me. -- D.K.
-  DEFINE_COMPARATOR(== );
-  DEFINE_COMPARATOR(!= );
-  DEFINE_COMPARATOR(< );
-  DEFINE_COMPARATOR(> );
-  DEFINE_COMPARATOR(<= );
-  DEFINE_COMPARATOR(>= );
+  DEFINE_COMPARATOR(==);
+  DEFINE_COMPARATOR(!=);
+  DEFINE_COMPARATOR(<);
+  DEFINE_COMPARATOR(>);
+  DEFINE_COMPARATOR(<=);
+  DEFINE_COMPARATOR(>=);
 #undef DEFINE_COMPARATOR
 };
 

@@ -41,8 +41,8 @@ SOFTWARE.
 
 #include "../../Bricks/strings/printf.h"
 
-#include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../../Bricks/dflags/dflags.h"
 
 DEFINE_int32(midichlorians_server_test_port, PickPortForUnitTest(), "Local port to run the test.");
 

@@ -27,8 +27,8 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_ATOMIC_THAT_WORKS_H
 #define BRICKS_UTIL_ATOMIC_THAT_WORKS_H
 
-#include <mutex>
 #include <cstring>
+#include <mutex>
 
 namespace current {
 

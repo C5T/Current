@@ -24,7 +24,7 @@ SOFTWARE.
 
 #define OLD_SCHEMA
 
-#include "flags.h"
 #include "gen_data.h"
+#include "flags.h"
 
 GEN_DATA(from);

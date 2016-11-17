@@ -41,12 +41,12 @@ SOFTWARE.
   template <>                                                   \
   struct CURRENT_OBJECT_INTERFACE_METHODS_WRAPPER<type> : CURRENT_OBJECT_INTERFACE_IMPL_POINTER_CONTAINER<type>
 
-#define CURRENT_FORWARD_METHOD(method)                                                                                \
-  template <typename... ARGS>                                                                                         \
-  typename std::result_of<decltype(&CURRENT_IMPLEMENTATION_POINTER_TYPE::method)(CURRENT_IMPLEMENTATION_POINTER_TYPE, \
-                                                                                 ARGS...)>::type                      \
-  method(ARGS&&... args) {                                                                                            \
-    return this->CURRENT_IMPLEMENTATION_POINTER->method(std::forward<ARGS>(args)...);                                 \
+#define CURRENT_FORWARD_METHOD(method)                                                                                 \
+  template <typename... ARGS>                                                                                          \
+  typename std::result_of<decltype (&CURRENT_IMPLEMENTATION_POINTER_TYPE::method)(CURRENT_IMPLEMENTATION_POINTER_TYPE, \
+                                                                                  ARGS...)>::type                      \
+  method(ARGS&&... args) {                                                                                             \
+    return this->CURRENT_IMPLEMENTATION_POINTER->method(std::forward<ARGS>(args)...);                                  \
   }
 
 #endif  // BRICKS_UTIL_OBJECT_INTERFACE_H

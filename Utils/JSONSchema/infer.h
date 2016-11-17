@@ -31,9 +31,9 @@ SOFTWARE.
 #ifndef CURRENT_UTILS_JSONSCHEMA_INFER_H
 #define CURRENT_UTILS_JSONSCHEMA_INFER_H
 
-#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Serialization/json.h"
+#include "../../TypeSystem/struct.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -740,20 +740,19 @@ template <typename PATH = DoNotTrackPath>
 inline Schema SchemaFromOneJSONPerLineFile(const std::string& file_name, const PATH& path = PATH()) {
   bool first = true;
   impl::Schema schema;
-  FileSystem::ReadFileByLines(file_name,
-                              [&path, &first, &schema](std::string&& json) {
-                                rapidjson::Document document;
-                                // `&json[0]` to pass a mutable string.
-                                if (document.Parse<0>(&json[0]).HasParseError()) {
-                                  CURRENT_THROW(InferSchemaParseJSONException());
-                                }
-                                if (first) {
-                                  schema = impl::RecursivelyInferSchema(document, path);
-                                  first = false;
-                                } else {
-                                  schema = CallReduce(schema, impl::RecursivelyInferSchema(document, path));
-                                }
-                              });
+  FileSystem::ReadFileByLines(file_name, [&path, &first, &schema](std::string&& json) {
+    rapidjson::Document document;
+    // `&json[0]` to pass a mutable string.
+    if (document.Parse<0>(&json[0]).HasParseError()) {
+      CURRENT_THROW(InferSchemaParseJSONException());
+    }
+    if (first) {
+      schema = impl::RecursivelyInferSchema(document, path);
+      first = false;
+    } else {
+      schema = CallReduce(schema, impl::RecursivelyInferSchema(document, path));
+    }
+  });
   return schema;
 }
 

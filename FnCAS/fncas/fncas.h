@@ -29,9 +29,9 @@
 #include "../../port.h"
 
 #include "base.h"
-#include "node.h"
 #include "differentiate.h"
-#include "optimize.h"
 #include "jit.h"
+#include "node.h"
+#include "optimize.h"
 
 #endif

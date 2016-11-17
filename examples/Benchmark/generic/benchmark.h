@@ -54,7 +54,8 @@ struct ScenariosRegisterer {
   }
   void Synopsis() const {
     std::cout << "./.current/run --scenario={scenario} [--threads={threads_to_query_from}] "
-                 "[--secons={seconds_to_run_benchmark_for}." << std::endl;
+                 "[--secons={seconds_to_run_benchmark_for}."
+              << std::endl;
     for (const auto& scenario : map) {
       std::cout << "\t--scenario=" << scenario.first << " : " << scenario.second.first << std::endl;
     }

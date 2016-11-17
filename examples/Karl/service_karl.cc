@@ -24,9 +24,9 @@ SOFTWARE.
 
 #include "current_build.h"
 
-#include "../../Karl/test_service/is_prime.h"
-#include "../../Karl/karl.h"
 #include "../../Bricks/dflags/dflags.h"
+#include "../../Karl/karl.h"
+#include "../../Karl/test_service/is_prime.h"
 
 DEFINE_uint16(nginx_port, 7590, "Port for Nginx to serve proxied queries to Claires.");
 DEFINE_string(nginx_config, "", "If set, Karl updates this config with the proxy routes to Claires.");
@@ -46,7 +46,8 @@ int main(int argc, char **argv) {
   }
   const current::karl::GenericKarl<current::karl::UseOwnStorage,
                                    current::karl::default_user_status::status,
-                                   karl_unittest::is_prime> karl(params);
+                                   karl_unittest::is_prime>
+      karl(params);
   std::cout << "Karl up, http://localhost:" << kDefaultKarlFleetViewPort << '/' << std::endl;
   if (!FLAGS_nginx_config.empty()) {
     std::cout << "Karl's Nginx is serving on http://localhost:" << FLAGS_nginx_port << '/' << std::endl;

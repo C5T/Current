@@ -29,9 +29,9 @@ SOFTWARE.
 
 #include "file.h"
 
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 #include "../dflags/dflags.h"
 #include "../strings/join.h"
-#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 using current::FileSystem;
 using current::FileException;

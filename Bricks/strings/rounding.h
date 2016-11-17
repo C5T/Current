@@ -27,10 +27,10 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include <cstring>
-#include <string>
-#include <sstream>
 #include <cmath>
+#include <cstring>
+#include <sstream>
+#include <string>
 
 namespace current {
 namespace strings {

@@ -25,9 +25,9 @@ SOFTWARE.
 #ifndef FASTTSV_GEN_H
 #define FASTTSV_GEN_H
 
-#include <vector>
-#include <string>
 #include <random>
+#include <string>
+#include <vector>
 
 template <typename F>
 inline void CreateTSV(F&& f, size_t rows, size_t cols = 100, double scale = 10, size_t random_seed = 42) {

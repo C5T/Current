@@ -34,8 +34,8 @@ SOFTWARE.
 #include <unordered_map>
 #include <vector>
 
-#include "../Bricks/template/weed.h"
 #include "../Bricks/strings/chunk.h"
+#include "../Bricks/template/weed.h"
 #include "../Bricks/util/singleton.h"
 
 namespace efficient_tsv_parser_dispatcher {

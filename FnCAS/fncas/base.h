@@ -28,9 +28,9 @@
 
 #include "../../Bricks/port.h"
 
-#include <vector>
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
+#include <vector>
 
 namespace fncas {
 

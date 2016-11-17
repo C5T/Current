@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "flags.h"
 #include "gen_schema.h"
+#include "flags.h"
 
 GEN_SCHEMA(into, "SchemaInto");

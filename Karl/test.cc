@@ -29,10 +29,10 @@ SOFTWARE.
 
 #include "karl.h"
 
-#include "test_service/generator.h"
-#include "test_service/is_prime.h"
 #include "test_service/annotator.h"
 #include "test_service/filter.h"
+#include "test_service/generator.h"
+#include "test_service/is_prime.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -176,20 +176,22 @@ TEST(Karl, SmokeAnnotator) {
                                                   Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
                                                   Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
                                                   karl_locator);
-  ASSERT_NO_THROW(const auto x37 = ParseJSON<karl_unittest::Number>(
-                      current::strings::Split(HTTP(GET(Printf("http://localhost:%d/annotated?i=37&n=1",
-                                                              FLAGS_karl_annotator_test_port))).body,
-                                              '\t').back());
-                  EXPECT_EQ(37, x37.x);
-                  ASSERT_TRUE(Exists(x37.is_prime));
-                  EXPECT_TRUE(Value(x37.is_prime)););
-  ASSERT_NO_THROW(const auto x39 = ParseJSON<karl_unittest::Number>(
-                      current::strings::Split(HTTP(GET(Printf("http://localhost:%d/annotated?i=39&n=1",
-                                                              FLAGS_karl_annotator_test_port))).body,
-                                              '\t').back());
-                  EXPECT_EQ(39, x39.x);
-                  ASSERT_TRUE(Exists(x39.is_prime));
-                  EXPECT_FALSE(Value(x39.is_prime)););
+  ASSERT_NO_THROW(
+      const auto x37 = ParseJSON<karl_unittest::Number>(
+          current::strings::Split(
+              HTTP(GET(Printf("http://localhost:%d/annotated?i=37&n=1", FLAGS_karl_annotator_test_port))).body, '\t')
+              .back());
+      EXPECT_EQ(37, x37.x);
+      ASSERT_TRUE(Exists(x37.is_prime));
+      EXPECT_TRUE(Value(x37.is_prime)););
+  ASSERT_NO_THROW(
+      const auto x39 = ParseJSON<karl_unittest::Number>(
+          current::strings::Split(
+              HTTP(GET(Printf("http://localhost:%d/annotated?i=39&n=1", FLAGS_karl_annotator_test_port))).body, '\t')
+              .back());
+      EXPECT_EQ(39, x39.x);
+      ASSERT_TRUE(Exists(x39.is_prime));
+      EXPECT_FALSE(Value(x39.is_prime)););
 
   {
     current::karl::ClaireStatus status;
@@ -234,7 +236,8 @@ TEST(Karl, SmokeFilter) {
       // 10-th (index=9 for 0-based) prime is `29`.
       const auto x29 = ParseJSON<karl_unittest::Number>(
           current::strings::Split(
-              HTTP(GET(Printf("http://localhost:%d/primes?i=9&n=1", FLAGS_karl_filter_test_port))).body, '\t').back());
+              HTTP(GET(Printf("http://localhost:%d/primes?i=9&n=1", FLAGS_karl_filter_test_port))).body, '\t')
+              .back());
       EXPECT_EQ(29, x29.x);
       ASSERT_TRUE(Exists(x29.is_prime));
       EXPECT_TRUE(Value(x29.is_prime)));
@@ -242,7 +245,8 @@ TEST(Karl, SmokeFilter) {
       // 20-th (index=19 for 0-based) prime is `71`.
       const auto x71 = ParseJSON<karl_unittest::Number>(
           current::strings::Split(
-              HTTP(GET(Printf("http://localhost:%d/primes?i=19&n=1", FLAGS_karl_filter_test_port))).body, '\t').back());
+              HTTP(GET(Printf("http://localhost:%d/primes?i=19&n=1", FLAGS_karl_filter_test_port))).body, '\t')
+              .back());
       EXPECT_EQ(71, x71.x);
       ASSERT_TRUE(Exists(x71.is_prime));
       EXPECT_TRUE(Value(x71.is_prime)););
@@ -308,8 +312,9 @@ TEST(Karl, Deregister) {
       {
         unittest_karl_status_t status;
         ASSERT_NO_THROW(
-            status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                                                       FLAGS_karl_test_fleet_view_port))).body));
+            status = ParseJSON<unittest_karl_status_t>(
+                HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port)))
+                    .body));
         EXPECT_EQ(1u, status.machines.size()) << JSON(status);
         ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
         auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -413,8 +418,9 @@ TEST(Karl, DeregisterWithNginx) {
       {
         unittest_karl_status_t status;
         ASSERT_NO_THROW(
-            status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                                                       FLAGS_karl_test_fleet_view_port))).body));
+            status = ParseJSON<unittest_karl_status_t>(
+                HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_fleet_view_port)))
+                    .body));
         EXPECT_EQ(1u, status.machines.size()) << JSON(status);
         ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
         auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -502,12 +508,13 @@ TEST(Karl, DisconnectedByTimout) {
     while (karl.ActiveServicesCount() == 0u) {
       std::this_thread::yield();
     }
-    const auto result =
-        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-          ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
-                    Value(fields.claires[claire.codename]).registered_state);
-        }).Go();
+    const auto result = karl.InternalExposeStorage()
+                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
+                              EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                                        Value(fields.claires[claire.codename]).registered_state);
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
@@ -557,12 +564,13 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
     while (karl.ActiveServicesCount() == 0u) {
       std::this_thread::yield();
     }
-    const auto result =
-        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-          ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-          EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
-                    Value(fields.claires[claire.codename]).registered_state);
-        }).Go();
+    const auto result = karl.InternalExposeStorage()
+                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
+                              EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                                        Value(fields.claires[claire.codename]).registered_state);
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
@@ -646,8 +654,9 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                                                   secondary_karl_params.fleet_view_port))).body));
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", secondary_karl_params.fleet_view_port)))
+                .body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -696,8 +705,9 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
-                                                                   secondary_karl_params.fleet_view_port))).body));
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", secondary_karl_params.fleet_view_port)))
+                .body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -1062,9 +1072,11 @@ TEST(Karl, CustomStorage) {
   custom_storage_t storage(FLAGS_karl_test_storage_persistence_file);
 
   {
-    const auto result = storage.ReadWriteTransaction([](MutableFields<custom_storage_t> fields) {
-      fields.custom_field.Add(CustomField(42, "UnitTest"));
-    }).Go();
+    const auto result = storage
+                            .ReadWriteTransaction([](MutableFields<custom_storage_t> fields) {
+                              fields.custom_field.Add(CustomField(42, "UnitTest"));
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
@@ -1076,24 +1088,28 @@ TEST(Karl, CustomStorage) {
         FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
     generator_codename = generator.ClaireCodename();
 
-    const auto result = karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
-      ASSERT_TRUE(Exists(fields.claires[generator_codename]));
-      EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
-                Value(fields.claires[generator_codename]).registered_state);
-    }).Go();
+    const auto result = karl.InternalExposeStorage()
+                            .ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+                              EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
+                                        Value(fields.claires[generator_codename]).registered_state);
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
   {
-    const auto result = storage.ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
-      // `generator` has deregistered itself on destruction.
-      ASSERT_TRUE(Exists(fields.claires[generator_codename]));
-      EXPECT_EQ(current::karl::ClaireRegisteredState::Deregistered,
-                Value(fields.claires[generator_codename]).registered_state);
-      // Our `custom_field` is fine.
-      ASSERT_TRUE(Exists(fields.custom_field[42]));
-      EXPECT_EQ("UnitTest", Value(fields.custom_field[42]).s);
-    }).Go();
+    const auto result = storage
+                            .ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+                              // `generator` has deregistered itself on destruction.
+                              ASSERT_TRUE(Exists(fields.claires[generator_codename]));
+                              EXPECT_EQ(current::karl::ClaireRegisteredState::Deregistered,
+                                        Value(fields.claires[generator_codename]).registered_state);
+                              // Our `custom_field` is fine.
+                              ASSERT_TRUE(Exists(fields.custom_field[42]));
+                              EXPECT_EQ("UnitTest", Value(fields.custom_field[42]).s);
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 }
