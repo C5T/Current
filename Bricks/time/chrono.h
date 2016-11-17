@@ -34,6 +34,7 @@ SOFTWARE.
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 #include "../exception.h"
@@ -58,35 +59,36 @@ struct InconsistentSetNowException : Exception {
 };
 
 struct MockNowImpl {
-  std::atomic<std::chrono::microseconds> mock_now_value;
+  std::chrono::microseconds mock_now_value;
   std::chrono::microseconds max_mock_now_value;
+  std::mutex mutex;
 };
 
 inline const std::chrono::microseconds Now() {
   auto& impl = Singleton<MockNowImpl>();
-  std::chrono::microseconds now;
-  do {
-    now = impl.mock_now_value.load();
-  } while (now < impl.max_mock_now_value &&
-           !impl.mock_now_value.compare_exchange_strong(now, now + std::chrono::microseconds(1)));
+  std::lock_guard<std::mutex> lock(impl.mutex);
+  const auto now = impl.mock_now_value;
+  if (impl.mock_now_value < impl.max_mock_now_value) {
+    ++impl.mock_now_value;
+  }
   return now;
 }
 
 inline void SetNow(std::chrono::microseconds us, std::chrono::microseconds max_us = std::chrono::microseconds(0)) {
   auto& impl = Singleton<MockNowImpl>();
-  std::chrono::microseconds prev_now;
-  do {
-    prev_now = impl.mock_now_value.load();
-    if (us < prev_now) {
-      CURRENT_THROW(InconsistentSetNowException(prev_now, us));
-    }
-  } while (!impl.mock_now_value.compare_exchange_strong(prev_now, us));
-  impl.max_mock_now_value = max_us;
+  std::lock_guard<std::mutex> lock(impl.mutex);
+  if (us >= impl.mock_now_value) {
+    impl.mock_now_value = us;
+    impl.max_mock_now_value = max_us;
+  } else {
+    CURRENT_THROW(InconsistentSetNowException(impl.mock_now_value, us));
+  }
 }
 
 inline void ResetToZero() {
   auto& impl = Singleton<MockNowImpl>();
-  impl.mock_now_value.store(std::chrono::microseconds(0));
+  std::lock_guard<std::mutex> lock(impl.mutex);
+  impl.mock_now_value = std::chrono::microseconds(0);
   impl.max_mock_now_value = std::chrono::microseconds(1000ll * 1000ll * 1000ll);
 }
 
