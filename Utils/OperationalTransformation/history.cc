@@ -29,7 +29,7 @@ SOFTWARE.
 
 DEFINE_string(input, "input.ot", "The name of the input file containing the Operational Transformation of the pad.");
 DEFINE_double(at_m, 0, "If nonzero, the minute at which the contents of the pad should be output.");
-DEFINE_double(interval_s, 5, "If `--at_m` is not set, the iterval between snapshots to be output, in seconds.");
+DEFINE_double(interval_s, 5, "If `--at_m` is not set, the interval between snapshots to be output, in seconds.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
