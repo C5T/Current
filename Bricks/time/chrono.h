@@ -168,11 +168,11 @@ enum class SecondsToMicrosecondsPadding : bool { Lower = false, Upper = true };
 
 struct DefaultTimeArgument {};
 
-std::chrono::microseconds GetTimestampFromLockedSection(DefaultTimeArgument) {
+inline std::chrono::microseconds GetTimestampFromLockedSection(DefaultTimeArgument) {
   return Now();
 }
 
-std::chrono::microseconds GetTimestampFromLockedSection(std::chrono::microseconds us) {
+inline std::chrono::microseconds GetTimestampFromLockedSection(std::chrono::microseconds us) {
   return us;
 }
 
