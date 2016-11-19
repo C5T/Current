@@ -74,9 +74,45 @@ class MMPQ {
   // NOTE(dkorolev): `std::enable_if_t<std::is_same<message_t, current::decay<T>>::value, idxts_t>` can't convert
   // `const char*` into an `std::string`, which is essential, as, unlike MMQ, MMPQ is not an `ss::EntryPublisher<>`.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t Publish(T&& message, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
+  idxts_t Publish(T&& message) {
+    return DoPublish(std::move(message), current::time::DefaultTimeArgument());
+  }
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
+  idxts_t Publish(T&& message, const std::chrono::microseconds us) {
+    return DoPublish(std::move(message), us);
+  }
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
+  idxts_t PublishIntoTheFuture(T&& message) {
+    return DoPublishIntoTheFuture(std::move(message), current::time::DefaultTimeArgument());
+  }
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
+  idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds us) {
+    return DoPublishIntoTheFuture(std::move(message), us);
+  }
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  void UpdateHead(const std::chrono::microseconds us) {
+    DoUpdateHead(us);
+  }
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  void UpdateHead() {
+    DoUpdateHead(current::time::DefaultTimeArgument());
+  }
+
+ private:
+  MMPQ(const MMPQ&) = delete;
+  MMPQ(MMPQ&&) = delete;
+  void operator=(const MMPQ&) = delete;
+  void operator=(MMPQ&&) = delete;
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T, typename US>
+  idxts_t DoPublish(T&& message, const US us) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
@@ -87,10 +123,10 @@ class MMPQ {
     return last_idx_ts_;
   }
 
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds us = std::chrono::microseconds(-1)) {
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T, typename US>
+  idxts_t DoPublishIntoTheFuture(T&& message, const US us) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
@@ -101,22 +137,16 @@ class MMPQ {
     return last_idx_ts_;
   }
 
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  void UpdateHead(std::chrono::microseconds us = std::chrono::microseconds(-1)) {
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename US>
+  void DoUpdateHead(const US us) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
     last_idx_ts_.us = timestamp;
     condition_variable_.notify_all();
   }
-
- private:
-  MMPQ(const MMPQ&) = delete;
-  MMPQ(MMPQ&&) = delete;
-  void operator=(const MMPQ&) = delete;
-  void operator=(MMPQ&&) = delete;
 
   void ConsumerThread() {
     while (true) {

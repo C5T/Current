@@ -97,8 +97,8 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  template <current::locks::MutexLockStatus MLS>
-  idxts_t DoPublish(const message_t& message, std::chrono::microseconds timestamp) {
+  template <current::locks::MutexLockStatus MLS, typename US>
+  idxts_t DoPublish(const message_t& message, const US timestamp) {
     const std::pair<bool, size_t> index = CircularBufferAllocate(timestamp);
     if (index.first) {
       circular_buffer_[index.second].message_body = message;
@@ -109,8 +109,8 @@ class MMQImpl {
     }
   }
 
-  template <current::locks::MutexLockStatus MLS>
-  idxts_t DoPublish(message_t&& message, std::chrono::microseconds timestamp) {
+  template <current::locks::MutexLockStatus MLS, typename US>
+  idxts_t DoPublish(message_t&& message, const US timestamp) {
     const std::pair<bool, size_t> index = CircularBufferAllocate(timestamp);
     if (index.first) {
       circular_buffer_[index.second].message_body = std::move(message);
@@ -186,14 +186,14 @@ class MMQImpl {
   }
 
   // Returns { successful allocation flag, circular buffer index }.
-  template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(std::chrono::microseconds us) {
+  template <bool DROP = DROP_ON_OVERFLOW, typename US>
+  typename std::enable_if<DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(US us) {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
     if (circular_buffer_[head_].status == Entry::FREE) {
       // Regular case.
-      const auto timestamp = us.count() >= 0 ? us : current::time::Now();
+      const auto timestamp = current::time::GetTimestampFromLockedSection(us);
       if (!(timestamp > last_idx_ts_.us)) {
         CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
       }
@@ -211,8 +211,8 @@ class MMQImpl {
   }
 
   // Returns { successful allocation flag, circular buffer index }.
-  template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(std::chrono::microseconds us) {
+  template <bool DROP = DROP_ON_OVERFLOW, typename US>
+  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(US us) {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
@@ -220,7 +220,7 @@ class MMQImpl {
     if (destructing_) {
       return std::make_pair(false, 0u);  // LCOV_EXCL_LINE
     }
-    const auto timestamp = us.count() >= 0 ? us : current::time::Now();
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }
