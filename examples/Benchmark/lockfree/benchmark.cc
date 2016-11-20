@@ -71,7 +71,7 @@ std::chrono::microseconds Run() {
   for (auto& thread : threads) {
     thread->Join();
   }
-  return std::chrono::system_clock::now() - start;
+  return (std::chrono::system_clock::now() - start) / FLAGS_threads;
 }
 
 int main(int argc, char** argv) {
