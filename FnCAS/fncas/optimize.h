@@ -37,14 +37,16 @@ SOFTWARE.
 #include "mathutil.h"
 
 #include "../../Bricks/template/decay.h"
+#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
 #include "../../TypeSystem/helpers.h"
 
 namespace fncas {
 
-struct OptimizationResult {
-  double value;
-  std::vector<double> point;
+CURRENT_STRUCT(OptimizationResult) {
+  CURRENT_FIELD(value, double, 0.0);
+  CURRENT_FIELD(point, std::vector<double>);
+  CURRENT_CONSTRUCTOR(OptimizationResult)(double value, const std::vector<double>& x) : value(value), point(x) {}
 };
 
 class OptimizerParameters {
@@ -148,7 +150,7 @@ class GradientDescentOptimizer : public Optimizer<F> {
                                std::min(try_step(0.05 * step_factor), try_step(0.2 * step_factor))).second;
     }
 
-    return OptimizationResult{fi(current_point), current_point};
+    return OptimizationResult(fi(current_point), current_point);
   }
 };
 
@@ -195,7 +197,7 @@ class GradientDescentOptimizerBT : public Optimizer<F> {
       }
     }
 
-    return OptimizationResult{fi(current_point), current_point};
+    return OptimizationResult(fi(current_point), current_point);
   }
 };
 
