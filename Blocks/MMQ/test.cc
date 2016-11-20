@@ -174,8 +174,8 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   SuspendableConsumer c;
   c.SetProcessingDelayMillis(1u);
 
-  // Queue with 10 events in the buffer. Don't drop events on overflow, and allow non-monotonic timestamps.
-  MMQ<std::string, SuspendableConsumer, 10, false, false> mmq(c);
+  // Queue with 10 events in the buffer. Don't drop events on overflow.
+  MMQ<std::string, SuspendableConsumer, 10, false> mmq(c);
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {

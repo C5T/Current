@@ -127,10 +127,11 @@ class MemoryPersister {
     const uint64_t end_;
   };
 
-  template <current::locks::MutexLockStatus MLS, typename E>
-  idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+  template <current::locks::MutexLockStatus MLS, typename E, typename US>
+  idxts_t DoPublish(E&& entry, const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
     const auto head = container_->head;
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
@@ -140,9 +141,10 @@ class MemoryPersister {
     return idxts_t(index, timestamp);
   }
 
-  template <current::locks::MutexLockStatus MLS>
-  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+  template <current::locks::MutexLockStatus MLS, typename US>
+  void DoUpdateHead(const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     const auto head = container_->head;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));

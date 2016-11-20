@@ -80,22 +80,22 @@ struct DemoEntryPublisherImpl {
   size_t index = 0u;
   std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
 
-  template <current::locks::MutexLockStatus>
-  idxts_t DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
+  template <current::locks::MutexLockStatus, typename US>
+  idxts_t DoPublish(const DispatchDemoEntry& e, const US) {
     ++index;
     values.push_back(e);
     return idxts_t(index, current::time::Now());
   }
 
-  template <current::locks::MutexLockStatus>
-  idxts_t DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
+  template <current::locks::MutexLockStatus, typename US>
+  idxts_t DoPublish(DispatchDemoEntry&& e, const US) {
     ++index;
     values.push_back(std::move(e));
     return idxts_t(index, current::time::Now());
   }
 
-  template <current::locks::MutexLockStatus>
-  void DoUpdateHead(std::chrono::microseconds) const {}
+  template <current::locks::MutexLockStatus, typename US>
+  void DoUpdateHead(const US) const {}
 
   // TODO: Decide on `Emplace`.
   //  idxts_t DoEmplace(const std::string& text) {
