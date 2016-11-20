@@ -75,32 +75,32 @@ class MMPQ {
   // `const char*` into an `std::string`, which is essential, as, unlike MMQ, MMPQ is not an `ss::EntryPublisher<>`.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t Publish(T&& message) {
-    return DoPublish(std::move(message), current::time::DefaultTimeArgument());
+    return DoPublish<MLS>(std::move(message), current::time::DefaultTimeArgument());
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t Publish(T&& message, const std::chrono::microseconds us) {
-    return DoPublish(std::move(message), us);
+    return DoPublish<MLS>(std::move(message), us);
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t PublishIntoTheFuture(T&& message) {
-    return DoPublishIntoTheFuture(std::move(message), current::time::DefaultTimeArgument());
+    return DoPublishIntoTheFuture<MLS>(std::move(message), current::time::DefaultTimeArgument());
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
   idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds us) {
-    return DoPublishIntoTheFuture(std::move(message), us);
+    return DoPublishIntoTheFuture<MLS>(std::move(message), us);
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void UpdateHead(const std::chrono::microseconds us) {
-    DoUpdateHead(us);
+    DoUpdateHead<MLS>(us);
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void UpdateHead() {
-    DoUpdateHead(current::time::DefaultTimeArgument());
+    DoUpdateHead<MLS>(current::time::DefaultTimeArgument());
   }
 
  private:
