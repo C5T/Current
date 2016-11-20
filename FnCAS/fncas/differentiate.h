@@ -206,10 +206,7 @@ struct g_intermediate : g {
     }
   }
   explicit g_intermediate(const X& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
-  // TODO(dkorolev): This worries me a lot, need to move to gtest and measure coverage.
-  g_intermediate(g_intermediate&&) {}
-  g_intermediate() = default;
-  g_intermediate(const g_intermediate&) = default;
+  g_intermediate() = delete;
   void operator=(const g_intermediate& rhs) {
     f_ = rhs.f_;
     g_ = rhs.g_;

@@ -1,5 +1,0 @@
-- [done] unify caller interface so that slow eval, fast eval and compiled eval were the same functions.
-- [done] unify test to have eval/ieval/ceval use the same code.
-- add gradient and returning multiple values (intermediate format only so far).
-- add a regression test for gradient computatin: basic functions and some trivial complex functions.
-- change test binary to support multiple compilation methods, #include "jit" multiple times with different parameters.

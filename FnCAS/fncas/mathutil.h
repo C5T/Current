@@ -112,7 +112,7 @@ inline double PolakRibiere(const std::vector<double>& g, const std::vector<doubl
 // sequentially shrinking the step size. Returns new optimal point.
 // Algorithm parameters: 0 < alpha < 1, 0 < beta < 1.
 template <class F, class G>
-inline std::vector<double> BackTracking(F&& eval_function,
+inline std::vector<double> Backtracking(F&& eval_function,
                                         G&& eval_gradient,
                                         const std::vector<double>& current_point,
                                         const std::vector<double>& direction,
