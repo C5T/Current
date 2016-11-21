@@ -36,6 +36,7 @@
 #include <exception>
 
 #include "base.h"
+#include "exceptions.h"
 
 #include "../../Bricks/exception.h"
 #include "../../Bricks/util/singleton.h"
@@ -44,11 +45,6 @@
 inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) { return x * x; }
 
 namespace fncas {
-
-// This exception is thrown when more than one expression per thread
-// is attempted to be evaluated concurrently under FNCAS.
-// This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
-struct FNCASConcurrentEvaluationAttemptException : current::Exception {};
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.
@@ -303,7 +299,7 @@ struct X : noncopyable {
     CURRENT_ASSERT(dim > 0);
     auto& meta = internals_singleton();
     if (meta.x_ptr_) {
-      throw FNCASConcurrentEvaluationAttemptException();
+      CURRENT_THROW(FnCASConcurrentEvaluationAttemptException());
     }
     CURRENT_ASSERT(!meta.dim_);
     // Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
@@ -419,7 +415,6 @@ using V2X = typename v2x_impl<V>::type;
     return lhs;                                                             \
   }
 
-// TODO(dkorolev): Support unary minus as well.
 DECLARE_OP(+, +=, add);
 DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
@@ -444,5 +439,9 @@ DECLARE_FUNCTION(tan);
 DECLARE_FUNCTION(asin);
 DECLARE_FUNCTION(acos);
 DECLARE_FUNCTION(atan);
+
+// Unary plus and unary minus.
+inline fncas::V operator+(const fncas::V& x) { return x; }
+inline fncas::V operator-(const fncas::V& x) { return 0.0 - x; }
 
 #endif  // #ifndef FNCAS_NODE_H
