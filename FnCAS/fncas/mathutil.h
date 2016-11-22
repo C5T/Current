@@ -35,9 +35,17 @@
 #include <numeric>
 #include <vector>
 
+#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Serialization/json.h"
 
 namespace fncas {
+
+CURRENT_STRUCT(ValueAndPoint) {
+  CURRENT_FIELD(value, double, 0.0);
+  CURRENT_FIELD(point, std::vector<double>);
+  bool operator<(const ValueAndPoint& rhs) const { return value < rhs.value; }
+  CURRENT_CONSTRUCTOR(ValueAndPoint)(double value, const std::vector<double>& x) : value(value), point(x) {}
+};
 
 inline bool IsNormal(double arg) { return (std::isnormal(arg) || arg == 0.0); }
 
@@ -127,13 +135,13 @@ inline double PolakRibiere(const std::vector<double>& g, const std::vector<doubl
 // sequentially shrinking the step size. Returns new optimal point.
 // Algorithm parameters: 0 < alpha < 1, 0 < beta < 1.
 template <class F, class G>
-inline std::pair<double, std::vector<double>> Backtracking(F&& eval_function,
-                                                           G&& eval_gradient,
-                                                           const std::vector<double>& current_point,
-                                                           const std::vector<double>& direction,
-                                                           const double alpha = 0.5,
-                                                           const double beta = 0.8,
-                                                           const size_t max_steps = 100) {
+inline ValueAndPoint Backtracking(F&& eval_function,
+                                  G&& eval_gradient,
+                                  const std::vector<double>& current_point,
+                                  const std::vector<double>& direction,
+                                  const double alpha = 0.5,
+                                  const double beta = 0.8,
+                                  const size_t max_steps = 100) {
   OptimizerLogger().Log(std::string("Backtracking: Starting point ") + JSON(current_point) + ", direction " +
                         JSON(direction));
   const double current_f_value = eval_function(current_point);
@@ -155,7 +163,7 @@ inline std::pair<double, std::vector<double>> Backtracking(F&& eval_function,
   }
   OptimizerLogger().Log(std::string("Backtracking: Final value = ") + current::ToString(test_f_value));
 
-  return std::make_pair(test_f_value, test_point);
+  return ValueAndPoint(test_f_value, test_point);
 }
 
 }  // namespace fncas

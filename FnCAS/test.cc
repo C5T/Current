@@ -311,7 +311,6 @@ TEST(FnCAS, OptimizationOfAPolynomialUsingConjugateGradient) {
 }
 
 TEST(FnCAS, OptimizationOfRosenbrockUsingConjugateGradient) {
-  // fncas::ScopedLogToStderr scope;
   const auto result = fncas::ConjugateGradientOptimizer<RosenbrockFunction>().Optimize({-3.0, -4.0});
   EXPECT_NEAR(0.0, result.value, 1e-6);
   ASSERT_EQ(2u, result.point.size());
