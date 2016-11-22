@@ -163,7 +163,7 @@ TEST(Serialization, Binary) {
     complex_object.q = "bar";
     complex_object.v.push_back("one");
     complex_object.v.push_back("two");
-    complex_object.z = Clone(simple_object);
+    complex_object.z = simple_object;
     SaveIntoBinary(ofs, complex_object);
 
     DerivedSerializable derived_object;
@@ -175,7 +175,7 @@ TEST(Serialization, Binary) {
     SaveIntoBinary(ofs, derived_object);
 
     WithNontrivialMap with_nontrivial_map;
-    auto tmp = Clone(simple_object);
+    auto tmp = simple_object;
     with_nontrivial_map.q[std::move(tmp)] = "wow";
     with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
     SaveIntoBinary(ofs, with_nontrivial_map);

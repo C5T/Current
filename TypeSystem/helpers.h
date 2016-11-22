@@ -24,7 +24,6 @@ SOFTWARE.
 *******************************************************************************/
 
 // Current-friendly types can always be `std::move()`-d.
-// To make a copy of `x`, the recommended synopsis is `Clone(x)`.
 //
 // For optional and/or polymorphic types, use the global `Exists()` and `Value()` functions.
 //
@@ -177,17 +176,10 @@ void CheckIntegrity(T&& x) {
   CheckIntegrityImplCaller<T>::CallCheckIntegrityImpl(std::forward<T>(x));
 }
 
-// Temporary no-op `Clone`.
-template <typename T>
-T& Clone(T& x) {
-  return x;
-}
-
 }  // namespace current
 
 using current::Exists;
 using current::Value;
 using current::CheckIntegrity;
-using current::Clone;
 
 #endif  // CURRENT_TYPE_SYSTEM_HELPERS_H

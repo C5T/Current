@@ -373,11 +373,12 @@ class FilePersister {
     const std::streampos begin_offset_;
   };
 
-  template <current::locks::MutexLockStatus MLS, typename E>
-  idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+  template <current::locks::MutexLockStatus MLS, typename E, typename US>
+  idxts_t DoPublish(E&& entry, const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
 
     end_t iterator = file_persister_impl_->end.load();
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
@@ -397,11 +398,12 @@ class FilePersister {
     return current;
   }
 
-  template <current::locks::MutexLockStatus MLS>
-  void DoUpdateHead(const std::chrono::microseconds timestamp) {
+  template <current::locks::MutexLockStatus MLS, typename US>
+  void DoUpdateHead(const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
 
     end_t iterator = file_persister_impl_->end.load();
+    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
@@ -421,7 +423,9 @@ class FilePersister {
   }
 
   template <current::locks::MutexLockStatus>
-  bool Empty() const noexcept { return !file_persister_impl_->end.load().next_index; }
+  bool Empty() const noexcept {
+    return !file_persister_impl_->end.load().next_index;
+  }
   template <current::locks::MutexLockStatus>
   uint64_t Size() const noexcept {
     return file_persister_impl_->end.load().next_index;

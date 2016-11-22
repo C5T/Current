@@ -48,15 +48,27 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   virtual ~EntryPersister() {}
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
+  IndexAndTimestamp Publish(const ENTRY& e) {
+    return IMPL::template DoPublish<MLS>(e, current::time::DefaultTimeArgument());
+  }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us) {
     return IMPL::template DoPublish<MLS>(e, us);
   }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
+  IndexAndTimestamp Publish(ENTRY&& e) {
+    return IMPL::template DoPublish<MLS>(std::move(e), current::time::DefaultTimeArgument());
+  }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us) {
     return IMPL::template DoPublish<MLS>(std::move(e), us);
   }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  void UpdateHead(std::chrono::microseconds us = current::time::Now()) {
+  void UpdateHead() {
+    return IMPL::template DoUpdateHead<MLS>(current::time::DefaultTimeArgument());
+  }
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  void UpdateHead(std::chrono::microseconds us) {
     return IMPL::template DoUpdateHead<MLS>(us);
   }
 
@@ -66,7 +78,9 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   // }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  bool Empty() const noexcept { return IMPL::template Empty<MLS>(); }
+  bool Empty() const noexcept {
+    return IMPL::template Empty<MLS>();
+  }
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   uint64_t Size() const noexcept {
     return IMPL::template Size<MLS>();

@@ -128,48 +128,65 @@ class StreamImpl {
     explicit StreamPublisher(ScopeOwned<stream_data_t>& data) : data_(data, []() {}) {}
 
     template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
-      try {
-        auto& data = *data_;
-        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result =
-            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
-        data.notifier.NotifyAllOfExternalWaitableEvent();
-        return result;
-      } catch (const current::sync::InDestructingModeException&) {
-        CURRENT_THROW(StreamInGracefulShutdownException());
-      }
+    idxts_t DoPublish(const entry_t& entry, const current::time::DefaultTimeArgument) {
+      return PublishImpl<MLS>(entry);
     }
 
     template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
-      try {
-        auto& data = *data_;
-        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result =
-            data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
-        data.notifier.NotifyAllOfExternalWaitableEvent();
-        return result;
-      } catch (const current::sync::InDestructingModeException&) {
-        CURRENT_THROW(StreamInGracefulShutdownException());
-      }
+    idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us) {
+      return PublishImpl<MLS>(entry, us);
     }
 
     template <current::locks::MutexLockStatus MLS>
-    void DoUpdateHead(const std::chrono::microseconds us = current::time::Now()) {
-      try {
-        auto& data = *data_;
-        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
-        data.notifier.NotifyAllOfExternalWaitableEvent();
-      } catch (const current::sync::InDestructingModeException&) {
-        CURRENT_THROW(StreamInGracefulShutdownException());
-      }
+    idxts_t DoPublish(entry_t&& entry, const current::time::DefaultTimeArgument) {
+      return PublishImpl<MLS>(std::move(entry));
+    }
+
+    template <current::locks::MutexLockStatus MLS>
+    idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us) {
+      return PublishImpl<MLS>(std::move(entry), us);
+    }
+
+    template <current::locks::MutexLockStatus MLS>
+    void DoUpdateHead(const current::time::DefaultTimeArgument) {
+      UpdateHeadImpl<MLS>();
+    }
+
+    template <current::locks::MutexLockStatus MLS>
+    void DoUpdateHead(const std::chrono::microseconds us) {
+      UpdateHeadImpl<MLS>(us);
     }
 
     operator bool() const { return data_; }
 
    private:
+    template <current::locks::MutexLockStatus MLS, typename... ARGS>
+    idxts_t PublishImpl(ARGS&&... args) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        const auto result = data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(
+            std::forward<ARGS>(args)...);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+        return result;
+      } catch (const current::sync::InDestructingModeException&) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+    }
+
+    template <current::locks::MutexLockStatus MLS, typename... ARGS>
+    void UpdateHeadImpl(ARGS&&... args) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(
+            std::forward<ARGS>(args)...);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+      } catch (const current::sync::InDestructingModeException&) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+    }
+
     ScopeOwnedBySomeoneElse<stream_data_t> data_;
   };
   using publisher_t = ss::StreamPublisher<StreamPublisher, entry_t>;
@@ -227,32 +244,17 @@ class StreamImpl {
     rhs.authority_ = StreamDataAuthority::External;
   }
 
-  idxts_t Publish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (publisher_) {
-      return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
-    } else {
-      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
-    }
-  }
+  idxts_t Publish(const entry_t& entry) { return PublishImpl(entry); }
 
-  idxts_t Publish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (publisher_) {
-      return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
-    } else {
-      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
-    }
-  }
+  idxts_t Publish(const entry_t& entry, const std::chrono::microseconds us) { return PublishImpl(entry, us); }
 
-  void UpdateHead(const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (publisher_) {
-      return publisher_->template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(us);
-    } else {
-      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
-    }
-  }
+  idxts_t Publish(entry_t&& entry) { return PublishImpl(std::move(entry)); }
+
+  idxts_t Publish(entry_t&& entry, const std::chrono::microseconds us) { return PublishImpl(std::move(entry), us); }
+
+  void UpdateHead() { UpdateHeadImpl(); }
+
+  void UpdateHead(const std::chrono::microseconds us) { UpdateHeadImpl(us); }
 
   template <typename ACQUIRER>
   void MovePublisherTo(ACQUIRER&& acquirer) {
@@ -581,9 +583,7 @@ class StreamImpl {
     }
   }
 
-  persistence_layer_t& Persister() {
-    return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
-  }
+  persistence_layer_t& Persister() { return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence; }
 
  private:
   struct FillPerLanguageSchema {
@@ -613,6 +613,27 @@ class StreamImpl {
     current::reflection::ForEachLanguage(FillPerLanguageSchema(schema, namespace_name));
 
     return schema;
+  }
+
+  template <typename... ARGS>
+  idxts_t PublishImpl(ARGS&&... args) {
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
+    if (publisher_) {
+      return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::forward<ARGS>(args)...);
+    } else {
+      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
+    }
+  }
+
+  template <typename... ARGS>
+  void UpdateHeadImpl(ARGS&&... args) {
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
+    if (publisher_) {
+      return publisher_->template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(
+          std::forward<ARGS>(args)...);
+    } else {
+      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
+    }
   }
 
  private:

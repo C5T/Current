@@ -1315,13 +1315,19 @@ TEST(TypeSystemTest, ComplexCloneCases) {
 
   {
     Variant<Foo, Bar> x(Foo(1));
-    Variant<Foo, Bar> y = Clone(x);
+    Variant<Foo, Bar> y = x;
     EXPECT_EQ(1u, Value<Foo>(y).i);
   }
 
   {
+    // Confirm a copy is being made.
     WithVariant x(Foo(2));
-    WithVariant y = Clone(x);
+    WithVariant y(Foo(0));
+    EXPECT_EQ(2u, Value<Foo>(x.p).i);
+    EXPECT_EQ(0u, Value<Foo>(y.p).i);
+    y = x;
+    x = Foo(3);
+    EXPECT_EQ(3u, Value<Foo>(x.p).i);
     EXPECT_EQ(2u, Value<Foo>(y.p).i);
   }
 }
