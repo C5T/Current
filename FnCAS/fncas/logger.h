@@ -25,8 +25,11 @@ SOFTWARE.
 #ifndef FNCAS_LOGGER_H
 #define FNCAS_LOGGER_H
 
-#include <string>
-#include <ostream>
+#include "../../port.h"
+
+#include <iostream>
+
+#include "../../Bricks/util/singleton.h"
 
 namespace fncas {
 
