@@ -208,7 +208,8 @@ class DummyKarlNotifiable : public IKarlNotifiable<RUNTIME_STATUS_VARIANT> {
 template <class STORAGE_TYPE, typename... TS>
 class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                           private KarlNginxManager<typename KarlStorage<STORAGE_TYPE>::storage_t>,
-                          private DummyKarlNotifiable<Variant<TS...>> {
+                          private DummyKarlNotifiable<Variant<TS...>>,
+                          private DefaultFleetViewRenderer<Variant<TS...>> {
  public:
   using runtime_status_variant_t = Variant<TS...>;
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
@@ -216,20 +217,32 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
   using storage_t = typename KarlStorage<STORAGE_TYPE>::storage_t;
+  using karl_notifiable_t = IKarlNotifiable<runtime_status_variant_t>;
+  using fleet_view_renderer_t = IKarlFleetViewRenderer<runtime_status_variant_t>;
 
   template <class S = STORAGE_TYPE, class = std::enable_if_t<std::is_same<S, UseOwnStorage>::value>>
   explicit GenericKarl(const KarlParameters& parameters)
-      : GenericKarl(parameters.storage_persistence_file, parameters, *this, PrivateConstructorSelector()) {}
-  GenericKarl(const KarlParameters& parameters, IKarlNotifiable<runtime_status_variant_t>& notifiable)
-      : GenericKarl(parameters.storage_persistence_file, parameters, notifiable, PrivateConstructorSelector()) {}
+      : GenericKarl(parameters.storage_persistence_file, parameters, *this, *this, PrivateConstructorSelector()) {}
+  GenericKarl(const KarlParameters& parameters, karl_notifiable_t& notifiable)
+      : GenericKarl(parameters.storage_persistence_file, parameters, notifiable, *this, PrivateConstructorSelector()) {}
+  GenericKarl(const KarlParameters& parameters, fleet_view_renderer_t& renderer)
+      : GenericKarl(parameters.storage_persistence_file, parameters, *this, renderer, PrivateConstructorSelector()) {}
+  GenericKarl(const KarlParameters& parameters, karl_notifiable_t& notifiable, fleet_view_renderer_t& renderer)
+      : GenericKarl(
+            parameters.storage_persistence_file, parameters, notifiable, renderer, PrivateConstructorSelector()) {}
 
   template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
   GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters)
-      : GenericKarl(storage, parameters, *this, PrivateConstructorSelector()) {}
+      : GenericKarl(storage, parameters, *this, *this, PrivateConstructorSelector()) {}
+  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters, karl_notifiable_t& notifiable)
+      : GenericKarl(storage, parameters, notifiable, *this, PrivateConstructorSelector()) {}
+  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters, fleet_view_renderer_t& renderer)
+      : GenericKarl(storage, parameters, *this, renderer, PrivateConstructorSelector()) {}
   GenericKarl(STORAGE_TYPE& storage,
               const KarlParameters& parameters,
-              IKarlNotifiable<runtime_status_variant_t>& notifiable)
-      : GenericKarl(storage, parameters, notifiable, PrivateConstructorSelector()) {}
+              karl_notifiable_t& notifiable,
+              fleet_view_renderer_t& renderer)
+      : GenericKarl(storage, parameters, notifiable, renderer, PrivateConstructorSelector()) {}
 
  private:
   using karl_storage_t = KarlStorage<STORAGE_TYPE>;
@@ -245,6 +258,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   GenericKarl(T& storage_or_file,
               const KarlParameters& parameters,
               IKarlNotifiable<runtime_status_variant_t>& notifiable,
+              IKarlFleetViewRenderer<runtime_status_variant_t>& renderer,
               PrivateConstructorSelector)
       : karl_storage_t(storage_or_file),
         karl_nginx_manager_t(
@@ -255,6 +269,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
                                : parameters_.public_url),
         notifiable_ref_(notifiable),
+        fleet_view_renderer_ref_(renderer),
         keepalives_stream_(parameters_.stream_persistence_file),
         state_update_thread_running_(false),
         state_update_thread_force_wakeup_(false),
@@ -820,26 +835,25 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     // To list only the services that are currently in `Active` state.
     const bool active_only = r.url.query.has("active_only");
 
-    enum class ResponseType { JSONFull, JSONMinimalistic, DOT, HTML };
-    const auto response_type = [&r]() -> ResponseType {
+    const auto response_format = [&r]() -> FleetViewResponseFormat {
       if (r.url.query.has("full")) {
-        return ResponseType::JSONFull;
+        return FleetViewResponseFormat::JSONFull;
       }
       if (r.url.query.has("json")) {
-        return ResponseType::JSONMinimalistic;
+        return FleetViewResponseFormat::JSONMinimalistic;
       }
-      if (r.url.query.has("dot")) {
-        return ResponseType::DOT;
+      if (r.url.query.has("html")) {
+        return FleetViewResponseFormat::HTML;
       }
       const char* kAcceptHeader = "Accept";
       if (r.headers.Has(kAcceptHeader)) {
         for (const auto& h : strings::Split(r.headers[kAcceptHeader].value, ',')) {
           if (strings::Split(h, ';').front() == "text/html") {  // Allow "text/html; charset=...", etc.
-            return ResponseType::HTML;
+            return FleetViewResponseFormat::HTML;
           }
         }
       }
-      return ResponseType::JSONMinimalistic;
+      return FleetViewResponseFormat::JSONMinimalistic;
     }();
 
     const std::string public_url = actual_public_url_;
@@ -849,7 +863,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                   from,
                   to,
                   active_only,
-                  response_type,
+                  response_format,
                   public_url,
                   codenames_to_resolve,
                   report_for_codename,
@@ -940,24 +954,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                      }
                    }
                    result.generation_time = current::time::Now() - now;
-                   if (response_type == ResponseType::JSONMinimalistic) {
-                     return Response(JSON<JSONFormat::Minimalistic>(result),
-                                     HTTPResponseCode.OK,
-                                     current::net::constants::kDefaultJSONContentType);
-                   } else if (response_type == ResponseType::HTML) {
-                     // clang-format off
-                     return Response(
-                         "<!doctype html>"
-                         "<head><link rel='icon' href='./favicon.png'></head>"
-                         "<body>" + Render(result, parameters_.svg_name, parameters_.github_repo_url).AsSVG() + "</body>",
-                         HTTPResponseCode.OK,
-                         net::constants::kDefaultHTMLContentType);
-                     // clang-format on
-                   } else if (response_type == ResponseType::DOT) {
-                     return Response(Render(result, parameters_.svg_name, parameters_.github_repo_url).AsDOT());
-                   } else {
-                     return result;
-                   }
+                   return fleet_view_renderer_ref_.RenderResponse(response_format, parameters_, std::move(result));
                  },
                  std::move(r)).Detach();
   }
@@ -966,6 +963,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   const KarlParameters parameters_;
   const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
   IKarlNotifiable<runtime_status_variant_t>& notifiable_ref_;
+  IKarlFleetViewRenderer<runtime_status_variant_t>& fleet_view_renderer_ref_;
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
   std::set<std::string> local_ips_;  // The list of local IPs used ti receive keepalives.
