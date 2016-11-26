@@ -58,7 +58,7 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] += b[i];
-    if (fabs(a[i]) < 1e-100) {
+    if (std::abs(a[i]) < 1e-100) {
       // NOTE(dkorolev): Fight the underflow.
       a[i] = 0.0;
     }
@@ -75,7 +75,7 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] += kb * b[i];
-    if (fabs(a[i]) < 1e-100) {
+    if (std::abs(a[i]) < 1e-100) {
       // NOTE(dkorolev): Fight the underflow.
       a[i] = 0.0;
     }
@@ -93,7 +93,7 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] = ka * a[i] + kb * b[i];
-    if (fabs(a[i]) < 1e-100) {
+    if (std::abs(a[i]) < 1e-100) {
       // NOTE(dkorolev): Fight the underflow.
       a[i] = 0.0;
     }
