@@ -38,7 +38,7 @@ A smoke-test solution (`smoke.cc`) is the Brown-Robinson iterative method:
 
 The optimization-based solution (`optimize.cc`) solves the problem by converting it into an optimization problem. To accomplish this:
 
-* The very linear programming constraints are used as constraits:
+* The very linear programming constraints are used as constraints:
   * Player one's payoff from each pure strategy is less or equal than the equilibrium payoff.
   * Player two's payoff from each pure strategy is greater or equal than the equilibrium payoff.
 * Two tricks are used to make the problem convex:
