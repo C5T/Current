@@ -124,6 +124,14 @@ struct Group {
     graph["style"] = new_style;
     return *this;
   }
+  Group& Color(const std::string& value) {
+    graph["color"] = value;
+    return *this;
+  }
+  Group& FillColor(const std::string& value) {
+    graph["fillcolor"] = value;
+    return *this;
+  }
   Group& operator+=(const Node& node) {
     nodes.push_back(node);
     return *this;
