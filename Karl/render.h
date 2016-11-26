@@ -161,7 +161,6 @@ class DefaultFleetViewRenderer : public IKarlFleetViewRenderer<INNER_STATUSES_VA
           up_down_renderer up_down(now, codename);
           service.currently.Call(up_down);
 
-          // const auto url = service.url_status_page_direct;
           const auto url = "./live/" + codename;
           const auto body = tiny_text_begin + "codename" + tiny_text_end + "<BR/>" + small_link_begin + codename +
                             small_link_end + width_marker;
