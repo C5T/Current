@@ -1,0 +1,9 @@
+"Good to have"-s and "didn't-have-time-to-add"-s, in no particular order.
+
+* Hash of function. Use it in source / library file name. Don't regenerate / recompile same function.
+* Variable policies during optimization (ex. this var should always be positive).
+* Variable adjustment policies (ex. normalize this exp-normal simples to average of zero).
+* Return `PointAndValue` from a compiled function-plus-gradient (now returns only the gradient)?
+* Consider `as` (`gcc X.s`) instead of `nasm`. Or LLVM.
+* Consider self-modifying code too.
+* Tests for unary plus/minus.

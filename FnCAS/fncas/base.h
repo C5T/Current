@@ -34,8 +34,13 @@
 
 namespace fncas {
 
-typedef int64_t node_index_type;  // Allow 4B+ nodes, keep the type signed for evaluation algorithms.
-typedef double fncas_value_type;
+typedef int64_t node_index_type;  // Allow 4B+ nodes on 64-bit arch, keep signed for (~i) vs. (i) index magic.
+
+#ifndef FNCAS_USE_LONG_DOUBLE
+typedef double double_t;  // Make it simple to switch to `long double` or a custom type.
+#else
+typedef long double double_t;
+#endif
 
 struct noncopyable {
   noncopyable() = default;
@@ -45,8 +50,8 @@ struct noncopyable {
   void operator=(noncopyable&&) = delete;
 };
 
-template <typename T>
-T& growing_vector_access(std::vector<T>& vector, node_index_type index, const T& fill) {
+template <typename T, typename V>
+T& growing_vector_access(std::vector<T>& vector, node_index_type index, V fill) {
   if (static_cast<node_index_type>(vector.size()) <= index) {
     vector.resize(static_cast<size_t>(index + 1), fill);
   }

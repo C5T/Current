@@ -38,6 +38,10 @@ SOFTWARE.
 #include "mathutil.h"
 #include "node.h"
 
+#ifdef FNCAS_JIT
+#include "jit.h"
+#endif  // FNCAS_JIT
+
 #include "../../Bricks/template/decay.h"
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
@@ -53,31 +57,47 @@ CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
 
 class OptimizerParameters {
  public:
+  using point_beautifier_t = std::function<std::string(const std::vector<double_t>& x)>;
+  using stopping_criterion_t = std::function<bool(size_t iterations_done, const std::vector<double_t>& x)>;
+
   template <typename T>
-  void SetValue(std::string name, T value);
+  OptimizerParameters& SetValue(std::string name, T value) {
+    static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
+    params_[name] = value;
+    return *this;
+  }
+
   template <typename T>
-  const T GetValue(std::string name, T default_value) const;
+  const T GetValue(std::string name, T default_value) const {
+    static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
+    if (params_.count(name)) {
+      return static_cast<T>(params_.at(name));
+    } else {
+      return default_value;
+    }
+  }
+
+  OptimizerParameters& SetPointBeautifier(point_beautifier_t point_beautifier) {
+    point_beautifier_ = point_beautifier;
+    return *this;
+  }
+
+  point_beautifier_t GetPointBeautifier() const { return point_beautifier_; }
+
+  OptimizerParameters& SetStoppingCriterion(stopping_criterion_t stopping_criterion) {
+    stopping_criterion_ = stopping_criterion;
+    return *this;
+  }
+
+  stopping_criterion_t GetStoppingCriterion() const { return stopping_criterion_; }
 
  private:
-  std::map<std::string, double> params_;
+  std::map<std::string, double_t> params_;
+  point_beautifier_t point_beautifier_;
+  stopping_criterion_t stopping_criterion_;
 };
 
-template <typename T>
-void OptimizerParameters::SetValue(std::string name, T value) {
-  static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
-  params_[name] = value;
-}
-
-template <typename T>
-const T OptimizerParameters::GetValue(std::string name, T default_value) const {
-  static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
-  if (params_.count(name)) {
-    return static_cast<T>(params_.at(name));
-  } else {
-    return default_value;
-  }
-}
-
+// The base class for the optimizer of the function of type `F`.
 template <class F>
 class Optimizer : noncopyable {
  public:
@@ -110,7 +130,23 @@ class Optimizer : noncopyable {
 
   const Optional<OptimizerParameters>& Parameters() const { return parameters_; }
 
-  virtual OptimizationResult Optimize(const std::vector<double>& starting_point) const = 0;
+  virtual OptimizationResult Optimize(const std::vector<double_t>& starting_point) const = 0;
+
+  std::string PointAsString(const std::vector<double_t>& point) const {
+    if (!Exists(parameters_) || !Value(parameters_).GetPointBeautifier()) {
+      return JSON(std::vector<double>(point.begin(), point.end()));  // Must support other `double_t` types too. -- D.K.
+    } else {
+      return Value(parameters_).GetPointBeautifier()(point);
+    }
+  }
+
+  bool StoppingCriterionSatisfied(size_t iterations_completed, const std::vector<double_t>& point) const {
+    if (!Exists(parameters_) || !Value(parameters_).GetStoppingCriterion()) {
+      return false;
+    } else {
+      return Value(parameters_).GetStoppingCriterion()(iterations_completed, point);
+    }
+  }
 
  private:
   std::unique_ptr<F> f_instance_;             // The function to optimize: instance if owned by the optimizer.
@@ -118,23 +154,79 @@ class Optimizer : noncopyable {
   Optional<OptimizerParameters> parameters_;  // Optimization parameters.
 };
 
-// Naive gradient descent that tries 3 different step sizes in each iteration.
-// Searches for a local minimum of `F::ObjectiveFunction` function.
-template <class F>
-class GradientDescentOptimizer final : public Optimizer<F> {
+// The generic implementation running the ultimate algorithm on intermediate or compiled versions of function+gradient.
+template <typename IMPL>
+struct OptimizeImpl;
+
+template <class F, class IMPL>
+class OptimizeInvoker : public Optimizer<F> {
  public:
   using super_t = Optimizer<F>;
   using super_t::super_t;
 
-  OptimizationResult Optimize(const std::vector<double>& starting_point) const override {
-    size_t max_steps = 5000;                           // Maximum number of optimization steps.
-    double step_factor = 1.0;                          // Gradient is multiplied by this factor.
-    double min_absolute_per_step_improvement = 1e-25;  // Terminate early if the absolute improvement is less than this.
-    double min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is less than this.
-    double no_improvement_steps_to_terminate = 2;      // Wait for this number of consecutive no improvement iterations.
+  OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
+    const auto& logger = OptimizerLogger();
 
-    if (Exists(super_t::Parameters())) {
-      const auto& parameters = Value(super_t::Parameters());
+    const size_t dim = starting_point.size();
+    const fncas::X gradient_helper(dim);
+    const fncas::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
+    logger.Log("Optimizer: The objective function is " + current::ToString(node_vector_singleton().size()) + " nodes.");
+#ifdef FNCAS_JIT
+    logger.Log("Optimizer: Compiling the objective function.");
+    const auto compile_f_begin_gradient = current::time::Now();
+    fncas::f_compiled f = fncas::f_compiled(f_i);
+    logger.Log("Optimizer: Done compiling the objective function, took " +
+               current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
+#else
+    const auto& f = f_i;
+#endif
+
+    logger.Log("Optimizer: Differentiating.");
+    const fncas::g_intermediate g_i(gradient_helper, f_i);
+    logger.Log("Optimizer: Augmented with the gradient the function is " +
+               current::ToString(node_vector_singleton().size()) + " nodes.");
+#ifdef FNCAS_JIT
+    logger.Log("Optimizer: Compiling the gradient.");
+    const auto compile_g_begin_gradient = current::time::Now();
+    fncas::g_compiled g = fncas::g_compiled(f_i, g_i);
+    logger.Log("Optimizer: Done compiling the gradient, took " +
+               current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
+#else
+    const auto& g = g_i;
+#endif
+
+    return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
+  }
+};
+
+// Naive gradient descent that tries 3 different step sizes in each iteration.
+// Searches for a local minimum of `F::ObjectiveFunction` function.
+struct GradientDescentOptimizerSelector;
+
+template <class F>
+class GradientDescentOptimizer final : public OptimizeInvoker<F, GradientDescentOptimizerSelector> {
+ public:
+  using super_t = OptimizeInvoker<F, GradientDescentOptimizerSelector>;
+  using super_t::super_t;
+};
+
+template <>
+struct OptimizeImpl<GradientDescentOptimizerSelector> {
+  template <typename ORIGINAL_F, typename F, typename G>
+  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F>& super,
+                                        F&& f,
+                                        G&& g,
+                                        const std::vector<double_t>& starting_point) {
+    const auto& logger = OptimizerLogger();
+
+    size_t max_steps = 2500;                             // Maximum number of optimization steps.
+    double_t step_factor = 1.0;                          // Gradient is multiplied by this factor.
+    double_t min_absolute_per_step_improvement = 1e-25;  // Terminate early if the absolute improvement is small.
+    double_t min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is small.
+    double_t no_improvement_steps_to_terminate = 2;      // Wait for this # of consecutive no improvement iterations.
+
+    if (Exists(super.Parameters())) {
+      const auto& parameters = Value(super.Parameters());
       max_steps = parameters.GetValue("max_steps", max_steps);
       step_factor = parameters.GetValue("step_factor", step_factor);
       min_relative_per_step_improvement =
@@ -145,52 +237,59 @@ class GradientDescentOptimizer final : public Optimizer<F> {
           parameters.GetValue("no_improvement_steps_to_terminate", no_improvement_steps_to_terminate);
     }
 
-    OptimizerLogger().Log("GradientDescentOptimizer: Begin at " + JSON(starting_point));
+    logger.Log("GradientDescentOptimizer: Begin at " + super.PointAsString(starting_point));
 
-    const size_t dim = starting_point.size();
-    const fncas::X gradient_helper(dim);
-    const fncas::f_intermediate fi(super_t::Function().ObjectiveFunction(gradient_helper));
-    const double starting_value = fi(starting_point);
-    OptimizerLogger().Log("GradientDescentOptimizer: Original objective function = " +
-                          current::ToString(starting_value));
-    const fncas::g_intermediate gi(gradient_helper, fi);
-    ValueAndPoint current(starting_value, starting_point);
+    ValueAndPoint current(f(starting_point), starting_point);
 
+    size_t iteration;
     int no_improvement_steps = 0;
-    for (size_t iteration = 0; iteration < max_steps; ++iteration) {
-      OptimizerLogger().Log("GradientDescentOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
-                            current::ToString(current.value) + " @ " + JSON(current.point));
-      const auto g = gi(current.point);
-      auto best_candidate = current;
-      auto has_valid_candidate = false;
-      for (const double step : {0.01, 0.05, 0.2}) {
-        const auto candidate_point(SumVectors(current.point, g, -step));
-        const double value = fi(candidate_point);
-        if (fncas::IsNormal(value)) {
-          has_valid_candidate = true;
-          OptimizerLogger().Log("GradientDescentOptimizer: Value " + current::ToString(value) + " at step " +
-                                current::ToString(step));
-          best_candidate = std::min(best_candidate, ValueAndPoint(value, candidate_point));
-        }
-      }
-      if (!has_valid_candidate) {
-        CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(value)"));
-      }
-      if (best_candidate.value / current.value > 1.0 - min_relative_per_step_improvement ||
-          current.value - best_candidate.value < min_absolute_per_step_improvement) {
-        ++no_improvement_steps;
-        if (no_improvement_steps >= no_improvement_steps_to_terminate) {
-          OptimizerLogger().Log("GradientDescentOptimizer: Terminating due to no improvement.");
+    {
+      OptimizerStats stats("GradientDescentOptimizer");
+      for (iteration = 0; iteration < max_steps; ++iteration) {
+        if (super.StoppingCriterionSatisfied(iteration, current.point)) {
+          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;
         }
-      } else {
-        no_improvement_steps = 0;
-      }
-      current = best_candidate;
-    }
 
-    OptimizerLogger().Log("GradientDescentOptimizer: Result = " + JSON(current.point));
-    OptimizerLogger().Log("GradientDescentOptimizer: Objective function = " + current::ToString(current.value));
+        stats.JournalIteration();
+        if (logger) {
+          // Expensive call, don't make it if `logger` is not initialized.
+          logger.Log("GradientDescentOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
+                     current::ToString(current.value) + " @ " + super.PointAsString(current.point));
+        }
+        stats.JournalGradient();
+        const auto gradient = g(current.point);
+        auto best_candidate = current;
+        auto has_valid_candidate = false;
+        for (const double_t step : {0.01, 0.05, 0.2}) {  // TODO(dkorolev): Something more sophisticated maybe?
+          const auto candidate_point(SumVectors(current.point, gradient, -step));
+          stats.JournalFunction();
+          const double_t value = f(candidate_point);
+          if (fncas::IsNormal(value)) {
+            has_valid_candidate = true;
+            logger.Log("GradientDescentOptimizer: Value " + current::ToString(value) + " at step " +
+                       current::ToString(step));
+            best_candidate = std::min(best_candidate, ValueAndPoint(value, candidate_point));
+          }
+        }
+        if (!has_valid_candidate) {
+          CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(value)"));
+        }
+        if (best_candidate.value / current.value > 1.0 - min_relative_per_step_improvement ||
+            current.value - best_candidate.value < min_absolute_per_step_improvement) {
+          ++no_improvement_steps;
+          if (no_improvement_steps >= no_improvement_steps_to_terminate) {
+            logger.Log("GradientDescentOptimizer: Terminating due to no improvement.");
+            break;
+          }
+        } else {
+          no_improvement_steps = 0;
+        }
+        current = best_candidate;
+      }
+    }
+    logger.Log("GradientDescentOptimizer: Result = " + super.PointAsString(current.point));
+    logger.Log("GradientDescentOptimizer: Objective function = " + current::ToString(current.value));
 
     return current;
   }
@@ -198,25 +297,36 @@ class GradientDescentOptimizer final : public Optimizer<F> {
 
 // Simple gradient descent optimizer with backtracking algorithm.
 // Searches for a local minimum of `F::ObjectiveFunction` function.
+struct GradientDescentOptimizerBTSelector;
+
 template <class F>
-class GradientDescentOptimizerBT final : public Optimizer<F> {
+class GradientDescentOptimizerBT final : public OptimizeInvoker<F, GradientDescentOptimizerBTSelector> {
  public:
-  using super_t = Optimizer<F>;
+  using super_t = OptimizeInvoker<F, GradientDescentOptimizerBTSelector>;
   using super_t::super_t;
+};
 
-  OptimizationResult Optimize(const std::vector<double>& starting_point) const override {
+template <>
+struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
+  template <typename ORIGINAL_F, typename F, typename G>
+  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F>& super,
+                                        F&& f,
+                                        G&& g,
+                                        const std::vector<double_t>& starting_point) {
+    const auto& logger = OptimizerLogger();
+
     size_t min_steps = 3;       // Minimum number of optimization steps (ignoring early stopping).
-    size_t max_steps = 5000;    // Maximum number of optimization steps.
-    double bt_alpha = 0.5;      // Alpha parameter for backtracking algorithm.
-    double bt_beta = 0.8;       // Beta parameter for backtracking algorithm.
+    size_t max_steps = 250;     // Maximum number of optimization steps.
+    double_t bt_alpha = 0.5;    // Alpha parameter for backtracking algorithm.
+    double_t bt_beta = 0.8;     // Beta parameter for backtracking algorithm.
     size_t bt_max_steps = 100;  // Maximum number of backtracking steps.
-    double grad_eps = 1e-8;     // Magnitude of gradient for early stopping.
-    double min_absolute_per_step_improvement = 1e-25;  // Terminate early if the absolute improvement is less than this.
-    double min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is less than this.
-    double no_improvement_steps_to_terminate = 2;      // Wait for this number of consecutive no improvement iterations.
+    double_t grad_eps = 1e-8;   // Magnitude of gradient for early stopping.
+    double_t min_absolute_per_step_improvement = 1e-25;  // Terminate early if the absolute improvement is small.
+    double_t min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is small.
+    double_t no_improvement_steps_to_terminate = 2;      // Wait for this # of consecutive no improvement iterations.
 
-    if (Exists(super_t::Parameters())) {
-      const auto& parameters = Value(super_t::Parameters());
+    if (Exists(super.Parameters())) {
+      const auto& parameters = Value(super.Parameters());
       min_steps = parameters.GetValue("min_steps", min_steps);
       max_steps = parameters.GetValue("max_steps", max_steps);
       bt_alpha = parameters.GetValue("bt_alpha", bt_alpha);
@@ -231,44 +341,65 @@ class GradientDescentOptimizerBT final : public Optimizer<F> {
           parameters.GetValue("no_improvement_steps_to_terminate", no_improvement_steps_to_terminate);
     }
 
-    const size_t dim = starting_point.size();
-    const fncas::X gradient_helper(dim);
-    const fncas::f_intermediate fi(super_t::Function().ObjectiveFunction(gradient_helper));
-    const fncas::g_intermediate gi(gradient_helper, fi);
-    ValueAndPoint current(ValueAndPoint(fi(starting_point), starting_point));
+    logger.Log("GradientDescentOptimizerBT: Begin at " + super.PointAsString(starting_point));
 
-    OptimizerLogger().Log("GradientDescentOptimizerBT: Begin at " + JSON(starting_point));
-
+    size_t iteration;
     int no_improvement_steps = 0;
-    for (size_t iteration = 0; iteration < max_steps; ++iteration) {
-      OptimizerLogger().Log("GradientDescentOptimizerBT: Iteration " + current::ToString(iteration + 1) + ", OF = " +
-                            current::ToString(current.value) + " @ " + JSON(current.point));
-      auto direction = gi(current.point);
-      // Simple early stopping by the norm of the gradient.
-      if (std::sqrt(fncas::L2Norm(direction)) < grad_eps && iteration >= min_steps) {
-        OptimizerLogger().Log("GradientDescentOptimizerBT: Terminating due to small gradient norm.");
-        break;
-      }
 
-      fncas::FlipSign(direction);  // Going against the gradient to minimize the function.
-      const auto next = Backtracking(fi, gi, current.point, direction, bt_alpha, bt_beta, bt_max_steps);
+    ValueAndPoint current(f(starting_point), starting_point);
 
-      if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
-          current.value - next.value < min_absolute_per_step_improvement) {
-        ++no_improvement_steps;
-        if (no_improvement_steps >= no_improvement_steps_to_terminate) {
-          OptimizerLogger().Log("GradientDescentOptimizerBT: Terminating due to no improvement.");
+    {
+      OptimizerStats stats("GradientDescentOptimizerBT");
+      for (iteration = 0; iteration < max_steps; ++iteration) {
+        if (super.StoppingCriterionSatisfied(iteration, current.point)) {
+          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;
         }
-      } else {
-        no_improvement_steps = 0;
-      }
 
-      current = next;
+        stats.JournalIteration();
+        if (logger) {
+          // Expensive call, don't make it if `logger` is not initialized.
+          logger.Log("GradientDescentOptimizerBT: Iteration " + current::ToString(iteration + 1) + ", OF = " +
+                     current::ToString(current.value) + " @ " + super.PointAsString(current.point));
+        }
+        auto direction = g(current.point);
+        // Simple early stopping by the norm of the gradient.
+        if (std::sqrt(fncas::L2Norm(direction)) < grad_eps && iteration >= min_steps) {
+          logger.Log("GradientDescentOptimizerBT: Terminating due to small gradient norm.");
+          break;
+        }
+
+        fncas::FlipSign(direction);  // Going against the gradient to minimize the function.
+
+        try {
+          const auto next = Backtracking(f, g, current.point, direction, stats, bt_alpha, bt_beta, bt_max_steps);
+
+          if (!IsNormal(next.value)) {
+            // Would never happen as `BacktrackingException` is caught below, but just to be safe.
+            CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(next.value)"));
+          }
+
+          if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
+              current.value - next.value < min_absolute_per_step_improvement) {
+            ++no_improvement_steps;
+            if (no_improvement_steps >= no_improvement_steps_to_terminate) {
+              logger.Log("GradientDescentOptimizerBT: Terminating due to no improvement.");
+              break;
+            }
+          } else {
+            no_improvement_steps = 0;
+          }
+
+          current = next;
+        } catch (const BacktrackingException&) {
+          logger.Log("GradientDescentOptimizerBT: Terminating due to no backtracking step possible.");
+          break;
+        }
+      }
     }
 
-    OptimizerLogger().Log("GradientDescentOptimizerBT: Result = " + JSON(current.point));
-    OptimizerLogger().Log("GradientDescentOptimizerBT: Objective function = " + current::ToString(current.value));
+    logger.Log("GradientDescentOptimizerBT: Result = " + super.PointAsString(current.point));
+    logger.Log("GradientDescentOptimizerBT: Objective function = " + current::ToString(current.value));
 
     return current;
   }
@@ -276,25 +407,37 @@ class GradientDescentOptimizerBT final : public Optimizer<F> {
 
 // Optimizer that uses a combination of conjugate gradient method and
 // backtracking line search to find a local minimum of `F::ObjectiveFunction` function.
+struct ConjugateGradientOptimizerSelector;
+
 template <class F>
-class ConjugateGradientOptimizer final : public Optimizer<F> {
+class ConjugateGradientOptimizer final : public OptimizeInvoker<F, ConjugateGradientOptimizerSelector> {
  public:
-  using super_t = Optimizer<F>;
+  using super_t = OptimizeInvoker<F, ConjugateGradientOptimizerSelector>;
   using super_t::super_t;
+};
 
-  OptimizationResult Optimize(const std::vector<double>& starting_point) const override {
+template <>
+struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
+  template <typename ORIGINAL_F, typename F, typename G>
+  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F>& super,
+                                        F&& f,
+                                        G&& g,
+                                        const std::vector<double_t>& starting_point) {
+    // TODO(mzhurovich): Implement a more sophisticated version.
+    const auto& logger = OptimizerLogger();
+
     size_t min_steps = 3;       // Minimum number of optimization steps (ignoring early stopping).
-    size_t max_steps = 5000;    // Maximum number of optimization steps.
-    double bt_alpha = 0.5;      // Alpha parameter for backtracking algorithm.
-    double bt_beta = 0.8;       // Beta parameter for backtracking algorithm.
+    size_t max_steps = 250;     // Maximum number of optimization steps.
+    double_t bt_alpha = 0.5;    // Alpha parameter for backtracking algorithm.
+    double_t bt_beta = 0.8;     // Beta parameter for backtracking algorithm.
     size_t bt_max_steps = 100;  // Maximum number of backtracking steps.
-    double grad_eps = 1e-8;     // Magnitude of gradient for early stopping.
-    double min_absolute_per_step_improvement = 1e-25;  // Terminate early if the absolute improvement is less than this.
-    double min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is less than this.
-    double no_improvement_steps_to_terminate = 2;      // Wait for this number of consecutive no improvement iterations.
+    double_t grad_eps = 1e-8;   // Magnitude of gradient for early stopping.
+    double_t min_absolute_per_step_improvement = 1e-25;  // Terminate early if the absolute improvement is small.
+    double_t min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is small.
+    double_t no_improvement_steps_to_terminate = 2;      // Wait for this # of consecutive no improvement iterations.
 
-    if (Exists(super_t::Parameters())) {
-      const auto& parameters = Value(super_t::Parameters());
+    if (Exists(super.Parameters())) {
+      const auto& parameters = Value(super.Parameters());
       min_steps = parameters.GetValue("min_steps", min_steps);
       max_steps = parameters.GetValue("max_steps", max_steps);
       bt_alpha = parameters.GetValue("bt_alpha", bt_alpha);
@@ -309,51 +452,80 @@ class ConjugateGradientOptimizer final : public Optimizer<F> {
           parameters.GetValue("no_improvement_steps_to_terminate", no_improvement_steps_to_terminate);
     }
 
-    // TODO(mzhurovich): Implement a more sophisticated version.
-    const size_t dim = starting_point.size();
-    const fncas::X gradient_helper(dim);
-    const fncas::f_intermediate fi(super_t::Function().ObjectiveFunction(gradient_helper));
-    const fncas::g_intermediate gi(gradient_helper, fi);
-    ValueAndPoint current(fi(starting_point), starting_point);
+    logger.Log("ConjugateGradientOptimizer: The objective function with its gradient is " +
+               current::ToString(node_vector_singleton().size()) + " nodes.");
 
-    std::vector<double> current_gradient = gi(current.point);
-    std::vector<double> s(current_gradient);  // Direction to search for a minimum.
-    fncas::FlipSign(s);                       // Trying first step against the gradient to minimize the function.
+    ValueAndPoint current(f(starting_point), starting_point);
+    logger.Log("ConjugateGradientOptimizer: Original objective function = " + current::ToString(current.value));
+    if (!fncas::IsNormal(current.value)) {
+      CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(current.value)"));
+    }
 
-    OptimizerLogger().Log("ConjugateGradientOptimizer: Begin at " + JSON(starting_point));
+    std::vector<double_t> current_gradient = g(current.point);
+    std::vector<double_t> s(current_gradient);  // Direction to search for a minimum.
+    fncas::FlipSign(s);                         // Trying first step against the gradient to minimize the function.
+
+    logger.Log("ConjugateGradientOptimizer: Begin at " + super.PointAsString(starting_point));
+    size_t iteration;
     int no_improvement_steps = 0;
-    for (size_t iteration = 0; iteration < max_steps; ++iteration) {
-      OptimizerLogger().Log("ConjugateGradientOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
-                            current::ToString(current.value) + " @ " + JSON(current.point));
-      // Backtracking line search.
-      const auto next = fncas::Backtracking(fi, gi, current.point, s, bt_alpha, bt_beta, bt_max_steps);
-      const auto new_gradient = gi(next.point);
-
-      // Calculating direction for the next step.
-      const double omega = std::max(fncas::PolakRibiere(new_gradient, current_gradient), 0.0);
-      s = SumVectors(s, new_gradient, omega, -1.0);
-
-      if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
-          current.value - next.value < min_absolute_per_step_improvement) {
-        ++no_improvement_steps;
-        if (no_improvement_steps >= no_improvement_steps_to_terminate) {
-          OptimizerLogger().Log("ConjugateGradientOptimizer: Terminating due to no improvement.");
+    {
+      OptimizerStats stats("ConjugateGradientOptimizer");
+      for (iteration = 0; iteration < max_steps; ++iteration) {
+        if (super.StoppingCriterionSatisfied(iteration, current.point)) {
+          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;
         }
-      } else {
-        no_improvement_steps = 0;
-      }
 
-      current = next;
-      current_gradient = new_gradient;
+        stats.JournalIteration();
+        if (logger) {
+          // Expensive call, don't make it if `logger` is not initialized.
+          logger.Log("ConjugateGradientOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
+                     current::ToString(current.value) + " @ " + super.PointAsString(current.point));
+        }
+        try {
+          // Backtracking line search.
+          const auto next = Backtracking(f, g, current.point, s, stats, bt_alpha, bt_beta, bt_max_steps);
 
-      // Simple early stopping by the norm of the gradient.
-      if (std::sqrt(L2Norm(s)) < grad_eps && iteration >= min_steps) {
-        break;
+          if (!IsNormal(next.value)) {
+            // Would never happen as `BacktrackingException` is caught below, but just to be safe.
+            CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(next.value)"));
+          }
+
+          stats.JournalGradient();
+          const auto new_gradient = g(next.point);
+
+          // Calculating direction for the next step.
+          const double_t omega =
+              std::max(fncas::PolakRibiere(new_gradient, current_gradient), static_cast<double_t>(0));
+          s = SumVectors(s, new_gradient, omega, -1.0);
+
+          if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
+              current.value - next.value < min_absolute_per_step_improvement) {
+            ++no_improvement_steps;
+            if (no_improvement_steps >= no_improvement_steps_to_terminate) {
+              logger.Log("ConjugateGradientOptimizer: Terminating due to no improvement.");
+              break;
+            }
+          } else {
+            no_improvement_steps = 0;
+          }
+
+          current = next;
+          current_gradient = new_gradient;
+
+          // Simple early stopping by the norm of the gradient.
+          if (std::sqrt(L2Norm(s)) < grad_eps && iteration >= min_steps) {
+            break;
+          }
+        } catch (const BacktrackingException&) {
+          logger.Log("GradientDescentOptimizerBT: Terminating due to no backtracking step possible.");
+          break;
+        }
       }
     }
-    OptimizerLogger().Log("ConjugateGradientOptimizer: Result = " + JSON(current.point));
-    OptimizerLogger().Log("ConjugateGradientOptimizer: Objective function = " + current::ToString(current.value));
+
+    logger.Log("ConjugateGradientOptimizer: Result = " + super.PointAsString(current.point));
+    logger.Log("ConjugateGradientOptimizer: Objective function = " + current::ToString(current.value));
 
     return current;
   }

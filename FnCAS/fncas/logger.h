@@ -28,7 +28,11 @@ SOFTWARE.
 #include "../../port.h"
 
 #include <iostream>
+#include <sstream>
 
+#include "base.h"
+
+#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/singleton.h"
 
 namespace fncas {
@@ -39,11 +43,14 @@ class OptimizerLoggerImpl final {
     virtual ~Impl() = default;
     virtual void Log(const std::string&) const {}
   };
+
   struct OStreamLogger : Impl {
     std::ostream& os_;
     explicit OStreamLogger(std::ostream& os) : os_(os) {}
     void Log(const std::string& message) const override { os_ << message << std::endl; }
   };
+
+  operator bool() const { return impl_ != nullptr; }
 
   void Log(const std::string& message) const { impl_->Log(message); }
 
@@ -59,6 +66,39 @@ inline OptimizerLoggerImpl& OptimizerLogger() { return current::ThreadLocalSingl
 struct ScopedLogToStderr final {
   ScopedLogToStderr() { fncas::OptimizerLogger().LogToStderr(); }
   ~ScopedLogToStderr() { fncas::OptimizerLogger().DisableLogging(); }
+};
+
+class OptimizerStats final {
+ public:
+  explicit OptimizerStats(const std::string& name) : name_(name), begin_timestamp_(current::time::Now()) {}
+  OptimizerStats() = delete;
+
+  ~OptimizerStats() {
+    const auto k = static_cast<double_t>(1e6) / (current::time::Now() - begin_timestamp_).count();
+    std::ostringstream os;
+    os << n_iterations_ << " iterations, " << n_iterations_* k << " per second, " << n_f_ << " f() calls, " << n_g_
+       << " g() calls";
+    if (n_backtracking_calls_) {
+      os << ", " << n_backtracking_calls_ << " backtracking calls of " << n_backtracking_steps_ << " total steps";
+    }
+    OptimizerLogger().Log(name_ + ": " + os.str() + '.');
+  }
+
+  void JournalFunction() { ++n_f_; }
+  void JournalGradient() { ++n_g_; }
+  void JournalIteration() { ++n_iterations_; }
+  void JournalBacktrackingCall() { ++n_backtracking_calls_; }
+  void JournalBacktrackingStep() { ++n_backtracking_steps_; }
+
+ private:
+  const std::string name_;
+  const std::chrono::microseconds begin_timestamp_;
+
+  size_t n_f_ = 0;
+  size_t n_g_ = 0;
+  size_t n_iterations_ = 0;
+  size_t n_backtracking_calls_ = 0;
+  size_t n_backtracking_steps_ = 0;
 };
 
 }  // namespace fncas

@@ -33,32 +33,32 @@
 
 namespace fncas {
 
-static const double APPROXIMATE_DERIVATIVE_EPS = 1e-4;
+static const double_t APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 
 template <typename F>
-fncas_value_type approximate_derivative(F f,
-                                        const std::vector<fncas_value_type>& x,
-                                        node_index_type i,
-                                        const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
-  std::vector<fncas_value_type> x1(x);
-  std::vector<fncas_value_type> x2(x);
+double_t approximate_derivative(F f,
+                                const std::vector<double_t>& x,
+                                node_index_type i,
+                                const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
+  std::vector<double_t> x1(x);
+  std::vector<double_t> x2(x);
   x1[i] -= EPS;
   x2[i] += EPS;
   return (f(x2) - f(x1)) / (EPS + EPS);
 }
 
 template <typename F>
-inline std::vector<fncas_value_type> approximate_gradient(F f,
-                                                          const std::vector<fncas_value_type>& x,
-                                                          const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
-  std::vector<fncas_value_type> g(x.size());
-  std::vector<fncas_value_type> xx(x);
+inline std::vector<double_t> approximate_gradient(F f,
+                                                  const std::vector<double_t>& x,
+                                                  const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
+  std::vector<double_t> g(x.size());
+  std::vector<double_t> xx(x);
   for (size_t i = 0; i < xx.size(); ++i) {
-    const fncas_value_type v0 = xx[i];
+    const double_t v0 = xx[i];
     xx[i] = v0 - EPS;
-    const fncas_value_type f1 = f(xx);
+    const double_t f1 = f(xx);
     xx[i] = v0 + EPS;
-    const fncas_value_type f2 = f(xx);
+    const double_t f2 = f(xx);
     xx[i] = v0;
     g[i] = (f2 - f1) / (EPS + EPS);
   }
@@ -108,13 +108,13 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
 
 // differentiate_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
-inline node_index_type differentiate_node(node_index_type index, int32_t var_index, int32_t number_of_variables) {
-  CURRENT_ASSERT(var_index < number_of_variables);
+inline node_index_type differentiate_node(node_index_type index, size_t var_index, size_t dim) {
+  CURRENT_ASSERT(var_index < dim);
   std::vector<std::vector<node_index_type>>& df_container = internals_singleton().df_;
   if (df_container.empty()) {
-    df_container.resize(number_of_variables);
+    df_container.resize(dim);
   }
-  CURRENT_ASSERT(static_cast<int32_t>(df_container.size()) == number_of_variables);
+  CURRENT_ASSERT(df_container.size() == dim);
   std::vector<node_index_type>& df = df_container[var_index];
   if (growing_vector_access(df, index, static_cast<node_index_type>(-1)) == -1) {
     const node_index_type zero_index = V(0.0).index();
@@ -127,7 +127,7 @@ inline node_index_type differentiate_node(node_index_type index, int32_t var_ind
       const node_index_type dependent_i = ~i;
       if (i > dependent_i) {
         node_impl& f = node_vector_singleton()[i];
-        if (f.type() == type_t::variable && f.variable() == var_index) {
+        if (f.type() == type_t::variable && static_cast<size_t>(f.variable()) == var_index) {
           growing_vector_access(df, i, static_cast<node_index_type>(-1)) = one_index;
         } else if (f.type() == type_t::variable || f.type() == type_t::value) {
           growing_vector_access(df, i, static_cast<node_index_type>(-1)) = zero_index;
@@ -173,35 +173,38 @@ inline node_index_type differentiate_node(node_index_type index, int32_t var_ind
 
 struct g : noncopyable {
   virtual ~g() {}
-  virtual std::vector<fncas_value_type> operator()(const std::vector<fncas_value_type>& x) const = 0;
-  virtual int32_t dim() const = 0;
+  virtual std::vector<double_t> operator()(const std::vector<double_t>& x) const = 0;
+  // The dimensionality of the parameters vector for the function.
+  virtual size_t dim() const = 0;
+  // The number of external `double_t` "registers" required to compute it, for compiled versions.
+  virtual size_t heap_size() const { return 0; }
 };
 
 struct g_approximate : g {
-  std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
-  int32_t d_;
-  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, int32_t d) : f_(f), d_(d) {}
+  std::function<double_t(const std::vector<double_t>&)> f_;
+  size_t dim_;
+  g_approximate(std::function<double_t(const std::vector<double_t>&)> f, size_t dim) : f_(f), dim_(dim) {}
   g_approximate(g_approximate&& rhs) : f_(rhs.f_) {}
   g_approximate() = default;
   g_approximate(const g_approximate&) = default;
   void operator=(const g_approximate& rhs) {
     f_ = rhs.f_;
-    d_ = rhs.d_;
+    dim_ = rhs.dim_;
   }
-  virtual std::vector<fncas_value_type> operator()(const std::vector<fncas_value_type>& x) const {
+  std::vector<double_t> operator()(const std::vector<double_t>& x) const override {
     return approximate_gradient(f_, x);
   }
-  virtual int32_t dim() const { return d_; }
+  size_t dim() const override { return dim_; }
 };
 
 struct g_intermediate : g {
-  V f_;
-  std::vector<V> g_;
+  V f_;               // `f_` holds the node index for the value of the preprocessed expression.
+  std::vector<V> g_;  // `g_[i]` holds the node index for the value of the derivative by variable `i`.
   g_intermediate(const X& x_ref, const V& f) : f_(f) {
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
-    const int32_t dim = internals_singleton().dim_;
+    const size_t dim = internals_singleton().dim_;
     g_.resize(dim);
-    for (int32_t i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       g_[i] = f_.template differentiate<X>(x_ref, i);
     }
   }
@@ -211,22 +214,22 @@ struct g_intermediate : g {
     f_ = rhs.f_;
     g_ = rhs.g_;
   }
-  virtual std::vector<fncas_value_type> operator()(const std::vector<fncas_value_type>& x) const {
-    std::vector<fncas_value_type> r;
+  std::vector<double_t> operator()(const std::vector<double_t>& x) const override {
+    std::vector<double_t> r;
     r.resize(g_.size());
     for (size_t i = 0; i < g_.size(); ++i) {
       r[i] = g_[i](x, i ? reuse_cache::reuse : reuse_cache::invalidate);
     }
     return r;
   }
-  virtual int32_t dim() const { return g_.size(); }
+  size_t dim() const override { return g_.size(); }
 };
 
 template <>
 struct node_differentiate_impl<X> {
-  static V differentiate(const X& x_ref, node_index_type node_index, int32_t variable_index) {
+  static V differentiate(const X& x_ref, node_index_type node_index, size_t variable_index) {
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
-    CURRENT_ASSERT(variable_index < internals_singleton().dim_);
+    CURRENT_ASSERT(static_cast<size_t>(variable_index) < internals_singleton().dim_);
     return from_index(differentiate_node(node_index, variable_index, internals_singleton().dim_));
   }
 };
