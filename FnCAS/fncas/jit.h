@@ -502,9 +502,8 @@ struct compile_impl final {
               fprintf(f, "  movabs $%s, %%rax  # 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
               fprintf(f, "  movq %%rax, %%xmm1\n");
               fprintf(f, "  ucomisd %%xmm1, %%xmm0\n");
-              fprintf(f, "  jb unit_step_%lld\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  jb . +12\n");  // NOTE(dkorolev): `. +12` skips the next `movabs`.
               fprintf(f, "  movabs $%s, %%rax #; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
-              fprintf(f, "unit_step_%lld:\n", static_cast<long long>(dependent_i));
               fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
             } else if (node.function() == function_t::ramp) {
               fprintf(f,
@@ -515,9 +514,8 @@ struct compile_impl final {
               fprintf(f, "  movabs $%s, %%rax #; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
               fprintf(f, "  movq %%rax, %%xmm1\n");
               fprintf(f, "  ucomisd %%xmm1, %%xmm0\n");
-              fprintf(f, "  ja ramp_%lld\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  ja . +7\n");  // NOTE(dkorolev): `. +7` skips the next `movq`.
               fprintf(f, "  movq %%rax, %%xmm0\n");
-              fprintf(f, "ramp_%lld:\n", static_cast<long long>(dependent_i));
               fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
             } else {
               fprintf(f,
