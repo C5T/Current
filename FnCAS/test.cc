@@ -25,9 +25,14 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
+// #define FNCAS_USE_LONG_DOUBLE
+
+#ifndef FNCAS_USE_LONG_DOUBLE
 #ifndef FNCAS_JIT
+// Another supported value is `NASM`. -- D.K.
 #define FNCAS_JIT CLANG
-#endif
+#endif  // #ifndef FNCAS_JI
+#endif  // #ifndef FNCAS_USE_LONG_DOUBLE
 
 #include "fncas/fncas.h"
 
@@ -35,66 +40,105 @@ SOFTWARE.
 #include <thread>
 
 template <typename X>
-fncas::X2V<X> parametrized_f(const X& x, size_t c) {
+fncas::X2V<X> ParametrizedFunction(const X& x, size_t c) {
   return (x[0] + x[1] * c) * (x[0] + x[1] * c);
 }
 
-// Need an explicit specialization, not a default parameter, since `f` itself is used as a parameter later on.
+// Need an explicit specialization, as `SimpleFunction<std::vector<double_t>>` is used directly in the test.
 template <typename X>
-fncas::X2V<X> f(const X& x) {
-  return parametrized_f(x, 2u);
+fncas::X2V<X> SimpleFunction(const X& x) {
+  return ParametrizedFunction(x, 2u);
 }
 
-static_assert(std::is_same<double, fncas::fncas_value_type>::value, "");
-
-static_assert(std::is_same<std::vector<double>, fncas::V2X<double>>::value, "");
-static_assert(std::is_same<fncas::X2V<std::vector<double>>, double>::value, "");
+static_assert(std::is_same<std::vector<fncas::double_t>, fncas::V2X<fncas::double_t>>::value, "");
+static_assert(std::is_same<fncas::X2V<std::vector<fncas::double_t>>, fncas::double_t>::value, "");
 
 static_assert(std::is_same<fncas::V, fncas::X2V<fncas::X>>::value, "");
 static_assert(std::is_same<fncas::X, fncas::V2X<fncas::V>>::value, "");
 
-TEST(FnCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
+TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
+  EXPECT_EQ(25, SimpleFunction(std::vector<fncas::double_t>({1, 2})));
+}
 
 TEST(FnCAS, NativeWrapper) {
-  fncas::f_native fn(f<std::vector<double>>, 2);
+  fncas::f_native fn(SimpleFunction<std::vector<fncas::double_t>>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
 TEST(FnCAS, IntermediateWrapper) {
   fncas::X x(2);
-  fncas::f_intermediate fi = f(x);
+  fncas::f_intermediate fi = SimpleFunction(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2.000000))*(x[0]+(x[1]*2.000000)))", fi.debug_as_string());
 }
 
-TEST(FnCAS, CompilingWrapper) {
+#ifdef FNCAS_JIT
+TEST(FnCAS, CompiledFunctionWrapper) {
   fncas::X x(2);
-  fncas::f_intermediate fi = f(x);
+  fncas::f_intermediate fi = SimpleFunction(x);
   fncas::f_compiled fc = fncas::f_compiled(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
 }
+#endif  // FNCAS_JIT
 
 TEST(FnCAS, GradientsWrapper) {
-  std::vector<double> p_3_3({3.0, 3.0});
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  fncas::g_approximate ga = fncas::g_approximate(f<std::vector<double>>, 2);
+  fncas::g_approximate ga = fncas::g_approximate(SimpleFunction<std::vector<fncas::double_t>>, 2);
   auto d_3_3_approx = ga(p_3_3);
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
   const fncas::X x(2);
-  const fncas::g_intermediate gi(x, f(x));
-  auto d_3_3_intermediate = gi(p_3_3);
-  EXPECT_EQ(18.0, d_3_3_intermediate[0]);
-  EXPECT_EQ(36.0, d_3_3_intermediate[1]);
+  const fncas::g_intermediate gi(x, SimpleFunction(x));
+  const auto d_3_3_intermediate = gi(p_3_3);
+  EXPECT_EQ(18, d_3_3_intermediate[0]);
+  EXPECT_EQ(36, d_3_3_intermediate[1]);
 }
+
+#ifdef FNCAS_JIT
+TEST(FnCAS, CompiledGradientsWrapper) {
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
+
+  const fncas::X x(2);
+  const fncas::f_intermediate fi = SimpleFunction(x);
+  const fncas::g_intermediate gi(x, fi);
+
+  const fncas::g_compiled gc(fi, gi);
+
+  // TODO(dkorolev): Maybe return return function value and its gradient together from a call to `gc`?
+  const auto d_3_3_compiled = gc(p_3_3);
+
+  EXPECT_EQ(18, d_3_3_compiled[0]) << gc.lib_filename();
+  EXPECT_EQ(36, d_3_3_compiled[1]) << gc.lib_filename();
+}
+
+TEST(FnCAS, CompiledSqrGradientWrapper) {
+  // The `fncas::sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
+
+  const fncas::X x(2);
+  const fncas::f_intermediate fi = SimpleFunction(x);
+  const fncas::g_intermediate gi(x, SimpleFunction(x));
+
+  const fncas::f_compiled fc(fi);
+  const fncas::double_t f_3_3_compiled = fc(p_3_3);
+  EXPECT_EQ(81, f_3_3_compiled);
+
+  const fncas::g_compiled gc(fi, gi);
+  const auto d_3_3_compiled = gc(p_3_3);
+
+  EXPECT_EQ(18, d_3_3_compiled[0]) << gc.lib_filename();
+  EXPECT_EQ(36, d_3_3_compiled[1]) << gc.lib_filename();
+}
+#endif  // FNCAS_JIT
 
 TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = []() {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::X x(2);
-      fncas::f_intermediate fi = parametrized_f(x, i + 1);
-      EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
+      fncas::f_intermediate fi = ParametrizedFunction(x, i + 1);
+      EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
   std::thread t1(advanced_math);
@@ -122,8 +166,8 @@ struct StaticFunction {
 
 // An obviously convex function with a single minimum `f(a, b) == 1`.
 struct MemberFunction {
-  double a = 0.0;
-  double b = 0.0;
+  fncas::double_t a = 0.0;
+  fncas::double_t b = 0.0;
   template <typename T>
   typename fncas::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
@@ -135,9 +179,9 @@ struct MemberFunction {
 };
 
 struct MemberFunctionWithReferences {
-  double& a;
-  double& b;
-  MemberFunctionWithReferences(double& a, double& b) : a(a), b(b) {}
+  fncas::double_t& a;
+  fncas::double_t& b;
+  MemberFunctionWithReferences(fncas::double_t& a, fncas::double_t& b) : a(a), b(b) {}
   template <typename T>
   typename fncas::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
@@ -152,8 +196,8 @@ struct MemberFunctionWithReferences {
 struct PolynomialFunction {
   template <typename X>
   fncas::X2V<X> ObjectiveFunction(const X& x) const {
-    const double a = 10.0;
-    const double b = 0.5;
+    const fncas::double_t a = 10.0;
+    const fncas::double_t b = 0.5;
     return (a * x[0] * x[0] + b * x[1] * x[1]);
   }
 };
@@ -163,8 +207,8 @@ struct PolynomialFunction {
 struct RosenbrockFunction {
   template <typename X>
   fncas::X2V<X> ObjectiveFunction(const X& x) const {
-    const double a = 1.0;
-    const double b = 100.0;
+    const fncas::double_t a = 1.0;
+    const fncas::double_t b = 100.0;
     const auto d1 = (a - x[0]);
     const auto d2 = (x[1] - x[0] * x[0]);
     return (d1 * d1 + b * d2 * d2);
@@ -262,8 +306,8 @@ TEST(FnCAS, OptimizationOfAMemberFunctionConstructsObjectiveFunctionObject) {
 }
 
 TEST(FnCAS, OptimizationOfAMemberFunctionForwardsParameters) {
-  double a = 0;
-  double b = 0;
+  fncas::double_t a = 0;
+  fncas::double_t b = 0;
   // `GradientDescentOptimizer` will construct the instance of `MemberFunctionWithReferences`.
   fncas::GradientDescentOptimizer<MemberFunctionWithReferences> optimizer(a, b);
   {
@@ -353,10 +397,10 @@ TEST(FnCAS, NaiveGDvsBacktrackingGDOnRosenbrockFunction1000Steps) {
   params.SetValue("step_factor", 0.001);  // Used only by naive optimizer. Prevents it from moving to infinity.
   const auto result_naive = fncas::GradientDescentOptimizer<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
   const auto result_bt = fncas::GradientDescentOptimizerBT<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
-  const double x0_err_n = std::abs(result_naive.point[0] - 1.0);
-  const double x0_err_bt = std::abs(result_bt.point[0] - 1.0);
-  const double x1_err_n = std::abs(result_naive.point[1] - 1.0);
-  const double x1_err_bt = std::abs(result_bt.point[1] - 1.0);
+  const fncas::double_t x0_err_n = std::abs(result_naive.point[0] - 1.0);
+  const fncas::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
+  const fncas::double_t x1_err_n = std::abs(result_naive.point[1] - 1.0);
+  const fncas::double_t x1_err_bt = std::abs(result_bt.point[1] - 1.0);
   ASSERT_TRUE(fncas::IsNormal(x0_err_n));
   ASSERT_TRUE(fncas::IsNormal(x1_err_n));
   ASSERT_TRUE(fncas::IsNormal(x0_err_bt));
@@ -374,10 +418,10 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
   params.SetValue("max_steps", 100);
   const auto result_cg = fncas::ConjugateGradientOptimizer<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
   const auto result_bt = fncas::GradientDescentOptimizerBT<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
-  const double x0_err_cg = std::abs(result_cg.point[0] - 1.0);
-  const double x0_err_bt = std::abs(result_bt.point[0] - 1.0);
-  const double x1_err_cg = std::abs(result_cg.point[1] - 1.0);
-  const double x1_err_bt = std::abs(result_bt.point[1] - 1.0);
+  const fncas::double_t x0_err_cg = std::abs(result_cg.point[0] - 1.0);
+  const fncas::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
+  const fncas::double_t x1_err_cg = std::abs(result_cg.point[1] - 1.0);
+  const fncas::double_t x1_err_bt = std::abs(result_bt.point[1] - 1.0);
   ASSERT_TRUE(fncas::IsNormal(x0_err_cg));
   ASSERT_TRUE(fncas::IsNormal(x1_err_cg));
   ASSERT_TRUE(fncas::IsNormal(x0_err_bt));
@@ -386,4 +430,71 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
   EXPECT_TRUE(x1_err_cg < x1_err_bt);
   EXPECT_NEAR(1.0, result_cg.point[0], 1e-6);
   EXPECT_NEAR(1.0, result_cg.point[1], 1e-6);
+}
+
+// To test evaluation and differentiation.
+template <typename X>
+fncas::X2V<X> ZeroOrXFunction(const X& x) {
+  EXPECT_EQ(1u, x.size());
+  return fncas::ramp(x[0]);
+}
+
+// To test evaluation and differentiation of `f(g(x))` where `f` is `fncas::ramp`.
+template <typename X>
+fncas::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
+  EXPECT_EQ(1u, x.size());
+  return fncas::ramp(fncas::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
+}
+
+TEST(FnCAS, CustomFunctions) {
+  EXPECT_EQ(0.0, fncas::unit_step(-1.0));
+  EXPECT_EQ(1.0, fncas::unit_step(+2.0));
+
+  EXPECT_EQ(0.0, fncas::ramp(-3.0));
+  EXPECT_EQ(4.0, fncas::ramp(+4.0));
+
+  const fncas::X x(1);
+  const fncas::f_intermediate intermediate_function = ZeroOrXFunction(x);
+  EXPECT_EQ(0.0, intermediate_function({-5.0}));
+  EXPECT_EQ(6.0, intermediate_function({+6.0}));
+
+  fncas::f_compiled compiled_function(intermediate_function);
+  EXPECT_EQ(0.0, compiled_function({-5.5})) << compiled_function.lib_filename();
+  EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
+
+  const fncas::g_approximate approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
+  EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
+  EXPECT_NEAR(1.0, approximate_gradient({+6.0})[0], 1e-6);
+
+  const fncas::g_intermediate intermediate_gradient(x, intermediate_function);
+  EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
+  EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
+
+  fncas::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
+  EXPECT_EQ(0.0, compiled_gradient({-9.5})[0]) << compiled_gradient.lib_filename();
+  EXPECT_EQ(1.0, compiled_gradient({+9.5})[0]) << compiled_gradient.lib_filename();
+}
+
+TEST(FnCAS, ComplexCustomFunctions) {
+  const fncas::X x(1);
+
+  const fncas::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
+  EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
+  EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
+
+  fncas::f_compiled compiled_function(intermediate_function);
+  EXPECT_EQ(0.0, compiled_function({3.0})) << compiled_function.lib_filename();
+  EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
+
+  const fncas::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
+  EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
+  EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.
+
+  const fncas::g_intermediate intermediate_gradient(x, intermediate_function);
+  EXPECT_EQ(0.0, intermediate_gradient({3.0})[0]);
+  EXPECT_EQ(8.0, intermediate_gradient({4.0})[0]);
+
+  fncas::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
+  EXPECT_EQ(0.0, compiled_gradient({3.0})[0]) << compiled_gradient.lib_filename();
+  EXPECT_EQ(8.0, compiled_gradient({4.0})[0]) << compiled_gradient.lib_filename();
 }

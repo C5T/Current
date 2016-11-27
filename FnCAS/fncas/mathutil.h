@@ -27,6 +27,7 @@
 #define FNCAS_MATHUTIL_H
 
 #include "base.h"
+#include "exceptions.h"
 #include "logger.h"
 
 #include <algorithm>
@@ -41,23 +42,23 @@
 namespace fncas {
 
 CURRENT_STRUCT(ValueAndPoint) {
-  CURRENT_FIELD(value, double, 0.0);
-  CURRENT_FIELD(point, std::vector<double>);
+  CURRENT_FIELD(value, double_t, 0.0);
+  CURRENT_FIELD(point, std::vector<double_t>);
   bool operator<(const ValueAndPoint& rhs) const { return value < rhs.value; }
-  CURRENT_CONSTRUCTOR(ValueAndPoint)(double value, const std::vector<double>& x) : value(value), point(x) {}
+  CURRENT_CONSTRUCTOR(ValueAndPoint)(double_t value, const std::vector<double_t>& x) : value(value), point(x) {}
 };
 
-inline bool IsNormal(double arg) { return (std::isnormal(arg) || arg == 0.0); }
+inline bool IsNormal(double_t arg) { return (std::isnormal(arg) || arg == 0.0); }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                              const std::vector<T>& b) {
+typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                       const std::vector<T>& b) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] += b[i];
-    if (fabs(a[i]) < 1e-100) {
+    if (std::abs(a[i]) < 1e-100) {
       // NOTE(dkorolev): Fight the underflow.
       a[i] = 0.0;
     }
@@ -66,15 +67,15 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                              const std::vector<T>& b,
-                                                                                              double kb) {
+typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                       const std::vector<T>& b,
+                                                                                       double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] += kb * b[i];
-    if (fabs(a[i]) < 1e-100) {
+    if (std::abs(a[i]) < 1e-100) {
       // NOTE(dkorolev): Fight the underflow.
       a[i] = 0.0;
     }
@@ -83,16 +84,16 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                              const std::vector<T>& b,
-                                                                                              double ka,
-                                                                                              double kb) {
+typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                       const std::vector<T>& b,
+                                                                                       double_t ka,
+                                                                                       double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
   for (size_t i = 0; i < a.size(); ++i) {
     a[i] = ka * a[i] + kb * b[i];
-    if (fabs(a[i]) < 1e-100) {
+    if (std::abs(a[i]) < 1e-100) {
       // NOTE(dkorolev): Fight the underflow.
       a[i] = 0.0;
     }
@@ -101,8 +102,8 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
-                                                                                 const std::vector<T>& v2) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
+                                                                          const std::vector<T>& v2) {
 #ifndef NDEBUG
   CURRENT_ASSERT(v1.size() == v2.size());
 #endif
@@ -110,19 +111,19 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T>& v) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T>& v) {
   return DotProduct(v, v);
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value>::type FlipSign(std::vector<T>& v) {
+typename std::enable_if<std::is_arithmetic<T>::value>::type FlipSign(std::vector<T>& v) {
   std::transform(std::begin(v), std::end(v), std::begin(v), std::negate<T>());
 }
 
 // Polak-Ribiere formula for conjugate gradient method
 // http://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
-inline double PolakRibiere(const std::vector<double>& g, const std::vector<double>& g_prev) {
-  const double beta = (L2Norm(g) - DotProduct(g, g_prev)) / L2Norm(g_prev);
+inline double_t PolakRibiere(const std::vector<double_t>& g, const std::vector<double_t>& g_prev) {
+  const double_t beta = (L2Norm(g) - DotProduct(g, g_prev)) / L2Norm(g_prev);
   if (IsNormal(beta)) {
     return beta;
   } else {
@@ -135,35 +136,52 @@ inline double PolakRibiere(const std::vector<double>& g, const std::vector<doubl
 // sequentially shrinking the step size. Returns new optimal point.
 // Algorithm parameters: 0 < alpha < 1, 0 < beta < 1.
 template <class F, class G>
-inline ValueAndPoint Backtracking(F&& eval_function,
-                                  G&& eval_gradient,
-                                  const std::vector<double>& current_point,
-                                  const std::vector<double>& direction,
-                                  const double alpha = 0.5,
-                                  const double beta = 0.8,
-                                  const size_t max_steps = 100) {
-  OptimizerLogger().Log(std::string("Backtracking: Starting point ") + JSON(current_point) + ", direction " +
-                        JSON(direction));
-  const double current_f_value = eval_function(current_point);
-  std::vector<double> test_point = SumVectors(current_point, direction);
-  double test_f_value = eval_function(test_point);
-  OptimizerLogger().Log(std::string("Backtracking: Starting value = ") + current::ToString(test_f_value));
-  const std::vector<double> current_gradient = eval_gradient(current_point);
-  const double gradient_l2norm = L2Norm(current_gradient);
-  double t = 1.0;
+ValueAndPoint Backtracking(F&& f,
+                           G&& g,
+                           const std::vector<double_t>& current_point,
+                           const std::vector<double_t>& direction,
+                           OptimizerStats& stats,
+                           const double_t alpha = 0.5,
+                           const double_t beta = 0.8,
+                           const size_t max_steps = 100) {
+  const auto& logger = OptimizerLogger();
+  stats.JournalBacktrackingCall();
+  stats.JournalFunction();
+  const double_t current_f_value = f(current_point);
+  std::vector<double_t> test_point = SumVectors(current_point, direction);
+  stats.JournalFunction();
+  double_t test_f_value = f(test_point);
+  if (logger) {
+    logger.Log(std::string("Backtracking: Starting value, OK if NAN or INF, is ") + current::ToString(test_f_value));
+  }
+  stats.JournalGradient();
+  const std::vector<double_t> current_gradient = g(current_point);
+  const double_t gradient_l2norm = L2Norm(current_gradient);
+  double_t t = 1.0;
 
   size_t bt_iteration = 0;
   while (test_f_value > (current_f_value - alpha * t * gradient_l2norm) || !IsNormal(test_f_value)) {
+    stats.JournalBacktrackingStep();
     t *= beta;
     test_point = SumVectors(current_point, direction, t);
-    test_f_value = eval_function(test_point);
+    stats.JournalFunction();
+    test_f_value = f(test_point);
     if (bt_iteration++ == max_steps) {
       break;
     }
   }
-  OptimizerLogger().Log(std::string("Backtracking: Final value = ") + current::ToString(test_f_value));
 
-  return ValueAndPoint(test_f_value, test_point);
+  if (IsNormal(test_f_value)) {
+    if (logger) {
+      logger.Log(std::string("Backtracking: Final value = ") + current::ToString(test_f_value));
+    }
+    return ValueAndPoint(test_f_value, test_point);
+  } else {
+    if (logger) {
+      logger.Log("Backtracking: No non-NAN and non-INF step found.");
+    }
+    CURRENT_THROW(BacktrackingException("!fncas::IsNormal(test_f_value)"));
+  }
 }
 
 }  // namespace fncas

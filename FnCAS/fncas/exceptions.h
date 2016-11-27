@@ -36,14 +36,24 @@ struct FnCASException : current::Exception {
 };
 
 // This exception is thrown when more than one expression per thread
-// is attempted to be evaluated concurrently under FNCAS.
-// This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
+// is attempted to be evaluated concurrently under FnCAS.
+// This is not allowed. FnCAS keeps global state per thread, which leads to this constraint.
 struct FnCASConcurrentEvaluationAttemptException : FnCASException {};
+
+// Exceptions for attempting to differentiate a function that doesn't have a derivative.
+struct FnCASFunctionNonDifferentiable : FnCASException {};
+struct FnCASZeroOrOneIsNonDifferentiable : FnCASFunctionNonDifferentiable {};
 
 // This exception is thrown when the optimization process fails,
 // most notably when the objective function becomes not `fncas::IsNormal()`, which is NaN.
 struct FnCASOptimizationException : FnCASException {
   using FnCASException::FnCASException;
+};
+
+// This exception is thrown when the call to `Backtracking` in `mathutil.h` results in no viable step found.
+// It's generally an error, but a particulal optimization algorithms may choose to handle it.
+struct BacktrackingException : FnCASOptimizationException {
+  using FnCASOptimizationException::FnCASOptimizationException;
 };
 
 }  // namespace fncas
