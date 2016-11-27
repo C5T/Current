@@ -4,7 +4,7 @@
 
 This directory contains the example of using the `FnCAS` library to solve an optimization problem.
 
-The problem considered is the two-player zero-sum matrix game: For an `N` by `N` matrix `A` where `A[i][j]` is the payoff from player two to player one as players have picked up strategies `i` and `j`respectively, find the optimal mixed strategies for both players. The mixed strategy for each player is a simplex of dimension `N` where each element is the probability of the player picking this strategy, which corresponds to the row or column of the matrix for players one and two respectively.
+The problem considered is the two-player zero-sum matrix game: For an `N` by `N` matrix `A` where `A[i][j]` is the payoff from player two to player one as players have picked up strategies `i` and `j` respectively, find the optimal mixed strategies for both players. The mixed strategy for each player is a simplex of dimension `N` where each element is the probability of the player picking this strategy, which corresponds to the row or column of the matrix for players one and two respectively.
 
 ### Reasoning
 
