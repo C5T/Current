@@ -98,7 +98,8 @@ struct FunctionToOptimize {
 
     // Construct the cost function that is minimized as the current point is the equlibrium one.
     const std::function<fncas::X2V<X>(fncas::X2V<X>)> softmax_penalty = [&](fncas::X2V<X> v) {
-      return sqr(v + sqrt(v * v));  // "Soft"-max invented by Dima. -- D.K.
+      // `zero_or_x(x)` is `max(0, x)`, differentiable and compilable by FnCAS.
+      return sqr(zero_or_x(v));
     };
 
     fncas::X2V<X> penalty = 0.0;
