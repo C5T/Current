@@ -51,8 +51,8 @@ CURRENT_STRUCT(ValueAndPoint) {
 inline bool IsNormal(double_t arg) { return (std::isnormal(arg) || arg == 0.0); }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                              const std::vector<T>& b) {
+typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                       const std::vector<T>& b) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -67,9 +67,9 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                              const std::vector<T>& b,
-                                                                                              double_t kb) {
+typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                       const std::vector<T>& b,
+                                                                                       double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -84,10 +84,10 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                              const std::vector<T>& b,
-                                                                                              double_t ka,
-                                                                                              double_t kb) {
+typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
+                                                                                       const std::vector<T>& b,
+                                                                                       double_t ka,
+                                                                                       double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -102,8 +102,8 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::ty
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
-                                                                                 const std::vector<T>& v2) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
+                                                                          const std::vector<T>& v2) {
 #ifndef NDEBUG
   CURRENT_ASSERT(v1.size() == v2.size());
 #endif
@@ -111,12 +111,12 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T>& v) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T>& v) {
   return DotProduct(v, v);
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value>::type FlipSign(std::vector<T>& v) {
+typename std::enable_if<std::is_arithmetic<T>::value>::type FlipSign(std::vector<T>& v) {
   std::transform(std::begin(v), std::end(v), std::begin(v), std::negate<T>());
 }
 
@@ -136,14 +136,14 @@ inline double_t PolakRibiere(const std::vector<double_t>& g, const std::vector<d
 // sequentially shrinking the step size. Returns new optimal point.
 // Algorithm parameters: 0 < alpha < 1, 0 < beta < 1.
 template <class F, class G>
-inline ValueAndPoint Backtracking(F&& f,
-                                  G&& g,
-                                  const std::vector<double_t>& current_point,
-                                  const std::vector<double_t>& direction,
-                                  OptimizerStats& stats,
-                                  const double_t alpha = 0.5,
-                                  const double_t beta = 0.8,
-                                  const size_t max_steps = 100) {
+ValueAndPoint Backtracking(F&& f,
+                           G&& g,
+                           const std::vector<double_t>& current_point,
+                           const std::vector<double_t>& direction,
+                           OptimizerStats& stats,
+                           const double_t alpha = 0.5,
+                           const double_t beta = 0.8,
+                           const size_t max_steps = 100) {
   const auto& logger = OptimizerLogger();
   stats.JournalBacktrackingCall();
   stats.JournalFunction();

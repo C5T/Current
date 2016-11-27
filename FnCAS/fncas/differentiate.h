@@ -36,10 +36,10 @@ namespace fncas {
 static const double_t APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 
 template <typename F>
-inline double_t approximate_derivative(F f,
-                                       const std::vector<double_t>& x,
-                                       node_index_type i,
-                                       const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
+double_t approximate_derivative(F f,
+                                const std::vector<double_t>& x,
+                                node_index_type i,
+                                const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<double_t> x1(x);
   std::vector<double_t> x2(x);
   x1[i] -= EPS;
@@ -48,9 +48,9 @@ inline double_t approximate_derivative(F f,
 }
 
 template <typename F>
-inline std::vector<double_t> approximate_gradient(F f,
-                                                  const std::vector<double_t>& x,
-                                                  const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
+std::vector<double_t> approximate_gradient(F f,
+                                           const std::vector<double_t>& x,
+                                           const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<double_t> g(x.size());
   std::vector<double_t> xx(x);
   for (size_t i = 0; i < xx.size(); ++i) {

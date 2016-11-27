@@ -40,13 +40,13 @@ SOFTWARE.
 #include <thread>
 
 template <typename X>
-inline fncas::X2V<X> ParametrizedFunction(const X& x, size_t c) {
+fncas::X2V<X> ParametrizedFunction(const X& x, size_t c) {
   return (x[0] + x[1] * c) * (x[0] + x[1] * c);
 }
 
 // Need an explicit specialization, as `SimpleFunction<std::vector<double_t>>` is used directly in the test.
 template <typename X>
-inline fncas::X2V<X> SimpleFunction(const X& x) {
+fncas::X2V<X> SimpleFunction(const X& x) {
   return ParametrizedFunction(x, 2u);
 }
 
@@ -434,14 +434,14 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
 
 // To test evaluation and differentiation.
 template <typename X>
-inline fncas::X2V<X> ZeroOrXFunction(const X& x) {
+fncas::X2V<X> ZeroOrXFunction(const X& x) {
   EXPECT_EQ(1u, x.size());
   return zero_or_x(x[0]);
 }
 
 // To test evaluation and differentiation of `f(g(x))` where `f` is `zero_or_x`.
 template <typename X>
-inline fncas::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
+fncas::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
   EXPECT_EQ(1u, x.size());
   return zero_or_x(sqr(x[0]) - 10);  // So that the argument is sometimes negative.
 }

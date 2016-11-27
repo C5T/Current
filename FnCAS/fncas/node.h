@@ -68,7 +68,7 @@ inline const char* function_as_string(function_t function) {
 }
 
 template <typename T>
-inline T apply_operation(operation_t operation, T lhs, T rhs) {
+T apply_operation(operation_t operation, T lhs, T rhs) {
   static std::function<T(T, T)> evaluator[static_cast<size_t>(operation_t::end)] = {
       std::plus<T>(), std::minus<T>(), std::multiplies<T>(), std::divides<T>(),
   };
@@ -77,7 +77,7 @@ inline T apply_operation(operation_t operation, T lhs, T rhs) {
 }
 
 template <typename T>
-inline T apply_function(function_t function, T argument) {
+T apply_function(function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
       sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, zero_or_one, zero_or_x};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
