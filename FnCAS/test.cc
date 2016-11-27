@@ -40,14 +40,14 @@ SOFTWARE.
 #include <thread>
 
 template <typename X>
-fncas::X2V<X> parametrized_f(const X& x, size_t c) {
+inline fncas::X2V<X> ParametrizedFunction(const X& x, size_t c) {
   return (x[0] + x[1] * c) * (x[0] + x[1] * c);
 }
 
-// Need an explicit specialization, not a default parameter, since `f` itself is used as a parameter later on.
+// Need an explicit specialization, as `SimpleFunction<std::vector<double_t>>` is used directly in the test.
 template <typename X>
-fncas::X2V<X> f(const X& x) {
-  return parametrized_f(x, 2u);
+inline fncas::X2V<X> SimpleFunction(const X& x) {
+  return ParametrizedFunction(x, 2u);
 }
 
 static_assert(std::is_same<std::vector<fncas::double_t>, fncas::V2X<fncas::double_t>>::value, "");
@@ -56,16 +56,18 @@ static_assert(std::is_same<fncas::X2V<std::vector<fncas::double_t>>, fncas::doub
 static_assert(std::is_same<fncas::V, fncas::X2V<fncas::X>>::value, "");
 static_assert(std::is_same<fncas::X, fncas::V2X<fncas::V>>::value, "");
 
-TEST(FnCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<fncas::double_t>({1, 2}))); }
+TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
+  EXPECT_EQ(25, SimpleFunction(std::vector<fncas::double_t>({1, 2})));
+}
 
 TEST(FnCAS, NativeWrapper) {
-  fncas::f_native fn(f<std::vector<fncas::double_t>>, 2);
+  fncas::f_native fn(SimpleFunction<std::vector<fncas::double_t>>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
 TEST(FnCAS, IntermediateWrapper) {
   fncas::X x(2);
-  fncas::f_intermediate fi = f(x);
+  fncas::f_intermediate fi = SimpleFunction(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2.000000))*(x[0]+(x[1]*2.000000)))", fi.debug_as_string());
 }
@@ -73,7 +75,7 @@ TEST(FnCAS, IntermediateWrapper) {
 #ifdef FNCAS_JIT
 TEST(FnCAS, CompiledFunctionWrapper) {
   fncas::X x(2);
-  fncas::f_intermediate fi = f(x);
+  fncas::f_intermediate fi = SimpleFunction(x);
   fncas::f_compiled fc = fncas::f_compiled(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
 }
@@ -82,13 +84,13 @@ TEST(FnCAS, CompiledFunctionWrapper) {
 TEST(FnCAS, GradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  fncas::g_approximate ga = fncas::g_approximate(f<std::vector<fncas::double_t>>, 2);
+  fncas::g_approximate ga = fncas::g_approximate(SimpleFunction<std::vector<fncas::double_t>>, 2);
   auto d_3_3_approx = ga(p_3_3);
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
   const fncas::X x(2);
-  const fncas::g_intermediate gi(x, f(x));
+  const fncas::g_intermediate gi(x, SimpleFunction(x));
   const auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(18, d_3_3_intermediate[0]);
   EXPECT_EQ(36, d_3_3_intermediate[1]);
@@ -99,7 +101,7 @@ TEST(FnCAS, CompiledGradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::X x(2);
-  const fncas::f_intermediate fi = f(x);
+  const fncas::f_intermediate fi = SimpleFunction(x);
   const fncas::g_intermediate gi(x, fi);
 
   const fncas::g_compiled gc(fi, gi);
@@ -116,8 +118,8 @@ TEST(FnCAS, CompiledSqrGradientWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::X x(2);
-  const fncas::f_intermediate fi = f(x);
-  const fncas::g_intermediate gi(x, f(x));
+  const fncas::f_intermediate fi = SimpleFunction(x);
+  const fncas::g_intermediate gi(x, SimpleFunction(x));
 
   const fncas::f_compiled fc(fi);
   const fncas::double_t f_3_3_compiled = fc(p_3_3);
@@ -135,7 +137,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = []() {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::X x(2);
-      fncas::f_intermediate fi = parametrized_f(x, i + 1);
+      fncas::f_intermediate fi = ParametrizedFunction(x, i + 1);
       EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
@@ -428,4 +430,71 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
   EXPECT_TRUE(x1_err_cg < x1_err_bt);
   EXPECT_NEAR(1.0, result_cg.point[0], 1e-6);
   EXPECT_NEAR(1.0, result_cg.point[1], 1e-6);
+}
+
+// To test evaluation and differentiation.
+template <typename X>
+inline fncas::X2V<X> ZeroOrXFunction(const X& x) {
+  EXPECT_EQ(1u, x.size());
+  return zero_or_x(x[0]);
+}
+
+// To test evaluation and differentiation of `f(g(x))` where `f` is `zero_or_x`.
+template <typename X>
+inline fncas::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
+  EXPECT_EQ(1u, x.size());
+  return zero_or_x(sqr(x[0]) - 10);  // So that the argument is sometimes negative.
+}
+
+TEST(FnCAS, CustomFunctions) {
+  EXPECT_EQ(0.0, zero_or_one(-1.0));
+  EXPECT_EQ(1.0, zero_or_one(+2.0));
+
+  EXPECT_EQ(0.0, zero_or_x(-3.0));
+  EXPECT_EQ(4.0, zero_or_x(+4.0));
+
+  const fncas::X x(1);
+  const fncas::f_intermediate intermediate_function = ZeroOrXFunction(x);
+  EXPECT_EQ(0.0, intermediate_function({-5.0}));
+  EXPECT_EQ(6.0, intermediate_function({+6.0}));
+
+  fncas::f_compiled compiled_function(intermediate_function);
+  EXPECT_EQ(0.0, compiled_function({-5.5})) << compiled_function.lib_filename();
+  EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
+
+  const fncas::g_approximate approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
+  EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
+  EXPECT_NEAR(1.0, approximate_gradient({+6.0})[0], 1e-6);
+
+  const fncas::g_intermediate intermediate_gradient(x, intermediate_function);
+  EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
+  EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
+
+  fncas::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
+  EXPECT_EQ(0.0, compiled_gradient({-9.5})[0]) << compiled_gradient.lib_filename();
+  EXPECT_EQ(1.0, compiled_gradient({+9.5})[0]) << compiled_gradient.lib_filename();
+}
+
+TEST(FnCAS, ComplexCustomFunctions) {
+  const fncas::X x(1);
+
+  const fncas::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
+  EXPECT_EQ(0.0, intermediate_function({3.0}));  // zero_or_x(3*3 - 10) == 0
+  EXPECT_EQ(6.0, intermediate_function({4.0}));  // zero_or_x(4*4 - 10) == 6
+
+  fncas::f_compiled compiled_function(intermediate_function);
+  EXPECT_EQ(0.0, compiled_function({3.0})) << compiled_function.lib_filename();
+  EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
+
+  const fncas::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
+  EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
+  EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.
+
+  const fncas::g_intermediate intermediate_gradient(x, intermediate_function);
+  EXPECT_EQ(0.0, intermediate_gradient({3.0})[0]);
+  EXPECT_EQ(8.0, intermediate_gradient({4.0})[0]);
+
+  fncas::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
+  EXPECT_EQ(0.0, compiled_gradient({3.0})[0]) << compiled_gradient.lib_filename();
+  EXPECT_EQ(8.0, compiled_gradient({4.0})[0]) << compiled_gradient.lib_filename();
 }
