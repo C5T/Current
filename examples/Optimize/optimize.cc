@@ -53,7 +53,7 @@ DEFINE_bool(logtostderr, false, "Log to stderr.");
 
 template <typename X>
 X magic_weighting(X x) {
-  return sqr(x);  // For the canonical solution, `exp(x)` would do fine. This `sqr` just convereges faster. -- D.K.
+  return fncas::sqr(x);  // For the canonical solution, `exp(x)` would do fine; `sqr` just convereges faster. -- D.K.
 }
 
 template <typename X>
@@ -97,10 +97,8 @@ struct FunctionToOptimize {
     }
 
     // Construct the cost function that is minimized as the current point is the equlibrium one.
-    const std::function<fncas::X2V<X>(fncas::X2V<X>)> softmax_penalty = [&](fncas::X2V<X> v) {
-      // `zero_or_x(x)` is `max(0, x)`, differentiable and compilable by FnCAS.
-      return sqr(zero_or_x(v));
-    };
+    const std::function<fncas::X2V<X>(fncas::X2V<X>)> softmax_penalty =
+        [&](fncas::X2V<X> v) { return fncas::sqr(fncas::ramp(v)); };
 
     fncas::X2V<X> penalty = 0.0;
 

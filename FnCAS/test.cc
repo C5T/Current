@@ -114,7 +114,7 @@ TEST(FnCAS, CompiledGradientsWrapper) {
 }
 
 TEST(FnCAS, CompiledSqrGradientWrapper) {
-  // The `sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
+  // The `fncas::sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::X x(2);
@@ -138,7 +138,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::X x(2);
       fncas::f_intermediate fi = ParametrizedFunction(x, i + 1);
-      EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
+      EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
   std::thread t1(advanced_math);
@@ -436,22 +436,22 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
 template <typename X>
 fncas::X2V<X> ZeroOrXFunction(const X& x) {
   EXPECT_EQ(1u, x.size());
-  return zero_or_x(x[0]);
+  return fncas::ramp(x[0]);
 }
 
-// To test evaluation and differentiation of `f(g(x))` where `f` is `zero_or_x`.
+// To test evaluation and differentiation of `f(g(x))` where `f` is `fncas::ramp`.
 template <typename X>
 fncas::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
   EXPECT_EQ(1u, x.size());
-  return zero_or_x(sqr(x[0]) - 10);  // So that the argument is sometimes negative.
+  return fncas::ramp(fncas::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
 }
 
 TEST(FnCAS, CustomFunctions) {
-  EXPECT_EQ(0.0, zero_or_one(-1.0));
-  EXPECT_EQ(1.0, zero_or_one(+2.0));
+  EXPECT_EQ(0.0, fncas::unit_step(-1.0));
+  EXPECT_EQ(1.0, fncas::unit_step(+2.0));
 
-  EXPECT_EQ(0.0, zero_or_x(-3.0));
-  EXPECT_EQ(4.0, zero_or_x(+4.0));
+  EXPECT_EQ(0.0, fncas::ramp(-3.0));
+  EXPECT_EQ(4.0, fncas::ramp(+4.0));
 
   const fncas::X x(1);
   const fncas::f_intermediate intermediate_function = ZeroOrXFunction(x);
@@ -479,8 +479,8 @@ TEST(FnCAS, ComplexCustomFunctions) {
   const fncas::X x(1);
 
   const fncas::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
-  EXPECT_EQ(0.0, intermediate_function({3.0}));  // zero_or_x(3*3 - 10) == 0
-  EXPECT_EQ(6.0, intermediate_function({4.0}));  // zero_or_x(4*4 - 10) == 6
+  EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
+  EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
 
   fncas::f_compiled compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({3.0})) << compiled_function.lib_filename();

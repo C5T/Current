@@ -41,14 +41,13 @@
 #include "../../Bricks/exception.h"
 #include "../../Bricks/util/singleton.h"
 
-// Some mathematical functions useful in data science.
-// For simplicity, I'm injecting them into the global namespace now. -- D.K.
-
-inline fncas::double_t sqr(fncas::double_t x) { return x * x; }
-inline fncas::double_t zero_or_one(fncas::double_t x) { return x >= 0 ? 1 : 0; }
-inline fncas::double_t zero_or_x(fncas::double_t x) { return x > 0 ? x : 0; }
-
 namespace fncas {
+
+// Non-standard functions useful in data science.
+inline double_t sqr(double_t x) { return x * x; }
+inline double_t unit_step(double_t x) { return x >= 0 ? 1 : 0; }
+inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
+// TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of `node_impl` take 10 bytes each and are packed.
@@ -63,7 +62,7 @@ inline const char* operation_as_string(operation_t operation) {
 
 inline const char* function_as_string(function_t function) {
   static const char* representation[static_cast<size_t>(function_t::end)] = {
-      "sqr", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "zero_or_one", "zero_or_x"};
+      "sqr", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "unit_step", "ramp"};
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
 }
 
@@ -79,7 +78,7 @@ T apply_operation(operation_t operation, T lhs, T rhs) {
 template <typename T>
 T apply_function(function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
-      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, zero_or_one, zero_or_x};
+      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
                                     : std::numeric_limits<T>::quiet_NaN();
 }
@@ -437,6 +436,8 @@ DECLARE_OP(/, /=, divide);
     return result;                              \
   }
 
+namespace fncas {
+
 DECLARE_FUNCTION(sqr);
 DECLARE_FUNCTION(sqrt);
 DECLARE_FUNCTION(exp);
@@ -447,8 +448,10 @@ DECLARE_FUNCTION(tan);
 DECLARE_FUNCTION(asin);
 DECLARE_FUNCTION(acos);
 DECLARE_FUNCTION(atan);
-DECLARE_FUNCTION(zero_or_one);
-DECLARE_FUNCTION(zero_or_x);
+DECLARE_FUNCTION(unit_step);
+DECLARE_FUNCTION(ramp);
+
+}  // namespace fncas
 
 // Unary plus and unary minus.
 inline fncas::V operator+(const fncas::V& x) { return x; }

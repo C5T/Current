@@ -315,31 +315,31 @@ struct compile_impl final {
               fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
               fprintf(f, "  mulpd xmm0, xmm0\n");
               fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-            } else if (node.function() == function_t::zero_or_one) {
+            } else if (node.function() == function_t::unit_step) {
               fprintf(f,
-                      "  ; a[%lld] = zero_or_one(a[%lld]);  # `zero_or_one` is a special case.\n",
+                      "  ; a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
                       static_cast<long long>(dependent_i),
                       static_cast<long long>(node.argument_index()));
               fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
               fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
               fprintf(f, "  movq xmm1, rax\n");
               fprintf(f, "  ucomisd xmm0, xmm1\n");
-              fprintf(f, "  jb zero_or_one_%lld\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  jb unit_step_%lld\n", static_cast<long long>(dependent_i));
               fprintf(f, "  mov rax, %s  ; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
-              fprintf(f, "zero_or_one_%lld:\n", static_cast<long long>(dependent_i));
+              fprintf(f, "unit_step_%lld:\n", static_cast<long long>(dependent_i));
               fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(dependent_i) * 8);
-            } else if (node.function() == function_t::zero_or_x) {
+            } else if (node.function() == function_t::ramp) {
               fprintf(f,
-                      "  ; a[%lld] = zero_or_x(a[%lld]);  # `zero_or_x` is a special case.\n",
+                      "  ; a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
                       static_cast<long long>(dependent_i),
                       static_cast<long long>(node.argument_index()));
               fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
               fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
               fprintf(f, "  movq xmm1, rax\n");
               fprintf(f, "  ucomisd xmm0, xmm1\n");
-              fprintf(f, "  ja zero_or_x_%lld\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  ja ramp_%lld\n", static_cast<long long>(dependent_i));
               fprintf(f, "  movq xmm0, rax\n");
-              fprintf(f, "zero_or_x_%lld:\n", static_cast<long long>(dependent_i));
+              fprintf(f, "ramp_%lld:\n", static_cast<long long>(dependent_i));
               fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
             } else {
               fprintf(f,
@@ -370,8 +370,8 @@ struct compile_impl final {
       CURRENT_ASSERT(f);
       fprintf(f, "#include <math.h>\n");
       fprintf(f, "#define sqr(x) ((x) * (x))\n");
-      fprintf(f, "#define zero_or_one(x) ((x) >= 0 ? 1 : 0)\n");
-      fprintf(f, "#define zero_or_x(x) ((x) >= 0 ? (x) : 0)\n");
+      fprintf(f, "#define unit_step(x) ((x) >= 0 ? 1 : 0)\n");
+      fprintf(f, "#define ramp(x) ((x) >= 0 ? (x) : 0)\n");
     }
 
     void compile_eval_f(node_index_type index) {
