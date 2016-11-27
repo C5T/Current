@@ -40,6 +40,10 @@ struct FnCASException : current::Exception {
 // This is not allowed. FnCAS keeps global state per thread, which leads to this constraint.
 struct FnCASConcurrentEvaluationAttemptException : FnCASException {};
 
+// Exceptions for attempting to differentiate a function that doesn't have a derivative.
+struct FnCASFunctionNonDifferentiable : FnCASException {};
+struct FnCASZeroOrOneIsNonDifferentiable : FnCASFunctionNonDifferentiable {};
+
 // This exception is thrown when the optimization process fails,
 // most notably when the objective function becomes not `fncas::IsNormal()`, which is NaN.
 struct FnCASOptimizationException : FnCASException {

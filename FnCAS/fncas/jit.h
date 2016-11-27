@@ -257,6 +257,8 @@ struct compile_impl final {
 
     // generate_asm_code_for_node() writes NASM code to evaluate the expression to the file.
     void generate_asm_code_for_node(node_index_type index) {
+      const double d_0 = 0;
+      const double d_1 = 1;
       std::stack<node_index_type> stack;
       stack.push(index);
       while (!stack.empty()) {
@@ -277,10 +279,7 @@ struct compile_impl final {
               fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
               fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
             } else if (node.type() == type_t::value) {
-              fprintf(f,
-                      "  ; a[%lld] = %a;\n",
-                      static_cast<long long>(i),
-                      node.value());  // "%a" is hexadecimal full precision.
+              fprintf(f, "  ; a[%lld] = %lf\n", static_cast<long long>(i), node.value());
               fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
               fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
             } else if (node.type() == type_t::operation) {
@@ -316,6 +315,32 @@ struct compile_impl final {
               fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
               fprintf(f, "  mulpd xmm0, xmm0\n");
               fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
+            } else if (node.function() == function_t::zero_or_one) {
+              fprintf(f,
+                      "  ; a[%lld] = zero_or_one(a[%lld]);  # `zero_or_one` is a special case.\n",
+                      static_cast<long long>(dependent_i),
+                      static_cast<long long>(node.argument_index()));
+              fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
+              fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
+              fprintf(f, "  movq xmm1, rax\n");
+              fprintf(f, "  ucomisd xmm0, xmm1\n");
+              fprintf(f, "  jb zero_or_one_%lld\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  mov rax, %s  ; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
+              fprintf(f, "zero_or_one_%lld:\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(dependent_i) * 8);
+            } else if (node.function() == function_t::zero_or_x) {
+              fprintf(f,
+                      "  ; a[%lld] = zero_or_x(a[%lld]);  # `zero_or_x` is a special case.\n",
+                      static_cast<long long>(dependent_i),
+                      static_cast<long long>(node.argument_index()));
+              fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
+              fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
+              fprintf(f, "  movq xmm1, rax\n");
+              fprintf(f, "  ucomisd xmm0, xmm1\n");
+              fprintf(f, "  ja zero_or_x_%lld\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  movq xmm0, rax\n");
+              fprintf(f, "zero_or_x_%lld:\n", static_cast<long long>(dependent_i));
+              fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
             } else {
               fprintf(f,
                       "  ; a[%lld] = %s(a[%lld]);\n",
@@ -345,6 +370,8 @@ struct compile_impl final {
       CURRENT_ASSERT(f);
       fprintf(f, "#include <math.h>\n");
       fprintf(f, "#define sqr(x) ((x) * (x))\n");
+      fprintf(f, "#define zero_or_one(x) ((x) >= 0 ? 1 : 0)\n");
+      fprintf(f, "#define zero_or_x(x) ((x) >= 0 ? (x) : 0)\n");
     }
 
     void compile_eval_f(node_index_type index) {
@@ -406,8 +433,9 @@ struct compile_impl final {
               fprintf(f, "  a[%lld] = x[%d];\n", static_cast<long long>(i), v);
             } else if (node.type() == type_t::value) {
               fprintf(f,
-                      "  a[%lld] = %a;\n",
+                      "  a[%lld] = %a;  // %lf\n",  // "%a" is hexadecimal full precision.
                       static_cast<long long>(i),
+                      node.value(),
                       node.value());  // "%a" is hexadecimal full precision.
             } else if (node.type() == type_t::operation) {
               stack.push(~i);

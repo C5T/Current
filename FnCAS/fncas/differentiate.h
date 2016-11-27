@@ -102,7 +102,13 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
       [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / sqrt(V(1.0) - x * x); },
       // atan().
       [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
-  };
+      // zero_or_one().
+      [](const V& o, const V&, const V&) {
+        CURRENT_THROW(FnCASZeroOrOneIsNonDifferentiable());
+        return o;
+      },
+      // zero_or_x().
+      [](const V&, const V& x, const V& dx) { return zero_or_one(x) * dx; }};
   return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index() : 0;
 }
 
