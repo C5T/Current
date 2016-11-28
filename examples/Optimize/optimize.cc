@@ -29,14 +29,7 @@ SOFTWARE.
 #include "../../port.h"
 
 #ifndef FNCAS_USE_LONG_DOUBLE
-
-// The `FNCAS_JIT` macros are expected to be tweaked by the user of FnCAS. These values are just for the demo.
-#if defined(CURRENT_APPLE)
-#define FNCAS_JIT CLANG  // Assume OS X. -- D.K.
-#elif defined(CURRENT_POSIX)
-#define FNCAS_JIT NASM  // Assume Linux -- D.K.
-#endif
-
+#define FNCAS_JIT AS  // TODO(dkorolev) + TODO(mzhurovich): Test on Mac.
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE
 
 #include "main.h"
