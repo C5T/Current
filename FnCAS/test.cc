@@ -85,7 +85,6 @@ TEST(FnCAS, TrivialCompiledFunctions) {
     // grep for `42.000`.
     const fncas::X x(1);
     const fncas::f_intermediate intermediate_function([](const fncas::X& x) {
-      ;
       return x[0] + 42;
     }(x));
     EXPECT_EQ(1042, intermediate_function({1000}));
@@ -97,7 +96,6 @@ TEST(FnCAS, TrivialCompiledFunctions) {
     // grep for `12345.000`.
     const fncas::X x(1);
     const fncas::f_intermediate intermediate_function([](const fncas::X& x) {
-      ;
       return exp(x[0]) + 12345.0;
     }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
