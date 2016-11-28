@@ -25,14 +25,9 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
-// #define FNCAS_USE_LONG_DOUBLE
+#define FNCAS_JIT AS  // Other supported values are `CLANG` and `NASM`. -- D.K.
 
-#ifndef FNCAS_USE_LONG_DOUBLE
-#ifndef FNCAS_JIT
-// Other supported values are `CLANG` and `NASM`. -- D.K.
-#define FNCAS_JIT AS
-#endif  // #ifndef FNCAS_JIT
-#endif  // #ifndef FNCAS_USE_LONG_DOUBLE
+// #define FNCAS_USE_LONG_DOUBLE  // Incompatible with `FNCAS_JIT` being defined. -- D.K.
 
 #include "fncas/fncas.h"
 
@@ -55,6 +50,17 @@ static_assert(std::is_same<fncas::X2V<std::vector<fncas::double_t>>, fncas::doub
 
 static_assert(std::is_same<fncas::V, fncas::X2V<fncas::X>>::value, "");
 static_assert(std::is_same<fncas::X, fncas::V2X<fncas::V>>::value, "");
+
+// Sadly, googletest's `TEST` is a macro itself, and using `##` in test names doesn't work. -- D.K.
+#if FNCAS_JIT == AS
+TEST(FnCAS, FNCAS_JIT_is_AS) {}
+#elif FNCAS_JIT == CLANG
+TEST(FnCAS, FNCAS_JIT_is_CLANG) {}
+#elif FNCAS_JIT == NASM
+TEST(FnCAS, FNCAS_JIT_is_NASM) {}
+#else
+TEST(FnCAS, No_FNCAS_JIT_defined) {}
+#endif
 
 TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
   EXPECT_EQ(25, SimpleFunction(std::vector<fncas::double_t>({1, 2})));
@@ -488,9 +494,11 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(0.0, intermediate_function({-5.0}));
   EXPECT_EQ(6.0, intermediate_function({+6.0}));
 
+#ifdef FNCAS_JIT
   const fncas::f_compiled compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({-5.5})) << compiled_function.lib_filename();
   EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
+#endif
 
   const fncas::g_approximate approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
@@ -500,9 +508,11 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
   EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
 
+#ifdef FNCAS_JIT
   const fncas::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, compiled_gradient({-9.5})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(1.0, compiled_gradient({+9.5})[0]) << compiled_gradient.lib_filename();
+#endif
 }
 
 TEST(FnCAS, ComplexCustomFunctions) {
@@ -512,9 +522,11 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
   EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
 
+#ifdef FNCAS_JIT
   const fncas::f_compiled compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({3.0})) << compiled_function.lib_filename();
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
+#endif
 
   const fncas::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
@@ -524,7 +536,9 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(0.0, intermediate_gradient({3.0})[0]);
   EXPECT_EQ(8.0, intermediate_gradient({4.0})[0]);
 
+#ifdef FNCAS_JIT
   const fncas::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, compiled_gradient({3.0})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(8.0, compiled_gradient({4.0})[0]) << compiled_gradient.lib_filename();
+#endif
 }
