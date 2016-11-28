@@ -16,9 +16,9 @@ done
 
 if [ $RETVAL -eq 0 ] ; then
  echo -e "\n\033[32m\033[1mALL TESTS PASS.\033[0m"
- echo -e "Failed tests:$FAILURES"
  exit 0
 else
  echo -e "\n\033[31m\033[1mFAIL\033[0m"
+ echo -e "Failed tests:$FAILURES"
  exit 1
 fi
