@@ -148,20 +148,24 @@ std::vector<std::vector<fncas::double_t>> solve(
   }
 
   return build_probabilities(
-      optimizer_t<FunctionToOptimize>(
-          fncas::OptimizerParameters()
-              .SetValue("max_steps", 50000)
-              .SetPointBeautifier([&](const std::vector<fncas::double_t>& x) {
-                const auto p = build_probabilities(x);
-                return "A = " + pretty_print_simplex(p[0]) + ", B = " + pretty_print_simplex(p[1]);
-              })
-              .SetStoppingCriterion([&](size_t completed_iterations, const std::vector<fncas::double_t>& x) {
-                static_cast<void>(completed_iterations);
-                return validate(build_probabilities(x)) ? fncas::EarlyStoppingCriterion::StopOptimization
-                                                        : fncas::EarlyStoppingCriterion::ContinueOptimization;
-              }),
-          N,
-          A)
+      optimizer_t<FunctionToOptimize>(fncas::OptimizerParameters()
+                                          .SetValue("max_steps", 50000)
+                                          .SetPointBeautifier([&](const std::vector<fncas::double_t>& x) {
+                                            const auto p = build_probabilities(x);
+                                            return "A = " + pretty_print_simplex(p[0]) + ", B = " +
+                                                   pretty_print_simplex(p[1]);
+                                          })
+                                          .SetStoppingCriterion([&](size_t completed_iterations,
+                                                                    const std::vector<fncas::double_t>& current_point,
+                                                                    double current_value) {
+                                            static_cast<void>(completed_iterations);
+                                            static_cast<void>(current_value);
+                                            return validate(build_probabilities(current_point))
+                                                       ? fncas::EarlyStoppingCriterion::StopOptimization
+                                                       : fncas::EarlyStoppingCriterion::ContinueOptimization;
+                                          }),
+                                      N,
+                                      A)
           .Optimize(std::vector<fncas::double_t>(N * 2, 1.0))
           .point);
 }
