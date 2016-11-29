@@ -11,7 +11,9 @@ for i in $(find . -name test.cc | sort -g) ; do
   DIR=$(dirname $i)
   echo -e -n "\n\033[0m\033[1mDir\033[0m: \033[36m"
   echo $DIR
-  (cd $DIR && make -s test) || (RETVAL=1 && FAILURES="$FAILURES\n- $DIR")
+  cd $DIR
+  make -s test || RETVAL=1 && FAILURES="$FAILURES\n- $DIR"
+  cd -
 done
 
 if [ $RETVAL -eq 0 ] ; then
