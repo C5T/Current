@@ -29,7 +29,7 @@ SOFTWARE.
 #include "../../port.h"
 
 #ifndef FNCAS_USE_LONG_DOUBLE
-#define FNCAS_JIT AS  // TODO(dkorolev) + TODO(mzhurovich): Test on Mac.
+#define FNCAS_JIT AS
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE
 
 #include "main.h"
@@ -157,7 +157,8 @@ std::vector<std::vector<fncas::double_t>> solve(
               })
               .SetStoppingCriterion([&](size_t completed_iterations, const std::vector<fncas::double_t>& x) {
                 static_cast<void>(completed_iterations);
-                return validate(build_probabilities(x));
+                return validate(build_probabilities(x)) ? fncas::EarlyStoppingCriterion::StopOptimization
+                                                        : fncas::EarlyStoppingCriterion::ContinueOptimization;
               }),
           N,
           A)

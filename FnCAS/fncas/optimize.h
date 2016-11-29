@@ -55,10 +55,13 @@ CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
 };
 // clang-format on
 
+enum class EarlyStoppingCriterion : bool { StopOptimization = false, ContinueOptimization = true };
+
 class OptimizerParameters {
  public:
   using point_beautifier_t = std::function<std::string(const std::vector<double_t>& x)>;
-  using stopping_criterion_t = std::function<bool(size_t iterations_done, const std::vector<double_t>& x)>;
+  using stopping_criterion_t =
+      std::function<EarlyStoppingCriterion(size_t iterations_done, const std::vector<double_t>& x)>;
 
   template <typename T>
   OptimizerParameters& SetValue(std::string name, T value) {
@@ -140,9 +143,10 @@ class Optimizer : noncopyable {
     }
   }
 
-  bool StoppingCriterionSatisfied(size_t iterations_completed, const std::vector<double_t>& point) const {
+  EarlyStoppingCriterion StoppingCriterionSatisfied(size_t iterations_completed,
+                                                    const std::vector<double_t>& point) const {
     if (!Exists(parameters_) || !Value(parameters_).GetStoppingCriterion()) {
-      return false;
+      return EarlyStoppingCriterion::ContinueOptimization;
     } else {
       return Value(parameters_).GetStoppingCriterion()(iterations_completed, point);
     }
@@ -246,7 +250,7 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
     {
       OptimizerStats stats("GradientDescentOptimizer");
       for (iteration = 0; iteration < max_steps; ++iteration) {
-        if (super.StoppingCriterionSatisfied(iteration, current.point)) {
+        if (super.StoppingCriterionSatisfied(iteration, current.point) == EarlyStoppingCriterion::StopOptimization) {
           logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;
         }
@@ -351,7 +355,7 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
     {
       OptimizerStats stats("GradientDescentOptimizerBT");
       for (iteration = 0; iteration < max_steps; ++iteration) {
-        if (super.StoppingCriterionSatisfied(iteration, current.point)) {
+        if (super.StoppingCriterionSatisfied(iteration, current.point) == EarlyStoppingCriterion::StopOptimization) {
           logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;
         }
@@ -471,7 +475,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
     {
       OptimizerStats stats("ConjugateGradientOptimizer");
       for (iteration = 0; iteration < max_steps; ++iteration) {
-        if (super.StoppingCriterionSatisfied(iteration, current.point)) {
+        if (super.StoppingCriterionSatisfied(iteration, current.point) == EarlyStoppingCriterion::StopOptimization) {
           logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;
         }
