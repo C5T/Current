@@ -265,7 +265,7 @@ struct compile_impl final {
 
 #ifdef CURRENT_APPLE
       const char* compile_cmdline = "nasm -O0 -f macho64 %s.asm -o %s.o";
-      // `g++` is the best proxy for `ld` on OS X that passes proper command line args.
+      // `g++` is the best proxy for `ld` on OS X that passes proper command line args. -- M.Z.
       const char* link_cmdline = "g++ -shared -o %s.so %s.o";
 #else
       const char* compile_cmdline = "nasm -O0 -f elf64 %s.asm -o %s.o";
@@ -401,7 +401,6 @@ struct compile_impl final {
 
       // `.section .text' is equivalent to the `.text` directive.
       fprintf(f, ".text\n");
-      fprintf(f, "\n");
 #ifdef CURRENT_APPLE
       fprintf(f, ".globl %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
       fprintf(f, ".extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
@@ -413,7 +412,11 @@ struct compile_impl final {
     }
 
     void compile_eval_f(node_index_type index) {
+#ifdef CURRENT_APPLE
       fprintf(f, "_eval_f:\n");
+#else
+      fprintf(f, "eval_f:\n");
+#endif
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       generate_as_code_for_node(index);
@@ -426,7 +429,11 @@ struct compile_impl final {
 
     void compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
       CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
+#ifdef CURRENT_APPLE
       fprintf(f, "_eval_g:\n");
+#else
+      fprintf(f, "eval_g:\n");
+#endif
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       generate_as_code_for_node(f_index);
@@ -443,7 +450,11 @@ struct compile_impl final {
 
     ~AS() {
       fprintf(f, "\n");
+#ifdef CURRENT_APPLE
       fprintf(f, "_dim:\n");
+#else
+      fprintf(f, "dim:\n");
+#endif
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(internals_singleton().dim_));
@@ -451,7 +462,11 @@ struct compile_impl final {
       fprintf(f, "  pop %%rbp\n");
       fprintf(f, "  ret\n");
       fprintf(f, "\n");
+#ifdef CURRENT_APPLE
       fprintf(f, "_heap_size:\n");
+#else
+      fprintf(f, "heap_size:\n");
+#endif
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(max_dim + 1));
