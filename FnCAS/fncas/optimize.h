@@ -60,8 +60,8 @@ enum class EarlyStoppingCriterion : bool { StopOptimization = false, ContinueOpt
 class OptimizerParameters {
  public:
   using point_beautifier_t = std::function<std::string(const std::vector<double_t>& x)>;
-  using stopping_criterion_t =
-      std::function<EarlyStoppingCriterion(size_t iterations_done, const std::vector<double_t>& x, double_t v)>;
+  using stopping_criterion_t = std::function<EarlyStoppingCriterion(
+      size_t iterations_done, const ValueAndPoint& point_and_value, const std::vector<double_t>& g)>;
 
   template <typename T>
   OptimizerParameters& SetValue(std::string name, T value) {
@@ -144,12 +144,12 @@ class Optimizer : noncopyable {
   }
 
   EarlyStoppingCriterion StoppingCriterionSatisfied(size_t iterations_completed,
-                                                    const std::vector<double_t>& current_point,
-                                                    double_t current_value) const {
+                                                    const ValueAndPoint& value_and_point,
+                                                    const std::vector<double_t>& gradient) const {
     if (!Exists(parameters_) || !Value(parameters_).GetStoppingCriterion()) {
       return EarlyStoppingCriterion::ContinueOptimization;
     } else {
-      return Value(parameters_).GetStoppingCriterion()(iterations_completed, current_point, current_value);
+      return Value(parameters_).GetStoppingCriterion()(iterations_completed, value_and_point, gradient);
     }
   }
 
@@ -251,12 +251,6 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
     {
       OptimizerStats stats("GradientDescentOptimizer");
       for (iteration = 0; iteration < max_steps; ++iteration) {
-        if (super.StoppingCriterionSatisfied(iteration, current.point, current.value) ==
-            EarlyStoppingCriterion::StopOptimization) {
-          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
-          break;
-        }
-
         stats.JournalIteration();
         if (logger) {
           // Expensive call, don't make it if `logger` is not initialized.
@@ -265,6 +259,13 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
         }
         stats.JournalGradient();
         const auto gradient = g(current.point);
+
+        if (super.StoppingCriterionSatisfied(iteration, current, gradient) ==
+            EarlyStoppingCriterion::StopOptimization) {
+          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
+          break;
+        }
+
         auto best_candidate = current;
         auto has_valid_candidate = false;
         for (const double_t step : {0.01, 0.05, 0.2}) {  // TODO(dkorolev): Something more sophisticated maybe?
@@ -357,29 +358,30 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
     {
       OptimizerStats stats("GradientDescentOptimizerBT");
       for (iteration = 0; iteration < max_steps; ++iteration) {
-        if (super.StoppingCriterionSatisfied(iteration, current.point, current.value) ==
-            EarlyStoppingCriterion::StopOptimization) {
-          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
-          break;
-        }
-
         stats.JournalIteration();
         if (logger) {
           // Expensive call, don't make it if `logger` is not initialized.
           logger.Log("GradientDescentOptimizerBT: Iteration " + current::ToString(iteration + 1) + ", OF = " +
                      current::ToString(current.value) + " @ " + super.PointAsString(current.point));
         }
-        auto direction = g(current.point);
+        auto gradient = g(current.point);
+
+        if (super.StoppingCriterionSatisfied(iteration, current, gradient) ==
+            EarlyStoppingCriterion::StopOptimization) {
+          logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
+          break;
+        }
+
         // Simple early stopping by the norm of the gradient.
-        if (std::sqrt(fncas::L2Norm(direction)) < grad_eps && iteration >= min_steps) {
+        if (std::sqrt(fncas::L2Norm(gradient)) < grad_eps && iteration >= min_steps) {
           logger.Log("GradientDescentOptimizerBT: Terminating due to small gradient norm.");
           break;
         }
 
-        fncas::FlipSign(direction);  // Going against the gradient to minimize the function.
+        fncas::FlipSign(gradient);  // Going against the gradient to minimize the function.
 
         try {
-          const auto next = Backtracking(f, g, current.point, direction, stats, bt_alpha, bt_beta, bt_max_steps);
+          const auto next = Backtracking(f, g, current.point, gradient, stats, bt_alpha, bt_beta, bt_max_steps);
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
@@ -478,7 +480,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
     {
       OptimizerStats stats("ConjugateGradientOptimizer");
       for (iteration = 0; iteration < max_steps; ++iteration) {
-        if (super.StoppingCriterionSatisfied(iteration, current.point, current.value) ==
+        if (super.StoppingCriterionSatisfied(iteration, current, current_gradient) ==
             EarlyStoppingCriterion::StopOptimization) {
           logger.Log("GradientDescentOptimizer: External stopping criterion satisfied, terminating.");
           break;

@@ -156,11 +156,11 @@ std::vector<std::vector<fncas::double_t>> solve(
                                                    pretty_print_simplex(p[1]);
                                           })
                                           .SetStoppingCriterion([&](size_t completed_iterations,
-                                                                    const std::vector<fncas::double_t>& current_point,
-                                                                    double current_value) {
+                                                                    const fncas::ValueAndPoint& value_and_point,
+                                                                    const std::vector<fncas::double_t>& gradient) {
                                             static_cast<void>(completed_iterations);
-                                            static_cast<void>(current_value);
-                                            return validate(build_probabilities(current_point))
+                                            static_cast<void>(gradient);
+                                            return validate(build_probabilities(value_and_point.point))
                                                        ? fncas::EarlyStoppingCriterion::StopOptimization
                                                        : fncas::EarlyStoppingCriterion::ContinueOptimization;
                                           }),
