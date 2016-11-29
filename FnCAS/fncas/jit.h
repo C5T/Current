@@ -187,15 +187,24 @@ struct compile_impl final {
 
       fprintf(f, "[bits 64]\n");
       fprintf(f, "\n");
+#ifdef CURRENT_APPLE
+      fprintf(f, "global %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
+      fprintf(f, "extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
+#else
       fprintf(f, "global %s, dim, heap_size\n", !has_g ? "eval_f" : "eval_g");
       fprintf(f, "extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
+#endif
       fprintf(f, "\n");
       fprintf(f, "section .text\n");
       fprintf(f, "\n");
     }
 
     void compile_eval_f(node_index_type index) {
+#ifdef CURRENT_APPLE
+      fprintf(f, "_eval_f:\n");
+#else
       fprintf(f, "eval_f:\n");
+#endif
       fprintf(f, "  push rbp\n");
       fprintf(f, "  mov rbp, rsp\n");
       generate_nasm_code_for_node(index);
@@ -208,7 +217,11 @@ struct compile_impl final {
 
     void compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
       CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
+#ifdef CURRENT_APPLE
+      fprintf(f, "_eval_g:\n");
+#else
       fprintf(f, "eval_g:\n");
+#endif
       fprintf(f, "  push rbp\n");
       fprintf(f, "  mov rbp, rsp\n");
       generate_nasm_code_for_node(f_index);
@@ -225,7 +238,11 @@ struct compile_impl final {
 
     ~NASM() {
       fprintf(f, "\n");
+#ifdef CURRENT_APPLE
+      fprintf(f, "_dim:\n");
+#else
       fprintf(f, "dim:\n");
+#endif
       fprintf(f, "  push rbp\n");
       fprintf(f, "  mov rbp, rsp\n");
       fprintf(f, "  mov rax, %lld\n", static_cast<long long>(internals_singleton().dim_));
@@ -233,7 +250,11 @@ struct compile_impl final {
       fprintf(f, "  pop rbp\n");
       fprintf(f, "  ret\n");
       fprintf(f, "\n");
+#ifdef CURRENT_APPLE
+      fprintf(f, "_heap_size:\n");
+#else
       fprintf(f, "heap_size:\n");
+#endif
       fprintf(f, "  push rbp\n");
       fprintf(f, "  mov rbp, rsp\n");
       fprintf(f, "  mov rax, %lld\n", static_cast<long long>(max_dim + 1));
@@ -242,8 +263,14 @@ struct compile_impl final {
       fprintf(f, "  ret\n");
       fclose(f);
 
+#ifdef CURRENT_APPLE
+      const char* compile_cmdline = "nasm -O0 -f macho64 %s.asm -o %s.o";
+      // `g++` is the best proxy for `ld` on OS X that passes proper command line args.
+      const char* link_cmdline = "g++ -shared -o %s.so %s.o";
+#else
       const char* compile_cmdline = "nasm -O0 -f elf64 %s.asm -o %s.o";
       const char* link_cmdline = "ld -lm -shared -o %s.so %s.o";
+#endif
 
       compiled_expression::syscall(current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str()));
       compiled_expression::syscall(current::strings::Printf(link_cmdline, filebase.c_str(), filebase.c_str()));
@@ -350,7 +377,11 @@ struct compile_impl final {
               fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
               fprintf(f, "  push rdi\n");
               fprintf(f, "  push rsi\n");
+#ifdef CURRENT_APPLE
+              fprintf(f, "  call _%s\n", function_as_string(node.function()));
+#else
               fprintf(f, "  call %s wrt ..plt\n", function_as_string(node.function()));
+#endif
               fprintf(f, "  pop rsi\n");
               fprintf(f, "  pop rdi\n");
               fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
@@ -368,15 +399,21 @@ struct compile_impl final {
     AS(const std::string& filebase, bool has_g) : filebase(filebase), f(fopen((filebase + ".s").c_str(), "w")) {
       CURRENT_ASSERT(f);
 
-      fprintf(f, ".section .text\n");
+      // `.section .text' is equivalent to the `.text` directive.
+      fprintf(f, ".text\n");
       fprintf(f, "\n");
+#ifdef CURRENT_APPLE
+      fprintf(f, ".globl %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
+      fprintf(f, ".extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
+#else
       fprintf(f, ".globl %s, dim, heap_size\n", !has_g ? "eval_f" : "eval_g");
       fprintf(f, ".extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
+#endif
       fprintf(f, "\n");
     }
 
     void compile_eval_f(node_index_type index) {
-      fprintf(f, "eval_f:\n");
+      fprintf(f, "_eval_f:\n");
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       generate_as_code_for_node(index);
@@ -389,7 +426,7 @@ struct compile_impl final {
 
     void compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
       CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
-      fprintf(f, "eval_g:\n");
+      fprintf(f, "_eval_g:\n");
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       generate_as_code_for_node(f_index);
@@ -406,7 +443,7 @@ struct compile_impl final {
 
     ~AS() {
       fprintf(f, "\n");
-      fprintf(f, "dim:\n");
+      fprintf(f, "_dim:\n");
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(internals_singleton().dim_));
@@ -414,7 +451,7 @@ struct compile_impl final {
       fprintf(f, "  pop %%rbp\n");
       fprintf(f, "  ret\n");
       fprintf(f, "\n");
-      fprintf(f, "heap_size:\n");
+      fprintf(f, "_heap_size:\n");
       fprintf(f, "  push %%rbp\n");
       fprintf(f, "  mov %%rsp, %%rbp\n");
       fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(max_dim + 1));
@@ -526,7 +563,11 @@ struct compile_impl final {
               fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
               fprintf(f, "  push %%rdi\n");
               fprintf(f, "  push %%rsi\n");
+#ifdef CURRENT_APPLE
+              fprintf(f, "  call _%s\n", function_as_string(node.function()));
+#else
               fprintf(f, "  call %s@plt\n", function_as_string(node.function()));
+#endif
               fprintf(f, "  pop %%rsi\n");
               fprintf(f, "  pop %%rdi\n");
               fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
