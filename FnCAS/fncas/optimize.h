@@ -61,7 +61,7 @@ class OptimizerParameters {
  public:
   using point_beautifier_t = std::function<std::string(const std::vector<double_t>& x)>;
   using stopping_criterion_t = std::function<EarlyStoppingCriterion(
-      size_t iterations_done, const ValueAndPoint& point_and_value, const std::vector<double_t>& g)>;
+      size_t iterations_done, const ValueAndPoint& value_and_point, const std::vector<double_t>& g)>;
 
   template <typename T>
   OptimizerParameters& SetValue(std::string name, T value) {
