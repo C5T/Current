@@ -13,7 +13,7 @@ for i in $(find . -name test.cc | sort -g) ; do
   echo $DIR
   cd $DIR
   make -s test || RETVAL=1 && FAILURES="$FAILURES\n- $DIR"
-  cd -
+  cd - >/dev/null
 done
 
 if [ $RETVAL -eq 0 ] ; then
