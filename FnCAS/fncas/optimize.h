@@ -80,6 +80,13 @@ class OptimizerParameters {
     }
   }
 
+  OptimizerParameters& DisableJIT() {
+    jit_enabled_ = false;
+    return *this;
+  }
+
+  bool IsJITEnabled() const { return jit_enabled_; }
+
   OptimizerParameters& SetPointBeautifier(point_beautifier_t point_beautifier) {
     point_beautifier_ = point_beautifier;
     return *this;
@@ -98,6 +105,7 @@ class OptimizerParameters {
   std::map<std::string, double_t> params_;
   point_beautifier_t point_beautifier_;
   stopping_criterion_t stopping_criterion_;
+  bool jit_enabled_ = true;
 };
 
 // The base class for the optimizer of the function of type `F`.
@@ -172,35 +180,51 @@ class OptimizeInvoker : public Optimizer<F> {
   OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
     const auto& logger = OptimizerLogger();
 
-    const size_t dim = starting_point.size();
-    const fncas::X gradient_helper(dim);
+    const fncas::X gradient_helper(starting_point.size());
     const fncas::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(node_vector_singleton().size()) + " nodes.");
 #ifdef FNCAS_JIT
-    logger.Log("Optimizer: Compiling the objective function.");
-    const auto compile_f_begin_gradient = current::time::Now();
-    fncas::f_compiled f = fncas::f_compiled(f_i);
-    logger.Log("Optimizer: Done compiling the objective function, took " +
-               current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
+    if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
+      logger.Log("Optimizer: Compiling the objective function.");
+      const auto compile_f_begin_gradient = current::time::Now();
+      fncas::f_compiled f = fncas::f_compiled(f_i);
+      logger.Log("Optimizer: Done compiling the objective function, took " +
+                 current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
+      return DoOptimize(f_i, f, starting_point, gradient_helper);
+    } else {
+      logger.Log("Optimizer: JIT has been disabled via `DisableJIT()`, falling back to interpreted evalutions.");
+      return DoOptimize(f_i, f_i, starting_point, gradient_helper);
+    }
 #else
-    const auto& f = f_i;
+    return DoOptimize(f_i, f_i, starting_point, gradient_helper);
 #endif
+  }
+
+  template <typename POSSIBLY_COMPILED_F>
+  OptimizationResult DoOptimize(const fncas::f_intermediate& f_i,
+                                POSSIBLY_COMPILED_F&& f,
+                                const std::vector<double_t>& starting_point,
+                                const fncas::X& gradient_helper) const {
+    const auto& logger = OptimizerLogger();
 
     logger.Log("Optimizer: Differentiating.");
     const fncas::g_intermediate g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(node_vector_singleton().size()) + " nodes.");
 #ifdef FNCAS_JIT
-    logger.Log("Optimizer: Compiling the gradient.");
-    const auto compile_g_begin_gradient = current::time::Now();
-    fncas::g_compiled g = fncas::g_compiled(f_i, g_i);
-    logger.Log("Optimizer: Done compiling the gradient, took " +
-               current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
+    if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
+      logger.Log("Optimizer: Compiling the gradient.");
+      const auto compile_g_begin_gradient = current::time::Now();
+      fncas::g_compiled g = fncas::g_compiled(f_i, g_i);
+      logger.Log("Optimizer: Done compiling the gradient, took " +
+                 current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
+      return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
+    } else {
+      return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
+    }
 #else
-    const auto& g = g_i;
+    return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
 #endif
-
-    return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
   }
 };
 

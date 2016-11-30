@@ -54,9 +54,9 @@ static_assert(std::is_same<fncas::X, fncas::V2X<fncas::V>>::value, "");
 TEST(FnCAS, FNCAS_JIT_VALUE) {
 #ifdef FNCAS_JIT
 #define QUOTE_FNCAS_JIT_FOR_TEST(x) #x
-  std::cout << "#define FNCAS_JIT " << QUOTE_FNCAS_JIT_FOR_TEST(FNCAS_JIT) << std::endl; 
+  std::cout << "#define FNCAS_JIT " << QUOTE_FNCAS_JIT_FOR_TEST(FNCAS_JIT) << std::endl;
 #else
-  std::cout << "#undef FNCAS_JIT" << std::endl; 
+  std::cout << "#undef FNCAS_JIT" << std::endl;
 #endif
 }
 
@@ -259,11 +259,21 @@ struct HimmelblauFunction {
 };
 
 TEST(FnCAS, OptimizationOfAStaticFunction) {
-  const auto result = fncas::GradientDescentOptimizer<StaticFunction>().Optimize({0, 0});
-  EXPECT_NEAR(1.0, result.value, 1e-3);
-  ASSERT_EQ(2u, result.point.size());
-  EXPECT_NEAR(3.0, result.point[0], 1e-3);
-  EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  {
+    const auto result = fncas::GradientDescentOptimizer<StaticFunction>().Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
+  {
+    const auto result =
+        fncas::GradientDescentOptimizer<StaticFunction>(fncas::OptimizerParameters().DisableJIT()).Optimize({0, 0});
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
 }
 
 TEST(FnCAS, OptimizationOfAMemberFunctionSmokeTest) {

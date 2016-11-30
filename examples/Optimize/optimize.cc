@@ -42,6 +42,7 @@ DEFINE_int32(min, 1, "The minimum randomly generated value for A[i][j].");
 DEFINE_int32(max, 9, "The minimum randomly generated value for A[i][j].");
 DEFINE_uint64(seed, 19830816, "The random seed to use, zero to generate the input nondeterministically.");
 DEFINE_double(eps, 1e-3, "The value of the epsilon to compare doubles with.");
+DEFINE_bool(nojit, false, "Set to disable JIT and run the optimization using FnCAS' intermediate expresssion format.");
 DEFINE_bool(logtostderr, false, "Log to stderr.");
 
 template <typename X>
@@ -147,27 +148,26 @@ std::vector<std::vector<fncas::double_t>> solve(
     scope = std::make_unique<fncas::ScopedLogToStderr>();
   }
 
+  fncas::OptimizerParameters parameters;
+  parameters.SetValue("max_steps", 50000)
+      .SetPointBeautifier([&](const std::vector<fncas::double_t>& x) {
+        const auto p = build_probabilities(x);
+        return "A = " + pretty_print_simplex(p[0]) + ", B = " + pretty_print_simplex(p[1]);
+      })
+      .SetStoppingCriterion([&](size_t completed_iterations,
+                                const fncas::ValueAndPoint& value_and_point,
+                                const std::vector<fncas::double_t>& gradient) {
+        static_cast<void>(completed_iterations);
+        static_cast<void>(gradient);
+        return validate(build_probabilities(value_and_point.point))
+                   ? fncas::EarlyStoppingCriterion::StopOptimization
+                   : fncas::EarlyStoppingCriterion::ContinueOptimization;
+      });
+  if (FLAGS_nojit) {
+    parameters.DisableJIT();
+  }
   return build_probabilities(
-      optimizer_t<FunctionToOptimize>(fncas::OptimizerParameters()
-                                          .SetValue("max_steps", 50000)
-                                          .SetPointBeautifier([&](const std::vector<fncas::double_t>& x) {
-                                            const auto p = build_probabilities(x);
-                                            return "A = " + pretty_print_simplex(p[0]) + ", B = " +
-                                                   pretty_print_simplex(p[1]);
-                                          })
-                                          .SetStoppingCriterion([&](size_t completed_iterations,
-                                                                    const fncas::ValueAndPoint& value_and_point,
-                                                                    const std::vector<fncas::double_t>& gradient) {
-                                            static_cast<void>(completed_iterations);
-                                            static_cast<void>(gradient);
-                                            return validate(build_probabilities(value_and_point.point))
-                                                       ? fncas::EarlyStoppingCriterion::StopOptimization
-                                                       : fncas::EarlyStoppingCriterion::ContinueOptimization;
-                                          }),
-                                      N,
-                                      A)
-          .Optimize(std::vector<fncas::double_t>(N * 2, 1.0))
-          .point);
+      optimizer_t<FunctionToOptimize>(parameters, N, A).Optimize(std::vector<fncas::double_t>(N * 2, 1.0)).point);
 }
 
 int main(int argc, char** argv) { return run(argc, argv); }
