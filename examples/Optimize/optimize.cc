@@ -42,7 +42,7 @@ DEFINE_int32(min, 1, "The minimum randomly generated value for A[i][j].");
 DEFINE_int32(max, 9, "The minimum randomly generated value for A[i][j].");
 DEFINE_uint64(seed, 19830816, "The random seed to use, zero to generate the input nondeterministically.");
 DEFINE_double(eps, 1e-3, "The value of the epsilon to compare doubles with.");
-DEFINE_bool(nojit, false, "Set to disable JIT and run the optimization using FnCAS' intermediate expresssion format.");
+DEFINE_bool(nojit, false, "Set to disable JIT and run the optimization using FnCAS' intermediate expression format.");
 DEFINE_bool(logtostderr, false, "Log to stderr.");
 
 template <typename X>
