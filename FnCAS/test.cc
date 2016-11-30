@@ -51,16 +51,14 @@ static_assert(std::is_same<fncas::X2V<std::vector<fncas::double_t>>, fncas::doub
 static_assert(std::is_same<fncas::V, fncas::X2V<fncas::X>>::value, "");
 static_assert(std::is_same<fncas::X, fncas::V2X<fncas::V>>::value, "");
 
-// Sadly, googletest's `TEST` is a macro itself, and using `##` in test names doesn't work. -- D.K.
-#if FNCAS_JIT == AS
-TEST(FnCAS, FNCAS_JIT_is_AS) {}
-#elif FNCAS_JIT == CLANG
-TEST(FnCAS, FNCAS_JIT_is_CLANG) {}
-#elif FNCAS_JIT == NASM
-TEST(FnCAS, FNCAS_JIT_is_NASM) {}
+TEST(FnCAS, FNCAS_JIT_VALUE) {
+#ifdef FNCAS_JIT
+#define QUOTE_FNCAS_JIT_FOR_TEST(x) #x
+  std::cout << "#define FNCAS_JIT " << QUOTE_FNCAS_JIT_FOR_TEST(FNCAS_JIT) << std::endl; 
 #else
-TEST(FnCAS, No_FNCAS_JIT_defined) {}
+  std::cout << "#undef FNCAS_JIT" << std::endl; 
 #endif
+}
 
 TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
   EXPECT_EQ(25, SimpleFunction(std::vector<fncas::double_t>({1, 2})));
