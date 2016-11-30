@@ -25,7 +25,7 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
-#define FNCAS_JIT NASM  // Other supported values are `CLANG` and `AS`. -- D.K.
+#define FNCAS_JIT CLANG  // Other supported values are `AS` and `NASM`. -- D.K.
 
 // #define FNCAS_USE_LONG_DOUBLE  // Incompatible with `FNCAS_JIT` being defined. -- D.K.
 
@@ -52,9 +52,14 @@ static_assert(std::is_same<fncas::V, fncas::X2V<fncas::X>>::value, "");
 static_assert(std::is_same<fncas::X, fncas::V2X<fncas::V>>::value, "");
 
 TEST(FnCAS, FNCAS_JIT_VALUE) {
+  const auto CLANG = []() { return "CLANG"; };
+  const auto AS = []() { return "AS"; };
+  const auto NASM = []() { return "NASM"; };
+  static_cast<void>(CLANG);
+  static_cast<void>(AS);
+  static_cast<void>(NASM);
 #ifdef FNCAS_JIT
-#define QUOTE_FNCAS_JIT_FOR_TEST(x) #x
-  std::cout << "#define FNCAS_JIT " << QUOTE_FNCAS_JIT_FOR_TEST(FNCAS_JIT) << std::endl;
+  std::cout << "#define FNCAS_JIT " << FNCAS_JIT() << std::endl;
 #else
   std::cout << "#undef FNCAS_JIT" << std::endl;
 #endif
