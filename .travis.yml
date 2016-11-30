@@ -14,6 +14,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
+            - nasm
             - gnuplot
 
     - script: make individual_tests
@@ -30,6 +31,7 @@ matrix:
           packages:
             - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-3.6
+            - nasm
             - gnuplot
 
     - script: make individual_tests
@@ -44,6 +46,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
+            - nasm
             - gnuplot
 
     - script: make individual_tests
@@ -60,6 +63,7 @@ matrix:
           packages:
             - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-3.6
+            - nasm
             - gnuplot
 
     - script:
@@ -104,6 +108,7 @@ matrix:
           packages:
             - g++-5
             - clang-3.6
+            - nasm
 
     - script:
       - brew update
