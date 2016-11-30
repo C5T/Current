@@ -4,6 +4,7 @@
 * Variable policies during optimization (ex. this var should always be positive).
 * Variable adjustment policies (ex. normalize this exp-normal simples to average of zero).
 * Return `PointAndValue` from a compiled function-plus-gradient (now returns only the gradient)?
-* Consider `as` (`gcc X.s`) instead of `nasm`. Or LLVM.
 * Consider self-modifying code too.
 * Tests for unary plus/minus.
+* The ability to specify optimization direction (it's minimize-only now).
+* Consider friendler syntax to a) not require explicit template type, and b) support lambdas.

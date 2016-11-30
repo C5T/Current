@@ -14,6 +14,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
+            - nasm
             - gnuplot
 
     - script: make individual_tests
@@ -30,6 +31,7 @@ matrix:
           packages:
             - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-3.6
+            - nasm
             - gnuplot
 
     - script: make individual_tests
@@ -44,6 +46,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
+            - nasm
             - gnuplot
 
     - script: make individual_tests
@@ -60,10 +63,12 @@ matrix:
           packages:
             - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-3.6
+            - nasm
             - gnuplot
 
     - script:
       - brew update
+      - brew install nasm
       - brew install gnuplot
       - clang++ -v
       - clang++ --version
@@ -75,6 +80,7 @@ matrix:
 
     - script:
       - brew update
+      - brew install nasm
       - brew install gnuplot
       - clang++ -v
       - clang++ --version
@@ -102,8 +108,12 @@ matrix:
           packages:
             - g++-5
             - clang-3.6
+            - nasm
 
-    - script: make check
+    - script:
+      - brew update
+      - brew install nasm
+      - make check
       env:
       - MAKE_CHECK=1
       compiler: "native clang++, Job: make check"
