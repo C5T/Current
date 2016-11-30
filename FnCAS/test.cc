@@ -25,7 +25,7 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
-#define FNCAS_JIT AS  // Other supported values are `CLANG` and `NASM`. -- D.K.
+#define FNCAS_JIT NASM  // Other supported values are `CLANG` and `AS`. -- D.K.
 
 // #define FNCAS_USE_LONG_DOUBLE  // Incompatible with `FNCAS_JIT` being defined. -- D.K.
 

@@ -64,6 +64,7 @@ matrix:
 
     - script:
       - brew update
+      - brew install nasm
       - brew install gnuplot
       - clang++ -v
       - clang++ --version
@@ -75,6 +76,7 @@ matrix:
 
     - script:
       - brew update
+      - brew install nasm
       - brew install gnuplot
       - clang++ -v
       - clang++ --version
@@ -103,7 +105,10 @@ matrix:
             - g++-5
             - clang-3.6
 
-    - script: make check
+    - script:
+      - brew update
+      - brew install nasm
+      - make check
       env:
       - MAKE_CHECK=1
       compiler: "native clang++, Job: make check"
