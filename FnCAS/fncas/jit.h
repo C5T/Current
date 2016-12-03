@@ -31,14 +31,9 @@
 
 #ifndef FNCAS_USE_LONG_DOUBLE
 
-// Do include this header in the `make test` target for checking there are no leaked symbols.
-#ifdef CURRENT_MAKE_CHECK_MODE
 #ifndef FNCAS_JIT
-#define FNCAS_JIT AS
-#endif  // FNCAS_JIT
-#endif  // CURRENT_MAKE_CHECK_MODE
-
-#ifdef FNCAS_JIT
+#define FNCAS_JIT AS  // Default to `as` as the JIT target for FnCAS.
+#endif
 
 #include <sstream>
 #include <stack>
@@ -783,7 +778,5 @@ struct g_compiled final : g {
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE
-
-#endif  // #ifdef FNCAS_JIT
 
 #endif  // #ifndef FNCAS_JIT_H
