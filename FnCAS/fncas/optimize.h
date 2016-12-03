@@ -37,10 +37,7 @@ SOFTWARE.
 #include "logger.h"
 #include "mathutil.h"
 #include "node.h"
-
-#ifdef FNCAS_JIT
 #include "jit.h"
-#endif  // FNCAS_JIT
 
 #include "../../Bricks/template/decay.h"
 #include "../../TypeSystem/struct.h"
@@ -183,7 +180,6 @@ class OptimizeInvoker : public Optimizer<F> {
     const fncas::X gradient_helper(starting_point.size());
     const fncas::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(node_vector_singleton().size()) + " nodes.");
-#ifdef FNCAS_JIT
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
       logger.Log("Optimizer: Compiling the objective function.");
       const auto compile_f_begin_gradient = current::time::Now();
@@ -195,9 +191,6 @@ class OptimizeInvoker : public Optimizer<F> {
       logger.Log("Optimizer: JIT has been disabled via `DisableJIT()`, falling back to interpreted evalutions.");
       return DoOptimize(f_i, f_i, starting_point, gradient_helper);
     }
-#else
-    return DoOptimize(f_i, f_i, starting_point, gradient_helper);
-#endif
   }
 
   template <typename POSSIBLY_COMPILED_F>
@@ -211,7 +204,6 @@ class OptimizeInvoker : public Optimizer<F> {
     const fncas::g_intermediate g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(node_vector_singleton().size()) + " nodes.");
-#ifdef FNCAS_JIT
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
       logger.Log("Optimizer: Compiling the gradient.");
       const auto compile_g_begin_gradient = current::time::Now();
@@ -222,9 +214,6 @@ class OptimizeInvoker : public Optimizer<F> {
     } else {
       return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
     }
-#else
-    return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
-#endif
   }
 };
 
