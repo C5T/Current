@@ -45,7 +45,7 @@ static std::string AsUTF8String(const std::deque<wchar_t>& rope) {
 }
 
 template <typename PROCESSOR>
-typename std::result_of<decltype(&PROCESSOR::Final)(PROCESSOR*, const std::deque<wchar_t>&)>::type OT(
+typename std::result_of<decltype(&PROCESSOR::GenerateOutput)(PROCESSOR*, const std::deque<wchar_t>&, bool)>::type OT(
     const std::string& json, PROCESSOR&& processor) {
   rapidjson::Document document;
   if (document.Parse<0>(&json[0]).HasParseError()) {
@@ -102,20 +102,22 @@ typename std::result_of<decltype(&PROCESSOR::Final)(PROCESSOR*, const std::deque
       }
     }
 
-    if (!processor.Intermediate(std::chrono::microseconds(timestamp * 1000), rope)) {
+    if (!processor.ProcessSnapshot(std::chrono::microseconds(timestamp * 1000), rope)) {
       // Early return if requested by the user.
-      return processor.EmptyOutput();
+      return processor.GenerateOutput(rope, true);
     }
   }
 
-  return processor.Final(rope);
+  return processor.GenerateOutput(rope, false);
 }
 
 inline std::string OT(const std::string& json) {
   struct PassthroughProcessor {
-    bool Intermediate(std::chrono::microseconds, const std::deque<wchar_t>&) const { return true; }
-    std::string Final(const std::deque<wchar_t>& rope) const { return AsUTF8String(rope); }
-    std::string EmptyOutput() const { return ""; }
+    bool ProcessSnapshot(std::chrono::microseconds, const std::deque<wchar_t>&) const { return true; }
+    std::string GenerateOutput(const std::deque<wchar_t>& rope, bool early_termination) const {
+      static_cast<void>(early_termination);
+      return AsUTF8String(rope);
+    }
   };
   return OT(json, PassthroughProcessor());
 }

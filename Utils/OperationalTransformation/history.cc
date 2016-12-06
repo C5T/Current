@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     std::chrono::microseconds first_seen_timestamp = std::chrono::microseconds(0);
     std::chrono::microseconds last_seen_timestamp = std::chrono::microseconds(0);
     std::chrono::microseconds marker = std::chrono::microseconds(0);
-    bool Intermediate(std::chrono::microseconds timestamp, const std::deque<wchar_t>& rope) {
+    bool ProcessSnapshot(std::chrono::microseconds timestamp, const std::deque<wchar_t>& rope) {
       last_seen_timestamp = timestamp;
       if (first_seen_timestamp == std::chrono::microseconds(0)) {
         first_seen_timestamp = timestamp;
@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
         return true;
       }
     }
-    void Final(const std::deque<wchar_t>& rope) const {
-      if (!done_with_output) {
+    void GenerateOutput(const std::deque<wchar_t>& rope, bool early_termination) const {
+      if (!done_with_output && !early_termination) {
         std::string contents = current::utils::ot::AsUTF8String(rope);
         if (contents.empty() || contents.back() != '\n') {
           contents += '\n';
@@ -94,7 +94,6 @@ int main(int argc, char** argv) {
         std::cout << "```" << std::endl;
       }
     }
-    void EmptyOutput() const {}
   };
 
   current::utils::ot::OT(current::FileSystem::ReadFileAsString(FLAGS_input), Processor());
