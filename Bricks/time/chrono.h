@@ -184,6 +184,7 @@ inline std::string FormatDateTime(std::chrono::microseconds t, const char* forma
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];
   std::tm tm;
+  ::memset(&tm, 0, sizeof(std::tm));
   if (T == time::TimeRepresentation::Local) {
 #ifdef CURRENT_WINDOWS
     ::localtime_s(&tm, &tt);
@@ -219,6 +220,7 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
   const int64_t million = static_cast<int64_t>(1e6);
   std::tm tm;
+  ::memset(&tm, 0, sizeof(std::tm));
   if (strptime(datetime.c_str(), format_string, &tm)) {
     time_t tt;
     if (T == time::TimeRepresentation::Local) {
