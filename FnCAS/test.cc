@@ -96,13 +96,13 @@ TEST(FnCAS, TrivialCompiledFunctions) {
   {
     // grep for `12345.000`.
     const fncas::X x(1);
-    const fncas::f_intermediate intermediate_function([](const fncas::X& x) { return exp(x[0]) + 12345.0; }(x));
+    const fncas::f_intermediate intermediate_function([](const fncas::X& x) { return std::exp(x[0]) + 12345.0; }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
-    EXPECT_NEAR(12345.0 + exp(1.0), intermediate_function({1}), 1e-6);
+    EXPECT_NEAR(12345.0 + std::exp(1.0), intermediate_function({1}), 1e-6);
 
     const fncas::f_compiled compiled_function(intermediate_function);
     EXPECT_EQ(12346.0, compiled_function({0})) << compiled_function.lib_filename();
-    EXPECT_NEAR(12345.0 + exp(1.0), compiled_function({1}), 1e-6) << compiled_function.lib_filename();
+    EXPECT_NEAR(12345.0 + std::exp(1.0), compiled_function({1}), 1e-6) << compiled_function.lib_filename();
   }
 }
 
@@ -193,7 +193,7 @@ struct StaticFunction {
   static fncas::X2V<X> ObjectiveFunction(const X& x) {
     const auto dx = x[0] - 3;
     const auto dy = x[1] - 4;
-    return exp(0.01 * (dx * dx + dy * dy));
+    return std::exp(0.01 * (dx * dx + dy * dy));
   }
 };
 
@@ -205,7 +205,7 @@ struct MemberFunction {
   typename fncas::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
-    return exp(0.01 * (dx * dx + dy * dy));
+    return std::exp(0.01 * (dx * dx + dy * dy));
   }
   MemberFunction() = default;
   MemberFunction(const MemberFunction&) = delete;
@@ -219,7 +219,7 @@ struct MemberFunctionWithReferences {
   typename fncas::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
-    return exp(0.01 * (dx * dx + dy * dy));
+    return std::exp(0.01 * (dx * dx + dy * dy));
   }
   MemberFunctionWithReferences() = default;
   MemberFunctionWithReferences(const MemberFunctionWithReferences&) = delete;

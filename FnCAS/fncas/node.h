@@ -428,15 +428,18 @@ DECLARE_OP(*, *=, multiply);
 DECLARE_OP(/, /=, divide);
 
 #define DECLARE_FUNCTION(F)                     \
+  namespace fncas {                             \
   inline fncas::V F(const fncas::V& argument) { \
     fncas::V result;                            \
     result.type() = fncas::type_t::function;    \
     result.function() = fncas::function_t::F;   \
     result.argument_index() = argument.index_;  \
     return result;                              \
+  }                                             \
+  }                                             \
+  namespace std {                               \
+  using ::fncas::F;                             \
   }
-
-namespace fncas {
 
 DECLARE_FUNCTION(sqr);
 DECLARE_FUNCTION(sqrt);
@@ -450,8 +453,6 @@ DECLARE_FUNCTION(acos);
 DECLARE_FUNCTION(atan);
 DECLARE_FUNCTION(unit_step);
 DECLARE_FUNCTION(ramp);
-
-}  // namespace fncas
 
 // Unary plus and unary minus.
 inline fncas::V operator+(const fncas::V& x) { return x; }
