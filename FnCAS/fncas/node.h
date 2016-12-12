@@ -41,7 +41,7 @@
 #include "../../Bricks/exception.h"
 #include "../../Bricks/util/singleton.h"
 
-namespace fncas_functions {
+namespace fncas {
 // Non-standard functions useful in data science.
 inline double_t sqr(double_t x) { return x * x; }
 inline double_t unit_step(double_t x) { return x >= 0 ? 1 : 0; }
@@ -49,13 +49,13 @@ inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
 // TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
 
 template <typename T>
-T apply(::fncas::impl::function_t function, T argument) {
+T apply_function(::fncas::impl::function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::impl::function_t::end)] = {
       sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
   return function < ::fncas::impl::function_t::end ? evaluator[static_cast<size_t>(function)](argument)
                                                    : std::numeric_limits<T>::quiet_NaN();
 }
-}  // namespace fncas_functions
+}  // namespace fncas
 
 namespace fncas {
 namespace impl {
@@ -204,7 +204,7 @@ inline double_t eval_node(node_index_type index,
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == type_t::function) {
         growing_vector_access(V, dependent_i, 0.0) =
-            ::fncas_functions::apply<double_t>(f.function(), V[f.argument_index()]);
+            ::fncas::apply_function<double_t>(f.function(), V[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         CURRENT_ASSERT(false);
@@ -432,15 +432,15 @@ DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
 DECLARE_OP(/, /=, divide);
 
-// NOTE(dkorolev): This `using namespace std` declaration within `fncas_functions` should be here, not above.
-namespace fncas_functions {
+// NOTE(dkorolev): This `using namespace std` declaration within `fncas` should be here, not above.
+namespace fncas {
 using namespace std;
-}  // namespace fncas_functions
+}  // namespace fncas
 
 #ifndef INJECT_FNCAS_INTO_NAMESPACE_STD
 // Put the "compile-as-you-execute" implementations of math functions into `fncas::impl::functions::`.
 #define DECLARE_FUNCTION(F)                                 \
-  namespace fncas_functions {                               \
+  namespace fncas {                                         \
   inline fncas::impl::V F(const fncas::impl::V& argument) { \
     fncas::impl::V result;                                  \
     result.type() = fncas::impl::type_t::function;          \
@@ -451,14 +451,14 @@ using namespace std;
   }                                                         \
   namespace fncas {                                         \
   namespace impl {                                          \
-  using ::fncas_functions::F;                               \
+  using ::fncas::F;                                         \
   }                                                         \
   }
 #else
 // Expose math functions into `std::` as well.
 // NOTE: This is in violation of `C++11: 17.6.4.2.1/1`, and hence guarded. CC @dkorolev, @mzhurovich.
 #define DECLARE_FUNCTION(F)                                 \
-  namespace fncas_functions {                               \
+  namespace fncas {                                         \
   inline fncas::impl::V F(const fncas::impl::V& argument) { \
     fncas::impl::V result;                                  \
     result.type() = fncas::impl::type_t::function;          \
@@ -468,7 +468,7 @@ using namespace std;
   }                                                         \
   }                                                         \
   namespace std {                                           \
-  using ::fncas_functions::F;                               \
+  using ::fncas::F;                                         \
   }
 #endif
 

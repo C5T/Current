@@ -182,7 +182,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::impl::X x(2);
       fncas::impl::f_intermediate fi = ParametrizedFunction(x, i + 1);
-      EXPECT_EQ(fncas_functions::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
+      EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
   std::thread t1(advanced_math);
@@ -490,22 +490,22 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
 template <typename X>
 fncas::impl::X2V<X> ZeroOrXFunction(const X& x) {
   EXPECT_EQ(1u, x.size());
-  return fncas_functions::ramp(x[0]);
+  return fncas::ramp(x[0]);
 }
 
-// To test evaluation and differentiation of `f(g(x))` where `f` is `fncas_functions::ramp`.
+// To test evaluation and differentiation of `f(g(x))` where `f` is `fncas::ramp`.
 template <typename X>
 fncas::impl::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
   EXPECT_EQ(1u, x.size());
-  return fncas_functions::ramp(fncas_functions::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
+  return fncas::ramp(fncas::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
 }
 
 TEST(FnCAS, CustomFunctions) {
-  EXPECT_EQ(0.0, fncas_functions::unit_step(-1.0));
-  EXPECT_EQ(1.0, fncas_functions::unit_step(+2.0));
+  EXPECT_EQ(0.0, fncas::unit_step(-1.0));
+  EXPECT_EQ(1.0, fncas::unit_step(+2.0));
 
-  EXPECT_EQ(0.0, fncas_functions::ramp(-3.0));
-  EXPECT_EQ(4.0, fncas_functions::ramp(+4.0));
+  EXPECT_EQ(0.0, fncas::ramp(-3.0));
+  EXPECT_EQ(4.0, fncas::ramp(+4.0));
 
   const fncas::impl::X x(1);
   const fncas::impl::f_intermediate intermediate_function = ZeroOrXFunction(x);
@@ -537,8 +537,8 @@ TEST(FnCAS, ComplexCustomFunctions) {
   const fncas::impl::X x(1);
 
   const fncas::impl::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
-  EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas_functions::ramp(3*3 - 10) == 0
-  EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas_functions::ramp(4*4 - 10) == 6
+  EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
+  EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
 
 #ifdef FNCAS_JIT
   const fncas::impl::f_compiled compiled_function(intermediate_function);

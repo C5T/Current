@@ -88,19 +88,19 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
       // log().
       [](const V&, const V& x, const V& dx) { return dx / x; },
       // sin().
-      [](const V&, const V& x, const V& dx) { return dx * ::fncas_functions::cos(x); },
+      [](const V&, const V& x, const V& dx) { return dx * ::fncas::cos(x); },
       // cos().
-      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx * ::fncas_functions::sin(x); },
+      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx * ::fncas::sin(x); },
       // tan().
       [](const V&, const V& x, const V& dx) {
-        V a = V(4.0) * dx * ::fncas_functions::cos(x) * ::fncas_functions::cos(x);
-        V b = fncas_functions::cos(x + x) + 1;
+        V a = V(4.0) * dx * ::fncas::cos(x) * ::fncas::cos(x);
+        V b = fncas::cos(x + x) + 1;
         return a / (b * b);
       },
       // asin().
-      [](const V&, const V& x, const V& dx) { return dx / ::fncas_functions::sqrt(V(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) { return dx / ::fncas::sqrt(V(1.0) - x * x); },
       // acos().
-      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / ::fncas_functions::sqrt(V(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / ::fncas::sqrt(V(1.0) - x * x); },
       // atan().
       [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
       // unit_step().
@@ -109,7 +109,7 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
         return o;
       },
       // ramp().
-      [](const V&, const V& x, const V& dx) { return ::fncas_functions::unit_step(x) * dx; }};
+      [](const V&, const V& x, const V& dx) { return ::fncas::unit_step(x) * dx; }};
   return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index() : 0;
 }
 

@@ -32,6 +32,9 @@ SOFTWARE.
 #define FNCAS_JIT AS
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE
 
+// NOTE(dkorolev): The code should build with and without this `#define`.
+// #define INJECT_FNCAS_INTO_NAMESPACE_STD
+
 #include "main.h"
 
 #include "../../FnCAS/fncas/fncas.h"
@@ -47,8 +50,7 @@ DEFINE_bool(logtostderr, false, "Log to stderr.");
 
 template <typename X>
 X magic_weighting(X x) {
-  return fncas_functions::sqr(
-      x);  // For the canonical solution, `exp(x)` would do fine; `sqr` just convereges faster. -- D.K.
+  return fncas::sqr(x);  // For the canonical solution, `exp(x)` would do fine; `sqr` just convereges faster. -- D.K.
 }
 
 template <typename X>
@@ -93,7 +95,7 @@ struct FunctionToOptimize {
 
     // Construct the cost function that is minimized as the current point is the equlibrium one.
     const std::function<fncas::impl::X2V<X>(fncas::impl::X2V<X>)> softmax_penalty =
-        [&](fncas::impl::X2V<X> v) { return fncas_functions::sqr(fncas_functions::ramp(v)); };
+        [&](fncas::impl::X2V<X> v) { return fncas::sqr(fncas::ramp(v)); };
 
     fncas::impl::X2V<X> penalty = 0.0;
 
