@@ -46,7 +46,7 @@ struct FnCASFunctionNonDifferentiable : FnCASException {};
 struct FnCASZeroOrOneIsNonDifferentiable : FnCASFunctionNonDifferentiable {};
 
 // This exception is thrown when the optimization process fails,
-// most notably when the objective function becomes not `fncas::impl::IsNormal()`, which is NaN.
+// most notably when the objective function becomes not `fncas::IsNormal()`, which is NaN.
 struct FnCASOptimizationException : FnCASException {
   using FnCASException::FnCASException;
 };

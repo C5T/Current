@@ -69,6 +69,10 @@ struct ScopedLogToStderr final {
   ~ScopedLogToStderr() { fncas::impl::OptimizerLogger().DisableLogging(); }
 };
 
+}  // namespace fncas::impl
+
+namespace optimize {
+
 class OptimizerStats final {
  public:
   explicit OptimizerStats(const std::string& name) : name_(name), begin_timestamp_(current::time::Now()) {}
@@ -82,7 +86,7 @@ class OptimizerStats final {
     if (n_backtracking_calls_) {
       os << ", " << n_backtracking_calls_ << " backtracking calls of " << n_backtracking_steps_ << " total steps";
     }
-    OptimizerLogger().Log(name_ + ": " + os.str() + '.');
+    impl::OptimizerLogger().Log(name_ + ": " + os.str() + '.');
   }
 
   void JournalFunction() { ++n_f_; }
@@ -102,7 +106,7 @@ class OptimizerStats final {
   size_t n_backtracking_steps_ = 0;
 };
 
-}  // namespace fncas::impl
+}  // namespace fncas::optimize
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_LOGGER_H

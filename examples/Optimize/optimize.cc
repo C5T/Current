@@ -127,21 +127,21 @@ struct FunctionToOptimize {
 
 template <typename T>
 using optimizer_t =
-    fncas::impl::ConjugateGradientOptimizer<T>;  // `GradientDescentOptimizerBT`, `GradientDescentOptimizer`.
+    fncas::optimize::ConjugateGradientOptimizer<T>;  // `GradientDescentOptimizerBT`, `GradientDescentOptimizer`.
 
-std::vector<std::vector<fncas::impl::double_t>> solve(
+std::vector<std::vector<fncas::double_t>> solve(
     size_t N,
     const std::vector<std::vector<int>>& A,
-    std::function<bool(const std::vector<std::vector<fncas::impl::double_t>>& strategy)> validate) {
+    std::function<bool(const std::vector<std::vector<fncas::double_t>>& strategy)> validate) {
   const auto build_probabilities =
-      [N](const std::vector<fncas::impl::double_t>& x) -> std::vector<std::vector<fncas::impl::double_t>> {
-        return {simplex(std::vector<fncas::impl::double_t>(x.begin(), x.begin() + N)),
-                simplex(std::vector<fncas::impl::double_t>(x.begin() + N, x.begin() + N * 2))};
+      [N](const std::vector<fncas::double_t>& x) -> std::vector<std::vector<fncas::double_t>> {
+        return {simplex(std::vector<fncas::double_t>(x.begin(), x.begin() + N)),
+                simplex(std::vector<fncas::double_t>(x.begin() + N, x.begin() + N * 2))};
       };
 
-  const auto pretty_print_simplex = [](const std::vector<fncas::impl::double_t>& x) -> std::string {
+  const auto pretty_print_simplex = [](const std::vector<fncas::double_t>& x) -> std::string {
     std::ostringstream os;
-    for (fncas::impl::double_t v : x) {
+    for (fncas::double_t v : x) {
       os << current::strings::Printf(" %.3lf", v);
     }
     return "{" + os.str() + " }";
@@ -152,26 +152,26 @@ std::vector<std::vector<fncas::impl::double_t>> solve(
     scope = std::make_unique<fncas::impl::ScopedLogToStderr>();
   }
 
-  fncas::impl::OptimizerParameters parameters;
+  fncas::optimize::OptimizerParameters parameters;
   parameters.SetValue("max_steps", 50000)
-      .SetPointBeautifier([&](const std::vector<fncas::impl::double_t>& x) {
+      .SetPointBeautifier([&](const std::vector<fncas::double_t>& x) {
         const auto p = build_probabilities(x);
         return "A = " + pretty_print_simplex(p[0]) + ", B = " + pretty_print_simplex(p[1]);
       })
       .SetStoppingCriterion([&](size_t completed_iterations,
-                                const fncas::impl::ValueAndPoint& value_and_point,
-                                const std::vector<fncas::impl::double_t>& gradient) {
+                                const fncas::ValueAndPoint& value_and_point,
+                                const std::vector<fncas::double_t>& gradient) {
         static_cast<void>(completed_iterations);
         static_cast<void>(gradient);
         return validate(build_probabilities(value_and_point.point))
-                   ? fncas::impl::EarlyStoppingCriterion::StopOptimization
-                   : fncas::impl::EarlyStoppingCriterion::ContinueOptimization;
+                   ? fncas::optimize::EarlyStoppingCriterion::StopOptimization
+                   : fncas::optimize::EarlyStoppingCriterion::ContinueOptimization;
       });
   if (FLAGS_nojit) {
     parameters.DisableJIT();
   }
   return build_probabilities(
-      optimizer_t<FunctionToOptimize>(parameters, N, A).Optimize(std::vector<fncas::impl::double_t>(N * 2, 1.0)).point);
+      optimizer_t<FunctionToOptimize>(parameters, N, A).Optimize(std::vector<fncas::double_t>(N * 2, 1.0)).point);
 }
 
 int main(int argc, char** argv) { return run(argc, argv); }
