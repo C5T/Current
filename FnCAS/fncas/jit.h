@@ -777,6 +777,11 @@ struct g_compiled final : g {
 };
 
 }  // namespace fncas::impl
+
+// TODO(dkorolev): Clean up the namespaces.
+using Function = impl::f_compiled;
+using Gradient = impl::g_compiled;
+
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE

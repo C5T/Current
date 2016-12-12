@@ -242,6 +242,11 @@ struct node_differentiate_impl<X> {
 };
 
 }  // namespace fncas::impl
+
+// TODO(dkorolev): Clean up the namespaces.
+using ApproximateGradient = impl::g_approximate;
+using SlowGradient = impl::g_intermediate;
+
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_DIFFERENTIATE_H

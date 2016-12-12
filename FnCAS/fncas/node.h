@@ -574,6 +574,10 @@ using term_vector_t = std::vector<term_t>;
 // point in time.
 using variables_vector_t = impl::X;
 
+// TODO(dkorolev): Clean up the namespaces.
+using NativeFunction = impl::f_native;
+using SlowFunction = impl::f_intermediate;
+
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_NODE_H

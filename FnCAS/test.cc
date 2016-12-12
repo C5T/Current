@@ -90,13 +90,13 @@ TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
 }
 
 TEST(FnCAS, NativeWrapper) {
-  fncas::impl::f_native fn(SimpleFunction<fncas::double_t>, 2);
+  fncas::NativeFunction fn(SimpleFunction<fncas::double_t>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
 TEST(FnCAS, IntermediateWrapper) {
   fncas::variables_vector_t x(2);
-  fncas::impl::f_intermediate fi = SimpleFunction(x);
+  fncas::SlowFunction fi = SimpleFunction(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2.000000))*(x[0]+(x[1]*2.000000)))", fi.debug_as_string());
 }
@@ -107,21 +107,21 @@ TEST(FnCAS, TrivialCompiledFunctions) {
   {
     // grep for `42.000`.
     const fncas::variables_vector_t x(1);
-    const fncas::impl::f_intermediate intermediate_function([](const fncas::impl::X& x) { return x[0] + 42; }(x));
+    const fncas::SlowFunction intermediate_function([](const fncas::impl::X& x) { return x[0] + 42; }(x));
     EXPECT_EQ(1042, intermediate_function({1000}));
 
-    const fncas::impl::f_compiled compiled_function(intermediate_function);
+    const fncas::Function compiled_function(intermediate_function);
     EXPECT_EQ(10042, compiled_function({10000})) << compiled_function.lib_filename();
   }
   {
     // grep for `12345.000`.
     const fncas::variables_vector_t x(1);
-    const fncas::impl::f_intermediate intermediate_function(
+    const fncas::SlowFunction intermediate_function(
         [](const fncas::impl::X& x) { return unittest_fncas_namespace::exp(x[0]) + 12345.0; }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
     EXPECT_NEAR(12345.0 + std::exp(1.0), intermediate_function({1}), 1e-6);
 
-    const fncas::impl::f_compiled compiled_function(intermediate_function);
+    const fncas::Function compiled_function(intermediate_function);
     EXPECT_EQ(12346.0, compiled_function({0})) << compiled_function.lib_filename();
     // EXPECT_NEAR(12345.0 + unittest_fncas_namespace::exp(1.0), compiled_function({1}), 1e-6)
     EXPECT_NEAR(12345.0 + std::exp(1.0), compiled_function({1}), 1e-6) << compiled_function.lib_filename();
@@ -130,8 +130,8 @@ TEST(FnCAS, TrivialCompiledFunctions) {
 
 TEST(FnCAS, CompiledFunctionWrapper) {
   fncas::variables_vector_t x(2);
-  fncas::impl::f_intermediate fi = SimpleFunction(x);
-  fncas::impl::f_compiled fc = fncas::impl::f_compiled(fi);
+  fncas::SlowFunction fi = SimpleFunction(x);
+  fncas::Function fc = fncas::Function(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
 }
 #endif  // FNCAS_JIT
@@ -139,13 +139,13 @@ TEST(FnCAS, CompiledFunctionWrapper) {
 TEST(FnCAS, GradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  fncas::impl::g_approximate ga = fncas::impl::g_approximate(SimpleFunction<fncas::double_t>, 2);
+  fncas::ApproximateGradient ga = fncas::ApproximateGradient(SimpleFunction<fncas::double_t>, 2);
   auto d_3_3_approx = ga(p_3_3);
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
   const fncas::variables_vector_t x(2);
-  const fncas::impl::g_intermediate gi(x, SimpleFunction(x));
+  const fncas::SlowGradient gi(x, SimpleFunction(x));
   const auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(18, d_3_3_intermediate[0]);
   EXPECT_EQ(36, d_3_3_intermediate[1]);
@@ -156,10 +156,10 @@ TEST(FnCAS, CompiledGradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::variables_vector_t x(2);
-  const fncas::impl::f_intermediate fi = SimpleFunction(x);
-  const fncas::impl::g_intermediate gi(x, fi);
+  const fncas::SlowFunction fi = SimpleFunction(x);
+  const fncas::SlowGradient gi(x, fi);
 
-  const fncas::impl::g_compiled gc(fi, gi);
+  const fncas::Gradient gc(fi, gi);
 
   // TODO(dkorolev): Maybe return return function value and its gradient together from a call to `gc`?
   const auto d_3_3_compiled = gc(p_3_3);
@@ -173,14 +173,14 @@ TEST(FnCAS, CompiledSqrGradientWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::variables_vector_t x(2);
-  const fncas::impl::f_intermediate fi = SimpleFunction(x);
-  const fncas::impl::g_intermediate gi(x, SimpleFunction(x));
+  const fncas::SlowFunction fi = SimpleFunction(x);
+  const fncas::SlowGradient gi(x, SimpleFunction(x));
 
-  const fncas::impl::f_compiled fc(fi);
+  const fncas::Function fc(fi);
   const fncas::double_t f_3_3_compiled = fc(p_3_3);
   EXPECT_EQ(81, f_3_3_compiled);
 
-  const fncas::impl::g_compiled gc(fi, gi);
+  const fncas::Gradient gc(fi, gi);
   const auto d_3_3_compiled = gc(p_3_3);
 
   EXPECT_EQ(18, d_3_3_compiled[0]) << gc.lib_filename();
@@ -192,7 +192,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = []() {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::variables_vector_t x(2);
-      fncas::impl::f_intermediate fi = ParametrizedFunction(x, i + 1);
+      fncas::SlowFunction fi = ParametrizedFunction(x, i + 1);
       EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
@@ -520,26 +520,26 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(4.0, fncas::ramp(+4.0));
 
   const fncas::variables_vector_t x(1);
-  const fncas::impl::f_intermediate intermediate_function = ZeroOrXFunction(x);
+  const fncas::SlowFunction intermediate_function = ZeroOrXFunction(x);
   EXPECT_EQ(0.0, intermediate_function({-5.0}));
   EXPECT_EQ(6.0, intermediate_function({+6.0}));
 
 #ifdef FNCAS_JIT
-  const fncas::impl::f_compiled compiled_function(intermediate_function);
+  const fncas::Function compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({-5.5})) << compiled_function.lib_filename();
   EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::impl::g_approximate approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
+  const fncas::ApproximateGradient approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
   EXPECT_NEAR(1.0, approximate_gradient({+6.0})[0], 1e-6);
 
-  const fncas::impl::g_intermediate intermediate_gradient(x, intermediate_function);
+  const fncas::SlowGradient intermediate_gradient(x, intermediate_function);
   EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
   EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
 
 #ifdef FNCAS_JIT
-  const fncas::impl::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
+  const fncas::Gradient compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, compiled_gradient({-9.5})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(1.0, compiled_gradient({+9.5})[0]) << compiled_gradient.lib_filename();
 #endif
@@ -548,26 +548,26 @@ TEST(FnCAS, CustomFunctions) {
 TEST(FnCAS, ComplexCustomFunctions) {
   const fncas::variables_vector_t x(1);
 
-  const fncas::impl::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
+  const fncas::SlowFunction intermediate_function = ZeroOrXOfSquareXMinusTen(x);
   EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
   EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
 
 #ifdef FNCAS_JIT
-  const fncas::impl::f_compiled compiled_function(intermediate_function);
+  const fncas::Function compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({3.0})) << compiled_function.lib_filename();
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::impl::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
+  const fncas::ApproximateGradient approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
   EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.
 
-  const fncas::impl::g_intermediate intermediate_gradient(x, intermediate_function);
+  const fncas::SlowGradient intermediate_gradient(x, intermediate_function);
   EXPECT_EQ(0.0, intermediate_gradient({3.0})[0]);
   EXPECT_EQ(8.0, intermediate_gradient({4.0})[0]);
 
 #ifdef FNCAS_JIT
-  const fncas::impl::g_compiled compiled_gradient(intermediate_function, intermediate_gradient);
+  const fncas::Gradient compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, compiled_gradient({3.0})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(8.0, compiled_gradient({4.0})[0]) << compiled_gradient.lib_filename();
 #endif
