@@ -345,7 +345,6 @@ class vector<::fncas::impl::V> {
   vector(size_t n = 0u) : v(n) {}
   vector(size_t n, value_type default_value) : v(n) {
     for (auto& value : v) {
-      // Boxed and unboxed V are the same type.
       value = reinterpret_cast<contained_value_type&>(default_value);
     }
   }
@@ -372,7 +371,6 @@ namespace impl {
 
 struct X : std::vector<V>, noncopyable {
   using super_t = std::vector<V>;
-  // using value_type = V;
 
   explicit X(size_t dim) {
     CURRENT_ASSERT(dim > 0);
