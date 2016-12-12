@@ -54,6 +54,16 @@ fncas::impl::X2V<X> SimpleFunction(const X& x) {
   return ParametrizedFunction(x, 2u);
 }
 
+// `variables_vector_t` behaves in a way that makes it a drop-in substitute of `std::vector<term_t>`.
+static_assert(std::is_same<typename fncas::term_vector_t::value_type, fncas::term_t>::value, "");
+
+// To accomplish the above, `std::vector<fncas::term_t>` is overridden accordingly.
+static_assert(std::is_same<fncas::term_vector_t, std::vector<fncas::term_t>>::value, "");
+
+// And the `fncas::impl::X` type is the lifetime of the function to thread-locally analyze.
+// It's derived from the now-custom `std::vector<fncas::term_t>`.
+static_assert(std::is_base_of<fncas::term_vector_t, fncas::variables_vector_t>::value, "");
+
 static_assert(std::is_same<std::vector<fncas::double_t>, fncas::impl::V2X<fncas::double_t>>::value, "");
 static_assert(std::is_same<fncas::impl::X2V<std::vector<fncas::double_t>>, fncas::double_t>::value, "");
 
@@ -84,7 +94,7 @@ TEST(FnCAS, NativeWrapper) {
 }
 
 TEST(FnCAS, IntermediateWrapper) {
-  fncas::impl::X x(2);
+  fncas::variables_vector_t x(2);
   fncas::impl::f_intermediate fi = SimpleFunction(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2.000000))*(x[0]+(x[1]*2.000000)))", fi.debug_as_string());
@@ -95,7 +105,7 @@ TEST(FnCAS, IntermediateWrapper) {
 TEST(FnCAS, TrivialCompiledFunctions) {
   {
     // grep for `42.000`.
-    const fncas::impl::X x(1);
+    const fncas::variables_vector_t x(1);
     const fncas::impl::f_intermediate intermediate_function([](const fncas::impl::X& x) { return x[0] + 42; }(x));
     EXPECT_EQ(1042, intermediate_function({1000}));
 
@@ -104,7 +114,7 @@ TEST(FnCAS, TrivialCompiledFunctions) {
   }
   {
     // grep for `12345.000`.
-    const fncas::impl::X x(1);
+    const fncas::variables_vector_t x(1);
     const fncas::impl::f_intermediate intermediate_function(
         [](const fncas::impl::X& x) { return unittest_fncas_namespace::exp(x[0]) + 12345.0; }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
@@ -118,7 +128,7 @@ TEST(FnCAS, TrivialCompiledFunctions) {
 }
 
 TEST(FnCAS, CompiledFunctionWrapper) {
-  fncas::impl::X x(2);
+  fncas::variables_vector_t x(2);
   fncas::impl::f_intermediate fi = SimpleFunction(x);
   fncas::impl::f_compiled fc = fncas::impl::f_compiled(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
@@ -133,7 +143,7 @@ TEST(FnCAS, GradientsWrapper) {
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
-  const fncas::impl::X x(2);
+  const fncas::variables_vector_t x(2);
   const fncas::impl::g_intermediate gi(x, SimpleFunction(x));
   const auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(18, d_3_3_intermediate[0]);
@@ -144,7 +154,7 @@ TEST(FnCAS, GradientsWrapper) {
 TEST(FnCAS, CompiledGradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  const fncas::impl::X x(2);
+  const fncas::variables_vector_t x(2);
   const fncas::impl::f_intermediate fi = SimpleFunction(x);
   const fncas::impl::g_intermediate gi(x, fi);
 
@@ -161,7 +171,7 @@ TEST(FnCAS, CompiledSqrGradientWrapper) {
   // The `sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  const fncas::impl::X x(2);
+  const fncas::variables_vector_t x(2);
   const fncas::impl::f_intermediate fi = SimpleFunction(x);
   const fncas::impl::g_intermediate gi(x, SimpleFunction(x));
 
@@ -180,7 +190,7 @@ TEST(FnCAS, CompiledSqrGradientWrapper) {
 TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = []() {
     for (size_t i = 0; i < 1000; ++i) {
-      fncas::impl::X x(2);
+      fncas::variables_vector_t x(2);
       fncas::impl::f_intermediate fi = ParametrizedFunction(x, i + 1);
       EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
@@ -194,8 +204,8 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
 }
 
 TEST(FnCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
-  fncas::impl::X x(1);
-  ASSERT_THROW(fncas::impl::X x(2), fncas::exceptions::FnCASConcurrentEvaluationAttemptException);
+  fncas::variables_vector_t x(1);
+  ASSERT_THROW(fncas::variables_vector_t x(2), fncas::exceptions::FnCASConcurrentEvaluationAttemptException);
 }
 
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
@@ -508,7 +518,7 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(0.0, fncas::ramp(-3.0));
   EXPECT_EQ(4.0, fncas::ramp(+4.0));
 
-  const fncas::impl::X x(1);
+  const fncas::variables_vector_t x(1);
   const fncas::impl::f_intermediate intermediate_function = ZeroOrXFunction(x);
   EXPECT_EQ(0.0, intermediate_function({-5.0}));
   EXPECT_EQ(6.0, intermediate_function({+6.0}));
@@ -535,7 +545,7 @@ TEST(FnCAS, CustomFunctions) {
 }
 
 TEST(FnCAS, ComplexCustomFunctions) {
-  const fncas::impl::X x(1);
+  const fncas::variables_vector_t x(1);
 
   const fncas::impl::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
   EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0

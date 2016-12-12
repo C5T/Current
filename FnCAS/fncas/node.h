@@ -235,36 +235,36 @@ struct node_index_allocator {
 };
 
 // Template, used as a header-only way to move implementation to another source or header file.
-struct V;
 template <typename T>
-struct node_differentiate_impl {
-  //  V differentiate(const x& x_ref, size_t variable_index) const;
-};
+struct node_differentiate_impl {};
 
-struct V : node_index_allocator {
+// Need `IS_BOXED`, as `std::vector<V>` can be either a special helper type, or a real `std::vector<V>`, hence two `V`s.
+template <bool IS_BOXED>
+struct GenericV : node_index_allocator {
  private:
-  V(const node_index_allocator& instance) : node_index_allocator(instance) {}
+  friend class ::std::vector<GenericV<IS_BOXED>>;
+  GenericV(const node_index_allocator& instance) : node_index_allocator(instance) {}
 
  public:
-  V() : node_index_allocator(allocate_new()) {}
-  V(double_t x) : node_index_allocator(allocate_new()) {
+  GenericV() : node_index_allocator(allocate_new()) {}
+  GenericV(double_t x) : node_index_allocator(allocate_new()) {
     type() = type_t::value;
     value() = x;
   }
-  V(from_index i) : node_index_allocator(i) {}
+  GenericV(from_index i) : node_index_allocator(i) {}
   type_t& type() const { return node_vector_singleton()[index_].type(); }
   int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
   double_t& value() const { return node_vector_singleton()[index_].value(); }
   operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
   node_index_type& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
   node_index_type& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
-  V lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
-  V rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
+  GenericV lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
+  GenericV rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
   function_t& function() const { return node_vector_singleton()[index_].function(); }
   node_index_type& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
-  V argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
-  static V variable(node_index_type index) {
-    V result;
+  GenericV argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
+  static GenericV variable(node_index_type index) {
+    GenericV result;
     result.type() = type_t::variable;
     result.variable() = index;
     return result;
@@ -291,18 +291,89 @@ struct V : node_index_allocator {
   }
   // Template is used here as a form of forward declaration.
   template <typename TX>
-  V differentiate(const TX& x_ref, size_t variable_index) const {
+  GenericV differentiate(const TX& x_ref, size_t variable_index) const {
     static_assert(std::is_same<TX, X>::value, "V::differentiate(const x& x, size_t variable_index);");
     // Note: This method will not build unless `fncas_differentiate.h` is included.
     return node_differentiate_impl<TX>::differentiate(x_ref, index_, variable_index);
   }
 };
+using V = GenericV<false>;
 static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_type).");
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
-struct X : noncopyable {
+}  // namespace fncas::impl
+}  // namespace fncas
+
+// A thin wrapper replacing `std::vector<V>`, with the sole purpose of being able to inherit from it
+// when defining the special "parameters" class, the lifetime of which is the lifetime of the "formula"
+// being dealt with.
+namespace std {
+
+// NOTE(dkorolev): This is by no means a complete `vector<>` implementation.
+template <>
+class vector<::fncas::impl::V> {
+ public:
+  ~vector() = default;  // Not a final class.
+
+  using value_type = ::fncas::impl::V;
+  using contained_value_type = ::fncas::impl::GenericV<true>;
+
+  std::vector<contained_value_type> v;
+
+  struct iterator {
+    value_type* v;
+    size_t i;
+    iterator(value_type* v, size_t i) : v(v), i(i) {}
+    value_type& operator*() const { return v[i]; }
+    bool operator==(const iterator& rhs) const { return i == rhs.i; }
+    bool operator!=(const iterator& rhs) const { return i != rhs.i; }
+    void operator++() { ++i; }
+  };
+
+  struct const_iterator {
+    const value_type* v;
+    size_t i;
+    const_iterator(const value_type* v, size_t i) : v(v), i(i) {}
+    value_type operator*() const { return v[i]; }
+    bool operator==(const const_iterator& rhs) const { return i == rhs.i; }
+    bool operator!=(const const_iterator& rhs) const { return i != rhs.i; }
+    void operator++() { ++i; }
+  };
+
+  vector(size_t n = 0u) : v(n) {}
+  vector(size_t n, value_type default_value) : v(n) {
+    for (auto& value : v) {
+      // Boxed and unboxed V are the same type.
+      value = reinterpret_cast<contained_value_type&>(default_value);
+    }
+  }
+
+  bool empty() const { return v.empty(); }
+  size_t size() const { return v.size(); }
+  void resize(size_t n) { v.resize(n); }
+  value_type& operator[](size_t i) { return reinterpret_cast<value_type&>(v[i]); }
+  value_type operator[](size_t i) const { return reinterpret_cast<const value_type&>(v[i]); }
+
+  value_type* data() { return v.empty() ? nullptr : reinterpret_cast<value_type*>(&v[0]); }
+  const value_type* data() const { return v.empty() ? nullptr : reinterpret_cast<const value_type*>(&v[0]); }
+
+  iterator begin() { return iterator(data(), 0u); }
+  iterator end() { return iterator(data(), v.size()); }
+  const_iterator begin() const { return const_iterator(data(), 0u); }
+  const_iterator end() const { return const_iterator(data(), v.size()); }
+};
+
+}  // namespace std
+
+namespace fncas {
+namespace impl {
+
+struct X : std::vector<V>, noncopyable {
+  using super_t = std::vector<V>;
+  // using value_type = V;
+
   explicit X(size_t dim) {
     CURRENT_ASSERT(dim > 0);
     auto& meta = internals_singleton();
@@ -314,7 +385,14 @@ struct X : noncopyable {
     meta.reset();
     meta.x_ptr_ = this;
     meta.dim_ = dim;
+
+    // Initialize the actual `vector<V>`.
+    super_t::resize(internals_singleton().dim_);
+    for (size_t i = 0; i < super_t::size(); ++i) {
+      super_t::operator[](i) = V::variable(i);
+    }
   }
+
   ~X() {
     auto& meta = internals_singleton();
     if (meta.x_ptr_ == this) {
@@ -322,15 +400,6 @@ struct X : noncopyable {
       meta.x_ptr_ = nullptr;
       meta.dim_ = 0;
     }
-  }
-  V operator[](size_t i) const {
-    CURRENT_ASSERT(i < internals_singleton().dim_);
-    return V(V::variable(i));
-  }
-  size_t size() const {
-    auto& meta = internals_singleton();
-    CURRENT_ASSERT(meta.x_ptr_ == this);
-    return static_cast<size_t>(meta.dim_);
   }
 };
 
@@ -488,5 +557,23 @@ DECLARE_FUNCTION(ramp);
 // Unary plus and unary minus.
 inline fncas::impl::V operator+(const fncas::impl::V& x) { return x; }
 inline fncas::impl::V operator-(const fncas::impl::V& x) { return 0.0 - x; }
+
+namespace fncas {
+
+// A smart `double`: behaves like one, but allows for function recording, differentiation, and JIT.
+using term_t = impl::V;
+
+// A smart `vector<double>`: behaves like one, but allows for function recording, differentiation, and JIT.
+using term_vector_t = std::vector<term_t>;
+
+// Extends `term_vector_t` to be used as the "default" parameter to user functions.
+// Passing a `variables_vector_t x(10)` as the parameter stands for "record the expression of this function
+// assuming it takes a 10-dimensional vector as the parameter".
+// The instance of the `variables_vector_t` is what maintains the state of the thread-local singleton corresponding
+// to the function being recorded, and thus at most one `variables_vector_t` per thread can exist at any given
+// point in time.
+using variables_vector_t = impl::X;
+
+}  // namespace fncas
 
 #endif  // #ifndef FNCAS_NODE_H

@@ -179,6 +179,7 @@ class OptimizeInvoker : public Optimizer<F> {
     const auto& logger = impl::OptimizerLogger();
 
     const fncas::impl::X gradient_helper(starting_point.size());
+    // NOTE(dkorolev): Here, `fncas::impl::X` is magically cast into `std::vector<fncas::impl::V>`.
     const fncas::impl::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(impl::node_vector_singleton().size()) +
                " nodes.");

@@ -53,14 +53,14 @@ X magic_weighting(X x) {
   return fncas::sqr(x);  // For the canonical solution, `exp(x)` would do fine; `sqr` just convereges faster. -- D.K.
 }
 
-template <typename X>
-inline X simplex(X point) {
-  fncas::impl::X2V<X> sum = 0.0;
+template <typename T>
+inline std::vector<T> simplex(std::vector<T> point) {
+  T sum = 0.0;
   for (auto& x : point) {
     x = magic_weighting(x);
     sum += x;
   }
-  const fncas::impl::X2V<X> k = 1.0 / sum;
+  T k = 1.0 / sum;
   for (auto& x : point) {
     x *= k;
   }
@@ -73,20 +73,20 @@ struct FunctionToOptimize {
 
   explicit FunctionToOptimize(size_t N, const std::vector<std::vector<int>>& A) : N(N), A(A) {}
 
-  template <typename X>
-  fncas::impl::X2V<X> ObjectiveFunction(const X& x) const {
+  template <typename T>
+  T ObjectiveFunction(const std::vector<T>& x) const {
     CURRENT_ASSERT(x.size() == N * 2);
 
     // Precompute strategy simplexes.
-    std::vector<std::vector<fncas::impl::X2V<X>>> proto_strategy(2, std::vector<fncas::impl::X2V<X>>(N));
+    std::vector<std::vector<T>> proto_strategy(2, std::vector<T>(N));
     for (size_t k = 0; k < N; ++k) {
       proto_strategy[0][k] = x[k];
       proto_strategy[1][k] = x[k + N];
     }
-    std::vector<std::vector<fncas::impl::X2V<X>>> strategy({simplex(proto_strategy[0]), simplex(proto_strategy[1])});
+    std::vector<std::vector<T>> strategy({simplex(proto_strategy[0]), simplex(proto_strategy[1])});
 
     // Compute the current payoff (the "equilibrium", unless the solution is not yet optimal).
-    fncas::impl::X2V<X> mixed_strategies_payoff = 0.0;
+    T mixed_strategies_payoff = 0.0;
     for (size_t i = 0; i < N; ++i) {
       for (size_t j = 0; j < N; ++j) {
         mixed_strategies_payoff += strategy[0][i] * strategy[1][j] * A[i][j];
@@ -94,15 +94,14 @@ struct FunctionToOptimize {
     }
 
     // Construct the cost function that is minimized as the current point is the equlibrium one.
-    const std::function<fncas::impl::X2V<X>(fncas::impl::X2V<X>)> softmax_penalty =
-        [&](fncas::impl::X2V<X> v) { return fncas::sqr(fncas::ramp(v)); };
+    const std::function<T(T)> softmax_penalty = [&](T v) { return fncas::sqr(fncas::ramp(v)); };
 
-    fncas::impl::X2V<X> penalty = 0.0;
+    T penalty = 0.0;
 
     {
       // Player one: per-opponent-strategy payoffs should be less than or equal to the `mixed_strategies_payoff`.
       for (size_t i = 0; i < N; ++i) {
-        fncas::impl::X2V<X> player_one_payoff = 0.0;
+        T player_one_payoff = 0.0;
         for (size_t j = 0; j < N; ++j) {
           player_one_payoff += A[i][j] * strategy[1][j];
         }
@@ -113,7 +112,7 @@ struct FunctionToOptimize {
     {
       // Player two: per-opponent-strategy payoffs should be greater than or equal to the `mixed_strategies_payoff`.
       for (size_t j = 0; j < N; ++j) {
-        fncas::impl::X2V<X> player_two_payoff = 0.0;
+        T player_two_payoff = 0.0;
         for (size_t i = 0; i < N; ++i) {
           player_two_payoff += A[i][j] * strategy[0][i];
         }
