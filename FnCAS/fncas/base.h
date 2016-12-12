@@ -33,15 +33,16 @@
 #include <cstdint>
 
 namespace fncas {
-namespace impl {
-
-typedef int64_t node_index_type;  // Allow 4B+ nodes on 64-bit arch, keep signed for (~i) vs. (i) index magic.
 
 #ifndef FNCAS_USE_LONG_DOUBLE
 typedef double double_t;  // Make it simple to switch to `long double` or a custom type.
 #else
 typedef long double double_t;
 #endif
+
+namespace impl {
+
+typedef int64_t node_index_type;  // Allow 4B+ nodes on 64-bit arch, keep signed for (~i) vs. (i) index magic.
 
 struct noncopyable {
   noncopyable() = default;

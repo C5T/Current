@@ -54,8 +54,8 @@ fncas::impl::X2V<X> SimpleFunction(const X& x) {
   return ParametrizedFunction(x, 2u);
 }
 
-static_assert(std::is_same<std::vector<fncas::impl::double_t>, fncas::impl::V2X<fncas::impl::double_t>>::value, "");
-static_assert(std::is_same<fncas::impl::X2V<std::vector<fncas::impl::double_t>>, fncas::impl::double_t>::value, "");
+static_assert(std::is_same<std::vector<fncas::double_t>, fncas::impl::V2X<fncas::double_t>>::value, "");
+static_assert(std::is_same<fncas::impl::X2V<std::vector<fncas::double_t>>, fncas::double_t>::value, "");
 
 static_assert(std::is_same<fncas::impl::V, fncas::impl::X2V<fncas::impl::X>>::value, "");
 static_assert(std::is_same<fncas::impl::X, fncas::impl::V2X<fncas::impl::V>>::value, "");
@@ -75,11 +75,11 @@ TEST(FnCAS, FNCAS_JIT_VALUE) {
 }
 
 TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
-  EXPECT_EQ(25, SimpleFunction(std::vector<fncas::impl::double_t>({1, 2})));
+  EXPECT_EQ(25, SimpleFunction(std::vector<fncas::double_t>({1, 2})));
 }
 
 TEST(FnCAS, NativeWrapper) {
-  fncas::impl::f_native fn(SimpleFunction<std::vector<fncas::impl::double_t>>, 2);
+  fncas::impl::f_native fn(SimpleFunction<std::vector<fncas::double_t>>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
@@ -126,9 +126,9 @@ TEST(FnCAS, CompiledFunctionWrapper) {
 #endif  // FNCAS_JIT
 
 TEST(FnCAS, GradientsWrapper) {
-  std::vector<fncas::impl::double_t> p_3_3({3.0, 3.0});
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  fncas::impl::g_approximate ga = fncas::impl::g_approximate(SimpleFunction<std::vector<fncas::impl::double_t>>, 2);
+  fncas::impl::g_approximate ga = fncas::impl::g_approximate(SimpleFunction<std::vector<fncas::double_t>>, 2);
   auto d_3_3_approx = ga(p_3_3);
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
@@ -142,7 +142,7 @@ TEST(FnCAS, GradientsWrapper) {
 
 #ifdef FNCAS_JIT
 TEST(FnCAS, CompiledGradientsWrapper) {
-  std::vector<fncas::impl::double_t> p_3_3({3.0, 3.0});
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::impl::X x(2);
   const fncas::impl::f_intermediate fi = SimpleFunction(x);
@@ -159,14 +159,14 @@ TEST(FnCAS, CompiledGradientsWrapper) {
 
 TEST(FnCAS, CompiledSqrGradientWrapper) {
   // The `sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
-  std::vector<fncas::impl::double_t> p_3_3({3.0, 3.0});
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::impl::X x(2);
   const fncas::impl::f_intermediate fi = SimpleFunction(x);
   const fncas::impl::g_intermediate gi(x, SimpleFunction(x));
 
   const fncas::impl::f_compiled fc(fi);
-  const fncas::impl::double_t f_3_3_compiled = fc(p_3_3);
+  const fncas::double_t f_3_3_compiled = fc(p_3_3);
   EXPECT_EQ(81, f_3_3_compiled);
 
   const fncas::impl::g_compiled gc(fi, gi);
@@ -210,8 +210,8 @@ struct StaticFunction {
 
 // An obviously convex function with a single minimum `f(a, b) == 1`.
 struct MemberFunction {
-  fncas::impl::double_t a = 0.0;
-  fncas::impl::double_t b = 0.0;
+  fncas::double_t a = 0.0;
+  fncas::double_t b = 0.0;
   template <typename T>
   typename fncas::impl::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
@@ -223,9 +223,9 @@ struct MemberFunction {
 };
 
 struct MemberFunctionWithReferences {
-  fncas::impl::double_t& a;
-  fncas::impl::double_t& b;
-  MemberFunctionWithReferences(fncas::impl::double_t& a, fncas::impl::double_t& b) : a(a), b(b) {}
+  fncas::double_t& a;
+  fncas::double_t& b;
+  MemberFunctionWithReferences(fncas::double_t& a, fncas::double_t& b) : a(a), b(b) {}
   template <typename T>
   typename fncas::impl::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
@@ -240,8 +240,8 @@ struct MemberFunctionWithReferences {
 struct PolynomialFunction {
   template <typename X>
   fncas::impl::X2V<X> ObjectiveFunction(const X& x) const {
-    const fncas::impl::double_t a = 10.0;
-    const fncas::impl::double_t b = 0.5;
+    const fncas::double_t a = 10.0;
+    const fncas::double_t b = 0.5;
     return (a * x[0] * x[0] + b * x[1] * x[1]);
   }
 };
@@ -251,8 +251,8 @@ struct PolynomialFunction {
 struct RosenbrockFunction {
   template <typename X>
   fncas::impl::X2V<X> ObjectiveFunction(const X& x) const {
-    const fncas::impl::double_t a = 1.0;
-    const fncas::impl::double_t b = 100.0;
+    const fncas::double_t a = 1.0;
+    const fncas::double_t b = 100.0;
     const auto d1 = (a - x[0]);
     const auto d2 = (x[1] - x[0] * x[0]);
     return (d1 * d1 + b * d2 * d2);
@@ -360,8 +360,8 @@ TEST(FnCAS, OptimizationOfAMemberFunctionConstructsObjectiveFunctionObject) {
 }
 
 TEST(FnCAS, OptimizationOfAMemberFunctionForwardsParameters) {
-  fncas::impl::double_t a = 0;
-  fncas::impl::double_t b = 0;
+  fncas::double_t a = 0;
+  fncas::double_t b = 0;
   // `GradientDescentOptimizer` will construct the instance of `MemberFunctionWithReferences`.
   fncas::optimize::GradientDescentOptimizer<MemberFunctionWithReferences> optimizer(a, b);
   {
@@ -452,10 +452,10 @@ TEST(FnCAS, NaiveGDvsBacktrackingGDOnRosenbrockFunction1000Steps) {
   const auto result_naive =
       fncas::optimize::GradientDescentOptimizer<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
   const auto result_bt = fncas::optimize::GradientDescentOptimizerBT<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
-  const fncas::impl::double_t x0_err_n = std::abs(result_naive.point[0] - 1.0);
-  const fncas::impl::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
-  const fncas::impl::double_t x1_err_n = std::abs(result_naive.point[1] - 1.0);
-  const fncas::impl::double_t x1_err_bt = std::abs(result_bt.point[1] - 1.0);
+  const fncas::double_t x0_err_n = std::abs(result_naive.point[0] - 1.0);
+  const fncas::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
+  const fncas::double_t x1_err_n = std::abs(result_naive.point[1] - 1.0);
+  const fncas::double_t x1_err_bt = std::abs(result_bt.point[1] - 1.0);
   ASSERT_TRUE(fncas::IsNormal(x0_err_n));
   ASSERT_TRUE(fncas::IsNormal(x1_err_n));
   ASSERT_TRUE(fncas::IsNormal(x0_err_bt));
@@ -473,10 +473,10 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
   params.SetValue("max_steps", 100);
   const auto result_cg = fncas::optimize::ConjugateGradientOptimizer<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
   const auto result_bt = fncas::optimize::GradientDescentOptimizerBT<RosenbrockFunction>(params).Optimize({-3.0, -4.0});
-  const fncas::impl::double_t x0_err_cg = std::abs(result_cg.point[0] - 1.0);
-  const fncas::impl::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
-  const fncas::impl::double_t x1_err_cg = std::abs(result_cg.point[1] - 1.0);
-  const fncas::impl::double_t x1_err_bt = std::abs(result_bt.point[1] - 1.0);
+  const fncas::double_t x0_err_cg = std::abs(result_cg.point[0] - 1.0);
+  const fncas::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
+  const fncas::double_t x1_err_cg = std::abs(result_cg.point[1] - 1.0);
+  const fncas::double_t x1_err_bt = std::abs(result_bt.point[1] - 1.0);
   ASSERT_TRUE(fncas::IsNormal(x0_err_cg));
   ASSERT_TRUE(fncas::IsNormal(x1_err_cg));
   ASSERT_TRUE(fncas::IsNormal(x0_err_bt));
@@ -519,7 +519,7 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::impl::g_approximate approximate_gradient(ZeroOrXFunction<std::vector<fncas::impl::double_t>>, 1);
+  const fncas::impl::g_approximate approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
   EXPECT_NEAR(1.0, approximate_gradient({+6.0})[0], 1e-6);
 
@@ -547,7 +547,7 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::impl::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::impl::double_t>>,
+  const fncas::impl::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>,
                                                         1);
   EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
   EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.

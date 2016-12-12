@@ -33,7 +33,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/util/random.h"
 #include "../../TypeSystem/Serialization/json.h"
-#include "../../FnCAS/fncas/base.h"  // typename `fncas::impl::double_t`.
+#include "../../FnCAS/fncas/base.h"  // typename `fncas::double_t`.
 
 DECLARE_string(matrix);
 DECLARE_size_t(dim);
@@ -42,14 +42,14 @@ DECLARE_int32(max);
 DECLARE_uint64(seed);
 DECLARE_double(eps);
 
-std::vector<std::vector<fncas::impl::double_t>> solve(
+std::vector<std::vector<fncas::double_t>> solve(
     size_t N,
     const std::vector<std::vector<int>>& A,
-    std::function<bool(const std::vector<std::vector<fncas::impl::double_t>>& strategy)> validate);
+    std::function<bool(const std::vector<std::vector<fncas::double_t>>& strategy)> validate);
 
 inline bool validate(size_t N,
                      const std::vector<std::vector<int>>& A,
-                     const std::vector<std::vector<fncas::impl::double_t>>& strategy,
+                     const std::vector<std::vector<fncas::double_t>>& strategy,
                      bool print) {
   // Make sure the solution is valid.
   if (strategy.size() != 2u || strategy[0].size() != N || strategy[1].size() != N) {
@@ -58,8 +58,8 @@ inline bool validate(size_t N,
   }
 
   // Compute the equilibrium
-  const fncas::impl::double_t equilibrium = [&]() {
-    fncas::impl::double_t r = 0.0;
+  const fncas::double_t equilibrium = [&]() {
+    fncas::double_t r = 0.0;
     for (size_t i = 0; i < N; ++i) {
       for (size_t j = 0; j < N; ++j) {
         r += A[i][j] * strategy[0][i] * strategy[1][j];
@@ -78,7 +78,7 @@ inline bool validate(size_t N,
   {
     // Validate for player one.
     for (size_t i = 0; i < N; ++i) {
-      fncas::impl::double_t player_one_payoff = 0.0;
+      fncas::double_t player_one_payoff = 0.0;
       for (size_t j = 0; j < N; ++j) {
         player_one_payoff += A[i][j] * strategy[1][j];
       }
@@ -94,7 +94,7 @@ inline bool validate(size_t N,
   {
     // Validate for player two.
     for (size_t j = 0; j < N; ++j) {
-      fncas::impl::double_t player_two_payoff = 0.0;
+      fncas::double_t player_two_payoff = 0.0;
       for (size_t i = 0; i < N; ++i) {
         player_two_payoff += A[i][j] * strategy[0][i];
       }
@@ -163,7 +163,7 @@ inline int run(int& argc, char**& argv) {
   // Call the user code to solve the game.
   const auto strategy = solve(N,
                               A,
-                              [&](const std::vector<std::vector<fncas::impl::double_t>>& strategy)
+                              [&](const std::vector<std::vector<fncas::double_t>>& strategy)
                                   -> bool { return validate(N, A, strategy, false); });
 
   // Make sure the solution is valid.
@@ -173,8 +173,8 @@ inline int run(int& argc, char**& argv) {
   }
 
   for (size_t p = 0; p < 2; ++p) {
-    fncas::impl::double_t sum = 0.0;
-    for (fncas::impl::double_t x : strategy[p]) {
+    fncas::double_t sum = 0.0;
+    for (fncas::double_t x : strategy[p]) {
       if (x < 0) {
         std::cerr << "Negative probability in the output." << std::endl;
         return 1;
@@ -190,11 +190,11 @@ inline int run(int& argc, char**& argv) {
   // Print the solution.
   std::cout << "### Strategies\n";
   std::cout << "#### Player One\n```\n";
-  for (fncas::impl::double_t p : strategy[0]) {
+  for (fncas::double_t p : strategy[0]) {
     std::cout << (p > 5e-3 ? Printf("%.3lf\n", p) : "-\n");
   }
   std::cout << "```\n#### Player Two\n```\n";
-  for (fncas::impl::double_t p : strategy[1]) {
+  for (fncas::double_t p : strategy[1]) {
     std::cout << (p > 5e-3 ? Printf("%.3lf\n", p) : "-\n");
   }
   std::cout << "```\n\n";
