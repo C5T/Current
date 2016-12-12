@@ -43,14 +43,15 @@ SOFTWARE.
 #include <functional>
 #include <thread>
 
-template <typename X>
-fncas::impl::X2V<X> ParametrizedFunction(const X& x, size_t c) {
+template <typename T>
+T ParametrizedFunction(const std::vector<T>& x, size_t c) {
+  CURRENT_ASSERT(x.size() == 2u);
   return (x[0] + x[1] * c) * (x[0] + x[1] * c);
 }
 
-// Need an explicit specialization, as `SimpleFunction<std::vector<double_t>>` is used directly in the test.
-template <typename X>
-fncas::impl::X2V<X> SimpleFunction(const X& x) {
+// Need an explicit specialization, as `SimpleFunction<double_t>` is used directly in the test.
+template <typename T>
+T SimpleFunction(const std::vector<T>& x) {
   return ParametrizedFunction(x, 2u);
 }
 
@@ -89,7 +90,7 @@ TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
 }
 
 TEST(FnCAS, NativeWrapper) {
-  fncas::impl::f_native fn(SimpleFunction<std::vector<fncas::double_t>>, 2);
+  fncas::impl::f_native fn(SimpleFunction<fncas::double_t>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
@@ -138,7 +139,7 @@ TEST(FnCAS, CompiledFunctionWrapper) {
 TEST(FnCAS, GradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  fncas::impl::g_approximate ga = fncas::impl::g_approximate(SimpleFunction<std::vector<fncas::double_t>>, 2);
+  fncas::impl::g_approximate ga = fncas::impl::g_approximate(SimpleFunction<fncas::double_t>, 2);
   auto d_3_3_approx = ga(p_3_3);
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
