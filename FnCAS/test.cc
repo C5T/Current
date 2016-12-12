@@ -195,7 +195,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
 
 TEST(FnCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
   fncas::impl::X x(1);
-  ASSERT_THROW(fncas::impl::X x(2), fncas::impl::FnCASConcurrentEvaluationAttemptException);
+  ASSERT_THROW(fncas::impl::X x(2), fncas::exceptions::FnCASConcurrentEvaluationAttemptException);
 }
 
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
@@ -547,8 +547,7 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::impl::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>,
-                                                        1);
+  const fncas::impl::g_approximate approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
   EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.
 

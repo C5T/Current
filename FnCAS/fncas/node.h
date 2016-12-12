@@ -307,7 +307,7 @@ struct X : noncopyable {
     CURRENT_ASSERT(dim > 0);
     auto& meta = internals_singleton();
     if (meta.x_ptr_) {
-      CURRENT_THROW(FnCASConcurrentEvaluationAttemptException());
+      CURRENT_THROW(exceptions::FnCASConcurrentEvaluationAttemptException());
     }
     CURRENT_ASSERT(!meta.dim_);
     // Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.

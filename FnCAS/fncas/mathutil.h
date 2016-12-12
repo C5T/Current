@@ -182,7 +182,7 @@ ValueAndPoint Backtracking(F&& f,
     if (logger) {
       logger.Log("Backtracking: No non-NAN and non-INF step found.");
     }
-    CURRENT_THROW(BacktrackingException("!fncas::impl::IsNormal(test_f_value)"));
+    CURRENT_THROW(exceptions::BacktrackingException("!fncas::impl::IsNormal(test_f_value)"));
   }
 }
 

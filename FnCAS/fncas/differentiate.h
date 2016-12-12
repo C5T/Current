@@ -105,7 +105,7 @@ inline node_index_type d_f(function_t function, const V& original, const V& x, c
       [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
       // unit_step().
       [](const V& o, const V&, const V&) {
-        CURRENT_THROW(FnCASZeroOrOneIsNonDifferentiable());
+        CURRENT_THROW(exceptions::FnCASZeroOrOneIsNonDifferentiable());
         return o;
       },
       // ramp().

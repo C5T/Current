@@ -29,7 +29,7 @@
 #include "../../Bricks/exception.h"
 
 namespace fncas {
-namespace impl {
+namespace exceptions {
 
 struct FnCASException : current::Exception {
   using super_t = current::Exception;
@@ -57,7 +57,7 @@ struct BacktrackingException : FnCASOptimizationException {
   using FnCASOptimizationException::FnCASOptimizationException;
 };
 
-}  // namespace fncas::impl
+}  // namespace fncas::exceptions
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_EXCEPTIONS_H

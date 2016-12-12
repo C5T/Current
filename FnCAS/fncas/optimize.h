@@ -295,7 +295,7 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
           }
         }
         if (!has_valid_candidate) {
-          CURRENT_THROW(impl::FnCASOptimizationException("!fncas::IsNormal(value)"));
+          CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(value)"));
         }
         if (best_candidate.value / current.value > 1.0 - min_relative_per_step_improvement ||
             current.value - best_candidate.value < min_absolute_per_step_improvement) {
@@ -400,7 +400,7 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
-            CURRENT_THROW(impl::FnCASOptimizationException("!fncas::IsNormal(next.value)"));
+            CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(next.value)"));
           }
 
           if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
@@ -415,7 +415,7 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
           }
 
           current = next;
-        } catch (const impl::BacktrackingException&) {
+        } catch (const exceptions::BacktrackingException&) {
           logger.Log("GradientDescentOptimizerBT: Terminating due to no backtracking step possible.");
           break;
         }
@@ -482,7 +482,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
     ValueAndPoint current(f(starting_point), starting_point);
     logger.Log("ConjugateGradientOptimizer: Original objective function = " + current::ToString(current.value));
     if (!fncas::IsNormal(current.value)) {
-      CURRENT_THROW(impl::FnCASOptimizationException("!fncas::IsNormal(current.value)"));
+      CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(current.value)"));
     }
 
     std::vector<double_t> current_gradient = g(current.point);
@@ -513,7 +513,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
-            CURRENT_THROW(impl::FnCASOptimizationException("!fncas::IsNormal(next.value)"));
+            CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(next.value)"));
           }
 
           stats.JournalGradient();
@@ -542,7 +542,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
           if (std::sqrt(impl::L2Norm(s)) < grad_eps && iteration >= min_steps) {
             break;
           }
-        } catch (const impl::BacktrackingException&) {
+        } catch (const exceptions::BacktrackingException&) {
           logger.Log("GradientDescentOptimizerBT: Terminating due to no backtracking step possible.");
           break;
         }
