@@ -211,8 +211,8 @@ TEST(FnCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
 
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
 struct StaticFunction {
-  template <typename X>
-  static fncas::impl::X2V<X> ObjectiveFunction(const X& x) {
+  template <typename T>
+  static T ObjectiveFunction(const std::vector<T>& x) {
     const auto dx = x[0] - 3;
     const auto dy = x[1] - 4;
     return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
@@ -224,7 +224,7 @@ struct MemberFunction {
   fncas::double_t a = 0.0;
   fncas::double_t b = 0.0;
   template <typename T>
-  typename fncas::impl::X2V<T> ObjectiveFunction(const T& x) const {
+  T ObjectiveFunction(const std::vector<T>& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
     return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
@@ -238,7 +238,7 @@ struct MemberFunctionWithReferences {
   fncas::double_t& b;
   MemberFunctionWithReferences(fncas::double_t& a, fncas::double_t& b) : a(a), b(b) {}
   template <typename T>
-  typename fncas::impl::X2V<T> ObjectiveFunction(const T& x) const {
+  T ObjectiveFunction(const std::vector<T>& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
     return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
@@ -249,8 +249,8 @@ struct MemberFunctionWithReferences {
 
 // An obviously convex function with a single minimum `f(0, 0) == 0`.
 struct PolynomialFunction {
-  template <typename X>
-  fncas::impl::X2V<X> ObjectiveFunction(const X& x) const {
+  template <typename T>
+  T ObjectiveFunction(const std::vector<T>& x) const {
     const fncas::double_t a = 10.0;
     const fncas::double_t b = 0.5;
     return (a * x[0] * x[0] + b * x[1] * x[1]);
@@ -260,8 +260,8 @@ struct PolynomialFunction {
 // http://en.wikipedia.org/wiki/Rosenbrock_function
 // Non-convex function with global minimum `f(a, a^2) == 0`.
 struct RosenbrockFunction {
-  template <typename X>
-  fncas::impl::X2V<X> ObjectiveFunction(const X& x) const {
+  template <typename T>
+  T ObjectiveFunction(const std::vector<T>& x) const {
     const fncas::double_t a = 1.0;
     const fncas::double_t b = 100.0;
     const auto d1 = (a - x[0]);
@@ -277,8 +277,8 @@ struct RosenbrockFunction {
 // f(-3.779310, -3.283186) = 0.0
 // f(3.584428, -1.848126) = 0.0
 struct HimmelblauFunction {
-  template <typename X>
-  fncas::impl::X2V<X> ObjectiveFunction(const X& x) const {
+  template <typename T>
+  T ObjectiveFunction(const std::vector<T>& x) const {
     const auto d1 = (x[0] * x[0] + x[1] - 11);
     const auto d2 = (x[0] + x[1] * x[1] - 7);
     return (d1 * d1 + d2 * d2);
@@ -499,15 +499,15 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
 }
 
 // To test evaluation and differentiation.
-template <typename X>
-fncas::impl::X2V<X> ZeroOrXFunction(const X& x) {
+template <typename T>
+T ZeroOrXFunction(const std::vector<T> x) {
   EXPECT_EQ(1u, x.size());
   return fncas::ramp(x[0]);
 }
 
 // To test evaluation and differentiation of `f(g(x))` where `f` is `fncas::ramp`.
-template <typename X>
-fncas::impl::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
+template <typename T>
+T ZeroOrXOfSquareXMinusTen(const std::vector<T>& x) {
   EXPECT_EQ(1u, x.size());
   return fncas::ramp(fncas::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
 }
@@ -530,7 +530,7 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::ApproximateGradient approximate_gradient(ZeroOrXFunction<std::vector<fncas::double_t>>, 1);
+  const fncas::ApproximateGradient approximate_gradient(ZeroOrXFunction<fncas::double_t>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
   EXPECT_NEAR(1.0, approximate_gradient({+6.0})[0], 1e-6);
 
@@ -558,7 +558,7 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::ApproximateGradient approximate_gradient(ZeroOrXOfSquareXMinusTen<std::vector<fncas::double_t>>, 1);
+  const fncas::ApproximateGradient approximate_gradient(ZeroOrXOfSquareXMinusTen<fncas::double_t>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
   EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.
 
