@@ -30,7 +30,7 @@ SOFTWARE.
 // #define FNCAS_USE_LONG_DOUBLE  // Incompatible with `FNCAS_JIT` being defined. -- D.K.
 
 // Support the test both ways: With FnCAS functions in `std::` and with them not in `std::`.
-#define INJECT_FNCAS_INTO_NAMESPACE_STD
+// #define INJECT_FNCAS_INTO_NAMESPACE_STD
 
 #ifndef INJECT_FNCAS_INTO_NAMESPACE_STD
 #define unittest_fncas_namespace fncas
