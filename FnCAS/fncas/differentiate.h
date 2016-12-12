@@ -32,6 +32,7 @@
 #include "node.h"
 
 namespace fncas {
+namespace impl {
 
 static const double_t APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 
@@ -240,6 +241,7 @@ struct node_differentiate_impl<X> {
   }
 };
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_DIFFERENTIATE_H

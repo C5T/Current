@@ -40,6 +40,7 @@
 #include "../../TypeSystem/Serialization/json.h"
 
 namespace fncas {
+namespace impl {
 
 CURRENT_STRUCT(ValueAndPoint) {
   CURRENT_FIELD(value, double_t, 0.0);
@@ -180,10 +181,11 @@ ValueAndPoint Backtracking(F&& f,
     if (logger) {
       logger.Log("Backtracking: No non-NAN and non-INF step found.");
     }
-    CURRENT_THROW(BacktrackingException("!fncas::IsNormal(test_f_value)"));
+    CURRENT_THROW(BacktrackingException("!fncas::impl::IsNormal(test_f_value)"));
   }
 }
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_MATHUTIL_H

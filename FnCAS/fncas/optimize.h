@@ -45,6 +45,7 @@ SOFTWARE.
 #include "../../TypeSystem/helpers.h"
 
 namespace fncas {
+namespace impl {
 
 // clang-format off
 CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
@@ -177,13 +178,13 @@ class OptimizeInvoker : public Optimizer<F> {
   OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
     const auto& logger = OptimizerLogger();
 
-    const fncas::X gradient_helper(starting_point.size());
-    const fncas::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
+    const fncas::impl::X gradient_helper(starting_point.size());
+    const fncas::impl::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(node_vector_singleton().size()) + " nodes.");
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
       logger.Log("Optimizer: Compiling the objective function.");
       const auto compile_f_begin_gradient = current::time::Now();
-      fncas::f_compiled f = fncas::f_compiled(f_i);
+      fncas::impl::f_compiled f = fncas::impl::f_compiled(f_i);
       logger.Log("Optimizer: Done compiling the objective function, took " +
                  current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
       return DoOptimize(f_i, f, starting_point, gradient_helper);
@@ -194,20 +195,20 @@ class OptimizeInvoker : public Optimizer<F> {
   }
 
   template <typename POSSIBLY_COMPILED_F>
-  OptimizationResult DoOptimize(const fncas::f_intermediate& f_i,
+  OptimizationResult DoOptimize(const fncas::impl::f_intermediate& f_i,
                                 POSSIBLY_COMPILED_F&& f,
                                 const std::vector<double_t>& starting_point,
-                                const fncas::X& gradient_helper) const {
+                                const fncas::impl::X& gradient_helper) const {
     const auto& logger = OptimizerLogger();
 
     logger.Log("Optimizer: Differentiating.");
-    const fncas::g_intermediate g_i(gradient_helper, f_i);
+    const fncas::impl::g_intermediate g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(node_vector_singleton().size()) + " nodes.");
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
       logger.Log("Optimizer: Compiling the gradient.");
       const auto compile_g_begin_gradient = current::time::Now();
-      fncas::g_compiled g = fncas::g_compiled(f_i, g_i);
+      fncas::impl::g_compiled g = fncas::impl::g_compiled(f_i, g_i);
       logger.Log("Optimizer: Done compiling the gradient, took " +
                  current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
       return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
@@ -285,7 +286,7 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
           const auto candidate_point(SumVectors(current.point, gradient, -step));
           stats.JournalFunction();
           const double_t value = f(candidate_point);
-          if (fncas::IsNormal(value)) {
+          if (fncas::impl::IsNormal(value)) {
             has_valid_candidate = true;
             logger.Log("GradientDescentOptimizer: Value " + current::ToString(value) + " at step " +
                        current::ToString(step));
@@ -293,7 +294,7 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
           }
         }
         if (!has_valid_candidate) {
-          CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(value)"));
+          CURRENT_THROW(FnCASOptimizationException("!fncas::impl::IsNormal(value)"));
         }
         if (best_candidate.value / current.value > 1.0 - min_relative_per_step_improvement ||
             current.value - best_candidate.value < min_absolute_per_step_improvement) {
@@ -386,19 +387,19 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
         }
 
         // Simple early stopping by the norm of the gradient.
-        if (std::sqrt(fncas::L2Norm(gradient)) < grad_eps && iteration >= min_steps) {
+        if (std::sqrt(fncas::impl::L2Norm(gradient)) < grad_eps && iteration >= min_steps) {
           logger.Log("GradientDescentOptimizerBT: Terminating due to small gradient norm.");
           break;
         }
 
-        fncas::FlipSign(gradient);  // Going against the gradient to minimize the function.
+        fncas::impl::FlipSign(gradient);  // Going against the gradient to minimize the function.
 
         try {
           const auto next = Backtracking(f, g, current.point, gradient, stats, bt_alpha, bt_beta, bt_max_steps);
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
-            CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(next.value)"));
+            CURRENT_THROW(FnCASOptimizationException("!fncas::impl::IsNormal(next.value)"));
           }
 
           if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
@@ -479,13 +480,13 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
 
     ValueAndPoint current(f(starting_point), starting_point);
     logger.Log("ConjugateGradientOptimizer: Original objective function = " + current::ToString(current.value));
-    if (!fncas::IsNormal(current.value)) {
-      CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(current.value)"));
+    if (!fncas::impl::IsNormal(current.value)) {
+      CURRENT_THROW(FnCASOptimizationException("!fncas::impl::IsNormal(current.value)"));
     }
 
     std::vector<double_t> current_gradient = g(current.point);
     std::vector<double_t> s(current_gradient);  // Direction to search for a minimum.
-    fncas::FlipSign(s);                         // Trying first step against the gradient to minimize the function.
+    fncas::impl::FlipSign(s);                   // Trying first step against the gradient to minimize the function.
 
     logger.Log("ConjugateGradientOptimizer: Begin at " + super.PointAsString(starting_point));
     size_t iteration;
@@ -511,7 +512,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
-            CURRENT_THROW(FnCASOptimizationException("!fncas::IsNormal(next.value)"));
+            CURRENT_THROW(FnCASOptimizationException("!fncas::impl::IsNormal(next.value)"));
           }
 
           stats.JournalGradient();
@@ -519,7 +520,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
 
           // Calculating direction for the next step.
           const double_t omega =
-              std::max(fncas::PolakRibiere(new_gradient, current_gradient), static_cast<double_t>(0));
+              std::max(fncas::impl::PolakRibiere(new_gradient, current_gradient), static_cast<double_t>(0));
           s = SumVectors(s, new_gradient, omega, -1.0);
 
           if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
@@ -554,6 +555,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
   }
 };
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_OPTIMIZE_H

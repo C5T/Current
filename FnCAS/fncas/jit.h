@@ -51,6 +51,7 @@
 #include "differentiate.h"
 
 namespace fncas {
+namespace impl {
 
 static_assert(std::is_same<double, double_t>::value, "FnCAS JIT assumes `double_t` is the native double.");
 
@@ -739,7 +740,7 @@ inline compiled_expression compile_eval_g(const V& f_node, const std::vector<V>&
 }
 
 struct f_compiled final : f {
-  fncas::compiled_expression c_;
+  fncas::impl::compiled_expression c_;
 
   explicit f_compiled(const V& node) : c_(compile_eval_f(node)) { CURRENT_ASSERT(c_.HasFunction()); }
   explicit f_compiled(const f_intermediate& f) : c_(compile_eval_f(f.f_)) { CURRENT_ASSERT(c_.HasFunction()); }
@@ -757,7 +758,7 @@ struct f_compiled final : f {
 };
 
 struct g_compiled final : g {
-  fncas::compiled_expression c_;
+  fncas::impl::compiled_expression c_;
 
   explicit g_compiled(const f_intermediate& f, const g_intermediate& g) : c_(compile_eval_g(f.f_, g.g_)) {
     CURRENT_ASSERT(c_.HasGradient());
@@ -775,6 +776,7 @@ struct g_compiled final : g {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE

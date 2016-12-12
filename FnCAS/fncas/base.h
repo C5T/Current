@@ -33,6 +33,7 @@
 #include <cstdint>
 
 namespace fncas {
+namespace impl {
 
 typedef int64_t node_index_type;  // Allow 4B+ nodes on 64-bit arch, keep signed for (~i) vs. (i) index magic.
 
@@ -62,6 +63,7 @@ enum class type_t : uint8_t { variable, value, operation, function };
 enum class operation_t : uint8_t { add, subtract, multiply, divide, end };
 enum class function_t : uint8_t { sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp, end };
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_BASE_H

@@ -49,21 +49,22 @@ inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
 // TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
 
 template <typename T>
-T apply(::fncas::function_t function, T argument) {
-  static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::function_t::end)] = {
+T apply(::fncas::impl::function_t function, T argument) {
+  static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::impl::function_t::end)] = {
       sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
-  return function < ::fncas::function_t::end ? evaluator[static_cast<size_t>(function)](argument)
-                                             : std::numeric_limits<T>::quiet_NaN();
+  return function < ::fncas::impl::function_t::end ? evaluator[static_cast<size_t>(function)](argument)
+                                                   : std::numeric_limits<T>::quiet_NaN();
 }
 }  // namespace fncas_functions
 
 namespace fncas {
+namespace impl {
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of `node_impl` take 10 bytes each and are packed.
 // Each node_impl refers to a value, an input variable, an operation or math function invokation.
 // The `ThreadLocalSingleton` containing `vector<node_impl>` is the allocator, thus
-// at most one expression per thread (at most one scope of `fncas::X`) can be "recorded" at a time.
+// at most one expression per thread (at most one scope of `fncas::impl::X`) can be "recorded" at a time.
 
 inline const char* operation_as_string(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {"+", "-", "*", "/"};
@@ -202,7 +203,8 @@ inline double_t eval_node(node_index_type index,
             apply_operation<double_t>(f.operation(), V[f.lhs_index()], V[f.rhs_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == type_t::function) {
-        growing_vector_access(V, dependent_i, 0.0) = ::fncas_functions::apply<double_t>(f.function(), V[f.argument_index()]);
+        growing_vector_access(V, dependent_i, 0.0) =
+            ::fncas_functions::apply<double_t>(f.function(), V[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         CURRENT_ASSERT(false);
@@ -378,7 +380,7 @@ struct f_intermediate final : f {
 // Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
 // Type `V` describes one value (`double`), type `X` describes an array of values (`std::vector<double>`),
 // although `double` is in fact `double_t`.
-// Synopsis: `fncas::X2V<X> f(const X& x)` or `V f(const fncas::V2X<V>& x);`.
+// Synopsis: `fncas::impl::X2V<X> f(const X& x)` or `V f(const fncas::impl::V2X<V>& x);`.
 
 template <typename T>
 struct x2v_impl {};
@@ -406,22 +408,23 @@ using X2V = typename x2v_impl<X>::type;
 template <typename V>
 using V2X = typename v2x_impl<V>::type;
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
-// Arithmetic operations and mathematical functions are defined outside namespace fncas.
+// Arithmetic operations and mathematical functions are defined outside namespace fncas::impl.
 
-#define DECLARE_OP(OP, OP2, NAME)                                           \
-  inline fncas::V operator OP(const fncas::V& lhs, const fncas::V& rhs) {   \
-    fncas::V result;                                                        \
-    result.type() = fncas::type_t::operation;                               \
-    result.operation() = fncas::operation_t::NAME;                          \
-    result.lhs_index() = lhs.index_;                                        \
-    result.rhs_index() = rhs.index_;                                        \
-    return result;                                                          \
-  }                                                                         \
-  inline const fncas::V& operator OP2(fncas::V& lhs, const fncas::V& rhs) { \
-    lhs = lhs OP rhs;                                                       \
-    return lhs;                                                             \
+#define DECLARE_OP(OP, OP2, NAME)                                                             \
+  inline fncas::impl::V operator OP(const fncas::impl::V& lhs, const fncas::impl::V& rhs) {   \
+    fncas::impl::V result;                                                                    \
+    result.type() = fncas::impl::type_t::operation;                                           \
+    result.operation() = fncas::impl::operation_t::NAME;                                      \
+    result.lhs_index() = lhs.index_;                                                          \
+    result.rhs_index() = rhs.index_;                                                          \
+    return result;                                                                            \
+  }                                                                                           \
+  inline const fncas::impl::V& operator OP2(fncas::impl::V& lhs, const fncas::impl::V& rhs) { \
+    lhs = lhs OP rhs;                                                                         \
+    return lhs;                                                                               \
   }
 
 DECLARE_OP(+, +=, add);
@@ -435,35 +438,37 @@ using namespace std;
 }  // namespace fncas_functions
 
 #ifndef INJECT_FNCAS_INTO_NAMESPACE_STD
-// Put the "compile-as-you-execute" implementations of math functions into `fncas::functions::`.
-#define DECLARE_FUNCTION(F)                     \
-  namespace fncas_functions {                   \
-  inline fncas::V F(const fncas::V& argument) { \
-    fncas::V result;                            \
-    result.type() = fncas::type_t::function;    \
-    result.function() = fncas::function_t::F;   \
-    result.argument_index() = argument.index_;  \
-    return result;                              \
-  }                                             \
-  }                                             \
-  namespace fncas {                             \
-  using ::fncas_functions::F;                   \
+// Put the "compile-as-you-execute" implementations of math functions into `fncas::impl::functions::`.
+#define DECLARE_FUNCTION(F)                                 \
+  namespace fncas_functions {                               \
+  inline fncas::impl::V F(const fncas::impl::V& argument) { \
+    fncas::impl::V result;                                  \
+    result.type() = fncas::impl::type_t::function;          \
+    result.function() = fncas::impl::function_t::F;         \
+    result.argument_index() = argument.index_;              \
+    return result;                                          \
+  }                                                         \
+  }                                                         \
+  namespace fncas {                                         \
+  namespace impl {                                          \
+  using ::fncas_functions::F;                               \
+  }                                                         \
   }
 #else
 // Expose math functions into `std::` as well.
 // NOTE: This is in violation of `C++11: 17.6.4.2.1/1`, and hence guarded. CC @dkorolev, @mzhurovich.
-#define DECLARE_FUNCTION(F)                     \
-  namespace fncas_functions {                   \
-  inline fncas::V F(const fncas::V& argument) { \
-    fncas::V result;                            \
-    result.type() = fncas::type_t::function;    \
-    result.function() = fncas::function_t::F;   \
-    result.argument_index() = argument.index_;  \
-    return result;                              \
-  }                                             \
-  }                                             \
-  namespace std {                               \
-  using ::fncas_functions::F;                   \
+#define DECLARE_FUNCTION(F)                                 \
+  namespace fncas_functions {                               \
+  inline fncas::impl::V F(const fncas::impl::V& argument) { \
+    fncas::impl::V result;                                  \
+    result.type() = fncas::impl::type_t::function;          \
+    result.function() = fncas::impl::function_t::F;         \
+    result.argument_index() = argument.index_;              \
+    return result;                                          \
+  }                                                         \
+  }                                                         \
+  namespace std {                                           \
+  using ::fncas_functions::F;                               \
   }
 #endif
 
@@ -481,7 +486,7 @@ DECLARE_FUNCTION(unit_step);
 DECLARE_FUNCTION(ramp);
 
 // Unary plus and unary minus.
-inline fncas::V operator+(const fncas::V& x) { return x; }
-inline fncas::V operator-(const fncas::V& x) { return 0.0 - x; }
+inline fncas::impl::V operator+(const fncas::impl::V& x) { return x; }
+inline fncas::impl::V operator-(const fncas::impl::V& x) { return 0.0 - x; }
 
 #endif  // #ifndef FNCAS_NODE_H

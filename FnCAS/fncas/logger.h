@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../../Bricks/util/singleton.h"
 
 namespace fncas {
+namespace impl {
 
 class OptimizerLoggerImpl final {
  public:
@@ -64,8 +65,8 @@ class OptimizerLoggerImpl final {
 inline OptimizerLoggerImpl& OptimizerLogger() { return current::ThreadLocalSingleton<OptimizerLoggerImpl>(); }
 
 struct ScopedLogToStderr final {
-  ScopedLogToStderr() { fncas::OptimizerLogger().LogToStderr(); }
-  ~ScopedLogToStderr() { fncas::OptimizerLogger().DisableLogging(); }
+  ScopedLogToStderr() { fncas::impl::OptimizerLogger().LogToStderr(); }
+  ~ScopedLogToStderr() { fncas::impl::OptimizerLogger().DisableLogging(); }
 };
 
 class OptimizerStats final {
@@ -101,6 +102,7 @@ class OptimizerStats final {
   size_t n_backtracking_steps_ = 0;
 };
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_LOGGER_H
