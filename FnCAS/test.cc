@@ -107,7 +107,7 @@ TEST(FnCAS, TrivialCompiledFunctions) {
   {
     // grep for `42.000`.
     const fncas::variables_vector_t x(1);
-    const fncas::SlowFunction intermediate_function([](const fncas::impl::X& x) { return x[0] + 42; }(x));
+    const fncas::SlowFunction intermediate_function([](const fncas::term_vector_t& x) { return x[0] + 42; }(x));
     EXPECT_EQ(1042, intermediate_function({1000}));
 
     const fncas::Function compiled_function(intermediate_function);
@@ -117,7 +117,7 @@ TEST(FnCAS, TrivialCompiledFunctions) {
     // grep for `12345.000`.
     const fncas::variables_vector_t x(1);
     const fncas::SlowFunction intermediate_function(
-        [](const fncas::impl::X& x) { return unittest_fncas_namespace::exp(x[0]) + 12345.0; }(x));
+        [](const fncas::term_vector_t& x) { return unittest_fncas_namespace::exp(x[0]) + 12345.0; }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
     EXPECT_NEAR(12345.0 + std::exp(1.0), intermediate_function({1}), 1e-6);
 
