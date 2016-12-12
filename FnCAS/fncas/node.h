@@ -41,13 +41,23 @@
 #include "../../Bricks/exception.h"
 #include "../../Bricks/util/singleton.h"
 
-namespace fncas {
-
+namespace fncas_functions {
 // Non-standard functions useful in data science.
 inline double_t sqr(double_t x) { return x * x; }
 inline double_t unit_step(double_t x) { return x >= 0 ? 1 : 0; }
 inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
 // TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
+
+template <typename T>
+T apply(::fncas::function_t function, T argument) {
+  static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::function_t::end)] = {
+      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
+  return function < ::fncas::function_t::end ? evaluator[static_cast<size_t>(function)](argument)
+                                             : std::numeric_limits<T>::quiet_NaN();
+}
+}  // namespace fncas_functions
+
+namespace fncas {
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of `node_impl` take 10 bytes each and are packed.
@@ -73,14 +83,6 @@ T apply_operation(operation_t operation, T lhs, T rhs) {
   };
   return operation < operation_t::end ? evaluator[static_cast<size_t>(operation)](lhs, rhs)
                                       : std::numeric_limits<T>::quiet_NaN();
-}
-
-template <typename T>
-T apply_function(function_t function, T argument) {
-  static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
-      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
-  return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
-                                    : std::numeric_limits<T>::quiet_NaN();
 }
 
 struct node_impl;
@@ -200,7 +202,7 @@ inline double_t eval_node(node_index_type index,
             apply_operation<double_t>(f.operation(), V[f.lhs_index()], V[f.rhs_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == type_t::function) {
-        growing_vector_access(V, dependent_i, 0.0) = apply_function<double_t>(f.function(), V[f.argument_index()]);
+        growing_vector_access(V, dependent_i, 0.0) = ::fncas_functions::apply<double_t>(f.function(), V[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         CURRENT_ASSERT(false);
@@ -427,8 +429,31 @@ DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
 DECLARE_OP(/, /=, divide);
 
+// NOTE(dkorolev): This `using namespace std` declaration within `fncas_functions` should be here, not above.
+namespace fncas_functions {
+using namespace std;
+}  // namespace fncas_functions
+
+#ifndef INJECT_FNCAS_INTO_NAMESPACE_STD
+// Put the "compile-as-you-execute" implementations of math functions into `fncas::functions::`.
 #define DECLARE_FUNCTION(F)                     \
+  namespace fncas_functions {                   \
+  inline fncas::V F(const fncas::V& argument) { \
+    fncas::V result;                            \
+    result.type() = fncas::type_t::function;    \
+    result.function() = fncas::function_t::F;   \
+    result.argument_index() = argument.index_;  \
+    return result;                              \
+  }                                             \
+  }                                             \
   namespace fncas {                             \
+  using ::fncas_functions::F;                   \
+  }
+#else
+// Expose math functions into `std::` as well.
+// NOTE: This is in violation of `C++11: 17.6.4.2.1/1`, and hence guarded. CC @dkorolev, @mzhurovich.
+#define DECLARE_FUNCTION(F)                     \
+  namespace fncas_functions {                   \
   inline fncas::V F(const fncas::V& argument) { \
     fncas::V result;                            \
     result.type() = fncas::type_t::function;    \
@@ -438,8 +463,9 @@ DECLARE_OP(/, /=, divide);
   }                                             \
   }                                             \
   namespace std {                               \
-  using ::fncas::F;                             \
+  using ::fncas_functions::F;                   \
   }
+#endif
 
 DECLARE_FUNCTION(sqr);
 DECLARE_FUNCTION(sqrt);

@@ -29,6 +29,15 @@ SOFTWARE.
 
 // #define FNCAS_USE_LONG_DOUBLE  // Incompatible with `FNCAS_JIT` being defined. -- D.K.
 
+// Support the test both ways: With FnCAS functions in `std::` and with them not in `std::`.
+// #define INJECT_FNCAS_INTO_NAMESPACE_STD
+
+#ifndef INJECT_FNCAS_INTO_NAMESPACE_STD
+#define unittest_fncas_namespace fncas
+#else
+#define unittest_fncas_namespace std
+#endif  // INJECT_FNCAS_INTO_NAMESPACE_STD
+
 #include "fncas/fncas.h"
 
 #include <functional>
@@ -96,12 +105,14 @@ TEST(FnCAS, TrivialCompiledFunctions) {
   {
     // grep for `12345.000`.
     const fncas::X x(1);
-    const fncas::f_intermediate intermediate_function([](const fncas::X& x) { return std::exp(x[0]) + 12345.0; }(x));
+    const fncas::f_intermediate intermediate_function(
+        [](const fncas::X& x) { return unittest_fncas_namespace::exp(x[0]) + 12345.0; }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
     EXPECT_NEAR(12345.0 + std::exp(1.0), intermediate_function({1}), 1e-6);
 
     const fncas::f_compiled compiled_function(intermediate_function);
     EXPECT_EQ(12346.0, compiled_function({0})) << compiled_function.lib_filename();
+    // EXPECT_NEAR(12345.0 + unittest_fncas_namespace::exp(1.0), compiled_function({1}), 1e-6)
     EXPECT_NEAR(12345.0 + std::exp(1.0), compiled_function({1}), 1e-6) << compiled_function.lib_filename();
   }
 }
@@ -147,7 +158,7 @@ TEST(FnCAS, CompiledGradientsWrapper) {
 }
 
 TEST(FnCAS, CompiledSqrGradientWrapper) {
-  // The `fncas::sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
+  // The `sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::X x(2);
@@ -171,7 +182,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::X x(2);
       fncas::f_intermediate fi = ParametrizedFunction(x, i + 1);
-      EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
+      EXPECT_EQ(fncas_functions::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
   std::thread t1(advanced_math);
@@ -193,7 +204,7 @@ struct StaticFunction {
   static fncas::X2V<X> ObjectiveFunction(const X& x) {
     const auto dx = x[0] - 3;
     const auto dy = x[1] - 4;
-    return std::exp(0.01 * (dx * dx + dy * dy));
+    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
   }
 };
 
@@ -205,7 +216,7 @@ struct MemberFunction {
   typename fncas::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
-    return std::exp(0.01 * (dx * dx + dy * dy));
+    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
   }
   MemberFunction() = default;
   MemberFunction(const MemberFunction&) = delete;
@@ -219,7 +230,7 @@ struct MemberFunctionWithReferences {
   typename fncas::X2V<T> ObjectiveFunction(const T& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
-    return std::exp(0.01 * (dx * dx + dy * dy));
+    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
   }
   MemberFunctionWithReferences() = default;
   MemberFunctionWithReferences(const MemberFunctionWithReferences&) = delete;
@@ -479,22 +490,22 @@ TEST(FnCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
 template <typename X>
 fncas::X2V<X> ZeroOrXFunction(const X& x) {
   EXPECT_EQ(1u, x.size());
-  return fncas::ramp(x[0]);
+  return fncas_functions::ramp(x[0]);
 }
 
-// To test evaluation and differentiation of `f(g(x))` where `f` is `fncas::ramp`.
+// To test evaluation and differentiation of `f(g(x))` where `f` is `fncas_functions::ramp`.
 template <typename X>
 fncas::X2V<X> ZeroOrXOfSquareXMinusTen(const X& x) {
   EXPECT_EQ(1u, x.size());
-  return fncas::ramp(fncas::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
+  return fncas_functions::ramp(fncas_functions::sqr(x[0]) - 10);  // So that the argument is sometimes negative.
 }
 
 TEST(FnCAS, CustomFunctions) {
-  EXPECT_EQ(0.0, fncas::unit_step(-1.0));
-  EXPECT_EQ(1.0, fncas::unit_step(+2.0));
+  EXPECT_EQ(0.0, fncas_functions::unit_step(-1.0));
+  EXPECT_EQ(1.0, fncas_functions::unit_step(+2.0));
 
-  EXPECT_EQ(0.0, fncas::ramp(-3.0));
-  EXPECT_EQ(4.0, fncas::ramp(+4.0));
+  EXPECT_EQ(0.0, fncas_functions::ramp(-3.0));
+  EXPECT_EQ(4.0, fncas_functions::ramp(+4.0));
 
   const fncas::X x(1);
   const fncas::f_intermediate intermediate_function = ZeroOrXFunction(x);
@@ -526,8 +537,8 @@ TEST(FnCAS, ComplexCustomFunctions) {
   const fncas::X x(1);
 
   const fncas::f_intermediate intermediate_function = ZeroOrXOfSquareXMinusTen(x);
-  EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
-  EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
+  EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas_functions::ramp(3*3 - 10) == 0
+  EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas_functions::ramp(4*4 - 10) == 6
 
 #ifdef FNCAS_JIT
   const fncas::f_compiled compiled_function(intermediate_function);
