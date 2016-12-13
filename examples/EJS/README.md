@@ -15,7 +15,7 @@ $ curl "http://localhost:3000?a=10&b=20"
 {"a":10,"b":20,"x":[11,13,17,19]}
 ```
 
-Indepenently from the C++ binary, running `npm i && npm run start` from `EJS/nodejs` would start another, node.js, rendering server on port 3001:
+Independent from the C++ binary, running `npm i && npm run start` from `EJS/nodejs` would start another, node.js, rendering server on port 3001:
 
 ```
 $ curl -H "Content-Type: application/json" -d '{"a":99,"b":101,"x":[999]}' localhost:3001
