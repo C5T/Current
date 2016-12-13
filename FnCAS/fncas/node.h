@@ -104,7 +104,7 @@ struct internals_impl {
   std::vector<int8_t> node_computed_;
 
   // df_[var_index][node_index] => node index for d (node[node_index]) / d (x[variable_index]), -1 if unknown.
-  std::vector<std::vector<node_index_type>> df_;
+  std::vector<std::vector<node_index_t>> df_;
 
   // A block of RAM to be used as the buffer for externally compiled functions.
   std::vector<double_t> heap_for_compiled_evaluations_;
@@ -137,21 +137,21 @@ struct node_impl {
     CURRENT_ASSERT(type() == type_t::operation);
     return *reinterpret_cast<operation_t*>(&data_[1]);
   }
-  node_index_type& lhs_index() {
+  node_index_t& lhs_index() {
     CURRENT_ASSERT(type() == type_t::operation);
-    return *reinterpret_cast<node_index_type*>(&data_[2]);
+    return *reinterpret_cast<node_index_t*>(&data_[2]);
   }
-  node_index_type& rhs_index() {
+  node_index_t& rhs_index() {
     CURRENT_ASSERT(type() == type_t::operation);
-    return *reinterpret_cast<node_index_type*>(&data_[10]);
+    return *reinterpret_cast<node_index_t*>(&data_[10]);
   }
   function_t& function() {
     CURRENT_ASSERT(type() == type_t::function);
     return *reinterpret_cast<function_t*>(&data_[1]);
   }
-  node_index_type& argument_index() {
+  node_index_t& argument_index() {
     CURRENT_ASSERT(type() == type_t::function);
-    return *reinterpret_cast<node_index_type*>(&data_[2]);
+    return *reinterpret_cast<node_index_t*>(&data_[2]);
   }
 };
 static_assert(sizeof(node_impl) == 18, "sizeof(node_impl) should be 18. Check struct alignment compilation flags.");
@@ -159,7 +159,7 @@ static_assert(sizeof(node_impl) == 18, "sizeof(node_impl) should be 18. Check st
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
 enum class reuse_cache : int8_t { invalidate = 0, reuse = 1 };
-inline double_t eval_node(node_index_type index,
+inline double_t eval_node(node_index_t index,
                           const std::vector<double_t>& x,
                           reuse_cache reuse = reuse_cache::invalidate) {
   std::vector<double_t>& V = internals_singleton().node_value_;
@@ -167,12 +167,12 @@ inline double_t eval_node(node_index_type index,
   if (reuse == reuse_cache::invalidate) {
     B.clear();
   }
-  std::stack<node_index_type> stack;
+  std::stack<node_index_t> stack;
   stack.push(index);
   while (!stack.empty()) {
-    const node_index_type i = stack.top();
+    const node_index_t i = stack.top();
     stack.pop();
-    const node_index_type dependent_i = ~i;
+    const node_index_t dependent_i = ~i;
     if (i > dependent_i) {
       if (!growing_vector_access(B, i, static_cast<int8_t>(false))) {
         node_impl& f = node_vector_singleton()[i];
@@ -223,15 +223,15 @@ inline double_t eval_node(node_index_type index,
 // arithmetical and mathematical operations are overloaded for class V.
 
 struct allocate_new {};
-enum class from_index : node_index_type;
+enum class from_index : node_index_t;
 
 struct node_index_allocator {
-  node_index_type index_;  // non-const since `V` objects can be modified.
-  explicit inline node_index_allocator(from_index i) : index_(static_cast<node_index_type>(i)) {}
+  node_index_t index_;  // non-const since `V` objects can be modified.
+  explicit inline node_index_allocator(from_index i) : index_(static_cast<node_index_t>(i)) {}
   explicit inline node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
     node_vector_singleton().resize(index_ + 1);
   }
-  node_index_type index() const { return index_; }
+  node_index_t index() const { return index_; }
   node_index_allocator() = delete;
 };
 
@@ -257,14 +257,14 @@ struct GenericV : node_index_allocator {
   int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
   double_t& value() const { return node_vector_singleton()[index_].value(); }
   operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
-  node_index_type& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
-  node_index_type& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
+  node_index_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
+  node_index_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
   GenericV lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
   GenericV rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
   function_t& function() const { return node_vector_singleton()[index_].function(); }
-  node_index_type& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
+  node_index_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
   GenericV argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
-  static GenericV variable(node_index_type index) {
+  static GenericV variable(node_index_t index) {
     GenericV result;
     result.type() = type_t::variable;
     result.variable() = index;
@@ -301,7 +301,7 @@ struct GenericV : node_index_allocator {
   }
 };
 using V = GenericV<false>;
-static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_type).");
+static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_t).");
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
@@ -483,18 +483,18 @@ using V2X = typename v2x_impl<V>::type;
 
 // Arithmetic operations and mathematical functions are defined outside namespace fncas::impl.
 
-#define DECLARE_OP(OP, OP2, NAME)                                                             \
-  inline fncas::impl::V operator OP(const fncas::impl::V& lhs, const fncas::impl::V& rhs) {   \
-    fncas::impl::V result;                                                                    \
-    result.type() = fncas::impl::type_t::operation;                                           \
-    result.operation() = fncas::impl::operation_t::NAME;                                      \
-    result.lhs_index() = lhs.index_;                                                          \
-    result.rhs_index() = rhs.index_;                                                          \
-    return result;                                                                            \
-  }                                                                                           \
-  inline const fncas::impl::V& operator OP2(fncas::impl::V& lhs, const fncas::impl::V& rhs) { \
-    lhs = lhs OP rhs;                                                                         \
-    return lhs;                                                                               \
+#define DECLARE_OP(OP, OP2, NAME)                                                                   \
+  inline ::fncas::impl::V operator OP(const ::fncas::impl::V& lhs, const ::fncas::impl::V& rhs) {   \
+    ::fncas::impl::V result;                                                                        \
+    result.type() = ::fncas::impl::type_t::operation;                                               \
+    result.operation() = ::fncas::impl::operation_t::NAME;                                          \
+    result.lhs_index() = lhs.index_;                                                                \
+    result.rhs_index() = rhs.index_;                                                                \
+    return result;                                                                                  \
+  }                                                                                                 \
+  inline const ::fncas::impl::V& operator OP2(::fncas::impl::V& lhs, const ::fncas::impl::V& rhs) { \
+    lhs = lhs OP rhs;                                                                               \
+    return lhs;                                                                                     \
   }
 
 DECLARE_OP(+, +=, add);
@@ -509,36 +509,36 @@ using namespace std;
 
 #ifndef INJECT_FNCAS_INTO_NAMESPACE_STD
 // Put the "compile-as-you-execute" implementations of math functions into `fncas::impl::functions::`.
-#define DECLARE_FUNCTION(F)                                 \
-  namespace fncas {                                         \
-  inline fncas::impl::V F(const fncas::impl::V& argument) { \
-    fncas::impl::V result;                                  \
-    result.type() = fncas::impl::type_t::function;          \
-    result.function() = fncas::impl::function_t::F;         \
-    result.argument_index() = argument.index_;              \
-    return result;                                          \
-  }                                                         \
-  }                                                         \
-  namespace fncas {                                         \
-  namespace impl {                                          \
-  using ::fncas::F;                                         \
-  }                                                         \
+#define DECLARE_FUNCTION(F)                                     \
+  namespace fncas {                                             \
+  inline ::fncas::impl::V F(const ::fncas::impl::V& argument) { \
+    ::fncas::impl::V result;                                    \
+    result.type() = ::fncas::impl::type_t::function;            \
+    result.function() = ::fncas::impl::function_t::F;           \
+    result.argument_index() = argument.index_;                  \
+    return result;                                              \
+  }                                                             \
+  }                                                             \
+  namespace fncas {                                             \
+  namespace impl {                                              \
+  using ::fncas::F;                                             \
+  }                                                             \
   }
 #else
 // Expose math functions into `std::` as well.
 // NOTE: This is in violation of `C++11: 17.6.4.2.1/1`, and hence guarded. CC @dkorolev, @mzhurovich.
-#define DECLARE_FUNCTION(F)                                 \
-  namespace fncas {                                         \
-  inline fncas::impl::V F(const fncas::impl::V& argument) { \
-    fncas::impl::V result;                                  \
-    result.type() = fncas::impl::type_t::function;          \
-    result.function() = fncas::impl::function_t::F;         \
-    result.argument_index() = argument.index_;              \
-    return result;                                          \
-  }                                                         \
-  }                                                         \
-  namespace std {                                           \
-  using ::fncas::F;                                         \
+#define DECLARE_FUNCTION(F)                                     \
+  namespace fncas {                                             \
+  inline ::fncas::impl::V F(const ::fncas::impl::V& argument) { \
+    ::fncas::impl::V result;                                    \
+    result.type() = ::fncas::impl::type_t::function;            \
+    result.function() = ::fncas::impl::function_t::F;           \
+    result.argument_index() = argument.index_;                  \
+    return result;                                              \
+  }                                                             \
+  }                                                             \
+  namespace std {                                               \
+  using ::fncas::F;                                             \
   }
 #endif
 
@@ -556,8 +556,8 @@ DECLARE_FUNCTION(unit_step);
 DECLARE_FUNCTION(ramp);
 
 // Unary plus and unary minus.
-inline fncas::impl::V operator+(const fncas::impl::V& x) { return x; }
-inline fncas::impl::V operator-(const fncas::impl::V& x) { return 0.0 - x; }
+inline ::fncas::impl::V operator+(const ::fncas::impl::V& x) { return x; }
+inline ::fncas::impl::V operator-(const ::fncas::impl::V& x) { return 0.0 - x; }
 
 namespace fncas {
 

@@ -57,7 +57,7 @@ T SimpleFunction(const std::vector<T>& x) {
   return ParametrizedFunction(x, 2u);
 }
 
-// `variables_vector_t` behaves in a way that makes it a drop-in substitute of `std::vector<term_t>`.
+// `term_vector_t` behaves in a way that makes it a drop-in substitute of `std::vector<term_t>`.
 static_assert(std::is_same<typename fncas::term_vector_t::value_type, fncas::term_t>::value, "");
 
 // To accomplish the above, `std::vector<fncas::term_t>` is overridden accordingly.

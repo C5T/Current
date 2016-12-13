@@ -79,7 +79,7 @@ struct compiled_expression final : noncopyable {
 
   const std::string lib_filename_;
 
-  using gradient_indexes_t = std::vector<node_index_type>;
+  using gradient_indexes_t = std::vector<node_index_t>;
   gradient_indexes_t gradient_indexes_;
 
   explicit compiled_expression(const std::string& lib_filename,
@@ -160,7 +160,7 @@ struct compiled_expression final : noncopyable {
 
   std::vector<double> compute_compiled_g(const std::vector<double>& x) const { return compute_compiled_g(&x[0]); }
 
-  node_index_type dim() const { return dim_ ? static_cast<size_t>(dim_()) : 0; }
+  node_index_t dim() const { return dim_ ? static_cast<size_t>(dim_()) : 0; }
   size_t heap_size() const { return heap_size_ ? static_cast<size_t>(heap_size_()) : 0; }
 
   static void syscall(const std::string& command) {
@@ -195,7 +195,7 @@ struct compile_impl final {
       fprintf(f, "\n");
     }
 
-    void compile_eval_f(node_index_type index) {
+    void compile_eval_f(node_index_t index) {
 #ifdef CURRENT_APPLE
       fprintf(f, "_eval_f:\n");
 #else
@@ -211,7 +211,7 @@ struct compile_impl final {
       fprintf(f, "  ret\n");
     }
 
-    void compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
+    void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
       CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
 #ifdef CURRENT_APPLE
       fprintf(f, "_eval_g:\n");
@@ -276,20 +276,20 @@ struct compile_impl final {
     const std::string& filebase;
     FILE* f;
     std::vector<bool> computed;
-    node_index_type max_dim = 0;
+    node_index_t max_dim = 0;
 
     // generate_nasm_code_for_node() writes NASM code to evaluate the expression to the file.
-    void generate_nasm_code_for_node(node_index_type index) {
+    void generate_nasm_code_for_node(node_index_t index) {
       const double d_0 = 0;
       const double d_1 = 1;
-      std::stack<node_index_type> stack;
+      std::stack<node_index_t> stack;
       stack.push(index);
       while (!stack.empty()) {
-        const node_index_type i = stack.top();
+        const node_index_t i = stack.top();
         stack.pop();
-        const node_index_type dependent_i = ~i;
+        const node_index_t dependent_i = ~i;
         if (i > dependent_i) {
-          max_dim = std::max(max_dim, static_cast<node_index_type>(i));
+          max_dim = std::max(max_dim, static_cast<node_index_t>(i));
           if (computed.size() <= static_cast<size_t>(i)) {
             computed.resize(static_cast<size_t>(i) + 1);
           }
@@ -407,7 +407,7 @@ struct compile_impl final {
       fprintf(f, "\n");
     }
 
-    void compile_eval_f(node_index_type index) {
+    void compile_eval_f(node_index_t index) {
 #ifdef CURRENT_APPLE
       fprintf(f, "_eval_f:\n");
 #else
@@ -423,7 +423,7 @@ struct compile_impl final {
       fprintf(f, "  ret\n");
     }
 
-    void compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
+    void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
       CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
 #ifdef CURRENT_APPLE
       fprintf(f, "_eval_g:\n");
@@ -479,20 +479,20 @@ struct compile_impl final {
     const std::string& filebase;
     FILE* f;
     std::vector<bool> computed;
-    node_index_type max_dim = 0;
+    node_index_t max_dim = 0;
 
     // generate_as_code_for_node() writes AS code to evaluate the expression to the file.
-    void generate_as_code_for_node(node_index_type index) {
+    void generate_as_code_for_node(node_index_t index) {
       const double d_0 = 0;
       const double d_1 = 1;
-      std::stack<node_index_type> stack;
+      std::stack<node_index_t> stack;
       stack.push(index);
       while (!stack.empty()) {
-        const node_index_type i = stack.top();
+        const node_index_t i = stack.top();
         stack.pop();
-        const node_index_type dependent_i = ~i;
+        const node_index_t dependent_i = ~i;
         if (i > dependent_i) {
-          max_dim = std::max(max_dim, static_cast<node_index_type>(i));
+          max_dim = std::max(max_dim, static_cast<node_index_t>(i));
           if (computed.size() <= static_cast<size_t>(i)) {
             computed.resize(static_cast<size_t>(i) + 1);
           }
@@ -602,14 +602,14 @@ struct compile_impl final {
       fprintf(f, "#define ramp(x) ((x) >= 0 ? (x) : 0)\n");
     }
 
-    void compile_eval_f(node_index_type index) {
+    void compile_eval_f(node_index_t index) {
       fprintf(f, "double eval_f(const double* x, double* a) {\n");
       generate_c_code_for_node(index);
       fprintf(f, "  return a[%lld];\n", static_cast<long long>(index));
       fprintf(f, "}\n");
     }
 
-    void compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
+    void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
       CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
       fprintf(f, "double eval_g(const double* x, double* a) {\n");
       generate_c_code_for_node(f_index);
@@ -638,18 +638,18 @@ struct compile_impl final {
     const std::string& filebase;
     FILE* f;
     std::vector<bool> computed;
-    node_index_type max_dim = 0;
+    node_index_t max_dim = 0;
 
     // generate_c_code_for_node() writes C code to evaluate the expression to the file.
-    void generate_c_code_for_node(node_index_type index) {
-      std::stack<node_index_type> stack;
+    void generate_c_code_for_node(node_index_t index) {
+      std::stack<node_index_t> stack;
       stack.push(index);
       while (!stack.empty()) {
-        const node_index_type i = stack.top();
+        const node_index_t i = stack.top();
         stack.pop();
-        const node_index_type dependent_i = ~i;
+        const node_index_t dependent_i = ~i;
         if (i > dependent_i) {
-          max_dim = std::max(max_dim, static_cast<node_index_type>(i));
+          max_dim = std::max(max_dim, static_cast<node_index_t>(i));
           if (computed.size() <= static_cast<size_t>(i)) {
             computed.resize(static_cast<size_t>(i) + 1);
           }
@@ -706,7 +706,7 @@ struct compile_impl final {
   typedef FNCAS_JIT selected;
 };
 
-inline compiled_expression compile_eval_f(node_index_type index) {
+inline compiled_expression compile_eval_f(node_index_t index) {
   const std::string filebase(current::FileSystem::GenTmpFileName());
   const std::string filename_so = filebase + ".so";
   current::FileSystem::RmFile(filename_so, current::FileSystem::RmFileParameters::Silent);
@@ -719,7 +719,7 @@ inline compiled_expression compile_eval_f(node_index_type index) {
 
 inline compiled_expression compile_eval_f(const V& node) { return compile_eval_f(node.index_); }
 
-inline compiled_expression compile_eval_g(node_index_type f_index, const std::vector<node_index_type>& g_indexes) {
+inline compiled_expression compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
   const std::string filebase(current::FileSystem::GenTmpFileName());
   const std::string filename_so = filebase + ".so";
   current::FileSystem::RmFile(filename_so, current::FileSystem::RmFileParameters::Silent);
@@ -731,7 +731,7 @@ inline compiled_expression compile_eval_g(node_index_type f_index, const std::ve
 }
 
 inline compiled_expression compile_eval_g(const V& f_node, const std::vector<V>& g_nodes) {
-  std::vector<node_index_type> g_node_indexes;
+  std::vector<node_index_t> g_node_indexes;
   g_node_indexes.reserve(g_nodes.size());
   for (const auto& gi : g_nodes) {
     g_node_indexes.push_back(gi.index_);
