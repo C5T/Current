@@ -23,8 +23,8 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_BASE_H
-#define FNCAS_BASE_H
+#ifndef FNCAS_FNCAS_BASE_H
+#define FNCAS_FNCAS_BASE_H
 
 #include "../../Bricks/port.h"
 
@@ -67,4 +67,4 @@ enum class function_t : uint8_t { sqr, sqrt, exp, log, sin, cos, tan, asin, acos
 }  // namespace fncas::impl
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_BASE_H
+#endif  // #ifndef FNCAS_FNCAS_BASE_H

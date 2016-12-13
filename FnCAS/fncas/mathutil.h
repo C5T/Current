@@ -23,8 +23,8 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_MATHUTIL_H
-#define FNCAS_MATHUTIL_H
+#ifndef FNCAS_FNCAS_MATHUTIL_H
+#define FNCAS_FNCAS_MATHUTIL_H
 
 #include "base.h"
 #include "exceptions.h"
@@ -189,4 +189,4 @@ ValueAndPoint Backtracking(F&& f,
 }  // namespace fncas::impl
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_MATHUTIL_H
+#endif  // #ifndef FNCAS_FNCAS_MATHUTIL_H

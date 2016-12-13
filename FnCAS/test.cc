@@ -38,10 +38,12 @@ SOFTWARE.
 #define unittest_fncas_namespace std
 #endif  // INJECT_FNCAS_INTO_NAMESPACE_STD
 
-#include "fncas/fncas.h"
+#include "fncas.h"
 
 #include <functional>
 #include <thread>
+
+#include "docu/docu_01.cc"
 
 template <typename T>
 T ParametrizedFunction(const std::vector<T>& x, size_t c) {

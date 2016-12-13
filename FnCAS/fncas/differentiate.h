@@ -23,8 +23,8 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_DIFFERENTIATE_H
-#define FNCAS_DIFFERENTIATE_H
+#ifndef FNCAS_FNCAS_DIFFERENTIATE_H
+#define FNCAS_FNCAS_DIFFERENTIATE_H
 
 #include <vector>
 
@@ -249,4 +249,4 @@ using SlowGradient = impl::g_intermediate;
 
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_DIFFERENTIATE_H
+#endif  // #ifndef FNCAS_FNCAS_DIFFERENTIATE_H

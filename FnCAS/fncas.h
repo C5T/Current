@@ -1,7 +1,7 @@
 /*******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+ * Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,9 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_FNCAS_FNCAS_H
-#define FNCAS_FNCAS_FNCAS_H
+#ifndef FNCAS_FNCAS_H
+#define FNCAS_FNCAS_H
 
-#include "../../port.h"
+#include "fncas/fncas.h"
 
-#include "base.h"
-#include "node.h"
-#include "differentiate.h"
-#include "optimize.h"
-#include "jit.h"
-
-#endif  // FNCAS_FNCAS_FNCAS_H
+#endif  // FNCAS_FNCAS_H

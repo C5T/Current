@@ -26,8 +26,8 @@
 // FnCAS on-the-fly compilation logic.
 // FNCAS_JIT must be defined to enable, the supported values are `NASM`, `CLANG`, and `AS`.
 
-#ifndef FNCAS_JIT_H
-#define FNCAS_JIT_H
+#ifndef FNCAS_FNCAS_JIT_H
+#define FNCAS_FNCAS_JIT_H
 
 #ifndef FNCAS_USE_LONG_DOUBLE
 
@@ -786,4 +786,4 @@ using Gradient = impl::g_compiled;
 
 #endif  // #ifndef FNCAS_USE_LONG_DOUBLE
 
-#endif  // #ifndef FNCAS_JIT_H
+#endif  // #ifndef FNCAS_FNCAS_JIT_H

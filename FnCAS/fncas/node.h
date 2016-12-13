@@ -23,8 +23,8 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_NODE_H
-#define FNCAS_NODE_H
+#ifndef FNCAS_FNCAS_NODE_H
+#define FNCAS_FNCAS_NODE_H
 
 #include <cmath>
 #include <functional>
@@ -578,4 +578,4 @@ using SlowFunction = impl::f_intermediate;
 
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_NODE_H
+#endif  // #ifndef FNCAS_FNCAS_NODE_H

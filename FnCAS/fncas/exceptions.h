@@ -23,8 +23,8 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_EXCEPTIONS_H
-#define FNCAS_EXCEPTIONS_H
+#ifndef FNCAS_FNCAS_EXCEPTIONS_H
+#define FNCAS_FNCAS_EXCEPTIONS_H
 
 #include "../../Bricks/exception.h"
 
@@ -60,4 +60,4 @@ struct BacktrackingException : FnCASOptimizationException {
 }  // namespace fncas::exceptions
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_EXCEPTIONS_H
+#endif  // #ifndef FNCAS_FNCAS_EXCEPTIONS_H

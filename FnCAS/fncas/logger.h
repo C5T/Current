@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef FNCAS_LOGGER_H
-#define FNCAS_LOGGER_H
+#ifndef FNCAS_FNCAS_LOGGER_H
+#define FNCAS_FNCAS_LOGGER_H
 
 #include "../../port.h"
 
@@ -109,4 +109,4 @@ class OptimizerStats final {
 }  // namespace fncas::optimize
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_LOGGER_H
+#endif  // #ifndef FNCAS_FNCAS_LOGGER_H

@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef FNCAS_OPTIMIZE_H
-#define FNCAS_OPTIMIZE_H
+#ifndef FNCAS_FNCAS_OPTIMIZE_H
+#define FNCAS_FNCAS_OPTIMIZE_H
 
 #include <algorithm>
 #include <numeric>
@@ -560,4 +560,4 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
 }  // namespace fncas::optimize
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_OPTIMIZE_H
+#endif  // #ifndef FNCAS_FNCAS_OPTIMIZE_H
