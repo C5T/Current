@@ -1,5 +1,5 @@
 {
-  "name": "CurrentEJS",
+  "name": "current-ejs",
   "version": "0.0.1",
   "description": "A simple EJS-expanding server.",
   "homepage": "https://github.com/C5T/Current",
