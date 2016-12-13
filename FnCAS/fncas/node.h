@@ -32,6 +32,7 @@
 #include <map>
 #include <stack>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <exception>
 
