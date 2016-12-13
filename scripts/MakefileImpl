@@ -85,7 +85,7 @@ endif
 docu_impl: README.md
 
 README.md:
-	${CURRENT_SCRIPTS_DIR_FULL_PATH}/gen-docu.sh >"$@"
+	${CURRENT_SCRIPTS_DIR_FULL_PATH}/gen-readme.sh
 
 debug: phony_current_build
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)
