@@ -13,6 +13,11 @@ PREREQUISITES="""
 
 set -u -e
 
+if ! npm i ; then
+  echo 'Prerequisite: `npm`.'
+  exit 1
+fi
+
 TMPFILE=$(mktemp)
 node server.js > $TMPFILE &
 SERVER_PID=$!
