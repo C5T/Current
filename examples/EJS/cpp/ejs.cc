@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "../../../port.h"
+
+#include <iostream>
+
 #include "../../../Bricks/dflags/dflags.h"
 #include "../../../Blocks/HTTP/api.h"
 #include "../../../TypeSystem/struct.h"
@@ -83,6 +87,8 @@ int main(int argc, char** argv) {
           request(response);
         }
       });
+
+  std::cout << "c++ app listening on port " << FLAGS_ejs_server_port << std::endl;
 
   http_server.Join();
 }
