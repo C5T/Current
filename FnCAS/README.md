@@ -6,7 +6,7 @@ FnCAS, originally stands for "FnCAS is not a Computer Algebra System", is a fast
 
 The snippets below require nothing but `git clone`-ing Current and `#include`-ing `FnCAS/fncas/fncas.h`.
 
-(Fine, for `JSON()` you'd also need `TypeSystem/Serialization/json.h`. But, really, that's it.
+(Fine, for `JSON()` you'd also need `TypeSystem/Serialization/json.h`. But, really, that's it.)
 
 ```cpp
 
