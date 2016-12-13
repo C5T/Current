@@ -85,10 +85,11 @@ using namespace fncas_docu;
   number_of_calls = 0;
   fncas::function_blueprint_t blueprint = simple_function(x);
   ASSERT_EQ(1, number_of_calls);
+  number_of_calls = 0;
   EXPECT_EQ(5, blueprint(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, blueprint(std::vector<double>({-5, -5})));
-  ASSERT_EQ(1, number_of_calls);  // Blueprint evalution doesn't call the function.
-
+  ASSERT_EQ(0, number_of_calls);  // Blueprint evalution doesn't call the function.
+  
   // Internal only: Examine the textual representation of the blueprint.
   // TODO(dkorolev): One day we may want to clean this syntax and its result.
   EXPECT_EQ("(sqr((x[0]+1))+sqr((x[1]+2)))",
@@ -114,7 +115,7 @@ using namespace fncas_docu;
   EXPECT_EQ(4*4 + 3*3, jit_reference(std::vector<double>({-5, -5})));
   ASSERT_EQ(0, number_of_calls);
   
-  // Wrap the function into an approximate gradient computer.
+  // Wrap the function into the approximate gradient computer.
   // The `2` parameter is the dimensionality of the function.
   const auto g_approximate = fncas::gradient_approximate_t(simple_function<double>, 2);
   number_of_calls = 0;
