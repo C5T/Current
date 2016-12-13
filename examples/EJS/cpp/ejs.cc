@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 
   auto& http_server = HTTP(FLAGS_ejs_server_port);
 
-  auto http_route_scope = http_server.Register(
+  const auto http_route_scope = http_server.Register(
       "/",
       [](Request request) {
         const PrimesResponse response = [&request]() {
@@ -83,5 +83,6 @@ int main(int argc, char** argv) {
           request(response);
         }
       });
+
   http_server.Join();
 }
