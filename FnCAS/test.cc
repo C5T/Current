@@ -171,7 +171,7 @@ TEST(FnCAS, CompiledGradientsWrapper) {
 }
 
 TEST(FnCAS, CompiledSqrGradientWrapper) {
-  // The `sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT. -- D.K.
+  // The `sqr()` function is a special case, which it worth unit-testing with different `FNCAS_JIT`. -- D.K.
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::variables_vector_t x(2);
