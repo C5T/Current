@@ -74,7 +74,7 @@ using namespace fncas_docu;
   number_of_calls = 0;
   EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, reference(std::vector<double>({-5, -5})));
-  ASSERT_EQ(2, number_of_calls);  // By-reference evaluation doesn't call the function.
+  ASSERT_EQ(2, number_of_calls);  // By-reference evaluation just calls the function.
 
 }
   
@@ -115,7 +115,10 @@ using namespace fncas_docu;
   EXPECT_EQ(4*4 + 3*3, jit_reference(std::vector<double>({-5, -5})));
   ASSERT_EQ(0, number_of_calls);
   
-  // Wrap the function into the approximate gradient computer.
+  // Wrap the function into the approximate gradient computer, which simply does
+  // `g[i] = (f(x + unit[i] * eps) - f(x - unit[i] * eps)) / (eps * 2)` per each dimension,
+  // where `g[i]` is the i-th component of the gradient, `x` is the point, `unit[i]`
+  // is the `(0,...,0,1,0,...,0)` vector with a `1` at index `i`, and `eps` is small.
   // The `2` parameter is the dimensionality of the function.
   const auto g_approximate = fncas::gradient_approximate_t(simple_function<double>, 2);
   number_of_calls = 0;
