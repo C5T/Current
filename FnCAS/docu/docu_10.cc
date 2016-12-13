@@ -45,7 +45,7 @@ static int number_of_calls = 0;
   T simple_function(const std::vector<T>& x) {
     ++number_of_calls;
     assert(x.size() == 2u);
-    // `sqr(x)` is a convenience defined within `fncas::` for ML purposes,
+    // `sqr(x)` is a convenience wrapper defined within `fncas::` for ML purposes,
     // along with `ramp(v)` and `unit_step(v)`.
     return fncas::sqr(x[0] + 1) + fncas::sqr(x[1] + 2);
     // Alternatively, `#define INJECT_FNCAS_INTO_NAMESPACE_STD` and use
