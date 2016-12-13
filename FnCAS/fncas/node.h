@@ -273,7 +273,9 @@ struct GenericV : node_index_allocator {
     if (type() == type_t::variable) {
       return "x[" + std::to_string(variable()) + "]";
     } else if (type() == type_t::value) {
-      return std::to_string(value());
+      std::ostringstream os;
+      os << value();
+      return os.str();  // std::to_string(value()); <- this doesn't print integers as integers -- D.K.
     } else if (type() == type_t::operation) {
       // Note: this recursive call will overflow the stack with SEGFAULT on deep functions.
       // For debugging purposes only.
@@ -572,9 +574,9 @@ using term_vector_t = std::vector<term_t>;
 // point in time.
 using variables_vector_t = impl::X;
 
-// TODO(dkorolev): Clean up the namespaces.
-using NativeFunction = impl::f_native;
-using SlowFunction = impl::f_intermediate;
+using function_t = impl::f;
+using function_reference_t = impl::f_native;
+using function_blueprint_t = impl::f_intermediate;
 
 }  // namespace fncas
 

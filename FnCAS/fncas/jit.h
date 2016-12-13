@@ -778,9 +778,8 @@ struct g_compiled final : g {
 
 }  // namespace fncas::impl
 
-// TODO(dkorolev): Clean up the namespaces.
-using Function = impl::f_compiled;
-using Gradient = impl::g_compiled;
+using function_compiled_t = impl::f_compiled;
+using gradient_compiled_t = impl::g_compiled;
 
 }  // namespace fncas
 

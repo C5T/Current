@@ -243,9 +243,9 @@ struct node_differentiate_impl<X> {
 
 }  // namespace fncas::impl
 
-// TODO(dkorolev): Clean up the namespaces.
-using ApproximateGradient = impl::g_approximate;
-using SlowGradient = impl::g_intermediate;
+using gradient_t = impl::g;
+using gradient_approximate_t = impl::g_approximate;
+using gradient_blueprint_t = impl::g_intermediate;
 
 }  // namespace fncas
 
