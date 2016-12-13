@@ -1,0 +1,40 @@
+{
+  "name": "CurrentEJS",
+  "version": "0.0.1",
+  "description": "A simple EJS-expanding server.",
+  "homepage": "https://github.com/C5T/Current",
+  "repository": {
+    "url": "git@github.com:C5T/Current.git",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/C5T/Current/issues"
+  },
+  "author": {
+    "email": "dmitry.korolev@gmail.com",
+    "url": "http://dimakorolev.com/",
+    "name": "Dima Korolev"
+  },
+  "licenses": [{
+    "type": "MIT"
+  }],
+  "license": "MIT",
+  "tags": [
+    "current",
+    "ejs",
+    "cpp",
+    "backend"
+  ],
+  "keywords": [
+    "current",
+    "ejs",
+    "cpp",
+    "backend"
+  ],
+  "main": "server.js",
+  "dependencies": {
+    "body-parser": "*",
+    "express": "*",
+    "ejs": "*"
+  }
+}
