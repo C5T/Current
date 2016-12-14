@@ -744,6 +744,85 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
+TEST(Karl, ChangeDependenciesInClaire) {
+  current::time::ResetToZero();
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+  const uint16_t claire_port = PickPortForUnitTest();
+  current::karl::Claire claire(karl_locator, "unittest", claire_port, {"http://127.0.0.1:12345"});
+  // Register with no custom status filler and wait for the confirmation from Karl.
+  claire.Register(nullptr, true);
+
+  // Karl sees `claire`'s single dependency on `127.0.0.1:12345` as unresolved.
+  {
+    unittest_karl_status_t status;
+    const auto body = HTTP(GET(Printf("http://localhost:%d?full&from=0", FLAGS_karl_test_fleet_view_port))).body;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(body)) << body;
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& server = status.machines["127.0.0.1"];
+    auto& per_ip_services = server.services;
+    ASSERT_EQ(1u, per_ip_services.size());
+    auto& claire_service_info = per_ip_services[claire.Codename()];
+    ASSERT_EQ("unittest", claire_service_info.service);
+    EXPECT_EQ(0u, claire_service_info.dependencies.size());
+    auto& unresolved_dependencies = claire_service_info.unresolved_dependencies;
+    ASSERT_EQ(1u, unresolved_dependencies.size());
+    ASSERT_EQ("http://127.0.0.1:12345/.current", unresolved_dependencies[0]);
+  }
+
+  // Launch another Claire to create a resolvable dependency.
+  const int claire_to_depend_on_update_ts = 1000;
+  current::time::SetNow(std::chrono::microseconds(claire_to_depend_on_update_ts),
+                        std::chrono::microseconds(claire_to_depend_on_update_ts + 100));
+  const uint16_t claire_to_depend_on_port = PickPortForUnitTest();
+  current::karl::Claire claire_to_depend_on(karl_locator, "unittest", claire_to_depend_on_port);
+  // Register with no custom status filler and wait for the confirmation from Karl.
+  claire_to_depend_on.Register(nullptr, true);
+
+  // Modify `claire`'s dependency list and notify Karl.
+  const int last_update_ts = 2000;
+  current::time::SetNow(std::chrono::microseconds(last_update_ts), std::chrono::microseconds(last_update_ts + 100));
+  const std::string dependency_url = Printf("http://127.0.0.1:%d", claire_to_depend_on_port);
+  claire.SetDependencies({dependency_url});
+  claire.ForceSendKeepalive();
+
+  // Wait for Karl to receive `claire`'s latest keepalive.
+  {
+    const std::string karl_status_url =
+        Printf("http://localhost:%d?full&from=%d", FLAGS_karl_test_fleet_view_port, last_update_ts);
+    bool karl_received_last_keepalive = false;
+    while (!karl_received_last_keepalive) {
+      const auto status = TryParseJSON<unittest_karl_status_t>(HTTP(GET(karl_status_url)).body);
+      ASSERT_TRUE(Exists(status));
+      karl_received_last_keepalive = Value(status).machines.size() > 0u;
+    }
+  }
+
+  // Karl lists a resolved dependency for `claire`.
+  {
+    // We should pass `claire_to_depend_on_update_ts` as `from` argument for proper dependency resolution.
+    const std::string karl_status_url =
+        Printf("http://localhost:%d?full&from=%d", FLAGS_karl_test_fleet_view_port, claire_to_depend_on_update_ts);
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(HTTP(GET(karl_status_url)).body));
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& server = status.machines["127.0.0.1"];
+    auto& per_ip_services = server.services;
+    ASSERT_EQ(2u, per_ip_services.size());
+    auto& claire_service_info = per_ip_services[claire.Codename()];
+    ASSERT_EQ("unittest", claire_service_info.service);
+    EXPECT_EQ(0u, claire_service_info.unresolved_dependencies.size());
+    auto& dependencies = claire_service_info.dependencies;
+    ASSERT_EQ(1u, dependencies.size());
+    ASSERT_EQ(claire_to_depend_on.Codename(), dependencies[0]);
+  }
+}
+
 TEST(Karl, ClaireNotifiesUserObject) {
   using namespace karl_unittest;
 
@@ -793,6 +872,7 @@ TEST(Karl, ModifiedClaireBoilerplateStatus) {
   current::karl::Claire claire(karl_locator, "unittest", claire_port);
   claire.BoilerplateStatus().cloud_instance_name = "test_instance";
   claire.BoilerplateStatus().cloud_availability_group = "us-west-1";
+  // Register with no custom status filler and wait for the confirmation from Karl.
   claire.Register(nullptr, true);
 
   // Modified boilerplate status is propagated to Karl.
