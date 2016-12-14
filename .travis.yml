@@ -20,7 +20,7 @@ matrix:
     - script: make individual_tests
       env:
       - NDEBUG=0
-      - CPLUSPLUS=clang++-3.6
+      - CPLUSPLUS=clang++-3.6 -stdlib=libc++
       compiler: "clang++-3.6, Job: make individual_tests"
       os: linux
       addons:
@@ -52,7 +52,7 @@ matrix:
     - script: make individual_tests
       env:
       - NDEBUG=1
-      - CPLUSPLUS=clang++-3.6
+      - CPLUSPLUS=clang++-3.6 -stdlib=libc++
       compiler: "clang++-3.6, Job: make individual_tests"
       os: linux
       addons:
