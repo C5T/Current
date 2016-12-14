@@ -456,9 +456,9 @@ class GenericClaire final : private DummyClaireNotifiable {
         }
       }
     } else if (r.method == "POST") {
-      if (r.url.query.has("send_keepalive")) {
+      if (r.url.query.has("initiate_keepalive")) {
         ForceSendKeepalive();
-        r("OK\n");
+        r("Keepalive will be sent shortly.\n");
       } else if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
         URL decomposed_karl_url(r.url.query["report_to"]);
         if (!decomposed_karl_url.host.empty()) {
