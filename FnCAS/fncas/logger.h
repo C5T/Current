@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef FNCAS_LOGGER_H
-#define FNCAS_LOGGER_H
+#ifndef FNCAS_FNCAS_LOGGER_H
+#define FNCAS_FNCAS_LOGGER_H
 
 #include "../../port.h"
 
@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../../Bricks/util/singleton.h"
 
 namespace fncas {
+namespace impl {
 
 class OptimizerLoggerImpl final {
  public:
@@ -64,9 +65,13 @@ class OptimizerLoggerImpl final {
 inline OptimizerLoggerImpl& OptimizerLogger() { return current::ThreadLocalSingleton<OptimizerLoggerImpl>(); }
 
 struct ScopedLogToStderr final {
-  ScopedLogToStderr() { fncas::OptimizerLogger().LogToStderr(); }
-  ~ScopedLogToStderr() { fncas::OptimizerLogger().DisableLogging(); }
+  ScopedLogToStderr() { fncas::impl::OptimizerLogger().LogToStderr(); }
+  ~ScopedLogToStderr() { fncas::impl::OptimizerLogger().DisableLogging(); }
 };
+
+}  // namespace fncas::impl
+
+namespace optimize {
 
 class OptimizerStats final {
  public:
@@ -81,7 +86,7 @@ class OptimizerStats final {
     if (n_backtracking_calls_) {
       os << ", " << n_backtracking_calls_ << " backtracking calls of " << n_backtracking_steps_ << " total steps";
     }
-    OptimizerLogger().Log(name_ + ": " + os.str() + '.');
+    impl::OptimizerLogger().Log(name_ + ": " + os.str() + '.');
   }
 
   void JournalFunction() { ++n_f_; }
@@ -101,6 +106,7 @@ class OptimizerStats final {
   size_t n_backtracking_steps_ = 0;
 };
 
+}  // namespace fncas::optimize
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_LOGGER_H
+#endif  // #ifndef FNCAS_FNCAS_LOGGER_H

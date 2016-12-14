@@ -6,7 +6,7 @@
 
 # TODO(dkorolev): Add a top-level 'make update' target to update from GitHub.
 
-.PHONY: test all indent clean check coverage
+.PHONY: test docu docu_impl README.md all indent clean check coverage
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
@@ -75,10 +75,22 @@ default: all
 test: .current/test
 	.current/test --current_runtime_arch=${OS}
 
+docu: docu_impl
+	# On Linux, `make docu` copies the freshly regenerated README.md into clipboard right away.
+	# TODO(dkorolev): Perhaps condition on the existence of `xclip` is a better idea?
+ifeq ($(shell uname), Linux)
+	cat README.md | xclip -selection c
+endif
+
+docu_impl: README.md
+
+README.md:
+	${CURRENT_SCRIPTS_DIR_FULL_PATH}/gen-readme.sh
+
 debug: phony_current_build
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)
 
-all: ${BIN}
+all: ${BIN} README.md
 
 clean:
 	find . -type d -name .current | xargs rm -rf

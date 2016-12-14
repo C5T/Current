@@ -23,12 +23,13 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_EXCEPTIONS_H
-#define FNCAS_EXCEPTIONS_H
+#ifndef FNCAS_FNCAS_EXCEPTIONS_H
+#define FNCAS_FNCAS_EXCEPTIONS_H
 
 #include "../../Bricks/exception.h"
 
 namespace fncas {
+namespace exceptions {
 
 struct FnCASException : current::Exception {
   using super_t = current::Exception;
@@ -56,6 +57,7 @@ struct BacktrackingException : FnCASOptimizationException {
   using FnCASOptimizationException::FnCASOptimizationException;
 };
 
+}  // namespace fncas::exceptions
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_EXCEPTIONS_H
+#endif  // #ifndef FNCAS_FNCAS_EXCEPTIONS_H

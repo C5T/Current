@@ -23,8 +23,8 @@
  * SOFTWARE.
  * *******************************************************************************/
 
-#ifndef FNCAS_MATHUTIL_H
-#define FNCAS_MATHUTIL_H
+#ifndef FNCAS_FNCAS_MATHUTIL_H
+#define FNCAS_FNCAS_MATHUTIL_H
 
 #include "base.h"
 #include "exceptions.h"
@@ -49,6 +49,8 @@ CURRENT_STRUCT(ValueAndPoint) {
 };
 
 inline bool IsNormal(double_t arg) { return (std::isnormal(arg) || arg == 0.0); }
+
+namespace impl {
 
 template <typename T>
 typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
@@ -140,7 +142,7 @@ ValueAndPoint Backtracking(F&& f,
                            G&& g,
                            const std::vector<double_t>& current_point,
                            const std::vector<double_t>& direction,
-                           OptimizerStats& stats,
+                           optimize::OptimizerStats& stats,
                            const double_t alpha = 0.5,
                            const double_t beta = 0.8,
                            const size_t max_steps = 100) {
@@ -180,10 +182,11 @@ ValueAndPoint Backtracking(F&& f,
     if (logger) {
       logger.Log("Backtracking: No non-NAN and non-INF step found.");
     }
-    CURRENT_THROW(BacktrackingException("!fncas::IsNormal(test_f_value)"));
+    CURRENT_THROW(exceptions::BacktrackingException("!fncas::impl::IsNormal(test_f_value)"));
   }
 }
 
+}  // namespace fncas::impl
 }  // namespace fncas
 
-#endif  // #ifndef FNCAS_MATHUTIL_H
+#endif  // #ifndef FNCAS_FNCAS_MATHUTIL_H
