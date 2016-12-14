@@ -149,13 +149,30 @@ class GenericClaire final : private DummyClaireNotifiable {
     }
   }
 
-  void AddDependency(const std::string& service) { dependencies_.insert(service); }
+  void AddDependency(const std::string& service) {
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
+    dependencies_.insert(service);
+  }
 
-  void AddDependency(const ClaireServiceKey& service) { dependencies_.insert(service); }
+  void AddDependency(const ClaireServiceKey& service) {
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
+    dependencies_.insert(service);
+  }
 
-  void RemoveDependency(const std::string& service) { dependencies_.erase(service); }
+  void SetDependencies(const std::vector<std::string>& services) {
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
+    dependencies_ = ParseDependencies(services);
+  }
 
-  void RemoveDependency(const ClaireServiceKey& service) { dependencies_.erase(service); }
+  void RemoveDependency(const std::string& service) {
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
+    dependencies_.erase(service);
+  }
+
+  void RemoveDependency(const ClaireServiceKey& service) {
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
+    dependencies_.erase(service);
+  }
 
   void Register(status_generator_t status_filler = nullptr, bool require_karls_confirmation = false) {
     // Register this Claire with Karl and spawn the thread to send regular keepalives.
@@ -222,11 +239,11 @@ class GenericClaire final : private DummyClaireNotifiable {
   }
 
   static std::set<ClaireServiceKey> ParseDependencies(const std::vector<std::string>& dependencies) {
-    std::vector<ClaireServiceKey> result;
+    std::set<ClaireServiceKey> result;
     for (const auto& dependency : dependencies) {
-      result.push_back(ClaireServiceKey(dependency));
+      result.emplace(dependency);
     }
-    return std::set<ClaireServiceKey>(result.begin(), result.end());
+    return result;
   }
 
   void FillBaseKeepaliveStatus(ClaireStatus& status, bool fill_current_build = true) const {
