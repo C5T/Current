@@ -456,7 +456,10 @@ class GenericClaire final : private DummyClaireNotifiable {
         }
       }
     } else if (r.method == "POST") {
-      if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
+      if (r.url.query.has("send_keepalive")) {
+        ForceSendKeepalive();
+        r("OK\n");
+      } else if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
         URL decomposed_karl_url(r.url.query["report_to"]);
         if (!decomposed_karl_url.host.empty()) {
           const std::string karl_url = decomposed_karl_url.ComposeURL();
@@ -466,7 +469,7 @@ class GenericClaire final : private DummyClaireNotifiable {
           r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);
         }
       } else {
-        r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);
+        r("Valid URL parameter required.\n", HTTPResponseCode.BadRequest);
       }
     } else {
       r(current::net::DefaultMethodNotAllowedMessage(),
