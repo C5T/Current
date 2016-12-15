@@ -125,9 +125,8 @@ T SmokeTestFunction(const std::vector<T>& x) {
   return fncas::sqr(x[0]) + fncas::ramp(x[1]) + fncas::unit_step(x[2]);
 }
 
-TEST(FnCAS, AllThreeCompilers) {
+TEST(FnCAS, JITSmokeBaseline) {
   fncas::variables_vector_t x(3);
-
   fncas::function_t<fncas::JIT::Blueprint> a = SmokeTestFunction(x);
 
   EXPECT_EQ(0.0, a({0.0, 0.0, -2.0}));
@@ -137,11 +136,12 @@ TEST(FnCAS, AllThreeCompilers) {
   EXPECT_EQ(0.0, a({0.0, +0.0, -1.0}));
   EXPECT_EQ(2.0, a({0.0, +2.0, -1.0}));
   EXPECT_EQ(9.0, a({3.0, 0.0, -1.0}));
+}
 
+TEST(FnCAS, JITSmokeAS) {
+  fncas::variables_vector_t x(3);
+  fncas::function_t<fncas::JIT::Blueprint> a = SmokeTestFunction(x);
   fncas::function_t<fncas::JIT::AS> b(a);
-  fncas::function_t<fncas::JIT::CLANG> c(a);
-  fncas::function_t<fncas::JIT::NASM> d(a);
-
   EXPECT_EQ(0.0, b({0.0, 0.0, -2.0}));
   EXPECT_EQ(1.0, b({0.0, 0.0, +0.0}));
   EXPECT_EQ(1.0, b({0.0, 0.0, +2.0}));
@@ -149,7 +149,12 @@ TEST(FnCAS, AllThreeCompilers) {
   EXPECT_EQ(0.0, b({0.0, +0.0, -1.0}));
   EXPECT_EQ(2.0, b({0.0, +2.0, -1.0}));
   EXPECT_EQ(9.0, b({3.0, 0.0, -1.0}));
+}
 
+TEST(FnCAS, JITSmokeCLANG) {
+  fncas::variables_vector_t x(3);
+  fncas::function_t<fncas::JIT::Blueprint> a = SmokeTestFunction(x);
+  fncas::function_t<fncas::JIT::CLANG> c(a);
   EXPECT_EQ(0.0, c({0.0, 0.0, -2.0}));
   EXPECT_EQ(1.0, c({0.0, 0.0, +0.0}));
   EXPECT_EQ(1.0, c({0.0, 0.0, +2.0}));
@@ -157,7 +162,12 @@ TEST(FnCAS, AllThreeCompilers) {
   EXPECT_EQ(0.0, c({0.0, +0.0, -1.0}));
   EXPECT_EQ(2.0, c({0.0, +2.0, -1.0}));
   EXPECT_EQ(9.0, c({3.0, 0.0, -1.0}));
+}
 
+TEST(FnCAS, JITSmokeNASM) {
+  fncas::variables_vector_t x(3);
+  fncas::function_t<fncas::JIT::Blueprint> a = SmokeTestFunction(x);
+  fncas::function_t<fncas::JIT::NASM> d(a);
   EXPECT_EQ(0.0, d({0.0, 0.0, -2.0}));
   EXPECT_EQ(1.0, d({0.0, 0.0, +0.0}));
   EXPECT_EQ(1.0, d({0.0, 0.0, +2.0}));
