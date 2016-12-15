@@ -564,8 +564,6 @@ using variables_vector_t = impl::X;
 template <JIT JIT_IMPLEMENTATION>
 using function_t = typename impl::f_impl_selector<JIT_IMPLEMENTATION>::type;
 
-using function_super_t = impl::f_super;  // == `function_t<fncas::JIT::Super>`.
-
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_FNCAS_NODE_H

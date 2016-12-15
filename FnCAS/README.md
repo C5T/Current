@@ -42,7 +42,7 @@ ASSERT_EQ(2, number_of_calls);
 // are native functions, blueprints, or JIT-compiled dynamically linked `.so`-s.
 // The `2` parameter is the dimensionality of the function.
 function_t<JIT::NativeWrapper> native(simple_function<double>, 2);
-const function_super_t& reference = native;
+const function_t<JIT::Super>& reference = native;
 
 number_of_calls = 0;
 EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
@@ -73,14 +73,14 @@ EXPECT_EQ(5, jit(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, jit(std::vector<double>({-5, -5})));
 ASSERT_EQ(0, number_of_calls);
 
-// Confirm both the blueprint and the JIT version can be cast down to `function_super_t`.
-const function_super_t& reference = blueprint;
+// Confirm both the blueprint and the JIT version can be cast down to `function_t<JIT::Super>`.
+const function_t<JIT::Super>& reference = blueprint;
 number_of_calls = 0;
 EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, reference(std::vector<double>({-5, -5})));
 ASSERT_EQ(0, number_of_calls);
 
-const function_super_t& jit_reference = jit;
+const function_t<JIT::Super>& jit_reference = jit;
 number_of_calls = 0;
 EXPECT_EQ(5, jit_reference(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, jit_reference(std::vector<double>({-5, -5})));
