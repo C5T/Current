@@ -169,7 +169,7 @@ class Optimizer : impl::noncopyable {
 template <typename IMPL>
 struct OptimizeImpl;
 
-template <JIT JIT_IMPLEMENTATION, class F, class IMPL>
+template <class F, JIT JIT_IMPLEMENTATION, class IMPL>
 class OptimizeInvoker : public Optimizer<F> {
  public:
   using super_t = Optimizer<F>;
@@ -224,10 +224,10 @@ class OptimizeInvoker : public Optimizer<F> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerSelector;
 
-template <JIT JIT_IMPLEMENTATION, class F>
-class GradientDescentOptimizer final : public OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerSelector> {
+template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
+class GradientDescentOptimizer final : public OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerSelector>;
+  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector>;
   using super_t::super_t;
 };
 
@@ -322,11 +322,11 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerBTSelector;
 
-template <JIT JIT_IMPLEMENTATION, class F>
+template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
 class GradientDescentOptimizerBT final
-    : public OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerBTSelector> {
+    : public OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector> {
  public:
-  using super_t = OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerBTSelector>;
+  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector>;
   using super_t::super_t;
 };
 
@@ -435,11 +435,11 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
 // backtracking line search to find a local minimum of `F::ObjectiveFunction` function.
 struct ConjugateGradientOptimizerSelector;
 
-template <JIT JIT_IMPLEMENTATION, class F>
+template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
 class ConjugateGradientOptimizer final
-    : public OptimizeInvoker<JIT_IMPLEMENTATION, F, ConjugateGradientOptimizerSelector> {
+    : public OptimizeInvoker<F, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<JIT_IMPLEMENTATION, F, ConjugateGradientOptimizerSelector>;
+  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector>;
   using super_t::super_t;
 };
 
