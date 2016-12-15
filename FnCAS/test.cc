@@ -67,12 +67,6 @@ static_assert(std::is_same<fncas::term_vector_t, std::vector<fncas::term_t>>::va
 // It's derived from the now-custom `std::vector<fncas::term_t>`.
 static_assert(std::is_base_of<fncas::term_vector_t, fncas::variables_vector_t>::value, "");
 
-static_assert(std::is_same<std::vector<fncas::double_t>, fncas::impl::V2X<fncas::double_t>>::value, "");
-static_assert(std::is_same<fncas::impl::X2V<std::vector<fncas::double_t>>, fncas::double_t>::value, "");
-
-static_assert(std::is_same<fncas::impl::V, fncas::impl::X2V<fncas::impl::X>>::value, "");
-static_assert(std::is_same<fncas::impl::X, fncas::impl::V2X<fncas::impl::V>>::value, "");
-
 TEST(FnCAS, FNCAS_JIT_VALUE) {
   const auto CLANG = []() { return "CLANG"; };
   const auto AS = []() { return "AS"; };

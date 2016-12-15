@@ -464,37 +464,6 @@ struct f_impl_selector<JIT::Super> {
   using type = f_super;
 };
 
-// Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
-// Type `V` describes one value (`double`), type `X` describes an array of values (`std::vector<double>`),
-// although `double` is in fact `double_t`.
-// Synopsis: `fncas::impl::X2V<X> f(const X& x)` or `V f(const fncas::impl::V2X<V>& x);`.
-
-template <typename T>
-struct x2v_impl {};
-
-template <typename T>
-struct x2v_impl<std::vector<T>> {
-  typedef T type;
-};
-template <>
-struct x2v_impl<X> {
-  typedef V type;
-};
-
-template <typename T>
-struct v2x_impl {
-  typedef std::vector<T> type;
-};
-template <>
-struct v2x_impl<V> {
-  typedef X type;
-};
-
-template <typename X>
-using X2V = typename x2v_impl<X>::type;
-template <typename V>
-using V2X = typename v2x_impl<V>::type;
-
 }  // namespace fncas::impl
 }  // namespace fncas
 
