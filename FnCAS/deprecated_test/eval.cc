@@ -93,7 +93,7 @@ struct action_gen : generic_action {
 template <typename X>
 struct action_gen_eval_Xeval : generic_action, X {
   std::vector<double> x;
-  std::unique_ptr<fncas::f> fncas_f;
+  std::unique_ptr<fncas::function_t<fncas::JIT::Super>> fncas_f;
   double compile_time;
   void start() override {
     fncas_f = X::init(f);
@@ -124,30 +124,34 @@ struct eval {
   };
   // Native implementation calls the function natively compiled as part of the binary being run.
   struct native : base {
-    std::unique_ptr<fncas::f> init(const F* f) {
-      return std::unique_ptr<fncas::f>(
-          new fncas::f_native(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim()));
+    std::unique_ptr<fncas::function_t<fncas::JIT::Super>> init(const F* f) {
+      return std::unique_ptr<fncas::function_t<fncas::JIT::Super>>(new fncas::function_t<fncas::JIT::NativeWrapper>(
+          std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim()));
     }
   };
   // Intermeridate implementation calls fncas implemenation
   // that interprets the internal representation of the function.
   struct intermediate : base {
-    std::unique_ptr<fncas::X> x_scope_;  // Should keep the instance of `fncas::X` in the scope.
-    std::unique_ptr<fncas::f> init(const F* f) {
-      x_scope_.reset(new fncas::X(f->dim()));
-      return std::unique_ptr<fncas::f>(new fncas::f_intermediate(f->eval_as_expression(*x_scope_)));
+    std::unique_ptr<fncas::variables_vector_t>
+        x_scope_;  // Should keep the instance of `fncas::variables_vector_t` in the scope.
+    std::unique_ptr<fncas::function_t<fncas::JIT::Super>> init(const F* f) {
+      x_scope_.reset(new fncas::variables_vector_t(f->dim()));
+      return std::unique_ptr<fncas::function_t<fncas::JIT::Super>>(
+          new fncas::function_t<fncas::JIT::Blueprint>(f->eval_as_expression(*x_scope_)));
     }
   };
   // Compiled implementation calls fncas implementation
   // that invokes an externally compiled version of the function.
   // The compilation takes place upon the construction of this object.
   struct compiled : base {
-    std::unique_ptr<fncas::X> x_scope_;  // Should keep the instance of `fncas::X` in the scope.
+    std::unique_ptr<fncas::variables_vector_t>
+        x_scope_;  // Should keep the instance of `fncas::variables_vector_t` in the scope.
     double compile_time_;
-    std::unique_ptr<fncas::f> init(const F* f) {
-      x_scope_.reset(new fncas::X(f->dim()));
+    std::unique_ptr<fncas::function_t<fncas::JIT::Super>> init(const F* f) {
+      x_scope_.reset(new fncas::variables_vector_t(f->dim()));
       const double begin = get_wall_time_seconds();
-      std::unique_ptr<fncas::f> result(new fncas::f_compiled(f->eval_as_expression(*x_scope_)));
+      std::unique_ptr<fncas::function_t<fncas::JIT::Super>> result(
+          new fncas::function_t<fncas::JIT::AS>(f->eval_as_expression(*x_scope_)));
       const double end = get_wall_time_seconds();
       compile_time_ = end - begin;
       return result;
@@ -165,8 +169,8 @@ typedef action_gen_eval_Xeval<eval::compiled> action_gen_eval_ceval;
 
 struct action_test_gradient : generic_action {
   std::vector<double> x;
-  fncas::g_approximate ga;
-  std::unique_ptr<fncas::g_intermediate> gi;
+  fncas::gradient_t<fncas::JIT::NativeWrapper> ga;
+  std::unique_ptr<fncas::gradient_t<fncas::JIT::Blueprint>> gi;
   std::vector<double> errors;
   static double error_between(double a, double b) {
     return std::abs(b - a) / std::max(1.0, std::max(std::abs(a), std::abs(b)));
@@ -174,9 +178,10 @@ struct action_test_gradient : generic_action {
   static bool approximate_compare(double a, double b, double eps = 0.03) { return error_between(a, b) < eps; }
   void start() override {
     x = std::vector<double>(f->dim());
-    ga = fncas::g_approximate(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());
-    fncas::X argument(f->dim());
-    gi = std::make_unique<fncas::g_intermediate>(argument, f->eval_as_expression(argument));
+    ga =
+        fncas::gradient_t<fncas::JIT::NativeWrapper>(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());
+    fncas::variables_vector_t argument(f->dim());
+    gi = std::make_unique<fncas::gradient_t<fncas::JIT::Blueprint>>(argument, f->eval_as_expression(argument));
   }
   bool step() override {
     f->gen(x);
