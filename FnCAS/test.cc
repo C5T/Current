@@ -287,44 +287,43 @@ struct HimmelblauFunction {
   }
 };
 
-TEST(FnCAS, OptimizationOfAStaticFunction) {
-  {
-    const auto result = fncas::optimize::GradientDescentOptimizer<StaticFunction>().Optimize({0, 0});
-    EXPECT_NEAR(1.0, result.value, 1e-3);
-    ASSERT_EQ(2u, result.point.size());
-    EXPECT_NEAR(3.0, result.point[0], 1e-3);
-    EXPECT_NEAR(4.0, result.point[1], 1e-3);
-  }
-  {
-    const auto result = fncas::optimize::GradientDescentOptimizer<StaticFunction>(
-                            fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({0, 0});
-    EXPECT_NEAR(1.0, result.value, 1e-3);
-    ASSERT_EQ(2u, result.point.size());
-    EXPECT_NEAR(3.0, result.point[0], 1e-3);
-    EXPECT_NEAR(4.0, result.point[1], 1e-3);
-  }
+TEST(FnCAS, OptimizationOfAStaticFunctionWithJIT) {
+  const auto result = fncas::optimize::GradientDescentOptimizer<StaticFunction>().Optimize({0, 0});
+  EXPECT_NEAR(1.0, result.value, 1e-3);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(3.0, result.point[0], 1e-3);
+  EXPECT_NEAR(4.0, result.point[1], 1e-3);
 }
 
-TEST(FnCAS, OptimizationOfAMemberFunctionSmokeTest) {
+TEST(FnCAS, OptimizationOfAStaticFunctionNoJIT) {
+  const auto result = fncas::optimize::GradientDescentOptimizer<StaticFunction>(
+                          fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({0, 0});
+  EXPECT_NEAR(1.0, result.value, 1e-3);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(3.0, result.point[0], 1e-3);
+  EXPECT_NEAR(4.0, result.point[1], 1e-3);
+}
+
+TEST(FnCAS, OptimizationOfAMemberFunctionWithJIT) {
   MemberFunction f;
-  {
-    f.a = 2.0;
-    f.b = 1.0;
-    const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(f).Optimize({0, 0});
-    EXPECT_NEAR(1.0, result.value, 1e-3);
-    ASSERT_EQ(2u, result.point.size());
-    EXPECT_NEAR(2.0, result.point[0], 1e-3);
-    EXPECT_NEAR(1.0, result.point[1], 1e-3);
-  }
-  {
-    f.a = 3.0;
-    f.b = 4.0;
-    const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(f).Optimize({0, 0});
-    EXPECT_NEAR(1.0, result.value, 1e-3);
-    ASSERT_EQ(2u, result.point.size());
-    EXPECT_NEAR(3.0, result.point[0], 1e-3);
-    EXPECT_NEAR(4.0, result.point[1], 1e-3);
-  }
+  f.a = 2.0;
+  f.b = 1.0;
+  const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(f).Optimize({0, 0});
+  EXPECT_NEAR(1.0, result.value, 1e-3);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(2.0, result.point[0], 1e-3);
+  EXPECT_NEAR(1.0, result.point[1], 1e-3);
+}
+
+TEST(FnCAS, OptimizationOfAMemberFunctionNoJIT) {
+  MemberFunction f;
+  f.a = 3.0;
+  f.b = 4.0;
+  const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(f).Optimize({0, 0});
+  EXPECT_NEAR(1.0, result.value, 1e-3);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(3.0, result.point[0], 1e-3);
+  EXPECT_NEAR(4.0, result.point[1], 1e-3);
 }
 
 TEST(FnCAS, OptimizationOfAMemberFunctionCapturesFunctionByReference) {
@@ -397,7 +396,7 @@ TEST(FnCAS, OptimizationOfAMemberFunctionForwardsParameters) {
   }
 }
 
-TEST(FnCAS, OptimizationOfAPolynomialMemberFunction) {
+TEST(FnCAS, OptimizationOfAPolynomialMemberFunctionWithJIT) {
   const auto result = fncas::optimize::GradientDescentOptimizer<PolynomialFunction>().Optimize({5.0, 20.0});
   EXPECT_NEAR(0.0, result.value, 1e-3);
   ASSERT_EQ(2u, result.point.size());
@@ -405,7 +404,16 @@ TEST(FnCAS, OptimizationOfAPolynomialMemberFunction) {
   EXPECT_NEAR(0.0, result.point[1], 1e-3);
 }
 
-TEST(FnCAS, OptimizationOfAPolynomialUsingBacktrackingGD) {
+TEST(FnCAS, OptimizationOfAPolynomialMemberFunctionNoJIT) {
+  const auto result = fncas::optimize::GradientDescentOptimizer<PolynomialFunction>(
+                          fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({5.0, 20.0});
+  EXPECT_NEAR(0.0, result.value, 1e-3);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(0.0, result.point[0], 1e-3);
+  EXPECT_NEAR(0.0, result.point[1], 1e-3);
+}
+
+TEST(FnCAS, OptimizationOfAPolynomialUsingBacktrackingGDWithJIT) {
   const auto result = fncas::optimize::GradientDescentOptimizerBT<PolynomialFunction>().Optimize({5.0, 20.0});
   EXPECT_NEAR(0.0, result.value, 1e-3);
   ASSERT_EQ(2u, result.point.size());
@@ -413,7 +421,16 @@ TEST(FnCAS, OptimizationOfAPolynomialUsingBacktrackingGD) {
   EXPECT_NEAR(0.0, result.point[1], 1e-3);
 }
 
-TEST(FnCAS, OptimizationOfAPolynomialUsingConjugateGradient) {
+TEST(FnCAS, OptimizationOfAPolynomialUsingBacktrackingGDNoJIT) {
+  const auto result = fncas::optimize::GradientDescentOptimizerBT<PolynomialFunction>(
+                          fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({5.0, 20.0});
+  EXPECT_NEAR(0.0, result.value, 1e-3);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(0.0, result.point[0], 1e-3);
+  EXPECT_NEAR(0.0, result.point[1], 1e-3);
+}
+
+TEST(FnCAS, OptimizationOfAPolynomialUsingConjugateGradientWithJIT) {
   const auto result = fncas::optimize::ConjugateGradientOptimizer<PolynomialFunction>().Optimize({5.0, 20.0});
   EXPECT_NEAR(0.0, result.value, 1e-6);
   ASSERT_EQ(2u, result.point.size());
@@ -421,7 +438,16 @@ TEST(FnCAS, OptimizationOfAPolynomialUsingConjugateGradient) {
   EXPECT_NEAR(0.0, result.point[1], 1e-6);
 }
 
-TEST(FnCAS, OptimizationOfRosenbrockUsingConjugateGradient) {
+TEST(FnCAS, OptimizationOfAPolynomialUsingConjugateGradientNoJIT) {
+  const auto result = fncas::optimize::ConjugateGradientOptimizer<PolynomialFunction>(
+                          fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({5.0, 20.0});
+  EXPECT_NEAR(0.0, result.value, 1e-6);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(0.0, result.point[0], 1e-6);
+  EXPECT_NEAR(0.0, result.point[1], 1e-6);
+}
+
+TEST(FnCAS, OptimizationOfRosenbrockUsingConjugateGradientWithJIT) {
   const auto result = fncas::optimize::ConjugateGradientOptimizer<RosenbrockFunction>().Optimize({-3.0, -4.0});
   EXPECT_NEAR(0.0, result.value, 1e-6);
   ASSERT_EQ(2u, result.point.size());
@@ -429,8 +455,47 @@ TEST(FnCAS, OptimizationOfRosenbrockUsingConjugateGradient) {
   EXPECT_NEAR(1.0, result.point[1], 1e-6);
 }
 
-TEST(FnCAS, OptimizationOfHimmelblauUsingConjugateGradient) {
+TEST(FnCAS, OptimizationOfRosenbrockUsingConjugateGradientNoJIT) {
+  const auto result = fncas::optimize::ConjugateGradientOptimizer<RosenbrockFunction>(
+                          fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({-3.0, -4.0});
+  EXPECT_NEAR(0.0, result.value, 1e-6);
+  ASSERT_EQ(2u, result.point.size());
+  EXPECT_NEAR(1.0, result.point[0], 1e-6);
+  EXPECT_NEAR(1.0, result.point[1], 1e-6);
+}
+
+TEST(FnCAS, OptimizationOfHimmelblauUsingConjugateGradientWithJIT) {
   fncas::optimize::ConjugateGradientOptimizer<HimmelblauFunction> optimizer;
+
+  const auto min1 = optimizer.Optimize({5.0, 5.0});
+  EXPECT_NEAR(0.0, min1.value, 1e-6);
+  ASSERT_EQ(2u, min1.point.size());
+  EXPECT_NEAR(3.0, min1.point[0], 1e-6);
+  EXPECT_NEAR(2.0, min1.point[1], 1e-6);
+
+  const auto min2 = optimizer.Optimize({-3.0, 5.0});
+  EXPECT_NEAR(0.0, min2.value, 1e-6);
+  ASSERT_EQ(2u, min2.point.size());
+  EXPECT_NEAR(-2.805118, min2.point[0], 1e-6);
+  EXPECT_NEAR(3.131312, min2.point[1], 1e-6);
+
+  const auto min3 = optimizer.Optimize({-5.0, -5.0});
+  EXPECT_NEAR(0.0, min3.value, 1e-6);
+  ASSERT_EQ(2u, min3.point.size());
+  EXPECT_NEAR(-3.779310, min3.point[0], 1e-6);
+  EXPECT_NEAR(-3.283186, min3.point[1], 1e-6);
+
+  const auto min4 = optimizer.Optimize({5.0, -5.0});
+  EXPECT_NEAR(0.0, min4.value, 1e-6);
+  ASSERT_EQ(2u, min4.point.size());
+  EXPECT_NEAR(3.584428, min4.point[0], 1e-6);
+  EXPECT_NEAR(-1.848126, min4.point[1], 1e-6);
+}
+
+TEST(FnCAS, OptimizationOfHimmelblauUsingConjugateGradientNoJIT) {
+  fncas::optimize::ConjugateGradientOptimizer<HimmelblauFunction> optimizer(
+      fncas::optimize::OptimizerParameters().DisableJIT());
+
   const auto min1 = optimizer.Optimize({5.0, 5.0});
   EXPECT_NEAR(0.0, min1.value, 1e-6);
   ASSERT_EQ(2u, min1.point.size());
