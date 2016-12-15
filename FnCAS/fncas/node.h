@@ -561,7 +561,7 @@ using term_vector_t = std::vector<term_t>;
 // point in time.
 using variables_vector_t = impl::X;
 
-template <JIT JIT_IMPLEMENTATION>
+template <JIT JIT_IMPLEMENTATION = JIT::Super>
 using function_t = typename impl::f_impl_selector<JIT_IMPLEMENTATION>::type;
 
 }  // namespace fncas

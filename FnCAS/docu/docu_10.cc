@@ -72,7 +72,8 @@ using namespace fncas_docu;
   // are native functions, blueprints, or JIT-compiled dynamically linked `.so`-s.
   // The `2` parameter is the dimensionality of the function.
   function_t<JIT::NativeWrapper> native(simple_function<double>, 2);
-  const function_t<JIT::Super>& reference = native;
+  // The superclass, `function_t<>` is a shortcut for `function_t<JIT::Super>`.
+  const function_t<>& reference = native;
   
   number_of_calls = 0;
   EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
@@ -105,14 +106,14 @@ using namespace fncas_docu;
   EXPECT_EQ(4*4 + 3*3, jit(std::vector<double>({-5, -5})));
   ASSERT_EQ(0, number_of_calls);
   
-  // Confirm both the blueprint and the JIT version can be cast down to `function_t<JIT::Super>`.
-  const function_t<JIT::Super>& reference = blueprint;
+  // Confirm both the blueprint and the JIT version can be cast down to `function_t<>`,
+  const function_t<>& reference = blueprint;
   number_of_calls = 0;
   EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, reference(std::vector<double>({-5, -5})));
   ASSERT_EQ(0, number_of_calls);
   
-  const function_t<JIT::Super>& jit_reference = jit;
+  const function_t<>& jit_reference = jit;
   number_of_calls = 0;
   EXPECT_EQ(5, jit_reference(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, jit_reference(std::vector<double>({-5, -5})));
@@ -145,8 +146,8 @@ using namespace fncas_docu;
   EXPECT_EQ(4.0, g_jit({0, 0})[1]);
   ASSERT_EQ(0, number_of_calls);  // No function calls, of course.
   
-  // Confirm the gradients, too, can be cast down to a common type.
-  std::vector<std::reference_wrapper<const gradient_t<JIT::Super>>> g_references({ 
+  // Confirm the gradients, too, can be cast down to `gradient_t<>`.
+  std::vector<std::reference_wrapper<const gradient_t<>>> g_references({ 
     g_approximate,
     g_blueprint,
     g_jit

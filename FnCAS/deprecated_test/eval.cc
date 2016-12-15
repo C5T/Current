@@ -93,7 +93,7 @@ struct action_gen : generic_action {
 template <typename X>
 struct action_gen_eval_Xeval : generic_action, X {
   std::vector<double> x;
-  std::unique_ptr<fncas::function_t<fncas::JIT::Super>> fncas_f;
+  std::unique_ptr<fncas::function_t<>> fncas_f;
   double compile_time;
   void start() override {
     fncas_f = X::init(f);
@@ -124,8 +124,8 @@ struct eval {
   };
   // Native implementation calls the function natively compiled as part of the binary being run.
   struct native : base {
-    std::unique_ptr<fncas::function_t<fncas::JIT::Super>> init(const F* f) {
-      return std::unique_ptr<fncas::function_t<fncas::JIT::Super>>(new fncas::function_t<fncas::JIT::NativeWrapper>(
+    std::unique_ptr<fncas::function_t<>> init(const F* f) {
+      return std::unique_ptr<fncas::function_t<>>(new fncas::function_t<fncas::JIT::NativeWrapper>(
           std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim()));
     }
   };
@@ -134,9 +134,9 @@ struct eval {
   struct intermediate : base {
     std::unique_ptr<fncas::variables_vector_t>
         x_scope_;  // Should keep the instance of `fncas::variables_vector_t` in the scope.
-    std::unique_ptr<fncas::function_t<fncas::JIT::Super>> init(const F* f) {
+    std::unique_ptr<fncas::function_t<>> init(const F* f) {
       x_scope_.reset(new fncas::variables_vector_t(f->dim()));
-      return std::unique_ptr<fncas::function_t<fncas::JIT::Super>>(
+      return std::unique_ptr<fncas::function_t<>>(
           new fncas::function_t<fncas::JIT::Blueprint>(f->eval_as_expression(*x_scope_)));
     }
   };
@@ -147,10 +147,10 @@ struct eval {
     std::unique_ptr<fncas::variables_vector_t>
         x_scope_;  // Should keep the instance of `fncas::variables_vector_t` in the scope.
     double compile_time_;
-    std::unique_ptr<fncas::function_t<fncas::JIT::Super>> init(const F* f) {
+    std::unique_ptr<fncas::function_t<>> init(const F* f) {
       x_scope_.reset(new fncas::variables_vector_t(f->dim()));
       const double begin = get_wall_time_seconds();
-      std::unique_ptr<fncas::function_t<fncas::JIT::Super>> result(
+      std::unique_ptr<fncas::function_t<>> result(
           new fncas::function_t<fncas::JIT::AS>(f->eval_as_expression(*x_scope_)));
       const double end = get_wall_time_seconds();
       compile_time_ = end - begin;
