@@ -169,7 +169,7 @@ class Optimizer : impl::noncopyable {
 template <typename IMPL>
 struct OptimizeImpl;
 
-template <class F, class IMPL>
+template <JIT JIT_IMPLEMENTATION, class F, class IMPL>
 class OptimizeInvoker : public Optimizer<F> {
  public:
   using super_t = Optimizer<F>;
@@ -186,7 +186,7 @@ class OptimizeInvoker : public Optimizer<F> {
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
       logger.Log("Optimizer: Compiling the objective function.");
       const auto compile_f_begin_gradient = current::time::Now();
-      fncas::impl::f_compiled f = fncas::impl::f_compiled(f_i);
+      fncas::impl::f_compiled<JIT_IMPLEMENTATION> f(f_i);
       logger.Log("Optimizer: Done compiling the objective function, took " +
                  current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
       return DoOptimize(f_i, f, starting_point, gradient_helper);
@@ -210,7 +210,7 @@ class OptimizeInvoker : public Optimizer<F> {
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
       logger.Log("Optimizer: Compiling the gradient.");
       const auto compile_g_begin_gradient = current::time::Now();
-      fncas::impl::g_compiled g = fncas::impl::g_compiled(f_i, g_i);
+      fncas::impl::g_compiled<JIT_IMPLEMENTATION> g(f_i, g_i);
       logger.Log("Optimizer: Done compiling the gradient, took " +
                  current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
       return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
@@ -224,10 +224,10 @@ class OptimizeInvoker : public Optimizer<F> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerSelector;
 
-template <class F>
-class GradientDescentOptimizer final : public OptimizeInvoker<F, GradientDescentOptimizerSelector> {
+template <JIT JIT_IMPLEMENTATION, class F>
+class GradientDescentOptimizer final : public OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<F, GradientDescentOptimizerSelector>;
+  using super_t = OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerSelector>;
   using super_t::super_t;
 };
 
@@ -322,10 +322,11 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerBTSelector;
 
-template <class F>
-class GradientDescentOptimizerBT final : public OptimizeInvoker<F, GradientDescentOptimizerBTSelector> {
+template <JIT JIT_IMPLEMENTATION, class F>
+class GradientDescentOptimizerBT final
+    : public OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerBTSelector> {
  public:
-  using super_t = OptimizeInvoker<F, GradientDescentOptimizerBTSelector>;
+  using super_t = OptimizeInvoker<JIT_IMPLEMENTATION, F, GradientDescentOptimizerBTSelector>;
   using super_t::super_t;
 };
 
@@ -434,10 +435,11 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
 // backtracking line search to find a local minimum of `F::ObjectiveFunction` function.
 struct ConjugateGradientOptimizerSelector;
 
-template <class F>
-class ConjugateGradientOptimizer final : public OptimizeInvoker<F, ConjugateGradientOptimizerSelector> {
+template <JIT JIT_IMPLEMENTATION, class F>
+class ConjugateGradientOptimizer final
+    : public OptimizeInvoker<JIT_IMPLEMENTATION, F, ConjugateGradientOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<F, ConjugateGradientOptimizerSelector>;
+  using super_t = OptimizeInvoker<JIT_IMPLEMENTATION, F, ConjugateGradientOptimizerSelector>;
   using super_t::super_t;
 };
 

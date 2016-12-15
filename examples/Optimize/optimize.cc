@@ -126,7 +126,7 @@ struct FunctionToOptimize {
 
 template <typename T>
 using optimizer_t =
-    fncas::optimize::ConjugateGradientOptimizer<T>;  // `GradientDescentOptimizerBT`, `GradientDescentOptimizer`.
+    fncas::optimize::ConjugateGradientOptimizer<fncas::JIT::AS, T>;  // `GradientDescentOptimizerBT`, `GradientDescentOptimizer`.
 
 std::vector<std::vector<fncas::double_t>> solve(
     size_t N,

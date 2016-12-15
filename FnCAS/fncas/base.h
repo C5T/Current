@@ -64,7 +64,15 @@ enum class type_t : uint8_t { variable, value, operation, function };
 enum class operation_t : uint8_t { add, subtract, multiply, divide, end };
 enum class function_t : uint8_t { sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp, end };
 
+enum class JIT { CLANG, AS, NASM };
+
+template <JIT>
+class JITImplementation;
+
 }  // namespace fncas::impl
+
+using impl::JIT;
+
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_FNCAS_BASE_H

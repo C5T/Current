@@ -24,15 +24,12 @@
  * *******************************************************************************/
 
 // FnCAS on-the-fly compilation logic.
-// FNCAS_JIT must be defined to enable, the supported values are `NASM`, `CLANG`, and `AS`.
 
 #ifndef FNCAS_FNCAS_JIT_H
 #define FNCAS_FNCAS_JIT_H
 
-#ifndef FNCAS_USE_LONG_DOUBLE
-
-#ifndef FNCAS_JIT
-#define FNCAS_JIT AS  // Default to `as` as the JIT target for FnCAS.
+#ifdef FNCAS_USE_LONG_DOUBLE
+#error "FnCAS with JIT doesn't play well with `FNCAS_USE_LONG_DOUBLE`. Contact @dkorolev for the details."
 #endif
 
 #include <sstream>
@@ -175,575 +172,584 @@ struct compiled_expression final : noncopyable {
   const std::string& lib_filename() const { return lib_filename_; }
 };
 
-struct compile_impl final {
-  class NASM final {
-   public:
-    NASM(const std::string& filebase, bool has_g) : filebase(filebase), f(fopen((filebase + ".asm").c_str(), "w")) {
-      CURRENT_ASSERT(f);
+template <>
+class JITImplementation<JIT::NASM> final {
+ public:
+  JITImplementation(const std::string& filebase, bool has_g)
+      : filebase(filebase), f(fopen((filebase + ".asm").c_str(), "w")) {
+    CURRENT_ASSERT(f);
 
-      fprintf(f, "[bits 64]\n");
-      fprintf(f, "\n");
+    fprintf(f, "[bits 64]\n");
+    fprintf(f, "\n");
 #ifdef CURRENT_APPLE
-      fprintf(f, "global %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
-      fprintf(f, "extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
+    fprintf(f, "global %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
+    fprintf(f, "extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
 #else
-      fprintf(f, "global %s, dim, heap_size\n", !has_g ? "eval_f" : "eval_g");
-      fprintf(f, "extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
+    fprintf(f, "global %s, dim, heap_size\n", !has_g ? "eval_f" : "eval_g");
+    fprintf(f, "extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
 #endif
-      fprintf(f, "\n");
-      fprintf(f, "section .text\n");
-      fprintf(f, "\n");
+    fprintf(f, "\n");
+    fprintf(f, "section .text\n");
+    fprintf(f, "\n");
+  }
+
+  void compile_eval_f(node_index_t index) {
+#ifdef CURRENT_APPLE
+    fprintf(f, "_eval_f:\n");
+#else
+    fprintf(f, "eval_f:\n");
+#endif
+    fprintf(f, "  push rbp\n");
+    fprintf(f, "  mov rbp, rsp\n");
+    generate_nasm_code_for_node(index);
+    fprintf(f, "  ; return a[%lld]\n", static_cast<long long>(index));
+    fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(index) * 8);
+    fprintf(f, "  mov rsp, rbp\n");
+    fprintf(f, "  pop rbp\n");
+    fprintf(f, "  ret\n");
+  }
+
+  void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
+    CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
+#ifdef CURRENT_APPLE
+    fprintf(f, "_eval_g:\n");
+#else
+    fprintf(f, "eval_g:\n");
+#endif
+    fprintf(f, "  push rbp\n");
+    fprintf(f, "  mov rbp, rsp\n");
+    generate_nasm_code_for_node(f_index);
+    for (size_t i = 0; i < g_indexes.size(); ++i) {
+      generate_nasm_code_for_node(g_indexes[i]);
+      fprintf(f, "  ; g[%lld] is a[%lld]\n", static_cast<long long>(i), static_cast<long long>(g_indexes[i]));
     }
+    fprintf(f, "  ; return a[%lld]\n", static_cast<long long>(f_index));
+    fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(f_index) * 8);
+    fprintf(f, "  mov rsp, rbp\n");
+    fprintf(f, "  pop rbp\n");
+    fprintf(f, "  ret\n");
+  }
 
-    void compile_eval_f(node_index_t index) {
+  ~JITImplementation() {
+    fprintf(f, "\n");
 #ifdef CURRENT_APPLE
-      fprintf(f, "_eval_f:\n");
+    fprintf(f, "_dim:\n");
 #else
-      fprintf(f, "eval_f:\n");
+    fprintf(f, "dim:\n");
 #endif
-      fprintf(f, "  push rbp\n");
-      fprintf(f, "  mov rbp, rsp\n");
-      generate_nasm_code_for_node(index);
-      fprintf(f, "  ; return a[%lld]\n", static_cast<long long>(index));
-      fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(index) * 8);
-      fprintf(f, "  mov rsp, rbp\n");
-      fprintf(f, "  pop rbp\n");
-      fprintf(f, "  ret\n");
-    }
-
-    void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
-      CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
+    fprintf(f, "  push rbp\n");
+    fprintf(f, "  mov rbp, rsp\n");
+    fprintf(f, "  mov rax, %lld\n", static_cast<long long>(internals_singleton().dim_));
+    fprintf(f, "  mov rsp, rbp\n");
+    fprintf(f, "  pop rbp\n");
+    fprintf(f, "  ret\n");
+    fprintf(f, "\n");
 #ifdef CURRENT_APPLE
-      fprintf(f, "_eval_g:\n");
+    fprintf(f, "_heap_size:\n");
 #else
-      fprintf(f, "eval_g:\n");
+    fprintf(f, "heap_size:\n");
 #endif
-      fprintf(f, "  push rbp\n");
-      fprintf(f, "  mov rbp, rsp\n");
-      generate_nasm_code_for_node(f_index);
-      for (size_t i = 0; i < g_indexes.size(); ++i) {
-        generate_nasm_code_for_node(g_indexes[i]);
-        fprintf(f, "  ; g[%lld] is a[%lld]\n", static_cast<long long>(i), static_cast<long long>(g_indexes[i]));
-      }
-      fprintf(f, "  ; return a[%lld]\n", static_cast<long long>(f_index));
-      fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(f_index) * 8);
-      fprintf(f, "  mov rsp, rbp\n");
-      fprintf(f, "  pop rbp\n");
-      fprintf(f, "  ret\n");
-    }
-
-    ~NASM() {
-      fprintf(f, "\n");
-#ifdef CURRENT_APPLE
-      fprintf(f, "_dim:\n");
-#else
-      fprintf(f, "dim:\n");
-#endif
-      fprintf(f, "  push rbp\n");
-      fprintf(f, "  mov rbp, rsp\n");
-      fprintf(f, "  mov rax, %lld\n", static_cast<long long>(internals_singleton().dim_));
-      fprintf(f, "  mov rsp, rbp\n");
-      fprintf(f, "  pop rbp\n");
-      fprintf(f, "  ret\n");
-      fprintf(f, "\n");
-#ifdef CURRENT_APPLE
-      fprintf(f, "_heap_size:\n");
-#else
-      fprintf(f, "heap_size:\n");
-#endif
-      fprintf(f, "  push rbp\n");
-      fprintf(f, "  mov rbp, rsp\n");
-      fprintf(f, "  mov rax, %lld\n", static_cast<long long>(max_dim + 1));
-      fprintf(f, "  mov rsp, rbp\n");
-      fprintf(f, "  pop rbp\n");
-      fprintf(f, "  ret\n");
-      fclose(f);
+    fprintf(f, "  push rbp\n");
+    fprintf(f, "  mov rbp, rsp\n");
+    fprintf(f, "  mov rax, %lld\n", static_cast<long long>(max_dim + 1));
+    fprintf(f, "  mov rsp, rbp\n");
+    fprintf(f, "  pop rbp\n");
+    fprintf(f, "  ret\n");
+    fclose(f);
 
 #ifdef CURRENT_APPLE
-      const char* compile_cmdline = "nasm -O0 -f macho64 %s.asm -o %s.o";
-      // `g++` is the best proxy for `ld` on OS X that passes proper command line args. -- M.Z.
-      const char* link_cmdline = "g++ -shared -o %s.so %s.o";
+    const char* compile_cmdline = "nasm -O0 -f macho64 %s.asm -o %s.o";
+    // `g++` is the best proxy for `ld` on OS X that passes proper command line args. -- M.Z.
+    const char* link_cmdline = "g++ -shared -o %s.so %s.o";
 #else
-      const char* compile_cmdline = "nasm -O0 -f elf64 %s.asm -o %s.o";
-      const char* link_cmdline = "ld -lm -shared -o %s.so %s.o";
+    const char* compile_cmdline = "nasm -O0 -f elf64 %s.asm -o %s.o";
+    const char* link_cmdline = "ld -lm -shared -o %s.so %s.o";
 #endif
 
-      compiled_expression::syscall(current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str()));
-      compiled_expression::syscall(current::strings::Printf(link_cmdline, filebase.c_str(), filebase.c_str()));
-    }
+    compiled_expression::syscall(current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str()));
+    compiled_expression::syscall(current::strings::Printf(link_cmdline, filebase.c_str(), filebase.c_str()));
+  }
 
-   private:
-    const std::string& filebase;
-    FILE* f;
-    std::vector<bool> computed;
-    node_index_t max_dim = 0;
+ private:
+  const std::string& filebase;
+  FILE* f;
+  std::vector<bool> computed;
+  node_index_t max_dim = 0;
 
-    // generate_nasm_code_for_node() writes NASM code to evaluate the expression to the file.
-    void generate_nasm_code_for_node(node_index_t index) {
-      const double d_0 = 0;
-      const double d_1 = 1;
-      std::stack<node_index_t> stack;
-      stack.push(index);
-      while (!stack.empty()) {
-        const node_index_t i = stack.top();
-        stack.pop();
-        const node_index_t dependent_i = ~i;
-        if (i > dependent_i) {
-          max_dim = std::max(max_dim, static_cast<node_index_t>(i));
-          if (computed.size() <= static_cast<size_t>(i)) {
-            computed.resize(static_cast<size_t>(i) + 1);
+  // generate_nasm_code_for_node() writes NASM code to evaluate the expression to the file.
+  void generate_nasm_code_for_node(node_index_t index) {
+    const double d_0 = 0;
+    const double d_1 = 1;
+    std::stack<node_index_t> stack;
+    stack.push(index);
+    while (!stack.empty()) {
+      const node_index_t i = stack.top();
+      stack.pop();
+      const node_index_t dependent_i = ~i;
+      if (i > dependent_i) {
+        max_dim = std::max(max_dim, static_cast<node_index_t>(i));
+        if (computed.size() <= static_cast<size_t>(i)) {
+          computed.resize(static_cast<size_t>(i) + 1);
+        }
+        if (!computed[i]) {
+          computed[i] = true;
+          node_impl& node = node_vector_singleton()[i];
+          if (node.type() == type_t::variable) {
+            int32_t v = node.variable();
+            fprintf(f, "  ; a[%lld] = x[%d];\n", static_cast<long long>(i), v);
+            fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
+            fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
+          } else if (node.type() == type_t::value) {
+            fprintf(f, "  ; a[%lld] = %lf\n", static_cast<long long>(i), node.value());
+            fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
+            fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
+          } else if (node.type() == type_t::operation) {
+            stack.push(~i);
+            stack.push(node.lhs_index());
+            stack.push(node.rhs_index());
+          } else if (node.type() == type_t::function) {
+            stack.push(~i);
+            stack.push(node.argument_index());
+          } else {
+            CURRENT_ASSERT(false);
           }
-          if (!computed[i]) {
-            computed[i] = true;
-            node_impl& node = node_vector_singleton()[i];
-            if (node.type() == type_t::variable) {
-              int32_t v = node.variable();
-              fprintf(f, "  ; a[%lld] = x[%d];\n", static_cast<long long>(i), v);
-              fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
-              fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
-            } else if (node.type() == type_t::value) {
-              fprintf(f, "  ; a[%lld] = %lf\n", static_cast<long long>(i), node.value());
-              fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
-              fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
-            } else if (node.type() == type_t::operation) {
-              stack.push(~i);
-              stack.push(node.lhs_index());
-              stack.push(node.rhs_index());
-            } else if (node.type() == type_t::function) {
-              stack.push(~i);
-              stack.push(node.argument_index());
-            } else {
-              CURRENT_ASSERT(false);
-            }
-          }
-        } else {
-          node_impl& node = node_vector_singleton()[dependent_i];
-          if (node.type() == type_t::operation) {
+        }
+      } else {
+        node_impl& node = node_vector_singleton()[dependent_i];
+        if (node.type() == type_t::operation) {
+          fprintf(f,
+                  "  ; a[%lld] = a[%lld] %s a[%lld];\n",
+                  static_cast<long long>(dependent_i),
+                  static_cast<long long>(node.lhs_index()),
+                  operation_as_string(node.operation()),
+                  static_cast<long long>(node.rhs_index()));
+          fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.lhs_index()) * 8);
+          fprintf(f, "  movq xmm1, [rsi+%lld]\n", static_cast<long long>(node.rhs_index()) * 8);
+          fprintf(f, "  %s xmm0, xmm1\n", operation_as_assembler_opcode(node.operation()));
+          fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
+        } else if (node.type() == type_t::function) {
+          if (node.function() == function_t::sqr) {
             fprintf(f,
-                    "  ; a[%lld] = a[%lld] %s a[%lld];\n",
+                    "  ; a[%lld] = sqr(a[%lld]);  # `sqr` is a special case.\n",
                     static_cast<long long>(dependent_i),
-                    static_cast<long long>(node.lhs_index()),
-                    operation_as_string(node.operation()),
-                    static_cast<long long>(node.rhs_index()));
-            fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.lhs_index()) * 8);
-            fprintf(f, "  movq xmm1, [rsi+%lld]\n", static_cast<long long>(node.rhs_index()) * 8);
-            fprintf(f, "  %s xmm0, xmm1\n", operation_as_assembler_opcode(node.operation()));
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  mulpd xmm0, xmm0\n");
             fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-          } else if (node.type() == type_t::function) {
-            if (node.function() == function_t::sqr) {
-              fprintf(f,
-                      "  ; a[%lld] = sqr(a[%lld]);  # `sqr` is a special case.\n",
-                      static_cast<long long>(dependent_i),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  mulpd xmm0, xmm0\n");
-              fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-            } else if (node.function() == function_t::unit_step) {
-              fprintf(f,
-                      "  ; a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
-                      static_cast<long long>(dependent_i),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
-              fprintf(f, "  movq xmm1, rax\n");
-              fprintf(f, "  ucomisd xmm0, xmm1\n");
-              fprintf(f, "  jb unit_step_%lld\n", static_cast<long long>(dependent_i));
-              fprintf(f, "  mov rax, %s  ; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
-              fprintf(f, "unit_step_%lld:\n", static_cast<long long>(dependent_i));
-              fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(dependent_i) * 8);
-            } else if (node.function() == function_t::ramp) {
-              fprintf(f,
-                      "  ; a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
-                      static_cast<long long>(dependent_i),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
-              fprintf(f, "  movq xmm1, rax\n");
-              fprintf(f, "  ucomisd xmm0, xmm1\n");
-              fprintf(f, "  ja ramp_%lld\n", static_cast<long long>(dependent_i));
-              fprintf(f, "  movq xmm0, rax\n");
-              fprintf(f, "ramp_%lld:\n", static_cast<long long>(dependent_i));
-              fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-            } else {
-              fprintf(f,
-                      "  ; a[%lld] = %s(a[%lld]);\n",
-                      static_cast<long long>(dependent_i),
-                      function_as_string(node.function()),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  push rdi\n");
-              fprintf(f, "  push rsi\n");
-#ifdef CURRENT_APPLE
-              fprintf(f, "  call _%s\n", function_as_string(node.function()));
-#else
-              fprintf(f, "  call %s wrt ..plt\n", function_as_string(node.function()));
-#endif
-              fprintf(f, "  pop rsi\n");
-              fprintf(f, "  pop rdi\n");
-              fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-            }
-          } else {
-            CURRENT_ASSERT(false);
-          }
-        }
-      }
-    }
-  };
-
-  class AS final {
-   public:
-    AS(const std::string& filebase, bool has_g) : filebase(filebase), f(fopen((filebase + ".s").c_str(), "w")) {
-      CURRENT_ASSERT(f);
-
-      // `.section .text' is equivalent to the `.text` directive.
-      fprintf(f, ".text\n");
-#ifdef CURRENT_APPLE
-      fprintf(f, ".globl %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
-      fprintf(f, ".extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
-#else
-      fprintf(f, ".globl %s, dim, heap_size\n", !has_g ? "eval_f" : "eval_g");
-      fprintf(f, ".extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
-#endif
-      fprintf(f, "\n");
-    }
-
-    void compile_eval_f(node_index_t index) {
-#ifdef CURRENT_APPLE
-      fprintf(f, "_eval_f:\n");
-#else
-      fprintf(f, "eval_f:\n");
-#endif
-      fprintf(f, "  push %%rbp\n");
-      fprintf(f, "  mov %%rsp, %%rbp\n");
-      generate_as_code_for_node(index);
-      fprintf(f, "  # return a[%lld]\n", static_cast<long long>(index));
-      fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(index) * 8);
-      fprintf(f, "  mov %%rbp, %%rsp\n");
-      fprintf(f, "  pop %%rbp\n");
-      fprintf(f, "  ret\n");
-    }
-
-    void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
-      CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
-#ifdef CURRENT_APPLE
-      fprintf(f, "_eval_g:\n");
-#else
-      fprintf(f, "eval_g:\n");
-#endif
-      fprintf(f, "  push %%rbp\n");
-      fprintf(f, "  mov %%rsp, %%rbp\n");
-      generate_as_code_for_node(f_index);
-      for (size_t i = 0; i < g_indexes.size(); ++i) {
-        generate_as_code_for_node(g_indexes[i]);
-        fprintf(f, "  # g[%lld] is a[%lld]\n", static_cast<long long>(i), static_cast<long long>(g_indexes[i]));
-      }
-      fprintf(f, "  # return a[%lld]\n", static_cast<long long>(f_index));
-      fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(f_index) * 8);
-      fprintf(f, "  mov %%rbp, %%rsp\n");
-      fprintf(f, "  pop %%rbp\n");
-      fprintf(f, "  ret\n");
-    }
-
-    ~AS() {
-      fprintf(f, "\n");
-#ifdef CURRENT_APPLE
-      fprintf(f, "_dim:\n");
-#else
-      fprintf(f, "dim:\n");
-#endif
-      fprintf(f, "  push %%rbp\n");
-      fprintf(f, "  mov %%rsp, %%rbp\n");
-      fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(internals_singleton().dim_));
-      fprintf(f, "  mov %%rbp, %%rsp\n");
-      fprintf(f, "  pop %%rbp\n");
-      fprintf(f, "  ret\n");
-      fprintf(f, "\n");
-#ifdef CURRENT_APPLE
-      fprintf(f, "_heap_size:\n");
-#else
-      fprintf(f, "heap_size:\n");
-#endif
-      fprintf(f, "  push %%rbp\n");
-      fprintf(f, "  mov %%rsp, %%rbp\n");
-      fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(max_dim + 1));
-      fprintf(f, "  mov %%rbp, %%rsp\n");
-      fprintf(f, "  pop %%rbp\n");
-      fprintf(f, "  ret\n");
-      fclose(f);
-
-      const char* cmdline = "gcc -O0 -shared %s.s -o %s.so -lm";
-      compiled_expression::syscall(current::strings::Printf(cmdline, filebase.c_str(), filebase.c_str()));
-    }
-
-   private:
-    const std::string& filebase;
-    FILE* f;
-    std::vector<bool> computed;
-    node_index_t max_dim = 0;
-
-    // generate_as_code_for_node() writes AS code to evaluate the expression to the file.
-    void generate_as_code_for_node(node_index_t index) {
-      const double d_0 = 0;
-      const double d_1 = 1;
-      std::stack<node_index_t> stack;
-      stack.push(index);
-      while (!stack.empty()) {
-        const node_index_t i = stack.top();
-        stack.pop();
-        const node_index_t dependent_i = ~i;
-        if (i > dependent_i) {
-          max_dim = std::max(max_dim, static_cast<node_index_t>(i));
-          if (computed.size() <= static_cast<size_t>(i)) {
-            computed.resize(static_cast<size_t>(i) + 1);
-          }
-          if (!computed[i]) {
-            computed[i] = true;
-            node_impl& node = node_vector_singleton()[i];
-            if (node.type() == type_t::variable) {
-              int32_t v = node.variable();
-              fprintf(f, "  # a[%lld] = x[%d];\n", static_cast<long long>(i), v);
-              fprintf(f, "  mov %d(%%rdi), %%rax\n", v * 8);
-              fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(i) * 8);
-            } else if (node.type() == type_t::value) {
-              fprintf(f, "  # a[%lld] = %lf\n", static_cast<long long>(i), node.value());
-              fprintf(f, "  movabs $%s, %%rax\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
-              fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(i) * 8);
-            } else if (node.type() == type_t::operation) {
-              stack.push(~i);
-              stack.push(node.lhs_index());
-              stack.push(node.rhs_index());
-            } else if (node.type() == type_t::function) {
-              stack.push(~i);
-              stack.push(node.argument_index());
-            } else {
-              CURRENT_ASSERT(false);
-            }
-          }
-        } else {
-          node_impl& node = node_vector_singleton()[dependent_i];
-          if (node.type() == type_t::operation) {
+          } else if (node.function() == function_t::unit_step) {
             fprintf(f,
-                    "  # a[%lld] = a[%lld] %s a[%lld];\n",
+                    "  ; a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
                     static_cast<long long>(dependent_i),
-                    static_cast<long long>(node.lhs_index()),
-                    operation_as_string(node.operation()),
-                    static_cast<long long>(node.rhs_index()));
-            fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.lhs_index()) * 8);
-            fprintf(f, "  movq %lld(%%rsi), %%xmm1\n", static_cast<long long>(node.rhs_index()) * 8);
-            fprintf(f, "  %s %%xmm1, %%xmm0\n", operation_as_assembler_opcode(node.operation()));
-            fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-          } else if (node.type() == type_t::function) {
-            if (node.function() == function_t::sqr) {
-              fprintf(f,
-                      "  # a[%lld] = sqr(a[%lld]);  # `sqr` is a special case.\n",
-                      static_cast<long long>(dependent_i),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  mulpd %%xmm0, %%xmm0\n");
-              fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-            } else if (node.function() == function_t::unit_step) {
-              fprintf(f,
-                      "  # a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
-                      static_cast<long long>(dependent_i),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  movabs $%s, %%rax  # 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
-              fprintf(f, "  movq %%rax, %%xmm1\n");
-              fprintf(f, "  ucomisd %%xmm1, %%xmm0\n");
-              fprintf(f, "  jb . +12\n");  // NOTE(dkorolev): `. +12` skips the next `movabs`.
-              fprintf(f, "  movabs $%s, %%rax #; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
-              fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-            } else if (node.function() == function_t::ramp) {
-              fprintf(f,
-                      "  # a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
-                      static_cast<long long>(dependent_i),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  movabs $%s, %%rax #; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
-              fprintf(f, "  movq %%rax, %%xmm1\n");
-              fprintf(f, "  ucomisd %%xmm1, %%xmm0\n");
-              fprintf(f, "  ja . +7\n");  // NOTE(dkorolev): `. +7` skips the next `movq`.
-              fprintf(f, "  movq %%rax, %%xmm0\n");
-              fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-            } else {
-              fprintf(f,
-                      "  # a[%lld] = %s(a[%lld]);\n",
-                      static_cast<long long>(dependent_i),
-                      function_as_string(node.function()),
-                      static_cast<long long>(node.argument_index()));
-              fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
-              fprintf(f, "  push %%rdi\n");
-              fprintf(f, "  push %%rsi\n");
-#ifdef CURRENT_APPLE
-              fprintf(f, "  call _%s\n", function_as_string(node.function()));
-#else
-              fprintf(f, "  call %s@plt\n", function_as_string(node.function()));
-#endif
-              fprintf(f, "  pop %%rsi\n");
-              fprintf(f, "  pop %%rdi\n");
-              fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-            }
-          } else {
-            CURRENT_ASSERT(false);
-          }
-        }
-      }
-    }
-  };
-
-  class CLANG final {
-   public:
-    CLANG(const std::string& filebase, bool has_g) : filebase(filebase), f(fopen((filebase + ".c").c_str(), "w")) {
-      static_cast<void>(has_g);
-      CURRENT_ASSERT(f);
-      fprintf(f, "#include <math.h>\n");
-      fprintf(f, "#define sqr(x) ((x) * (x))\n");
-      fprintf(f, "#define unit_step(x) ((x) >= 0 ? 1 : 0)\n");
-      fprintf(f, "#define ramp(x) ((x) >= 0 ? (x) : 0)\n");
-    }
-
-    void compile_eval_f(node_index_t index) {
-      fprintf(f, "double eval_f(const double* x, double* a) {\n");
-      generate_c_code_for_node(index);
-      fprintf(f, "  return a[%lld];\n", static_cast<long long>(index));
-      fprintf(f, "}\n");
-    }
-
-    void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
-      CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
-      fprintf(f, "double eval_g(const double* x, double* a) {\n");
-      generate_c_code_for_node(f_index);
-      for (size_t i = 0; i < g_indexes.size(); ++i) {
-        generate_c_code_for_node(g_indexes[i]);
-      }
-      for (size_t i = 0; i < g_indexes.size(); ++i) {
-        fprintf(f, "  // g[%lld] is a[%lld]\n", static_cast<long long>(i), static_cast<long long>(g_indexes[i]));
-      }
-      fprintf(f, "  return a[%lld];\n", static_cast<long long>(f_index));
-      fprintf(f, "}\n");
-    }
-
-    ~CLANG() {
-      fprintf(f, "long long dim() { return %lld; }\n", static_cast<long long>(internals_singleton().dim_));
-      fprintf(f, "long long heap_size() { return %lld; }\n", static_cast<long long>(max_dim + 1));
-
-      fclose(f);
-
-      const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %s.c -o %s.so";  // `-O3` is too slow.
-      std::string cmdline = current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str());
-      compiled_expression::syscall(cmdline);
-    }
-
-   private:
-    const std::string& filebase;
-    FILE* f;
-    std::vector<bool> computed;
-    node_index_t max_dim = 0;
-
-    // generate_c_code_for_node() writes C code to evaluate the expression to the file.
-    void generate_c_code_for_node(node_index_t index) {
-      std::stack<node_index_t> stack;
-      stack.push(index);
-      while (!stack.empty()) {
-        const node_index_t i = stack.top();
-        stack.pop();
-        const node_index_t dependent_i = ~i;
-        if (i > dependent_i) {
-          max_dim = std::max(max_dim, static_cast<node_index_t>(i));
-          if (computed.size() <= static_cast<size_t>(i)) {
-            computed.resize(static_cast<size_t>(i) + 1);
-          }
-          if (!computed[i]) {
-            computed[i] = true;
-            node_impl& node = node_vector_singleton()[i];
-            if (node.type() == type_t::variable) {
-              int32_t v = node.variable();
-              fprintf(f, "  a[%lld] = x[%d];\n", static_cast<long long>(i), v);
-            } else if (node.type() == type_t::value) {
-              fprintf(f,
-                      "  a[%lld] = %a;  // %lf\n",  // "%a" is hexadecimal full precision.
-                      static_cast<long long>(i),
-                      node.value(),
-                      node.value());  // "%a" is hexadecimal full precision.
-            } else if (node.type() == type_t::operation) {
-              stack.push(~i);
-              stack.push(node.lhs_index());
-              stack.push(node.rhs_index());
-            } else if (node.type() == type_t::function) {
-              stack.push(~i);
-              stack.push(node.argument_index());
-            } else {
-              CURRENT_ASSERT(false);
-            }
-          }
-        } else {
-          node_impl& node = node_vector_singleton()[dependent_i];
-          if (node.type() == type_t::operation) {
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
+            fprintf(f, "  movq xmm1, rax\n");
+            fprintf(f, "  ucomisd xmm0, xmm1\n");
+            fprintf(f, "  jb unit_step_%lld\n", static_cast<long long>(dependent_i));
+            fprintf(f, "  mov rax, %s  ; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
+            fprintf(f, "unit_step_%lld:\n", static_cast<long long>(dependent_i));
+            fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(dependent_i) * 8);
+          } else if (node.function() == function_t::ramp) {
             fprintf(f,
-                    "  a[%lld] = a[%lld] %s a[%lld];\n",
+                    "  ; a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
                     static_cast<long long>(dependent_i),
-                    static_cast<long long>(node.lhs_index()),
-                    operation_as_string(node.operation()),
-                    static_cast<long long>(node.rhs_index()));
-          } else if (node.type() == type_t::function) {
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  mov rax, %s  ; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
+            fprintf(f, "  movq xmm1, rax\n");
+            fprintf(f, "  ucomisd xmm0, xmm1\n");
+            fprintf(f, "  ja ramp_%lld\n", static_cast<long long>(dependent_i));
+            fprintf(f, "  movq xmm0, rax\n");
+            fprintf(f, "ramp_%lld:\n", static_cast<long long>(dependent_i));
+            fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
+          } else {
             fprintf(f,
-                    "  a[%lld] = %s(a[%lld]);\n",
+                    "  ; a[%lld] = %s(a[%lld]);\n",
                     static_cast<long long>(dependent_i),
                     function_as_string(node.function()),
                     static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  push rdi\n");
+            fprintf(f, "  push rsi\n");
+#ifdef CURRENT_APPLE
+            fprintf(f, "  call _%s\n", function_as_string(node.function()));
+#else
+            fprintf(f, "  call %s wrt ..plt\n", function_as_string(node.function()));
+#endif
+            fprintf(f, "  pop rsi\n");
+            fprintf(f, "  pop rdi\n");
+            fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
+          }
+        } else {
+          CURRENT_ASSERT(false);
+        }
+      }
+    }
+  }
+};
+
+template <>
+class JITImplementation<JIT::AS> final {
+ public:
+  JITImplementation(const std::string& filebase, bool has_g)
+      : filebase(filebase), f(fopen((filebase + ".s").c_str(), "w")) {
+    CURRENT_ASSERT(f);
+
+    // `.section .text' is equivalent to the `.text` directive.
+    fprintf(f, ".text\n");
+#ifdef CURRENT_APPLE
+    fprintf(f, ".globl %s, _dim, _heap_size\n", !has_g ? "_eval_f" : "_eval_g");
+    fprintf(f, ".extern _sqrt, _exp, _log, _sin, _cos, _tan, _asin, _acos, _atan\n");
+#else
+    fprintf(f, ".globl %s, dim, heap_size\n", !has_g ? "eval_f" : "eval_g");
+    fprintf(f, ".extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
+#endif
+    fprintf(f, "\n");
+  }
+
+  void compile_eval_f(node_index_t index) {
+#ifdef CURRENT_APPLE
+    fprintf(f, "_eval_f:\n");
+#else
+    fprintf(f, "eval_f:\n");
+#endif
+    fprintf(f, "  push %%rbp\n");
+    fprintf(f, "  mov %%rsp, %%rbp\n");
+    generate_as_code_for_node(index);
+    fprintf(f, "  # return a[%lld]\n", static_cast<long long>(index));
+    fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(index) * 8);
+    fprintf(f, "  mov %%rbp, %%rsp\n");
+    fprintf(f, "  pop %%rbp\n");
+    fprintf(f, "  ret\n");
+  }
+
+  void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
+    CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
+#ifdef CURRENT_APPLE
+    fprintf(f, "_eval_g:\n");
+#else
+    fprintf(f, "eval_g:\n");
+#endif
+    fprintf(f, "  push %%rbp\n");
+    fprintf(f, "  mov %%rsp, %%rbp\n");
+    generate_as_code_for_node(f_index);
+    for (size_t i = 0; i < g_indexes.size(); ++i) {
+      generate_as_code_for_node(g_indexes[i]);
+      fprintf(f, "  # g[%lld] is a[%lld]\n", static_cast<long long>(i), static_cast<long long>(g_indexes[i]));
+    }
+    fprintf(f, "  # return a[%lld]\n", static_cast<long long>(f_index));
+    fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(f_index) * 8);
+    fprintf(f, "  mov %%rbp, %%rsp\n");
+    fprintf(f, "  pop %%rbp\n");
+    fprintf(f, "  ret\n");
+  }
+
+  ~JITImplementation() {
+    fprintf(f, "\n");
+#ifdef CURRENT_APPLE
+    fprintf(f, "_dim:\n");
+#else
+    fprintf(f, "dim:\n");
+#endif
+    fprintf(f, "  push %%rbp\n");
+    fprintf(f, "  mov %%rsp, %%rbp\n");
+    fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(internals_singleton().dim_));
+    fprintf(f, "  mov %%rbp, %%rsp\n");
+    fprintf(f, "  pop %%rbp\n");
+    fprintf(f, "  ret\n");
+    fprintf(f, "\n");
+#ifdef CURRENT_APPLE
+    fprintf(f, "_heap_size:\n");
+#else
+    fprintf(f, "heap_size:\n");
+#endif
+    fprintf(f, "  push %%rbp\n");
+    fprintf(f, "  mov %%rsp, %%rbp\n");
+    fprintf(f, "  movabs $%lld, %%rax\n", static_cast<long long>(max_dim + 1));
+    fprintf(f, "  mov %%rbp, %%rsp\n");
+    fprintf(f, "  pop %%rbp\n");
+    fprintf(f, "  ret\n");
+    fclose(f);
+
+    const char* cmdline = "gcc -O0 -shared %s.s -o %s.so -lm";
+    compiled_expression::syscall(current::strings::Printf(cmdline, filebase.c_str(), filebase.c_str()));
+  }
+
+ private:
+  const std::string& filebase;
+  FILE* f;
+  std::vector<bool> computed;
+  node_index_t max_dim = 0;
+
+  // generate_as_code_for_node() writes AS code to evaluate the expression to the file.
+  void generate_as_code_for_node(node_index_t index) {
+    const double d_0 = 0;
+    const double d_1 = 1;
+    std::stack<node_index_t> stack;
+    stack.push(index);
+    while (!stack.empty()) {
+      const node_index_t i = stack.top();
+      stack.pop();
+      const node_index_t dependent_i = ~i;
+      if (i > dependent_i) {
+        max_dim = std::max(max_dim, static_cast<node_index_t>(i));
+        if (computed.size() <= static_cast<size_t>(i)) {
+          computed.resize(static_cast<size_t>(i) + 1);
+        }
+        if (!computed[i]) {
+          computed[i] = true;
+          node_impl& node = node_vector_singleton()[i];
+          if (node.type() == type_t::variable) {
+            int32_t v = node.variable();
+            fprintf(f, "  # a[%lld] = x[%d];\n", static_cast<long long>(i), v);
+            fprintf(f, "  mov %d(%%rdi), %%rax\n", v * 8);
+            fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(i) * 8);
+          } else if (node.type() == type_t::value) {
+            fprintf(f, "  # a[%lld] = %lf\n", static_cast<long long>(i), node.value());
+            fprintf(f, "  movabs $%s, %%rax\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
+            fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(i) * 8);
+          } else if (node.type() == type_t::operation) {
+            stack.push(~i);
+            stack.push(node.lhs_index());
+            stack.push(node.rhs_index());
+          } else if (node.type() == type_t::function) {
+            stack.push(~i);
+            stack.push(node.argument_index());
           } else {
             CURRENT_ASSERT(false);
           }
         }
+      } else {
+        node_impl& node = node_vector_singleton()[dependent_i];
+        if (node.type() == type_t::operation) {
+          fprintf(f,
+                  "  # a[%lld] = a[%lld] %s a[%lld];\n",
+                  static_cast<long long>(dependent_i),
+                  static_cast<long long>(node.lhs_index()),
+                  operation_as_string(node.operation()),
+                  static_cast<long long>(node.rhs_index()));
+          fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.lhs_index()) * 8);
+          fprintf(f, "  movq %lld(%%rsi), %%xmm1\n", static_cast<long long>(node.rhs_index()) * 8);
+          fprintf(f, "  %s %%xmm1, %%xmm0\n", operation_as_assembler_opcode(node.operation()));
+          fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
+        } else if (node.type() == type_t::function) {
+          if (node.function() == function_t::sqr) {
+            fprintf(f,
+                    "  # a[%lld] = sqr(a[%lld]);  # `sqr` is a special case.\n",
+                    static_cast<long long>(dependent_i),
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  mulpd %%xmm0, %%xmm0\n");
+            fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
+          } else if (node.function() == function_t::unit_step) {
+            fprintf(f,
+                    "  # a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
+                    static_cast<long long>(dependent_i),
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  movabs $%s, %%rax  # 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
+            fprintf(f, "  movq %%rax, %%xmm1\n");
+            fprintf(f, "  ucomisd %%xmm1, %%xmm0\n");
+            fprintf(f, "  jb . +12\n");  // NOTE(dkorolev): `. +12` skips the next `movabs`.
+            fprintf(f, "  movabs $%s, %%rax #; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
+            fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
+          } else if (node.function() == function_t::ramp) {
+            fprintf(f,
+                    "  # a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
+                    static_cast<long long>(dependent_i),
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  movabs $%s, %%rax #; 0\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_0)).c_str());
+            fprintf(f, "  movq %%rax, %%xmm1\n");
+            fprintf(f, "  ucomisd %%xmm1, %%xmm0\n");
+            fprintf(f, "  ja . +7\n");  // NOTE(dkorolev): `. +7` skips the next `movq`.
+            fprintf(f, "  movq %%rax, %%xmm0\n");
+            fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
+          } else {
+            fprintf(f,
+                    "  # a[%lld] = %s(a[%lld]);\n",
+                    static_cast<long long>(dependent_i),
+                    function_as_string(node.function()),
+                    static_cast<long long>(node.argument_index()));
+            fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
+            fprintf(f, "  push %%rdi\n");
+            fprintf(f, "  push %%rsi\n");
+#ifdef CURRENT_APPLE
+            fprintf(f, "  call _%s\n", function_as_string(node.function()));
+#else
+            fprintf(f, "  call %s@plt\n", function_as_string(node.function()));
+#endif
+            fprintf(f, "  pop %%rsi\n");
+            fprintf(f, "  pop %%rdi\n");
+            fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
+          }
+        } else {
+          CURRENT_ASSERT(false);
+        }
       }
     }
-  };
-
-  // Confirm the symbol `#define`-d as `FNCAS_JIT` is a valid identifier.
-  struct _TMP {
-    struct FNCAS_JIT {};
-  };
-  typedef FNCAS_JIT selected;
+  }
 };
 
-inline compiled_expression compile_eval_f(node_index_t index) {
+template <>
+class JITImplementation<JIT::CLANG> final {
+ public:
+  JITImplementation(const std::string& filebase, bool has_g)
+      : filebase(filebase), f(fopen((filebase + ".c").c_str(), "w")) {
+    static_cast<void>(has_g);
+    CURRENT_ASSERT(f);
+    fprintf(f, "#include <math.h>\n");
+    fprintf(f, "#define sqr(x) ((x) * (x))\n");
+    fprintf(f, "#define unit_step(x) ((x) >= 0 ? 1 : 0)\n");
+    fprintf(f, "#define ramp(x) ((x) >= 0 ? (x) : 0)\n");
+  }
+
+  void compile_eval_f(node_index_t index) {
+    fprintf(f, "double eval_f(const double* x, double* a) {\n");
+    generate_c_code_for_node(index);
+    fprintf(f, "  return a[%lld];\n", static_cast<long long>(index));
+    fprintf(f, "}\n");
+  }
+
+  void compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
+    CURRENT_ASSERT(g_indexes.size() == internals_singleton().dim_);
+    fprintf(f, "double eval_g(const double* x, double* a) {\n");
+    generate_c_code_for_node(f_index);
+    for (size_t i = 0; i < g_indexes.size(); ++i) {
+      generate_c_code_for_node(g_indexes[i]);
+    }
+    for (size_t i = 0; i < g_indexes.size(); ++i) {
+      fprintf(f, "  // g[%lld] is a[%lld]\n", static_cast<long long>(i), static_cast<long long>(g_indexes[i]));
+    }
+    fprintf(f, "  return a[%lld];\n", static_cast<long long>(f_index));
+    fprintf(f, "}\n");
+  }
+
+  ~JITImplementation() {
+    fprintf(f, "long long dim() { return %lld; }\n", static_cast<long long>(internals_singleton().dim_));
+    fprintf(f, "long long heap_size() { return %lld; }\n", static_cast<long long>(max_dim + 1));
+
+    fclose(f);
+
+    const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %s.c -o %s.so";  // `-O3` is too slow.
+    std::string cmdline = current::strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str());
+    compiled_expression::syscall(cmdline);
+  }
+
+ private:
+  const std::string& filebase;
+  FILE* f;
+  std::vector<bool> computed;
+  node_index_t max_dim = 0;
+
+  // generate_c_code_for_node() writes C code to evaluate the expression to the file.
+  void generate_c_code_for_node(node_index_t index) {
+    std::stack<node_index_t> stack;
+    stack.push(index);
+    while (!stack.empty()) {
+      const node_index_t i = stack.top();
+      stack.pop();
+      const node_index_t dependent_i = ~i;
+      if (i > dependent_i) {
+        max_dim = std::max(max_dim, static_cast<node_index_t>(i));
+        if (computed.size() <= static_cast<size_t>(i)) {
+          computed.resize(static_cast<size_t>(i) + 1);
+        }
+        if (!computed[i]) {
+          computed[i] = true;
+          node_impl& node = node_vector_singleton()[i];
+          if (node.type() == type_t::variable) {
+            int32_t v = node.variable();
+            fprintf(f, "  a[%lld] = x[%d];\n", static_cast<long long>(i), v);
+          } else if (node.type() == type_t::value) {
+            fprintf(f,
+                    "  a[%lld] = %a;  // %lf\n",  // "%a" is hexadecimal full precision.
+                    static_cast<long long>(i),
+                    node.value(),
+                    node.value());  // "%a" is hexadecimal full precision.
+          } else if (node.type() == type_t::operation) {
+            stack.push(~i);
+            stack.push(node.lhs_index());
+            stack.push(node.rhs_index());
+          } else if (node.type() == type_t::function) {
+            stack.push(~i);
+            stack.push(node.argument_index());
+          } else {
+            CURRENT_ASSERT(false);
+          }
+        }
+      } else {
+        node_impl& node = node_vector_singleton()[dependent_i];
+        if (node.type() == type_t::operation) {
+          fprintf(f,
+                  "  a[%lld] = a[%lld] %s a[%lld];\n",
+                  static_cast<long long>(dependent_i),
+                  static_cast<long long>(node.lhs_index()),
+                  operation_as_string(node.operation()),
+                  static_cast<long long>(node.rhs_index()));
+        } else if (node.type() == type_t::function) {
+          fprintf(f,
+                  "  a[%lld] = %s(a[%lld]);\n",
+                  static_cast<long long>(dependent_i),
+                  function_as_string(node.function()),
+                  static_cast<long long>(node.argument_index()));
+        } else {
+          CURRENT_ASSERT(false);
+        }
+      }
+    }
+  }
+};
+
+template <JIT JIT_IMPLEMENTATION>
+compiled_expression compile_eval_f(node_index_t index) {
   const std::string filebase(current::FileSystem::GenTmpFileName());
   const std::string filename_so = filebase + ".so";
   current::FileSystem::RmFile(filename_so, current::FileSystem::RmFileParameters::Silent);
   {
-    compile_impl::selected code_generator(filebase, false);
+    JITImplementation<JIT_IMPLEMENTATION> code_generator(filebase, false);
     code_generator.compile_eval_f(index);
   }
   return compiled_expression(filename_so);
 }
 
-inline compiled_expression compile_eval_f(const V& node) { return compile_eval_f(node.index_); }
+template <JIT JIT_IMPLEMENTATION>
+inline compiled_expression compile_eval_f(const V& node) {
+  return compile_eval_f<JIT_IMPLEMENTATION>(node.index_);
+}
 
-inline compiled_expression compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
+template <JIT JIT_IMPLEMENTATION>
+compiled_expression compile_eval_g(node_index_t f_index, const std::vector<node_index_t>& g_indexes) {
   const std::string filebase(current::FileSystem::GenTmpFileName());
   const std::string filename_so = filebase + ".so";
   current::FileSystem::RmFile(filename_so, current::FileSystem::RmFileParameters::Silent);
   {
-    compile_impl::selected code_generator(filebase, true);
+    JITImplementation<JIT_IMPLEMENTATION> code_generator(filebase, true);
     code_generator.compile_eval_g(f_index, g_indexes);
   }
   return compiled_expression(filename_so, g_indexes);
 }
 
+template <JIT JIT_IMPLEMENTATION>
 inline compiled_expression compile_eval_g(const V& f_node, const std::vector<V>& g_nodes) {
   std::vector<node_index_t> g_node_indexes;
   g_node_indexes.reserve(g_nodes.size());
   for (const auto& gi : g_nodes) {
     g_node_indexes.push_back(gi.index_);
   }
-  return compile_eval_g(f_node.index_, g_node_indexes);
+  return compile_eval_g<JIT_IMPLEMENTATION>(f_node.index_, g_node_indexes);
 }
 
+template <JIT JIT_IMPLEMENTATION>
 struct f_compiled final : f {
   fncas::impl::compiled_expression c_;
 
-  explicit f_compiled(const V& node) : c_(compile_eval_f(node)) { CURRENT_ASSERT(c_.HasFunction()); }
-  explicit f_compiled(const f_intermediate& f) : c_(compile_eval_f(f.f_)) { CURRENT_ASSERT(c_.HasFunction()); }
+  explicit f_compiled(const V& node) : c_(compile_eval_f<JIT_IMPLEMENTATION>(node)) {
+    CURRENT_ASSERT(c_.HasFunction());
+  }
+  explicit f_compiled(const f_intermediate& f) : c_(compile_eval_f<JIT_IMPLEMENTATION>(f.f_)) {
+    CURRENT_ASSERT(c_.HasFunction());
+  }
 
   f_compiled(const f_compiled&) = delete;
   void operator=(const f_compiled&) = delete;
@@ -757,10 +763,12 @@ struct f_compiled final : f {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
+template <JIT JIT_IMPLEMENTATION>
 struct g_compiled final : g {
   fncas::impl::compiled_expression c_;
 
-  explicit g_compiled(const f_intermediate& f, const g_intermediate& g) : c_(compile_eval_g(f.f_, g.g_)) {
+  explicit g_compiled(const f_intermediate& f, const g_intermediate& g)
+      : c_(compile_eval_g<JIT_IMPLEMENTATION>(f.f_, g.g_)) {
     CURRENT_ASSERT(c_.HasGradient());
   }
 
@@ -778,11 +786,12 @@ struct g_compiled final : g {
 
 }  // namespace fncas::impl
 
-using function_compiled_t = impl::f_compiled;
-using gradient_compiled_t = impl::g_compiled;
+template <JIT JIT_IMPLEMENTATION>
+using function_compiled_t = impl::f_compiled<JIT_IMPLEMENTATION>;
+
+template <JIT JIT_IMPLEMENTATION>
+using gradient_compiled_t = impl::g_compiled<JIT_IMPLEMENTATION>;
 
 }  // namespace fncas
-
-#endif  // #ifndef FNCAS_USE_LONG_DOUBLE
 
 #endif  // #ifndef FNCAS_FNCAS_JIT_H

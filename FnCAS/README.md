@@ -64,7 +64,7 @@ EXPECT_EQ("(sqr((x[0]+1))+sqr((x[1]+2)))",
           blueprint.debug_as_string());
 
 // Create the JIT-compiled representation of the function.
-const fncas::function_compiled_t jit(blueprint);
+const fncas::function_compiled_t<fncas::JIT::AS> jit(blueprint);
 number_of_calls = 0;
 EXPECT_EQ(5, jit(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, jit(std::vector<double>({-5, -5})));
@@ -104,7 +104,7 @@ EXPECT_EQ(4.0, g_blueprint({0, 0})[1]);
 ASSERT_EQ(0, number_of_calls);  // No function calls, of course.
 
 // Generate the JIT-compiled version of the gradient.
-const fncas::gradient_compiled_t g_jit(blueprint, g_blueprint);
+const fncas::gradient_compiled_t<fncas::JIT::AS> g_jit(blueprint, g_blueprint);
 number_of_calls = 0;
 EXPECT_EQ(2.0, g_jit({0, 0})[0]);
 EXPECT_EQ(4.0, g_jit({0, 0})[1]);
