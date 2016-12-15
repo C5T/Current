@@ -765,13 +765,13 @@ struct f_compiled final : f_compiled_super {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
-struct g_compiled_super : g {};
+struct g_compiled_super : g_super {};
 
 template <JIT JIT_IMPLEMENTATION>
 struct g_compiled final : g_compiled_super {
   fncas::impl::compiled_expression c_;
 
-  explicit g_compiled(const f_impl<JIT::Blueprint>& f, const g_intermediate& g)
+  explicit g_compiled(const f_impl<JIT::Blueprint>& f, const g_impl<JIT::Blueprint>& g)
       : c_(compile_eval_g<JIT_IMPLEMENTATION>(f.f_, g.g_)) {
     CURRENT_ASSERT(c_.HasGradient());
   }
@@ -804,13 +804,23 @@ struct f_impl_selector<JIT::NASM> {
   using type = f_compiled<JIT::NASM>;
 };
 
+// Expose JIT-compiled gradients as `fncas::gradient_t<JIT::*>`.
+template <>
+struct g_impl_selector<JIT::AS> {
+  using type = g_compiled<JIT::AS>;
+};
+
+template <>
+struct g_impl_selector<JIT::CLANG> {
+  using type = g_compiled<JIT::CLANG>;
+};
+
+template <>
+struct g_impl_selector<JIT::NASM> {
+  using type = g_compiled<JIT::NASM>;
+};
+
 }  // namespace fncas::impl
-
-using gradient_compiled_super_t = impl::g_compiled_super;
-
-template <JIT JIT_IMPLEMENTATION>
-using gradient_compiled_t = impl::g_compiled<JIT_IMPLEMENTATION>;
-
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_FNCAS_JIT_H

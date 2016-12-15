@@ -142,13 +142,13 @@ TEST(FnCAS, CompiledFunctionWrapper) {
 TEST(FnCAS, GradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
-  fncas::gradient_approximate_t ga = fncas::gradient_approximate_t(SimpleFunction<fncas::double_t>, 2);
+  fncas::gradient_t<fncas::JIT::NativeWrapper> ga(SimpleFunction<fncas::double_t>, 2);
   auto d_3_3_approx = ga(p_3_3);
   EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
   const fncas::variables_vector_t x(2);
-  const fncas::gradient_blueprint_t gi(x, SimpleFunction(x));
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, SimpleFunction(x));
   const auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(18, d_3_3_intermediate[0]);
   EXPECT_EQ(36, d_3_3_intermediate[1]);
@@ -160,9 +160,9 @@ TEST(FnCAS, CompiledGradientsWrapper) {
 
   const fncas::variables_vector_t x(2);
   const fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
-  const fncas::gradient_blueprint_t gi(x, fi);
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
 
-  const fncas::gradient_compiled_t<fncas::JIT::AS> gc(fi, gi);
+  const fncas::gradient_t<fncas::JIT::AS> gc(fi, gi);
 
   // TODO(dkorolev): Maybe return return function value and its gradient together from a call to `gc`?
   const auto d_3_3_compiled = gc(p_3_3);
@@ -177,13 +177,13 @@ TEST(FnCAS, CompiledSqrGradientWrapper) {
 
   const fncas::variables_vector_t x(2);
   const fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
-  const fncas::gradient_blueprint_t gi(x, SimpleFunction(x));
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, SimpleFunction(x));
 
   const fncas::function_t<fncas::JIT::AS> fc(fi);
   const fncas::double_t f_3_3_compiled = fc(p_3_3);
   EXPECT_EQ(81, f_3_3_compiled);
 
-  const fncas::gradient_compiled_t<fncas::JIT::AS> gc(fi, gi);
+  const fncas::gradient_t<fncas::JIT::AS> gc(fi, gi);
   const auto d_3_3_compiled = gc(p_3_3);
 
   EXPECT_EQ(18, d_3_3_compiled[0]) << gc.lib_filename();
@@ -598,16 +598,16 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::gradient_approximate_t approximate_gradient(ZeroOrXFunction<fncas::double_t>, 1);
+  const fncas::gradient_t<fncas::JIT::NativeWrapper> approximate_gradient(ZeroOrXFunction<fncas::double_t>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({-5.0})[0], 1e-6);
   EXPECT_NEAR(1.0, approximate_gradient({+6.0})[0], 1e-6);
 
-  const fncas::gradient_blueprint_t intermediate_gradient(x, intermediate_function);
+  const fncas::gradient_t<fncas::JIT::Blueprint> intermediate_gradient(x, intermediate_function);
   EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
   EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
 
 #ifdef FNCAS_JIT
-  const fncas::gradient_compiled_t<fncas::JIT::AS> compiled_gradient(intermediate_function, intermediate_gradient);
+  const fncas::gradient_t<fncas::JIT::AS> compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, compiled_gradient({-9.5})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(1.0, compiled_gradient({+9.5})[0]) << compiled_gradient.lib_filename();
 #endif
@@ -626,16 +626,16 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
 #endif
 
-  const fncas::gradient_approximate_t approximate_gradient(ZeroOrXOfSquareXMinusTen<fncas::double_t>, 1);
+  const fncas::gradient_t<fncas::JIT::NativeWrapper> approximate_gradient(ZeroOrXOfSquareXMinusTen<fncas::double_t>, 1);
   EXPECT_NEAR(0.0, approximate_gradient({3.0})[0], 1e-6);
   EXPECT_NEAR(8.0, approximate_gradient({4.0})[0], 1e-6);  // == the derivative of `x^2` with `x = 4`.
 
-  const fncas::gradient_blueprint_t intermediate_gradient(x, intermediate_function);
+  const fncas::gradient_t<fncas::JIT::Blueprint> intermediate_gradient(x, intermediate_function);
   EXPECT_EQ(0.0, intermediate_gradient({3.0})[0]);
   EXPECT_EQ(8.0, intermediate_gradient({4.0})[0]);
 
 #ifdef FNCAS_JIT
-  const fncas::gradient_compiled_t<fncas::JIT::AS> compiled_gradient(intermediate_function, intermediate_gradient);
+  const fncas::gradient_t<fncas::JIT::AS> compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, compiled_gradient({3.0})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(8.0, compiled_gradient({4.0})[0]) << compiled_gradient.lib_filename();
 #endif

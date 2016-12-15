@@ -28,6 +28,9 @@ T simple_function(const std::vector<T>& x) {
   // the mathematical library from within the `std::` namespace.
 }
 
+// Shorten the snippets in this docu.
+using namespace fncas;
+
 // Make a few native C++ calls.
 number_of_calls = 0;
 EXPECT_EQ(5, simple_function(std::vector<double>({0, 0})));
@@ -38,8 +41,8 @@ ASSERT_EQ(2, number_of_calls);
 // This type allows passing functions around without thinking of whether they
 // are native functions, blueprints, or JIT-compiled dynamically linked `.so`-s.
 // The `2` parameter is the dimensionality of the function.
-fncas::function_t<fncas::JIT::NativeWrapper> native(simple_function<double>, 2);
-const fncas::function_super_t& reference = native;
+function_t<JIT::NativeWrapper> native(simple_function<double>, 2);
+const function_super_t& reference = native;
 
 number_of_calls = 0;
 EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
@@ -49,9 +52,9 @@ ASSERT_EQ(2, number_of_calls);  // By-reference evaluation just calls the functi
 // Create the blueprint of this function: its internal tree representation.
 // The scope of `x` would be where the blueprint and its uses are valid
 // from within this particular thread. It uses a thread-local singleton.
-fncas::variables_vector_t x(2);
+variables_vector_t x(2);
 number_of_calls = 0;
-fncas::function_t<fncas::JIT::Blueprint> blueprint = simple_function(x);
+function_t<JIT::Blueprint> blueprint = simple_function(x);
 ASSERT_EQ(1, number_of_calls);
 number_of_calls = 0;
 EXPECT_EQ(5, blueprint(std::vector<double>({0, 0})));
@@ -64,20 +67,20 @@ EXPECT_EQ("(sqr((x[0]+1))+sqr((x[1]+2)))",
           blueprint.debug_as_string());
 
 // Create the JIT-compiled representation of the function.
-const fncas::function_t<fncas::JIT::AS> jit(blueprint);
+const function_t<JIT::AS> jit(blueprint);
 number_of_calls = 0;
 EXPECT_EQ(5, jit(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, jit(std::vector<double>({-5, -5})));
 ASSERT_EQ(0, number_of_calls);
 
 // Confirm both the blueprint and the JIT version can be cast down to `function_super_t`.
-const fncas::function_super_t& reference = blueprint;
+const function_super_t& reference = blueprint;
 number_of_calls = 0;
 EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, reference(std::vector<double>({-5, -5})));
 ASSERT_EQ(0, number_of_calls);
 
-const fncas::function_super_t& jit_reference = jit;
+const function_super_t& jit_reference = jit;
 number_of_calls = 0;
 EXPECT_EQ(5, jit_reference(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, jit_reference(std::vector<double>({-5, -5})));
@@ -88,7 +91,7 @@ ASSERT_EQ(0, number_of_calls);
 // where `g[i]` is the i-th component of the gradient, `x` is the point, `unit[i]`
 // is the `(0,...,0,1,0,...,0)` vector with a `1` at index `i`, and `eps` is small.
 // The `2` parameter is the dimensionality of the function.
-const auto g_approximate = fncas::gradient_approximate_t(simple_function<double>, 2);
+const auto g_approximate = gradient_t<JIT::NativeWrapper>(simple_function<double>, 2);
 number_of_calls = 0;
 EXPECT_NEAR(2.0, g_approximate({0, 0})[0], 1e-5);
 ASSERT_EQ(4, number_of_calls);  // Plus delta and minus delta, one per variable.
@@ -97,21 +100,21 @@ ASSERT_EQ(8, number_of_calls);
 
 // Compute the blueprint of the gradient from the blueprint of the function.
 // TODO(dkorolev): Do we even need `x` as the parameter here?
-const fncas::gradient_blueprint_t g_blueprint(x, blueprint);
+const gradient_t<JIT::Blueprint> g_blueprint(x, blueprint);
 number_of_calls = 0;
 EXPECT_EQ(2.0, g_blueprint({0, 0})[0]);
 EXPECT_EQ(4.0, g_blueprint({0, 0})[1]);
 ASSERT_EQ(0, number_of_calls);  // No function calls, of course.
 
 // Generate the JIT-compiled version of the gradient.
-const fncas::gradient_compiled_t<fncas::JIT::AS> g_jit(blueprint, g_blueprint);
+const gradient_t<JIT::AS> g_jit(blueprint, g_blueprint);
 number_of_calls = 0;
 EXPECT_EQ(2.0, g_jit({0, 0})[0]);
 EXPECT_EQ(4.0, g_jit({0, 0})[1]);
 ASSERT_EQ(0, number_of_calls);  // No function calls, of course.
 
 // Confirm the gradients, too, can be cast down to a common type.
-std::vector<std::reference_wrapper<const fncas::gradient_t>> g_references({ 
+std::vector<std::reference_wrapper<const gradient_t<JIT::Super>>> g_references({ 
   g_approximate,
   g_blueprint,
   g_jit

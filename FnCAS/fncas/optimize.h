@@ -204,7 +204,7 @@ class OptimizeInvoker : public Optimizer<F> {
     const auto& logger = impl::OptimizerLogger();
 
     logger.Log("Optimizer: Differentiating.");
-    const fncas::impl::g_intermediate g_i(gradient_helper, f_i);
+    const fncas::impl::g_impl<fncas::JIT::Blueprint> g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(impl::node_vector_singleton().size()) + " nodes.");
     if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
