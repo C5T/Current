@@ -28,9 +28,9 @@
 #ifndef FNCAS_FNCAS_JIT_H
 #define FNCAS_FNCAS_JIT_H
 
-#ifdef FNCAS_USE_LONG_DOUBLE
-#error "FnCAS with JIT doesn't play well with `FNCAS_USE_LONG_DOUBLE`. Contact @dkorolev for the details."
-#endif
+#ifndef FNCAS_USE_LONG_DOUBLE
+
+#define FNCAS_JIT_COMPILED
 
 #include <sstream>
 #include <stack>
@@ -822,5 +822,7 @@ struct g_impl_selector<JIT::NASM> {
 
 }  // namespace fncas::impl
 }  // namespace fncas
+
+#endif  // FNCAS_USE_LONG_DOUBLE
 
 #endif  // #ifndef FNCAS_FNCAS_JIT_H
