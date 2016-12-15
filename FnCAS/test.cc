@@ -92,13 +92,13 @@ TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
 }
 
 TEST(FnCAS, NativeWrapper) {
-  fncas::function_reference_t fn(SimpleFunction<fncas::double_t>, 2);
+  fncas::function_t<fncas::JIT::NativeWrapper> fn(SimpleFunction<fncas::double_t>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
 TEST(FnCAS, IntermediateWrapper) {
   fncas::variables_vector_t x(2);
-  fncas::function_blueprint_t fi = SimpleFunction(x);
+  fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2))*(x[0]+(x[1]*2)))", fi.debug_as_string());
 }
@@ -109,21 +109,22 @@ TEST(FnCAS, TrivialCompiledFunctions) {
   {
     // grep for `42.000`.
     const fncas::variables_vector_t x(1);
-    const fncas::function_blueprint_t intermediate_function([](const fncas::term_vector_t& x) { return x[0] + 42; }(x));
+    const fncas::function_t<fncas::JIT::Blueprint> intermediate_function(
+        [](const fncas::term_vector_t& x) { return x[0] + 42; }(x));
     EXPECT_EQ(1042, intermediate_function({1000}));
 
-    const fncas::function_compiled_t<fncas::JIT::AS> compiled_function(intermediate_function);
+    const fncas::function_t<fncas::JIT::AS> compiled_function(intermediate_function);
     EXPECT_EQ(10042, compiled_function({10000})) << compiled_function.lib_filename();
   }
   {
     // grep for `12345.000`.
     const fncas::variables_vector_t x(1);
-    const fncas::function_blueprint_t intermediate_function(
+    const fncas::function_t<fncas::JIT::Blueprint> intermediate_function(
         [](const fncas::term_vector_t& x) { return unittest_fncas_namespace::exp(x[0]) + 12345.0; }(x));
     EXPECT_EQ(12346.0, intermediate_function({0}));
     EXPECT_NEAR(12345.0 + std::exp(1.0), intermediate_function({1}), 1e-6);
 
-    const fncas::function_compiled_t<fncas::JIT::AS> compiled_function(intermediate_function);
+    const fncas::function_t<fncas::JIT::AS> compiled_function(intermediate_function);
     EXPECT_EQ(12346.0, compiled_function({0})) << compiled_function.lib_filename();
     // EXPECT_NEAR(12345.0 + unittest_fncas_namespace::exp(1.0), compiled_function({1}), 1e-6)
     EXPECT_NEAR(12345.0 + std::exp(1.0), compiled_function({1}), 1e-6) << compiled_function.lib_filename();
@@ -132,8 +133,8 @@ TEST(FnCAS, TrivialCompiledFunctions) {
 
 TEST(FnCAS, CompiledFunctionWrapper) {
   fncas::variables_vector_t x(2);
-  fncas::function_blueprint_t fi = SimpleFunction(x);
-  fncas::function_compiled_t<fncas::JIT::AS> fc(fi);
+  fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
+  fncas::function_t<fncas::JIT::AS> fc(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
 }
 #endif  // FNCAS_JIT
@@ -158,7 +159,7 @@ TEST(FnCAS, CompiledGradientsWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::variables_vector_t x(2);
-  const fncas::function_blueprint_t fi = SimpleFunction(x);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
   const fncas::gradient_blueprint_t gi(x, fi);
 
   const fncas::gradient_compiled_t<fncas::JIT::AS> gc(fi, gi);
@@ -175,10 +176,10 @@ TEST(FnCAS, CompiledSqrGradientWrapper) {
   std::vector<fncas::double_t> p_3_3({3.0, 3.0});
 
   const fncas::variables_vector_t x(2);
-  const fncas::function_blueprint_t fi = SimpleFunction(x);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
   const fncas::gradient_blueprint_t gi(x, SimpleFunction(x));
 
-  const fncas::function_compiled_t<fncas::JIT::AS> fc(fi);
+  const fncas::function_t<fncas::JIT::AS> fc(fi);
   const fncas::double_t f_3_3_compiled = fc(p_3_3);
   EXPECT_EQ(81, f_3_3_compiled);
 
@@ -194,7 +195,7 @@ TEST(FnCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = []() {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::variables_vector_t x(2);
-      fncas::function_blueprint_t fi = ParametrizedFunction(x, i + 1);
+      fncas::function_t<fncas::JIT::Blueprint> fi = ParametrizedFunction(x, i + 1);
       EXPECT_EQ(fncas::sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }
   };
@@ -587,12 +588,12 @@ TEST(FnCAS, CustomFunctions) {
   EXPECT_EQ(4.0, fncas::ramp(+4.0));
 
   const fncas::variables_vector_t x(1);
-  const fncas::function_blueprint_t intermediate_function = ZeroOrXFunction(x);
+  const fncas::function_t<fncas::JIT::Blueprint> intermediate_function = ZeroOrXFunction(x);
   EXPECT_EQ(0.0, intermediate_function({-5.0}));
   EXPECT_EQ(6.0, intermediate_function({+6.0}));
 
 #ifdef FNCAS_JIT
-  const fncas::function_compiled_t<fncas::JIT::AS> compiled_function(intermediate_function);
+  const fncas::function_t<fncas::JIT::AS> compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({-5.5})) << compiled_function.lib_filename();
   EXPECT_EQ(6.5, compiled_function({+6.5})) << compiled_function.lib_filename();
 #endif
@@ -615,12 +616,12 @@ TEST(FnCAS, CustomFunctions) {
 TEST(FnCAS, ComplexCustomFunctions) {
   const fncas::variables_vector_t x(1);
 
-  const fncas::function_blueprint_t intermediate_function = ZeroOrXOfSquareXMinusTen(x);
+  const fncas::function_t<fncas::JIT::Blueprint> intermediate_function = ZeroOrXOfSquareXMinusTen(x);
   EXPECT_EQ(0.0, intermediate_function({3.0}));  // fncas::ramp(3*3 - 10) == 0
   EXPECT_EQ(6.0, intermediate_function({4.0}));  // fncas::ramp(4*4 - 10) == 6
 
 #ifdef FNCAS_JIT
-  const fncas::function_compiled_t<fncas::JIT::AS> compiled_function(intermediate_function);
+  const fncas::function_t<fncas::JIT::AS> compiled_function(intermediate_function);
   EXPECT_EQ(0.0, compiled_function({3.0})) << compiled_function.lib_filename();
   EXPECT_EQ(6.0, compiled_function({4.0})) << compiled_function.lib_filename();
 #endif

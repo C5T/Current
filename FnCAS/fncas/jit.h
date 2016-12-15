@@ -740,14 +740,16 @@ inline compiled_expression compile_eval_g(const V& f_node, const std::vector<V>&
   return compile_eval_g<JIT_IMPLEMENTATION>(f_node.index_, g_node_indexes);
 }
 
+struct f_compiled_super : f_super {};
+
 template <JIT JIT_IMPLEMENTATION>
-struct f_compiled final : f {
+struct f_compiled final : f_compiled_super {
   fncas::impl::compiled_expression c_;
 
   explicit f_compiled(const V& node) : c_(compile_eval_f<JIT_IMPLEMENTATION>(node)) {
     CURRENT_ASSERT(c_.HasFunction());
   }
-  explicit f_compiled(const f_intermediate& f) : c_(compile_eval_f<JIT_IMPLEMENTATION>(f.f_)) {
+  explicit f_compiled(const f_impl<JIT::Blueprint>& f) : c_(compile_eval_f<JIT_IMPLEMENTATION>(f.f_)) {
     CURRENT_ASSERT(c_.HasFunction());
   }
 
@@ -763,11 +765,13 @@ struct f_compiled final : f {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
+struct g_compiled_super : g {};
+
 template <JIT JIT_IMPLEMENTATION>
-struct g_compiled final : g {
+struct g_compiled final : g_compiled_super {
   fncas::impl::compiled_expression c_;
 
-  explicit g_compiled(const f_intermediate& f, const g_intermediate& g)
+  explicit g_compiled(const f_impl<JIT::Blueprint>& f, const g_intermediate& g)
       : c_(compile_eval_g<JIT_IMPLEMENTATION>(f.f_, g.g_)) {
     CURRENT_ASSERT(c_.HasGradient());
   }
@@ -784,10 +788,25 @@ struct g_compiled final : g {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
+// Expose JIT-compiled functions as `fncas::function_t<JIT::*>`.
+template <>
+struct f_impl_selector<JIT::AS> {
+  using type = f_compiled<JIT::AS>;
+};
+
+template <>
+struct f_impl_selector<JIT::CLANG> {
+  using type = f_compiled<JIT::CLANG>;
+};
+
+template <>
+struct f_impl_selector<JIT::NASM> {
+  using type = f_compiled<JIT::NASM>;
+};
+
 }  // namespace fncas::impl
 
-template <JIT JIT_IMPLEMENTATION>
-using function_compiled_t = impl::f_compiled<JIT_IMPLEMENTATION>;
+using gradient_compiled_super_t = impl::g_compiled_super;
 
 template <JIT JIT_IMPLEMENTATION>
 using gradient_compiled_t = impl::g_compiled<JIT_IMPLEMENTATION>;

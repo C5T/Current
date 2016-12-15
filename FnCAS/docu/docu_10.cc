@@ -68,8 +68,8 @@ using namespace fncas_docu;
   // This type allows passing functions around without thinking of whether they
   // are native functions, blueprints, or JIT-compiled dynamically linked `.so`-s.
   // The `2` parameter is the dimensionality of the function.
-  fncas::function_reference_t native(simple_function<double>, 2);
-  const fncas::function_t& reference = native;
+  fncas::function_t<fncas::JIT::NativeWrapper> native(simple_function<double>, 2);
+  const fncas::function_super_t& reference = native;
   
   number_of_calls = 0;
   EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
@@ -83,7 +83,7 @@ using namespace fncas_docu;
   // from within this particular thread. It uses a thread-local singleton.
   fncas::variables_vector_t x(2);
   number_of_calls = 0;
-  fncas::function_blueprint_t blueprint = simple_function(x);
+  fncas::function_t<fncas::JIT::Blueprint> blueprint = simple_function(x);
   ASSERT_EQ(1, number_of_calls);
   number_of_calls = 0;
   EXPECT_EQ(5, blueprint(std::vector<double>({0, 0})));
@@ -96,20 +96,20 @@ using namespace fncas_docu;
             blueprint.debug_as_string());
   
   // Create the JIT-compiled representation of the function.
-  const fncas::function_compiled_t<fncas::JIT::AS> jit(blueprint);
+  const fncas::function_t<fncas::JIT::AS> jit(blueprint);
   number_of_calls = 0;
   EXPECT_EQ(5, jit(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, jit(std::vector<double>({-5, -5})));
   ASSERT_EQ(0, number_of_calls);
   
-  // Confirm both the blueprint and the JIT version can be cast down to `function_t`.
-  const fncas::function_t& reference = blueprint;
+  // Confirm both the blueprint and the JIT version can be cast down to `function_super_t`.
+  const fncas::function_super_t& reference = blueprint;
   number_of_calls = 0;
   EXPECT_EQ(5, reference(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, reference(std::vector<double>({-5, -5})));
   ASSERT_EQ(0, number_of_calls);
   
-  const fncas::function_t& jit_reference = jit;
+  const fncas::function_super_t& jit_reference = jit;
   number_of_calls = 0;
   EXPECT_EQ(5, jit_reference(std::vector<double>({0, 0})));
   EXPECT_EQ(4*4 + 3*3, jit_reference(std::vector<double>({-5, -5})));

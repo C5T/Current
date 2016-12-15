@@ -404,12 +404,15 @@ struct X : std::vector<V>, noncopyable {
   }
 };
 
-// Class "f" is the placeholder for function evaluators.
+// Class "f_super" is the placeholder for function evaluators.
 // One implementation -- f_intermediate -- is provided by default.
 // Compiled implementations using the same interface are defined in fncas_jit.h.
 
-struct f : noncopyable {
-  virtual ~f() = default;
+template <JIT>
+struct f_impl;
+
+struct f_super : noncopyable {
+  virtual ~f_super() = default;
   // The evaluator of the function.
   virtual double_t operator()(const std::vector<double_t>& x) const = 0;
   // The dimensionality of the parameters vector for the function.
@@ -418,18 +421,20 @@ struct f : noncopyable {
   virtual size_t heap_size() const { return 0; }
 };
 
-struct f_native final : f {
+template <>
+struct f_impl<JIT::NativeWrapper> final : f_super {
   std::function<double_t(const std::vector<double_t>&)> f_;
   size_t dim_;
-  f_native(std::function<double_t(std::vector<double_t>)> f, size_t d) : f_(f), dim_(d) {}
+  f_impl(std::function<double_t(std::vector<double_t>)> f, size_t d) : f_(f), dim_(d) {}
   double_t operator()(const std::vector<double_t>& x) const override { return f_(x); }
   size_t dim() const override { return dim_; }
 };
 
-struct f_intermediate final : f {
+template <>
+struct f_impl<JIT::Blueprint> final : f_super {
   const V f_;
-  f_intermediate(const V& f) : f_(f) {}
-  f_intermediate(f_intermediate&& rhs) : f_(rhs.f_) {}
+  f_impl(const V& f) : f_(f) {}
+  f_impl(f_impl&& rhs) : f_(rhs.f_) {}
   double_t operator()(const std::vector<double_t>& x) const override {
     CURRENT_ASSERT(x.size() == dim());
     return f_(x);
@@ -438,13 +443,25 @@ struct f_intermediate final : f {
   // Template is used here as a form of forward declaration.
   template <typename TX>
   V differentiate(const TX& x_ref, size_t variable_index) const {
-    static_assert(std::is_same<TX, X>::value, "f_intermediate::differentiate(const x& x, size_t variable_index);");
+    static_assert(std::is_same<TX, X>::value,
+                  "f_impl<JIT::Blueprint>::differentiate(const x& x, size_t variable_index);");
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
     CURRENT_ASSERT(variable_index >= 0);
     CURRENT_ASSERT(variable_index < dim());
     return f_.template differentiate<X>(x_ref, variable_index);
   }
   size_t dim() const override { return internals_singleton().dim_; }
+};
+
+// Helper code to enable JIT-based `f_impl`-s to be exposed as `fncas::function_t`.
+template <JIT JIT_IMPLEMENTATION>
+struct f_impl_selector {
+  using type = f_impl<JIT_IMPLEMENTATION>;
+};
+
+template <>
+struct f_impl_selector<JIT::Super> {
+  using type = f_super;
 };
 
 // Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
@@ -575,9 +592,10 @@ using term_vector_t = std::vector<term_t>;
 // point in time.
 using variables_vector_t = impl::X;
 
-using function_t = impl::f;
-using function_reference_t = impl::f_native;
-using function_blueprint_t = impl::f_intermediate;
+template <JIT JIT_IMPLEMENTATION>
+using function_t = typename impl::f_impl_selector<JIT_IMPLEMENTATION>::type;
+
+using function_super_t = impl::f_super;  // == `function_t<fncas::JIT::Super>`.
 
 }  // namespace fncas
 

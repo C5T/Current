@@ -215,7 +215,7 @@ struct g_intermediate : g {
       g_[i] = f_.template differentiate<X>(x_ref, i);
     }
   }
-  explicit g_intermediate(const X& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
+  explicit g_intermediate(const X& x_ref, const f_impl<JIT::Blueprint>& fi) : g_intermediate(x_ref, fi.f_) {}
   g_intermediate() = delete;
   void operator=(const g_intermediate& rhs) {
     f_ = rhs.f_;
