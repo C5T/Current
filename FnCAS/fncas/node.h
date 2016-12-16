@@ -405,7 +405,7 @@ struct X : std::vector<V>, noncopyable {
 };
 
 // Class "f_super" is the placeholder for function evaluators.
-// One implementation -- f_intermediate -- is provided by default.
+// Two implementation -- f_impl<JIT::NativeWrapper> and f_impl<JIT::Blueprint> -- are provided in this header.
 // Compiled implementations using the same interface are defined in fncas_jit.h.
 
 template <JIT>

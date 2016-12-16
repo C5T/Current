@@ -248,7 +248,7 @@ struct node_differentiate_impl<X> {
   }
 };
 
-// Helper code to enable JIT-based `f_impl`-s to be exposed as `fncas::function_t`.
+// Helper code to enable JIT-based `g_impl`-s to be exposed as `fncas::gradient_t`.
 template <JIT JIT_IMPLEMENTATION>
 struct g_impl_selector {
   using type = g_impl<JIT_IMPLEMENTATION>;
