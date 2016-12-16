@@ -220,7 +220,9 @@ struct g_impl<JIT::Blueprint> : g_super {
       g_[i] = f_.template differentiate<X>(x_ref, i);
     }
   }
-  explicit g_impl(const X& x_ref, const f_impl<JIT::Blueprint>& fi) : g_impl(x_ref, fi.f_) {}
+  explicit g_impl(const V& f) : g_impl(*internals_singleton().x_ptr_, f) {}
+  g_impl(const X& x_ref, const f_impl<JIT::Blueprint>& fi) : g_impl(x_ref, fi.f_) {}
+  explicit g_impl(const f_impl<JIT::Blueprint>& fi) : g_impl(*internals_singleton().x_ptr_, fi.f_) {}
   g_impl() = delete;
   void operator=(const g_impl& rhs) {
     f_ = rhs.f_;

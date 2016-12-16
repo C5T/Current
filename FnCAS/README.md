@@ -98,8 +98,7 @@ EXPECT_NEAR(4.0, g_approximate({0, 0})[1], 1e-5);
 ASSERT_EQ(8, number_of_calls);
 
 // Compute the blueprint of the gradient from the blueprint of the function.
-// TODO(dkorolev): Do we even need `x` as the parameter here?
-const gradient_t<JIT::Blueprint> g_blueprint(x, blueprint);
+const gradient_t<JIT::Blueprint> g_blueprint(blueprint);
 number_of_calls = 0;
 EXPECT_EQ(2.0, g_blueprint({0, 0})[0]);
 EXPECT_EQ(4.0, g_blueprint({0, 0})[1]);
