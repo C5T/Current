@@ -90,7 +90,7 @@ ASSERT_EQ(0, number_of_calls);
 // where `g[i]` is the i-th component of the gradient, `x` is the point, `unit[i]`
 // is the `(0,...,0,1,0,...,0)` vector with a `1` at index `i`, and `eps` is small.
 // The `2` parameter is the dimensionality of the function.
-const auto g_approximate = gradient_t<JIT::NativeWrapper>(simple_function<double>, 2);
+const gradient_t<JIT::NativeWrapper> g_approximate(simple_function<double>, 2);
 number_of_calls = 0;
 EXPECT_NEAR(2.0, g_approximate({0, 0})[0], 1e-5);
 ASSERT_EQ(4, number_of_calls);  // Plus delta and minus delta, one per variable.
