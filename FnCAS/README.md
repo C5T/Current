@@ -62,10 +62,8 @@ EXPECT_EQ(5, blueprint(std::vector<double>({0, 0})));
 EXPECT_EQ(4*4 + 3*3, blueprint(std::vector<double>({-5, -5})));
 ASSERT_EQ(0, number_of_calls);  // Blueprint evalution doesn't call the function.
 
-// Internal only: Examine the textual representation of the blueprint.
-// TODO(dkorolev): One day we may want to clean this syntax and its result.
-EXPECT_EQ("(sqr((x[0]+1))+sqr((x[1]+2)))",
-          blueprint.debug_as_string());
+// For demo purposes only: Examine the textual representation of the blueprint.
+EXPECT_EQ("(sqr((x[0]+1))+sqr((x[1]+2)))", blueprint.debug_as_string());
 
 // Create the JIT-compiled representation of the function.
 const function_t<JIT::AS> jit(blueprint);
