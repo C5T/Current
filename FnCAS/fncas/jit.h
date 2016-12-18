@@ -55,11 +55,11 @@ static_assert(std::is_same<double, double_t>::value, "FnCAS JIT assumes `double_
 // Linux-friendly code to compile into .so and link against it at runtime.
 // Not portable.
 
-inline const char* operation_as_assembler_opcode(operation_t operation) {
-  static const char* representation[static_cast<size_t>(operation_t::end)] = {
+inline const char* operation_as_assembler_opcode(MathOperation operation) {
+  static const char* representation[static_cast<size_t>(MathOperation::end)] = {
       "addpd", "subpd", "mulpd", "divpd",
   };
-  return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
+  return operation < MathOperation::end ? representation[static_cast<size_t>(operation)] : "?";
 }
 
 struct compiled_expression final : noncopyable {
@@ -294,20 +294,20 @@ class JITImplementation<JIT::NASM> final {
         if (!computed[i]) {
           computed[i] = true;
           node_impl& node = node_vector_singleton()[i];
-          if (node.type() == type_t::variable) {
+          if (node.type() == NodeType::variable) {
             int32_t v = node.variable();
             fprintf(f, "  ; a[%lld] = x[%d];\n", static_cast<long long>(i), v);
             fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
             fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
-          } else if (node.type() == type_t::value) {
+          } else if (node.type() == NodeType::value) {
             fprintf(f, "  ; a[%lld] = %lf\n", static_cast<long long>(i), node.value());
             fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
             fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
-          } else if (node.type() == type_t::operation) {
+          } else if (node.type() == NodeType::operation) {
             stack.push(~i);
             stack.push(node.lhs_index());
             stack.push(node.rhs_index());
-          } else if (node.type() == type_t::function) {
+          } else if (node.type() == NodeType::function) {
             stack.push(~i);
             stack.push(node.argument_index());
           } else {
@@ -316,7 +316,7 @@ class JITImplementation<JIT::NASM> final {
         }
       } else {
         node_impl& node = node_vector_singleton()[dependent_i];
-        if (node.type() == type_t::operation) {
+        if (node.type() == NodeType::operation) {
           fprintf(f,
                   "  ; a[%lld] = a[%lld] %s a[%lld];\n",
                   static_cast<long long>(dependent_i),
@@ -327,8 +327,8 @@ class JITImplementation<JIT::NASM> final {
           fprintf(f, "  movq xmm1, [rsi+%lld]\n", static_cast<long long>(node.rhs_index()) * 8);
           fprintf(f, "  %s xmm0, xmm1\n", operation_as_assembler_opcode(node.operation()));
           fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-        } else if (node.type() == type_t::function) {
-          if (node.function() == function_t::sqr) {
+        } else if (node.type() == NodeType::function) {
+          if (node.function() == MathFunction::sqr) {
             fprintf(f,
                     "  ; a[%lld] = sqr(a[%lld]);  # `sqr` is a special case.\n",
                     static_cast<long long>(dependent_i),
@@ -336,7 +336,7 @@ class JITImplementation<JIT::NASM> final {
             fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
             fprintf(f, "  mulpd xmm0, xmm0\n");
             fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
-          } else if (node.function() == function_t::unit_step) {
+          } else if (node.function() == MathFunction::unit_step) {
             fprintf(f,
                     "  ; a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
                     static_cast<long long>(dependent_i),
@@ -349,7 +349,7 @@ class JITImplementation<JIT::NASM> final {
             fprintf(f, "  mov rax, %s  ; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
             fprintf(f, "unit_step_%lld:\n", static_cast<long long>(dependent_i));
             fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(dependent_i) * 8);
-          } else if (node.function() == function_t::ramp) {
+          } else if (node.function() == MathFunction::ramp) {
             fprintf(f,
                     "  ; a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
                     static_cast<long long>(dependent_i),
@@ -499,20 +499,20 @@ class JITImplementation<JIT::AS> final {
         if (!computed[i]) {
           computed[i] = true;
           node_impl& node = node_vector_singleton()[i];
-          if (node.type() == type_t::variable) {
+          if (node.type() == NodeType::variable) {
             int32_t v = node.variable();
             fprintf(f, "  # a[%lld] = x[%d];\n", static_cast<long long>(i), v);
             fprintf(f, "  mov %d(%%rdi), %%rax\n", v * 8);
             fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(i) * 8);
-          } else if (node.type() == type_t::value) {
+          } else if (node.type() == NodeType::value) {
             fprintf(f, "  # a[%lld] = %lf\n", static_cast<long long>(i), node.value());
             fprintf(f, "  movabs $%s, %%rax\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
             fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(i) * 8);
-          } else if (node.type() == type_t::operation) {
+          } else if (node.type() == NodeType::operation) {
             stack.push(~i);
             stack.push(node.lhs_index());
             stack.push(node.rhs_index());
-          } else if (node.type() == type_t::function) {
+          } else if (node.type() == NodeType::function) {
             stack.push(~i);
             stack.push(node.argument_index());
           } else {
@@ -521,7 +521,7 @@ class JITImplementation<JIT::AS> final {
         }
       } else {
         node_impl& node = node_vector_singleton()[dependent_i];
-        if (node.type() == type_t::operation) {
+        if (node.type() == NodeType::operation) {
           fprintf(f,
                   "  # a[%lld] = a[%lld] %s a[%lld];\n",
                   static_cast<long long>(dependent_i),
@@ -532,8 +532,8 @@ class JITImplementation<JIT::AS> final {
           fprintf(f, "  movq %lld(%%rsi), %%xmm1\n", static_cast<long long>(node.rhs_index()) * 8);
           fprintf(f, "  %s %%xmm1, %%xmm0\n", operation_as_assembler_opcode(node.operation()));
           fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-        } else if (node.type() == type_t::function) {
-          if (node.function() == function_t::sqr) {
+        } else if (node.type() == NodeType::function) {
+          if (node.function() == MathFunction::sqr) {
             fprintf(f,
                     "  # a[%lld] = sqr(a[%lld]);  # `sqr` is a special case.\n",
                     static_cast<long long>(dependent_i),
@@ -541,7 +541,7 @@ class JITImplementation<JIT::AS> final {
             fprintf(f, "  movq %lld(%%rsi), %%xmm0\n", static_cast<long long>(node.argument_index()) * 8);
             fprintf(f, "  mulpd %%xmm0, %%xmm0\n");
             fprintf(f, "  movq %%xmm0, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-          } else if (node.function() == function_t::unit_step) {
+          } else if (node.function() == MathFunction::unit_step) {
             fprintf(f,
                     "  # a[%lld] = unit_step(a[%lld]);  # `unit_step` is a special case.\n",
                     static_cast<long long>(dependent_i),
@@ -553,7 +553,7 @@ class JITImplementation<JIT::AS> final {
             fprintf(f, "  jb . +12\n");  // NOTE(dkorolev): `. +12` skips the next `movabs`.
             fprintf(f, "  movabs $%s, %%rax #; 1\n", std::to_string(*reinterpret_cast<const int64_t*>(&d_1)).c_str());
             fprintf(f, "  mov %%rax, %lld(%%rsi)\n", static_cast<long long>(dependent_i) * 8);
-          } else if (node.function() == function_t::ramp) {
+          } else if (node.function() == MathFunction::ramp) {
             fprintf(f,
                     "  # a[%lld] = ramp(a[%lld]);  # `ramp` is a special case.\n",
                     static_cast<long long>(dependent_i),
@@ -658,20 +658,20 @@ class JITImplementation<JIT::CLANG> final {
         if (!computed[i]) {
           computed[i] = true;
           node_impl& node = node_vector_singleton()[i];
-          if (node.type() == type_t::variable) {
+          if (node.type() == NodeType::variable) {
             int32_t v = node.variable();
             fprintf(f, "  a[%lld] = x[%d];\n", static_cast<long long>(i), v);
-          } else if (node.type() == type_t::value) {
+          } else if (node.type() == NodeType::value) {
             fprintf(f,
                     "  a[%lld] = %a;  // %lf\n",  // "%a" is hexadecimal full precision.
                     static_cast<long long>(i),
                     node.value(),
                     node.value());  // "%a" is hexadecimal full precision.
-          } else if (node.type() == type_t::operation) {
+          } else if (node.type() == NodeType::operation) {
             stack.push(~i);
             stack.push(node.lhs_index());
             stack.push(node.rhs_index());
-          } else if (node.type() == type_t::function) {
+          } else if (node.type() == NodeType::function) {
             stack.push(~i);
             stack.push(node.argument_index());
           } else {
@@ -680,14 +680,14 @@ class JITImplementation<JIT::CLANG> final {
         }
       } else {
         node_impl& node = node_vector_singleton()[dependent_i];
-        if (node.type() == type_t::operation) {
+        if (node.type() == NodeType::operation) {
           fprintf(f,
                   "  a[%lld] = a[%lld] %s a[%lld];\n",
                   static_cast<long long>(dependent_i),
                   static_cast<long long>(node.lhs_index()),
                   operation_as_string(node.operation()),
                   static_cast<long long>(node.rhs_index()));
-        } else if (node.type() == type_t::function) {
+        } else if (node.type() == NodeType::function) {
           fprintf(f,
                   "  a[%lld] = %s(a[%lld]);\n",
                   static_cast<long long>(dependent_i),

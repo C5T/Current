@@ -66,18 +66,18 @@ std::vector<double_t> approximate_gradient(F f,
   return g;
 }
 
-inline node_index_t d_op(operation_t operation, const V& a, const V& b, const V& da, const V& db) {
-  static const size_t n = static_cast<size_t>(operation_t::end);
+inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const V& da, const V& db) {
+  static const size_t n = static_cast<size_t>(MathOperation::end);
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
       [](const V&, const V&, const V& da, const V& db) { return da + db; },
       [](const V&, const V&, const V& da, const V& db) { return da - db; },
       [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
       [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
-  return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
+  return operation < MathOperation::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
-inline node_index_t d_f(function_t function, const V& original, const V& x, const V& dx) {
-  static const size_t n = static_cast<size_t>(function_t::end);
+inline node_index_t d_f(MathFunction function, const V& original, const V& x, const V& dx) {
+  static const size_t n = static_cast<size_t>(MathFunction::end);
   static const std::function<V(const V&, const V&, const V&)> differentiator[n] = {
       // sqr().
       [](const V&, const V& x, const V& dx) { return V(2.0) * x * dx; },
@@ -110,7 +110,7 @@ inline node_index_t d_f(function_t function, const V& original, const V& x, cons
       },
       // ramp().
       [](const V&, const V& x, const V& dx) { return ::fncas::unit_step(x) * dx; }};
-  return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index() : 0;
+  return function < MathFunction::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index() : 0;
 }
 
 // differentiate_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
@@ -134,15 +134,15 @@ inline node_index_t differentiate_node(node_index_t index, size_t var_index, siz
       const node_index_t dependent_i = ~i;
       if (i > dependent_i) {
         node_impl& f = node_vector_singleton()[i];
-        if (f.type() == type_t::variable && static_cast<size_t>(f.variable()) == var_index) {
+        if (f.type() == NodeType::variable && static_cast<size_t>(f.variable()) == var_index) {
           growing_vector_access(df, i, static_cast<node_index_t>(-1)) = one_index;
-        } else if (f.type() == type_t::variable || f.type() == type_t::value) {
+        } else if (f.type() == NodeType::variable || f.type() == NodeType::value) {
           growing_vector_access(df, i, static_cast<node_index_t>(-1)) = zero_index;
-        } else if (f.type() == type_t::operation) {
+        } else if (f.type() == NodeType::operation) {
           stack.push(~i);
           stack.push(f.lhs_index());
           stack.push(f.rhs_index());
-        } else if (f.type() == type_t::function) {
+        } else if (f.type() == NodeType::function) {
           stack.push(~i);
           stack.push(f.argument_index());
         } else {
@@ -151,7 +151,7 @@ inline node_index_t differentiate_node(node_index_t index, size_t var_index, siz
         }
       } else {
         node_impl& f = node_vector_singleton()[dependent_i];
-        if (f.type() == type_t::operation) {
+        if (f.type() == NodeType::operation) {
           const node_index_t a = f.lhs_index();
           const node_index_t b = f.rhs_index();
           const node_index_t da = growing_vector_access(df, a, static_cast<node_index_t>(-1));
@@ -160,7 +160,7 @@ inline node_index_t differentiate_node(node_index_t index, size_t var_index, siz
           CURRENT_ASSERT(db != -1);
           growing_vector_access(df, dependent_i, static_cast<node_index_t>(-1)) =
               d_op(f.operation(), from_index(a), from_index(b), from_index(da), from_index(db));
-        } else if (f.type() == type_t::function) {
+        } else if (f.type() == NodeType::function) {
           const node_index_t x = f.argument_index();
           const node_index_t dx = growing_vector_access(df, x, static_cast<node_index_t>(-1));
           CURRENT_ASSERT(dx != -1);
