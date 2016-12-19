@@ -1,9 +1,9 @@
 struct math : F {
   INCLUDE_IN_SMOKE_TEST;
   enum { DIM = 100 };
-  template <typename X>
-  static fncas::X2V<X> f(const X& x) {
-    fncas::X2V<X> r = 0.0;
+  template <typename T>
+  static T f(const std::vector<T>& x) {
+    T r = 0.0;
     for (size_t i = 0; i < DIM; ++i) {
       switch (i % 7) {
         case 0:

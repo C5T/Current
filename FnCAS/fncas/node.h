@@ -50,11 +50,11 @@ inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
 // TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
 
 template <typename T>
-T apply_function(::fncas::impl::function_t function, T argument) {
-  static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::impl::function_t::end)] = {
+T apply_function(::fncas::impl::MathFunction function, T argument) {
+  static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::impl::MathFunction::end)] = {
       sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
-  return function < ::fncas::impl::function_t::end ? evaluator[static_cast<size_t>(function)](argument)
-                                                   : std::numeric_limits<T>::quiet_NaN();
+  return function < ::fncas::impl::MathFunction::end ? evaluator[static_cast<size_t>(function)](argument)
+                                                     : std::numeric_limits<T>::quiet_NaN();
 }
 }  // namespace fncas
 
@@ -67,24 +67,24 @@ namespace impl {
 // The `ThreadLocalSingleton` containing `vector<node_impl>` is the allocator, thus
 // at most one expression per thread (at most one scope of `fncas::impl::X`) can be "recorded" at a time.
 
-inline const char* operation_as_string(operation_t operation) {
-  static const char* representation[static_cast<size_t>(operation_t::end)] = {"+", "-", "*", "/"};
-  return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
+inline const char* operation_as_string(MathOperation operation) {
+  static const char* representation[static_cast<size_t>(MathOperation::end)] = {"+", "-", "*", "/"};
+  return operation < MathOperation::end ? representation[static_cast<size_t>(operation)] : "?";
 }
 
-inline const char* function_as_string(function_t function) {
-  static const char* representation[static_cast<size_t>(function_t::end)] = {
+inline const char* function_as_string(MathFunction function) {
+  static const char* representation[static_cast<size_t>(MathFunction::end)] = {
       "sqr", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "unit_step", "ramp"};
-  return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
+  return function < MathFunction::end ? representation[static_cast<size_t>(function)] : "?";
 }
 
 template <typename T>
-T apply_operation(operation_t operation, T lhs, T rhs) {
-  static std::function<T(T, T)> evaluator[static_cast<size_t>(operation_t::end)] = {
+T apply_operation(MathOperation operation, T lhs, T rhs) {
+  static std::function<T(T, T)> evaluator[static_cast<size_t>(MathOperation::end)] = {
       std::plus<T>(), std::minus<T>(), std::multiplies<T>(), std::divides<T>(),
   };
-  return operation < operation_t::end ? evaluator[static_cast<size_t>(operation)](lhs, rhs)
-                                      : std::numeric_limits<T>::quiet_NaN();
+  return operation < MathOperation::end ? evaluator[static_cast<size_t>(operation)](lhs, rhs)
+                                        : std::numeric_limits<T>::quiet_NaN();
 }
 
 struct node_impl;
@@ -124,33 +124,33 @@ inline std::vector<node_impl>& node_vector_singleton() { return internals_single
 
 struct node_impl {
   uint8_t data_[18];
-  type_t& type() { return *reinterpret_cast<type_t*>(&data_[0]); }
+  NodeType& type() { return *reinterpret_cast<NodeType*>(&data_[0]); }
   int32_t& variable() {
-    CURRENT_ASSERT(type() == type_t::variable);
+    CURRENT_ASSERT(type() == NodeType::variable);
     return *reinterpret_cast<int32_t*>(&data_[2]);
   }
   double_t& value() {
-    CURRENT_ASSERT(type() == type_t::value);
+    CURRENT_ASSERT(type() == NodeType::value);
     return *reinterpret_cast<double_t*>(&data_[2]);
   }
-  operation_t& operation() {
-    CURRENT_ASSERT(type() == type_t::operation);
-    return *reinterpret_cast<operation_t*>(&data_[1]);
+  MathOperation& operation() {
+    CURRENT_ASSERT(type() == NodeType::operation);
+    return *reinterpret_cast<MathOperation*>(&data_[1]);
   }
   node_index_t& lhs_index() {
-    CURRENT_ASSERT(type() == type_t::operation);
+    CURRENT_ASSERT(type() == NodeType::operation);
     return *reinterpret_cast<node_index_t*>(&data_[2]);
   }
   node_index_t& rhs_index() {
-    CURRENT_ASSERT(type() == type_t::operation);
+    CURRENT_ASSERT(type() == NodeType::operation);
     return *reinterpret_cast<node_index_t*>(&data_[10]);
   }
-  function_t& function() {
-    CURRENT_ASSERT(type() == type_t::function);
-    return *reinterpret_cast<function_t*>(&data_[1]);
+  MathFunction& function() {
+    CURRENT_ASSERT(type() == NodeType::function);
+    return *reinterpret_cast<MathFunction*>(&data_[1]);
   }
   node_index_t& argument_index() {
-    CURRENT_ASSERT(type() == type_t::function);
+    CURRENT_ASSERT(type() == NodeType::function);
     return *reinterpret_cast<node_index_t*>(&data_[2]);
   }
 };
@@ -176,20 +176,20 @@ inline double_t eval_node(node_index_t index,
     if (i > dependent_i) {
       if (!growing_vector_access(B, i, static_cast<int8_t>(false))) {
         node_impl& f = node_vector_singleton()[i];
-        if (f.type() == type_t::variable) {
+        if (f.type() == NodeType::variable) {
           const int32_t v = f.variable();
           CURRENT_ASSERT(v >= 0 && v < static_cast<int32_t>(x.size()));
           growing_vector_access(V, i, 0.0) = x[v];
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
 
-        } else if (f.type() == type_t::value) {
+        } else if (f.type() == NodeType::value) {
           growing_vector_access(V, i, 0.0) = f.value();
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
-        } else if (f.type() == type_t::operation) {
+        } else if (f.type() == NodeType::operation) {
           stack.push(~i);
           stack.push(f.lhs_index());
           stack.push(f.rhs_index());
-        } else if (f.type() == type_t::function) {
+        } else if (f.type() == NodeType::function) {
           stack.push(~i);
           stack.push(f.argument_index());
         } else {
@@ -199,11 +199,11 @@ inline double_t eval_node(node_index_t index,
       }
     } else {
       node_impl& f = node_vector_singleton()[dependent_i];
-      if (f.type() == type_t::operation) {
+      if (f.type() == NodeType::operation) {
         growing_vector_access(V, dependent_i, 0.0) =
             apply_operation<double_t>(f.operation(), V[f.lhs_index()], V[f.rhs_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
-      } else if (f.type() == type_t::function) {
+      } else if (f.type() == NodeType::function) {
         growing_vector_access(V, dependent_i, 0.0) =
             ::fncas::apply_function<double_t>(f.function(), V[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
@@ -249,39 +249,39 @@ struct GenericV : node_index_allocator {
  public:
   GenericV() : node_index_allocator(allocate_new()) {}
   GenericV(double_t x) : node_index_allocator(allocate_new()) {
-    type() = type_t::value;
+    type() = NodeType::value;
     value() = x;
   }
   GenericV(from_index i) : node_index_allocator(i) {}
-  type_t& type() const { return node_vector_singleton()[index_].type(); }
+  NodeType& type() const { return node_vector_singleton()[index_].type(); }
   int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
   double_t& value() const { return node_vector_singleton()[index_].value(); }
-  operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
+  MathOperation& operation() const { return node_vector_singleton()[index_].operation(); }
   node_index_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
   node_index_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
   GenericV lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
   GenericV rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
-  function_t& function() const { return node_vector_singleton()[index_].function(); }
+  MathFunction& function() const { return node_vector_singleton()[index_].function(); }
   node_index_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
   GenericV argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
   static GenericV variable(node_index_t index) {
     GenericV result;
-    result.type() = type_t::variable;
+    result.type() = NodeType::variable;
     result.variable() = index;
     return result;
   }
   std::string debug_as_string() const {
-    if (type() == type_t::variable) {
+    if (type() == NodeType::variable) {
       return "x[" + std::to_string(variable()) + "]";
-    } else if (type() == type_t::value) {
+    } else if (type() == NodeType::value) {
       std::ostringstream os;
       os << value();
       return os.str();  // std::to_string(value()); <- this doesn't print integers as integers -- D.K.
-    } else if (type() == type_t::operation) {
+    } else if (type() == NodeType::operation) {
       // Note: this recursive call will overflow the stack with SEGFAULT on deep functions.
       // For debugging purposes only.
       return "(" + lhs().debug_as_string() + operation_as_string(operation()) + rhs().debug_as_string() + ")";
-    } else if (type() == type_t::function) {
+    } else if (type() == NodeType::function) {
       // Note: this recursive call will overflow the stack with SEGFAULT on deep functions.
       // For debugging purposes only.
       return std::string(function_as_string(function())) + "(" + argument().debug_as_string() + ")";
@@ -404,12 +404,15 @@ struct X : std::vector<V>, noncopyable {
   }
 };
 
-// Class "f" is the placeholder for function evaluators.
-// One implementation -- f_intermediate -- is provided by default.
+// Class "f_super" is the placeholder for function evaluators.
+// Two implementations -- f_impl<JIT::NativeWrapper> and f_impl<JIT::Blueprint> -- are provided in this header.
 // Compiled implementations using the same interface are defined in fncas_jit.h.
 
-struct f : noncopyable {
-  virtual ~f() = default;
+template <JIT>
+struct f_impl;
+
+struct f_super : noncopyable {
+  virtual ~f_super() = default;
   // The evaluator of the function.
   virtual double_t operator()(const std::vector<double_t>& x) const = 0;
   // The dimensionality of the parameters vector for the function.
@@ -418,18 +421,20 @@ struct f : noncopyable {
   virtual size_t heap_size() const { return 0; }
 };
 
-struct f_native final : f {
+template <>
+struct f_impl<JIT::NativeWrapper> final : f_super {
   std::function<double_t(const std::vector<double_t>&)> f_;
   size_t dim_;
-  f_native(std::function<double_t(std::vector<double_t>)> f, size_t d) : f_(f), dim_(d) {}
+  f_impl(std::function<double_t(std::vector<double_t>)> f, size_t d) : f_(f), dim_(d) {}
   double_t operator()(const std::vector<double_t>& x) const override { return f_(x); }
   size_t dim() const override { return dim_; }
 };
 
-struct f_intermediate final : f {
+template <>
+struct f_impl<JIT::Blueprint> final : f_super {
   const V f_;
-  f_intermediate(const V& f) : f_(f) {}
-  f_intermediate(f_intermediate&& rhs) : f_(rhs.f_) {}
+  f_impl(const V& f) : f_(f) {}
+  f_impl(f_impl&& rhs) : f_(rhs.f_) {}
   double_t operator()(const std::vector<double_t>& x) const override {
     CURRENT_ASSERT(x.size() == dim());
     return f_(x);
@@ -438,7 +443,8 @@ struct f_intermediate final : f {
   // Template is used here as a form of forward declaration.
   template <typename TX>
   V differentiate(const TX& x_ref, size_t variable_index) const {
-    static_assert(std::is_same<TX, X>::value, "f_intermediate::differentiate(const x& x, size_t variable_index);");
+    static_assert(std::is_same<TX, X>::value,
+                  "f_impl<JIT::Blueprint>::differentiate(const x& x, size_t variable_index);");
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
     CURRENT_ASSERT(variable_index >= 0);
     CURRENT_ASSERT(variable_index < dim());
@@ -447,36 +453,16 @@ struct f_intermediate final : f {
   size_t dim() const override { return internals_singleton().dim_; }
 };
 
-// Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
-// Type `V` describes one value (`double`), type `X` describes an array of values (`std::vector<double>`),
-// although `double` is in fact `double_t`.
-// Synopsis: `fncas::impl::X2V<X> f(const X& x)` or `V f(const fncas::impl::V2X<V>& x);`.
-
-template <typename T>
-struct x2v_impl {};
-
-template <typename T>
-struct x2v_impl<std::vector<T>> {
-  typedef T type;
+// Helper code to enable JIT-based `f_impl`-s to be exposed as `fncas::function_t`.
+template <JIT JIT_IMPLEMENTATION>
+struct f_impl_selector {
+  using type = f_impl<JIT_IMPLEMENTATION>;
 };
+
 template <>
-struct x2v_impl<X> {
-  typedef V type;
+struct f_impl_selector<JIT::Super> {
+  using type = f_super;
 };
-
-template <typename T>
-struct v2x_impl {
-  typedef std::vector<T> type;
-};
-template <>
-struct v2x_impl<V> {
-  typedef X type;
-};
-
-template <typename X>
-using X2V = typename x2v_impl<X>::type;
-template <typename V>
-using V2X = typename v2x_impl<V>::type;
 
 }  // namespace fncas::impl
 }  // namespace fncas
@@ -486,8 +472,8 @@ using V2X = typename v2x_impl<V>::type;
 #define DECLARE_OP(OP, OP2, NAME)                                                                   \
   inline ::fncas::impl::V operator OP(const ::fncas::impl::V& lhs, const ::fncas::impl::V& rhs) {   \
     ::fncas::impl::V result;                                                                        \
-    result.type() = ::fncas::impl::type_t::operation;                                               \
-    result.operation() = ::fncas::impl::operation_t::NAME;                                          \
+    result.type() = ::fncas::impl::NodeType::operation;                                             \
+    result.operation() = ::fncas::impl::MathOperation::NAME;                                        \
     result.lhs_index() = lhs.index_;                                                                \
     result.rhs_index() = rhs.index_;                                                                \
     return result;                                                                                  \
@@ -513,8 +499,8 @@ using namespace std;
   namespace fncas {                                             \
   inline ::fncas::impl::V F(const ::fncas::impl::V& argument) { \
     ::fncas::impl::V result;                                    \
-    result.type() = ::fncas::impl::type_t::function;            \
-    result.function() = ::fncas::impl::function_t::F;           \
+    result.type() = ::fncas::impl::NodeType::function;          \
+    result.function() = ::fncas::impl::MathFunction::F;         \
     result.argument_index() = argument.index_;                  \
     return result;                                              \
   }                                                             \
@@ -531,8 +517,8 @@ using namespace std;
   namespace fncas {                                             \
   inline ::fncas::impl::V F(const ::fncas::impl::V& argument) { \
     ::fncas::impl::V result;                                    \
-    result.type() = ::fncas::impl::type_t::function;            \
-    result.function() = ::fncas::impl::function_t::F;           \
+    result.type() = ::fncas::impl::NodeType::function;          \
+    result.function() = ::fncas::impl::MathFunction::F;         \
     result.argument_index() = argument.index_;                  \
     return result;                                              \
   }                                                             \
@@ -575,9 +561,8 @@ using term_vector_t = std::vector<term_t>;
 // point in time.
 using variables_vector_t = impl::X;
 
-using function_t = impl::f;
-using function_reference_t = impl::f_native;
-using function_blueprint_t = impl::f_intermediate;
+template <JIT JIT_IMPLEMENTATION = JIT::Super>
+using function_t = typename impl::f_impl_selector<JIT_IMPLEMENTATION>::type;
 
 }  // namespace fncas
 

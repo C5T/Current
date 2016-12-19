@@ -169,7 +169,7 @@ class Optimizer : impl::noncopyable {
 template <typename IMPL>
 struct OptimizeImpl;
 
-template <class F, class IMPL>
+template <class F, JIT JIT_IMPLEMENTATION, class IMPL>
 class OptimizeInvoker : public Optimizer<F> {
  public:
   using super_t = Optimizer<F>;
@@ -180,16 +180,22 @@ class OptimizeInvoker : public Optimizer<F> {
 
     const fncas::impl::X gradient_helper(starting_point.size());
     // NOTE(dkorolev): Here, `fncas::impl::X` is magically cast into `std::vector<fncas::impl::V>`.
-    const fncas::impl::f_intermediate f_i(super_t::Function().ObjectiveFunction(gradient_helper));
+    const fncas::impl::f_impl<JIT::Blueprint> f_i(super_t::Function().ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(impl::node_vector_singleton().size()) +
                " nodes.");
-    if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
+    if (JIT_IMPLEMENTATION != fncas::JIT::Blueprint &&
+        (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled())) {
       logger.Log("Optimizer: Compiling the objective function.");
+#ifdef FNCAS_JIT_COMPILED
       const auto compile_f_begin_gradient = current::time::Now();
-      fncas::impl::f_compiled f = fncas::impl::f_compiled(f_i);
+      fncas::function_t<JIT_IMPLEMENTATION> f(f_i);
       logger.Log("Optimizer: Done compiling the objective function, took " +
                  current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
       return DoOptimize(f_i, f, starting_point, gradient_helper);
+#else
+      std::cerr << "Attempted to use FnCAS JIT when it's not compiled into the binary. Check your -D flags.\n";
+      std::exit(-1);
+#endif
     } else {
       logger.Log("Optimizer: JIT has been disabled via `DisableJIT()`, falling back to interpreted evalutions.");
       return DoOptimize(f_i, f_i, starting_point, gradient_helper);
@@ -197,26 +203,66 @@ class OptimizeInvoker : public Optimizer<F> {
   }
 
   template <typename POSSIBLY_COMPILED_F>
-  OptimizationResult DoOptimize(const fncas::impl::f_intermediate& f_i,
+  OptimizationResult DoOptimize(const fncas::impl::f_impl<JIT::Blueprint>& f_i,
                                 POSSIBLY_COMPILED_F&& f,
                                 const std::vector<double_t>& starting_point,
                                 const fncas::impl::X& gradient_helper) const {
     const auto& logger = impl::OptimizerLogger();
 
     logger.Log("Optimizer: Differentiating.");
-    const fncas::impl::g_intermediate g_i(gradient_helper, f_i);
+    const fncas::impl::g_impl<fncas::JIT::Blueprint> g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(impl::node_vector_singleton().size()) + " nodes.");
-    if (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled()) {
+    if (JIT_IMPLEMENTATION != fncas::JIT::Blueprint &&
+        (!Exists(super_t::Parameters()) || Value(super_t::Parameters()).IsJITEnabled())) {
       logger.Log("Optimizer: Compiling the gradient.");
+#ifdef FNCAS_JIT_COMPILED
       const auto compile_g_begin_gradient = current::time::Now();
-      fncas::impl::g_compiled g = fncas::impl::g_compiled(f_i, g_i);
+      fncas::gradient_t<JIT_IMPLEMENTATION> g(f_i, g_i);
       logger.Log("Optimizer: Done compiling the gradient, took " +
                  current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
       return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
+#else
+      std::cerr << "Attempted to use FnCAS JIT when it's not compiled into the binary. Check your -D flags.\n";
+      std::exit(-1);
+#endif
     } else {
       return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
     }
+  }
+};
+
+// A special implementation w/o JIT. Can compile when JIT is disabled.
+template <class F, class IMPL>
+class OptimizeInvoker<F, fncas::JIT::Blueprint, IMPL> : public Optimizer<F> {
+ public:
+  using super_t = Optimizer<F>;
+  using super_t::super_t;
+
+  OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
+    const auto& logger = impl::OptimizerLogger();
+
+    const fncas::impl::X gradient_helper(starting_point.size());
+    // NOTE(dkorolev): Here, `fncas::impl::X` is magically cast into `std::vector<fncas::impl::V>`.
+    const fncas::impl::f_impl<JIT::Blueprint> f_i(super_t::Function().ObjectiveFunction(gradient_helper));
+    logger.Log("Optimizer: The objective function is " + current::ToString(impl::node_vector_singleton().size()) +
+               " nodes.");
+    logger.Log("Optimizer: Not using JIT.");
+    return DoOptimize(f_i, f_i, starting_point, gradient_helper);
+  }
+
+  template <typename POSSIBLY_COMPILED_F>
+  OptimizationResult DoOptimize(const fncas::impl::f_impl<JIT::Blueprint>& f_i,
+                                POSSIBLY_COMPILED_F&& f,
+                                const std::vector<double_t>& starting_point,
+                                const fncas::impl::X& gradient_helper) const {
+    const auto& logger = impl::OptimizerLogger();
+
+    logger.Log("Optimizer: Differentiating.");
+    const fncas::impl::g_impl<fncas::JIT::Blueprint> g_i(gradient_helper, f_i);
+    logger.Log("Optimizer: Augmented with the gradient the function is " +
+               current::ToString(impl::node_vector_singleton().size()) + " nodes.");
+    return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
   }
 };
 
@@ -224,10 +270,10 @@ class OptimizeInvoker : public Optimizer<F> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerSelector;
 
-template <class F>
-class GradientDescentOptimizer final : public OptimizeInvoker<F, GradientDescentOptimizerSelector> {
+template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
+class GradientDescentOptimizer final : public OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<F, GradientDescentOptimizerSelector>;
+  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector>;
   using super_t::super_t;
 };
 
@@ -322,10 +368,11 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerBTSelector;
 
-template <class F>
-class GradientDescentOptimizerBT final : public OptimizeInvoker<F, GradientDescentOptimizerBTSelector> {
+template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
+class GradientDescentOptimizerBT final
+    : public OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector> {
  public:
-  using super_t = OptimizeInvoker<F, GradientDescentOptimizerBTSelector>;
+  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector>;
   using super_t::super_t;
 };
 
@@ -434,10 +481,11 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
 // backtracking line search to find a local minimum of `F::ObjectiveFunction` function.
 struct ConjugateGradientOptimizerSelector;
 
-template <class F>
-class ConjugateGradientOptimizer final : public OptimizeInvoker<F, ConjugateGradientOptimizerSelector> {
+template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
+class ConjugateGradientOptimizer final
+    : public OptimizeInvoker<F, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<F, ConjugateGradientOptimizerSelector>;
+  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector>;
   using super_t::super_t;
 };
 
