@@ -28,8 +28,13 @@ SOFTWARE.
 
 #include "../../TypeSystem/Serialization/json.h"
 
+#include "../../Bricks/dflags/dflags.h"
+
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/strings/split.h"
+
+DEFINE_bool(header, false, "Set to treat the first row of the data as the header, and extract field names from it.");
+DEFINE_string(separator, "\t", "The characters to use as separators in the input TSV/CSV file.");
 
 std::string ExcelColName(size_t i) {
   if (i < 26) {
@@ -39,18 +44,53 @@ std::string ExcelColName(size_t i) {
   }
 }
 
-int main() {
+std::string MakeValidIdentifier(const std::string& s) {
+  if (s.empty()) {
+    return "_";
+  } else {
+    std::string result;
+
+    for (char c : s) {
+      if (std::isalnum(c)) {
+        result += c;
+      } else {
+        result += current::strings::Printf("x%02X", static_cast<int>(static_cast<unsigned char>(c)));
+      }
+    }
+
+    return std::isalpha(result.front()) ? result : "_" + result;
+  }
+}
+
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
   std::vector<std::map<std::string, std::string>> output;
   std::string row_as_string;
+  bool header_to_parse = FLAGS_header;
+  std::vector<std::string> field_names;
   while (std::getline(std::cin, row_as_string)) {
     if (!row_as_string.empty()) {
       const std::vector<std::string> fields =
-          current::strings::Split(row_as_string, '\t', current::strings::EmptyFields::Keep);
-      std::map<std::string, std::string> row;
-      for (size_t i = 0; i < fields.size(); ++i) {
-        row[ExcelColName(i)] = fields[i];
+          current::strings::Split(row_as_string, FLAGS_separator, current::strings::EmptyFields::Keep);
+      if (header_to_parse) {
+        std::unordered_map<std::string, size_t> key_counters;  // To convert "X,X,X" into "X,X2,X3".
+        for (const std::string& field : fields) {
+          std::string key = MakeValidIdentifier(field);
+          const size_t index = ++key_counters[key];
+          if (index > 1) {
+            // NOTE(dkorolev): Yes, this may create duplicates. For now it's by design.
+            key += current::ToString(index);
+          }
+          field_names.emplace_back(std::move(key));
+        }
+        header_to_parse = false;
+      } else {
+        std::map<std::string, std::string> row;
+        for (size_t i = 0; i < fields.size(); ++i) {
+          row[i < field_names.size() ? field_names[i] : ExcelColName(i)] = fields[i];
+        }
+        output.emplace_back(std::move(row));
       }
-      output.emplace_back(std::move(row));
     }
   }
   std::cout << JSON(output) << std::endl;
