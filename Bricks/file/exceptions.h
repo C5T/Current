@@ -31,24 +31,32 @@ namespace current {
 
 // TODO(dkorolev): Add more detailed exceptions for Read/Write/etc.
 struct FileException : Exception {
-  FileException() : Exception() {}
+  FileException() = delete;
   FileException(const std::string& what) : Exception(what) {}
 };
 
 struct CannotReadFileException : FileException {
-  CannotReadFileException(const std::string& what) : FileException(what) {}
+  using FileException::FileException;
 };
 
-struct DirDoesNotExistException : FileException {
-  DirDoesNotExistException() : FileException() {}
+struct DirException : FileException {
+  using FileException::FileException;
 };
 
-struct PathNotDirException : FileException {
-  PathNotDirException() : FileException() {}
+struct MkDirException : DirException {
+  using DirException::DirException;
 };
 
-struct DirNotEmptyException : FileException {
-  DirNotEmptyException() : FileException() {}
+struct DirDoesNotExistException : DirException {
+  using DirException::DirException;
+};
+
+struct PathNotDirException : DirException {
+  using DirException::DirException;
+};
+
+struct DirNotEmptyException : DirException {
+  using DirException::DirException;
 };
 
 }  // namespace current
