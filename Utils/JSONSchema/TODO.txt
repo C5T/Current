@@ -1,3 +1,5 @@
+* Add a README on the tools.
+
 * Tell categorical fields.
 * Detect "double as string" and "integer as string" fields.
 * Detect "Optional<value> as string" fields (ex. all numbers as string, and a few "N/A"-s.)
