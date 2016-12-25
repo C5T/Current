@@ -35,6 +35,7 @@ SOFTWARE.
 
 DEFINE_bool(header, false, "Set to treat the first row of the data as the header, and extract field names from it.");
 DEFINE_string(separator, "\t", "The characters to use as separators in the input TSV/CSV file.");
+DEFINE_bool(require_dense, true, "Set to false to allow some rows to be of fewer fields than others.");
 
 std::string ExcelColName(size_t i) {
   if (i < 26) {
@@ -89,7 +90,13 @@ int main(int argc, char** argv) {
   }
 
   size_t total_cols = field_names.size();
-  for (const auto& row : output) {
+  for (size_t i = 0; i < output.size(); ++i) {
+    const auto& row = output[i];
+    if (total_cols && total_cols != row.size() && FLAGS_require_dense) {
+      std::cerr << "Data row of 1-based index " << (i + 1) << (FLAGS_header ? " (header discounted)" : "") << " has "
+                << output[i].size() << " columns, while it should have " << total_cols << " ones." << std::endl;
+      std::exit(-1);
+    }
     total_cols = std::max(total_cols, row.size());
   }
 
