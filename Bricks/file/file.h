@@ -81,7 +81,7 @@ struct FileSystem {
       if (!fi.read(&buffer[0], size).bad()) {
         return buffer;
       } else {
-        CURRENT_THROW(FileException());  // LCOV_EXCL_LINE: This line not unit tested.
+        CURRENT_THROW(FileException(file_name));  // LCOV_EXCL_LINE: This line not unit tested.
       }
     } catch (const std::ifstream::failure&) {
       CURRENT_THROW(CannotReadFileException(file_name));
@@ -114,7 +114,7 @@ struct FileSystem {
       fo.open(file_name, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary);
       fo << contents;
     } catch (const std::ofstream::failure&) {
-      CURRENT_THROW(FileException());
+      CURRENT_THROW(FileException(file_name));
     }
   }
 
@@ -139,7 +139,7 @@ struct FileSystem {
 
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {
     if (base_name.empty()) {
-      CURRENT_THROW(FileException());
+      CURRENT_THROW(FileException(base_name));
     } else if (path_name.empty() || base_name.front() == PathSeparatingSlash) {
       return base_name;
     } else if (path_name.back() == PathSeparatingSlash) {
@@ -152,7 +152,7 @@ struct FileSystem {
   static inline bool IsDir(const std::string& file_or_directory_name) {
     struct stat info;
     if (::stat(file_or_directory_name.c_str(), &info)) {
-      CURRENT_THROW(FileException());
+      CURRENT_THROW(FileException(file_or_directory_name));
     } else {
 #ifndef CURRENT_WINDOWS
       return !!(S_ISDIR(info.st_mode));
@@ -165,7 +165,7 @@ struct FileSystem {
   static inline uint64_t GetFileSize(const std::string& file_name) {
     struct stat info;
     if (::stat(file_name.c_str(), &info)) {
-      CURRENT_THROW(FileException());
+      CURRENT_THROW(FileException(file_name));
     } else {
       if (
 // clang-format off
@@ -176,7 +176,7 @@ struct FileSystem {
 #endif
     ) {
         // clang-format on
-        CURRENT_THROW(FileException());
+        CURRENT_THROW(FileException(file_name));
       } else {
         return static_cast<uint64_t>(info.st_size);
       }
@@ -200,7 +200,7 @@ struct FileSystem {
       // clang-format on
       if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
-        CURRENT_THROW(FileException());
+        CURRENT_THROW(MkDirException(directory));
       }
     }
   }
@@ -208,7 +208,7 @@ struct FileSystem {
   static inline void RenameFile(const std::string& old_name, const std::string& new_name) {
     if (::rename(old_name.c_str(), new_name.c_str())) {
       // TODO(dkorolev): Analyze errno.
-      CURRENT_THROW(FileException());
+      CURRENT_THROW(FileException(old_name + " -> " + new_name));
     }
   }
 
@@ -224,7 +224,7 @@ struct FileSystem {
     WIN32_FIND_DATAA find_data;
     HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
     if (handle == INVALID_HANDLE_VALUE) {
-      CURRENT_THROW(DirDoesNotExistException());
+      CURRENT_THROW(DirDoesNotExistException(directory));
     } else {
       struct ScopedCloseFindFileHandle {
         HANDLE handle_;
@@ -268,11 +268,11 @@ struct FileSystem {
       }
     } else {
       if (errno == ENOENT) {
-        CURRENT_THROW(DirDoesNotExistException());
+        CURRENT_THROW(DirDoesNotExistException(directory));
       } else if (errno == ENOTDIR) {
-        CURRENT_THROW(PathNotDirException());
+        CURRENT_THROW(PathNotDirException(directory));
       } else {
-        CURRENT_THROW(FileException());  // LCOV_EXCL_LINE
+        CURRENT_THROW(FileException(directory));  // LCOV_EXCL_LINE
       }
     }
 #endif
@@ -295,7 +295,7 @@ struct FileSystem {
                             RmFileParameters parameters = RmFileParameters::ThrowExceptionOnError) {
     if (::remove(file_name.c_str())) {
       if (parameters == RmFileParameters::ThrowExceptionOnError) {
-        CURRENT_THROW(FileException());
+        CURRENT_THROW(FileException(file_name));
       }
     }
   }
@@ -330,11 +330,11 @@ struct FileSystem {
         // clang-format on
         if (parameters == RmDirParameters::ThrowExceptionOnError) {
           if (errno == ENOENT) {
-            CURRENT_THROW(DirDoesNotExistException());
+            CURRENT_THROW(DirDoesNotExistException(directory));
           } else if (errno == ENOTEMPTY) {
-            CURRENT_THROW(DirNotEmptyException());
+            CURRENT_THROW(DirNotEmptyException(directory));
           } else {
-            CURRENT_THROW(FileException());  // LCOV_EXCL_LINE
+            CURRENT_THROW(FileException(directory));  // LCOV_EXCL_LINE
           }
         }
       }
