@@ -26,7 +26,7 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 
-#include "../../TypeSystem/Serialization/json.h"
+#include "../../TypeSystem/Serialization/json/rapidjson.h"
 
 #include "../../Bricks/dflags/dflags.h"
 
@@ -49,7 +49,6 @@ std::string MakeValidIdentifier(const std::string& s) {
     return "_";
   } else {
     std::string result;
-
     for (char c : s) {
       if (std::isalnum(c)) {
         result += c;
@@ -57,14 +56,13 @@ std::string MakeValidIdentifier(const std::string& s) {
         result += current::strings::Printf("x%02X", static_cast<int>(static_cast<unsigned char>(c)));
       }
     }
-
     return std::isalpha(result.front()) ? result : "_" + result;
   }
 }
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  std::vector<std::map<std::string, std::string>> output;
+  std::vector<std::vector<std::string>> output;
   std::string row_as_string;
   bool header_to_parse = FLAGS_header;
   std::vector<std::string> field_names;
@@ -85,13 +83,34 @@ int main(int argc, char** argv) {
         }
         header_to_parse = false;
       } else {
-        std::map<std::string, std::string> row;
-        for (size_t i = 0; i < fields.size(); ++i) {
-          row[i < field_names.size() ? field_names[i] : ExcelColName(i)] = fields[i];
-        }
-        output.emplace_back(std::move(row));
+        output.emplace_back(std::move(fields));
       }
     }
   }
-  std::cout << JSON(output) << std::endl;
+
+  size_t total_cols = field_names.size();
+  for (const auto& row : output) {
+    total_cols = std::max(total_cols, row.size());
+  }
+
+  for (size_t i = field_names.size(); i < total_cols; ++i) {
+    field_names.push_back(ExcelColName(i));
+  }
+
+  rapidjson::Document json;
+  json.SetArray();
+  for (const auto& row : output) {
+    rapidjson::Value element;
+    element.SetObject();
+    for (size_t i = 0; i < row.size(); ++i) {
+      element.AddMember(rapidjson::StringRef(field_names[i]), rapidjson::StringRef(row[i]), json.GetAllocator());
+    }
+    json.PushBack(std::move(element), json.GetAllocator());
+  }
+
+  rapidjson::StringBuffer string_buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(string_buffer);
+  json.Accept(writer);
+
+  std::cout << string_buffer.GetString() << std::endl;
 }
