@@ -446,9 +446,9 @@ struct Reduce<Object, Object> {
       const auto& lhs_cit = lhs.field_index.find(f);
       const auto& rhs_cit = rhs.field_index.find(f);
       if (lhs_cit == lhs.field_index.end()) {
-        intermediate = CallReduce(Uninitialized(), rhs.field_schema[rhs_cit->second].second);
+        intermediate = CallReduce(Null(), rhs.field_schema[rhs_cit->second].second);
       } else if (rhs_cit == rhs.field_index.end()) {
-        intermediate = CallReduce(lhs.field_schema[lhs_cit->second].second, Uninitialized());
+        intermediate = CallReduce(lhs.field_schema[lhs_cit->second].second, Null());
       } else {
         intermediate = CallReduce(lhs.field_schema[lhs_cit->second].second, rhs.field_schema[rhs_cit->second].second);
       }

@@ -2,13 +2,13 @@
 
 CURRENT_STRUCT(Schema_optional_Element_Object) {
   CURRENT_FIELD(string, std::string);
-  CURRENT_FIELD(maybe, bool);
+  CURRENT_FIELD(maybe, Optional<bool>);
 };
 
 CURRENT_STRUCT(Schema_Object) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(b, bool);
-  CURRENT_FIELD(optional, std::vector<Schema_optional_Element_Object>);
+  CURRENT_FIELD(optional, Optional<std::vector<Schema_optional_Element_Object>>);
 };
 
 using Schema = Schema_Object;
