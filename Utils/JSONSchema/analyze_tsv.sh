@@ -36,6 +36,10 @@ if [ -e "$FILE_H" ] ; then
   exit 1
 fi
 
+echo -n "Making sure the binaries are available ..."
+(cd "$SCRIPT_DIR" && make -s .current/tsv2json .current/describe .current/json2current)
+echo -e "\b\b\b: Done."
+
 echo -n "Generating $FILE_JSON        ..."
 if [ $# -lt 3 ] ; then
   cat "$FILE_ORIGINAL" | "$SCRIPT_DIR/.current/tsv2json" --header > "$FILE_JSON"
