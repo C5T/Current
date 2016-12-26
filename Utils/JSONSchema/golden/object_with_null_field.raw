@@ -1,1 +1,1 @@
-{"Object":{"fields":{"x":{"Null":{"occurrences":1}}},"instances":1,"nulls":0}}
+{"Object":{"field_schema":[["x",{"Null":{"occurrences":1}}]],"field_index":{"x":0},"instances":1,"nulls":0}}

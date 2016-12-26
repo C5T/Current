@@ -1,0 +1,4 @@
+* Add a README on the tools.
+
+* Tell categorical fields.
+* Add the conversion tool in addition to the inference one (ex. convert numbers into strings, and categorical values into CURRENT_ENUM-s.)

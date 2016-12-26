@@ -252,7 +252,8 @@ CURRENT_STRUCT(Array) {
 };
 
 CURRENT_STRUCT(Object) {
-  CURRENT_FIELD(fields, (std::unordered_map<std::string, Schema>));
+  CURRENT_FIELD(field_schema, (std::vector<std::pair<std::string, Schema>>));
+  CURRENT_FIELD(field_index, (std::unordered_map<std::string, uint32_t>));
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
@@ -421,30 +422,35 @@ struct Reduce<Double, Integer> {
 template <>
 struct Reduce<Object, Object> {
   static Schema DoIt(const Object& lhs, const Object& rhs) {
-    std::vector<std::string> lhs_fields;
-    std::vector<std::string> rhs_fields;
-    for (const auto& cit : lhs.fields) {
-      lhs_fields.push_back(cit.first);
-    }
-    for (const auto& cit : rhs.fields) {
-      rhs_fields.push_back(cit.first);
-    }
-    std::sort(lhs_fields.begin(), lhs_fields.end());
-    std::sort(rhs_fields.begin(), rhs_fields.end());
     std::vector<std::string> union_fields;
-    std::set_union(
-        lhs_fields.begin(), lhs_fields.end(), rhs_fields.begin(), rhs_fields.end(), std::back_inserter(union_fields));
+    for (const auto& lhs_field : lhs.field_schema) {
+      const auto& name = lhs_field.first;
+      union_fields.push_back(name);
+    }
+    for (const auto& rhs_field : rhs.field_schema) {
+      const auto& name = rhs_field.first;
+      if (!lhs.field_index.count(name)) {
+        union_fields.push_back(name);
+      }
+    }
+    const size_t n = union_fields.size();
     Object object;
-    for (const auto& f : union_fields) {
-      auto& intermediate = object.fields[f];
-      const auto& lhs_cit = lhs.fields.find(f);
-      const auto& rhs_cit = rhs.fields.find(f);
-      if (lhs_cit == lhs.fields.end()) {
-        intermediate = CallReduce(rhs_cit->second, Null());
-      } else if (rhs_cit == rhs.fields.end()) {
-        intermediate = CallReduce(lhs_cit->second, Null());
+    for (size_t i = 0; i < n; ++i) {
+      object.field_index[union_fields[i]] = static_cast<uint32_t>(i);
+    }
+    object.field_schema.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+      const auto& f = union_fields[i];
+      object.field_schema[i].first = f;
+      auto& intermediate = object.field_schema[i].second;
+      const auto& lhs_cit = lhs.field_index.find(f);
+      const auto& rhs_cit = rhs.field_index.find(f);
+      if (lhs_cit == lhs.field_index.end()) {
+        intermediate = CallReduce(Null(), rhs.field_schema[rhs_cit->second].second);
+      } else if (rhs_cit == rhs.field_index.end()) {
+        intermediate = CallReduce(lhs.field_schema[lhs_cit->second].second, Null());
       } else {
-        intermediate = CallReduce(lhs_cit->second, rhs_cit->second);
+        intermediate = CallReduce(lhs.field_schema[lhs_cit->second].second, rhs.field_schema[rhs_cit->second].second);
       }
     }
     object.instances = lhs.instances + rhs.instances;
@@ -480,7 +486,8 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value, const PATH& 
           if (!IsValidCPPIdentifier(key)) {
             CURRENT_THROW(InferSchemaInvalidCPPIdentifierException(key, path));
           }
-          object.fields[key] = RecursivelyInferSchema(inner, next_path);
+          object.field_index[key] = object.field_schema.size();
+          object.field_schema.emplace_back(key, std::move(RecursivelyInferSchema(inner, next_path)));
         }
       }
     }
@@ -595,28 +602,25 @@ class HumanReadableSchemaExporter {
   void operator()(const Object& x) {
     const auto save_path = path_;
 
-    std::vector<std::string> ordered_fields;
-    for (const auto& f : x.fields) {
-      ordered_fields.push_back(f.first);
-    }
-
-    std::sort(ordered_fields.begin(), ordered_fields.end());
-
     os_ << path_ << "\tObject\t" << x.instances << '\t' << x.nulls << '\t';
-    if (x.fields.empty()) {
+    if (x.field_schema.empty()) {
       os_ << "empty object";
-    } else if (x.fields.size() == 1) {
+    } else if (x.field_schema.size() == 1) {
       os_ << "1 field";
     } else {
-      os_ << x.fields.size() << " fields";
+      os_ << x.field_schema.size() << " fields";
     }
 
-    os_ << '\t' << strings::Join(ordered_fields, ", ") << '\n';
+    std::vector<std::string> field_names;
+    field_names.reserve(x.field_schema.size());
+    for (const auto& f : x.field_schema) {
+      field_names.emplace_back(f.first);
+    }
+    os_ << '\t' << strings::Join(field_names, ", ") << '\n';
 
-    for (const auto& ordered_f : ordered_fields) {
-      const auto f = *x.fields.find(ordered_f);
-      path_ = save_path.empty() ? f.first : (save_path + '.' + f.first);
-      f.second.Call(*this);
+    for (const auto& field : field_names) {
+      path_ = save_path.empty() ? field : (save_path + '.' + field);
+      x.field_schema[x.field_index.at(field)].second.Call(*this);
     }
 
     path_ = save_path;
@@ -676,8 +680,8 @@ class SchemaToCurrentStructPrinter {
       output_type = prefix + "_Object";
       // [ { name, { type, comment } ].
       std::vector<std::pair<std::string, std::pair<std::string, std::string>>> output_fields;
-      output_fields.reserve(x.fields.size());
-      for (const auto& input_field : x.fields) {
+      output_fields.reserve(x.field_schema.size());
+      for (const auto& input_field : x.field_schema) {
         output_fields.resize(output_fields.size() + 1);
         auto& output_field = output_fields.back();
         std::string& field_name = output_field.first;
@@ -686,7 +690,6 @@ class SchemaToCurrentStructPrinter {
         field_name = input_field.first;
         input_field.second.Call(Printer(os, prefix + '_' + field_name, type, comment));
       }
-      std::sort(output_fields.begin(), output_fields.end());
       os << '\n';
       os << "CURRENT_STRUCT(" << output_type << ") {\n";
       for (const auto& f : output_fields) {

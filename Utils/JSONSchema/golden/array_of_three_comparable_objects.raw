@@ -1,1 +1,1 @@
-{"Array":{"element":{"Object":{"fields":{"x":{"String":{"values":{"b":1,"a":2},"counters":[[1,"b"],[2,"a"]],"instances":3,"nulls":0}}},"instances":3,"nulls":0}},"instances":1,"nulls":0}}
+{"Array":{"element":{"Object":{"field_schema":[["x",{"String":{"values":{"b":1,"a":2},"counters":[[1,"b"],[2,"a"]],"instances":3,"nulls":0}}]],"field_index":{"x":0},"instances":3,"nulls":0}},"instances":1,"nulls":0}}
