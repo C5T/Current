@@ -36,8 +36,10 @@ SOFTWARE.
 DEFINE_bool(header, false, "Set to treat the first row of the data as the header, and extract field names from it.");
 DEFINE_string(separator, "\t", "The characters to use as separators in the input TSV/CSV file.");
 DEFINE_bool(require_dense, true, "Set to false to allow some rows to be of fewer fields than others.");
+DEFINE_string(na, "null:NA:N/A:", "Values that are to be treated as \"no value\". Note the empty string at the end.");
+DEFINE_string(na_separators, ":", "The characters to split `--na` by.");
 
-std::string ExcelColName(size_t i) {
+inline std::string ExcelColName(size_t i) {
   if (i < 26) {
     return std::string(1, 'A' + i);
   } else {
@@ -45,7 +47,7 @@ std::string ExcelColName(size_t i) {
   }
 }
 
-std::string MakeValidIdentifier(const std::string& s) {
+inline std::string MakeValidIdentifier(const std::string& s) {
   if (s.empty()) {
     return "_";
   } else {
@@ -69,6 +71,10 @@ int main(int argc, char** argv) {
 
   bool header_to_parse = FLAGS_header;
   std::vector<std::string> field_names;
+
+  const auto na_values_parsed =
+      current::strings::Split(FLAGS_na, FLAGS_na_separators, current::strings::EmptyFields::Keep);
+  std::unordered_set<std::string> na_values(na_values_parsed.begin(), na_values_parsed.end());
 
   // Parse the input TSV/CVS by lines.
   while (std::getline(std::cin, row_as_string)) {
@@ -122,10 +128,13 @@ int main(int argc, char** argv) {
   for (size_t j = 0; j < total_columns; ++j) {
     try {
       for (size_t i = 0; i < output.size(); ++i) {
-        if (output[i].size() > j) {
-          transposed_output_int64[j].push_back(ParseJSON<int64_t>(output[i][j]));
-        } else {
-          transposed_output_int64[j].push_back(0);
+        const auto& value = output[i][j];
+        if (!na_values.count(value)) {
+          if (output[i].size() > j) {
+            transposed_output_int64[j].push_back(ParseJSON<int64_t>(value));
+          } else {
+            transposed_output_int64[j].push_back(0);
+          }
         }
       }
       column_type[j] = ColumnType::Int64;
@@ -138,10 +147,13 @@ int main(int argc, char** argv) {
     if (column_type[j] == ColumnType::String) {
       try {
         for (size_t i = 0; i < output.size(); ++i) {
-          if (output[i].size() > j) {
-            transposed_output_double[j].push_back(ParseJSON<double>(output[i][j]));
-          } else {
-            transposed_output_double[j].push_back(0);
+          const auto& value = output[i][j];
+          if (!na_values.count(value)) {
+            if (output[i].size() > j) {
+              transposed_output_double[j].push_back(ParseJSON<double>(value));
+            } else {
+              transposed_output_double[j].push_back(0);
+            }
           }
         }
         column_type[j] = ColumnType::Double;
@@ -160,19 +172,25 @@ int main(int argc, char** argv) {
     rapidjson::Value element;
     element.SetObject();
     for (size_t j = 0; j < row.size(); ++j) {
-      if (column_type[j] == ColumnType::String) {
-        element.AddMember(rapidjson::StringRef(field_names[j]), rapidjson::StringRef(row[j]), json.GetAllocator());
-      } else if (column_type[j] == ColumnType::Int64) {
-        rapidjson::Value value;
-        value.SetInt64(transposed_output_int64[j][i]);
-        element.AddMember(rapidjson::StringRef(field_names[j]), std::move(value), json.GetAllocator());
-      } else if (column_type[j] == ColumnType::Double) {
-        rapidjson::Value value;
-        value.SetDouble(transposed_output_double[j][i]);
-        element.AddMember(rapidjson::StringRef(field_names[j]), std::move(value), json.GetAllocator());
+      if (!na_values.count(row[j])) {
+        if (column_type[j] == ColumnType::String) {
+          element.AddMember(rapidjson::StringRef(field_names[j]), rapidjson::StringRef(row[j]), json.GetAllocator());
+        } else if (column_type[j] == ColumnType::Int64) {
+          rapidjson::Value int64_value;
+          int64_value.SetInt64(transposed_output_int64[j][i]);
+          element.AddMember(rapidjson::StringRef(field_names[j]), std::move(int64_value), json.GetAllocator());
+        } else if (column_type[j] == ColumnType::Double) {
+          rapidjson::Value double_value;
+          double_value.SetDouble(transposed_output_double[j][i]);
+          element.AddMember(rapidjson::StringRef(field_names[j]), std::move(double_value), json.GetAllocator());
+        } else {
+          std::cerr << "Internal error." << std::endl;
+          std::exit(-1);
+        }
       } else {
-        std::cerr << "Internal error." << std::endl;
-        std::exit(-1);
+        rapidjson::Value null_value;
+        null_value.SetNull();
+        element.AddMember(rapidjson::StringRef(field_names[j]), std::move(null_value), json.GetAllocator());
       }
     }
     json.PushBack(std::move(element), json.GetAllocator());
