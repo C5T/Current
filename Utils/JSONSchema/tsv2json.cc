@@ -26,7 +26,7 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 
-#include "../../TypeSystem/Serialization/json/rapidjson.h"
+#include "../../TypeSystem/Serialization/json.h"
 
 #include "../../Bricks/dflags/dflags.h"
 
@@ -63,10 +63,14 @@ std::string MakeValidIdentifier(const std::string& s) {
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
+
   std::vector<std::vector<std::string>> output;
   std::string row_as_string;
+
   bool header_to_parse = FLAGS_header;
   std::vector<std::string> field_names;
+
+  // Parse the input TSV/CVS by lines.
   while (std::getline(std::cin, row_as_string)) {
     if (!row_as_string.empty()) {
       const std::vector<std::string> fields =
@@ -89,28 +93,87 @@ int main(int argc, char** argv) {
     }
   }
 
-  size_t total_cols = field_names.size();
+  // Populate field names, use Excel-like "A..Z,AA..ZZ,AAA..." or the ones from the header in `--header` mode.
+  // Also confirm the TSV/CSV is dense (each row contains the same number of columns), unless `--require_dense false`.
+  size_t total_columns = field_names.size();
   for (size_t i = 0; i < output.size(); ++i) {
     const auto& row = output[i];
-    if (total_cols && total_cols != row.size() && FLAGS_require_dense) {
+    if (total_columns && total_columns != row.size() && FLAGS_require_dense) {
       std::cerr << "Data row of 1-based index " << (i + 1) << (FLAGS_header ? " (header discounted)" : "") << " has "
-                << output[i].size() << " columns, while it should have " << total_cols << " ones." << std::endl;
+                << output[i].size() << " columns, while it should have " << total_columns << " ones." << std::endl;
       std::exit(-1);
     }
-    total_cols = std::max(total_cols, row.size());
+    total_columns = std::max(total_columns, row.size());
   }
 
-  for (size_t i = field_names.size(); i < total_cols; ++i) {
-    field_names.push_back(ExcelColName(i));
+  for (size_t j = field_names.size(); j < total_columns; ++j) {
+    field_names.push_back(ExcelColName(j));
   }
 
+  // Detect numerical columns.
+  // NOTE(dkorolev): The code below makes no distinction between signed and unsigned int64-s.
+  // The from-JSON schema inference tool would correctly mark unsigned values as `uint64_t`-s,
+  // but input unsigned 64-bit values with the MSB set would be corrupted. -- D.K.
+  enum class ColumnType : int { String = 0, Int64, Double };
+  std::vector<ColumnType> column_type(total_columns, ColumnType::String);
+  std::vector<std::vector<int64_t>> transposed_output_int64(total_columns);
+  std::vector<std::vector<double>> transposed_output_double(total_columns);
+
+  for (size_t j = 0; j < total_columns; ++j) {
+    try {
+      for (size_t i = 0; i < output.size(); ++i) {
+        if (output[i].size() > j) {
+          transposed_output_int64[j].push_back(ParseJSON<int64_t>(output[i][j]));
+        } else {
+          transposed_output_int64[j].push_back(0);
+        }
+      }
+      column_type[j] = ColumnType::Int64;
+    } catch (const current::TypeSystemParseJSONException&) {
+      // Not an `Int64` column.
+    }
+  }
+
+  for (size_t j = 0; j < total_columns; ++j) {
+    if (column_type[j] == ColumnType::String) {
+      try {
+        for (size_t i = 0; i < output.size(); ++i) {
+          if (output[i].size() > j) {
+            transposed_output_double[j].push_back(ParseJSON<double>(output[i][j]));
+          } else {
+            transposed_output_double[j].push_back(0);
+          }
+        }
+        column_type[j] = ColumnType::Double;
+      } catch (const current::TypeSystemParseJSONException&) {
+        // Not a `String` column.
+      }
+    }
+  }
+
+  // Generate and print the resulting JSON.
+  // NOTE(dkorolev): Yes, this approach can be slow, esp. the "create in memory" part. Shouldn't matter now.
   rapidjson::Document json;
   json.SetArray();
-  for (const auto& row : output) {
+  for (size_t i = 0; i < output.size(); ++i) {
+    const auto& row = output[i];
     rapidjson::Value element;
     element.SetObject();
-    for (size_t i = 0; i < row.size(); ++i) {
-      element.AddMember(rapidjson::StringRef(field_names[i]), rapidjson::StringRef(row[i]), json.GetAllocator());
+    for (size_t j = 0; j < row.size(); ++j) {
+      if (column_type[j] == ColumnType::String) {
+        element.AddMember(rapidjson::StringRef(field_names[j]), rapidjson::StringRef(row[j]), json.GetAllocator());
+      } else if (column_type[j] == ColumnType::Int64) {
+        rapidjson::Value value;
+        value.SetInt64(transposed_output_int64[j][i]);
+        element.AddMember(rapidjson::StringRef(field_names[j]), std::move(value), json.GetAllocator());
+      } else if (column_type[j] == ColumnType::Double) {
+        rapidjson::Value value;
+        value.SetDouble(transposed_output_double[j][i]);
+        element.AddMember(rapidjson::StringRef(field_names[j]), std::move(value), json.GetAllocator());
+      } else {
+        std::cerr << "Internal error." << std::endl;
+        std::exit(-1);
+      }
     }
     json.PushBack(std::move(element), json.GetAllocator());
   }
