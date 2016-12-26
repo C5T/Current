@@ -1,4 +1,4 @@
 Field	Type	Set	Unset/Null	Values	Details
-Schema	Object	4	0	2 fields	comment, us
+Schema	Object	4	0	2 fields	us, comment
+Schema.us	Integer	3	0	Mean 8.50921e+14, StdDev 3.93608e+14
 Schema.comment	String	4	0	4 distinct values, "expecting std::chrono::microseconds in this test":1, "date -d 'Aug 19 2013' +'%s000000'":1, "date -d 'Aug 19 1993' +'%s000000'":1, "date -d 'Aug 19 1983' +'%s000000'":1
-Schema.us	Integer	3	1	Mean 8.50921e+14, StdDev 3.93608e+14

@@ -1,1 +1,1 @@
-{"Object":{"fields":{"a":{"Object":{"fields":{"b":{"Object":{"fields":{"c":{"String":{"values":{"d":1},"counters":[[1,"d"]],"instances":1,"nulls":0}}},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}
+{"Object":{"field_schema":[["a",{"Object":{"field_schema":[["b",{"Object":{"field_schema":[["c",{"String":{"values":{"d":1},"counters":[[1,"d"]],"instances":1,"nulls":0}}]],"field_index":{"c":0},"instances":1,"nulls":0}}]],"field_index":{"b":0},"instances":1,"nulls":0}}]],"field_index":{"a":0},"instances":1,"nulls":0}}
