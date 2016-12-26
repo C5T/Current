@@ -36,9 +36,14 @@ if [ -e "$FILE_H" ] ; then
   exit 1
 fi
 
-echo -n "Making sure the binaries are available ..."
-(cd "$SCRIPT_DIR" && make -s .current/tsv2json .current/describe .current/json2current)
-echo -e "\b\b\b: Done."
+if [ ! -f "$SCRIPT_DIR/.current/tsv2json" ] ||
+   [ ! -f "$SCRIPT_DIR/.current/describe" ] ||
+   [ ! -f "$SCRIPT_DIR/.current/json2current" ] ; then
+  if ! (cd "$SCRIPT_DIR" && NDEBUG=1 make -j .current/tsv2json .current/describe .current/json2current) ; then
+    echo 'Make sure you have the compiler installed (may need `CPLUSPLUS=clang++`), and update Current.'
+    exit 1
+  fi
+fi
 
 echo -n "Generating $FILE_JSON        ..."
 if [ $# -lt 3 ] ; then
