@@ -77,9 +77,12 @@ enum class JIT {
 template <JIT>
 class JITImplementation;
 
+enum class OptimizationDirection { Minimize, Maximize };
+
 }  // namespace fncas::impl
 
 using impl::JIT;
+using impl::OptimizationDirection;
 
 }  // namespace fncas
 

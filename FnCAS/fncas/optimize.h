@@ -132,7 +132,7 @@ class OptimizerParameters {
 };
 
 // The base class for the optimizer of the function of type `F`.
-template <class F>
+template <class F, OptimizationDirection DIRECTION>
 class Optimizer : impl::noncopyable {
  public:
   virtual ~Optimizer() = default;
@@ -191,13 +191,13 @@ class Optimizer : impl::noncopyable {
 };
 
 // The generic implementation running the ultimate algorithm on intermediate or compiled versions of function+gradient.
-template <typename IMPL>
+template <typename IMPL, OptimizationDirection DIRECTION>
 struct OptimizeImpl;
 
-template <class F, JIT JIT_IMPLEMENTATION, class IMPL>
-class OptimizeInvoker : public Optimizer<F> {
+template <class F, OptimizationDirection DIRECTION, JIT JIT_IMPLEMENTATION, class IMPL>
+class OptimizeInvoker : public Optimizer<F, DIRECTION> {
  public:
-  using super_t = Optimizer<F>;
+  using super_t = Optimizer<F, DIRECTION>;
   using super_t::super_t;
 
   OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
@@ -246,22 +246,22 @@ class OptimizeInvoker : public Optimizer<F> {
       fncas::gradient_t<JIT_IMPLEMENTATION> g(f_i, g_i);
       logger.Log("Optimizer: Done compiling the gradient, took " +
                  current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
-      return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g, starting_point);
+      return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, f, g, starting_point);
 #else
       std::cerr << "Attempted to use FnCAS JIT when it's not compiled into the binary. Check your -D flags.\n";
       std::exit(-1);
 #endif
     } else {
-      return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
+      return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, f, g_i, starting_point);
     }
   }
 };
 
 // A special implementation w/o JIT. Can compile when JIT is disabled.
-template <class F, class IMPL>
-class OptimizeInvoker<F, fncas::JIT::Blueprint, IMPL> : public Optimizer<F> {
+template <class F, OptimizationDirection DIRECTION, class IMPL>
+class OptimizeInvoker<F, DIRECTION, fncas::JIT::Blueprint, IMPL> : public Optimizer<F, DIRECTION> {
  public:
-  using super_t = Optimizer<F>;
+  using super_t = Optimizer<F, DIRECTION>;
   using super_t::super_t;
 
   OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
@@ -287,7 +287,7 @@ class OptimizeInvoker<F, fncas::JIT::Blueprint, IMPL> : public Optimizer<F> {
     const fncas::impl::g_impl<fncas::JIT::Blueprint> g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(impl::node_vector_singleton().size()) + " nodes.");
-    return OptimizeImpl<IMPL>::template RunOptimize<F>(*this, f, g_i, starting_point);
+    return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, f, g_i, starting_point);
   }
 };
 
@@ -295,17 +295,20 @@ class OptimizeInvoker<F, fncas::JIT::Blueprint, IMPL> : public Optimizer<F> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerSelector;
 
-template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
-class GradientDescentOptimizer final : public OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector> {
+template <class F,
+          OptimizationDirection DIRECTION = OptimizationDirection::Minimize,
+          JIT JIT_IMPLEMENTATION = JIT::Default>
+class GradientDescentOptimizer final
+    : public OptimizeInvoker<F, DIRECTION, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector>;
+  using super_t = OptimizeInvoker<F, DIRECTION, JIT_IMPLEMENTATION, GradientDescentOptimizerSelector>;
   using super_t::super_t;
 };
 
-template <>
-struct OptimizeImpl<GradientDescentOptimizerSelector> {
+template <OptimizationDirection DIRECTION>
+struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
   template <typename ORIGINAL_F, typename F, typename G>
-  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F>& super,
+  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F, DIRECTION>& super,
                                         F&& f,
                                         G&& g,
                                         const std::vector<double_t>& starting_point) {
@@ -332,6 +335,9 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
     logger.Log("GradientDescentOptimizer: Begin at " + super.PointAsString(starting_point));
 
     ValueAndPoint current(f(starting_point), starting_point);
+    if (DIRECTION == OptimizationDirection::Maximize) {
+      current.value *= -1;
+    }
 
     size_t iteration;
     int no_improvement_steps = 0;
@@ -341,11 +347,14 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
         stats.JournalIteration();
         if (logger) {
           // Expensive call, don't make it if `logger` is not initialized.
-          logger.Log("GradientDescentOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
+          logger.Log("GradientDescentOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF to minimize = " +
                      current::ToString(current.value) + " @ " + super.PointAsString(current.point));
         }
         stats.JournalGradient();
-        const auto gradient = g(current.point);
+        auto gradient = g(current.point);
+        if (DIRECTION == OptimizationDirection::Maximize) {
+          fncas::impl::FlipSign(gradient);
+        }
 
         if (super.StoppingCriterionSatisfied(iteration, current, gradient) ==
             EarlyStoppingCriterion::StopOptimization) {
@@ -358,10 +367,13 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
         for (const double_t step : {0.01, 0.05, 0.2}) {  // TODO(dkorolev): Something more sophisticated maybe?
           const auto candidate_point(impl::SumVectors(current.point, gradient, -step));
           stats.JournalFunction();
-          const double_t value = f(candidate_point);
+          double_t value = f(candidate_point);
           if (fncas::IsNormal(value)) {
             has_valid_candidate = true;
-            logger.Log("GradientDescentOptimizer: Value " + current::ToString(value) + " at step " +
+            if (DIRECTION == OptimizationDirection::Maximize) {
+              value *= -1;
+            }
+            logger.Log("GradientDescentOptimizer: Value to minimize" + current::ToString(value) + " at step " +
                        current::ToString(step));
             best_candidate = std::min(best_candidate, ValueAndPoint(value, candidate_point));
           }
@@ -382,6 +394,11 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
         current = best_candidate;
       }
     }
+
+    if (DIRECTION == OptimizationDirection::Maximize) {
+      current.value *= -1;
+    }
+
     logger.Log("GradientDescentOptimizer: Result = " + super.PointAsString(current.point));
     logger.Log("GradientDescentOptimizer: Objective function = " + current::ToString(current.value));
 
@@ -393,18 +410,20 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
 // Searches for a local minimum of `F::ObjectiveFunction` function.
 struct GradientDescentOptimizerBTSelector;
 
-template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
+template <class F,
+          OptimizationDirection DIRECTION = OptimizationDirection::Minimize,
+          JIT JIT_IMPLEMENTATION = JIT::Default>
 class GradientDescentOptimizerBT final
-    : public OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector> {
+    : public OptimizeInvoker<F, DIRECTION, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector> {
  public:
-  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector>;
+  using super_t = OptimizeInvoker<F, DIRECTION, JIT_IMPLEMENTATION, GradientDescentOptimizerBTSelector>;
   using super_t::super_t;
 };
 
-template <>
-struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
+template <OptimizationDirection DIRECTION>
+struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
   template <typename ORIGINAL_F, typename F, typename G>
-  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F>& super,
+  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F, DIRECTION>& super,
                                         F&& f,
                                         G&& g,
                                         const std::vector<double_t>& starting_point) {
@@ -442,6 +461,9 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
     int no_improvement_steps = 0;
 
     ValueAndPoint current(f(starting_point), starting_point);
+    if (DIRECTION == OptimizationDirection::Maximize) {
+      current.value *= -1;
+    }
 
     {
       OptimizerStats stats("GradientDescentOptimizerBT");
@@ -449,10 +471,14 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
         stats.JournalIteration();
         if (logger) {
           // Expensive call, don't make it if `logger` is not initialized.
-          logger.Log("GradientDescentOptimizerBT: Iteration " + current::ToString(iteration + 1) + ", OF = " +
-                     current::ToString(current.value) + " @ " + super.PointAsString(current.point));
+          logger.Log("GradientDescentOptimizerBT: Iteration " + current::ToString(iteration + 1) +
+                     ", OF to minimize = " + current::ToString(current.value) + " @ " +
+                     super.PointAsString(current.point));
         }
         auto gradient = g(current.point);
+        if (DIRECTION == OptimizationDirection::Maximize) {
+          fncas::impl::FlipSign(gradient);
+        }
 
         if (super.StoppingCriterionSatisfied(iteration, current, gradient) ==
             EarlyStoppingCriterion::StopOptimization) {
@@ -469,7 +495,8 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
         fncas::impl::FlipSign(gradient);  // Going against the gradient to minimize the function.
 
         try {
-          const auto next = Backtracking(f, g, current.point, gradient, stats, bt_alpha, bt_beta, bt_max_steps);
+          const auto next =
+              impl::Backtracking<DIRECTION>(f, g, current.point, gradient, stats, bt_alpha, bt_beta, bt_max_steps);
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
@@ -494,6 +521,10 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
       }
     }
 
+    if (DIRECTION == OptimizationDirection::Maximize) {
+      current.value *= -1;
+    }
+
     logger.Log("GradientDescentOptimizerBT: Result = " + super.PointAsString(current.point));
     logger.Log("GradientDescentOptimizerBT: Objective function = " + current::ToString(current.value));
 
@@ -505,18 +536,20 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
 // backtracking line search to find a local minimum of `F::ObjectiveFunction` function.
 struct ConjugateGradientOptimizerSelector;
 
-template <class F, JIT JIT_IMPLEMENTATION = JIT::Default>
+template <class F,
+          OptimizationDirection DIRECTION = OptimizationDirection::Minimize,
+          JIT JIT_IMPLEMENTATION = JIT::Default>
 class ConjugateGradientOptimizer final
-    : public OptimizeInvoker<F, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector> {
+    : public OptimizeInvoker<F, DIRECTION, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector> {
  public:
-  using super_t = OptimizeInvoker<F, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector>;
+  using super_t = OptimizeInvoker<F, DIRECTION, JIT_IMPLEMENTATION, ConjugateGradientOptimizerSelector>;
   using super_t::super_t;
 };
 
-template <>
-struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
+template <OptimizationDirection DIRECTION>
+struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
   template <typename ORIGINAL_F, typename F, typename G>
-  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F>& super,
+  static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F, DIRECTION>& super,
                                         F&& f,
                                         G&& g,
                                         const std::vector<double_t>& starting_point) {
@@ -559,6 +592,12 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
     }
 
     std::vector<double_t> current_gradient = g(current.point);
+
+    if (DIRECTION == OptimizationDirection::Maximize) {
+      current.value *= -1;
+      fncas::impl::FlipSign(current_gradient);
+    }
+
     std::vector<double_t> s(current_gradient);  // Direction to search for a minimum.
     fncas::impl::FlipSign(s);                   // Trying first step against the gradient to minimize the function.
 
@@ -582,7 +621,8 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
         }
         try {
           // Backtracking line search.
-          const auto next = Backtracking(f, g, current.point, s, stats, bt_alpha, bt_beta, bt_max_steps);
+          const auto next =
+              impl::Backtracking<DIRECTION>(f, g, current.point, s, stats, bt_alpha, bt_beta, bt_max_steps);
 
           if (!IsNormal(next.value)) {
             // Would never happen as `BacktrackingException` is caught below, but just to be safe.
@@ -590,7 +630,10 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
           }
 
           stats.JournalGradient();
-          const auto new_gradient = g(next.point);
+          auto new_gradient = g(next.point);
+          if (DIRECTION == OptimizationDirection::Maximize) {
+            fncas::impl::FlipSign(new_gradient);
+          }
 
           // Calculating direction for the next step.
           const double_t omega =
@@ -619,6 +662,10 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
           break;
         }
       }
+    }
+
+    if (DIRECTION == OptimizationDirection::Maximize) {
+      current.value *= -1;
     }
 
     logger.Log("ConjugateGradientOptimizer: Result = " + super.PointAsString(current.point));

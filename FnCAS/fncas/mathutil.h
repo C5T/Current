@@ -137,7 +137,7 @@ inline double_t PolakRibiere(const std::vector<double_t>& g, const std::vector<d
 // Starts in `current_point` and searches for minimum in `direction`
 // sequentially shrinking the step size. Returns new optimal point.
 // Algorithm parameters: 0 < alpha < 1, 0 < beta < 1.
-template <class F, class G>
+template <OptimizationDirection DIRECTION, class F, class G>
 ValueAndPoint Backtracking(F&& f,
                            G&& g,
                            const std::vector<double_t>& current_point,
@@ -146,18 +146,23 @@ ValueAndPoint Backtracking(F&& f,
                            const double_t alpha = 0.5,
                            const double_t beta = 0.8,
                            const size_t max_steps = 100) {
+  const double sign = (DIRECTION == OptimizationDirection::Minimize ? +1 : -1);
   const auto& logger = OptimizerLogger();
   stats.JournalBacktrackingCall();
   stats.JournalFunction();
-  const double_t current_f_value = f(current_point);
+  const double_t current_f_value = f(current_point) * sign;
   std::vector<double_t> test_point = SumVectors(current_point, direction);
   stats.JournalFunction();
-  double_t test_f_value = f(test_point);
+  double_t test_f_value = f(test_point) * sign;
   if (logger) {
-    logger.Log(std::string("Backtracking: Starting value, OK if NAN or INF, is ") + current::ToString(test_f_value));
+    logger.Log(std::string("Backtracking: Starting value to minimize, OK if NAN or INF, is ") +
+               current::ToString(test_f_value));
   }
   stats.JournalGradient();
-  const std::vector<double_t> current_gradient = g(current_point);
+  std::vector<double_t> current_gradient = g(current_point);
+  if (DIRECTION == OptimizationDirection::Maximize) {
+    FlipSign(current_gradient);
+  }
   const double_t gradient_l2norm = L2Norm(current_gradient);
   double_t t = 1.0;
 
@@ -167,7 +172,7 @@ ValueAndPoint Backtracking(F&& f,
     t *= beta;
     test_point = SumVectors(current_point, direction, t);
     stats.JournalFunction();
-    test_f_value = f(test_point);
+    test_f_value = f(test_point) * sign;
     if (bt_iteration++ == max_steps) {
       break;
     }
@@ -175,7 +180,7 @@ ValueAndPoint Backtracking(F&& f,
 
   if (IsNormal(test_f_value)) {
     if (logger) {
-      logger.Log(std::string("Backtracking: Final value = ") + current::ToString(test_f_value));
+      logger.Log(std::string("Backtracking: Final value to minimize = ") + current::ToString(test_f_value));
     }
     return ValueAndPoint(test_f_value, test_point);
   } else {
