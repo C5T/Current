@@ -55,6 +55,31 @@ CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
 
 enum class EarlyStoppingCriterion : bool { StopOptimization = false, ContinueOptimization = true };
 
+inline bool NoImprovement(const ValueAndPoint& next,
+                          const ValueAndPoint& current,
+                          double min_relative_per_step_improvement,
+                          double min_absolute_per_step_improvement) {
+  if (current.value - next.value < min_absolute_per_step_improvement) {
+    return true;
+  }
+  // Relative impovement is a tricky concept when the values are negative, close to zero, or of opposite signs.
+  if (current.value > +1e-6 && next.value > +1e-6) {
+    // Relative improvement condition test for positive values.
+    // To the reader: substitute `next.value > current.value * ...` by `next.value / current.value > ...`.
+    if (next.value > current.value * (1.0 - min_relative_per_step_improvement)) {
+      return true;
+    }
+  } else if (current.value < -1e-6 && next.value < -1e-6) {
+    // Relative improvement condition test for negative values.
+    // To the reader: substitute `next.value > current.value * ...` by `next.value / current.value < ...`,
+    // with inverted comparison due to the value being negative.
+    if (next.value > current.value * (1.0 + min_relative_per_step_improvement)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class OptimizerParameters {
  public:
   using point_beautifier_t = std::function<std::string(const std::vector<double_t>& x)>;
@@ -344,8 +369,8 @@ struct OptimizeImpl<GradientDescentOptimizerSelector> {
         if (!has_valid_candidate) {
           CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(value)"));
         }
-        if (best_candidate.value / current.value > 1.0 - min_relative_per_step_improvement ||
-            current.value - best_candidate.value < min_absolute_per_step_improvement) {
+        if (NoImprovement(
+                best_candidate, current, min_relative_per_step_improvement, min_absolute_per_step_improvement)) {
           ++no_improvement_steps;
           if (no_improvement_steps >= no_improvement_steps_to_terminate) {
             logger.Log("GradientDescentOptimizer: Terminating due to no improvement.");
@@ -451,8 +476,7 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector> {
             CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(next.value)"));
           }
 
-          if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
-              current.value - next.value < min_absolute_per_step_improvement) {
+          if (NoImprovement(next, current, min_relative_per_step_improvement, min_absolute_per_step_improvement)) {
             ++no_improvement_steps;
             if (no_improvement_steps >= no_improvement_steps_to_terminate) {
               logger.Log("GradientDescentOptimizerBT: Terminating due to no improvement.");
@@ -573,8 +597,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector> {
               std::max(fncas::impl::PolakRibiere(new_gradient, current_gradient), static_cast<double_t>(0));
           s = impl::SumVectors(s, new_gradient, omega, -1.0);
 
-          if (next.value / current.value > 1.0 - min_relative_per_step_improvement ||
-              current.value - next.value < min_absolute_per_step_improvement) {
+          if (NoImprovement(next, current, min_relative_per_step_improvement, min_absolute_per_step_improvement)) {
             ++no_improvement_steps;
             if (no_improvement_steps >= no_improvement_steps_to_terminate) {
               logger.Log("ConjugateGradientOptimizer: Terminating due to no improvement.");

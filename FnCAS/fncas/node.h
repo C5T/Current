@@ -44,10 +44,16 @@
 
 namespace fncas {
 // Non-standard functions useful in data science.
+namespace function_impl {
+using namespace std;
 inline double_t sqr(double_t x) { return x * x; }
 inline double_t unit_step(double_t x) { return x >= 0 ? 1 : 0; }
 inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
 // TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
+}  // namespace function_impl
+using function_impl::sqr;
+using function_impl::unit_step;
+using function_impl::ramp;
 
 template <typename T>
 T apply_function(::fncas::impl::MathFunction function, T argument) {
@@ -497,6 +503,7 @@ using namespace std;
 // Put the "compile-as-you-execute" implementations of math functions into `fncas::impl::functions::`.
 #define DECLARE_FUNCTION(F)                                     \
   namespace fncas {                                             \
+  using function_impl::F;                                       \
   inline ::fncas::impl::V F(const ::fncas::impl::V& argument) { \
     ::fncas::impl::V result;                                    \
     result.type() = ::fncas::impl::NodeType::function;          \
