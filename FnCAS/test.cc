@@ -721,4 +721,16 @@ TEST(FnCAS, OptimizationOfNegativeAndZeroCrossingFunctions) {
     EXPECT_NEAR(3.0, result.point[0], 1e-3);
     EXPECT_NEAR(4.0, result.point[1], 1e-3);
   }
+  {
+    MemberFunction f;
+    f.a = 3.0;
+    f.b = 4.0;
+    f.c = -100;
+    const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(
+                            fncas::optimize::OptimizerParameters().DisableJIT(), f).Optimize({0, 0});
+    EXPECT_NEAR(-99, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
 }
