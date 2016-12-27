@@ -675,6 +675,11 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
   }
 };
 
+template <class F,
+          OptimizationDirection DIRECTION = OptimizationDirection::Minimize,
+          JIT JIT_IMPLEMENTATION = JIT::Default>
+using DefaultOptimizer = ConjugateGradientOptimizer<F, DIRECTION, JIT_IMPLEMENTATION>;
+
 }  // namespace fncas::optimize
 }  // namespace fncas
 
