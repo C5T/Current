@@ -701,7 +701,7 @@ TEST(FnCAS, ComplexCustomFunctions) {
 #endif
 }
 
-// Confirm the stopping criterion does the job for negative and sing-changing functions.
+// Confirm the stopping criterion does the job for negative and sign-changing functions.
 TEST(FnCAS, OptimizationOfNegativeAndZeroCrossingFunctions) {
   {
     MemberFunction f;
