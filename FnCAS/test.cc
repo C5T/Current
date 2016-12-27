@@ -269,11 +269,12 @@ struct StaticFunction {
 struct MemberFunction {
   fncas::double_t a = 0.0;
   fncas::double_t b = 0.0;
+  fncas::double_t c = 0.0;
   template <typename T>
   T ObjectiveFunction(const std::vector<T>& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
-    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
+    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy)) + c;
   }
   MemberFunction() = default;
   MemberFunction(const MemberFunction&) = delete;
@@ -692,4 +693,32 @@ TEST(FnCAS, ComplexCustomFunctions) {
   EXPECT_EQ(0.0, compiled_gradient({3.0})[0]) << compiled_gradient.lib_filename();
   EXPECT_EQ(8.0, compiled_gradient({4.0})[0]) << compiled_gradient.lib_filename();
 #endif
+}
+
+// Confirm the stopping criterion does the job for negative and sing-changing functions.
+TEST(FnCAS, OptimizationOfNegativeAndZeroCrossingFunctions) {
+  {
+    MemberFunction f;
+    f.a = 3.0;
+    f.b = 4.0;
+    f.c = -1.01;
+    const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(
+                            fncas::optimize::OptimizerParameters().DisableJIT(), f).Optimize({0, 0});
+    EXPECT_NEAR(-0.01, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
+  {
+    MemberFunction f;
+    f.a = 3.0;
+    f.b = 4.0;
+    f.c = -0.99;
+    const auto result = fncas::optimize::GradientDescentOptimizer<MemberFunction>(
+                            fncas::optimize::OptimizerParameters().DisableJIT(), f).Optimize({0, 0});
+    EXPECT_NEAR(+0.01, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
 }
