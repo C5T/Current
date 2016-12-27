@@ -270,11 +270,13 @@ struct MemberFunction {
   fncas::double_t a = 0.0;
   fncas::double_t b = 0.0;
   fncas::double_t c = 0.0;
+  fncas::double_t k = +1.0;
+
   template <typename T>
   T ObjectiveFunction(const std::vector<T>& x) const {
     const auto dx = x[0] - a;
     const auto dy = x[1] - b;
-    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy)) + c;
+    return (unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy)) + c) * k;
   }
   MemberFunction() = default;
   MemberFunction(const MemberFunction&) = delete;
@@ -580,10 +582,14 @@ TEST(FnCAS, NaiveGDvsBacktrackingGDOnRosenbrockFunction1000StepsNoJIT) {
   fncas::optimize::OptimizerParameters params;
   params.SetValue("max_steps", 1000);
   params.SetValue("step_factor", 0.001);  // Used only by naive optimizer. Prevents it from moving to infinity.
-  const auto result_naive = fncas::optimize::GradientDescentOptimizer<RosenbrockFunction, fncas::JIT::Blueprint>(params)
-                                .Optimize({-3.0, -4.0});
-  const auto result_bt = fncas::optimize::GradientDescentOptimizerBT<RosenbrockFunction, fncas::JIT::Blueprint>(params)
-                             .Optimize({-3.0, -4.0});
+  const auto result_naive =
+      fncas::optimize::GradientDescentOptimizer<RosenbrockFunction,
+                                                fncas::OptimizationDirection::Minimize,
+                                                fncas::JIT::Blueprint>(params).Optimize({-3.0, -4.0});
+  const auto result_bt =
+      fncas::optimize::GradientDescentOptimizerBT<RosenbrockFunction,
+                                                  fncas::OptimizationDirection::Minimize,
+                                                  fncas::JIT::Blueprint>(params).Optimize({-3.0, -4.0});
   const fncas::double_t x0_err_n = std::abs(result_naive.point[0] - 1.0);
   const fncas::double_t x0_err_bt = std::abs(result_bt.point[0] - 1.0);
   const fncas::double_t x1_err_n = std::abs(result_naive.point[1] - 1.0);
@@ -695,7 +701,7 @@ TEST(FnCAS, ComplexCustomFunctions) {
 #endif
 }
 
-// Confirm the stopping criterion does the job for negative and sing-changing functions.
+// Confirm the stopping criterion does the job for negative and sign-changing functions.
 TEST(FnCAS, OptimizationOfNegativeAndZeroCrossingFunctions) {
   {
     MemberFunction f;
@@ -732,5 +738,49 @@ TEST(FnCAS, OptimizationOfNegativeAndZeroCrossingFunctions) {
     ASSERT_EQ(2u, result.point.size());
     EXPECT_NEAR(3.0, result.point[0], 1e-3);
     EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  }
+}
+
+TEST(FnCAS, OptimizationInMaximizingDirection) {
+  {
+    MemberFunction f;
+    f.a = 2.0;
+    f.b = 3.0;
+    f.k = -1;
+    const auto result =
+        fncas::optimize::GradientDescentOptimizer<MemberFunction, fncas::OptimizationDirection::Maximize>(
+            fncas::optimize::OptimizerParameters().DisableJIT(), f).Optimize({0, 0});
+    EXPECT_NEAR(-1, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(2.0, result.point[0], 1e-3);
+    EXPECT_NEAR(3.0, result.point[1], 1e-3);
+  }
+
+  {
+    MemberFunction f;
+    f.a = 4.0;
+    f.b = 5.0;
+    f.k = -1;
+    const auto result =
+        fncas::optimize::GradientDescentOptimizerBT<MemberFunction, fncas::OptimizationDirection::Maximize>(
+            fncas::optimize::OptimizerParameters().DisableJIT(), f).Optimize({0, 0});
+    EXPECT_NEAR(-1, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(4.0, result.point[0], 5e-2);
+    EXPECT_NEAR(5.0, result.point[1], 5e-2);
+  }
+
+  {
+    MemberFunction f;
+    f.a = 6.0;
+    f.b = 7.0;
+    f.k = -1;
+    const auto result =
+        fncas::optimize::ConjugateGradientOptimizer<MemberFunction, fncas::OptimizationDirection::Maximize>(
+            fncas::optimize::OptimizerParameters().DisableJIT(), f).Optimize({0, 0});
+    EXPECT_NEAR(-1, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(6.0, result.point[0], 5e-2);
+    EXPECT_NEAR(7.0, result.point[1], 5e-2);
   }
 }
