@@ -50,18 +50,59 @@ namespace optimize {
 // clang-format off
 CURRENT_STRUCT_T(ObjectiveFunctionValue) {
   CURRENT_FIELD(value, T, T());
+  CURRENT_FIELD(extra_values, (std::map<std::string, T>));
   CURRENT_CONSTRUCTOR_T(ObjectiveFunctionValue)(T value = T()) : value(value) {}
   operator T() const {
     return value;
   }
-  ObjectiveFunctionValue<T>& AddPoint(const std::string&, T) {
+  ObjectiveFunctionValue<T>& AddPoint(const std::string& name, T value) {
+    extra_values[name] = value;
     return *this;
   }
 };
-// clang-format on
 
-// clang-format off
+CURRENT_STRUCT(OptimizationProgress) {
+  // The number of iterations the optimization took.
+  CURRENT_FIELD(iterations, uint32_t, 0);
+
+  // The value of the objective function on each iteration, `.size()` == `iterations`.
+  CURRENT_FIELD(objective_function_values, std::vector<double>);
+
+  // The values of each additional parameter, as tracked with `ObjectiveFunctionValue::AddPoint`,
+  // also of `iterations` elements per parameter.
+  CURRENT_FIELD(additional_values, (std::map<std::string, std::vector<double>>));
+
+  void TrackIteration(double value) {
+    ++iterations;
+    objective_function_values.push_back(value);
+
+    // If the user code returns a double, it should always do so.
+    CURRENT_ASSERT(additional_values.empty()); 
+  }
+
+  void TrackIteration(const ObjectiveFunctionValue<double>& value) {
+    ++iterations;
+    objective_function_values.push_back(value.value);
+
+    // If the user code returns `ObjectiveFunctionValue`, the set of point names added via `AddPoint()`
+    // should be the same for each computation of the function.
+    if (additional_values.empty()) {
+      for (const auto& kv : value.extra_values) {
+        additional_values[kv.first].push_back(kv.second);
+      }
+    } else {
+      CURRENT_ASSERT(additional_values.size() == value.extra_values.size());
+      for (const auto& kv : value.extra_values) {
+        CURRENT_ASSERT(additional_values.count(kv.first));
+        additional_values[kv.first].push_back(kv.second);
+      }
+    }
+  }
+};
+
 CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
+  CURRENT_FIELD(optimization_iterations, uint32_t, 0u);
+  CURRENT_FIELD(progress, Optional<OptimizationProgress>);
   CURRENT_CONSTRUCTOR(OptimizationResult)(const ValueAndPoint& p) : SUPER(p) {}
 };
 // clang-format on
@@ -121,7 +162,13 @@ class OptimizerParameters {
     return *this;
   }
 
+  OptimizerParameters& TrackOptimizationProgress() {
+    track_optimization_progress_ = true;
+    return *this;
+  }
+
   bool IsJITEnabled() const { return jit_enabled_; }
+  bool ShouldTrackProgress() const { return track_optimization_progress_; }
 
   OptimizerParameters& SetPointBeautifier(point_beautifier_t point_beautifier) {
     point_beautifier_ = point_beautifier;
@@ -142,6 +189,7 @@ class OptimizerParameters {
   point_beautifier_t point_beautifier_;
   stopping_criterion_t stopping_criterion_;
   bool jit_enabled_ = true;
+  bool track_optimization_progress_ = false;
 };
 
 // The base class for the optimizer of the function of type `F`.
@@ -215,10 +263,11 @@ class OptimizeInvoker : public Optimizer<F, DIRECTION> {
 
   OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
     const auto& logger = impl::OptimizerLogger();
+    const auto& objective_function = super_t::Function();
 
     const fncas::impl::X gradient_helper(starting_point.size());
     // NOTE(dkorolev): Here, `fncas::impl::X` is magically cast into `std::vector<fncas::impl::V>`.
-    const fncas::impl::f_impl<JIT::Blueprint> f_i(super_t::Function().ObjectiveFunction(gradient_helper));
+    const fncas::impl::f_impl<JIT::Blueprint> f_i(objective_function.ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(impl::node_vector_singleton().size()) +
                " nodes.");
     if (JIT_IMPLEMENTATION != fncas::JIT::Blueprint &&
@@ -229,19 +278,20 @@ class OptimizeInvoker : public Optimizer<F, DIRECTION> {
       fncas::function_t<JIT_IMPLEMENTATION> f(f_i);
       logger.Log("Optimizer: Done compiling the objective function, took " +
                  current::ToString((current::time::Now() - compile_f_begin_gradient).count() * 1e-6) + " seconds.");
-      return DoOptimize(f_i, f, starting_point, gradient_helper);
+      return DoOptimize(objective_function, f_i, f, starting_point, gradient_helper);
 #else
       std::cerr << "Attempted to use FnCAS JIT when it's not compiled into the binary. Check your -D flags.\n";
       std::exit(-1);
 #endif
     } else {
       logger.Log("Optimizer: JIT has been disabled via `DisableJIT()`, falling back to interpreted evalutions.");
-      return DoOptimize(f_i, f_i, starting_point, gradient_helper);
+      return DoOptimize(objective_function, f_i, f_i, starting_point, gradient_helper);
     }
   }
 
-  template <typename POSSIBLY_COMPILED_F>
-  OptimizationResult DoOptimize(const fncas::impl::f_impl<JIT::Blueprint>& f_i,
+  template <typename ORIGINAL_F, typename POSSIBLY_COMPILED_F>
+  OptimizationResult DoOptimize(const ORIGINAL_F& original_f,
+                                const fncas::impl::f_impl<JIT::Blueprint>& f_i,
                                 POSSIBLY_COMPILED_F&& f,
                                 const std::vector<double_t>& starting_point,
                                 const fncas::impl::X& gradient_helper) const {
@@ -259,13 +309,13 @@ class OptimizeInvoker : public Optimizer<F, DIRECTION> {
       fncas::gradient_t<JIT_IMPLEMENTATION> g(f_i, g_i);
       logger.Log("Optimizer: Done compiling the gradient, took " +
                  current::ToString((current::time::Now() - compile_g_begin_gradient).count() * 1e-6) + " seconds.");
-      return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, f, g, starting_point);
+      return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, original_f, f, g, starting_point);
 #else
       std::cerr << "Attempted to use FnCAS JIT when it's not compiled into the binary. Check your -D flags.\n";
       std::exit(-1);
 #endif
     } else {
-      return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, f, g_i, starting_point);
+      return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, original_f, f, g_i, starting_point);
     }
   }
 };
@@ -279,18 +329,20 @@ class OptimizeInvoker<F, DIRECTION, fncas::JIT::Blueprint, IMPL> : public Optimi
 
   OptimizationResult Optimize(const std::vector<double_t>& starting_point) const override {
     const auto& logger = impl::OptimizerLogger();
+    const auto& objective_function = super_t::Function();
 
     const fncas::impl::X gradient_helper(starting_point.size());
     // NOTE(dkorolev): Here, `fncas::impl::X` is magically cast into `std::vector<fncas::impl::V>`.
-    const fncas::impl::f_impl<JIT::Blueprint> f_i(super_t::Function().ObjectiveFunction(gradient_helper));
+    const fncas::impl::f_impl<JIT::Blueprint> f_i(objective_function.ObjectiveFunction(gradient_helper));
     logger.Log("Optimizer: The objective function is " + current::ToString(impl::node_vector_singleton().size()) +
                " nodes.");
     logger.Log("Optimizer: Not using JIT.");
-    return DoOptimize(f_i, f_i, starting_point, gradient_helper);
+    return DoOptimize(objective_function, f_i, f_i, starting_point, gradient_helper);
   }
 
-  template <typename POSSIBLY_COMPILED_F>
-  OptimizationResult DoOptimize(const fncas::impl::f_impl<JIT::Blueprint>& f_i,
+  template <typename ORIGINAL_F, typename POSSIBLY_COMPILED_F>
+  OptimizationResult DoOptimize(const ORIGINAL_F& original_f,
+                                const fncas::impl::f_impl<JIT::Blueprint>& f_i,
                                 POSSIBLY_COMPILED_F&& f,
                                 const std::vector<double_t>& starting_point,
                                 const fncas::impl::X& gradient_helper) const {
@@ -300,7 +352,7 @@ class OptimizeInvoker<F, DIRECTION, fncas::JIT::Blueprint, IMPL> : public Optimi
     const fncas::impl::g_impl<fncas::JIT::Blueprint> g_i(gradient_helper, f_i);
     logger.Log("Optimizer: Augmented with the gradient the function is " +
                current::ToString(impl::node_vector_singleton().size()) + " nodes.");
-    return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, f, g_i, starting_point);
+    return OptimizeImpl<IMPL, DIRECTION>::template RunOptimize<F>(*this, original_f, f, g_i, starting_point);
   }
 };
 
@@ -322,6 +374,7 @@ template <OptimizationDirection DIRECTION>
 struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
   template <typename ORIGINAL_F, typename F, typename G>
   static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F, DIRECTION>& super,
+                                        const ORIGINAL_F& original_f,
                                         F&& f,
                                         G&& g,
                                         const std::vector<double_t>& starting_point) {
@@ -333,6 +386,8 @@ struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
     double_t min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is small.
     double_t no_improvement_steps_to_terminate = 2;      // Wait for this # of consecutive no improvement iterations.
 
+    bool track_progress = false;
+
     if (Exists(super.Parameters())) {
       const auto& parameters = Value(super.Parameters());
       max_steps = parameters.GetValue("max_steps", max_steps);
@@ -343,6 +398,8 @@ struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
           parameters.GetValue("min_absolute_per_step_improvement", min_absolute_per_step_improvement);
       no_improvement_steps_to_terminate =
           parameters.GetValue("no_improvement_steps_to_terminate", no_improvement_steps_to_terminate);
+
+      track_progress = parameters.ShouldTrackProgress();
     }
 
     logger.Log("GradientDescentOptimizer: Begin at " + super.PointAsString(starting_point));
@@ -352,6 +409,8 @@ struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
       current.value *= -1;
     }
 
+    OptimizationProgress progress;
+
     size_t iteration;
     int no_improvement_steps = 0;
     {
@@ -359,10 +418,15 @@ struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
       for (iteration = 0; iteration < max_steps; ++iteration) {
         stats.JournalIteration();
         if (logger) {
-          // Expensive call, don't make it if `logger` is not initialized.
+          // `PointAsString()` is an expensive call, don't make it if `logger` is not initialized.
           logger.Log("GradientDescentOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF to minimize = " +
                      current::ToString(current.value) + " @ " + super.PointAsString(current.point));
         }
+
+        if (track_progress) {
+          progress.TrackIteration(original_f.ObjectiveFunction(current.point));
+        }
+
         stats.JournalGradient();
         auto gradient = g(current.point);
         if (DIRECTION == OptimizationDirection::Maximize) {
@@ -415,7 +479,14 @@ struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
     logger.Log("GradientDescentOptimizer: Result = " + super.PointAsString(current.point));
     logger.Log("GradientDescentOptimizer: Objective function = " + current::ToString(current.value));
 
-    return current;
+    OptimizationResult result(current);
+    result.optimization_iterations = iteration;
+
+    if (track_progress) {
+      result.progress = std::move(progress);
+    }
+
+    return result;
   }
 };
 
@@ -437,6 +508,7 @@ template <OptimizationDirection DIRECTION>
 struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
   template <typename ORIGINAL_F, typename F, typename G>
   static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F, DIRECTION>& super,
+                                        const ORIGINAL_F& original_f,
                                         F&& f,
                                         G&& g,
                                         const std::vector<double_t>& starting_point) {
@@ -452,6 +524,8 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
     double_t min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is small.
     double_t no_improvement_steps_to_terminate = 2;      // Wait for this # of consecutive no improvement iterations.
 
+    bool track_progress = false;
+
     if (Exists(super.Parameters())) {
       const auto& parameters = Value(super.Parameters());
       min_steps = parameters.GetValue("min_steps", min_steps);
@@ -466,6 +540,8 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
           parameters.GetValue("min_absolute_per_step_improvement", min_absolute_per_step_improvement);
       no_improvement_steps_to_terminate =
           parameters.GetValue("no_improvement_steps_to_terminate", no_improvement_steps_to_terminate);
+
+      track_progress = parameters.ShouldTrackProgress();
     }
 
     logger.Log("GradientDescentOptimizerBT: Begin at " + super.PointAsString(starting_point));
@@ -474,6 +550,9 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
     int no_improvement_steps = 0;
 
     ValueAndPoint current(f(starting_point), starting_point);
+
+    OptimizationProgress progress;
+
     if (DIRECTION == OptimizationDirection::Maximize) {
       current.value *= -1;
     }
@@ -483,11 +562,16 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
       for (iteration = 0; iteration < max_steps; ++iteration) {
         stats.JournalIteration();
         if (logger) {
-          // Expensive call, don't make it if `logger` is not initialized.
+          // `PointAsString()` could be an expensive call, don't make it if `logger` is not initialized.
           logger.Log("GradientDescentOptimizerBT: Iteration " + current::ToString(iteration + 1) +
                      ", OF to minimize = " + current::ToString(current.value) + " @ " +
                      super.PointAsString(current.point));
         }
+
+        if (track_progress) {
+          progress.TrackIteration(original_f.ObjectiveFunction(current.point));
+        }
+
         auto gradient = g(current.point);
         if (DIRECTION == OptimizationDirection::Maximize) {
           fncas::impl::FlipSign(gradient);
@@ -541,7 +625,14 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
     logger.Log("GradientDescentOptimizerBT: Result = " + super.PointAsString(current.point));
     logger.Log("GradientDescentOptimizerBT: Objective function = " + current::ToString(current.value));
 
-    return current;
+    OptimizationResult result(current);
+    result.optimization_iterations = iteration;
+
+    if (track_progress) {
+      result.progress = std::move(progress);
+    }
+
+    return result;
   }
 };
 
@@ -563,6 +654,7 @@ template <OptimizationDirection DIRECTION>
 struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
   template <typename ORIGINAL_F, typename F, typename G>
   static OptimizationResult RunOptimize(const Optimizer<ORIGINAL_F, DIRECTION>& super,
+                                        const ORIGINAL_F& original_f,
                                         F&& f,
                                         G&& g,
                                         const std::vector<double_t>& starting_point) {
@@ -579,6 +671,8 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
     double_t min_relative_per_step_improvement = 1e-25;  // Terminate early if the relative improvement is small.
     double_t no_improvement_steps_to_terminate = 2;      // Wait for this # of consecutive no improvement iterations.
 
+    bool track_progress = false;
+
     if (Exists(super.Parameters())) {
       const auto& parameters = Value(super.Parameters());
       min_steps = parameters.GetValue("min_steps", min_steps);
@@ -593,6 +687,8 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
           parameters.GetValue("min_absolute_per_step_improvement", min_absolute_per_step_improvement);
       no_improvement_steps_to_terminate =
           parameters.GetValue("no_improvement_steps_to_terminate", no_improvement_steps_to_terminate);
+
+      track_progress = parameters.ShouldTrackProgress();
     }
 
     logger.Log("ConjugateGradientOptimizer: The objective function with its gradient is " +
@@ -603,6 +699,8 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
     if (!fncas::IsNormal(current.value)) {
       CURRENT_THROW(exceptions::FnCASOptimizationException("!fncas::IsNormal(current.value)"));
     }
+
+    OptimizationProgress progress;
 
     std::vector<double_t> current_gradient = g(current.point);
 
@@ -626,9 +724,13 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
           break;
         }
 
+        if (track_progress) {
+          progress.TrackIteration(original_f.ObjectiveFunction(current.point));
+        }
+
         stats.JournalIteration();
         if (logger) {
-          // Expensive call, don't make it if `logger` is not initialized.
+          // `PointAsString()` is an expensive call, don't make it if `logger` is not initialized.
           logger.Log("ConjugateGradientOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
                      current::ToString(current.value) + " @ " + super.PointAsString(current.point));
         }
@@ -684,7 +786,14 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
     logger.Log("ConjugateGradientOptimizer: Result = " + super.PointAsString(current.point));
     logger.Log("ConjugateGradientOptimizer: Objective function = " + current::ToString(current.value));
 
-    return current;
+    OptimizationResult result(current);
+    result.optimization_iterations = iteration;
+
+    if (track_progress) {
+      result.progress = std::move(progress);
+    }
+
+    return result;
   }
 };
 
