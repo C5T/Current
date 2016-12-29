@@ -318,7 +318,10 @@ TEST(HTTPAPI, Redirect) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/from",
                                    [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/to"}}));
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", "/to"}}));
                                    }) +
                      HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
@@ -334,17 +337,26 @@ TEST(HTTPAPI, RedirectLoop) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/p1",
                                    [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p2"}}));
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", "/p2"}}));
                                    }) +
                      HTTP(FLAGS_net_api_test_port)
                          .Register("/p2",
                                    [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p3"}}));
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", "/p3"}}));
                                    }) +
                      HTTP(FLAGS_net_api_test_port)
                          .Register("/p3",
                                    [](Request r) {
-                                     r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p1"}}));
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", "/p1"}}));
                                    });
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
 }

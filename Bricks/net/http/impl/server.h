@@ -65,6 +65,8 @@ constexpr const char* kDefaultContentType = "text/plain";
 constexpr const char* kDefaultJSONContentType = "application/json; charset=utf-8";
 // TODO(dkorolev): Make use of this constant everywhere.
 constexpr const char* kDefaultHTMLContentType = "text/html; charset=utf-8";
+constexpr const char* kDefaultSVGContentType = "image/svg+xml; charset=utf-8";
+constexpr const char* kDefaultPNGContentType = "image/png";
 
 constexpr const char kHeaderKeyValueSeparator[] = ": ";
 constexpr const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
@@ -363,8 +365,10 @@ class GenericHTTPRequestData : public HELPER {
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
               if (body_length > constants::kMaxHTTPPayloadSizeInBytes) {
-                HTTPResponder::SendHTTPResponse(
-                    c, net::DefaultRequestEntityTooLargeMessage(), HTTPResponseCode.RequestEntityTooLarge, "text/html");
+                HTTPResponder::SendHTTPResponse(c,
+                                                net::DefaultRequestEntityTooLargeMessage(),
+                                                HTTPResponseCode.RequestEntityTooLarge,
+                                                net::constants::kDefaultHTMLContentType);
                 CURRENT_THROW(HTTPPayloadTooLarge());
               }
             } else if (HeaderNameEquals(key, constants::kHTTPMethodOverrideHeaderKey)) {
@@ -495,8 +499,10 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       // It's also a good place for a breakpoint to tell the source of that exception.
       // LCOV_EXCL_START
       try {
-        HTTPResponder::SendHTTPResponse(
-            connection_, DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
+        HTTPResponder::SendHTTPResponse(connection_,
+                                        DefaultInternalServerErrorMessage(),
+                                        HTTPResponseCode.InternalServerError,
+                                        net::constants::kDefaultHTMLContentType);
       } catch (const Exception& e) {
         // No exception should ever leave the destructor.
         if (message_.RawPath() == "/healthz") {

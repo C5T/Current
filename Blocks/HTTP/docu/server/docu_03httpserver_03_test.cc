@@ -40,7 +40,7 @@ const auto port = FLAGS_docu_net_server_port_03;
   const auto scope = HTTP(port).Register("/found", [](Request r) {
     r("Yes.",
       HTTPResponseCode.Accepted,
-      "text/html",
+      current::net::constants::kDefaultHTMLContentType,
       current::net::http::Headers().Set("custom", "header").Set("another", "one"));
   });
 EXPECT_EQ("Yes.", HTTP(GET(Printf("http://localhost:%d/found", port))).body);

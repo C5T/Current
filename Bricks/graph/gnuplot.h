@@ -105,6 +105,11 @@ class WithMeta {
     type_ = "labels";
     return *this;
   }
+  WithMeta& Extra(const std::string& extra) {
+    proto_meta_ += ' ';
+    proto_meta_ += extra;
+    return *this;
+  }
 
   std::function<void(Plotter&)> GetFunction() const { return f_; }
   std::string ComposeMeta() const { return "with " + type_ + proto_meta_; }

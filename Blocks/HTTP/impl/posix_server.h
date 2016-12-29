@@ -86,8 +86,9 @@ struct StaticFileServer {
     if (r.method == "GET") {
       r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
     } else {
-      r.connection.SendHTTPResponse(
-          current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
+      r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
+                                    HTTPResponseCode.MethodNotAllowed,
+                                    current::net::constants::kDefaultHTMLContentType);
     }
   }
 };
@@ -322,8 +323,9 @@ class HTTPServerPOSIX final {
             std::cerr << "HTTP route failed in user code: " << e.what() << '\n';  // LCOV_EXCL_LINE
           }
         } else {
-          connection->SendHTTPResponse(
-              current::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
+          connection->SendHTTPResponse(current::net::DefaultFourOhFourMessage(),
+                                       HTTPResponseCode.NotFound,
+                                       current::net::constants::kDefaultHTMLContentType);
         }
       } catch (const current::net::HTTPPayloadTooLarge&) {
         // The `HTTPPayloadTooLarge` situation, if emerged, is already handled with an "413 ENTITY TOO LARGE" response.
