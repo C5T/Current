@@ -137,7 +137,7 @@ struct FunctionToOptimize {
   // Model 2, the discriminant one: Move the best per-class Gaussians to solve the actual classification problem.
   static std::vector<double> StartingPoint() { return std::vector<double>(3 * 5, 0.0); }
   template <typename T>
-  T ObjectiveFunction(const std::vector<T>& x) const {
+  fncas::optimize::ObjectiveFunctionValue<T> ObjectiveFunction(const std::vector<T>& x) const {
     const std::map<std::string, size_t> labels{{"setosa", 0u}, {"versicolor", 1u}, {"virginica", 2u}};
     T penalty_descriptive = 0.0;
     T penalty_discriminant = 0.0;
@@ -169,13 +169,18 @@ struct FunctionToOptimize {
 
     const T accuracy = fncas::exp(penalty_discriminant / valid_examples);
 
-    if (computation_type == ComputationType::ComputeAccuracy) {
-      // Return the probability, and the starting point should be `(1/3)`.
-      return accuracy;
-    } else {
-      // Just return the non-normalized number, for optimization purposes.
-      return computation_type == ComputationType::TrainDescriptiveModel ? penalty_descriptive : penalty_discriminant;
-    }
+    return fncas::optimize::ObjectiveFunctionValue<T>([&]() {
+      if (computation_type == ComputationType::ComputeAccuracy) {
+        // Return the probability, and the starting point should be `(1/3)`.
+        return accuracy;
+      } else {
+        // Just return the non-normalized number, for optimization purposes.
+        return computation_type == ComputationType::TrainDescriptiveModel ? penalty_descriptive : penalty_discriminant;
+      }
+    }())
+        .AddPoint("accuracy", accuracy)
+        .AddPoint("penalty_descriptive", penalty_descriptive)
+        .AddPoint("penalty_discriminant", penalty_discriminant);
   }
 
   struct ModelVisualizer {
@@ -218,11 +223,15 @@ int main(int argc, char** argv) {
   std::cout << "Prior to the optimization, the objective function is: "
             << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(starting_point)
             << std::endl;
-  const std::vector<double> intermediate_point =
+  const auto descriptive_optimization_result =
       fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
-          flowers, ComputationType::TrainDescriptiveModel)
-          .Optimize(starting_point)
-          .point;
+          fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
+          flowers,
+          ComputationType::TrainDescriptiveModel).Optimize(starting_point);
+  const std::vector<double> descriptive_optimization_accuracy_plot =
+      Value(descriptive_optimization_result.progress).additional_values.at("accuracy");
+  std::vector<double> discriminant_optimization_accuracy_plot;
+  const std::vector<double> intermediate_point = descriptive_optimization_result.point;
   std::cout << "After training the descriptive model, the objective function is: "
             << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(intermediate_point)
             << std::endl;
@@ -230,11 +239,14 @@ int main(int argc, char** argv) {
 
   const std::vector<double> final_point = [&]() {
     if (!FLAGS_descriptive_only) {
-      const std::vector<double> final_point =
+      const auto discriminant_optimization_result =
           fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
-              flowers, ComputationType::TrainDiscriminantModel)
-              .Optimize(intermediate_point)
-              .point;
+              fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
+              flowers,
+              ComputationType::TrainDiscriminantModel).Optimize(intermediate_point);
+      discriminant_optimization_accuracy_plot =
+          Value(discriminant_optimization_result.progress).additional_values.at("accuracy");
+      const std::vector<double> final_point = discriminant_optimization_result.point;
       std::cout << "After training the descriminant model, the objective function is: "
                 << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(final_point)
                 << std::endl;
@@ -246,44 +258,77 @@ int main(int argc, char** argv) {
     }
   }();
 
-  if (FLAGS_port) {
-    auto& http = HTTP(FLAGS_port);
-    const auto scope = http.Register(
-        "/",
-        [&flowers, final_point](Request r) {
-          if (r.url.query.has("x") && r.url.query.has("y")) {
-            r(Plot(flowers,
-                   r.url.query["x"],
-                   r.url.query["y"],
-                   r.url.query.has("nolegend"),
-                   current::FromString<size_t>(r.url.query.get("dim", "800")),
-                   current::FromString<double>(r.url.query.get("ps", "1.75")),
-                   FunctionToOptimize::ModelVisualizer(final_point)));
-          } else {
-            std::string html;
-            html += "<!doctype html>\n";
-            html += "<table border=1>\n";
-            for (size_t y = 0; y < 4; ++y) {
-              html += "  <tr>\n";
-              for (size_t x = 0; x < 4; ++x) {
-                if (x == y) {
-                  const auto text = features_list[x].second.name;
-                  html += "    <td align=center valign=center><h3><pre>" + text + "</pre></h1></td>\n";
-                } else {
-                  const std::string img_a = "?x=" + features_list[x].first + "&y=" + features_list[y].first;
-                  const std::string img_src = img_a + "&dim=250&nolegend&ps=1";
-                  html += "    <td><a href='" + img_a + "'><img src='" + img_src + "' /></a></td>\n";
-                }
-              }
-              html += "  </tr>\n";
-            }
-            html += "</table>\n";
-            r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
-          }
-        });
+  auto& http = HTTP(FLAGS_port);
 
-    std::cout << "Starting the server on http://localhost:" << FLAGS_port << std::endl;
+  const auto scope =
+      http.Register("/",
+                    [&flowers, final_point](Request r) {
+                      if (r.url.query.has("x") && r.url.query.has("y")) {
+                        r(Plot(flowers,
+                               r.url.query["x"],
+                               r.url.query["y"],
+                               r.url.query.has("nolegend"),
+                               current::FromString<size_t>(r.url.query.get("dim", "800")),
+                               current::FromString<double>(r.url.query.get("ps", "1.75")),
+                               FunctionToOptimize::ModelVisualizer(final_point)));
+                      } else {
+                        std::string html;
+                        html += "<!doctype html>\n";
+                        html += "<table border=1>\n";
+                        for (size_t y = 0; y < 4; ++y) {
+                          html += "  <tr>\n";
+                          for (size_t x = 0; x < 4; ++x) {
+                            if (x == y) {
+                              const auto text = features_list[x].second.name;
+                              html += "    <td align=center valign=center><h3><pre>" + text + "</pre></h1></td>\n";
+                            } else {
+                              const std::string img_a = "?x=" + features_list[x].first + "&y=" + features_list[y].first;
+                              const std::string img_src = img_a + "&dim=250&nolegend&ps=1";
+                              html += "    <td><a href='" + img_a + "'><img src='" + img_src + "' /></a></td>\n";
+                            }
+                          }
+                          html += "  </tr>\n";
+                        }
+                        html += "</table>\n";
+                        r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
+                      }
+                    }) +
+      http.Register(
+          "/training_plots",
+          [descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](Request r) {
+            using namespace current::gnuplot;
+            GNUPlot plot;
+            r(plot.Title("Classification Accuracy")
+                  .Grid("back")
+                  .XLabel("Iteration")
+                  .YLabel("Classification accuracy")
+                  .Plot(WithMeta([descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](
+                                     Plotter& p) {
+                    size_t x = 0;
+                    for (double y : descriptive_optimization_accuracy_plot) {
+                      p(++x, y);
+                    }
+                  })
+                            .Name("Descriptive training phase")
+                            .Color("rgb 'blue'")
+                            .LineWidth(2.5))
+                  .Plot(WithMeta([descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](
+                                     Plotter& p) {
+                    size_t x = descriptive_optimization_accuracy_plot.size();
+                    for (double y : discriminant_optimization_accuracy_plot) {
+                      p(++x, y);
+                    }
+                  })
+                            .Name("Discriminant training phase")
+                            .Color("rgb 'red'")
+                            .LineWidth(2.5))
+                  .OutputFormat("svg")
+                  .ImageSize(800),
+              HTTPResponseCode.OK,
+              current::net::constants::kDefaultSVGContentType);
+          });
 
-    http.Join();
-  }
+  std::cout << "Starting the server on http://localhost:" << FLAGS_port << std::endl;
+
+  http.Join();
 }

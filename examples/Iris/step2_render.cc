@@ -101,44 +101,43 @@ int main(int argc, char** argv) {
 
   std::cout << "Read " << flowers.size() << " flowers." << std::endl;
 
-  if (FLAGS_port) {
-    auto& http = HTTP(FLAGS_port);
-    const auto scope = http.Register(
-        "/",
-        [&flowers](Request r) {
-          if (r.url.query.has("x") && r.url.query.has("y")) {
-            r(Plot(flowers,
-                   r.url.query["x"],
-                   r.url.query["y"],
-                   r.url.query.has("nolegend"),
-                   current::FromString<size_t>(r.url.query.get("dim", "800")),
-                   current::FromString<double>(r.url.query.get("ps", "1.75"))));
-          } else {
-            // I don't always generate HTML directly from C++. But when I do ... -- D.K.
-            std::string html;
-            html += "<!doctype html>\n";
-            html += "<table border=1>\n";
-            for (size_t y = 0; y < 4; ++y) {
-              html += "  <tr>\n";
-              for (size_t x = 0; x < 4; ++x) {
-                if (x == y) {
-                  const auto text = features_list[x].second.name;
-                  html += "    <td align=center valign=center><h3><pre>" + text + "</pre></h1></td>\n";
-                } else {
-                  const std::string img_a = "?x=" + features_list[x].first + "&y=" + features_list[y].first;
-                  const std::string img_src = img_a + "&dim=250&nolegend&ps=1";
-                  html += "    <td><a href='" + img_a + "'><img src='" + img_src + "' /></a></td>\n";
-                }
-              }
-              html += "  </tr>\n";
-            }
-            html += "</table>\n";
-            r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
-          }
-        });
+  auto& http = HTTP(FLAGS_port);
 
-    std::cout << "Starting the server on http://localhost:" << FLAGS_port << std::endl;
+  const auto scope =
+      http.Register("/",
+                    [&flowers](Request r) {
+                      if (r.url.query.has("x") && r.url.query.has("y")) {
+                        r(Plot(flowers,
+                               r.url.query["x"],
+                               r.url.query["y"],
+                               r.url.query.has("nolegend"),
+                               current::FromString<size_t>(r.url.query.get("dim", "800")),
+                               current::FromString<double>(r.url.query.get("ps", "1.75"))));
+                      } else {
+                        // I don't always generate HTML directly from C++. But when I do ... -- D.K.
+                        std::string html;
+                        html += "<!doctype html>\n";
+                        html += "<table border=1>\n";
+                        for (size_t y = 0; y < 4; ++y) {
+                          html += "  <tr>\n";
+                          for (size_t x = 0; x < 4; ++x) {
+                            if (x == y) {
+                              const auto text = features_list[x].second.name;
+                              html += "    <td align=center valign=center><h3><pre>" + text + "</pre></h1></td>\n";
+                            } else {
+                              const std::string img_a = "?x=" + features_list[x].first + "&y=" + features_list[y].first;
+                              const std::string img_src = img_a + "&dim=250&nolegend&ps=1";
+                              html += "    <td><a href='" + img_a + "'><img src='" + img_src + "' /></a></td>\n";
+                            }
+                          }
+                          html += "  </tr>\n";
+                        }
+                        html += "</table>\n";
+                        r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
+                      }
+                    });
 
-    http.Join();
-  }
+  std::cout << "Starting the server on http://localhost:" << FLAGS_port << std::endl;
+
+  http.Join();
 }
