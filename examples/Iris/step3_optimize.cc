@@ -139,7 +139,8 @@ struct FunctionToOptimize {
   template <typename T>
   T ObjectiveFunction(const std::vector<T>& x) const {
     const std::map<std::string, size_t> labels{{"setosa", 0u}, {"versicolor", 1u}, {"virginica", 2u}};
-    T penalty = 0.0;
+    T penalty_descriptive = 0.0;
+    T penalty_discriminant = 0.0;
     // For a 4D Gaussian, `exp(-(distance_squared / radius_squared))`, the normalization coefficient
     // is `radius_squared ^ (-2)`. As an implementation detail, use inverted values.
     const T inv_r_squared[3] = {fncas::exp(x[0 * 5 + 4]), fncas::exp(x[1 * 5 + 4]), fncas::exp(x[2 * 5 + 4])};
@@ -160,21 +161,20 @@ struct FunctionToOptimize {
           w[c] = fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
           ws += w[c];
         }
-        if (computation_type == ComputationType::TrainDescriptiveModel) {
-          penalty += fncas::log(w[label_cit->second]);
-        } else {
-          penalty += fncas::log(w[label_cit->second] / ws);
-        }
+        penalty_descriptive += fncas::log(w[label_cit->second]);
+        penalty_discriminant += fncas::log(w[label_cit->second] / ws);
       }
     }
     assert(valid_examples > 0u);
 
+    const T accuracy = fncas::exp(penalty_discriminant / valid_examples);
+
     if (computation_type == ComputationType::ComputeAccuracy) {
-      // Normalize as probability. Would begin from `1/3`, and improve from it.
-      return fncas::exp(penalty / valid_examples);
+      // Return the probability, and the starting point should be `(1/3)`.
+      return accuracy;
     } else {
       // Just return the non-normalized number, for optimization purposes.
-      return penalty;
+      return computation_type == ComputationType::TrainDescriptiveModel ? penalty_descriptive : penalty_discriminant;
     }
   }
 
