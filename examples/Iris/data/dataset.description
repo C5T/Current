@@ -1,0 +1,8 @@
+Field	Type	Set	Unset/Null	Values	Details
+Schema	Array	1	0
+Schema[]	Object	150	0	5 fields	SL, SW, PL, PW, Label
+Schema[].SL	Double	150	0	Mean 5.84333, StdDev 0.825301
+Schema[].SW	Double	150	0	Mean 3.05733, StdDev 0.434411
+Schema[].PL	Double	150	0	Mean 3.758, StdDev 1.7594
+Schema[].PW	Double	150	0	Mean 1.19933, StdDev 0.759693
+Schema[].Label	String	150	0	3 distinct values, "virginica":50, "versicolor":50, "setosa":50
