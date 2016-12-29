@@ -37,6 +37,7 @@ using IrisFlower = Schema_Element_Object;  // Using the default type name from t
 
 DEFINE_string(input, "data/dataset.json", "The path to the input data file.");
 DEFINE_uint16(port, 3001, "The port to run the server on.");
+DEFINE_bool(descriptive_only, false, "Set this flag to only optimize the descriptive model.");
 
 struct Label {
   const std::string name;
@@ -134,9 +135,7 @@ struct FunctionToOptimize {
   // Two models are then trained, the second one from the point found by the first one:
   // Model 1, the descriptive one: Find the best Gaussian per class (could be computed analytically, but why bother?)
   // Model 2, the discriminant one: Move the best per-class Gaussians to solve the actual classification problem.
-  static std::vector<double> StartingPoint() {
-    return std::vector<double>(3 * 5, 0.0);
-  }
+  static std::vector<double> StartingPoint() { return std::vector<double>(3 * 5, 0.0); }
   template <typename T>
   T ObjectiveFunction(const std::vector<T>& x) const {
     const std::map<std::string, size_t> labels{{"setosa", 0u}, {"versicolor", 1u}, {"virginica", 2u}};
@@ -229,15 +228,23 @@ int main(int argc, char** argv) {
             << std::endl;
   std::cout << "The intermediate parameters vector is: " << JSON(intermediate_point) << std::endl;
 
-  const std::vector<double> final_point =
-      fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
-          flowers, ComputationType::TrainDiscriminantModel)
-          .Optimize(intermediate_point)
-          .point;
-  std::cout << "After training the descriminant model, the objective function is: "
-            << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(final_point)
-            << std::endl;
-  std::cout << "The optimal parameters vector is: " << JSON(final_point) << std::endl;
+  const std::vector<double> final_point = [&]() {
+    if (!FLAGS_descriptive_only) {
+      const std::vector<double> final_point =
+          fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
+              flowers, ComputationType::TrainDiscriminantModel)
+              .Optimize(intermediate_point)
+              .point;
+      std::cout << "After training the descriminant model, the objective function is: "
+                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(final_point)
+                << std::endl;
+      std::cout << "The optimal parameters vector is: " << JSON(final_point) << std::endl;
+      return final_point;
+    } else {
+      // Skip the second stage of training entirely.
+      return intermediate_point;
+    }
+  }();
 
   if (FLAGS_port) {
     auto& http = HTTP(FLAGS_port);
