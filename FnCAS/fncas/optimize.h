@@ -48,6 +48,19 @@ namespace fncas {
 namespace optimize {
 
 // clang-format off
+CURRENT_STRUCT_T(ObjectiveFunctionValue) {
+  CURRENT_FIELD(value, T, T());
+  CURRENT_CONSTRUCTOR_T(ObjectiveFunctionValue)(T value = T()) : value(value) {}
+  operator T() const {
+    return value;
+  }
+  ObjectiveFunctionValue<T>& AddPoint(const std::string&, T) {
+    return *this;
+  }
+};
+// clang-format on
+
+// clang-format off
 CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
   CURRENT_CONSTRUCTOR(OptimizationResult)(const ValueAndPoint& p) : SUPER(p) {}
 };
