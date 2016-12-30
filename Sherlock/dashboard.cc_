@@ -285,7 +285,8 @@ int main() {
 
   // Need a dedicated handler for '/'.
   auto dir_server = blocks::StaticFileServer(
-      current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, "index.html")), "text/html");
+      current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, "index.html")),
+      current::net::constants::kDefaultHTMLContentType);
   HTTP(port).Register("/", dir_server);
 
   HTTP(port).Join();

@@ -42,7 +42,7 @@ const auto scope = HTTP(port).Register("/demo", [](Request r) {
 const auto scope = HTTP(port).Register("/found", [](Request r) {
   r("Yes.",
     HTTPResponseCode.Accepted,
-    "text/html",
+    current::net::constants::kDefaultHTMLContentType,
     current::net::http::Headers().Set("custom", "header").Set("another", "one"));
 });
 ```
