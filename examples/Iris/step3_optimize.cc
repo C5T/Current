@@ -117,6 +117,30 @@ Response Plot(const std::vector<IrisFlower>& flowers,
 
 enum class ComputationType { TrainDescriptiveModel, TrainDiscriminantModel, ComputeAccuracy };
 
+template <typename T>
+struct WeightsComputer {
+  T inv_r_squared[3];
+  T k[3];
+
+  // For a 4D Gaussian, `exp(-(distance_squared / radius_squared))`, the normalization coefficient
+  // is `radius_squared ^ (-2)`. As an implementation detail, use inverted values.
+  explicit WeightsComputer(const std::vector<T>& x) {
+    for (size_t c = 0; c < 3; ++c) {
+      inv_r_squared[c] = fncas::exp(x[c * 5 + 4]);
+      k[c] = fncas::exp(x[c * 5 + 4] * 2);
+    }
+  }
+
+  T WeightInClass(const IrisFlower& flower, size_t c, const std::vector<T>& x) {
+    const T dsl_squared = fncas::sqr(flower.SL - x[c * 5 + 0]);
+    const T dsw_squared = fncas::sqr(flower.SW - x[c * 5 + 1]);
+    const T dpl_squared = fncas::sqr(flower.PL - x[c * 5 + 2]);
+    const T dpw_squared = fncas::sqr(flower.PW - x[c * 5 + 3]);
+    const T distance_squared = dsl_squared + dsw_squared + dpl_squared + dpw_squared;
+    return fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
+  }
+};
+
 struct FunctionToOptimize {
   const std::vector<IrisFlower>& flowers;
   struct MinMaxAvg {
@@ -190,14 +214,12 @@ struct FunctionToOptimize {
     }
     return point;
   }
+
   template <typename T>
   fncas::optimize::ObjectiveFunctionValue<T> ObjectiveFunction(const std::vector<T>& x) const {
     T penalty_descriptive = 0.0;
     T penalty_discriminant = 0.0;
-    // For a 4D Gaussian, `exp(-(distance_squared / radius_squared))`, the normalization coefficient
-    // is `radius_squared ^ (-2)`. As an implementation detail, use inverted values.
-    const T inv_r_squared[3] = {fncas::exp(x[0 * 5 + 4]), fncas::exp(x[1 * 5 + 4]), fncas::exp(x[2 * 5 + 4])};
-    const T k[3] = {fncas::exp(x[0 * 5 + 4] * 2), fncas::exp(x[1 * 5 + 4] * 2), fncas::exp(x[2 * 5 + 4] * 2)};
+    WeightsComputer<T> computer(x);
     size_t valid_examples = 0;
     for (const auto& flower : flowers) {
       const auto label_cit = label_indexes.find(flower.Label);
@@ -206,12 +228,7 @@ struct FunctionToOptimize {
         T w[3];
         T ws = 0.0;
         for (size_t c = 0; c < 3; ++c) {
-          const T dsl_squared = fncas::sqr(flower.SL - x[c * 5 + 0]);
-          const T dsw_squared = fncas::sqr(flower.SW - x[c * 5 + 1]);
-          const T dpl_squared = fncas::sqr(flower.PL - x[c * 5 + 2]);
-          const T dpw_squared = fncas::sqr(flower.PW - x[c * 5 + 3]);
-          const T distance_squared = dsl_squared + dsw_squared + dpl_squared + dpw_squared;
-          w[c] = fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
+          w[c] = computer.WeightInClass(flower, c, x);
           ws += w[c];
         }
         penalty_descriptive += fncas::log(w[label_cit->second]);
