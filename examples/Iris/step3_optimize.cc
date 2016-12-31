@@ -155,7 +155,7 @@ struct FunctionToOptimize {
     std::vector<MinMaxAvg> result(4);
     for (size_t d = 0; d < 4; ++d) {
       result[d].min = +1e100;
-      result[d].max = +1e100;
+      result[d].max = -1e100;
       result[d].avg = 0.0;
     }
     for (const auto& flower : flowers) {
