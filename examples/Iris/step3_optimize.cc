@@ -49,7 +49,7 @@ static std::vector<Label> labels = {
     {"setosa", "rgb '#ff0000'", "6"}, {"versicolor", "rgb '#00c000'", "8"}, {"virginica", "rgb '#0000c0'", "10"}};
 
 struct Feature {
-  const double IrisFlower::*mem_ptr;
+  double IrisFlower::*mem_ptr;
   const size_t dimension_index;
   const std::string name;
 };
@@ -63,8 +63,8 @@ static std::map<std::string, Feature> features(features_list.begin(), features_l
 static std::map<std::string, size_t> label_indexes{{"setosa", 0u}, {"versicolor", 1u}, {"virginica", 2u}};
 
 struct NoModelVisualizer {
-  template <typename T>
-  NoModelVisualizer(T&&) {}
+  template <typename T1, typename T2>
+  NoModelVisualizer(T1&&, T2&&) {}
   void AddPlots(current::gnuplot::GNUPlot& unused_plot, size_t unused_dimension_x, size_t unused_dimension_y) const {
     static_cast<void>(unused_plot);
     static_cast<void>(unused_dimension_x);
@@ -119,38 +119,41 @@ enum class ComputationType { TrainDescriptiveModel, TrainDiscriminantModel, Comp
 
 template <typename T>
 struct WeightsComputer {
+  const std::vector<T>& x;
   T inv_r_squared[3];
   T k[3];
 
   // For a 4D Gaussian, `exp(-(distance_squared / radius_squared))`, the normalization coefficient
   // is `radius_squared ^ (-2)`. As an implementation detail, use inverted values.
-  explicit WeightsComputer(const std::vector<T>& x) {
+  explicit WeightsComputer(const std::vector<T>& x) : x(x) {
     for (size_t c = 0; c < 3; ++c) {
       inv_r_squared[c] = fncas::exp(x[c * 5 + 4]);
       k[c] = fncas::exp(x[c * 5 + 4] * 2);
     }
   }
 
-  T WeightInClass(const IrisFlower& flower, size_t c, const std::vector<T>& x) {
+  T WeightInClass(const IrisFlower& flower, size_t c, bool dont_exponentiate = false) {
     const T dsl_squared = fncas::sqr(flower.SL - x[c * 5 + 0]);
     const T dsw_squared = fncas::sqr(flower.SW - x[c * 5 + 1]);
     const T dpl_squared = fncas::sqr(flower.PL - x[c * 5 + 2]);
     const T dpw_squared = fncas::sqr(flower.PW - x[c * 5 + 3]);
     const T distance_squared = dsl_squared + dsw_squared + dpl_squared + dpw_squared;
-    return fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
+    if (!dont_exponentiate) {
+      return fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
+    } else {
+      return -distance_squared * inv_r_squared[c] * fncas::log(k[c]);
+    }
   }
 };
 
-struct FunctionToOptimize {
-  const std::vector<IrisFlower>& flowers;
-  struct MinMaxAvg {
-    double min;
-    double max;
-    double avg;
-  };
-  const std::vector<MinMaxAvg> flowers_stats;
-  const ComputationType computation_type;
+CURRENT_STRUCT(MinMaxAvg) {
+  CURRENT_FIELD(min, double);
+  CURRENT_FIELD(max, double);
+  CURRENT_FIELD(avg, double);
+};
 
+struct MinMaxAvgStats {
+  const std::vector<MinMaxAvg> flowers_stats;
   static std::vector<MinMaxAvg> ComputeStats(const std::vector<IrisFlower>& flowers) {
     std::vector<MinMaxAvg> result(4);
     for (size_t d = 0; d < 4; ++d) {
@@ -168,13 +171,22 @@ struct FunctionToOptimize {
       }
     }
     for (size_t d = 0; d < 4; ++d) {
-      result[d].avg /= 4;
+      result[d].avg /= flowers.size();
     }
     return result;
   }
 
+  MinMaxAvgStats(const std::vector<IrisFlower>& flowers) : flowers_stats(ComputeStats(flowers)) {}
+
+  const MinMaxAvg& operator[](size_t i) const { return flowers_stats[i]; }
+};
+
+struct FunctionToOptimize {
+  const std::vector<IrisFlower>& flowers;
+  const ComputationType computation_type;
+
   FunctionToOptimize(const std::vector<IrisFlower>& flowers, ComputationType computation_type)
-      : flowers(flowers), flowers_stats(ComputeStats(flowers)), computation_type(computation_type) {}
+      : flowers(flowers), computation_type(computation_type) {}
 
 #if 0
   // A toy example: Optimize a simple three-parameter function with a clear maximum at {1,2,3}.
@@ -228,7 +240,7 @@ struct FunctionToOptimize {
         T w[3];
         T ws = 0.0;
         for (size_t c = 0; c < 3; ++c) {
-          w[c] = computer.WeightInClass(flower, c, x);
+          w[c] = computer.WeightInClass(flower, c);
           ws += w[c];
         }
         penalty_descriptive += fncas::log(w[label_cit->second]);
@@ -256,8 +268,10 @@ struct FunctionToOptimize {
   // Render the Gaussians as ellipses.
   struct ModelVisualizer {
     const std::vector<double> parameters;
+    const MinMaxAvgStats& flowers_stats;
 
-    ModelVisualizer(const std::vector<double>& parameters) : parameters(parameters) {}
+    ModelVisualizer(const std::vector<double>& parameters, const MinMaxAvgStats& flowers_stats)
+        : parameters(parameters), flowers_stats(flowers_stats) {}
 
     void AddPlots(current::gnuplot::GNUPlot& plot, size_t dimension_x, size_t dimension_y) const {
       using namespace current::gnuplot;
@@ -275,6 +289,33 @@ struct FunctionToOptimize {
         });
         plot.Plot(plot_data.Name("Model for " + labels[c].name).Color(labels[c].color).LineWidth(3.5));
       }
+
+      {
+        // NOTE(dkorolev): Using the average for the other two dimensions is not good.
+        // Need something a tad more sophisticated. I'm on it.
+        WeightsComputer<double> computer(parameters);
+        IrisFlower flower;
+        for (size_t c = 0; c < 4; ++c) {
+          flower.*features_list[c].second.mem_ptr = flowers_stats[c].avg;
+        }
+        const size_t N = 32;
+        for (size_t iy = 0; iy <= N; ++iy) {
+          // Top-to bottom mathemtically.
+          // const double y = (flowers_stats[dimension_y].min * (N - iy) + flowers_stats[dimension_y].max * iy) / N;
+          const double y = (flowers_stats[dimension_y].min * iy + flowers_stats[dimension_y].max * (N - iy)) / N;
+          for (size_t ix = 0; ix <= N; ++ix) {
+            const double x = (flowers_stats[dimension_x].min * (N - ix) + flowers_stats[dimension_x].max * ix) / N;
+            flower.*features_list[dimension_x].second.mem_ptr = x;
+            flower.*features_list[dimension_y].second.mem_ptr = y;
+            const double a = computer.WeightInClass(flower, 0);
+            const double b = computer.WeightInClass(flower, 1);
+            const double c = computer.WeightInClass(flower, 2);
+            const double m = std::max(a, std::max(b, c));
+            std::cerr << (m == a ? 'A' : (m == b ? 'B' : 'C'));
+          }
+          std::cerr << std::endl;
+        }
+      }
     }
   };
 #endif
@@ -284,8 +325,10 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   const auto flowers = ParseJSON<std::vector<IrisFlower>>(current::FileSystem::ReadFileAsString(FLAGS_input));
+  const auto flowers_stats = MinMaxAvgStats(flowers);
 
   std::cout << "Read " << flowers.size() << " flowers." << std::endl;
+  std::cout << "Stats: " << JSON(flowers_stats.flowers_stats) << std::endl;
 
   // Uncomment the next line to see the training log.
   // fncas::impl::ScopedLogToStderr log_fncas_to_stderr_scope;
@@ -341,7 +384,7 @@ int main(int argc, char** argv) {
 
   const auto scope =
       http.Register("/",
-                    [&flowers, final_point](Request r) {
+                    [&flowers, &flowers_stats, final_point](Request r) {
                       if (r.url.query.has("x") && r.url.query.has("y")) {
                         r(Plot(flowers,
                                r.url.query["x"],
@@ -349,7 +392,7 @@ int main(int argc, char** argv) {
                                r.url.query.has("nolegend"),
                                current::FromString<size_t>(r.url.query.get("dim", "800")),
                                current::FromString<double>(r.url.query.get("ps", "1.75")),
-                               FunctionToOptimize::ModelVisualizer(final_point)));
+                               FunctionToOptimize::ModelVisualizer(final_point, flowers_stats)));
                       } else {
                         std::string html;
                         html += "<!doctype html>\n";
