@@ -37,7 +37,8 @@ using IrisFlower = Schema_Element_Object;  // Using the default type name from t
 
 DEFINE_string(input, "data/dataset.json", "The path to the input data file.");
 DEFINE_uint16(port, 3001, "The port to run the server on.");
-DEFINE_bool(descriptive_only, false, "Set this flag to only optimize the descriptive model.");
+DEFINE_bool(train_descriptive, true, "Unset this flag to train the discriminant model right away.");
+DEFINE_bool(train_discriminant, true, "Unset this flag to train the descriptive model only.");
 
 struct Label {
   const std::string name;
@@ -58,6 +59,8 @@ static std::vector<std::pair<std::string, Feature>> features_list = {{"SL", {&Ir
                                                                      {"PL", {&IrisFlower::PL, 2u, "Petal.Length"}},
                                                                      {"PW", {&IrisFlower::PW, 3u, "Petal.Width"}}};
 static std::map<std::string, Feature> features(features_list.begin(), features_list.end());
+
+static std::map<std::string, size_t> label_indexes{{"setosa", 0u}, {"versicolor", 1u}, {"virginica", 2u}};
 
 struct NoModelVisualizer {
   template <typename T>
@@ -122,7 +125,7 @@ struct FunctionToOptimize {
 
 #if 0
   // A toy example: Optimize a simple three-parameter function with a clear maximum at {1,2,3}.
-  static std::vector<double> StartingPoint() { return {0, 0, 0}; }
+  static std::vector<double> StartingPoint(const std::vector<IrisFlower>&) { return {0, 0, 0}; }
   template <typename T>
   T ObjectiveFunction(const std::vector<T>& parameters) const {
     return -fncas::exp(fncas::sqr(parameters[0] - 1) + fncas::sqr(parameters[1] - 2) + fncas::sqr(parameters[2] - 3));
@@ -135,10 +138,31 @@ struct FunctionToOptimize {
   // Two models are then trained, the second one from the point found by the first one:
   // Model 1, the descriptive one: Find the best Gaussian per class (could be computed analytically, but why bother?)
   // Model 2, the discriminant one: Move the best per-class Gaussians to solve the actual classification problem.
-  static std::vector<double> StartingPoint() { return std::vector<double>(3 * 5, 0.0); }
+  static std::vector<double> StartingPoint(const std::vector<IrisFlower>& flowers) {
+    // return std::vector<double>(3 * 5, 0.0);
+    // Start with wide Gaussians.
+    std::vector<double> point;
+    for (size_t c = 0; c < 3; ++c) {
+      for (size_t d = 0; d < 4; ++d) {
+        const double IrisFlower::*p = features_list[d].second.mem_ptr;
+        double x = 0.0;
+        size_t n = 0.0;
+        for (const auto& flower : flowers) {
+          const auto label_cit = label_indexes.find(flower.Label);
+          if (label_cit != label_indexes.end() && label_cit->second == c) {
+            x += flower.*p;
+            ++n;
+          }
+        }
+        assert(n > 0);
+        point.push_back(x / n);
+      }
+      point.push_back(-2.0);  // -log(r) = -2.0, r = exp(2).
+    }
+    return point;
+  }
   template <typename T>
   fncas::optimize::ObjectiveFunctionValue<T> ObjectiveFunction(const std::vector<T>& x) const {
-    const std::map<std::string, size_t> labels{{"setosa", 0u}, {"versicolor", 1u}, {"virginica", 2u}};
     T penalty_descriptive = 0.0;
     T penalty_discriminant = 0.0;
     // For a 4D Gaussian, `exp(-(distance_squared / radius_squared))`, the normalization coefficient
@@ -147,8 +171,8 @@ struct FunctionToOptimize {
     const T k[3] = {fncas::exp(x[0 * 5 + 4] * 2), fncas::exp(x[1 * 5 + 4] * 2), fncas::exp(x[2 * 5 + 4] * 2)};
     size_t valid_examples = 0;
     for (const auto& flower : flowers) {
-      const auto label_cit = labels.find(flower.Label);
-      if (label_cit != labels.end()) {
+      const auto label_cit = label_indexes.find(flower.Label);
+      if (label_cit != label_indexes.end()) {
         ++valid_examples;
         T w[3];
         T ws = 0.0;
@@ -219,26 +243,34 @@ int main(int argc, char** argv) {
   // Uncomment the next line to see the training log.
   // fncas::impl::ScopedLogToStderr log_fncas_to_stderr_scope;
 
-  const auto starting_point = FunctionToOptimize::StartingPoint();
-  std::cout << "Prior to the optimization, the objective function is: "
-            << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(starting_point)
-            << std::endl;
-  const auto descriptive_optimization_result =
-      fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
-          fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
-          flowers,
-          ComputationType::TrainDescriptiveModel).Optimize(starting_point);
-  const std::vector<double> descriptive_optimization_accuracy_plot =
-      Value(descriptive_optimization_result.progress).additional_values.at("accuracy");
+  std::vector<double> descriptive_optimization_accuracy_plot;
   std::vector<double> discriminant_optimization_accuracy_plot;
-  const std::vector<double> intermediate_point = descriptive_optimization_result.point;
-  std::cout << "After training the descriptive model, the objective function is: "
-            << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(intermediate_point)
-            << std::endl;
-  std::cout << "The intermediate parameters vector is: " << JSON(intermediate_point) << std::endl;
 
+  const std::vector<double> intermediate_point = [&]() {
+    if (FLAGS_train_descriptive) {
+      const auto starting_point = FunctionToOptimize::StartingPoint(flowers);
+      std::cout << "Prior to the optimization, the objective function is: "
+                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(starting_point)
+                << std::endl;
+      const auto descriptive_optimization_result =
+          fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
+              fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
+              flowers,
+              ComputationType::TrainDescriptiveModel).Optimize(starting_point);
+      descriptive_optimization_accuracy_plot =
+          Value(descriptive_optimization_result.progress).additional_values.at("accuracy");
+      const std::vector<double> intermediate_point = descriptive_optimization_result.point;
+      std::cout << "After training the descriptive model, the objective function is: "
+                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(intermediate_point)
+                << std::endl;
+      std::cout << "The intermediate parameters vector is: " << JSON(intermediate_point) << std::endl;
+      return intermediate_point;
+    } else {
+      return FunctionToOptimize::StartingPoint(flowers);
+    }
+  }();
   const std::vector<double> final_point = [&]() {
-    if (!FLAGS_descriptive_only) {
+    if (FLAGS_train_discriminant) {
       const auto discriminant_optimization_result =
           fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
               fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
