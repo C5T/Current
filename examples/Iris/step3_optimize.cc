@@ -119,9 +119,38 @@ enum class ComputationType { TrainDescriptiveModel, TrainDiscriminantModel, Comp
 
 struct FunctionToOptimize {
   const std::vector<IrisFlower>& flowers;
+  struct MinMaxAvg {
+    double min;
+    double max;
+    double avg;
+  };
+  const std::vector<MinMaxAvg> flowers_stats;
   const ComputationType computation_type;
+
+  static std::vector<MinMaxAvg> ComputeStats(const std::vector<IrisFlower>& flowers) {
+    std::vector<MinMaxAvg> result(4);
+    for (size_t d = 0; d < 4; ++d) {
+      result[d].min = +1e100;
+      result[d].max = +1e100;
+      result[d].avg = 0.0;
+    }
+    for (const auto& flower : flowers) {
+      for (size_t d = 0; d < 4; ++d) {
+        const double IrisFlower::*p = features_list[d].second.mem_ptr;
+        const double x = flower.*p;
+        result[d].min = std::min(result[d].min, x);
+        result[d].max = std::max(result[d].max, x);
+        result[d].avg += x;
+      }
+    }
+    for (size_t d = 0; d < 4; ++d) {
+      result[d].avg /= 4;
+    }
+    return result;
+  }
+
   FunctionToOptimize(const std::vector<IrisFlower>& flowers, ComputationType computation_type)
-      : flowers(flowers), computation_type(computation_type) {}
+      : flowers(flowers), flowers_stats(ComputeStats(flowers)), computation_type(computation_type) {}
 
 #if 0
   // A toy example: Optimize a simple three-parameter function with a clear maximum at {1,2,3}.
@@ -207,6 +236,7 @@ struct FunctionToOptimize {
         .AddPoint("penalty_discriminant", penalty_discriminant);
   }
 
+  // Render the Gaussians as ellipses.
   struct ModelVisualizer {
     const std::vector<double> parameters;
 
