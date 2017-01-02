@@ -117,6 +117,28 @@ Response Plot(const std::vector<IrisFlower>& flowers,
 
 enum class ComputationType { TrainDescriptiveModel, TrainDiscriminantModel, ComputeAccuracy };
 
+// The four-dimensional Gaussian with all radii of one has the normalization coefficient of `pi^2`:
+//
+// * the definite integral of `exp(-(x*x + y*y + z*z + t*t)) / (pi^2)` is ``1.
+// * Ref.: http://www.wolframalpha.com/input/?i=exp(-(x*x%2By*y%2Bz*z%2Bt*t))%2F(pi^2)
+//
+// The four-dimensional Gaussian with the radii being `r` has the normalization coeffifient of `pi^2 * r^4)`.
+// * Same integral is `1` for `exp(-((x/2)*(x/2) + (y/2)*(y/2) + (z/2)*(z/2) + (t/2)*(t/2))) / (pi^2 * 16)`.
+// * Ref.: http://www.wolframalpha.com/input/?i=exp(-((x/2)*(x/2)%2B(y/2)*(y/2)%2B(z/2)*(z/2)%2B(t/2)*(t/2)))/(pi^2*16)
+//
+// For all the radii being `r`, I move the coefficient under `exp(-(...)^2)`:
+// * Same integral is `1` for `exp(-(x*x+y*y+z*z+t*t) / (r^2)) / (pi^2*(r^4))`.
+// * Ref.: http://www.wolframalpha.com/input/?i=exp(-(x*x%2By*y%2Bz*z%2Bt*t)+%2F+(2^2))+%2F+(pi^2*(2^4))
+//         (Replace `2` by, say, `5`, i.e. { `2^2`, `2^4` -> `5^2`, `5^4` }, and the integral will stay `1`.
+//
+// Thus, as an implementation detail, model parameters to optimize, the per-coordinate radii, are stored
+// as `-log(sqr(r_i))`. This way, where `x` is the corresponding per-cluster radius-parameter:
+// * The negated exponent argument, which is `1/(r^2)`, is `inv_r_squared`, is `exp(x)`.
+// * The normalization parameter, `k`, which `pi^2` in the denominator is multiplied by, is `exp(x*2)`.
+// * The radius itself (which is only used for visualization purposes) is `exp(-x/2)`.
+//
+// The presence of the seemingly useless exponent in the formula also ensures the optimization
+// can not accidentlaly enter the "negative radius" domain.
 template <typename T>
 struct WeightsComputer {
   const std::vector<T>& x;
@@ -222,7 +244,7 @@ struct FunctionToOptimize {
         assert(n > 0);
         point.push_back(x / n);
       }
-      point.push_back(-2.0);  // -log(r) = -2.0, r = exp(2).
+      point.push_back(-2.0);  // `-log(r ^ 2)` == `-2`, initial `r` = `exp(1)`, a wide Gaussian to start from.
     }
     return point;
   }
@@ -279,7 +301,7 @@ struct FunctionToOptimize {
       for (size_t c = 0; c < 3; ++c) {
         const double x = parameters[c * 5 + dimension_x];
         const double y = parameters[c * 5 + dimension_y];
-        const double r = std::exp(parameters[c * 5 + 4]) * 0.1;  // Just the visualization coeffcient. -- D.K.
+        const double r = std::exp(parameters[c * 5 + 4] / 2) * 0.25;  // Just the visualization coeffcient. -- D.K.
         auto plot_data = WithMeta([x, y, r](Plotter& p) {
           size_t n = 100;
           for (size_t i = 0; i <= n; ++i) {
