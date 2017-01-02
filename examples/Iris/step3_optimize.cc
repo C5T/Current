@@ -39,6 +39,7 @@ DEFINE_string(input, "data/dataset.json", "The path to the input data file.");
 DEFINE_uint16(port, 3001, "The port to run the server on.");
 DEFINE_bool(train_descriptive, true, "Unset this flag to train the discriminant model right away.");
 DEFINE_bool(train_discriminant, true, "Unset this flag to train the descriptive model only.");
+DEFINE_bool(dump_regions_to_stderr, false, "Set this flag to dump the 'picture' of class regions to standard error."); 
 
 struct Label {
   const std::string name;
@@ -154,17 +155,13 @@ struct WeightsComputer {
     }
   }
 
-  T WeightInClass(const IrisFlower& flower, size_t c, bool dont_exponentiate = false) {
+  T WeightInClass(const IrisFlower& flower, size_t c) {
     const T dsl_squared = fncas::sqr(flower.SL - x[c * 5 + 0]);
     const T dsw_squared = fncas::sqr(flower.SW - x[c * 5 + 1]);
     const T dpl_squared = fncas::sqr(flower.PL - x[c * 5 + 2]);
     const T dpw_squared = fncas::sqr(flower.PW - x[c * 5 + 3]);
     const T distance_squared = dsl_squared + dsw_squared + dpl_squared + dpw_squared;
-    if (!dont_exponentiate) {
-      return fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
-    } else {
-      return -distance_squared * inv_r_squared[c] * fncas::log(k[c]);
-    }
+    return fncas::exp(-distance_squared * inv_r_squared[c]) * k[c] * (1.0 / (M_PI * M_PI));
   }
 };
 
@@ -312,7 +309,7 @@ struct FunctionToOptimize {
         plot.Plot(plot_data.Name("Model for " + labels[c].name).Color(labels[c].color).LineWidth(3.5));
       }
 
-      {
+      if (FLAGS_dump_regions_to_stderr) {
         // NOTE(dkorolev): Using the average for the other two dimensions is not good.
         // Need something a tad more sophisticated. I'm on it.
         WeightsComputer<double> computer(parameters);
@@ -322,7 +319,7 @@ struct FunctionToOptimize {
         }
         const size_t N = 32;
         for (size_t iy = 0; iy <= N; ++iy) {
-          // Top-to bottom mathemtically.
+          // Top-to bottom mathematically.
           // const double y = (flowers_stats[dimension_y].min * (N - iy) + flowers_stats[dimension_y].max * iy) / N;
           const double y = (flowers_stats[dimension_y].min * iy + flowers_stats[dimension_y].max * (N - iy)) / N;
           for (size_t ix = 0; ix <= N; ++ix) {
