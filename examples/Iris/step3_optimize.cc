@@ -362,7 +362,7 @@ int main(int argc, char** argv) {
     if (FLAGS_train_descriptive) {
       const auto starting_point = FunctionToOptimize::StartingPoint(flowers);
       std::cout << "Prior to the optimization, the objective function is: "
-                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(starting_point)
+                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(starting_point).value
                 << std::endl;
       const auto descriptive_optimization_result =
           fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
@@ -373,8 +373,9 @@ int main(int argc, char** argv) {
           Value(descriptive_optimization_result.progress).additional_values.at("accuracy");
       const std::vector<double> intermediate_point = descriptive_optimization_result.point;
       std::cout << "After training the descriptive model, the objective function is: "
-                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(intermediate_point)
-                << std::endl;
+                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy)
+                       .ObjectiveFunction(intermediate_point)
+                       .value << std::endl;
       std::cout << "The intermediate parameters vector is: " << JSON(intermediate_point) << std::endl;
       return intermediate_point;
     } else {
@@ -392,7 +393,7 @@ int main(int argc, char** argv) {
           Value(discriminant_optimization_result.progress).additional_values.at("accuracy");
       const std::vector<double> final_point = discriminant_optimization_result.point;
       std::cout << "After training the descriminant model, the objective function is: "
-                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(final_point)
+                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(final_point).value
                 << std::endl;
       std::cout << "The optimal parameters vector is: " << JSON(final_point) << std::endl;
       return final_point;
