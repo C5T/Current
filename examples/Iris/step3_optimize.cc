@@ -525,12 +525,12 @@ int main(int argc, char** argv) {
                         html += "<table border=1>\n";
                         html += "  <tr><td></td>";
                         for (size_t i = 0; i < 3; ++i) {
-                          html += "<td align=center>Histogram of P(<b>" + labels[i].name + "</b>) values</td>";
+                          html += "<td align=center>Histogram of P(<b>" + labels[i].name + "</b>) values.</td>";
                         }
                         html += "</tr>\n";
                         for (size_t y = 0; y < 3; ++y) {
-                          html += "  <tr><td><p style='transform:rotate(270deg);float:left;'><b>" + labels[y].name +
-                                  "</b> flowers.</p></td>";
+                          html += "  <tr><td><p style='transform:rotate(270deg);text-align:center;'><b>" +
+                                  labels[y].name + "</b> flowers.</p></td>";
                           for (size_t x = 0; x < 3; ++x) {
                             const std::string img_a =
                                 "accuracy?predicted=" + current::ToString(x) + "&actual=" + current::ToString(y);
