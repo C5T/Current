@@ -39,7 +39,7 @@ DEFINE_string(input, "data/dataset.json", "The path to the input data file.");
 DEFINE_uint16(port, 3001, "The port to run the server on.");
 DEFINE_bool(train_descriptive, true, "Unset this flag to train the discriminant model right away.");
 DEFINE_bool(train_discriminant, true, "Unset this flag to train the descriptive model only.");
-DEFINE_bool(dump_regions_to_stderr, false, "Set this flag to dump the 'picture' of class regions to standard error."); 
+DEFINE_bool(dump_regions_to_stderr, false, "Set this flag to dump the 'picture' of class regions to standard error.");
 
 struct Label {
   const std::string name;
@@ -165,6 +165,71 @@ struct WeightsComputer {
   }
 };
 
+Response PlotAccuracy(const std::vector<IrisFlower>& flowers,
+                      const std::vector<double>& model,
+                      size_t predicted_label,
+                      size_t actual_label,
+                      size_t bins,
+                      bool nolegend,
+                      size_t image_size,
+                      double line_width,
+                      const std::string& output_format = "svg",
+                      const std::string& content_type = current::net::constants::kDefaultSVGContentType) {
+  if (predicted_label < 3 && actual_label < 3 && (bins >= 2 && bins <= 100)) {
+    using namespace current::gnuplot;
+    GNUPlot plot;
+    if (nolegend) {
+      plot.NoBorder().NoTics().NoKey();
+    } else {
+      plot.Title("True label '" + labels[actual_label].name + "', label weight by model prediction for '" +
+                 labels[predicted_label].name + "'.")
+          .Grid("back")
+          .XLabel("Probability")
+          .YLabel("Count");
+    }
+    plot.ImageSize(image_size).OutputFormat(output_format);
+
+    auto plot_data = WithMeta([&](Plotter& p) {
+      WeightsComputer<double> computer(model);
+      const size_t N = bins;
+      std::vector<size_t> count(N, 0u);
+      std::vector<double> wc(3);
+      double ws;
+      for (const auto& flower : flowers) {
+        if (flower.Label == labels[actual_label].name) {
+          ws = 0.0;
+          for (size_t c = 0; c < 3; ++c) {
+            const double w = computer.WeightInClass(flower, c);
+            wc[c] = w;
+            ws += w;
+          }
+          const double p = wc[predicted_label] / ws;
+          size_t bin = static_cast<size_t>(p * N);
+          if (bin == N) {
+            bin = N - 1;
+          }
+          assert(bin >= 0);
+          assert(bin < N);
+          ++count[bin];
+        }
+      }
+      const double k = 1.0 / N;
+      for (size_t i = 0; i < N; ++i) {
+        p(i * k, 0);
+        p(i * k, count[i]);
+        p((i + 1) * k, count[i]);
+      }
+      p(1, 0);
+      p(0, 0);
+    });
+    plot_data.Name(labels[actual_label].name).LineWidth(line_width).Color(labels[actual_label].color);
+    plot.Plot(plot_data);
+    return Response(static_cast<std::string>(plot), HTTPResponseCode.OK, content_type);
+  } else {
+    return Response("Invalid dimension.", HTTPResponseCode.BadRequest);
+  }
+}
+
 CURRENT_STRUCT(MinMaxAvg) {
   CURRENT_FIELD(min, double);
   CURRENT_FIELD(max, double);
@@ -226,23 +291,30 @@ struct FunctionToOptimize {
     // return std::vector<double>(3 * 5, 0.0);
     // Start with wide Gaussians.
     std::vector<double> point;
+    std::vector<std::vector<double>> center(3);
     for (size_t c = 0; c < 3; ++c) {
       for (size_t d = 0; d < 4; ++d) {
         const double IrisFlower::*p = features_list[d].second.mem_ptr;
-        double x = 0.0;
+        double sum_x = 0.0;
         size_t n = 0.0;
         for (const auto& flower : flowers) {
           const auto label_cit = label_indexes.find(flower.Label);
           if (label_cit != label_indexes.end() && label_cit->second == c) {
-            x += flower.*p;
+            const double x = flower.*p;
+            sum_x += x;
             ++n;
           }
         }
         assert(n > 0);
-        point.push_back(x / n);
+        const double mean_x = sum_x / n;
+        center[c].push_back(mean_x);
+        point.push_back(mean_x);
       }
       point.push_back(-2.0);  // `-log(r ^ 2)` == `-2`, initial `r` = `exp(1)`, a wide Gaussian to start from.
     }
+
+    // TODO(dkorolev): The closed-form solution for the starting point in the descriptive case.
+
     return point;
   }
 
@@ -358,6 +430,7 @@ int main(int argc, char** argv) {
   const std::vector<double> intermediate_point = [&]() {
     if (FLAGS_train_descriptive) {
       const auto starting_point = FunctionToOptimize::StartingPoint(flowers);
+      std::cout << "The starting point is: " << JSON(starting_point) << std::endl;
       std::cout << "Prior to the optimization, the objective function is: "
                 << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(starting_point).value
                 << std::endl;
@@ -428,6 +501,41 @@ int main(int argc, char** argv) {
                               const std::string img_src = img_a + "&dim=250&nolegend&ps=1";
                               html += "    <td><a href='" + img_a + "'><img src='" + img_src + "' /></a></td>\n";
                             }
+                          }
+                          html += "  </tr>\n";
+                        }
+                        html += "</table>\n";
+                        r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
+                      }
+                    }) +
+      http.Register("/accuracy",
+                    [&flowers, &flowers_stats, final_point](Request r) {
+                      if (r.url.query.has("predicted") && r.url.query.has("actual")) {
+                        r(PlotAccuracy(flowers,
+                                       final_point,
+                                       current::FromString<size_t>(r.url.query["predicted"]),
+                                       current::FromString<size_t>(r.url.query["actual"]),
+                                       current::FromString<size_t>(r.url.query.get("bins", "50")),
+                                       r.url.query.has("nolegend"),
+                                       current::FromString<size_t>(r.url.query.get("dim", "800")),
+                                       current::FromString<double>(r.url.query.get("lw", "3"))));
+                      } else {
+                        std::string html;
+                        html += "<!doctype html>\n";
+                        html += "<table border=1>\n";
+                        html += "  <tr><td></td>";
+                        for (size_t i = 0; i < 3; ++i) {
+                          html += "<td align=center>Histogram of P(<b>" + labels[i].name + "</b>) values</td>";
+                        }
+                        html += "</tr>\n";
+                        for (size_t y = 0; y < 3; ++y) {
+                          html += "  <tr><td><p style='transform:rotate(270deg);float:left;'><b>" + labels[y].name +
+                                  "</b> flowers.</p></td>";
+                          for (size_t x = 0; x < 3; ++x) {
+                            const std::string img_a =
+                                "accuracy?predicted=" + current::ToString(x) + "&actual=" + current::ToString(y);
+                            const std::string img_src = img_a + "&bins=25&dim=250&nolegend";
+                            html += "    <td><a href='" + img_a + "&bins=50'><img src='" + img_src + "' /></a></td>\n";
                           }
                           html += "  </tr>\n";
                         }
