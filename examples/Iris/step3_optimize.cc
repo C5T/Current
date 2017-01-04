@@ -120,10 +120,10 @@ enum class ComputationType { TrainDescriptiveModel, TrainDiscriminantModel, Comp
 
 // The four-dimensional Gaussian with all radii of one has the normalization coefficient of `pi^2`:
 //
-// * the definite integral of `exp(-(x*x + y*y + z*z + t*t)) / (pi^2)` is ``1.
+// * the definite integral of `exp(-(x*x + y*y + z*z + t*t)) / (pi^2)` is `1`.
 // * Ref.: http://www.wolframalpha.com/input/?i=exp(-(x*x%2By*y%2Bz*z%2Bt*t))%2F(pi^2)
 //
-// The four-dimensional Gaussian with the radii being `r` has the normalization coeffifient of `pi^2 * r^4)`.
+// The four-dimensional Gaussian with the radii being `r` has the normalization coefficient of `pi^2 * r^4`.
 // * Same integral is `1` for `exp(-((x/2)*(x/2) + (y/2)*(y/2) + (z/2)*(z/2) + (t/2)*(t/2))) / (pi^2 * 16)`.
 // * Ref.: http://www.wolframalpha.com/input/?i=exp(-((x/2)*(x/2)%2B(y/2)*(y/2)%2B(z/2)*(z/2)%2B(t/2)*(t/2)))/(pi^2*16)
 //
@@ -134,7 +134,7 @@ enum class ComputationType { TrainDescriptiveModel, TrainDiscriminantModel, Comp
 //
 // Thus, as an implementation detail, model parameters to optimize, the per-coordinate radii, are stored
 // as `-log(sqr(r_i))`. This way, where `x` is the corresponding per-cluster radius-parameter:
-// * The negated exponent argument, which is `1/(r^2)`, is `inv_r_squared`, is `exp(x)`.
+// * The negated exponent argument, which is `1/(r^2)`, is calculated as `exp(x)`, and stored as `inv_r_squared`.
 // * The normalization parameter, `k`, which `pi^2` in the denominator is multiplied by, is `exp(x*2)`.
 // * The radius itself (which is only used for visualization purposes) is `exp(-x/2)`.
 //
@@ -320,8 +320,8 @@ struct FunctionToOptimize {
 
   template <typename T>
   fncas::optimize::ObjectiveFunctionValue<T> ObjectiveFunction(const std::vector<T>& x) const {
-    T penalty_descriptive = 0.0;
-    T penalty_discriminant = 0.0;
+    T negative_penalty_descriptive = 0.0;
+    T negative_penalty_discriminant = 0.0;
     WeightsComputer<T> computer(x);
     size_t valid_examples = 0;
     for (const auto& flower : flowers) {
@@ -334,13 +334,13 @@ struct FunctionToOptimize {
           w[c] = computer.WeightInClass(flower, c);
           ws += w[c];
         }
-        penalty_descriptive += fncas::log(w[label_cit->second]);
-        penalty_discriminant += fncas::log(w[label_cit->second] / ws);
+        negative_penalty_descriptive += fncas::log(w[label_cit->second]);
+        negative_penalty_discriminant += fncas::log(w[label_cit->second] / ws);
       }
     }
     assert(valid_examples > 0u);
 
-    const T accuracy = fncas::exp(penalty_discriminant / valid_examples);
+    const T accuracy = fncas::exp(negative_penalty_discriminant / valid_examples);
 
     return fncas::optimize::ObjectiveFunctionValue<T>([&]() {
       if (computation_type == ComputationType::ComputeAccuracy) {
@@ -348,12 +348,13 @@ struct FunctionToOptimize {
         return accuracy;
       } else {
         // Just return the non-normalized number, for optimization purposes.
-        return computation_type == ComputationType::TrainDescriptiveModel ? penalty_descriptive : penalty_discriminant;
+        return computation_type == ComputationType::TrainDescriptiveModel ? negative_penalty_descriptive
+                                                                          : negative_penalty_discriminant;
       }
     }())
         .AddPoint("accuracy", accuracy)
-        .AddPoint("penalty_descriptive", penalty_descriptive)
-        .AddPoint("penalty_discriminant", penalty_discriminant);
+        .AddPoint("penalty_descriptive", -negative_penalty_descriptive)
+        .AddPoint("penalty_discriminant", -negative_penalty_discriminant);
   }
 
   // Render the Gaussians as ellipses.
@@ -370,7 +371,7 @@ struct FunctionToOptimize {
       for (size_t c = 0; c < 3; ++c) {
         const double x = parameters[c * 5 + dimension_x];
         const double y = parameters[c * 5 + dimension_y];
-        const double r = std::exp(parameters[c * 5 + 4] / 2) * 0.25;  // Just the visualization coeffcient. -- D.K.
+        const double r = std::exp(parameters[c * 5 + 4] / 2) * 0.25;  // Just the visualization coefficient. -- D.K.
         auto plot_data = WithMeta([x, y, r](Plotter& p) {
           size_t n = 100;
           for (size_t i = 0; i <= n; ++i) {
