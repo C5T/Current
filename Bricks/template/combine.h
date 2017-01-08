@@ -88,6 +88,13 @@ struct combine<TypeListImpl<T>> : dispatch<T> {};
 template <typename T, typename... TS>
 struct combine<TypeListImpl<T, TS...>> : inherit_from_both<dispatch<T>, combine<TypeListImpl<TS...>>> {};
 
+// Support `DispatchToAll<TypeList[Impl]<>>`.
+template <>
+struct combine<TypeListImpl<>> {
+  template <typename... XS>
+  void DispatchToAll(XS&&...) {}
+};
+
 }  // namespace metaprogramming
 }  // namespace current
 
