@@ -260,7 +260,7 @@ struct ExtractString {
 };
 
 struct ExtractInt {
-  int i;
+  const int i;
   ExtractInt() = delete;
   ExtractInt(const std::pair<std::string, int>& pair) : i(pair.second) {}
   int operator()(int) const { return i; }
