@@ -119,16 +119,15 @@ struct FileSystem {
   }
 
   static inline std::string GenTmpFileName() {
-    char buffer[L_tmpnam];
-#if defined(CURRENT_WINDOWS)
-    CURRENT_ASSERT(!(::tmpnam_s(buffer)));
-#elif defined(CURRENT_APPLE)
+#ifndef CURRENT_WINDOWS
     // TODO(dkorolev): Fix temporary file names generation.
     return strings::Printf("/tmp/.current-tmp-%08x", rand());
 #else
-    CURRENT_ASSERT(buffer == ::tmpnam(buffer));
-#endif
+    char buffer[L_tmpnam_s];  // NOTE(dkorolev): Changed `[L_tmpnam]` into `[L_tmpnam_s]`, as per
+                              // https://msdn.microsoft.com/en-us/library/18x8h1bh.aspx 
+    CURRENT_ASSERT(!(::tmpnam_s(buffer)));
     return buffer;
+#endif
   }
 
   static inline std::string WriteStringToTmpFile(const std::string& contents) {

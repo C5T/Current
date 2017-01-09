@@ -258,10 +258,11 @@ TEST(FnCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
 struct StaticFunction {
   template <typename T>
-  static T ObjectiveFunction(const std::vector<T>& x) {
+  static fncas::optimize::ObjectiveFunctionValue<T> ObjectiveFunction(const std::vector<T>& x) {
     const auto dx = x[0] - 3;
     const auto dy = x[1] - 4;
-    return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
+    const auto d = dx * dx + dy * dy;
+    return fncas::optimize::ObjectiveFunctionValue<T>(unittest_fncas_namespace::exp(0.01 * d)).AddPoint("param", d);
   }
 };
 
@@ -356,12 +357,46 @@ TEST(FnCAS, OptimizationOfAMemberFunctionWithJIT) {
 #endif  // FNCAS_JIT_COMPILED
 
 TEST(FnCAS, OptimizationOfAStaticFunctionNoJIT) {
-  const auto result = fncas::optimize::GradientDescentOptimizer<StaticFunction>(
-                          fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({0, 0});
-  EXPECT_NEAR(1.0, result.value, 1e-3);
-  ASSERT_EQ(2u, result.point.size());
-  EXPECT_NEAR(3.0, result.point[0], 1e-3);
-  EXPECT_NEAR(4.0, result.point[1], 1e-3);
+  size_t iterations = 0;
+  {
+    // A run without computing the original function at each step.
+    const auto result = fncas::optimize::GradientDescentOptimizer<StaticFunction>(
+                            fncas::optimize::OptimizerParameters().DisableJIT()).Optimize({0, 0});
+    iterations = result.optimization_iterations;
+    EXPECT_GE(iterations, 3u);  // Should be at least three iterations.
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+    ASSERT_FALSE(Exists(result.progress));
+  }
+  {
+    // Another run that does compute the original function at each step, confirm
+    // the "param" intermediate value has been recorded.
+    const auto result =
+        fncas::optimize::GradientDescentOptimizer<StaticFunction>(
+            fncas::optimize::OptimizerParameters().DisableJIT().TrackOptimizationProgress()).Optimize({0, 0});
+    EXPECT_EQ(iterations, result.optimization_iterations);
+    EXPECT_NEAR(1.0, result.value, 1e-3);
+    ASSERT_EQ(2u, result.point.size());
+    EXPECT_NEAR(3.0, result.point[0], 1e-3);
+    EXPECT_NEAR(4.0, result.point[1], 1e-3);
+    ASSERT_TRUE(Exists(result.progress));
+    const auto& progress = Value(result.progress);
+    EXPECT_EQ(iterations, progress.iterations);
+    EXPECT_EQ(iterations, progress.objective_function_values.size());
+    ASSERT_EQ(1u, progress.additional_values.size());
+    ASSERT_TRUE(progress.additional_values.count("param"));
+    const auto& param_values = progress.additional_values.at("param");
+    ASSERT_EQ(iterations, param_values.size());
+    for (size_t i = 1; i < iterations; ++i) {
+      EXPECT_LT(progress.objective_function_values[i], progress.objective_function_values[i - 1]) << JSON(progress)
+                                                                                                  << '\n' << i;
+    }
+    for (size_t i = 0; i < iterations; ++i) {
+      EXPECT_EQ(progress.objective_function_values[i], std::exp(0.01 * param_values[i])) << JSON(progress) << '\n' << i;
+    }
+  }
 }
 
 TEST(FnCAS, OptimizationOfAMemberFunctionNoJIT) {
