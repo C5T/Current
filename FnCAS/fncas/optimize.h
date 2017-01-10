@@ -58,32 +58,27 @@ CURRENT_STRUCT_T(ObjectiveFunctionValue) {
     return *this;
   }
 };
+// clang-format on
 
-template<typename T>
+template <typename T>
 struct ObjectiveFunctionValueExtractorImpl {
   using value_t = typename T::value_t;
-  static value_t Extract(const T& x) {
-    return x.value;
-  }
+  static value_t Extract(const T& x) { return x.value; }
 };
 
-template<>
+template <>
 struct ObjectiveFunctionValueExtractorImpl<fncas::double_t> {
   using value_t = fncas::double_t;
-  static value_t Extract(fncas::double_t x) {
-    return x;
-  }
+  static value_t Extract(fncas::double_t x) { return x; }
 };
 
-template<>
+template <>
 struct ObjectiveFunctionValueExtractorImpl<fncas::term_t> {
   using value_t = fncas::term_t;
-  static value_t Extract(fncas::term_t x) {
-    return x;
-  }
+  static value_t Extract(fncas::term_t x) { return x; }
 };
 
-template<typename T>
+template <typename T>
 typename ObjectiveFunctionValueExtractorImpl<T>::value_t ExtractValueFromObjectiveFunctionValue(const T& x) {
   return ObjectiveFunctionValueExtractorImpl<T>::Extract(x);
 }
@@ -104,7 +99,7 @@ CURRENT_STRUCT(OptimizationProgress) {
     objective_function_values.push_back(value);
 
     // If the user code returns a double, it should always do so.
-    CURRENT_ASSERT(additional_values.empty()); 
+    CURRENT_ASSERT(additional_values.empty());
   }
 
   void TrackIteration(const ObjectiveFunctionValue<double>& value) {
@@ -132,7 +127,6 @@ CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
   CURRENT_FIELD(progress, Optional<OptimizationProgress>);
   CURRENT_CONSTRUCTOR(OptimizationResult)(const ValueAndPoint& p) : SUPER(p) {}
 };
-// clang-format on
 
 enum class EarlyStoppingCriterion : bool { StopOptimization = false, ContinueOptimization = true };
 
