@@ -249,3 +249,28 @@ TEST(TemplateMetaprogrammingInternalTest, CallAllConstructorsWith) {
     EXPECT_EQ(3, x);
   }
 }
+
+namespace metaprogramming_unittest {
+
+struct ExtractString {
+  const std::string s;
+  ExtractString() = delete;
+  ExtractString(const std::pair<std::string, int>& pair) : s(pair.first) {}
+  const std::string& operator()(const std::string&) const { return s; }
+};
+
+struct ExtractInt {
+  const int i;
+  ExtractInt() = delete;
+  ExtractInt(const std::pair<std::string, int>& pair) : i(pair.second) {}
+  int operator()(int) const { return i; }
+};
+
+}  // namespace metaprogramming_unittest
+
+TEST(TemplateMetaprogrammingInternalTest, NonemptyConstructorForCombiner) {
+  using namespace metaprogramming_unittest;
+  const current::metaprogramming::combine<TypeList<ExtractString, ExtractInt>> joined(std::make_pair("foo", 42));
+  EXPECT_EQ("foo", joined("test"));
+  EXPECT_EQ(42, joined(0));
+}
