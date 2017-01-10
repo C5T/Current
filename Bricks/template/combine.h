@@ -46,13 +46,27 @@ template <typename T>
 struct dispatch {
   T instance;
 
+  template <typename... ARGS>
+  dispatch(const ARGS&... args)
+      : instance(args...) {}
+
   template <typename... XS>
   ENABLE_IF<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>> operator()(XS&&... params) {
     return instance(std::forward<XS>(params)...);
   }
 
   template <typename... XS>
+  ENABLE_IF<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>> operator()(XS&&... params) const {
+    return instance(std::forward<XS>(params)...);
+  }
+
+  template <typename... XS>
   void DispatchToAll(XS&&... params) {
+    return instance.DispatchToAll(std::forward<XS>(params)...);
+  }
+
+  template <typename... XS>
+  void DispatchToAll(XS&&... params) const {
     return instance.DispatchToAll(std::forward<XS>(params)...);
   }
 };
@@ -65,28 +79,60 @@ struct inherit_from_both : T1, T2 {
   using T1::operator();
   using T2::operator();
 
+  template <typename... ARGS>
+  inherit_from_both(const ARGS&... args)
+      : T1(args...), T2(args...) {}
+
   // `DispatchToAll(...)` will reach both `T1` and `T2`.
   template <typename... TS>
   void DispatchToAll(TS&&... params) {
     T1::DispatchToAll(std::forward<TS>(params)...);
     T2::DispatchToAll(std::forward<TS>(params)...);
   }
+  template <typename... TS>
+  void DispatchToAll(TS&&... params) const {
+    T1::DispatchToAll(std::forward<TS>(params)...);
+    T2::DispatchToAll(std::forward<TS>(params)...);
+  }
 };
 
 template <typename T>
-struct combine {};
+struct combine {
+  combine() = delete;
+};
 
 template <typename T>
-struct combine<std::tuple<T>> : dispatch<T> {};
+struct combine<std::tuple<T>> : dispatch<T> {
+  using combine_super_t = dispatch<T>;
+  using combine_super_t::combine_super_t;
+};
 
 template <typename T, typename... TS>
-struct combine<std::tuple<T, TS...>> : inherit_from_both<dispatch<T>, combine<std::tuple<TS...>>> {};
+struct combine<std::tuple<T, TS...>> : inherit_from_both<dispatch<T>, combine<std::tuple<TS...>>> {
+  using combine_super_t = inherit_from_both<dispatch<T>, combine<std::tuple<TS...>>>;
+  using combine_super_t::combine_super_t;
+};
 
 template <typename T>
-struct combine<TypeListImpl<T>> : dispatch<T> {};
+struct combine<TypeListImpl<T>> : dispatch<T> {
+  using combine_super_t = dispatch<T>;
+  using combine_super_t::combine_super_t;
+};
 
 template <typename T, typename... TS>
-struct combine<TypeListImpl<T, TS...>> : inherit_from_both<dispatch<T>, combine<TypeListImpl<TS...>>> {};
+struct combine<TypeListImpl<T, TS...>> : inherit_from_both<dispatch<T>, combine<TypeListImpl<TS...>>> {
+  using combine_super_t = inherit_from_both<dispatch<T>, combine<TypeListImpl<TS...>>>;
+  using combine_super_t::combine_super_t;
+};
+
+// Support `DispatchToAll<TypeList[Impl]<>>`.
+template <>
+struct combine<TypeListImpl<>> {
+  template <typename... ARGS>
+  combine(const ARGS&...) {}
+  template <typename... XS>
+  void DispatchToAll(XS&&...) {}
+};
 
 }  // namespace metaprogramming
 }  // namespace current
