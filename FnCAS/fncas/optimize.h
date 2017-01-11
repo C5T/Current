@@ -49,17 +49,39 @@ namespace optimize {
 
 // clang-format off
 CURRENT_STRUCT_T(ObjectiveFunctionValue) {
+  using value_t = T;
   CURRENT_FIELD(value, T, T());
   CURRENT_FIELD(extra_values, (std::map<std::string, T>));
   CURRENT_CONSTRUCTOR_T(ObjectiveFunctionValue)(T value = T()) : value(value) {}
-  operator T() const {
-    return value;
-  }
   ObjectiveFunctionValue<T>& AddPoint(const std::string& name, T value) {
     extra_values[name] = value;
     return *this;
   }
 };
+// clang-format on
+
+template <typename T>
+struct ObjectiveFunctionValueExtractorImpl {
+  using value_t = typename T::value_t;
+  static value_t Extract(const T& x) { return x.value; }
+};
+
+template <>
+struct ObjectiveFunctionValueExtractorImpl<fncas::double_t> {
+  using value_t = fncas::double_t;
+  static value_t Extract(fncas::double_t x) { return x; }
+};
+
+template <>
+struct ObjectiveFunctionValueExtractorImpl<fncas::term_t> {
+  using value_t = fncas::term_t;
+  static value_t Extract(fncas::term_t x) { return x; }
+};
+
+template <typename T>
+typename ObjectiveFunctionValueExtractorImpl<T>::value_t ExtractValueFromObjectiveFunctionValue(const T& x) {
+  return ObjectiveFunctionValueExtractorImpl<T>::Extract(x);
+}
 
 CURRENT_STRUCT(OptimizationProgress) {
   // The number of iterations the optimization took.
@@ -77,7 +99,7 @@ CURRENT_STRUCT(OptimizationProgress) {
     objective_function_values.push_back(value);
 
     // If the user code returns a double, it should always do so.
-    CURRENT_ASSERT(additional_values.empty()); 
+    CURRENT_ASSERT(additional_values.empty());
   }
 
   void TrackIteration(const ObjectiveFunctionValue<double>& value) {
@@ -105,7 +127,6 @@ CURRENT_STRUCT(OptimizationResult, ValueAndPoint) {
   CURRENT_FIELD(progress, Optional<OptimizationProgress>);
   CURRENT_CONSTRUCTOR(OptimizationResult)(const ValueAndPoint& p) : SUPER(p) {}
 };
-// clang-format on
 
 enum class EarlyStoppingCriterion : bool { StopOptimization = false, ContinueOptimization = true };
 
@@ -266,8 +287,13 @@ class OptimizeInvoker : public Optimizer<F, DIRECTION> {
     const auto& objective_function = super_t::Function();
 
     const fncas::impl::X gradient_helper(starting_point.size());
-    // NOTE(dkorolev): Here, `fncas::impl::X` is magically cast into `std::vector<fncas::impl::V>`.
-    const fncas::impl::f_impl<JIT::Blueprint> f_i(objective_function.ObjectiveFunction(gradient_helper));
+    // The `ExtractValueFromObjectiveFunctionValue` construct makes sure the user-defined objective function
+    // can return either `T` or `ObjectiveFunctionValue<T>`. The original code enabled `ObjectiveFunctionValue<T>`
+    // to be silently cast into `T`, but that proved to be error-prone with respect to the user forgetting
+    // to carry the full `ObjectiveFunctionValue<T>` type through, replacing it by a plain `T`, and losing
+    // the metadata that is expected to be present at the very end.
+    const fncas::impl::f_impl<JIT::Blueprint> f_i(
+        ExtractValueFromObjectiveFunctionValue(objective_function.ObjectiveFunction(gradient_helper)));
     logger.Log("Optimizer: The objective function is " + current::ToString(impl::node_vector_singleton().size()) +
                " nodes.");
     if (JIT_IMPLEMENTATION != fncas::JIT::Blueprint &&
