@@ -1332,12 +1332,12 @@ TEST(TypeSystemTest, ComplexCloneCases) {
   }
 }
 
-#ifndef FEWER_COMPILE_TIME_CHECKS
+#ifndef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 // Nested variants are only allowed if variant type checking is compile-time, not runtime.
 TEST(TypeSystemTest, NestedVariants)
 #else
 TEST(TypeSystemTest, DISABLED_NestedVariants)
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 {
   using namespace struct_definition_test;
 

@@ -23,10 +23,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// NOTE(dkorolev): In the `FEWER_COMPILE_TIME_CHECKS` mode, nested `Variant`-s are not allowed,
+// NOTE(dkorolev): In the `VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME` mode, nested `Variant`-s are not allowed,
 // and any type contained in the `Variant` (and `CURRENT_VARIANT`) must be a `CURRENT_STRUCT`.
 //
-// Without the `FEWER_COMPILE_TIME_CHECKS` preprocessor symbol defined, nested variants are supported.
+// Without the `VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME` preprocessor symbol defined, nested variants are
+// supported.
 
 #ifndef CURRENT_TYPE_SYSTEM_VARIANT_H
 #define CURRENT_TYPE_SYSTEM_VARIANT_H
@@ -35,7 +36,7 @@ SOFTWARE.
 
 #include <memory>
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 // For runtime, not compile-time, extra checks.
 #include <iostream>
 #include <typeindex>
@@ -54,13 +55,13 @@ SOFTWARE.
 namespace current {
 
 namespace variant {
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 // When variant inner type checks are run-time, no nested variants are allowed.
 using InnerType = CurrentStruct;
 #else
 // When variant inner type checks are compile-time, variant nesting is fully supported.
 using InnerType = CurrentSuper;
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 }  // namespace variant
 
 struct BypassVariantTypeCheck {};
@@ -79,7 +80,7 @@ struct CurrentVariantNameHelper<reflection::CurrentVariantDefaultName, TYPELIST>
 
 namespace variant {
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 template <typename T>
 struct RegisterType {
   RegisterType(std::unordered_map<std::type_index, const char*>& types) {
@@ -122,7 +123,7 @@ struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
     Singleton<RuntimeTypeListHelpersImpl<TS...>>().template AssertContains<U>();
   }
 };
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 
 }  // namespace current::variant
 
@@ -166,11 +167,11 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
   // Default move constructor for the same Variant type as ours.
   VariantImpl(VariantImpl&& rhs) = default;
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   template <typename... RHS>
 #else
   template <typename... RHS, class ENABLE = std::enable_if_t<!TypeListContains<typelist_t, VariantImpl<RHS...>>::value>>
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   // Other Variants are processed using a type-aware move helper.
   // The exception is if it's a nested `Variant`, and the constructor parameter is the `Variant`,
   // which itself is part of `typelist_t`.
@@ -178,7 +179,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
     MoveFrom(std::forward<VariantImpl<RHS...>>(rhs));
   }
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   template <typename X, class = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
   VariantImpl(X&& input) {
     using decayed_t = current::decay<X>;
@@ -191,7 +192,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
     using decayed_t = current::decay<X>;
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
   }
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 
   void operator=(std::nullptr_t) { object_ = nullptr; }
 
@@ -205,16 +206,16 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
     return *this;
   }
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   template <typename X, class ENABLE = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
 #else
   template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   VariantImpl& operator=(X&& input) {
     using decayed_t = current::decay<X>;
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_t>();
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
     return *this;
   }
@@ -306,7 +307,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
     std::unique_ptr<current::variant::InnerType>& into;
     TypeAwareClone(std::unique_ptr<current::variant::InnerType>& into) : into(into) {}
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     template <typename U>
     void operator()(const U& instance) {
       using decayed_u = current::decay<U>;
@@ -323,7 +324,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
     std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U&) {
       CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
     }
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   };
 
   struct TypeAwareMove {
@@ -334,7 +335,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
                   std::unique_ptr<current::variant::InnerType>& into)
         : from(from), into(into) {}
 
-#ifdef FEWER_COMPILE_TIME_CHECKS
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     template <typename U>
     void operator()(U&&) {
       using decayed_u = current::decay<U>;
@@ -351,7 +352,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME
     std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
       CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
     }
-#endif  // FEWER_COMPILE_TIME_CHECKS
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   };
 
   template <typename... RHS>
