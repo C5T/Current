@@ -232,7 +232,7 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 #endif
 
 // The `VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME` macro, when set, moves `Variant` type checks
-// // from compile time to run time.
+// from compile time to run time.
 // Pros: 
 // * Human-readable types in error messages, helpful for debugging.
 // * Faster and less RAM-demanding compilation [ Uncertain. -- D.K. ]

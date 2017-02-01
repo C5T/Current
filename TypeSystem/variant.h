@@ -136,7 +136,7 @@ struct IHasUncheckedMoveFromUniquePtr {
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
 // instead of a `TypeListImpl<...>` in such a case, to ensure type de-duplication takes place.
 
-// Initializes an `std::unique_ptr<urrent::variant::InnerType>` given the object of the right type.
+// Initializes an `std::unique_ptr<current::variant::InnerType>` given the object of the right type.
 // The input object could be an object itself (in which case it's copied),
 // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
 // or a bare pointer (in which case it's captured).
