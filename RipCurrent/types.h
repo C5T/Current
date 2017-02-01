@@ -27,6 +27,8 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <iostream>
+
 #include "../TypeSystem/struct.h"
 #include "../Bricks/template/typelist.h"
 

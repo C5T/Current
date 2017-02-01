@@ -1331,3 +1331,116 @@ TEST(TypeSystemTest, ComplexCloneCases) {
     EXPECT_EQ(2u, Value<Foo>(y.p).i);
   }
 }
+
+#ifndef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+// Nested variants are only allowed if variant type checking is compile-time, not runtime.
+TEST(TypeSystemTest, NestedVariants)
+#else
+TEST(TypeSystemTest, DISABLED_NestedVariants)
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+{
+  using namespace struct_definition_test;
+
+  // The Variant in question is `Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>`.
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v;
+    ASSERT_FALSE((Exists<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)));
+    ASSERT_FALSE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_FALSE(Exists<Empty>(v));
+  }
+
+  // Part 1: Test `Foo` from the first `Variant<Foo, Bar>`.
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v(Variant<Foo, Bar>(Foo(1)));
+    ASSERT_TRUE((Exists<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)));
+    ASSERT_TRUE((&Value<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)) == &v);
+    ASSERT_TRUE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Foo>(Value<Variant<Foo, Bar>>(v))));
+    EXPECT_EQ(1u, Value<Foo>(Value<Variant<Foo, Bar>>(v)).i);
+    ASSERT_FALSE(Exists<Empty>(v));
+  }
+
+  {
+    Variant<Foo, Bar> foo = Foo(1);
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v(foo);
+    ASSERT_TRUE((Exists<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)));
+    ASSERT_TRUE((&Value<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)) == &v);
+    ASSERT_TRUE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Foo>(Value<Variant<Foo, Bar>>(v))));
+    EXPECT_EQ(1u, Value<Foo>(Value<Variant<Foo, Bar>>(v)).i);
+    ASSERT_FALSE(Exists<Empty>(v));
+  }
+
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v;
+    ASSERT_FALSE((Exists<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)));
+    Variant<Foo, Bar> foo = Foo(1);
+    v = foo;
+    ASSERT_TRUE((Exists<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)));
+    ASSERT_TRUE((&Value<Variant<Variant<Foo, Bar>, Variant<Bar, Baz>>>(v)) == &v);
+    ASSERT_TRUE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Foo>(Value<Variant<Foo, Bar>>(v))));
+    EXPECT_EQ(1u, Value<Foo>(Value<Variant<Foo, Bar>>(v)).i);
+    ASSERT_FALSE(Exists<Empty>(v));
+  }
+
+  // Part 2: Test `Bar` from the first `Variant<Foo, Bar>`.
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v(Variant<Foo, Bar>(Bar(2u)));
+    ASSERT_TRUE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Bar>(Value<Variant<Foo, Bar>>(v))));
+    EXPECT_EQ(2u, Value<Bar>(Value<Variant<Foo, Bar>>(v)).j);
+  }
+
+  {
+    Variant<Foo, Bar> bar = Bar(2u);
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v(bar);
+    ASSERT_TRUE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Bar>(Value<Variant<Foo, Bar>>(v))));
+    EXPECT_EQ(2u, Value<Bar>(Value<Variant<Foo, Bar>>(v)).j);
+  }
+
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v;
+    Variant<Foo, Bar> bar = Bar(2u);
+    v = bar;
+    ASSERT_TRUE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_FALSE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Bar>(Value<Variant<Foo, Bar>>(v))));
+    EXPECT_EQ(2u, Value<Bar>(Value<Variant<Foo, Bar>>(v)).j);
+  }
+
+  // Part 3: Test `Bar` from the second `Variant<Bar, Baz>`.
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v(Variant<Bar, Baz>(Bar(3u)));
+    ASSERT_FALSE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_TRUE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Bar>(Value<Variant<Bar, Baz>>(v))));
+    EXPECT_EQ(3u, Value<Bar>(Value<Variant<Bar, Baz>>(v)).j);
+  }
+
+  {
+    Variant<Bar, Baz> bar = Bar(3u);
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v(bar);
+    ASSERT_FALSE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_TRUE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Bar>(Value<Variant<Bar, Baz>>(v))));
+    EXPECT_EQ(3u, Value<Bar>(Value<Variant<Bar, Baz>>(v)).j);
+  }
+
+  {
+    Variant<Variant<Foo, Bar>, Variant<Bar, Baz>> v;
+    Variant<Bar, Baz> bar = Bar(3u);
+    v = bar;
+    ASSERT_FALSE((Exists<Variant<Foo, Bar>>(v)));
+    ASSERT_TRUE((Exists<Variant<Bar, Baz>>(v)));
+    ASSERT_TRUE((Exists<Bar>(Value<Variant<Bar, Baz>>(v))));
+    EXPECT_EQ(3u, Value<Bar>(Value<Variant<Bar, Baz>>(v)).j);
+  }
+}

@@ -231,10 +231,15 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 #define CURRENT_ASSERT(expr) ((expr) ? static_cast<void>(0) : CURRENT_ASSERTION_FAILED(#expr, __FILE__, __LINE__))
 #endif
 
-// The `FEWER_COMPILE_TIME_CHECKS` macro, when set, moves more checks from compile time to run time.
-// Pro: Faster and less RAM-demanding compilation. Con: Some type errors may go unnoticed.
-// TODO(dkorolev)+TODO(mzhurovich): We'd like to bind this to `!NDEBUG`, but let's keep it on by default for now.
-#define FEWER_COMPILE_TIME_CHECKS
+// The `VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME` macro, when set, moves `Variant` type checks
+// from compile time to run time.
+// Pros: 
+// * Human-readable types in error messages, helpful for debugging.
+// * Faster and less RAM-demanding compilation [ Uncertain. -- D.K. ]
+// Cons:
+// * Nested `Variant`-s are not supported when type checks are moved from compile time to runtime.
+// * Some type errors may go unnoticed.
+// #define VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 
 #ifdef CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
 #undef _CRT_SECURE_NO_WARNINGS

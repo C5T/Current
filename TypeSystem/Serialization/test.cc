@@ -134,7 +134,11 @@ CURRENT_VARIANT(InnerB, Z, T);
 CURRENT_STRUCT(OuterA) { CURRENT_FIELD(a, InnerA); };
 CURRENT_STRUCT(OuterB) { CURRENT_FIELD(b, InnerB); };
 
-CURRENT_VARIANT(Q, OuterA, OuterB);
+CURRENT_VARIANT(WrappedQ, OuterA, OuterB);
+
+#ifndef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+CURRENT_VARIANT(NestedQ, InnerA, InnerB);
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 
 CURRENT_VARIANT(InnerVariant, WithVectorOfPairs, WithOptional);
 CURRENT_STRUCT(WithInnerVariant) { CURRENT_FIELD(v, InnerVariant); };
@@ -997,7 +1001,7 @@ TEST(JSONSerialization, NamedVariant) {
   using namespace serialization_test::named_variant;
 
   {
-    Q q;
+    WrappedQ q;
     InnerA a;
     X x;
     OuterA aa;
@@ -1009,7 +1013,7 @@ TEST(JSONSerialization, NamedVariant) {
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(InnerB), "");
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(OuterA), "");
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(OuterB), "");
-    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(Q), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(WrappedQ), "");
 
     static_assert(IS_CURRENT_STRUCT(X), "");
     static_assert(!IS_CURRENT_VARIANT(X), "");
@@ -1020,14 +1024,20 @@ TEST(JSONSerialization, NamedVariant) {
     static_assert(IS_CURRENT_STRUCT(OuterA), "");
     static_assert(!IS_CURRENT_VARIANT(OuterA), "");
 
-    static_assert(!IS_CURRENT_STRUCT(Q), "");
-    static_assert(IS_CURRENT_VARIANT(Q), "");
+    static_assert(!IS_CURRENT_STRUCT(WrappedQ), "");
+    static_assert(IS_CURRENT_VARIANT(WrappedQ), "");
+
+#ifndef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(NestedQ), "");
+    static_assert(!IS_CURRENT_STRUCT(NestedQ), "");
+    static_assert(IS_CURRENT_VARIANT(NestedQ), "");
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 
     const auto json = JSON(q);
     EXPECT_EQ("{\"OuterA\":{\"a\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"}},\"\":\"T9204184145839071965\"}",
               json);
 
-    const auto result = ParseJSON<Q>(json);
+    const auto result = ParseJSON<WrappedQ>(json);
     ASSERT_TRUE(Exists<OuterA>(result));
     EXPECT_FALSE(Exists<OuterB>(result));
     ASSERT_TRUE(Exists<X>(Value<OuterA>(result).a));
@@ -1036,7 +1046,7 @@ TEST(JSONSerialization, NamedVariant) {
   }
 
   {
-    Q q;
+    WrappedQ q;
     InnerA a;
     Y y;
     OuterA aa;
@@ -1046,7 +1056,7 @@ TEST(JSONSerialization, NamedVariant) {
     const auto json = JSON<JSONFormat::Minimalistic>(q);
     EXPECT_EQ("{\"OuterA\":{\"a\":{\"Y\":{\"y\":2}}}}", json);
 
-    const auto result = ParseJSON<Q, JSONFormat::Minimalistic>(json);
+    const auto result = ParseJSON<WrappedQ, JSONFormat::Minimalistic>(json);
     ASSERT_TRUE(Exists<OuterA>(result));
     EXPECT_FALSE(Exists<OuterB>(result));
     ASSERT_TRUE(Exists<Y>(Value<OuterA>(result).a));
@@ -1055,7 +1065,7 @@ TEST(JSONSerialization, NamedVariant) {
   }
 
   {
-    Q q;
+    WrappedQ q;
     InnerB b;
     Z z;
     OuterB bb;
@@ -1065,13 +1075,52 @@ TEST(JSONSerialization, NamedVariant) {
     const auto json = JSON<JSONFormat::NewtonsoftFSharp>(q);
     EXPECT_EQ("{\"Case\":\"OuterB\",\"Fields\":[{\"b\":{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}}]}", json);
 
-    const auto result = ParseJSON<Q, JSONFormat::NewtonsoftFSharp>(json);
+    const auto result = ParseJSON<WrappedQ, JSONFormat::NewtonsoftFSharp>(json);
     ASSERT_FALSE(Exists<OuterA>(result));
     EXPECT_TRUE(Exists<OuterB>(result));
     ASSERT_TRUE(Exists<Z>(Value<OuterB>(result).b));
     EXPECT_FALSE(Exists<T>(Value<OuterB>(result).b));
     EXPECT_EQ(3, Value<Z>(Value<OuterB>(result).b).z);
   }
+
+#ifndef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+  // Nested `Variant`-s are only allowed when `Variant` type checking is compile-time, not runtime.
+  {
+    NestedQ q;
+    InnerA a;
+    Y y;
+    a = y;
+    q = a;
+
+    const auto json = JSON<JSONFormat::Minimalistic>(q);
+    EXPECT_EQ("{\"InnerA\":{\"Y\":{\"y\":2}}}", json);
+
+    const auto result = ParseJSON<NestedQ, JSONFormat::Minimalistic>(json);
+    ASSERT_TRUE(Exists<InnerA>(result));
+    EXPECT_FALSE(Exists<InnerB>(result));
+    ASSERT_TRUE(Exists<Y>(Value<InnerA>(result)));
+    EXPECT_FALSE(Exists<X>(Value<InnerA>(result)));
+    EXPECT_EQ(2, Value<Y>(Value<InnerA>(result)).y);
+  }
+
+  {
+    NestedQ q;
+    InnerB b;
+    Z z;
+    b = z;
+    q = b;
+
+    const auto json = JSON<JSONFormat::NewtonsoftFSharp>(q);
+    EXPECT_EQ("{\"Case\":\"InnerB\",\"Fields\":[{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}]}", json);
+
+    const auto result = ParseJSON<NestedQ, JSONFormat::NewtonsoftFSharp>(json);
+    ASSERT_FALSE(Exists<InnerA>(result));
+    EXPECT_TRUE(Exists<InnerB>(result));
+    ASSERT_TRUE(Exists<Z>(Value<InnerB>(result)));
+    EXPECT_FALSE(Exists<T>(Value<InnerB>(result)));
+    EXPECT_EQ(3, Value<Z>(Value<InnerB>(result)).z);
+  }
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 }
 
 TEST(JSONSerialization, PairsInNewtonsoftJSONFSharpFormat) {
