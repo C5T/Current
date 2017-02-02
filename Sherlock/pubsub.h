@@ -192,6 +192,10 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   }
   if (r.url.query.has("tail")) {
     result.tail = current::FromString<uint64_t>(r.url.query["tail"]);
+    if (!result.tail) {
+      // When passed `?tail=0`, or just `&tail`, treat it as "tail from now on, return the new entries only".
+      result.tail = static_cast<uint64_t>(-1);
+    }
   }
   if (r.url.query.has("i")) {
     result.i = current::FromString<uint64_t>(r.url.query["i"]);
