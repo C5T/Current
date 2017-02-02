@@ -448,7 +448,7 @@ class StreamImpl {
       ScopeOwnedBySomeoneElse<stream_data_t> scoped_data(own_data_, []() {});
       stream_data_t& data = *scoped_data;
 
-      const auto request_params = ParsePubSubHTTPRequest(r);
+      auto request_params = ParsePubSubHTTPRequest(r);  // Mutable as `tail` may change. -- D.K.
 
       if (request_params.terminate_requested) {
         typename stream_data_t::http_subscriptions_t::iterator it;
@@ -514,9 +514,14 @@ class StreamImpl {
       } else {
         uint64_t begin_idx = 0u;
         std::chrono::microseconds from_timestamp(0);
-        if (request_params.tail > 0u) {
-          const uint64_t idx_by_tail = request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
-          begin_idx = std::max(request_params.i, idx_by_tail);
+        if (request_params.tail) {
+          if (request_params.tail == static_cast<uint64_t>(-1)) {
+            begin_idx = stream_size;
+            request_params.tail = stream_size;
+          } else {
+            const uint64_t idx_by_tail = request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
+            begin_idx = std::max(request_params.i, idx_by_tail);
+          }
         } else if (request_params.recent.count() > 0) {
           from_timestamp = r.timestamp - request_params.recent;
         } else if (request_params.since.count() > 0) {

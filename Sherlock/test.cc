@@ -1077,3 +1077,52 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
   EXPECT_EQ("1,3,4,TERMINATE", d.results_);
   EXPECT_FALSE(d.subscriber_alive_);
 }
+
+TEST(Sherlock, SubscribingToJustTailDoesTheJob) {
+  using namespace sherlock_unittest;
+
+  auto exposed_stream = current::sherlock::Stream<Record>();
+  const std::string base_url = Printf("http://localhost:%d/tail", FLAGS_sherlock_http_test_port);
+  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/tail", exposed_stream);
+
+  std::thread initial_publisher([&]() {
+    for (size_t i = 0; i <= 2; ++i) {
+      exposed_stream.Publish(Record(i * 10), std::chrono::microseconds(i));
+    }
+  });
+
+  while (HTTP(GET(base_url + "?sizeonly")).body != "3\n") {
+    ;  // Spin lock.
+  }
+
+  initial_publisher.join();
+
+  std::atomic_bool http_subscriber_started(false);
+
+  std::thread follow_up_publisher([&]() {
+    while (!http_subscriber_started) {
+      ;  // Spin lock, begin publishing only once the HTTP subscriber has started.
+    }
+    for (size_t i = 3; i <= 5; ++i) {
+      exposed_stream.Publish(Record(i * 10), std::chrono::microseconds(i));
+    }
+  });
+
+  std::string body;
+  HTTP(ChunkedGET(base_url + "?tail&n=3&array",
+                  [&](const std::string& header, const std::string& value) {
+                    static_cast<void>(header);
+                    static_cast<void>(value);
+                    http_subscriber_started = true;
+                  },
+                  [&](const std::string& chunk_body) { body += chunk_body; },
+                  []() {}));
+  follow_up_publisher.join();
+
+  const auto result = ParseJSON<std::vector<Record>>(body);
+
+  ASSERT_EQ(3u, result.size());
+  EXPECT_EQ(30, result[0].x);
+  EXPECT_EQ(40, result[1].x);
+  EXPECT_EQ(50, result[2].x);
+}
