@@ -684,12 +684,6 @@
     <ClInclude Include="Bricks\net\tcp\impl\posix.h">
       <Filter>Header Files\Bricks\net\tcp\impl</Filter>
     </ClInclude>
-    <ClInclude Include="Bricks\rtti\dispatcher.h">
-      <Filter>Header Files\Bricks\rtti</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\rtti\exceptions.h">
-      <Filter>Header Files\Bricks\rtti</Filter>
-    </ClInclude>
     <ClInclude Include="Bricks\strings\chunk.h">
       <Filter>Header Files\Bricks\strings</Filter>
     </ClInclude>
