@@ -172,7 +172,7 @@ class FilePersister {
         // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
         // While reading the file, record the offset of each record and store it in `offset`.
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
-        std::streampos const offset_zero(0);
+        const std::streampos offset_zero(0);
         auto current_offset = offset_zero;
         auto head = std::chrono::microseconds(-1);
         reflection::StructSchema struct_schema;
