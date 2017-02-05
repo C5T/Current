@@ -391,6 +391,30 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   t.join();
 }
 
+TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
+  thread t([](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("POST", c.HTTPRequest().Method());
+    EXPECT_EQ("/", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse(c.HTTPRequest().Body());
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("GG\r\n", true);  // Chunk size should be hexadecimal, but `GG` sure is not.
+  connection.BlockingWrite("buffalo buffalo buffalo buffalo buffalo\r\n", true);
+  connection.BlockingWrite("0\r\n", false);
+  ExpectToReceive(current::strings::Printf(
+                      "HTTP/1.1 200 OK\r\n"
+                      "Content-Type: text/plain\r\n"
+                      "Connection: close\r\n"
+                      "Content-Length: Doesn't matter, the test still fails now.\r\n"
+                      "\r\n"),
+                  connection);
+  t.join();
+}
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
 TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   thread t([](Socket s) {
