@@ -214,6 +214,14 @@ TEST(HTTPAPI, URLParameters) {
             HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
 }
 
+TEST(HTTPAPI, InvalidHEXInURLParameters) {
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/qod", [](Request r) { r("wtf=" + r.url.query["wtf"]); });
+  EXPECT_EQ("wtf=OK", HTTP(GET(Printf("http://localhost:%d/qod?wtf=OK", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/qod?wtf=OK", FLAGS_net_api_test_port))).code));
+  // The presence of `%OK` in the URL should not kill the server.
+  EXPECT_EQ(500, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%OK", FLAGS_net_api_test_port))).code));
+}
+
 TEST(HTTPAPI, HeadersAndCookies) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/headers_and_cookies",
