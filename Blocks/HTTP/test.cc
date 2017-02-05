@@ -214,6 +214,27 @@ TEST(HTTPAPI, URLParameters) {
             HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
 }
 
+TEST(HTTPAPI, InvalidHEXInURLParameters) {
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/qod", [](Request r) { r("wtf=" + r.url.query["wtf"]); });
+  {
+    const auto ok1 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=OK", FLAGS_net_api_test_port)));
+    EXPECT_EQ("wtf=OK", ok1.body);
+    EXPECT_EQ(200, static_cast<int>(ok1.code));
+  }
+  {
+    // Hexadecimal `4F4B` is 'OK'. Test both uppercase and lowercase.
+    const auto ok2 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%4F%%4b", FLAGS_net_api_test_port)));
+    EXPECT_EQ("wtf=OK", ok2.body);
+    EXPECT_EQ(200, static_cast<int>(ok2.code));
+  }
+  {
+    // The presence of `%OK`, which is obviously wrong HEX code, in the URL should not kill the server.
+    const auto ok3 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%OK", FLAGS_net_api_test_port)));
+    EXPECT_EQ(Printf("wtf=%%OK"), ok3.body);
+    EXPECT_EQ(200, static_cast<int>(ok3.code));
+  }
+}
+
 TEST(HTTPAPI, HeadersAndCookies) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/headers_and_cookies",

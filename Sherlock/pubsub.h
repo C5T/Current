@@ -192,6 +192,10 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   }
   if (r.url.query.has("tail")) {
     result.tail = current::FromString<uint64_t>(r.url.query["tail"]);
+    if (!result.tail) {
+      // When passed `?tail=0`, or just `&tail`, treat it as "tail from now on, return the new entries only".
+      result.tail = static_cast<uint64_t>(-1);
+    }
   }
   if (r.url.query.has("i")) {
     result.i = current::FromString<uint64_t>(r.url.query["i"]);
@@ -372,7 +376,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
 
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
   Request http_request_;
-  const ParsedHTTPRequestParams params_;
+  ParsedHTTPRequestParams params_;
   // `output_started_`: will change to `true` is `params_.array` is `true` as the first piece of data
   // has already been sent, thus triggering the need to close the array at the end.
   bool output_started_ = false;
