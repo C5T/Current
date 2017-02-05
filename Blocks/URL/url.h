@@ -196,10 +196,12 @@ struct URLParametersExtractor {
     url_without_parameters = url;
   }
 
+  static bool IsHexDigit(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
+
   static std::string DecodeURIComponent(const std::string& encoded) {
     std::string decoded;
     for (size_t i = 0; i < encoded.length(); ++i) {
-      if (i + 3 <= encoded.length() && encoded[i] == '%') {
+      if (i + 3 <= encoded.length() && encoded[i] == '%' && IsHexDigit(encoded[i + 1]) && IsHexDigit(encoded[i + 2])) {
         decoded += static_cast<char>(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));
         i += 2;
       } else if (encoded[i] == '+') {
