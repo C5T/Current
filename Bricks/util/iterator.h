@@ -25,6 +25,8 @@
 #ifndef BRICKS_UTIL_ITERATOR_H
 #define BRICKS_UTIL_ITERATOR_H
 
+#include "../../port.h"
+
 #include "../template/pod.h"
 #include "../template/is_unique_ptr.h"
 
