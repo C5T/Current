@@ -286,6 +286,18 @@ using HypermediaRESTGenericResponse = hypermedia::HypermediaRESTGenericResponse;
 // Expose helper functions into `current::storage::rest` as well for now. #DIMA_FIXME
 using namespace helpers;
 
+namespace cqrs {
+
+CURRENT_STRUCT(CQRSHandlerNotSpecified, generic::RESTGenericResponse){
+  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotSpecified) : SUPER(false, "CQRS handler not specified."){}
+};
+
+CURRENT_STRUCT(CQRSHandlerNotFound, generic::RESTGenericResponse){
+  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotFound) : SUPER(false, "CQRS handler not found."){}
+};
+
+}  // namespace cqrs
+
 }  // namespace rest
 }  // namespace storage
 }  // namespace current

@@ -293,6 +293,14 @@ struct Plain {
     }
   };
 
+  template <typename STORAGE>
+  struct RESTfulCQRSHandler {
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      next(std::move(request));
+    }
+  };
+
   // LCOV_EXCL_START
   static Response ErrorMethodNotAllowed(const std::string& method, const std::string& error_message) {
     return Response("Method " + method + " not allowed. " + error_message + '\n', HTTPResponseCode.MethodNotAllowed);

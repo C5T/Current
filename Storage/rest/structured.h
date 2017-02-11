@@ -61,8 +61,12 @@ struct Structured {
                                    const bool up = input.up_status;
                                    RESTTopLevel response(input.restful_url_prefix, up);
                                    for (const auto& f : input.field_names) {
-                                     response.url_data[f] =
-                                         input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
+                                     // Empty key is used for CQRS endpoints, and should not make it
+                                     // into the `url_data` response. -- D.K.
+                                     if (!f.empty()) {
+                                       response.url_data[f] =
+                                           input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
+                                     }
                                    }
                                    request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                                  });
@@ -503,6 +507,9 @@ struct Structured {
 
   template <typename STORAGE, typename ENTRY>
   using RESTfulSchemaHandler = plain::Plain::template RESTfulSchemaHandler<STORAGE, ENTRY>;
+
+  template <typename STORAGE>
+  using RESTfulCQRSHandler = plain::Plain::template RESTfulCQRSHandler<STORAGE>;
 
   static Response ErrorMethodNotAllowed(const std::string& method, const std::string& error_message) {
     return ErrorResponse(MethodNotAllowedError(error_message, method), HTTPResponseCode.MethodNotAllowed);

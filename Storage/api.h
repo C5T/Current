@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "api_types.h"
 
+#include "rest/types.h"
 #include "rest/plain.h"
 
 #include "../TypeSystem/Schema/schema.h"
@@ -395,17 +396,22 @@ void GenerateRESTfulHandler(registerer_t registerer, STORAGE& storage, const std
 template <class STORAGE_IMPL, class REST_IMPL = plain::Plain>
 class RESTfulStorage {
  public:
+  using immutable_fields_t = ImmutableFields<STORAGE_IMPL>;
+  using cqrs_query_handler_t = std::function<Response(immutable_fields_t)>;
+
   RESTfulStorage(STORAGE_IMPL& storage,
                  int port,
                  const std::string& route_prefix,
                  const std::string& restful_url_prefix_input)
-      : port_(port), up_status_(std::make_unique<std::atomic_bool>(true)), route_prefix_(route_prefix) {
+      : port_(port), self_(std::make_unique<Self>()), route_prefix_(route_prefix) {
     const std::string restful_url_prefix = restful_url_prefix_input;
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, handlers_);
+    // Register the CQRS handlers as well.
+    RegisterCQRSHandlers(storage, restful_url_prefix);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& endpoint : handlers_) {
       RegisterRoute(endpoint.first, endpoint.second);
@@ -421,7 +427,7 @@ class RESTfulStorage {
                                                      handlers_scope_,
                                                      std::vector<std::string>(fields_set.begin(), fields_set.end()),
                                                      route_prefix.empty() ? "/" : route_prefix,
-                                                     *up_status_);
+                                                     self_->up_status_);
     REST_IMPL::RegisterTopLevel(input);
   }
 
@@ -440,9 +446,20 @@ class RESTfulStorage {
     }
   }
 
+  RESTfulStorage(const RESTfulStorage&) = delete;
+  RESTfulStorage(RESTfulStorage&&) = default;
+  RESTfulStorage& operator=(const RESTfulStorage&) = delete;
+  RESTfulStorage& operator=(RESTfulStorage&&) = default;
+
+  void AddCQRSQuery(const std::string& query, cqrs_query_handler_t f) {
+    std::lock_guard<std::mutex> lock(self_->cqrs_query_map_mutex_);
+    // TODO(dkorolev): Exception if the handler is already registered.
+    self_->cqrs_query_map_[query] = f;
+  }
+
   // Support for graceful shutdown. Alpha.
   void SwitchHTTPEndpointsTo503s() {
-    *up_status_ = false;
+    self_->up_status_ = false;
     for (auto& route : handler_routes_) {
       HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
     }
@@ -450,8 +467,14 @@ class RESTfulStorage {
 
  private:
   const int port_;
-  // Need an `std::unique_ptr<>` for the whole REST to stay `std::move()`-able.
-  std::unique_ptr<std::atomic_bool> up_status_;
+  // Need an `std::unique_ptr<>` for the whole REST object to stay `std::move()`-able.
+  struct Self {
+    std::atomic_bool up_status_{true};
+    mutable std::mutex cqrs_query_map_mutex_;
+    std::unordered_map<std::string, cqrs_query_handler_t> cqrs_query_map_;
+  };
+  std::unique_ptr<Self> self_;
+
   const std::string route_prefix_;
   std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
   impl::storage_handlers_map_t handlers_;
@@ -480,11 +503,50 @@ class RESTfulStorage {
   };
 
   void RegisterRoute(const std::string& field_name, const RESTfulRoute& route) {
-    const auto path = route_prefix_ + '/' + route.resource_prefix + '/' + field_name + route.resource_suffix;
+    const auto path = route_prefix_ + '/' + route.resource_prefix + (field_name.empty() ? "" : '/' + field_name) +
+                      route.resource_suffix;
     handler_routes_.emplace_back(path, route.resource_args_mask);
     handlers_scope_ += HTTP(port_).Register(path, route.resource_args_mask, route.handler);
   }
 
+  void RegisterCQRSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
+    const Self& self = *self_;
+
+    const auto generic_cqrs_handler = [&self, &storage, restful_url_prefix](Request request) {
+      if (request.url_path_args.empty()) {
+        request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+      } else {
+        std::lock_guard<std::mutex> lock(self.cqrs_query_map_mutex_);
+        const auto cit = self.cqrs_query_map_.find(request.url_path_args[0]);
+        if (cit != self.cqrs_query_map_.end()) {
+          const auto& f = cit->second;
+          auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
+          // NOTE(dkorolev): This will be essential for Commands, not Queries.
+          // const auto storage_role = storage.GetRole();
+          using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
+          CQRSHandlerImpl handler;
+          handler.Enter(std::move(request),
+                        // Capture by reference since this lambda is run synchronously.
+                        [&handler, &f, &generic_input](Request request) {
+                          const STORAGE_IMPL& storage = generic_input.storage;
+                          storage.ReadOnlyTransaction(
+                                      // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                                      // Capture local variables by value for safe async transactions.
+                                      [&storage, &f, handler, generic_input](immutable_fields_t fields)
+                                          -> Response { return f(fields); },
+                                      std::move(request)).Detach();
+                        });
+        } else {
+          request(Response(cqrs::CQRSHandlerNotFound(), HTTPResponseCode.NotFound));
+        }
+      }
+    };
+    handlers_.emplace("",
+                      RESTfulRoute(kRESTfulCQRSQueryURLComponent,
+                                   "",
+                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                   generic_cqrs_handler));
+  }
   static void Serve503(Request r) {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
   }

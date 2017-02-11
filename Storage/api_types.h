@@ -34,10 +34,15 @@ namespace current {
 namespace storage {
 namespace rest {
 
+// Top-level URL prefixes for Storage REST.
+// TODO(dkorolev) + TODO(mzhurovich): Perhaps rename "REST" into something more accurate?
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
+const std::string kRESTfulCQRSCommandURLComponent = "command";
+const std::string kRESTfulCQRSQueryURLComponent = "query";
+
+// Table `?export` mode, and its URL query parameters.
 const std::string kRESTfulExportURLQueryParameter = "export";
-// Additional URL query parameters for the `export` mode.
 const std::string kRESTfulExportNShardsURLQueryParameter = "nshards";  // Number of shards.
 const std::string kRESTfulExportShardURLQueryParameter = "shard";      // Shard to export.
 

@@ -2560,6 +2560,104 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
   }
 }
 
+#if 0
+// TODO(dkorolev): We'll get there. Eventually.
+namespace transactional_storage_test {
+
+CURRENT_STRUCT(CQRSQuery) {};
+CURRENT_STRUCT(CQRSCommand) {};
+
+}  // namespace transactional_storage_test
+#endif
+
+TEST(TransactionalStorage, CQRSTest) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  using namespace current::storage::rest;
+  using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
+
+  storage_t storage;
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  auto storage_http_interface = RESTfulStorage<storage_t, current::storage::rest::Simple>(
+      storage, FLAGS_transactional_storage_test_port, "/api", "");
+
+  {
+    const std::string user_resource = ([&]() {
+      const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("dima", "DK")));
+      EXPECT_EQ(201, static_cast<int>(post_response.code));
+      return Value(
+          ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(post_response.body).resource_url);
+    })();
+
+    {
+      const auto get_response = HTTP(GET(base_url + "/api" + user_resource));
+      EXPECT_EQ(200, static_cast<int>(get_response.code));
+      EXPECT_EQ(
+          "DK",
+          ParseJSON<current::storage::rest::simple::SimpleRESTRecordResponse<SimpleUser>>(get_response.body).data.name);
+    }
+  }
+
+  {
+    const std::string user_resource = ([&]() {
+      const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
+      EXPECT_EQ(201, static_cast<int>(post_response.code));
+      return Value(
+          ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(post_response.body).resource_url);
+    })();
+
+    {
+      const auto get_response = HTTP(GET(base_url + "/api" + user_resource));
+      EXPECT_EQ(200, static_cast<int>(get_response.code));
+      EXPECT_EQ(
+          "MZ",
+          ParseJSON<current::storage::rest::simple::SimpleRESTRecordResponse<SimpleUser>>(get_response.body).data.name);
+    }
+  }
+
+  {
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query"));
+      EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS handler not specified.\",\"error\":null}\n", cqrs_response.body);
+    }
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/unittest"));
+      EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS handler not found.\",\"error\":null}\n", cqrs_response.body);
+    }
+    storage_http_interface.AddCQRSQuery("unittest",
+                                        [](ImmutableFields<storage_t> fields) -> Response {
+                                          std::vector<std::string> names;
+                                          names.reserve(fields.user.Size());
+                                          for (const auto& user : fields.user) {
+                                            names.emplace_back(user.name);
+                                          }
+                                          std::sort(names.begin(), names.end());
+                                          return Response(current::strings::Join(names, ','));
+                                        });
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/unittest"));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("DK,MZ", cqrs_response.body);
+    }
+    {
+      const std::string user_resource = ([&]() {
+        const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("grisha", "GN")));
+        EXPECT_EQ(201, static_cast<int>(post_response.code));
+        return Value(
+            ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(post_response.body).resource_url);
+      })();
+    }
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/unittest"));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("DK,GN,MZ", cqrs_response.body);
+    }
+  }
+}
+
 // LCOV_EXCL_START
 // Test the `CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(field)` macro.
 namespace transactional_storage_test {
