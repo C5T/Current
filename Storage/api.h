@@ -397,7 +397,10 @@ template <class STORAGE_IMPL, class REST_IMPL = plain::Plain>
 class RESTfulStorage {
  public:
   using immutable_fields_t = ImmutableFields<STORAGE_IMPL>;
-  using cqrs_query_handler_t = std::function<Response(immutable_fields_t)>;
+  using mutable_fields_t = MutableFields<STORAGE_IMPL>;
+  using cqrs_query_handler_t = std::function<Response(immutable_fields_t, const std::string& restful_url_prefix)>;
+  using cqrs_command_handler_t =
+      std::function<Response(mutable_fields_t, const std::string& http_body, const std::string& restful_url_prefix)>;
 
   RESTfulStorage(STORAGE_IMPL& storage,
                  int port,
@@ -451,10 +454,38 @@ class RESTfulStorage {
   RESTfulStorage& operator=(const RESTfulStorage&) = delete;
   RESTfulStorage& operator=(RESTfulStorage&&) = default;
 
-  void AddCQRSQuery(const std::string& query, cqrs_query_handler_t f) {
-    std::lock_guard<std::mutex> lock(self_->cqrs_query_map_mutex_);
+  template <class QUERY_IMPL>
+  void AddCQRSQuery(const std::string& query) {
+    std::lock_guard<std::mutex> lock(self_->cqrs_handlers_mutex_);
     // TODO(dkorolev): Exception if the handler is already registered.
-    self_->cqrs_query_map_[query] = f;
+    self_->cqrs_query_map_[query] = [query](immutable_fields_t fields, const std::string& url) -> Response {
+      // TODO(dkorolev): Parse the query, body or URL parameters.
+      QUERY_IMPL impl;
+      // TODO(dkorolev): What do we do on user code exceptions here?
+      return impl.template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
+    };
+  }
+
+  template <class COMMAND_IMPL>
+  void AddCQRSCommand(const std::string& command) {
+    std::lock_guard<std::mutex> lock(self_->cqrs_handlers_mutex_);
+    // TODO(dkorolev): Exception if the handler is already registered.
+    self_->cqrs_command_map_[command] =
+        [command](mutable_fields_t fields, const std::string& http_body, const std::string& url) -> Response {
+          fields.SetTransactionMetaField("command", command);
+          // TODO(dkorolev): What do we do on user code exceptions here?
+          try {
+            if (current::reflection::FieldCounter<COMMAND_IMPL>::value > 0u) {
+              return ParseJSON<COMMAND_IMPL>(http_body).template Command<MutableFields<STORAGE_IMPL>>(fields, url);
+            } else {
+              return COMMAND_IMPL().template Command<MutableFields<STORAGE_IMPL>>(fields, url);
+            }
+          } catch (const TypeSystemParseJSONException& e) {
+            return Response(cqrs::CQRSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
+          }
+          // TODO(dkorolev): Test rollbacks.
+          return Response(cqrs::CQRSBadRequest(), HTTPResponseCode.BadRequest);
+        };
   }
 
   // Support for graceful shutdown. Alpha.
@@ -470,8 +501,9 @@ class RESTfulStorage {
   // Need an `std::unique_ptr<>` for the whole REST object to stay `std::move()`-able.
   struct Self {
     std::atomic_bool up_status_{true};
-    mutable std::mutex cqrs_query_map_mutex_;
+    mutable std::mutex cqrs_handlers_mutex_;
     std::unordered_map<std::string, cqrs_query_handler_t> cqrs_query_map_;
+    std::unordered_map<std::string, cqrs_command_handler_t> cqrs_command_map_;
   };
   std::unique_ptr<Self> self_;
 
@@ -512,17 +544,15 @@ class RESTfulStorage {
   void RegisterCQRSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
     const Self& self = *self_;
 
-    const auto generic_cqrs_handler = [&self, &storage, restful_url_prefix](Request request) {
+    const auto cqrs_query_handler = [&self, &storage, restful_url_prefix](Request request) {
       if (request.url_path_args.empty()) {
         request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
-        std::lock_guard<std::mutex> lock(self.cqrs_query_map_mutex_);
+        std::lock_guard<std::mutex> lock(self.cqrs_handlers_mutex_);
         const auto cit = self.cqrs_query_map_.find(request.url_path_args[0]);
         if (cit != self.cqrs_query_map_.end()) {
           const auto& f = cit->second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
-          // NOTE(dkorolev): This will be essential for Commands, not Queries.
-          // const auto storage_role = storage.GetRole();
           using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
           CQRSHandlerImpl handler;
           handler.Enter(std::move(request),
@@ -533,7 +563,7 @@ class RESTfulStorage {
                                       // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                                       // Capture local variables by value for safe async transactions.
                                       [&storage, &f, handler, generic_input](immutable_fields_t fields)
-                                          -> Response { return f(fields); },
+                                          -> Response { return f(fields, generic_input.restful_url_prefix); },
                                       std::move(request)).Detach();
                         });
         } else {
@@ -545,7 +575,45 @@ class RESTfulStorage {
                       RESTfulRoute(kRESTfulCQRSQueryURLComponent,
                                    "",
                                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                   generic_cqrs_handler));
+                                   cqrs_query_handler));
+
+    // TODO(dkorolev): No copy-pasting here.
+    const auto cqrs_command_handler = [&self, &storage, restful_url_prefix](Request request) {
+      if (storage.GetRole() != StorageRole::Master) {
+        request(Response(cqrs::CQRSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
+      } else if (request.url_path_args.empty()) {
+        request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+      } else {
+        std::lock_guard<std::mutex> lock(self.cqrs_handlers_mutex_);
+        const auto cit = self.cqrs_command_map_.find(request.url_path_args[0]);
+        if (cit != self.cqrs_command_map_.end()) {
+          const auto& f = cit->second;
+          auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
+          using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
+          CQRSHandlerImpl handler;
+          const std::string copy_of_body = request.body;
+          handler.Enter(
+              std::move(request),
+              // Capture by reference since this lambda is run synchronously.
+              [&handler, &f, &generic_input, &copy_of_body](Request request) {
+                STORAGE_IMPL& storage = generic_input.storage;
+                storage.ReadWriteTransaction(
+                            // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                            // Capture local variables by value for safe async transactions.
+                            [&storage, &f, handler, generic_input, copy_of_body](mutable_fields_t fields)
+                                -> Response { return f(fields, copy_of_body, generic_input.restful_url_prefix); },
+                            std::move(request)).Detach();
+              });
+        } else {
+          request(Response(cqrs::CQRSHandlerNotFound(), HTTPResponseCode.NotFound));
+        }
+      }
+    };
+    handlers_.emplace("",
+                      RESTfulRoute(kRESTfulCQRSCommandURLComponent,
+                                   "",
+                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                   cqrs_command_handler));
   }
   static void Serve503(Request r) {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
