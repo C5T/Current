@@ -94,6 +94,7 @@ struct CannotServeStaticFilesOfUnknownMIMEType : HTTPException {
   using HTTPException::HTTPException;
 };
 struct HTTPPayloadTooLarge : HTTPException {};
+struct ChunkSizeNotAValidHEXValue : HTTPException {};
 
 // AttemptedToSendHTTPResponseMoreThanOnce is a user code exception; not really an HTTP one.
 struct AttemptedToSendHTTPResponseMoreThanOnce : Exception {};
