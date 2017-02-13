@@ -403,41 +403,41 @@ class RESTfulStorage {
       std::function<Response(mutable_fields_t, const std::string& http_body, const std::string& restful_url_prefix)>;
 
   RESTfulStorage(STORAGE_IMPL& storage,
-                 int port,
+                 uint16_t port,
                  const std::string& route_prefix,
                  const std::string& restful_url_prefix_input)
-      : port_(port), self_(std::make_unique<Self>()), route_prefix_(route_prefix) {
+      : data_(std::make_unique<Data>(port, route_prefix)) {
     const std::string restful_url_prefix = restful_url_prefix_input;
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
-    ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, handlers_);
+    ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, data_->handlers_);
     // Register the CQRS handlers as well.
     RegisterCQRSHandlers(storage, restful_url_prefix);
     // Register handlers on a specific port under a specific path prefix.
-    for (const auto& endpoint : handlers_) {
+    for (const auto& endpoint : data_->handlers_) {
       RegisterRoute(endpoint.first, endpoint.second);
     }
 
     std::set<std::string> fields_set;
-    for (const auto& handler : handlers_) {
+    for (const auto& handler : data_->handlers_) {
       fields_set.insert(handler.first);
     }
     RESTfulRegisterTopLevelInput<STORAGE_IMPL> input(storage,
                                                      restful_url_prefix,
                                                      port,
-                                                     handlers_scope_,
+                                                     data_->handlers_scope_,
                                                      std::vector<std::string>(fields_set.begin(), fields_set.end()),
                                                      route_prefix.empty() ? "/" : route_prefix,
-                                                     self_->up_status_);
+                                                     data_->up_status_);
     REST_IMPL::RegisterTopLevel(input);
   }
 
   // To enable exposing fields under different names / URLs.
   void RegisterAlias(const std::string& target, const std::string& alias_name) {
-    const auto lower = handlers_.lower_bound(target);
-    const auto upper = handlers_.upper_bound(target);
+    const auto lower = data_->handlers_.lower_bound(target);
+    const auto upper = data_->handlers_.upper_bound(target);
     if (upper == lower) {
       // LCOV_EXCL_START
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
@@ -456,9 +456,9 @@ class RESTfulStorage {
 
   template <class QUERY_IMPL>
   void AddCQRSQuery(const std::string& query) {
-    std::lock_guard<std::mutex> lock(self_->cqrs_handlers_mutex_);
+    std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
     // TODO(dkorolev): Exception if the handler is already registered.
-    self_->cqrs_query_map_[query] = [query](immutable_fields_t fields, const std::string& url) -> Response {
+    data_->cqrs_query_map_[query] = [query](immutable_fields_t fields, const std::string& url) -> Response {
       // TODO(dkorolev): Parse the query, body or URL parameters.
       QUERY_IMPL impl;
       // TODO(dkorolev): What do we do on user code exceptions here?
@@ -468,9 +468,9 @@ class RESTfulStorage {
 
   template <class COMMAND_IMPL>
   void AddCQRSCommand(const std::string& command) {
-    std::lock_guard<std::mutex> lock(self_->cqrs_handlers_mutex_);
+    std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
     // TODO(dkorolev): Exception if the handler is already registered.
-    self_->cqrs_command_map_[command] =
+    data_->cqrs_command_map_[command] =
         [command](mutable_fields_t fields, const std::string& http_body, const std::string& url) -> Response {
           fields.SetTransactionMetaField("command", command);
           // TODO(dkorolev): What do we do on user code exceptions here?
@@ -490,27 +490,31 @@ class RESTfulStorage {
 
   // Support for graceful shutdown. Alpha.
   void SwitchHTTPEndpointsTo503s() {
-    self_->up_status_ = false;
-    for (auto& route : handler_routes_) {
-      HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
+    data_->up_status_ = false;
+    for (auto& route : data_->handler_routes_) {
+      HTTP(data_->port_)
+          .template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
     }
   }
 
  private:
-  const int port_;
   // Need an `std::unique_ptr<>` for the whole REST object to stay `std::move()`-able.
-  struct Self {
-    std::atomic_bool up_status_{true};
+  struct Data {
+    const uint16_t port_;
+    const std::string route_prefix_;
+
+    std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
+    impl::storage_handlers_map_t handlers_;
+    HTTPRoutesScope handlers_scope_;
+
+    std::atomic_bool up_status_;
     mutable std::mutex cqrs_handlers_mutex_;
     std::unordered_map<std::string, cqrs_query_handler_t> cqrs_query_map_;
     std::unordered_map<std::string, cqrs_command_handler_t> cqrs_command_map_;
-  };
-  std::unique_ptr<Self> self_;
 
-  const std::string route_prefix_;
-  std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
-  impl::storage_handlers_map_t handlers_;
-  HTTPRoutesScope handlers_scope_;
+    Data(uint16_t port, const std::string& route_prefix) : port_(port), route_prefix_(route_prefix), up_status_(true) {}
+  };
+  std::unique_ptr<Data> data_;
 
   // The `BLAH` template parameter is required to fight the "explicit specialization in class scope" error.
   template <typename BLAH, int I>
@@ -535,22 +539,22 @@ class RESTfulStorage {
   };
 
   void RegisterRoute(const std::string& field_name, const RESTfulRoute& route) {
-    const auto path = route_prefix_ + '/' + route.resource_prefix + (field_name.empty() ? "" : '/' + field_name) +
-                      route.resource_suffix;
-    handler_routes_.emplace_back(path, route.resource_args_mask);
-    handlers_scope_ += HTTP(port_).Register(path, route.resource_args_mask, route.handler);
+    const auto path = data_->route_prefix_ + '/' + route.resource_prefix +
+                      (field_name.empty() ? "" : '/' + field_name) + route.resource_suffix;
+    data_->handler_routes_.emplace_back(path, route.resource_args_mask);
+    data_->handlers_scope_ += HTTP(data_->port_).Register(path, route.resource_args_mask, route.handler);
   }
 
   void RegisterCQRSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
-    const Self& self = *self_;
+    const Data& data = *data_;
 
-    const auto cqrs_query_handler = [&self, &storage, restful_url_prefix](Request request) {
+    const auto cqrs_query_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (request.url_path_args.empty()) {
         request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
-        std::lock_guard<std::mutex> lock(self.cqrs_handlers_mutex_);
-        const auto cit = self.cqrs_query_map_.find(request.url_path_args[0]);
-        if (cit != self.cqrs_query_map_.end()) {
+        std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
+        const auto cit = data.cqrs_query_map_.find(request.url_path_args[0]);
+        if (cit != data.cqrs_query_map_.end()) {
           const auto& f = cit->second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
           using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
@@ -571,22 +575,22 @@ class RESTfulStorage {
         }
       }
     };
-    handlers_.emplace("",
-                      RESTfulRoute(kRESTfulCQRSQueryURLComponent,
-                                   "",
-                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                   cqrs_query_handler));
+    data_->handlers_.emplace("",
+                             RESTfulRoute(kRESTfulCQRSQueryURLComponent,
+                                          "",
+                                          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                          cqrs_query_handler));
 
     // TODO(dkorolev): No copy-pasting here.
-    const auto cqrs_command_handler = [&self, &storage, restful_url_prefix](Request request) {
+    const auto cqrs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (storage.GetRole() != StorageRole::Master) {
         request(Response(cqrs::CQRSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
       } else if (request.url_path_args.empty()) {
         request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
-        std::lock_guard<std::mutex> lock(self.cqrs_handlers_mutex_);
-        const auto cit = self.cqrs_command_map_.find(request.url_path_args[0]);
-        if (cit != self.cqrs_command_map_.end()) {
+        std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
+        const auto cit = data.cqrs_command_map_.find(request.url_path_args[0]);
+        if (cit != data.cqrs_command_map_.end()) {
           const auto& f = cit->second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
           using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
@@ -609,11 +613,11 @@ class RESTfulStorage {
         }
       }
     };
-    handlers_.emplace("",
-                      RESTfulRoute(kRESTfulCQRSCommandURLComponent,
-                                   "",
-                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                   cqrs_command_handler));
+    data_->handlers_.emplace("",
+                             RESTfulRoute(kRESTfulCQRSCommandURLComponent,
+                                          "",
+                                          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                          cqrs_command_handler));
   }
   static void Serve503(Request r) {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
