@@ -35,7 +35,6 @@ namespace storage {
 namespace rest {
 
 // Top-level URL prefixes for Storage REST.
-// TODO(dkorolev) + TODO(mzhurovich): Perhaps rename "REST" into something more accurate?
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
 const std::string kRESTfulCQRSCommandURLComponent = "command";

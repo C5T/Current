@@ -398,9 +398,13 @@ class RESTfulStorage {
  public:
   using immutable_fields_t = ImmutableFields<STORAGE_IMPL>;
   using mutable_fields_t = MutableFields<STORAGE_IMPL>;
-  using cqrs_query_handler_t = std::function<Response(immutable_fields_t, const std::string& restful_url_prefix)>;
-  using cqrs_command_handler_t =
-      std::function<Response(mutable_fields_t, const std::string& http_body, const std::string& restful_url_prefix)>;
+
+  // TODO(dkorolev): `unique_ptr` and move semantics.
+  using cqrs_universal_parser_t = std::function<std::shared_ptr<CurrentSuper>(const Request&)>;
+  using cqrs_query_handler_t = std::function<Response(
+      immutable_fields_t, std::shared_ptr<CurrentSuper> command, const std::string& restful_url_prefix)>;
+  using cqrs_command_handler_t = std::function<Response(
+      mutable_fields_t, std::shared_ptr<CurrentSuper> command, const std::string& restful_url_prefix)>;
 
   RESTfulStorage(STORAGE_IMPL& storage,
                  uint16_t port,
@@ -411,10 +415,13 @@ class RESTfulStorage {
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
+
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, data_->handlers_);
+
     // Register the CQRS handlers as well.
     RegisterCQRSHandlers(storage, restful_url_prefix);
+
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& endpoint : data_->handlers_) {
       RegisterRoute(endpoint.first, endpoint.second);
@@ -449,43 +456,50 @@ class RESTfulStorage {
     }
   }
 
+  /*
   RESTfulStorage(const RESTfulStorage&) = delete;
   RESTfulStorage(RESTfulStorage&&) = default;
   RESTfulStorage& operator=(const RESTfulStorage&) = delete;
   RESTfulStorage& operator=(RESTfulStorage&&) = default;
+  */
 
   template <class QUERY_IMPL>
   void AddCQRSQuery(const std::string& query) {
     std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
     // TODO(dkorolev): Exception if the handler is already registered.
-    data_->cqrs_query_map_[query] = [query](immutable_fields_t fields, const std::string& url) -> Response {
-      // TODO(dkorolev): Parse the query, body or URL parameters.
-      QUERY_IMPL impl;
-      // TODO(dkorolev): What do we do on user code exceptions here?
-      return impl.template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
-    };
+    data_->cqrs_query_map_[query] = std::make_pair(
+        [](const Request& request) -> std::shared_ptr<CurrentSuper> { return ParseCQRSRequest<QUERY_IMPL>(request); },
+        [query](immutable_fields_t fields, std::shared_ptr<CurrentSuper> type_erased_query, const std::string& url)
+            -> Response {
+              return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
+                  .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
+            });
   }
 
   template <class COMMAND_IMPL>
   void AddCQRSCommand(const std::string& command) {
     std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
     // TODO(dkorolev): Exception if the handler is already registered.
-    data_->cqrs_command_map_[command] =
-        [command](mutable_fields_t fields, const std::string& http_body, const std::string& url) -> Response {
-          fields.SetTransactionMetaField("command", command);
-          // TODO(dkorolev): What do we do on user code exceptions here?
-          try {
-            if (current::reflection::FieldCounter<COMMAND_IMPL>::value > 0u) {
-              return ParseJSON<COMMAND_IMPL>(http_body).template Command<MutableFields<STORAGE_IMPL>>(fields, url);
-            } else {
-              return COMMAND_IMPL().template Command<MutableFields<STORAGE_IMPL>>(fields, url);
-            }
-          } catch (const TypeSystemParseJSONException& e) {
-            return Response(cqrs::CQRSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
-          }
-          // TODO(dkorolev): Test rollbacks.
-          return Response(cqrs::CQRSBadRequest(), HTTPResponseCode.BadRequest);
-        };
+    data_->cqrs_command_map_[command] = std::make_pair(
+        [](const Request& request) -> std::shared_ptr<CurrentSuper> { return ParseCQRSRequest<COMMAND_IMPL>(request); },
+        [command](mutable_fields_t fields, std::shared_ptr<CurrentSuper> type_erased_command, const std::string& url)
+            -> Response {
+              fields.SetTransactionMetaField("X-Current-CQRS-Command", command);
+              // TODO(dkorolev): What do we do on user code exceptions here?
+              try {
+                if (current::reflection::FieldCounter<COMMAND_IMPL>::value > 0u) {
+                  // return ParseJSON<COMMAND_IMPL>(http_body).
+                  return dynamic_cast<COMMAND_IMPL&>(*type_erased_command.get())
+                      .template Command<MutableFields<STORAGE_IMPL>>(fields, url);
+                } else {
+                  return COMMAND_IMPL().template Command<MutableFields<STORAGE_IMPL>>(fields, url);
+                }
+              } catch (const TypeSystemParseJSONException& e) {
+                return Response(cqrs::CQRSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
+              }
+              // TODO(dkorolev): Test transaction rollbacks.
+              return Response(cqrs::CQRSBadRequest(), HTTPResponseCode.BadRequest);
+            });
   }
 
   // Support for graceful shutdown. Alpha.
@@ -509,8 +523,8 @@ class RESTfulStorage {
 
     std::atomic_bool up_status_;
     mutable std::mutex cqrs_handlers_mutex_;
-    std::unordered_map<std::string, cqrs_query_handler_t> cqrs_query_map_;
-    std::unordered_map<std::string, cqrs_command_handler_t> cqrs_command_map_;
+    std::unordered_map<std::string, std::pair<cqrs_universal_parser_t, cqrs_query_handler_t>> cqrs_query_map_;
+    std::unordered_map<std::string, std::pair<cqrs_universal_parser_t, cqrs_command_handler_t>> cqrs_command_map_;
 
     Data(uint16_t port, const std::string& route_prefix) : port_(port), route_prefix_(route_prefix), up_status_(true) {}
   };
@@ -545,6 +559,20 @@ class RESTfulStorage {
     data_->handlers_scope_ += HTTP(data_->port_).Register(path, route.resource_args_mask, route.handler);
   }
 
+  template <typename T>
+  static std::shared_ptr<CurrentSuper> ParseCQRSRequest(const Request& request) {
+    // TODO(dkorolev): Proper exception types here!
+    auto object = std::make_shared<T>();
+    if (reflection::FieldCounter<T>::value > 0) {
+      if (!request.body.empty()) {
+        ParseJSON(request.body, *object);
+      } else {
+        request.url.query.FillObject(*object);
+      }
+    }
+    return object;
+  }
+
   void RegisterCQRSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
     const Data& data = *data_;
 
@@ -555,21 +583,32 @@ class RESTfulStorage {
         std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
         const auto cit = data.cqrs_query_map_.find(request.url_path_args[0]);
         if (cit != data.cqrs_query_map_.end()) {
-          const auto& f = cit->second;
+          const auto& f_parse_query_body = cit->second.first;
+          const auto& f_run_query = cit->second.second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
           using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
           CQRSHandlerImpl handler;
-          handler.Enter(std::move(request),
-                        // Capture by reference since this lambda is run synchronously.
-                        [&handler, &f, &generic_input](Request request) {
-                          const STORAGE_IMPL& storage = generic_input.storage;
-                          storage.ReadOnlyTransaction(
-                                      // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
-                                      // Capture local variables by value for safe async transactions.
-                                      [&storage, &f, handler, generic_input](immutable_fields_t fields)
-                                          -> Response { return f(fields, generic_input.restful_url_prefix); },
-                                      std::move(request)).Detach();
-                        });
+          try {
+            std::shared_ptr<CurrentSuper> type_erased_query = f_parse_query_body(request);
+            handler.Enter(std::move(request),
+                          // Capture by reference since this lambda is run synchronously.
+                          [&handler, &f_run_query, &generic_input, &type_erased_query](Request request) {
+                            const STORAGE_IMPL& storage = generic_input.storage;
+                            storage.ReadOnlyTransaction(
+                                        // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                                        // Capture local variables by value for safe async transactions.
+                                        [&storage, &f_run_query, handler, generic_input, type_erased_query](
+                                            immutable_fields_t fields) -> Response {
+                                          return f_run_query(
+                                              fields, std::move(type_erased_query), generic_input.restful_url_prefix);
+                                        },
+                                        std::move(request)).Detach();
+                          });
+          } catch (const Exception& e) {
+            // An exception has occurred while parsing user request.
+            request(Response("TODO(dkorolev): Error message here. Or reuse the `BadJSON` handler.",
+                             HTTPResponseCode.BadRequest));
+          }
         } else {
           request(Response(cqrs::CQRSHandlerNotFound(), HTTPResponseCode.NotFound));
         }
@@ -581,7 +620,6 @@ class RESTfulStorage {
                                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                           cqrs_query_handler));
 
-    // TODO(dkorolev): No copy-pasting here.
     const auto cqrs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (storage.GetRole() != StorageRole::Master) {
         request(Response(cqrs::CQRSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
@@ -591,23 +629,32 @@ class RESTfulStorage {
         std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
         const auto cit = data.cqrs_command_map_.find(request.url_path_args[0]);
         if (cit != data.cqrs_command_map_.end()) {
-          const auto& f = cit->second;
+          const auto& f_parse_command_body = cit->second.first;
+          const auto& f_run_command = cit->second.second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
           using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
           CQRSHandlerImpl handler;
-          const std::string copy_of_body = request.body;
-          handler.Enter(
-              std::move(request),
-              // Capture by reference since this lambda is run synchronously.
-              [&handler, &f, &generic_input, &copy_of_body](Request request) {
-                STORAGE_IMPL& storage = generic_input.storage;
-                storage.ReadWriteTransaction(
-                            // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
-                            // Capture local variables by value for safe async transactions.
-                            [&storage, &f, handler, generic_input, copy_of_body](mutable_fields_t fields)
-                                -> Response { return f(fields, copy_of_body, generic_input.restful_url_prefix); },
-                            std::move(request)).Detach();
-              });
+          try {
+            std::shared_ptr<CurrentSuper> type_erased_command = f_parse_command_body(request);
+            handler.Enter(std::move(request),
+                          // Capture by reference since this lambda is run synchronously.
+                          [&handler, &f_run_command, &generic_input, &type_erased_command](Request request) {
+                            STORAGE_IMPL& storage = generic_input.storage;
+                            storage.ReadWriteTransaction(
+                                        // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                                        // Capture local variables by value for safe async transactions.
+                                        [&storage, &f_run_command, handler, generic_input, type_erased_command](
+                                            mutable_fields_t fields) -> Response {
+                                          return f_run_command(
+                                              fields, std::move(type_erased_command), generic_input.restful_url_prefix);
+                                        },
+                                        std::move(request)).Detach();
+                          });
+          } catch (const Exception& e) {
+            // An exception has occurred while parsing user request.
+            request(Response("TODO(dkorolev): Error message here. Or reuse the `BadJSON` handler.",
+                             HTTPResponseCode.BadRequest));
+          }
         } else {
           request(Response(cqrs::CQRSHandlerNotFound(), HTTPResponseCode.NotFound));
         }

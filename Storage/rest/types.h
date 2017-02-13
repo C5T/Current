@@ -288,27 +288,29 @@ using namespace helpers;
 
 namespace cqrs {
 
-CURRENT_STRUCT(CQRSHandlerNotSpecified, generic::RESTGenericResponse){
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotSpecified) : SUPER(false, "CQRS handler not specified."){}
+// clang-format off
+CURRENT_STRUCT(CQRSHandlerNotSpecified, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotSpecified) : SUPER(false, "CQRS handler not specified.") {}
 };
 
-CURRENT_STRUCT(CQRSHandlerNotFound, generic::RESTGenericResponse){
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotFound) : SUPER(false, "CQRS handler not found."){}
+CURRENT_STRUCT(CQRSHandlerNotFound, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotFound) : SUPER(false, "CQRS handler not found.") {}
 };
 
-CURRENT_STRUCT(CQRSCommandNeedsMasterStorage, generic::RESTGenericResponse){
+CURRENT_STRUCT(CQRSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
   CURRENT_DEFAULT_CONSTRUCTOR(CQRSCommandNeedsMasterStorage) :
-      SUPER(false, "CQRS commands must be run on the master storage."){}
+      SUPER(false, "CQRS commands must be run on the master storage.") {}
 };
 
-CURRENT_STRUCT(CQRSParseJSONException, generic::RESTGenericResponse){
+CURRENT_STRUCT(CQRSParseJSONException, generic::RESTGenericResponse) {
   CURRENT_CONSTRUCTOR(CQRSParseJSONException)(const std::string& what) :
-      SUPER(false, "CQRS command HTTP body JSON parse error.", generic::RESTError("json", what)){}
+      SUPER(false, "CQRS command HTTP body JSON parse error.", generic::RESTError("json", what)) {}
 };
 
-CURRENT_STRUCT(CQRSBadRequest, generic::RESTGenericResponse){
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSBadRequest) : SUPER(false, "Bad CQRS request."){}
+CURRENT_STRUCT(CQRSBadRequest, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQRSBadRequest) : SUPER(false, "Bad CQRS request.") {}
 };
+// clang-format on
 
 }  // namespace cqrs
 

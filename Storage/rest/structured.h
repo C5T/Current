@@ -61,8 +61,8 @@ struct Structured {
                                    const bool up = input.up_status;
                                    RESTTopLevel response(input.restful_url_prefix, up);
                                    for (const auto& f : input.field_names) {
-                                     // Empty key is used for CQRS endpoints, and should not make it
-                                     // into the `url_data` response. -- D.K.
+                                     // Empty key is used for CQRS endpoints, and it
+                                     // should not make it into the `url_data` response. -- D.K.
                                      if (!f.empty()) {
                                        response.url_data[f] =
                                            input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;

@@ -2565,6 +2565,8 @@ namespace transactional_storage_test {
 CURRENT_STRUCT(CQRSQuery) {
   CURRENT_FIELD(reverse_sort, bool, false);
 
+  CURRENT_CONSTRUCTOR(CQRSQuery)(bool reverse_sort = false) : reverse_sort(reverse_sort) {}
+
   template <class IMMUTABLE_FIELDS>
   Response Query(const IMMUTABLE_FIELDS& fields, const std::string& restful_url_prefix) const {
     std::vector<std::string> names;
@@ -2685,6 +2687,26 @@ TEST(TransactionalStorage, CQRSTest) {
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
     }
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?reverse_sort=false"));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
+    }
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?reverse_sort=true"));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
+    }
+    {
+      const auto cqrs_response = HTTP(POST(base_url + "/api/query/list", CQRSQuery(false)));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
+    }
+    {
+      const auto cqrs_response = HTTP(POST(base_url + "/api/query/list", CQRSQuery(true)));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
+    }
 
     {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command", CQRSCommand()));
@@ -2713,7 +2735,12 @@ TEST(TransactionalStorage, CQRSTest) {
     }
   }
 
+  // TODO(dkorolev): Parse URL and body.
+  // TODO(dkorolev): Parameter required.
+  // TODO(dkorolev): Add and test per-language endpoints (F# format).
+  // TODO(dkorolev): Method not allowed for commands.
   // TODO(dkorolev): Also test transaction meta fields.
+  // TODO(dkorolev): Test user code exceptions and rollbacks.
 }
 
 // LCOV_EXCL_START
