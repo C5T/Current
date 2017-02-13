@@ -36,6 +36,9 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
+#include "../../TypeSystem/Reflection/reflection.h"
+#include "../../TypeSystem/Serialization/json.h"
+
 #include "../../Bricks/exception.h"
 
 #include "../../Bricks/strings/printf.h"
@@ -254,6 +257,55 @@ struct URLParametersExtractor {
     }
     const std::map<std::string, std::string>& AsImmutableMap() const { return parameters_; }
     std::map<std::string, std::string> parameters_;
+
+    // NOTE: `FillObject` only populates the fields present in the URL; it doesn't erase what's not in the querystring.
+    template <typename T>
+    const T& FillObject(T& object) const {
+      QueryParametersObjectFiller parser{parameters_};
+      current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
+      return object;
+    }
+
+    template <typename T>
+    T FillObject() const {
+      T object;
+      FillObject(object);
+      return object;
+    }
+
+   private:
+    struct QueryParametersObjectFiller {
+      const std::map<std::string, std::string>& q;
+
+      // The `std::string` is a special case, as no quotes are expected.
+      void operator()(const std::string& key, std::string& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          value = cit->second;
+        }
+      }
+
+      // The `Optional<std::string>` is also a special case, as no quotes are expected.
+      void operator()(const std::string& key, Optional<std::string>& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          value = cit->second;
+        }
+      }
+
+      // For the remaining field types, use `ParseJSON`. Overkill, but ensures any `CURRENT_STRUCT` can be URL-encoded.
+      template <typename T>
+      void operator()(const std::string& key, T& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          try {
+            ParseJSON(cit->second, value);
+          } catch (const current::TypeSystemParseJSONException&) {
+            // Silently discard the exception.
+          }
+        }
+      }
+    };
   };
 
   const std::map<std::string, std::string>& AllQueryParameters() const { return query.AsImmutableMap(); }

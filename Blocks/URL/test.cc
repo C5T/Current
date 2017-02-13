@@ -25,6 +25,8 @@ SOFTWARE.
 #include "url.h"
 
 #include "../../Bricks/dflags/dflags.h"
+#include "../../TypeSystem/struct.h"
+#include "../../TypeSystem/optional.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 using namespace current::url;
@@ -264,4 +266,61 @@ TEST(URLTest, EmptyURLException) {
 
   // Empty host is allowed in relative links.
   EXPECT_EQ("foo://www.website.com:321/second", URL("/second", URL("foo://www.website.com:321/first")).ComposeURL());
+}
+
+namespace url_test {
+
+CURRENT_STRUCT(Simple) {
+  CURRENT_FIELD(a, int64_t);
+  CURRENT_FIELD(b, int64_t);
+  CURRENT_FIELD(s, std::string);
+};
+
+CURRENT_STRUCT(Tricky) {
+  CURRENT_FIELD(s, Optional<std::string>);
+  CURRENT_FIELD(p, (std::pair<std::string, std::string>));
+  CURRENT_FIELD(v, std::vector<std::string>);
+  CURRENT_FIELD(m, (std::map<std::string, std::string>));
+};
+
+}  // namespace url_test
+
+TEST(URLTest, FillsCurrentStructsFromURLParameters) {
+  using namespace url_test;
+
+  {
+    const auto simple = URL("/simple?a=1&b=2&s=test with spaces").query.template FillObject<Simple>();
+    EXPECT_EQ(1, simple.a);
+    EXPECT_EQ(2, simple.b);
+    EXPECT_EQ("test with spaces", simple.s);
+  }
+
+  {
+    Tricky tricky;
+
+    URL("/tricky?s=foo").query.FillObject(tricky);
+    ASSERT_TRUE(Exists(tricky.s));
+    EXPECT_EQ("foo", Value(tricky.s));
+
+    URL("/tricky?s=").query.FillObject(tricky);
+    ASSERT_TRUE(Exists(tricky.s));
+    EXPECT_EQ("", Value(tricky.s));
+
+    URL("/tricky?p=[\"bar\",\"baz\"]").query.FillObject(tricky);
+    EXPECT_EQ("bar", tricky.p.first);
+    EXPECT_EQ("baz", tricky.p.second);
+
+    URL("/tricky?v=[\"test\",\"gloriously\\npassed\"]").query.FillObject(tricky);
+    ASSERT_EQ(2u, tricky.v.size());
+    EXPECT_EQ("test", tricky.v[0]);
+    EXPECT_EQ("gloriously\npassed", tricky.v[1]);
+
+    URL("/tricky?v=no_exception_thrown").query.FillObject(tricky);
+    ASSERT_EQ(2u, tricky.v.size());
+
+    URL("/tricky?m={\"key\":\"value\",\"works\":\"indeed\"}").query.FillObject(tricky);
+    ASSERT_EQ(2u, tricky.m.size());
+    EXPECT_EQ("value", tricky.m["key"]);
+    EXPECT_EQ("indeed", tricky.m["works"]);
+  }
 }
