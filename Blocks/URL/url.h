@@ -293,6 +293,31 @@ struct URLParametersExtractor {
         }
       }
 
+      // The `bool` is a special case as well, as a) just `?b` should set `b` to true,
+      // and b) Current supports 0/1, false/true, False/True, and FALSE/TRUE.
+      void operator()(const std::string& key, bool& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          if (cit->second.empty()) {
+            value = true; // Just `?b` sets `b` to true.
+          } else {
+            current::FromString(cit->second, value);
+          }
+        }
+      }
+
+      // And `Optional<bool>` is also a special case.
+      void operator()(const std::string& key, Optional<bool>& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          if (cit->second.empty()) {
+            value = true; // Just `?b` sets `b` to true.
+          } else {
+            value = current::FromString<bool>(cit->second);
+          }
+        }
+      }
+
       // For the remaining field types, use `ParseJSON`. Overkill, but ensures any `CURRENT_STRUCT` can be URL-encoded.
       template <typename T>
       void operator()(const std::string& key, T& value) const {

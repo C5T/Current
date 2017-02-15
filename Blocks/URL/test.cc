@@ -274,6 +274,7 @@ CURRENT_STRUCT(Simple) {
   CURRENT_FIELD(a, int64_t);
   CURRENT_FIELD(b, int64_t);
   CURRENT_FIELD(s, std::string);
+  CURRENT_FIELD(z, bool);
 };
 
 CURRENT_STRUCT(Tricky) {
@@ -281,6 +282,7 @@ CURRENT_STRUCT(Tricky) {
   CURRENT_FIELD(p, (std::pair<std::string, std::string>));
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(m, (std::map<std::string, std::string>));
+  CURRENT_FIELD(z, Optional<bool>);
 };
 
 }  // namespace url_test
@@ -293,6 +295,15 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
     EXPECT_EQ(1, simple.a);
     EXPECT_EQ(2, simple.b);
     EXPECT_EQ("test with spaces", simple.s);
+  }
+  {
+    EXPECT_TRUE(URL("/simple?z=1").query.template FillObject<Simple>().z);
+    EXPECT_TRUE(URL("/simple?z=true").query.template FillObject<Simple>().z);
+    EXPECT_TRUE(URL("/simple?z=True").query.template FillObject<Simple>().z);
+    EXPECT_TRUE(URL("/simple?z").query.template FillObject<Simple>().z);
+    EXPECT_FALSE(URL("/simple?z=0").query.template FillObject<Simple>().z);
+    EXPECT_FALSE(URL("/simple?z=false").query.template FillObject<Simple>().z);
+    EXPECT_FALSE(URL("/simple?z=False").query.template FillObject<Simple>().z);
   }
 
   {
