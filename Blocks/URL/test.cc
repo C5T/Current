@@ -298,6 +298,9 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
   {
     Tricky tricky;
 
+    URL("/tricky").query.FillObject(tricky);
+    EXPECT_FALSE(Exists(tricky.s));
+
     URL("/tricky?s=foo").query.FillObject(tricky);
     ASSERT_TRUE(Exists(tricky.s));
     EXPECT_EQ("foo", Value(tricky.s));
