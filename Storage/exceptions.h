@@ -26,6 +26,7 @@ SOFTWARE.
 #define CURRENT_STORAGE_EXCEPTIONS_H
 
 #include "../Blocks/GracefulShutdown/exceptions.h"
+#include "../Blocks/HTTP/response.h"
 
 namespace current {
 namespace storage {
@@ -41,15 +42,45 @@ struct StorageCannotAppendToFileException : StorageException {
 };
 // LCOV_EXCL_STOP
 
-struct StorageRollbackExceptionWithNoValue : StorageException {
+CURRENT_STRUCT(CQRSCommandRolledBackResponse) {
+  CURRENT_FIELD(success, bool, false);
+  CURRENT_FIELD(message, std::string, "CQRS command rolled back.");
+};
+
+CURRENT_STRUCT_T(CQRSCommandRolledBackResponseT, CQRSCommandRolledBackResponse) {
+  CURRENT_FIELD(data, T);
+  CURRENT_DEFAULT_CONSTRUCTOR_T(CQRSCommandRolledBackResponseT) {}
+  CURRENT_CONSTRUCTOR_T(CQRSCommandRolledBackResponseT)(const T& data) : data(data) {}
+};
+
+struct StorageRollbackException : StorageException {
   using StorageException::StorageException;
+  virtual current::http::Response FormatAsHTTPResponse() const = 0;
+};
+
+struct StorageRollbackExceptionWithNoValue : StorageRollbackException {
+  using StorageRollbackException::StorageRollbackException;
+  current::http::Response FormatAsHTTPResponse() const override {
+    return current::http::Response(CQRSCommandRolledBackResponse(), HTTPResponseCode.BadRequest);
+  }
 };
 
 template <typename T>
-struct StorageRollbackExceptionWithValue : StorageException {
+struct StorageRollbackExceptionWithValue : StorageRollbackException {
   StorageRollbackExceptionWithValue(T&& value, const std::string& what = std::string())
-      : StorageException(what), value(std::move(value)) {}
+      : StorageRollbackException(what), value(std::move(value)) {}
   T value;
+  current::http::Response FormatAsHTTPResponse() const override {
+    return current::http::Response(CQRSCommandRolledBackResponseT<T>(value), HTTPResponseCode.BadRequest);
+  }
+};
+
+template <>
+struct StorageRollbackExceptionWithValue<current::http::Response> : StorageRollbackException {
+  StorageRollbackExceptionWithValue(current::http::Response&& value, const std::string& what = std::string())
+      : StorageRollbackException(what), value(std::move(value)) {}
+  current::http::Response value;
+  current::http::Response FormatAsHTTPResponse() const override { return value; }
 };
 
 struct UnderlyingStreamHasExternalDataAuthorityException : StorageException {

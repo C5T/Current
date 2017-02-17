@@ -2562,23 +2562,44 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
 
 namespace transactional_storage_test {
 
+struct CQRSTestException : current::Exception {
+  CQRSTestException() : current::Exception("CQRS test exception.") {}
+};
+
 CURRENT_STRUCT(CQRSQuery) {
   CURRENT_FIELD(reverse_sort, bool, false);
+  CURRENT_FIELD(test_current_exception, bool, false);
+  CURRENT_FIELD(test_native_exception, bool, false);
 
   CURRENT_CONSTRUCTOR(CQRSQuery)(bool reverse_sort = false) : reverse_sort(reverse_sort) {}
+
+  // clang-format off
+  // Keep these two lines together.
+  static int DoThrowCurrentExceptionLine() { return __LINE__ + 1; }
+  static void DoThrowCurrentException() { CURRENT_THROW(CQRSTestException()); }
+  // clang-format on
 
   template <class IMMUTABLE_FIELDS>
   Response Query(const IMMUTABLE_FIELDS& fields, const std::string& restful_url_prefix) const {
     std::vector<std::string> names;
     names.reserve(fields.user.Size());
+
     for (const auto& user : fields.user) {
       names.emplace_back(user.name);
     }
+
     if (!reverse_sort) {
       std::sort(names.begin(), names.end());
     } else {
       std::sort(names.rbegin(), names.rend());
     }
+
+    if (test_native_exception) {
+      std::map<int, int>().at(42);  // Throws `std::out_of_range`.
+    } else if (test_current_exception) {
+      DoThrowCurrentException();
+    }
+
     return Response(restful_url_prefix + " = " + current::strings::Join(names, ','));
   }
 };
@@ -2589,20 +2610,53 @@ CURRENT_STRUCT(CQRSCommandResponse) {
   CURRENT_FIELD(after, uint64_t, 0);
 };
 
+CURRENT_STRUCT(CQRSCommandRollbackMessage) {
+  CURRENT_FIELD(rolled_back, bool, true);
+  CURRENT_FIELD(command, std::vector<std::string>);
+  CURRENT_DEFAULT_CONSTRUCTOR(CQRSCommandRollbackMessage) {}
+  CURRENT_CONSTRUCTOR(CQRSCommandRollbackMessage)(const std::vector<std::string>& command) : command(command) {}
+};
+
 CURRENT_STRUCT(CQRSCommand) {
   CURRENT_FIELD(users, std::vector<std::string>);
+  CURRENT_FIELD(test_current_exception, bool, false);
+  CURRENT_FIELD(test_native_exception, bool, false);
+  CURRENT_FIELD(test_simple_rollback, bool, false);
+  CURRENT_FIELD(test_rollback_with_value, bool, false);
+  CURRENT_FIELD(test_rollback_with_response, bool, false);
 
   CURRENT_DEFAULT_CONSTRUCTOR(CQRSCommand) {}
   CURRENT_CONSTRUCTOR(CQRSCommand)(const std::vector<std::string>& users) : users(users) {}
 
+  // clang-format off
+  // Keep these two lines together.
+  static int DoThrowCurrentExceptionLine() { return __LINE__ + 1; }
+  static void DoThrowCurrentException() { CURRENT_THROW(CQRSTestException()); }
+  // clang-format on
+
   template <typename MUTABLE_FIELDS>
   Response Command(MUTABLE_FIELDS & fields, const std::string& restful_url_prefix) const {
     CQRSCommandResponse result;
+
     result.url = restful_url_prefix;
     result.before = fields.user.Size();
+
     for (const auto& u : users) {
       fields.user.Add(SimpleUser(u, u));
     }
+
+    if (test_native_exception) {
+      std::map<int, int>().at(42);  // Throws `std::out_of_range`.
+    } else if (test_current_exception) {
+      DoThrowCurrentException();
+    } else if (test_simple_rollback) {
+      CURRENT_STORAGE_THROW_ROLLBACK();
+    } else if (test_rollback_with_value) {
+      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(CQRSCommandRollbackMessage, CQRSCommandRollbackMessage(users));
+    } else if (test_rollback_with_response) {
+      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(Response, Response("HA!", HTTPResponseCode.OK));
+    }
+
     result.after = fields.user.Size();
     return Response(result);
   }
@@ -2707,6 +2761,33 @@ TEST(TransactionalStorage, CQRSTest) {
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
     }
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?test_native_exception"));
+      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ(
+          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQRS "
+          "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
+          cqrs_response.body);
+    }
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?test_current_exception"));
+      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      // clang-format off
+      EXPECT_EQ(
+          current::strings::Printf(
+            "{"
+            "\"success\":false,"
+            "\"message\":null,"
+            "\"error\":{"
+            "\"name\":\"cqrs_user_error\","
+            "\"message\":\"Error in CQRS user code.\","
+            "\"details\":{\"error\":\"CQRS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
+            "}"
+            "}"
+            "}\n", CQRSQuery::DoThrowCurrentExceptionLine()),
+          cqrs_response.body);
+      // clang-format on
+    }
 
     {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command", CQRSCommand()));
@@ -2733,14 +2814,65 @@ TEST(TransactionalStorage, CQRSTest) {
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ,alice,bob", cqrs_response.body);
     }
+
+    {
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_native_exception", ""));
+      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ(
+          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQRS "
+          "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
+          cqrs_response.body);
+    }
+    {
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_current_exception", ""));
+      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      // clang-format off
+      EXPECT_EQ(
+          current::strings::Printf(
+            "{"
+            "\"success\":false,"
+            "\"message\":null,"
+            "\"error\":{"
+            "\"name\":\"cqrs_user_error\","
+            "\"message\":\"Error in CQRS user code.\","
+            "\"details\":{\"error\":\"CQRS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
+            "}"
+            "}"
+            "}\n", CQRSCommand::DoThrowCurrentExceptionLine()),
+          cqrs_response.body);
+      // clang-format on
+    }
+    {
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_simple_rollback", ""));
+      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS command rolled back.\"}\n", cqrs_response.body);
+    }
+    {
+      CQRSCommand command({"this", "shall", "not", "pass"});
+      command.test_rollback_with_value = true;
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", command));
+      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      // clang-format off
+      EXPECT_EQ(
+          "{"
+          "\"success\":false,"
+          "\"message\":\"CQRS command rolled back.\","
+          "\"data\":{\"rolled_back\":true,\"command\":[\"this\",\"shall\",\"not\",\"pass\"]}}\n",
+          cqrs_response.body);
+      // clang-format on
+    }
+    {
+      CQRSCommand command({"this", "shall", "not", "pass"});
+      command.test_rollback_with_response = true;
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", command));
+      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ("HA!", cqrs_response.body);
+    }
   }
 
-  // TODO(dkorolev): Parse URL and body.
-  // TODO(dkorolev): Parameter required.
   // TODO(dkorolev): Add and test per-language endpoints (F# format).
   // TODO(dkorolev): Method not allowed for commands.
   // TODO(dkorolev): Also test transaction meta fields.
-  // TODO(dkorolev): Test user code exceptions and rollbacks.
 }
 
 // LCOV_EXCL_START

@@ -304,13 +304,37 @@ CURRENT_STRUCT(CQRSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
 
 CURRENT_STRUCT(CQRSParseJSONException, generic::RESTGenericResponse) {
   CURRENT_CONSTRUCTOR(CQRSParseJSONException)(const std::string& what) :
-      SUPER(false, "CQRS command HTTP body JSON parse error.", generic::RESTError("json", what)) {}
+      SUPER(false, "CQRS command HTTP body JSON parse error.", generic::RESTError("cqrs_json_error", what)) {}
 };
 
 CURRENT_STRUCT(CQRSBadRequest, generic::RESTGenericResponse) {
   CURRENT_DEFAULT_CONSTRUCTOR(CQRSBadRequest) : SUPER(false, "Bad CQRS request.") {}
 };
 // clang-format on
+
+CURRENT_STRUCT(CQRSUserCodeError, generic::RESTGenericResponse) {
+  using map_t = std::map<std::string, std::string>;
+
+  static map_t DescribeException(const std::exception& e) { return {{"error", e.what()}}; }
+
+  static map_t DescribeException(const current::Exception& e) {
+    map_t map;
+    map["error"] = e.OriginalWhat();
+    if (e.File()) {
+      map["file"] = e.File();
+    }
+    if (e.Line()) {
+      map["line"] = current::ToString(e.Line());
+    }
+    return map;
+  }
+
+  CURRENT_CONSTRUCTOR(CQRSUserCodeError)(const current::Exception& e)
+      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQRS user code.", DescribeException(e))) {}
+
+  CURRENT_CONSTRUCTOR(CQRSUserCodeError)(const std::exception& e)
+      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQRS user code.", DescribeException(e))) {}
+};
 
 }  // namespace cqrs
 
