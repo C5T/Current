@@ -36,6 +36,8 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
+#include "exceptions.h"
+
 #include "../../TypeSystem/Reflection/reflection.h"
 #include "../../TypeSystem/Serialization/json.h"
 
@@ -261,7 +263,7 @@ struct URLParametersExtractor {
     // NOTE: `FillObject` only populates the fields present in the URL; it doesn't erase what's not in the querystring.
     template <typename T>
     const T& FillObject(T& object) const {
-      QueryParametersObjectFiller parser{parameters_};
+      QueryParametersObjectFiller<T> parser{parameters_};
       current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
       return object;
     }
@@ -274,6 +276,7 @@ struct URLParametersExtractor {
     }
 
    private:
+    template <typename TOP_LEVEL_T>
     struct QueryParametersObjectFiller {
       const std::map<std::string, std::string>& q;
 
@@ -299,7 +302,7 @@ struct URLParametersExtractor {
         const auto cit = q.find(key);
         if (cit != q.end()) {
           if (cit->second.empty()) {
-            value = true; // Just `?b` sets `b` to true.
+            value = true;  // Just `?b` sets `b` to true.
           } else {
             current::FromString(cit->second, value);
           }
@@ -311,7 +314,7 @@ struct URLParametersExtractor {
         const auto cit = q.find(key);
         if (cit != q.end()) {
           if (cit->second.empty()) {
-            value = true; // Just `?b` sets `b` to true.
+            value = true;  // Just `?b` sets `b` to true.
           } else {
             value = current::FromString<bool>(cit->second);
           }
@@ -325,8 +328,8 @@ struct URLParametersExtractor {
         if (cit != q.end()) {
           try {
             ParseJSON(cit->second, value);
-          } catch (const current::TypeSystemParseJSONException&) {
-            // Silently discard the exception.
+          } catch (const current::TypeSystemParseJSONException& exception) {
+            CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
           }
         }
       }

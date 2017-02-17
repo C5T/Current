@@ -283,6 +283,7 @@ CURRENT_STRUCT(Tricky) {
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(m, (std::map<std::string, std::string>));
   CURRENT_FIELD(z, Optional<bool>);
+  CURRENT_FIELD(q, Optional<Simple>);
 };
 
 }  // namespace url_test
@@ -304,6 +305,24 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
     EXPECT_FALSE(URL("/simple?z=0").query.template FillObject<Simple>().z);
     EXPECT_FALSE(URL("/simple?z=false").query.template FillObject<Simple>().z);
     EXPECT_FALSE(URL("/simple?z=False").query.template FillObject<Simple>().z);
+  }
+
+  {
+    // When parsing top-level URL parameters, the missing ones are plain ignored.
+    Simple simple;
+    simple.a = 42;
+    URL("/simple").query.template FillObject(simple);
+    EXPECT_EQ(42, simple.a);
+  }
+  {
+    // But when the top-level URL parameter is present yet unparsable, it's an exception.
+    try {
+      URL("/simple?a=not a number").query.FillObject<Simple>();
+      ASSERT_TRUE(false);
+    } catch (const URLParseObjectAsURLParameterException& e) {
+      EXPECT_EQ("a", e.key);
+      EXPECT_EQ("not a number", e.error);
+    }
   }
 
   {
@@ -329,12 +348,35 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
     EXPECT_EQ("test", tricky.v[0]);
     EXPECT_EQ("gloriously\npassed", tricky.v[1]);
 
-    URL("/tricky?v=no_exception_thrown").query.FillObject(tricky);
-    ASSERT_EQ(2u, tricky.v.size());
-
     URL("/tricky?m={\"key\":\"value\",\"works\":\"indeed\"}").query.FillObject(tricky);
     ASSERT_EQ(2u, tricky.m.size());
     EXPECT_EQ("value", tricky.m["key"]);
     EXPECT_EQ("indeed", tricky.m["works"]);
+
+    // When parsing JSON-s, the complete JSON should be valid.
+    // Unlike top-level URL parametrers, a field missing inside a JSON results in an exception.
+    try {
+      URL("/tricky?q={\"a\":\"not a number\"}").query.FillObject<Tricky>();
+      ASSERT_TRUE(false);
+    } catch (const URLParseObjectAsURLParameterException& e) {
+      EXPECT_EQ("q", e.key);
+      EXPECT_EQ("Expected integer for `a`, got: \"not a number\"", e.error);
+    }
+
+    try {
+      URL("/tricky?q={\"b\":\"not a number\"}").query.FillObject<Tricky>();
+      ASSERT_TRUE(false);
+    } catch (const URLParseObjectAsURLParameterException& e) {
+      EXPECT_EQ("q", e.key);
+      EXPECT_EQ("Expected integer for `a`, got: missing field.", e.error);
+    }
+
+    try {
+      URL("/tricky?q={\"a\":42,\"b\":\"not a number\"}").query.FillObject<Tricky>();
+      ASSERT_TRUE(false);
+    } catch (const URLParseObjectAsURLParameterException& e) {
+      EXPECT_EQ("q", e.key);
+      EXPECT_EQ("Expected integer for `b`, got: \"not a number\"", e.error);
+    }
   }
 }

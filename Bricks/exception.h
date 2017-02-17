@@ -35,23 +35,36 @@ namespace current {
 class Exception : public std::exception {
  public:
   Exception() {}  // For Visual Studio's IntelliSense.
-  Exception(const std::string& what) : what_(what) {}
+  Exception(const std::string& what) : what_(what), original_what_(what) {}
   virtual ~Exception() = default;
 
-  void SetWhat(const std::string& what) { what_ = what; }
+  void SetWhat(const std::string& what) {
+    original_what_ = what;
+    what_ = what;
+  }
 
   // LCOV_EXCL_START
   virtual const char* what() const noexcept override { return what_.c_str(); }
   // LCOV_EXCL_STOP
 
   virtual const std::string& What() const noexcept { return what_; }
+  const std::string& OriginalWhat() const noexcept { return original_what_; }
+  const char* File() const noexcept { return file_; }
+  int Line() const noexcept { return line_; }
 
   void SetCaller(const std::string& caller) { what_ = caller + '\t' + what_; }
 
-  void SetOrigin(const char* file, int line) { what_ = strings::Printf("%s:%d\t", file, line) + what_; }
+  void SetOrigin(const char* file, int line) {
+    file_ = file;
+    line_ = line;
+    what_ = strings::Printf("%s:%d\t", file, line) + what_;
+  }
 
  private:
   std::string what_;
+  std::string original_what_;
+  const char* file_ = nullptr;
+  int line_ = 0;
 };
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.
