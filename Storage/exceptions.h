@@ -42,15 +42,15 @@ struct StorageCannotAppendToFileException : StorageException {
 };
 // LCOV_EXCL_STOP
 
-CURRENT_STRUCT(CQRSCommandRolledBackResponse) {
+CURRENT_STRUCT(CQSCommandRolledBackResponse) {
   CURRENT_FIELD(success, bool, false);
-  CURRENT_FIELD(message, std::string, "CQRS command rolled back.");
+  CURRENT_FIELD(message, std::string, "CQS command rolled back.");
 };
 
-CURRENT_STRUCT_T(CQRSCommandRolledBackResponseT, CQRSCommandRolledBackResponse) {
+CURRENT_STRUCT_T(CQSCommandRolledBackResponseT, CQSCommandRolledBackResponse) {
   CURRENT_FIELD(data, T);
-  CURRENT_DEFAULT_CONSTRUCTOR_T(CQRSCommandRolledBackResponseT) {}
-  CURRENT_CONSTRUCTOR_T(CQRSCommandRolledBackResponseT)(const T& data) : data(data) {}
+  CURRENT_DEFAULT_CONSTRUCTOR_T(CQSCommandRolledBackResponseT) {}
+  CURRENT_CONSTRUCTOR_T(CQSCommandRolledBackResponseT)(const T& data) : data(data) {}
 };
 
 struct StorageRollbackException : StorageException {
@@ -64,7 +64,7 @@ struct StorageRollbackExceptionWithValue : StorageRollbackException {
       : StorageRollbackException(what), value(std::move(value)) {}
   T value;
   current::http::Response FormatAsHTTPResponse() const override {
-    return current::http::Response(CQRSCommandRolledBackResponseT<T>(value), HTTPResponseCode.BadRequest);
+    return current::http::Response(CQSCommandRolledBackResponseT<T>(value), HTTPResponseCode.BadRequest);
   }
 };
 
@@ -80,7 +80,7 @@ template <>
 struct StorageRollbackExceptionWithValue<void> : StorageRollbackException {
   using StorageRollbackException::StorageRollbackException;
   current::http::Response FormatAsHTTPResponse() const override {
-    return current::http::Response(CQRSCommandRolledBackResponse(), HTTPResponseCode.BadRequest);
+    return current::http::Response(CQSCommandRolledBackResponse(), HTTPResponseCode.BadRequest);
   }
 };
 

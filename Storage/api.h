@@ -419,8 +419,8 @@ class RESTfulStorage {
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, data_->handlers_);
 
-    // Register the CQRS handlers as well.
-    RegisterCQRSHandlers(storage, restful_url_prefix);
+    // Register the CQS handlers as well.
+    RegisterCQSHandlers(storage, restful_url_prefix);
 
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& endpoint : data_->handlers_) {
@@ -457,56 +457,56 @@ class RESTfulStorage {
   }
 
   template <class QUERY_IMPL>
-  void AddCQRSQuery(const std::string& query) {
+  void AddCQSQuery(const std::string& query) {
     std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
     if (data_->cqrs_query_map_.count(query)) {
-      CURRENT_THROW(current::Exception("RESTfulStorage::AddCQRSQuery(), `" + query + "` is already registered."));
+      CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSQuery(), `" + query + "` is already registered."));
     }
     data_->cqrs_query_map_[query] = std::make_pair(
-        [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQRSRequest<QUERY_IMPL>(request); },
+        [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQSRequest<QUERY_IMPL>(request); },
         [query](immutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_query, const std::string& url)
             -> Response {
               try {
                 // Invoke `.template Query<>(...)`, the handler implemented as part of the `QUERY_IMPL` class.
                 // The instance of `QUERY_IMPL` is passed at runtime, in a type-erased fashion, as all possible
                 // query types are not available at compile time. Hence, the query object itself is stored as a
-                // smart pointer to the base class (returned from `ParseCQRSRequest(...)`), and it should be cast
+                // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
                 // down to the respective `QUERY_IMPL` type from within the transaction.
                 return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
                     .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
               } catch (const Exception& e) {
-                return Response(cqrs::CQRSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               } catch (const std::exception& e) {
-                return Response(cqrs::CQRSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               }
             });
   }
 
   template <class COMMAND_IMPL>
-  void AddCQRSCommand(const std::string& command) {
+  void AddCQSCommand(const std::string& command) {
     std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
     if (data_->cqrs_command_map_.count(command)) {
-      CURRENT_THROW(current::Exception("RESTfulStorage::AddCQRSCommandy(), `" + command + "` is already registered."));
+      CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSCommand(), `" + command + "` is already registered."));
     }
     data_->cqrs_command_map_[command] = std::make_pair(
-        [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQRSRequest<COMMAND_IMPL>(request); },
+        [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQSRequest<COMMAND_IMPL>(request); },
         [command](mutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_command, const std::string& url)
             -> Response {
-              fields.SetTransactionMetaField("X-Current-CQRS-Command", command);
+              fields.SetTransactionMetaField("X-Current-CQS-Command", command);
               try {
                 // Invoke `.template Command<>(...)`, the handler implemented as part of the `COMMAND_IMPL` class.
                 // The instance of `COMMAND_IMPL` is passed at runtime, in a type-erased fashion, as all possible
                 // command types are not available at compile time. Hence, the command object itself is stored as a
-                // smart pointer to the base class (returned from `ParseCQRSRequest(...)`), and it should be cast
+                // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
                 // down to the respective `COMMAND_IMPL` type from within the transaction.
                 return dynamic_cast<COMMAND_IMPL&>(*type_erased_command.get())
                     .template Command<MutableFields<STORAGE_IMPL>>(fields, url);
               } catch (const StorageRollbackException& e) {
                 return e.FormatAsHTTPResponse();
               } catch (const Exception& e) {
-                return Response(cqrs::CQRSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               } catch (const std::exception& e) {
-                return Response(cqrs::CQRSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               }
             });
   }
@@ -569,7 +569,7 @@ class RESTfulStorage {
   }
 
   template <typename T>
-  static std::shared_ptr<CurrentStruct> ParseCQRSRequest(Request& request) {
+  static std::shared_ptr<CurrentStruct> ParseCQSRequest(Request& request) {
     try {
       auto object = std::make_shared<T>();
       if (reflection::FieldCounter<T>::value > 0) {
@@ -581,16 +581,16 @@ class RESTfulStorage {
       }
       return object;
     } catch (const TypeSystemParseJSONException& e) {
-      request(cqrs::CQRSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
+      request(cqrs::CQSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
       return nullptr;
     }
   }
-  void RegisterCQRSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
+  void RegisterCQSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
     const Data& data = *data_;
 
     const auto cqrs_query_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (request.url_path_args.empty()) {
-        request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+        request(Response(cqrs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
         std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
         const auto cit = data.cqrs_query_map_.find(request.url_path_args[0]);
@@ -598,8 +598,8 @@ class RESTfulStorage {
           const auto& f_parse_query_body = cit->second.first;
           const auto& f_run_query = cit->second.second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
-          using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
-          CQRSHandlerImpl handler;
+          using CQSHandlerImpl = typename REST_IMPL::template RESTfulCQSHandler<STORAGE_IMPL>;
+          CQSHandlerImpl handler;
           std::shared_ptr<CurrentStruct> type_erased_query = f_parse_query_body(request);
           if (type_erased_query) {
             handler.Enter(std::move(request),
@@ -618,21 +618,21 @@ class RESTfulStorage {
                           });
           }
         } else {
-          request(Response(cqrs::CQRSHandlerNotFound(), HTTPResponseCode.NotFound));
+          request(Response(cqrs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
         }
       }
     };
     data_->handlers_.emplace("",
-                             RESTfulRoute(kRESTfulCQRSQueryURLComponent,
+                             RESTfulRoute(kRESTfulCQSQueryURLComponent,
                                           "",
                                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                           cqrs_query_handler));
 
     const auto cqrs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (storage.GetRole() != StorageRole::Master) {
-        request(Response(cqrs::CQRSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
+        request(Response(cqrs::CQSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
       } else if (request.url_path_args.empty()) {
-        request(Response(cqrs::CQRSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+        request(Response(cqrs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
         std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
         const auto cit = data.cqrs_command_map_.find(request.url_path_args[0]);
@@ -640,8 +640,8 @@ class RESTfulStorage {
           const auto& f_parse_command_body = cit->second.first;
           const auto& f_run_command = cit->second.second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
-          using CQRSHandlerImpl = typename REST_IMPL::template RESTfulCQRSHandler<STORAGE_IMPL>;
-          CQRSHandlerImpl handler;
+          using CQSHandlerImpl = typename REST_IMPL::template RESTfulCQSHandler<STORAGE_IMPL>;
+          CQSHandlerImpl handler;
           std::shared_ptr<CurrentStruct> type_erased_command = f_parse_command_body(request);
           if (type_erased_command) {
             handler.Enter(std::move(request),
@@ -660,12 +660,12 @@ class RESTfulStorage {
                           });
           }
         } else {
-          request(Response(cqrs::CQRSHandlerNotFound(), HTTPResponseCode.NotFound));
+          request(Response(cqrs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
         }
       }
     };
     data_->handlers_.emplace("",
-                             RESTfulRoute(kRESTfulCQRSCommandURLComponent,
+                             RESTfulRoute(kRESTfulCQSCommandURLComponent,
                                           "",
                                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                           cqrs_command_handler));

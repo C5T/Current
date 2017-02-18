@@ -2562,21 +2562,21 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
 
 namespace transactional_storage_test {
 
-struct CQRSTestException : current::Exception {
-  CQRSTestException() : current::Exception("CQRS test exception.") {}
+struct CQSTestException : current::Exception {
+  CQSTestException() : current::Exception("CQS test exception.") {}
 };
 
-CURRENT_STRUCT(CQRSQuery) {
+CURRENT_STRUCT(CQSQuery) {
   CURRENT_FIELD(reverse_sort, bool, false);
   CURRENT_FIELD(test_current_exception, bool, false);
   CURRENT_FIELD(test_native_exception, bool, false);
 
-  CURRENT_CONSTRUCTOR(CQRSQuery)(bool reverse_sort = false) : reverse_sort(reverse_sort) {}
+  CURRENT_CONSTRUCTOR(CQSQuery)(bool reverse_sort = false) : reverse_sort(reverse_sort) {}
 
   // clang-format off
   // Keep these two lines together.
   static int DoThrowCurrentExceptionLine() { return __LINE__ + 1; }
-  static void DoThrowCurrentException() { CURRENT_THROW(CQRSTestException()); }
+  static void DoThrowCurrentException() { CURRENT_THROW(CQSTestException()); }
   // clang-format on
 
   template <class IMMUTABLE_FIELDS>
@@ -2604,20 +2604,20 @@ CURRENT_STRUCT(CQRSQuery) {
   }
 };
 
-CURRENT_STRUCT(CQRSCommandResponse) {
+CURRENT_STRUCT(CQSCommandResponse) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(before, uint64_t, 0);
   CURRENT_FIELD(after, uint64_t, 0);
 };
 
-CURRENT_STRUCT(CQRSCommandRollbackMessage) {
+CURRENT_STRUCT(CQSCommandRollbackMessage) {
   CURRENT_FIELD(rolled_back, bool, true);
   CURRENT_FIELD(command, std::vector<std::string>);
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSCommandRollbackMessage) {}
-  CURRENT_CONSTRUCTOR(CQRSCommandRollbackMessage)(const std::vector<std::string>& command) : command(command) {}
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSCommandRollbackMessage) {}
+  CURRENT_CONSTRUCTOR(CQSCommandRollbackMessage)(const std::vector<std::string>& command) : command(command) {}
 };
 
-CURRENT_STRUCT(CQRSCommand) {
+CURRENT_STRUCT(CQSCommand) {
   CURRENT_FIELD(users, std::vector<std::string>);
   CURRENT_FIELD(test_current_exception, bool, false);
   CURRENT_FIELD(test_native_exception, bool, false);
@@ -2625,18 +2625,18 @@ CURRENT_STRUCT(CQRSCommand) {
   CURRENT_FIELD(test_rollback_with_value, bool, false);
   CURRENT_FIELD(test_rollback_with_response, bool, false);
 
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSCommand) {}
-  CURRENT_CONSTRUCTOR(CQRSCommand)(const std::vector<std::string>& users) : users(users) {}
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSCommand) {}
+  CURRENT_CONSTRUCTOR(CQSCommand)(const std::vector<std::string>& users) : users(users) {}
 
   // clang-format off
   // Keep these two lines together.
   static int DoThrowCurrentExceptionLine() { return __LINE__ + 1; }
-  static void DoThrowCurrentException() { CURRENT_THROW(CQRSTestException()); }
+  static void DoThrowCurrentException() { CURRENT_THROW(CQSTestException()); }
   // clang-format on
 
   template <typename MUTABLE_FIELDS>
   Response Command(MUTABLE_FIELDS & fields, const std::string& restful_url_prefix) const {
-    CQRSCommandResponse result;
+    CQSCommandResponse result;
 
     result.url = restful_url_prefix;
     result.before = fields.user.Size();
@@ -2652,7 +2652,7 @@ CURRENT_STRUCT(CQRSCommand) {
     } else if (test_simple_rollback) {
       CURRENT_STORAGE_THROW_ROLLBACK();
     } else if (test_rollback_with_value) {
-      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(CQRSCommandRollbackMessage, CQRSCommandRollbackMessage(users));
+      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(CQSCommandRollbackMessage, CQSCommandRollbackMessage(users));
     } else if (test_rollback_with_response) {
       CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(Response, Response("HA!", HTTPResponseCode.OK));
     }
@@ -2664,7 +2664,7 @@ CURRENT_STRUCT(CQRSCommand) {
 
 }  // namespace transactional_storage_test
 
-TEST(TransactionalStorage, CQRSTest) {
+TEST(TransactionalStorage, CQSTest) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
@@ -2716,16 +2716,16 @@ TEST(TransactionalStorage, CQRSTest) {
     {
       const auto cqrs_response = HTTP(GET(base_url + "/api/query"));
       EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS handler not specified.\",\"error\":null}\n", cqrs_response.body);
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not specified.\",\"error\":null}\n", cqrs_response.body);
     }
 
     {
       const auto cqrs_response = HTTP(GET(base_url + "/api/query/list"));
       EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS handler not found.\",\"error\":null}\n", cqrs_response.body);
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not found.\",\"error\":null}\n", cqrs_response.body);
     }
 
-    storage_http_interface.template AddCQRSQuery<CQRSQuery>("list");
+    storage_http_interface.template AddCQSQuery<CQSQuery>("list");
 
     {
       const auto cqrs_response = HTTP(GET(base_url + "/api/query/list"));
@@ -2752,12 +2752,12 @@ TEST(TransactionalStorage, CQRSTest) {
       EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/query/list", CQRSQuery(false)));
+      const auto cqrs_response = HTTP(POST(base_url + "/api/query/list", CQSQuery(false)));
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/query/list", CQRSQuery(true)));
+      const auto cqrs_response = HTTP(POST(base_url + "/api/query/list", CQSQuery(true)));
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
     }
@@ -2765,7 +2765,7 @@ TEST(TransactionalStorage, CQRSTest) {
       const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?test_native_exception"));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
       EXPECT_EQ(
-          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQRS "
+          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQS "
           "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
           cqrs_response.body);
     }
@@ -2773,6 +2773,7 @@ TEST(TransactionalStorage, CQRSTest) {
       const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?test_current_exception"));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
 #ifndef CURRENT_COVERAGE_REPORT_MODE
+      // LOL at this `clang-format` off and on formtting. -- D.K.
       // clang-format off
       EXPECT_EQ(
           current::strings::Printf(
@@ -2781,43 +2782,43 @@ TEST(TransactionalStorage, CQRSTest) {
             "\"message\":null,"
             "\"error\":{"
             "\"name\":\"cqrs_user_error\","
-            "\"message\":\"Error in CQRS user code.\","
-            "\"details\":{\"error\":\"CQRS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
+            "\"message\":\"Error in CQS user code.\","
+            "\"details\":{\"error\":\"CQS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
             "}"
             "}"
-            "}\n", CQRSQuery::DoThrowCurrentExceptionLine()),
+            "}\n", CQSQuery::DoThrowCurrentExceptionLine()),
           cqrs_response.body);
-      // clang-format on
+// clang-format on
 #else
       // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
       auto response = ParseJSON<generic::RESTGenericResponse>(cqrs_response.body);
       EXPECT_FALSE(response.success);
       ASSERT_TRUE(Exists(response.error));
       EXPECT_EQ("cqrs_user_error", Value(response.error).name);
-      EXPECT_EQ("Error in CQRS user code.", Value(response.error).message);
+      EXPECT_EQ("Error in CQS user code.", Value(response.error).message);
       ASSERT_TRUE(Exists(Value(response.error).details));
-      EXPECT_EQ("CQRS test exception.", Value(Value(response.error).details)["error"]);
-      EXPECT_EQ(current::ToString(CQRSQuery::DoThrowCurrentExceptionLine()),
+      EXPECT_EQ("CQS test exception.", Value(Value(response.error).details)["error"]);
+      EXPECT_EQ(current::ToString(CQSQuery::DoThrowCurrentExceptionLine()),
                 Value(Value(response.error).details)["line"]);
 #endif
     }
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/command", CQRSCommand()));
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command", CQSCommand()));
       EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS handler not specified.\",\"error\":null}\n", cqrs_response.body);
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not specified.\",\"error\":null}\n", cqrs_response.body);
     }
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", CQRSCommand()));
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", CQSCommand()));
       EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS handler not found.\",\"error\":null}\n", cqrs_response.body);
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not found.\",\"error\":null}\n", cqrs_response.body);
     }
 
-    storage_http_interface.template AddCQRSCommand<CQRSCommand>("add");
+    storage_http_interface.template AddCQSCommand<CQSCommand>("add");
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", CQRSCommand({"alice", "bob"})));
+      const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", CQSCommand({"alice", "bob"})));
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("{\"url\":\"http://unittest.current.ai\",\"before\":3,\"after\":5}\n", cqrs_response.body);
     }
@@ -2832,7 +2833,7 @@ TEST(TransactionalStorage, CQRSTest) {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_native_exception", ""));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
       EXPECT_EQ(
-          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQRS "
+          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQS "
           "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
           cqrs_response.body);
     }
@@ -2840,6 +2841,7 @@ TEST(TransactionalStorage, CQRSTest) {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_current_exception", ""));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
 #ifndef CURRENT_COVERAGE_REPORT_MODE
+      // LOL at this `clang-format` off and on formtting. -- D.K.
       // clang-format off
       EXPECT_EQ(
           current::strings::Printf(
@@ -2848,33 +2850,33 @@ TEST(TransactionalStorage, CQRSTest) {
             "\"message\":null,"
             "\"error\":{"
             "\"name\":\"cqrs_user_error\","
-            "\"message\":\"Error in CQRS user code.\","
-            "\"details\":{\"error\":\"CQRS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
+            "\"message\":\"Error in CQS user code.\","
+            "\"details\":{\"error\":\"CQS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
             "}"
             "}"
-            "}\n", CQRSCommand::DoThrowCurrentExceptionLine()),
+            "}\n", CQSCommand::DoThrowCurrentExceptionLine()),
           cqrs_response.body);
-      // clang-format on
+// clang-format on
 #else
       // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
       auto response = ParseJSON<generic::RESTGenericResponse>(cqrs_response.body);
       EXPECT_FALSE(response.success);
       ASSERT_TRUE(Exists(response.error));
       EXPECT_EQ("cqrs_user_error", Value(response.error).name);
-      EXPECT_EQ("Error in CQRS user code.", Value(response.error).message);
+      EXPECT_EQ("Error in CQS user code.", Value(response.error).message);
       ASSERT_TRUE(Exists(Value(response.error).details));
-      EXPECT_EQ("CQRS test exception.", Value(Value(response.error).details)["error"]);
-      EXPECT_EQ(current::ToString(CQRSCommand::DoThrowCurrentExceptionLine()),
+      EXPECT_EQ("CQS test exception.", Value(Value(response.error).details)["error"]);
+      EXPECT_EQ(current::ToString(CQSCommand::DoThrowCurrentExceptionLine()),
                 Value(Value(response.error).details)["line"]);
 #endif
     }
     {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_simple_rollback", ""));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQRS command rolled back.\"}\n", cqrs_response.body);
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS command rolled back.\"}\n", cqrs_response.body);
     }
     {
-      CQRSCommand command({"this", "shall", "not", "pass"});
+      CQSCommand command({"this", "shall", "not", "pass"});
       command.test_rollback_with_value = true;
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", command));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
@@ -2882,13 +2884,13 @@ TEST(TransactionalStorage, CQRSTest) {
       EXPECT_EQ(
           "{"
           "\"success\":false,"
-          "\"message\":\"CQRS command rolled back.\","
+          "\"message\":\"CQS command rolled back.\","
           "\"data\":{\"rolled_back\":true,\"command\":[\"this\",\"shall\",\"not\",\"pass\"]}}\n",
           cqrs_response.body);
       // clang-format on
     }
     {
-      CQRSCommand command({"this", "shall", "not", "pass"});
+      CQSCommand command({"this", "shall", "not", "pass"});
       command.test_rollback_with_response = true;
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add", command));
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));

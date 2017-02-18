@@ -34,11 +34,11 @@ namespace current {
 namespace storage {
 namespace rest {
 
-// Top-level URL prefixes for Storage REST.
+// Top-level URL prefixes for Storage REST / CQ[R]S.
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
-const std::string kRESTfulCQRSCommandURLComponent = "command";
-const std::string kRESTfulCQRSQueryURLComponent = "query";
+const std::string kRESTfulCQSCommandURLComponent = "command";
+const std::string kRESTfulCQSQueryURLComponent = "query";
 
 // Table `?export` mode, and its URL query parameters.
 const std::string kRESTfulExportURLQueryParameter = "export";

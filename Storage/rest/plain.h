@@ -294,7 +294,7 @@ struct Plain {
   };
 
   template <typename STORAGE>
-  struct RESTfulCQRSHandler {
+  struct RESTfulCQSHandler {
     template <typename F>
     void Enter(Request request, F&& next) {
       next(std::move(request));

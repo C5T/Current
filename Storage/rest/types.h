@@ -289,30 +289,30 @@ using namespace helpers;
 namespace cqrs {
 
 // clang-format off
-CURRENT_STRUCT(CQRSHandlerNotSpecified, generic::RESTGenericResponse) {
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotSpecified) : SUPER(false, "CQRS handler not specified.") {}
+CURRENT_STRUCT(CQSHandlerNotSpecified, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSHandlerNotSpecified) : SUPER(false, "CQS handler not specified.") {}
 };
 
-CURRENT_STRUCT(CQRSHandlerNotFound, generic::RESTGenericResponse) {
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSHandlerNotFound) : SUPER(false, "CQRS handler not found.") {}
+CURRENT_STRUCT(CQSHandlerNotFound, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSHandlerNotFound) : SUPER(false, "CQS handler not found.") {}
 };
 
-CURRENT_STRUCT(CQRSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSCommandNeedsMasterStorage) :
-      SUPER(false, "CQRS commands must be run on the master storage.") {}
+CURRENT_STRUCT(CQSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSCommandNeedsMasterStorage) :
+      SUPER(false, "CQS commands must be run on the master storage.") {}
 };
 
-CURRENT_STRUCT(CQRSParseJSONException, generic::RESTGenericResponse) {
-  CURRENT_CONSTRUCTOR(CQRSParseJSONException)(const std::string& what) :
-      SUPER(false, "CQRS command HTTP body JSON parse error.", generic::RESTError("cqrs_json_error", what)) {}
+CURRENT_STRUCT(CQSParseJSONException, generic::RESTGenericResponse) {
+  CURRENT_CONSTRUCTOR(CQSParseJSONException)(const std::string& what) :
+      SUPER(false, "CQS command HTTP body JSON parse error.", generic::RESTError("cqrs_json_error", what)) {}
 };
 
-CURRENT_STRUCT(CQRSBadRequest, generic::RESTGenericResponse) {
-  CURRENT_DEFAULT_CONSTRUCTOR(CQRSBadRequest) : SUPER(false, "Bad CQRS request.") {}
+CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSBadRequest) : SUPER(false, "Bad CQS request.") {}
 };
 // clang-format on
 
-CURRENT_STRUCT(CQRSUserCodeError, generic::RESTGenericResponse) {
+CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
   using map_t = std::map<std::string, std::string>;
 
   static map_t DescribeException(const std::exception& e) { return {{"error", e.what()}}; }
@@ -329,11 +329,11 @@ CURRENT_STRUCT(CQRSUserCodeError, generic::RESTGenericResponse) {
     return map;
   }
 
-  CURRENT_CONSTRUCTOR(CQRSUserCodeError)(const current::Exception& e)
-      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQRS user code.", DescribeException(e))) {}
+  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const current::Exception& e)
+      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQS user code.", DescribeException(e))) {}
 
-  CURRENT_CONSTRUCTOR(CQRSUserCodeError)(const std::exception& e)
-      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQRS user code.", DescribeException(e))) {}
+  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const std::exception& e)
+      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQS user code.", DescribeException(e))) {}
 };
 
 }  // namespace cqrs
