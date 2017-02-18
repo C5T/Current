@@ -277,6 +277,13 @@ CURRENT_STRUCT(Simple) {
   CURRENT_FIELD(z, bool);
 };
 
+CURRENT_STRUCT(SimpleWithOptionals) {
+  CURRENT_FIELD(a, int64_t);
+  CURRENT_FIELD(b, Optional<int64_t>);
+  CURRENT_FIELD(s, std::string);
+  CURRENT_FIELD(t, Optional<std::string>);
+};
+
 CURRENT_STRUCT(Tricky) {
   CURRENT_FIELD(s, Optional<std::string>);
   CURRENT_FIELD(p, (std::pair<std::string, std::string>));
@@ -328,6 +335,61 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
       EXPECT_EQ("a", e.key);
       EXPECT_EQ("not a number", e.error);
     }
+  }
+
+  {
+    try {
+      URL("/test").query.template FillObject<SimpleWithOptionals, current::url::FillObjectMode::Strict>();
+      ASSERT_TRUE(false);
+    } catch (const URLParseObjectAsURLParameterException& e) {
+      EXPECT_EQ("a", e.key);
+      EXPECT_EQ("missing value", e.error);
+    }
+  }
+
+  {
+    try {
+      URL("/test?a=42").query.template FillObject<SimpleWithOptionals, current::url::FillObjectMode::Strict>();
+      ASSERT_TRUE(false);
+    } catch (const URLParseObjectAsURLParameterException& e) {
+      EXPECT_EQ("s", e.key);
+      EXPECT_EQ("missing value", e.error);
+    }
+  }
+
+  {
+    const auto object =
+        URL("/test?a=42&s=foo").query.template FillObject<SimpleWithOptionals, current::url::FillObjectMode::Strict>();
+    EXPECT_EQ(42, object.a);
+    EXPECT_EQ("foo", object.s);
+    EXPECT_FALSE(Exists(object.b));
+    EXPECT_FALSE(Exists(object.t));
+  }
+
+  {
+    SimpleWithOptionals object;
+    // These values won't be touched.
+    object.b = 10000;
+    object.t = "bar";
+    URL("/test?a=42&s=foo")
+        .query.template FillObject<SimpleWithOptionals, current::url::FillObjectMode::Strict>(object);
+    EXPECT_EQ(42, object.a);
+    EXPECT_EQ("foo", object.s);
+    EXPECT_TRUE(Exists(object.b));
+    EXPECT_TRUE(Exists(object.t));
+    EXPECT_EQ(10000, Value(object.b));
+    EXPECT_EQ("bar", Value(object.t));
+  }
+
+  {
+    const auto object = URL("/test?a=42&b=43&s=foo&t=baz")
+                            .query.template FillObject<SimpleWithOptionals, current::url::FillObjectMode::Strict>();
+    EXPECT_EQ(42, object.a);
+    EXPECT_EQ("foo", object.s);
+    EXPECT_TRUE(Exists(object.b));
+    EXPECT_TRUE(Exists(object.t));
+    EXPECT_EQ(43, Value(object.b));
+    EXPECT_EQ("baz", Value(object.t));
   }
 
   {

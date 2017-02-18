@@ -61,6 +61,9 @@ struct EmptyURLException : current::Exception {};
 //
 // When handling redirects, the previous URL can be provided to properly handle host/port/scheme.
 
+// For `URL::FillObject<T, MODE = Forgiving>(...)`.
+enum class FillObjectMode : bool { Forgiving = false, Strict = true };
+
 namespace impl {
 
 namespace {
@@ -261,22 +264,22 @@ struct URLParametersExtractor {
     std::map<std::string, std::string> parameters_;
 
     // NOTE: `FillObject` only populates the fields present in the URL; it doesn't erase what's not in the querystring.
-    template <typename T>
+    template <typename T, FillObjectMode MODE = FillObjectMode::Forgiving>
     const T& FillObject(T& object) const {
-      QueryParametersObjectFiller<T> parser{parameters_};
+      QueryParametersObjectFiller<T, MODE> parser{parameters_};
       current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
       return object;
     }
 
-    template <typename T>
+    template <typename T, FillObjectMode MODE = FillObjectMode::Forgiving>
     T FillObject() const {
       T object;
-      FillObject(object);
+      FillObject<T, MODE>(object);
       return object;
     }
 
    private:
-    template <typename TOP_LEVEL_T>
+    template <typename TOP_LEVEL_T, FillObjectMode MODE>
     struct QueryParametersObjectFiller {
       const std::map<std::string, std::string>& q;
 
@@ -285,14 +288,8 @@ struct URLParametersExtractor {
         const auto cit = q.find(key);
         if (cit != q.end()) {
           value = cit->second;
-        }
-      }
-
-      // The `Optional<std::string>` is also a special case, as no quotes are expected.
-      void operator()(const std::string& key, Optional<std::string>& value) const {
-        const auto cit = q.find(key);
-        if (cit != q.end()) {
-          value = cit->second;
+        } else if (MODE == FillObjectMode::Strict) {
+          CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, "missing value"));
         }
       }
 
@@ -303,21 +300,25 @@ struct URLParametersExtractor {
         if (cit != q.end()) {
           if (cit->second.empty()) {
             value = true;  // Just `?b` sets `b` to true.
-          } else {
+          } else if (MODE == FillObjectMode::Forgiving) {
             current::FromString(cit->second, value);
+          } else {
+            try {
+              ParseJSON(cit->second, value);
+            } catch (const current::TypeSystemParseJSONException& exception) {
+              CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
+            }
           }
         }
       }
 
-      // And `Optional<bool>` is also a special case.
-      void operator()(const std::string& key, Optional<bool>& value) const {
+      // `Optional<>`-s are special cases, as they can be missing.
+      template <typename T>
+      void operator()(const std::string& key, Optional<T>& value) const {
         const auto cit = q.find(key);
         if (cit != q.end()) {
-          if (cit->second.empty()) {
-            value = true;  // Just `?b` sets `b` to true.
-          } else {
-            value = current::FromString<bool>(cit->second);
-          }
+          value = T();
+          operator()(key, Value(value));
         }
       }
 
@@ -331,6 +332,8 @@ struct URLParametersExtractor {
           } catch (const current::TypeSystemParseJSONException& exception) {
             CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
           }
+        } else if (MODE == FillObjectMode::Strict) {
+          CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, "missing value"));
         }
       }
     };
