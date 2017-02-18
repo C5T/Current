@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include <exception>
 #include <string>
+#include <cstring>
 
 #include "strings/printf.h"
 
@@ -35,22 +36,32 @@ namespace current {
 class Exception : public std::exception {
  public:
   Exception() {}  // For Visual Studio's IntelliSense.
-  Exception(const std::string& what) : what_(what), original_what_(what) {}
+  Exception(const std::string& what) : what_(what) {}
   virtual ~Exception() = default;
 
   void SetWhat(const std::string& what) {
-    original_what_ = what;
     what_ = what;
   }
 
   // LCOV_EXCL_START
-  virtual const char* what() const noexcept override { return what_.c_str(); }
+  virtual const char* what() const noexcept override {
+    constexpr size_t MAX_LENGTH = 1024 * 10;
+    static char data[MAX_LENGTH + 1];
+    const std::string message = What();
+    if (message.length() < MAX_LENGTH) {
+      std::strcpy(data, message.data());
+    } else {
+      std::copy(message.begin(), message.begin() + MAX_LENGTH, data);
+      data[MAX_LENGTH] = '\0';
+    }
+    return data;
+  }
   // LCOV_EXCL_STOP
 
   virtual std::string What() const noexcept {
-    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + original_what_;
+    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + what_;
   }
-  const std::string& OriginalWhat() const noexcept { return original_what_; }
+  const std::string& OriginalWhat() const noexcept { return what_; }
   const char* File() const noexcept { return file_; }
   int Line() const noexcept { return line_; }
   const std::string& Caller() const noexcept { return caller_; }
@@ -58,14 +69,12 @@ class Exception : public std::exception {
   void SetOrigin(const char* file, int line) {
     file_ = file;
     line_ = line;
-    what_ = original_what_;
   }
 
   void SetCaller(const std::string& caller) { caller_ = caller; }
 
  private:
   std::string what_;
-  std::string original_what_;
   const char* file_ = nullptr;
   int line_ = 0;
   std::string caller_;
