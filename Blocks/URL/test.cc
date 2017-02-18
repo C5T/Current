@@ -301,10 +301,15 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
     EXPECT_TRUE(URL("/simple?z=1").query.template FillObject<Simple>().z);
     EXPECT_TRUE(URL("/simple?z=true").query.template FillObject<Simple>().z);
     EXPECT_TRUE(URL("/simple?z=True").query.template FillObject<Simple>().z);
+    EXPECT_TRUE(URL("/simple?z=TRUE").query.template FillObject<Simple>().z);
     EXPECT_TRUE(URL("/simple?z").query.template FillObject<Simple>().z);
     EXPECT_FALSE(URL("/simple?z=0").query.template FillObject<Simple>().z);
     EXPECT_FALSE(URL("/simple?z=false").query.template FillObject<Simple>().z);
     EXPECT_FALSE(URL("/simple?z=False").query.template FillObject<Simple>().z);
+    EXPECT_FALSE(URL("/simple?z=FALSE").query.template FillObject<Simple>().z);
+
+    // Anything but `0`, `false`, `False`, or `FALSE` is treated as true.
+    EXPECT_TRUE(URL("/simple?z=something_not_false").query.template FillObject<Simple>().z);
   }
 
   {
