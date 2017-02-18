@@ -48,7 +48,7 @@ class Exception : public std::exception {
   // LCOV_EXCL_STOP
 
   virtual std::string What() const noexcept {
-    return caller_ + '\t' + strings::Printf("%s:%d", file_, line_) + '\t' + original_what_;
+    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + original_what_;
   }
   const std::string& OriginalWhat() const noexcept { return original_what_; }
   const char* File() const noexcept { return file_; }
