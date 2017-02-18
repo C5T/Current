@@ -57,7 +57,7 @@ class Exception : public std::exception {
   void SetOrigin(const char* file, int line) {
     file_ = file;
     line_ = line;
-    what_ = strings::Printf("%s:%d\t", file, line) + what_;
+    what_ = strings::Printf("%s:%d\t", file, line) + original_what_;
   }
 
  private:
