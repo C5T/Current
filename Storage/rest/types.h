@@ -304,7 +304,12 @@ CURRENT_STRUCT(CQSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
 
 CURRENT_STRUCT(CQSParseJSONException, generic::RESTGenericResponse) {
   CURRENT_CONSTRUCTOR(CQSParseJSONException)(const std::string& what) :
-      SUPER(false, "CQS command HTTP body JSON parse error.", generic::RESTError("cqs_json_error", what)) {}
+      SUPER(false, "CQS command or query HTTP body JSON parse error.", generic::RESTError("cqs_json_error", what)) {}
+};
+
+CURRENT_STRUCT(CQSParseURLException, generic::RESTGenericResponse) {
+  CURRENT_CONSTRUCTOR(CQSParseURLException)(const std::string& what) :
+      SUPER(false, "CQS command or query URL parameters parse error.", generic::RESTError("cqs_querystring_error", what)) {}
 };
 
 CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {

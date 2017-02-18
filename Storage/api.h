@@ -463,7 +463,9 @@ class RESTfulStorage {
       CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSQuery(), `" + query + "` is already registered."));
     }
     data_->cqs_query_map_[query] = std::make_pair(
-        [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQSRequest<QUERY_IMPL>(request); },
+        [](Request& request) -> std::shared_ptr<CurrentStruct> {
+          return ParseCQSRequest<QUERY_IMPL, current::url::FillObjectMode::Forgiving>(request);
+        },
         [query](immutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_query, const std::string& url)
             -> Response {
               try {
@@ -489,7 +491,9 @@ class RESTfulStorage {
       CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSCommand(), `" + command + "` is already registered."));
     }
     data_->cqs_command_map_[command] = std::make_pair(
-        [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQSRequest<COMMAND_IMPL>(request); },
+        [](Request& request) -> std::shared_ptr<CurrentStruct> {
+          return ParseCQSRequest<COMMAND_IMPL, current::url::FillObjectMode::Strict>(request);
+        },
         [command](mutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_command, const std::string& url)
             -> Response {
               fields.SetTransactionMetaField("X-Current-CQS-Command", command);
@@ -568,7 +572,7 @@ class RESTfulStorage {
     data_->handlers_scope_ += HTTP(data_->port_).Register(path, route.resource_args_mask, route.handler);
   }
 
-  template <typename T>
+  template <typename T, url::FillObjectMode MODE>
   static std::shared_ptr<CurrentStruct> ParseCQSRequest(Request& request) {
     try {
       auto object = std::make_shared<T>();
@@ -576,12 +580,15 @@ class RESTfulStorage {
         if (!request.body.empty()) {
           ParseJSON(request.body, *object);
         } else {
-          request.url.query.FillObject(*object);
+          request.url.query.FillObject<T, MODE>(*object);
         }
       }
       return object;
     } catch (const TypeSystemParseJSONException& e) {
       request(cqs::CQSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
+      return nullptr;
+    } catch (const url::URLParseObjectAsURLParameterException& e) {
+      request(cqs::CQSParseURLException(e.What()), HTTPResponseCode.BadRequest);
       return nullptr;
     }
   }
