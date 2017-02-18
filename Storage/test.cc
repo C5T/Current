@@ -2664,6 +2664,15 @@ CURRENT_STRUCT(CQSCommand) {
 
 }  // namespace transactional_storage_test
 
+static std::string StdOutOfRangeWhat() {
+  try {
+    std::map<int, int>().at(42);  // Throws `std::out_of_range`.
+    return "<no exception, should not happen>";
+  } catch (const std::exception& e) {
+    return e.what();
+  }
+}
+
 TEST(TransactionalStorage, CQSTest) {
   current::time::ResetToZero();
 
@@ -2756,7 +2765,8 @@ TEST(TransactionalStorage, CQSTest) {
       EXPECT_EQ(400, static_cast<int>(cqs_response.code));
       EXPECT_EQ(
           "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqs_user_error\",\"message\":\"Error in CQS "
-          "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
+          "user code.\",\"details\":{\"error\":\"" +
+              StdOutOfRangeWhat() + "\"}}}\n",
           cqs_response.body);
     }
     {
@@ -2847,7 +2857,8 @@ TEST(TransactionalStorage, CQSTest) {
       EXPECT_EQ(400, static_cast<int>(cqs_response.code));
       EXPECT_EQ(
           "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqs_user_error\",\"message\":\"Error in CQS "
-          "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
+          "user code.\",\"details\":{\"error\":\"" +
+              StdOutOfRangeWhat() + "\"}}}\n",
           cqs_response.body);
     }
     {
@@ -3224,7 +3235,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
       do {
         const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) -> uint64_t {
           // NOTE(dkorolev): Testing the hypothesis `size_t` from `Size()` can't be JSON-ified on Mac.
-          return static_cast<uint64_t>(fields.user.Size()); 
+          return static_cast<uint64_t>(fields.user.Size());
         }).Go();
         EXPECT_TRUE(WasCommitted(result));
         user_size = Value(result);

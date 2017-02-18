@@ -129,7 +129,8 @@ SCENARIO(storage, "Storage transactions test.") {
         fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
         fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
       }
-      return std::make_pair(fields.hashmap_uint32.Size(), fields.hashmap_string.Size());
+      return std::make_pair(static_cast<uint64_t>(fields.hashmap_uint32.Size()),
+                            static_cast<uint64_t>(fields.hashmap_string.Size()));
     }).Go());
     actual_size_uint32 = pair.first;
     actual_size_string = pair.second;
