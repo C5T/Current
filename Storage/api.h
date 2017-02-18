@@ -641,7 +641,7 @@ class RESTfulStorage {
       if (storage.GetRole() != StorageRole::Master) {
         request(Response(cqs::CQSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
       } else if (request.method != "POST" && request.method != "POST" && request.method != "PATCH") {
-        request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS commands must be {POST|PUT}PATCH}-es."));
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS commands must be {POST|PUT|PATCH}-es."));
       } else if (request.url_path_args.empty()) {
         request(Response(cqs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {

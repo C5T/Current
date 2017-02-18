@@ -2916,7 +2916,7 @@ TEST(TransactionalStorage, CQSTest) {
           "\"message\":null,"
           "\"error\":{"
           "\"name\":\"MethodNotAllowed\","
-          "\"message\":\"CQS commands must be {POST|PUT}PATCH}-es.\","
+          "\"message\":\"CQS commands must be {POST|PUT|PATCH}-es.\","
           "\"details\":{\"requested_method\":\"GET\"}}}\n",
           cqs_response.body);
     }
