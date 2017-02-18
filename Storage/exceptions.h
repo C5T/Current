@@ -58,13 +58,6 @@ struct StorageRollbackException : StorageException {
   virtual current::http::Response FormatAsHTTPResponse() const = 0;
 };
 
-struct StorageRollbackExceptionWithNoValue : StorageRollbackException {
-  using StorageRollbackException::StorageRollbackException;
-  current::http::Response FormatAsHTTPResponse() const override {
-    return current::http::Response(CQRSCommandRolledBackResponse(), HTTPResponseCode.BadRequest);
-  }
-};
-
 template <typename T>
 struct StorageRollbackExceptionWithValue : StorageRollbackException {
   StorageRollbackExceptionWithValue(T&& value, const std::string& what = std::string())
@@ -82,6 +75,16 @@ struct StorageRollbackExceptionWithValue<current::http::Response> : StorageRollb
   current::http::Response value;
   current::http::Response FormatAsHTTPResponse() const override { return value; }
 };
+
+template <>
+struct StorageRollbackExceptionWithValue<void> : StorageRollbackException {
+  using StorageRollbackException::StorageRollbackException;
+  current::http::Response FormatAsHTTPResponse() const override {
+    return current::http::Response(CQRSCommandRolledBackResponse(), HTTPResponseCode.BadRequest);
+  }
+};
+
+using StorageRollbackExceptionWithNoValue = StorageRollbackExceptionWithValue<void>;
 
 struct UnderlyingStreamHasExternalDataAuthorityException : StorageException {
   using StorageException::StorageException;
