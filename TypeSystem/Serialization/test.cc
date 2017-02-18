@@ -457,7 +457,7 @@ TEST(JSONSerialization, CurrentStructs) {
       ParseJSON<WithTrivialMap>("{\"m\":[]}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected map as object for `m`, got: []"), e.what());
+      EXPECT_EQ(std::string("Expected map as object for `m`, got: []"), e.OriginalWhat());
     }
   }
   {
@@ -486,7 +486,7 @@ TEST(JSONSerialization, CurrentStructs) {
       ParseJSON<WithTrivialUnorderedMap>("{\"m\":[]}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected map as object for `m`, got: []"), e.what());
+      EXPECT_EQ(std::string("Expected map as object for `m`, got: []"), e.OriginalWhat());
     }
   }
   {
@@ -520,7 +520,7 @@ TEST(JSONSerialization, CurrentStructs) {
       ParseJSON<WithNontrivialMap>("{\"q\":{}}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected map as array for `q`, got: {}"), e.what());
+      EXPECT_EQ(std::string("Expected map as array for `q`, got: {}"), e.OriginalWhat());
     }
   }
   {
@@ -561,7 +561,7 @@ TEST(JSONSerialization, CurrentStructs) {
       ParseJSON<WithNontrivialUnorderedMap>("{\"q\":{}}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected [unordered_]map as array for `q`, got: {}"), e.what());
+      EXPECT_EQ(std::string("Expected [unordered_]map as array for `q`, got: {}"), e.OriginalWhat());
     }
   }
   {
@@ -592,7 +592,7 @@ TEST(JSONSerialization, CurrentStructs) {
       ParseJSON<WithTrivialSet>("{\"s\":{}}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected set as array for `s`, got: {}"), e.what());
+      EXPECT_EQ(std::string("Expected set as array for `s`, got: {}"), e.OriginalWhat());
     }
   }
   {
@@ -627,7 +627,7 @@ TEST(JSONSerialization, CurrentStructs) {
       ParseJSON<WithNontrivialUnorderedSet>("{\"s\":{}}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected [unordered_]set as array for `s`, got: {}"), e.what());
+      EXPECT_EQ(std::string("Expected [unordered_]set as array for `s`, got: {}"), e.OriginalWhat());
     }
   }
   {
@@ -657,56 +657,56 @@ TEST(JSONSerialization, Exceptions) {
     ParseJSON<Serializable>("{}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: missing field."), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":\"boo\"}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: \"boo\""), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: \"boo\""), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":[]}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: []"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: []"), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":{}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: {}"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `i`, got: {}"), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":100}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string for `s`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: missing field."), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":42,\"s\":42}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string for `s`, got: 42"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: 42"), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":42,\"s\":[]}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string for `s`, got: []"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: []"), e.OriginalWhat());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":42,\"s\":{}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string for `s`, got: {}"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: {}"), e.OriginalWhat());
   }
 
   // Names of inner, nested, fields.
@@ -715,35 +715,35 @@ TEST(JSONSerialization, Exceptions) {
         "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":\"error\",\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: \"error\""), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: \"error\""), e.OriginalWhat());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: null"), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: null"), e.OriginalWhat());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"s\":\"foo\"}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: missing field."), e.what());
+    EXPECT_EQ(std::string("Expected unsigned integer for `z.i`, got: missing field."), e.OriginalWhat());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",true],\"z\":{\"i\":0,\"s\":0}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string for `v[1]`, got: true"), e.what());
+    EXPECT_EQ(std::string("Expected string for `v[1]`, got: true"), e.OriginalWhat());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":0,\"s\":0}}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string for `z.s`, got: 0"), e.what());
+    EXPECT_EQ(std::string("Expected string for `z.s`, got: 0"), e.OriginalWhat());
   }
 }
 
@@ -1350,7 +1350,7 @@ TEST(JSONSerialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0.5,\"o\":null,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected integer for `i`, got: 0.5"), e.what());
+      EXPECT_EQ(std::string("Expected integer for `i`, got: 0.5"), e.OriginalWhat());
     }
 #if 0
     catch (const RapidJSONAssertionFailedException& e) {
@@ -1365,7 +1365,7 @@ TEST(JSONSerialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":0.5,\"e\":0}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected integer for `o`, got: 0.5"), e.what());
+      EXPECT_EQ(std::string("Expected integer for `o`, got: 0.5"), e.OriginalWhat());
     }
 #if 0
     catch (const RapidJSONAssertionFailedException& e) {
@@ -1380,7 +1380,7 @@ TEST(JSONSerialization, JSONCrashTests) {
       ParseJSON<serialization_test::CrashingStruct>("{\"i\":0,\"o\":null,\"e\":0.5}");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (const JSONSchemaException& e) {
-      EXPECT_EQ(std::string("Expected enum as signed integer for `e`, got: 0.5"), e.what());
+      EXPECT_EQ(std::string("Expected enum as signed integer for `e`, got: 0.5"), e.OriginalWhat());
     }
   }
 }
