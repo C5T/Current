@@ -2752,16 +2752,6 @@ TEST(TransactionalStorage, CQSTest) {
       EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/query/list", CQSQuery(false)));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
-    }
-    {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/query/list", CQSQuery(true)));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
-    }
-    {
       const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_native_exception"));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
       EXPECT_EQ(
@@ -2801,6 +2791,19 @@ TEST(TransactionalStorage, CQSTest) {
       EXPECT_EQ(current::ToString(CQSQuery::DoThrowCurrentExceptionLine()),
                 Value(Value(response.error).details)["line"]);
 #endif
+
+      {
+        const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/query/list", "<irrelevant POST body>"));
+        EXPECT_EQ(405, static_cast<int>(cqrs_response.code));
+        EXPECT_EQ(
+            "{\"success\":false,"
+            "\"message\":null,"
+            "\"error\":{"
+            "\"name\":\"MethodNotAllowed\","
+            "\"message\":\"CQS queries must be GET-s.\","
+            "\"details\":{\"requested_method\":\"POST\"}}}\n",
+            cqrs_response.body);
+      }
 
       // Duplicate query registration is not allowed.
       try {
@@ -2903,6 +2906,19 @@ TEST(TransactionalStorage, CQSTest) {
       const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("HA!", cqrs_response.body);
+    }
+
+    {
+      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/command/add"));
+      EXPECT_EQ(405, static_cast<int>(cqrs_response.code));
+      EXPECT_EQ(
+          "{\"success\":false,"
+          "\"message\":null,"
+          "\"error\":{"
+          "\"name\":\"MethodNotAllowed\","
+          "\"message\":\"CQS commands must be {POST|PUT}PATCH}-es.\","
+          "\"details\":{\"requested_method\":\"GET\"}}}\n",
+          cqrs_response.body);
     }
 
     // Duplicate command registration is not allowed.

@@ -591,6 +591,8 @@ class RESTfulStorage {
     const auto cqrs_query_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (request.url_path_args.empty()) {
         request(Response(cqrs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+      } else if (request.method != "GET") {
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS queries must be GET-s."));
       } else {
         std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
         const auto cit = data.cqrs_query_map_.find(request.url_path_args[0]);
@@ -631,6 +633,8 @@ class RESTfulStorage {
     const auto cqrs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (storage.GetRole() != StorageRole::Master) {
         request(Response(cqrs::CQSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
+      } else if (request.method != "POST" && request.method != "POST" && request.method != "PATCH") {
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS commands must be {POST|PUT}PATCH}-es."));
       } else if (request.url_path_args.empty()) {
         request(Response(cqrs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
