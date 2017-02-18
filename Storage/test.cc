@@ -2801,6 +2801,14 @@ TEST(TransactionalStorage, CQSTest) {
       EXPECT_EQ(current::ToString(CQSQuery::DoThrowCurrentExceptionLine()),
                 Value(Value(response.error).details)["line"]);
 #endif
+
+      // Duplicate query registration is not allowed.
+      try {
+        storage_http_interface.template AddCQSQuery<CQSQuery>("list");
+        ASSERT_TRUE(false);
+      } catch (const current::Exception& e) {
+        EXPECT_EQ("RESTfulStorage::AddCQSQuery(), `list` is already registered.", e.OriginalWhat());
+      }
     }
 
     {
@@ -2895,6 +2903,14 @@ TEST(TransactionalStorage, CQSTest) {
       const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
       EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
       EXPECT_EQ("HA!", cqrs_response.body);
+    }
+
+    // Duplicate command registration is not allowed.
+    try {
+      storage_http_interface.template AddCQSCommand<CQSCommand>("add");
+      ASSERT_TRUE(false);
+    } catch (const current::Exception& e) {
+      EXPECT_EQ("RESTfulStorage::AddCQSCommand(), `add` is already registered.", e.OriginalWhat());
     }
   }
 
