@@ -2951,7 +2951,6 @@ TEST(TransactionalStorage, CQSTest) {
   }
 
   // TODO(dkorolev): Add and test per-language endpoints (F# format).
-  // TODO(dkorolev): Method not allowed for commands.
   // TODO(dkorolev): Also test transaction meta fields.
 }
 
