@@ -2773,10 +2773,12 @@ TEST(TransactionalStorage, CQSTest) {
             "\"error\":{"
             "\"name\":\"cqs_user_error\","
             "\"message\":\"Error in CQS user code.\","
-            "\"details\":{\"error\":\"CQS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
-            "}"
-            "}"
-            "}\n", CQSQuery::DoThrowCurrentExceptionLine()),
+            "\"details\":{"
+            "\"caller\":\"CQSTestException()\","
+            "\"error\":\"CQS test exception.\","
+            "\"file\":\"test.cc\","
+            "\"line\":\"%d\"}}}\n",
+            CQSQuery::DoThrowCurrentExceptionLine()),
           cqs_response.body);
 // clang-format on
 #else
@@ -2862,10 +2864,12 @@ TEST(TransactionalStorage, CQSTest) {
             "\"error\":{"
             "\"name\":\"cqs_user_error\","
             "\"message\":\"Error in CQS user code.\","
-            "\"details\":{\"error\":\"CQS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
-            "}"
-            "}"
-            "}\n", CQSCommand::DoThrowCurrentExceptionLine()),
+            "\"details\":{"
+            "\"caller\":\"CQSTestException()\","
+            "\"error\":\"CQS test exception.\","
+            "\"file\":\"test.cc\","
+            "\"line\":\"%d\"}}}\n",
+            CQSCommand::DoThrowCurrentExceptionLine()),
           cqs_response.body);
 // clang-format on
 #else

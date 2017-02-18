@@ -325,6 +325,7 @@ CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
   static map_t DescribeException(const current::Exception& e) {
     map_t map;
     map["error"] = e.OriginalWhat();
+    map["caller"] = e.Caller();
     if (e.File()) {
       map["file"] = e.File();
     }
