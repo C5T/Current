@@ -264,7 +264,7 @@ TEST(JSONSerialization, CPPTypes) {
     ParseJSON<map_int_int_t>("{}");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ("Expected map as array, got: {}", e.What());
+    EXPECT_EQ("Expected map as array, got: {}", e.OriginalWhat());
   }
 
   EXPECT_EQ(2u, ParseJSON<map_string_int_t>("{\"a\":1,\"b\":2}").size());
@@ -274,7 +274,7 @@ TEST(JSONSerialization, CPPTypes) {
     ParseJSON<map_string_int_t>("[]");
     ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ("Expected map as object, got: []", e.What());
+    EXPECT_EQ("Expected map as object, got: []", e.OriginalWhat());
   }
 
   // `std::set<>` is serialized as array.
@@ -292,7 +292,7 @@ TEST(JSONSerialization, CPPTypes) {
     ParseJSON<set_int_t>("{}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ("Expected set as array, got: {}", e.What());
+    EXPECT_EQ("Expected set as array, got: {}", e.OriginalWhat());
   }
 }
 
@@ -1354,7 +1354,7 @@ TEST(JSONSerialization, JSONCrashTests) {
     }
 #if 0
     catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.What());
+      ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.OriginalWhat());
     }
 #endif
   }
@@ -1369,7 +1369,7 @@ TEST(JSONSerialization, JSONCrashTests) {
     }
 #if 0
     catch (const RapidJSONAssertionFailedException& e) {
-      ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.What());
+      ExpectStringEndsWith("data_.f.flags & kInt64Flag\tdata_.f.flags & kInt64Flag", e.OriginalWhat());
     }
 #endif
   }
