@@ -2772,6 +2772,7 @@ TEST(TransactionalStorage, CQRSTest) {
     {
       const auto cqrs_response = HTTP(GET(base_url + "/api/query/list?test_current_exception"));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+#ifndef CURRENT_COVERAGE_REPORT_MODE
       // clang-format off
       EXPECT_EQ(
           current::strings::Printf(
@@ -2787,6 +2788,18 @@ TEST(TransactionalStorage, CQRSTest) {
             "}\n", CQRSQuery::DoThrowCurrentExceptionLine()),
           cqrs_response.body);
       // clang-format on
+#else
+      // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
+      auto response = ParseJSON<generic::RESTGenericResponse>(cqrs_response.body);
+      EXPECT_FALSE(response.success);
+      ASSERT_TRUE(Exists(response.error));
+      EXPECT_EQ("cqrs_user_error", Value(response.error).name);
+      EXPECT_EQ("Error in CQRS user code.", Value(response.error).message);
+      ASSERT_TRUE(Exists(Value(response.error).details));
+      EXPECT_EQ("CQRS test exception.", Value(Value(response.error).details)["error"]);
+      EXPECT_EQ(current::ToString(CQRSQuery::DoThrowCurrentExceptionLine()),
+                Value(Value(response.error).details)["line"]);
+#endif
     }
 
     {
@@ -2826,6 +2839,7 @@ TEST(TransactionalStorage, CQRSTest) {
     {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_current_exception", ""));
       EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+#ifndef CURRENT_COVERAGE_REPORT_MODE
       // clang-format off
       EXPECT_EQ(
           current::strings::Printf(
@@ -2841,6 +2855,18 @@ TEST(TransactionalStorage, CQRSTest) {
             "}\n", CQRSCommand::DoThrowCurrentExceptionLine()),
           cqrs_response.body);
       // clang-format on
+#else
+      // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
+      auto response = ParseJSON<generic::RESTGenericResponse>(cqrs_response.body);
+      EXPECT_FALSE(response.success);
+      ASSERT_TRUE(Exists(response.error));
+      EXPECT_EQ("cqrs_user_error", Value(response.error).name);
+      EXPECT_EQ("Error in CQRS user code.", Value(response.error).message);
+      ASSERT_TRUE(Exists(Value(response.error).details));
+      EXPECT_EQ("CQRS test exception.", Value(Value(response.error).details)["error"]);
+      EXPECT_EQ(current::ToString(CQRSCommand::DoThrowCurrentExceptionLine()),
+                Value(Value(response.error).details)["line"]);
+#endif
     }
     {
       const auto cqrs_response = HTTP(POST(base_url + "/api/command/add?test_simple_rollback", ""));
