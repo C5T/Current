@@ -199,7 +199,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                           },
                                           std::move(request)).Detach();
               } catch (const TypeSystemParseJSONException& e) {
-                request(handler.ErrorBadJSON(e.What()));
+                request(handler.ErrorBadJSON(e.OriginalWhat()));
               }
             });
       } else if (request.method == "PUT" && storage_role == StorageRole::Master) {
@@ -230,8 +230,8 @@ struct PerFieldRESTfulHandlerGenerator {
                                             return handler.Run(input);
                                           },
                                           std::move(request)).Detach();
-              } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
-                request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
+              } catch (const TypeSystemParseJSONException& e) {   // LCOV_EXCL_LINE
+                request(handler.ErrorBadJSON(e.OriginalWhat()));  // LCOV_EXCL_LINE
               }
             });
       } else if (request.method == "PATCH" && storage_role == StorageRole::Master) {
