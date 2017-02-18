@@ -37,8 +37,8 @@ namespace rest {
 // Top-level URL prefixes for Storage REST / CQ[R]S.
 const std::string kRESTfulDataURLComponent = "data";
 const std::string kRESTfulSchemaURLComponent = "schema";
-const std::string kRESTfulCQSCommandURLComponent = "command";
-const std::string kRESTfulCQSQueryURLComponent = "query";
+const std::string kRESTfulCQSCommandURLComponent = "cqs/command";
+const std::string kRESTfulCQSQueryURLComponent = "cqs/query";
 
 // Table `?export` mode, and its URL query parameters.
 const std::string kRESTfulExportURLQueryParameter = "export";
