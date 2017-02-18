@@ -400,10 +400,10 @@ class RESTfulStorage {
   using mutable_fields_t = MutableFields<STORAGE_IMPL>;
 
   // TODO(dkorolev): `unique_ptr` and move semantics. Move to `-std=c++14` maybe? :-)
-  using cqrs_universal_parser_t = std::function<std::shared_ptr<CurrentStruct>(Request&)>;
-  using cqrs_query_handler_t = std::function<Response(
+  using cqs_universal_parser_t = std::function<std::shared_ptr<CurrentStruct>(Request&)>;
+  using cqs_query_handler_t = std::function<Response(
       immutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
-  using cqrs_command_handler_t = std::function<Response(
+  using cqs_command_handler_t = std::function<Response(
       mutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
 
   RESTfulStorage(STORAGE_IMPL& storage,
@@ -458,11 +458,11 @@ class RESTfulStorage {
 
   template <class QUERY_IMPL>
   void AddCQSQuery(const std::string& query) {
-    std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
-    if (data_->cqrs_query_map_.count(query)) {
+    std::lock_guard<std::mutex> lock(data_->cqs_handlers_mutex_);
+    if (data_->cqs_query_map_.count(query)) {
       CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSQuery(), `" + query + "` is already registered."));
     }
-    data_->cqrs_query_map_[query] = std::make_pair(
+    data_->cqs_query_map_[query] = std::make_pair(
         [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQSRequest<QUERY_IMPL>(request); },
         [query](immutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_query, const std::string& url)
             -> Response {
@@ -475,20 +475,20 @@ class RESTfulStorage {
                 return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
                     .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
               } catch (const Exception& e) {
-                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               } catch (const std::exception& e) {
-                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               }
             });
   }
 
   template <class COMMAND_IMPL>
   void AddCQSCommand(const std::string& command) {
-    std::lock_guard<std::mutex> lock(data_->cqrs_handlers_mutex_);
-    if (data_->cqrs_command_map_.count(command)) {
+    std::lock_guard<std::mutex> lock(data_->cqs_handlers_mutex_);
+    if (data_->cqs_command_map_.count(command)) {
       CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSCommand(), `" + command + "` is already registered."));
     }
-    data_->cqrs_command_map_[command] = std::make_pair(
+    data_->cqs_command_map_[command] = std::make_pair(
         [](Request& request) -> std::shared_ptr<CurrentStruct> { return ParseCQSRequest<COMMAND_IMPL>(request); },
         [command](mutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_command, const std::string& url)
             -> Response {
@@ -504,9 +504,9 @@ class RESTfulStorage {
               } catch (const StorageRollbackException& e) {
                 return e.FormatAsHTTPResponse();
               } catch (const Exception& e) {
-                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               } catch (const std::exception& e) {
-                return Response(cqrs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
               }
             });
   }
@@ -531,9 +531,9 @@ class RESTfulStorage {
     HTTPRoutesScope handlers_scope_;
 
     std::atomic_bool up_status_;
-    mutable std::mutex cqrs_handlers_mutex_;
-    std::unordered_map<std::string, std::pair<cqrs_universal_parser_t, cqrs_query_handler_t>> cqrs_query_map_;
-    std::unordered_map<std::string, std::pair<cqrs_universal_parser_t, cqrs_command_handler_t>> cqrs_command_map_;
+    mutable std::mutex cqs_handlers_mutex_;
+    std::unordered_map<std::string, std::pair<cqs_universal_parser_t, cqs_query_handler_t>> cqs_query_map_;
+    std::unordered_map<std::string, std::pair<cqs_universal_parser_t, cqs_command_handler_t>> cqs_command_map_;
 
     Data(uint16_t port, const std::string& route_prefix) : port_(port), route_prefix_(route_prefix), up_status_(true) {}
   };
@@ -581,22 +581,22 @@ class RESTfulStorage {
       }
       return object;
     } catch (const TypeSystemParseJSONException& e) {
-      request(cqrs::CQSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
+      request(cqs::CQSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
       return nullptr;
     }
   }
   void RegisterCQSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
     const Data& data = *data_;
 
-    const auto cqrs_query_handler = [&data, &storage, restful_url_prefix](Request request) {
+    const auto cqs_query_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (request.url_path_args.empty()) {
-        request(Response(cqrs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+        request(Response(cqs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else if (request.method != "GET") {
         request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS queries must be GET-s."));
       } else {
-        std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
-        const auto cit = data.cqrs_query_map_.find(request.url_path_args[0]);
-        if (cit != data.cqrs_query_map_.end()) {
+        std::lock_guard<std::mutex> lock(data.cqs_handlers_mutex_);
+        const auto cit = data.cqs_query_map_.find(request.url_path_args[0]);
+        if (cit != data.cqs_query_map_.end()) {
           const auto& f_parse_query_body = cit->second.first;
           const auto& f_run_query = cit->second.second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
@@ -620,7 +620,7 @@ class RESTfulStorage {
                           });
           }
         } else {
-          request(Response(cqrs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
+          request(Response(cqs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
         }
       }
     };
@@ -628,19 +628,19 @@ class RESTfulStorage {
                              RESTfulRoute(kRESTfulCQSQueryURLComponent,
                                           "",
                                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                          cqrs_query_handler));
+                                          cqs_query_handler));
 
-    const auto cqrs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
+    const auto cqs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
       if (storage.GetRole() != StorageRole::Master) {
-        request(Response(cqrs::CQSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
+        request(Response(cqs::CQSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
       } else if (request.method != "POST" && request.method != "POST" && request.method != "PATCH") {
         request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS commands must be {POST|PUT}PATCH}-es."));
       } else if (request.url_path_args.empty()) {
-        request(Response(cqrs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+        request(Response(cqs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
       } else {
-        std::lock_guard<std::mutex> lock(data.cqrs_handlers_mutex_);
-        const auto cit = data.cqrs_command_map_.find(request.url_path_args[0]);
-        if (cit != data.cqrs_command_map_.end()) {
+        std::lock_guard<std::mutex> lock(data.cqs_handlers_mutex_);
+        const auto cit = data.cqs_command_map_.find(request.url_path_args[0]);
+        if (cit != data.cqs_command_map_.end()) {
           const auto& f_parse_command_body = cit->second.first;
           const auto& f_run_command = cit->second.second;
           auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
@@ -664,7 +664,7 @@ class RESTfulStorage {
                           });
           }
         } else {
-          request(Response(cqrs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
+          request(Response(cqs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
         }
       }
     };
@@ -672,7 +672,7 @@ class RESTfulStorage {
                              RESTfulRoute(kRESTfulCQSCommandURLComponent,
                                           "",
                                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                          cqrs_command_handler));
+                                          cqs_command_handler));
   }
   static void Serve503(Request r) {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);

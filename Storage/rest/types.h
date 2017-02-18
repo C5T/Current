@@ -286,7 +286,7 @@ using HypermediaRESTGenericResponse = hypermedia::HypermediaRESTGenericResponse;
 // Expose helper functions into `current::storage::rest` as well for now. #DIMA_FIXME
 using namespace helpers;
 
-namespace cqrs {
+namespace cqs {
 
 // clang-format off
 CURRENT_STRUCT(CQSHandlerNotSpecified, generic::RESTGenericResponse) {
@@ -304,7 +304,7 @@ CURRENT_STRUCT(CQSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
 
 CURRENT_STRUCT(CQSParseJSONException, generic::RESTGenericResponse) {
   CURRENT_CONSTRUCTOR(CQSParseJSONException)(const std::string& what) :
-      SUPER(false, "CQS command HTTP body JSON parse error.", generic::RESTError("cqrs_json_error", what)) {}
+      SUPER(false, "CQS command HTTP body JSON parse error.", generic::RESTError("cqs_json_error", what)) {}
 };
 
 CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {
@@ -330,13 +330,13 @@ CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
   }
 
   CURRENT_CONSTRUCTOR(CQSUserCodeError)(const current::Exception& e)
-      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQS user code.", DescribeException(e))) {}
+      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
 
   CURRENT_CONSTRUCTOR(CQSUserCodeError)(const std::exception& e)
-      : SUPER(false, generic::RESTError("cqrs_user_error", "Error in CQS user code.", DescribeException(e))) {}
+      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
 };
 
-}  // namespace cqrs
+}  // namespace cqs
 
 }  // namespace rest
 }  // namespace storage

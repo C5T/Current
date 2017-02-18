@@ -2714,54 +2714,54 @@ TEST(TransactionalStorage, CQSTest) {
 
   {
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query"));
-      EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not specified.\",\"error\":null}\n", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query"));
+      EXPECT_EQ(404, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not specified.\",\"error\":null}\n", cqs_response.body);
     }
 
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
-      EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not found.\",\"error\":null}\n", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
+      EXPECT_EQ(404, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not found.\",\"error\":null}\n", cqs_response.body);
     }
 
     storage_http_interface.template AddCQSQuery<CQSQuery>("list");
 
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = DK,MZ", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,MZ", cqs_response.body);
     }
     {
       const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("grisha", "GN")));
       EXPECT_EQ(201, static_cast<int>(post_response.code));
     }
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list?reverse_sort=false"));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?reverse_sort=false"));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ", cqs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list?reverse_sort=true"));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?reverse_sort=true"));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = MZ,GN,DK", cqs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_native_exception"));
-      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_native_exception"));
+      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
       EXPECT_EQ(
-          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQS "
+          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqs_user_error\",\"message\":\"Error in CQS "
           "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
-          cqrs_response.body);
+          cqs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_current_exception"));
-      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_current_exception"));
+      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
 #ifndef CURRENT_COVERAGE_REPORT_MODE
       // LOL at this `clang-format` off and on formtting. -- D.K.
       // clang-format off
@@ -2771,20 +2771,20 @@ TEST(TransactionalStorage, CQSTest) {
             "\"success\":false,"
             "\"message\":null,"
             "\"error\":{"
-            "\"name\":\"cqrs_user_error\","
+            "\"name\":\"cqs_user_error\","
             "\"message\":\"Error in CQS user code.\","
             "\"details\":{\"error\":\"CQS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
             "}"
             "}"
             "}\n", CQSQuery::DoThrowCurrentExceptionLine()),
-          cqrs_response.body);
+          cqs_response.body);
 // clang-format on
 #else
       // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
-      auto response = ParseJSON<generic::RESTGenericResponse>(cqrs_response.body);
+      auto response = ParseJSON<generic::RESTGenericResponse>(cqs_response.body);
       EXPECT_FALSE(response.success);
       ASSERT_TRUE(Exists(response.error));
-      EXPECT_EQ("cqrs_user_error", Value(response.error).name);
+      EXPECT_EQ("cqs_user_error", Value(response.error).name);
       EXPECT_EQ("Error in CQS user code.", Value(response.error).message);
       ASSERT_TRUE(Exists(Value(response.error).details));
       EXPECT_EQ("CQS test exception.", Value(Value(response.error).details)["error"]);
@@ -2793,8 +2793,8 @@ TEST(TransactionalStorage, CQSTest) {
 #endif
 
       {
-        const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/query/list", "<irrelevant POST body>"));
-        EXPECT_EQ(405, static_cast<int>(cqrs_response.code));
+        const auto cqs_response = HTTP(POST(base_url + "/api/cqs/query/list", "<irrelevant POST body>"));
+        EXPECT_EQ(405, static_cast<int>(cqs_response.code));
         EXPECT_EQ(
             "{\"success\":false,"
             "\"message\":null,"
@@ -2802,7 +2802,7 @@ TEST(TransactionalStorage, CQSTest) {
             "\"name\":\"MethodNotAllowed\","
             "\"message\":\"CQS queries must be GET-s.\","
             "\"details\":{\"requested_method\":\"POST\"}}}\n",
-            cqrs_response.body);
+            cqs_response.body);
       }
 
       // Duplicate query registration is not allowed.
@@ -2815,42 +2815,42 @@ TEST(TransactionalStorage, CQSTest) {
     }
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command", CQSCommand()));
-      EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not specified.\",\"error\":null}\n", cqrs_response.body);
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command", CQSCommand()));
+      EXPECT_EQ(404, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not specified.\",\"error\":null}\n", cqs_response.body);
     }
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add", CQSCommand()));
-      EXPECT_EQ(404, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not found.\",\"error\":null}\n", cqrs_response.body);
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add", CQSCommand()));
+      EXPECT_EQ(404, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS handler not found.\",\"error\":null}\n", cqs_response.body);
     }
 
     storage_http_interface.template AddCQSCommand<CQSCommand>("add");
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add", CQSCommand({"alice", "bob"})));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"url\":\"http://unittest.current.ai\",\"before\":3,\"after\":5}\n", cqrs_response.body);
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add", CQSCommand({"alice", "bob"})));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"url\":\"http://unittest.current.ai\",\"before\":3,\"after\":5}\n", cqs_response.body);
     }
 
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ,alice,bob", cqrs_response.body);
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ,alice,bob", cqs_response.body);
     }
 
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_native_exception", ""));
-      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_native_exception", ""));
+      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
       EXPECT_EQ(
-          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqrs_user_error\",\"message\":\"Error in CQS "
+          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqs_user_error\",\"message\":\"Error in CQS "
           "user code.\",\"details\":{\"error\":\"map::at\"}}}\n",
-          cqrs_response.body);
+          cqs_response.body);
     }
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_current_exception", ""));
-      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_current_exception", ""));
+      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
 #ifndef CURRENT_COVERAGE_REPORT_MODE
       // LOL at this `clang-format` off and on formtting. -- D.K.
       // clang-format off
@@ -2860,20 +2860,20 @@ TEST(TransactionalStorage, CQSTest) {
             "\"success\":false,"
             "\"message\":null,"
             "\"error\":{"
-            "\"name\":\"cqrs_user_error\","
+            "\"name\":\"cqs_user_error\","
             "\"message\":\"Error in CQS user code.\","
             "\"details\":{\"error\":\"CQS test exception.\",\"file\":\"test.cc\",\"line\":\"%d\""
             "}"
             "}"
             "}\n", CQSCommand::DoThrowCurrentExceptionLine()),
-          cqrs_response.body);
+          cqs_response.body);
 // clang-format on
 #else
       // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
-      auto response = ParseJSON<generic::RESTGenericResponse>(cqrs_response.body);
+      auto response = ParseJSON<generic::RESTGenericResponse>(cqs_response.body);
       EXPECT_FALSE(response.success);
       ASSERT_TRUE(Exists(response.error));
-      EXPECT_EQ("cqrs_user_error", Value(response.error).name);
+      EXPECT_EQ("cqs_user_error", Value(response.error).name);
       EXPECT_EQ("Error in CQS user code.", Value(response.error).message);
       ASSERT_TRUE(Exists(Value(response.error).details));
       EXPECT_EQ("CQS test exception.", Value(Value(response.error).details)["error"]);
@@ -2882,35 +2882,35 @@ TEST(TransactionalStorage, CQSTest) {
 #endif
     }
     {
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_simple_rollback", ""));
-      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQS command rolled back.\"}\n", cqrs_response.body);
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_simple_rollback", ""));
+      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"success\":false,\"message\":\"CQS command rolled back.\"}\n", cqs_response.body);
     }
     {
       CQSCommand command({"this", "shall", "not", "pass"});
       command.test_rollback_with_value = true;
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
-      EXPECT_EQ(400, static_cast<int>(cqrs_response.code));
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
+      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
       // clang-format off
       EXPECT_EQ(
           "{"
           "\"success\":false,"
           "\"message\":\"CQS command rolled back.\","
           "\"data\":{\"rolled_back\":true,\"command\":[\"this\",\"shall\",\"not\",\"pass\"]}}\n",
-          cqrs_response.body);
+          cqs_response.body);
       // clang-format on
     }
     {
       CQSCommand command({"this", "shall", "not", "pass"});
       command.test_rollback_with_response = true;
-      const auto cqrs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
-      EXPECT_EQ(200, static_cast<int>(cqrs_response.code));
-      EXPECT_EQ("HA!", cqrs_response.body);
+      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("HA!", cqs_response.body);
     }
 
     {
-      const auto cqrs_response = HTTP(GET(base_url + "/api/cqs/command/add"));
-      EXPECT_EQ(405, static_cast<int>(cqrs_response.code));
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/command/add"));
+      EXPECT_EQ(405, static_cast<int>(cqs_response.code));
       EXPECT_EQ(
           "{\"success\":false,"
           "\"message\":null,"
@@ -2918,7 +2918,7 @@ TEST(TransactionalStorage, CQSTest) {
           "\"name\":\"MethodNotAllowed\","
           "\"message\":\"CQS commands must be {POST|PUT}PATCH}-es.\","
           "\"details\":{\"requested_method\":\"GET\"}}}\n",
-          cqrs_response.body);
+          cqs_response.body);
     }
 
     // Duplicate command registration is not allowed.
