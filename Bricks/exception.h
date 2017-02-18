@@ -47,24 +47,28 @@ class Exception : public std::exception {
   virtual const char* what() const noexcept override { return what_.c_str(); }
   // LCOV_EXCL_STOP
 
-  virtual const std::string& What() const noexcept { return what_; }
+  virtual std::string What() const noexcept {
+    return caller_ + '\t' + strings::Printf("%s:%d", file_, line_) + '\t' + original_what_;
+  }
   const std::string& OriginalWhat() const noexcept { return original_what_; }
   const char* File() const noexcept { return file_; }
   int Line() const noexcept { return line_; }
-
-  void SetCaller(const std::string& caller) { what_ = caller + '\t' + what_; }
+  const std::string& Caller() const noexcept { return caller_; }
 
   void SetOrigin(const char* file, int line) {
     file_ = file;
     line_ = line;
-    what_ = strings::Printf("%s:%d\t", file, line) + original_what_;
+    what_ = original_what_;
   }
+
+  void SetCaller(const std::string& caller) { caller_ = caller; }
 
  private:
   std::string what_;
   std::string original_what_;
   const char* file_ = nullptr;
   int line_ = 0;
+  std::string caller_;
 };
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.
