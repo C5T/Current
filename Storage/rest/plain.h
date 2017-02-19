@@ -299,6 +299,20 @@ struct Plain {
     void Enter(Request request, F&& next) {
       next(std::move(request));
     }
+    Response RunQuery(
+        std::function<Response(ImmutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const std::string&)> f,
+        ImmutableFields<STORAGE> fields,
+        std::shared_ptr<CurrentStruct> type_erased_query,
+        const std::string& restful_url_prefix) const {
+      return f(fields, std::move(type_erased_query), restful_url_prefix);
+    }
+    Response RunCommand(
+        std::function<Response(MutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const std::string&)> f,
+        MutableFields<STORAGE> fields,
+        std::shared_ptr<CurrentStruct> type_erased_command,
+        const std::string& restful_url_prefix) const {
+      return f(fields, std::move(type_erased_command), restful_url_prefix);
+    }
   };
 
   // LCOV_EXCL_START

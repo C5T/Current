@@ -230,8 +230,8 @@ struct PerFieldRESTfulHandlerGenerator {
                                             return handler.Run(input);
                                           },
                                           std::move(request)).Detach();
-              } catch (const TypeSystemParseJSONException& e) {   // LCOV_EXCL_LINE
-                request(handler.ErrorBadJSON(e.What()));          // LCOV_EXCL_LINE
+              } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
+                request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
               }
             });
       } else if (request.method == "PATCH" && storage_role == StorageRole::Master) {
@@ -623,8 +623,10 @@ class RESTfulStorage {
                                         // Capture local variables by value for safe async transactions.
                                         [&storage, &f_run_query, handler, generic_input, type_erased_query](
                                             immutable_fields_t fields) -> Response {
-                                          return f_run_query(
-                                              fields, std::move(type_erased_query), generic_input.restful_url_prefix);
+                                          return handler.RunQuery(f_run_query,
+                                                                  fields,
+                                                                  std::move(type_erased_query),
+                                                                  generic_input.restful_url_prefix);
                                         },
                                         std::move(request)).Detach();
                           });
@@ -667,8 +669,10 @@ class RESTfulStorage {
                                         // Capture local variables by value for safe async transactions.
                                         [&storage, &f_run_command, handler, generic_input, type_erased_command](
                                             mutable_fields_t fields) -> Response {
-                                          return f_run_command(
-                                              fields, std::move(type_erased_command), generic_input.restful_url_prefix);
+                                          return handler.RunCommand(f_run_command,
+                                                                    fields,
+                                                                    std::move(type_erased_command),
+                                                                    generic_input.restful_url_prefix);
                                         },
                                         std::move(request)).Detach();
                           });
