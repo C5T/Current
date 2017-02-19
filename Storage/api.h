@@ -614,16 +614,19 @@ class RESTfulStorage {
           CQSHandlerImpl handler;
           std::shared_ptr<CurrentStruct> type_erased_query = f_parse_query_body(request);
           if (type_erased_query) {
+            typename CQSHandlerImpl::Context context;
             handler.Enter(std::move(request),
+                          context,
                           // Capture by reference since this lambda is run synchronously.
-                          [&handler, &f_run_query, &generic_input, &type_erased_query](Request request) {
+                          [&handler, &f_run_query, &generic_input, &type_erased_query, &context](Request request) {
                             const STORAGE_IMPL& storage = generic_input.storage;
                             storage.ReadOnlyTransaction(
                                         // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                                         // Capture local variables by value for safe async transactions.
-                                        [&storage, &f_run_query, handler, generic_input, type_erased_query](
+                                        [&storage, &f_run_query, handler, generic_input, type_erased_query, context](
                                             immutable_fields_t fields) -> Response {
-                                          return handler.RunQuery(f_run_query,
+                                          return handler.RunQuery(context,
+                                                                  f_run_query,
                                                                   fields,
                                                                   std::move(type_erased_query),
                                                                   generic_input.restful_url_prefix);
@@ -660,16 +663,19 @@ class RESTfulStorage {
           CQSHandlerImpl handler;
           std::shared_ptr<CurrentStruct> type_erased_command = f_parse_command_body(request);
           if (type_erased_command) {
+            typename CQSHandlerImpl::Context ctx;
             handler.Enter(std::move(request),
+                          ctx,
                           // Capture by reference since this lambda is run synchronously.
-                          [&handler, &f_run_command, &generic_input, &type_erased_command](Request request) {
+                          [&handler, &f_run_command, &generic_input, &type_erased_command, &ctx](Request request) {
                             STORAGE_IMPL& storage = generic_input.storage;
                             storage.ReadWriteTransaction(
                                         // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                                         // Capture local variables by value for safe async transactions.
-                                        [&storage, &f_run_command, handler, generic_input, type_erased_command](
+                                        [&storage, &f_run_command, handler, generic_input, type_erased_command, ctx](
                                             mutable_fields_t fields) -> Response {
-                                          return handler.RunCommand(f_run_command,
+                                          return handler.RunCommand(ctx,
+                                                                    f_run_command,
                                                                     fields,
                                                                     std::move(type_erased_command),
                                                                     generic_input.restful_url_prefix);
