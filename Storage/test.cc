@@ -3233,9 +3233,8 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     {
       size_t user_size = 0u;
       do {
-        const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) -> uint64_t {
-          // NOTE(dkorolev): Testing the hypothesis `size_t` from `Size()` can't be JSON-ified on Mac.
-          return static_cast<uint64_t>(fields.user.Size());
+        const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+          return fields.user.Size();
         }).Go();
         EXPECT_TRUE(WasCommitted(result));
         user_size = Value(result);

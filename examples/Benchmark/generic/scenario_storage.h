@@ -124,6 +124,9 @@ SCENARIO(storage, "Storage transactions test.") {
       CURRENT_ASSERT(false);
     }
 
+    // Note: `pair<size_t, size_t>` would not be JSON-serializable in Current, it must be
+    // the `pair<uint64_t, uint64_t>` instead. Yes, I've fixed `CURRENT_STRUCT`'s `size_t` type
+    // to implicitly become `uint64_t`, but did not touch STL types. -- D.K.
     const auto pair = Value(db.ReadWriteTransaction([](MutableFields<storage_t> fields) {
       for (uint32_t i = 0; i < FLAGS_storage_initial_size; ++i) {
         fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
