@@ -61,7 +61,7 @@ class Exception : public std::exception {
   }
   // LCOV_EXCL_STOP
 
-  const std::string& OriginalWhat() const noexcept { return what_; }
+  const std::string& What() const noexcept { return what_; }
   const char* File() const noexcept { return file_; }
   int Line() const noexcept { return line_; }
   const std::string& Caller() const noexcept { return caller_; }
