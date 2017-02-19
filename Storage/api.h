@@ -429,7 +429,10 @@ class RESTfulStorage {
 
     std::set<std::string> fields_set;
     for (const auto& handler : data_->handlers_) {
-      fields_set.insert(handler.first);
+      if (!handler.first.empty()) {
+        // TODO(dkorolev): This is a hack, to make sure RESTful storage doesn't enumerage CQS routes in `/data/`.
+        fields_set.insert(handler.first);
+      }
     }
     RESTfulRegisterTopLevelInput<STORAGE_IMPL> input(storage,
                                                      restful_url_prefix,
