@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
         return 1;
       }
     } catch (const current::Exception& e) {
-      std::cerr << "Failed: " << e.What() << std::endl;
+      std::cerr << "Failed: " << e.DetailedDescription() << std::endl;
       return -1;
     }
   }

@@ -60,8 +60,8 @@ static void ExpectToReceive(const std::string& golden, Connection& connection) {
   try {
     ASSERT_EQ(golden.length(), connection.BlockingRead(&response[0], golden.length(), Connection::FillFullBuffer));
     EXPECT_EQ(golden, std::string(response.begin(), response.end()));
-  } catch (const SocketException& e) {  // LCOV_EXCL_LINE
-    ASSERT_TRUE(false) << e.What();     // LCOV_EXCL_LINE
+  } catch (const SocketException& e) {                 // LCOV_EXCL_LINE
+    ASSERT_TRUE(false) << e.DetailedDescription();     // LCOV_EXCL_LINE
   }
 }
 

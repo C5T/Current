@@ -714,7 +714,7 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
         try {
           mmpq_.Publish(std::move(x), t);
         } catch (const ss::InconsistentTimestampException& e) {
-          current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.What());
+          current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.DetailedDescription());
           waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotQuitePublished(); });
         }
       }
@@ -724,7 +724,7 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
         try {
           mmpq_.PublishIntoTheFuture(std::move(x), t);
         } catch (const ss::InconsistentTimestampException& e) {
-          current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.What());
+          current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.DetailedDescription());
           waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotQuitePublished(); });
         }
       }
@@ -733,7 +733,7 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
         try {
           mmpq_.UpdateHead(t);
         } catch (const ss::InconsistentTimestampException& e) {
-          current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.What());
+          current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.DetailedDescription());
         }
       }
 

@@ -43,11 +43,14 @@ class Exception : public std::exception {
     what_ = what;
   }
 
+  virtual std::string DetailedDescription() const noexcept {
+    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + what_;
+  }
   // LCOV_EXCL_START
   virtual const char* what() const noexcept override {
     constexpr size_t MAX_LENGTH = 1024 * 10;
     static char data[MAX_LENGTH + 1];
-    const std::string message = What();
+    const std::string message = DetailedDescription();
     if (message.length() < MAX_LENGTH) {
       std::strcpy(data, message.data());
     } else {
@@ -58,9 +61,6 @@ class Exception : public std::exception {
   }
   // LCOV_EXCL_STOP
 
-  virtual std::string What() const noexcept {
-    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + what_;
-  }
   const std::string& OriginalWhat() const noexcept { return what_; }
   const char* File() const noexcept { return file_; }
   int Line() const noexcept { return line_; }

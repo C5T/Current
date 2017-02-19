@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
   }
 
   try {
-    const current::integrations::adwords::conversion_tracking::AdWordsMobileConversionEventsSender sender(
-        params, FLAGS_port);
+    const current::integrations::adwords::conversion_tracking::AdWordsMobileConversionEventsSender sender(params,
+                                                                                                          FLAGS_port);
     if (!FLAGS_rdid.empty()) {
       if (sender.SendConversionEvent(FLAGS_rdid)) {
         return 0;
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
       return 1;
     }
   } catch (const current::Exception& e) {
-    std::cerr << "Failed: " << e.What() << std::endl;
+    std::cerr << "Failed: " << e.DetailedDescription() << std::endl;
     return -1;
   }
 }

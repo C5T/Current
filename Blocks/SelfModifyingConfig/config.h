@@ -87,7 +87,7 @@ class SelfModifyingConfig final : public SelfModifyingConfigHelper {
       const std::string what = "File doesn't contain a valid JSON: '" + contents + "'";
       CURRENT_THROW(SelfModifyingConfigParseJSONException(what));
     } catch (const current::serialization::json::TypeSystemParseJSONException& json_exception) {
-      const std::string what = "Unable to parse JSON: " + json_exception.What();
+      const std::string what = "Unable to parse JSON: " + json_exception.DetailedDescription();
       CURRENT_THROW(SelfModifyingConfigParseJSONException(what));
     }
   }

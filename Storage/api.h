@@ -585,10 +585,10 @@ class RESTfulStorage {
       }
       return object;
     } catch (const TypeSystemParseJSONException& e) {
-      request(cqs::CQSParseJSONException(e.What()), HTTPResponseCode.BadRequest);
+      request(cqs::CQSParseJSONException(e.DetailedDescription()), HTTPResponseCode.BadRequest);
       return nullptr;
     } catch (const url::URLParseObjectAsURLParameterException& e) {
-      request(cqs::CQSParseURLException(e.What()), HTTPResponseCode.BadRequest);
+      request(cqs::CQSParseURLException(e.DetailedDescription()), HTTPResponseCode.BadRequest);
       return nullptr;
     }
   }
