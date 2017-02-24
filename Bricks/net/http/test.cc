@@ -53,6 +53,7 @@ using current::net::GetFileMimeType;
 using current::net::DefaultInternalServerErrorMessage;
 using current::net::SocketException;
 using current::net::ConnectionResetByPeer;
+using current::net::ChunkSizeNotAValidHEXValue;
 using current::net::AttemptedToSendHTTPResponseMoreThanOnce;
 
 static void ExpectToReceive(const std::string& golden, Connection& connection) {
@@ -389,6 +390,36 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
                       body,
                   connection);
   t.join();
+}
+
+TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
+  std::atomic_bool wrong_chunk_size_exception_thrown(false);
+  thread t([&wrong_chunk_size_exception_thrown](Socket s) {
+    try {
+      HTTPServerConnection c(s.Accept());
+    } catch (const ChunkSizeNotAValidHEXValue&) {
+      wrong_chunk_size_exception_thrown = true;
+    }
+  }, Socket(FLAGS_net_http_test_port));
+
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+
+  // Chunk size should be hexadecimal, but `GG` sure is not.
+  connection.BlockingWrite("GG\r\n", true);
+  
+  // This part is, in fact, redundant.
+  connection.BlockingWrite("buffalo buffalo buffalo buffalo buffalo\r\n", true);
+  connection.BlockingWrite("0\r\n", false);
+
+  // Wait for the server thread to attempt to accept the connection and fail.
+  t.join();
+
+  // Confirm the server did throw an exception attempting to accept the connection.
+  ASSERT_TRUE(wrong_chunk_size_exception_thrown);
 }
 
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
