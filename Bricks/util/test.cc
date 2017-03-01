@@ -519,39 +519,90 @@ TEST(Util, LazyInstantiation) {
 TEST(Util, GenericMapAccessor) {
   using map1_t = std::map<int, std::string>;
   map1_t map1;
-  const auto accessor1 = current::GenericMapAccessor<map1_t>(map1);
+
+  using accessor1_t = current::GenericMapAccessor<map1_t>;
+  const auto accessor1 = accessor1_t(map1);
   EXPECT_TRUE(accessor1.Empty());
   EXPECT_EQ(0u, accessor1.Size());
   EXPECT_TRUE(accessor1.begin() == accessor1.end());
+  EXPECT_TRUE(accessor1.rbegin() == accessor1.rend());
+  EXPECT_EQ(0, std::distance(accessor1.begin(), accessor1.end()));
+  EXPECT_EQ(0, std::distance(accessor1.rbegin(), accessor1.rend()));
   for (char c = 'a'; c <= 'z'; ++c) {
     map1[c - 'a'] = c;
   }
   EXPECT_FALSE(accessor1.Empty());
   EXPECT_EQ(26u, accessor1.Size());
   EXPECT_FALSE(accessor1.begin() == accessor1.end());
-  std::string str1;
+  EXPECT_FALSE(accessor1.rbegin() == accessor1.rend());
+  EXPECT_EQ(26, std::distance(accessor1.begin(), accessor1.end()));
+  EXPECT_EQ(26, std::distance(accessor1.rbegin(), accessor1.rend()));
+  // Test forward iterators.
+  std::string forward_str1;
   for (const auto& element : accessor1) {
-    str1 += element;
+    forward_str1 += element;
   }
-  EXPECT_EQ("abcdefghijklmnopqrstuvwxyz", str1);
+  EXPECT_EQ("abcdefghijklmnopqrstuvwxyz", forward_str1);
+  // Test reverse iterators.
+  std::string reverse_str1;
+  for (auto cit = accessor1.rbegin(); cit != accessor1.rend(); ++cit) {
+    reverse_str1 += *cit;
+  }
+  EXPECT_EQ("zyxwvutsrqponmlkjihgfedcba", reverse_str1);
+  // Test `{Upper/Lower}Bound`.
+  EXPECT_EQ(25, accessor1.UpperBound(24).key());
+  EXPECT_EQ("z", *accessor1.UpperBound(24));
+  EXPECT_TRUE(accessor1.UpperBound(25) == accessor1.end());
+  EXPECT_EQ(1, accessor1.LowerBound(1).key());
+  EXPECT_EQ("b", *accessor1.LowerBound(1));
+  EXPECT_TRUE(accessor1.LowerBound(0) == accessor1.begin());
+  // Test construction of reverse iterator from forward iterator.
+  using rit1_t = typename accessor1_t::reverse_iterator_t;
+  EXPECT_TRUE(rit1_t(accessor1.end()) == accessor1.rbegin());
+  EXPECT_TRUE(rit1_t(accessor1.begin()) == accessor1.rend());
 
   using map2_t = std::map<int, std::unique_ptr<char>>;
   map2_t map2;
-  const auto accessor2 = current::GenericMapAccessor<map2_t>(map2);
+  using accessor2_t = current::GenericMapAccessor<map2_t>;
+  const auto accessor2 = accessor2_t(map2);
   EXPECT_TRUE(accessor2.Empty());
   EXPECT_EQ(0u, accessor2.Size());
   EXPECT_TRUE(accessor2.begin() == accessor2.end());
+  EXPECT_TRUE(accessor2.rbegin() == accessor2.rend());
+  EXPECT_EQ(0, std::distance(accessor2.begin(), accessor2.end()));
+  EXPECT_EQ(0, std::distance(accessor2.rbegin(), accessor2.rend()));
   for (auto it = accessor1.begin(), eit = accessor1.end(); it != eit; ++it) {
     map2[it.key()] = std::make_unique<char>((*it)[0] - 'a' + 'A');
   }
   EXPECT_FALSE(accessor2.Empty());
   EXPECT_EQ(26u, accessor2.Size());
   EXPECT_FALSE(accessor2.begin() == accessor2.end());
-  std::string str2;
+  EXPECT_FALSE(accessor2.rbegin() == accessor2.rend());
+  EXPECT_EQ(26, std::distance(accessor2.begin(), accessor2.end()));
+  EXPECT_EQ(26, std::distance(accessor2.rbegin(), accessor2.rend()));
+  // Test forward iterators.
+  std::string forward_str2;
   for (const auto& element : accessor2) {
-    str2 += element;
+    forward_str2 += element;
   }
-  EXPECT_EQ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", str2);
+  EXPECT_EQ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", forward_str2);
+  // Test reverse iterators.
+  std::string reverse_str2;
+  for (auto cit = accessor2.rbegin(); cit != accessor2.rend(); ++cit) {
+    reverse_str2 += *cit;
+  }
+  EXPECT_EQ("ZYXWVUTSRQPONMLKJIHGFEDCBA", reverse_str2);
+  // Test `{Upper/Lower}Bound`.
+  EXPECT_EQ(25, accessor2.UpperBound(24).key());
+  EXPECT_EQ('Z', *accessor2.UpperBound(24));
+  EXPECT_TRUE(accessor2.UpperBound(25) == accessor2.end());
+  EXPECT_EQ(1, accessor2.LowerBound(1).key());
+  EXPECT_EQ('B', *accessor2.LowerBound(1));
+  EXPECT_TRUE(accessor2.LowerBound(0) == accessor2.begin());
+  // Test construction of reverse iterator from forward iterator.
+  using rit2_t = typename accessor2_t::reverse_iterator_t;
+  EXPECT_TRUE(rit2_t(accessor2.end()) == accessor2.rbegin());
+  EXPECT_TRUE(rit2_t(accessor2.begin()) == accessor2.rend());
 }
 
 TEST(AccumulativeScopedDeleter, Smoke) {

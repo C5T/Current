@@ -154,7 +154,7 @@ class FilePersister {
                                const ss::StreamNamespaceName& namespace_name,
                                const std::string& filename)
         : filename(filename),
-          appender(filename, std::ofstream::app),
+          appender(filename, std::ofstream::app | std::ofstream::ate),
           head_rewriter(filename, std::ofstream::in | std::ofstream::out),
           mutex_ref(mutex_ref),
           head_offset(0) {

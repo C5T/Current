@@ -327,8 +327,10 @@ class HTTPServerPOSIX final {
                                        HTTPResponseCode.NotFound,
                                        current::net::constants::kDefaultHTMLContentType);
         }
+      } catch (const current::net::ChunkSizeNotAValidHEXValue&) {
+        // The `ChunkSizeNotAValidHEXValue` situation, if emerged, is already handled with a "400 BAD REQUEST" response.
       } catch (const current::net::HTTPPayloadTooLarge&) {
-        // The `HTTPPayloadTooLarge` situation, if emerged, is already handled with an "413 ENTITY TOO LARGE" response.
+        // The `HTTPPayloadTooLarge` situation, if emerged, is already handled with a "413 ENTITY TOO LARGE" response.
       } catch (const current::net::EmptySocketException&) {  // LCOV_EXCL_LINE
         // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
