@@ -440,6 +440,15 @@ struct call_foo_bar_by_rvalue_reference {
   RTTIDynamicCall<TypeList<A, B>>(std::move(a), foo_bar);
   EXPECT_EQ("mutable a=101", foo_bar.os.str());
 }
+{
+  call_foo_bar foo_bar_1;
+  call_foo_bar_by_rvalue_reference foo_bar_2;
+  B b;
+  RTTIDynamicCall<TypeList<A, B>>(b, foo_bar_1);
+  RTTIDynamicCall<TypeList<A, B>>(std::move(b), foo_bar_2);
+  EXPECT_EQ("mutable b=201", foo_bar_1.os.str());
+  EXPECT_EQ("mutable b=202", foo_bar_2.os.str());
+}
 ```
 ## Command Line Parsing: `dflags`
 

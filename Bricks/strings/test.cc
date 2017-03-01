@@ -162,10 +162,17 @@ TEST(Util, FromString) {
   EXPECT_EQ("one two", current::FromString<std::string>("one two"));
   EXPECT_EQ("three four", current::FromString<std::string>(std::string("three four")));
 
-  EXPECT_TRUE(current::FromString<bool>("true"));
   EXPECT_TRUE(current::FromString<bool>("1"));
-  EXPECT_FALSE(current::FromString<bool>("false"));
+  EXPECT_TRUE(current::FromString<bool>("true"));
+  EXPECT_TRUE(current::FromString<bool>("True"));
+  EXPECT_TRUE(current::FromString<bool>("TRUE"));
   EXPECT_FALSE(current::FromString<bool>("0"));
+  EXPECT_FALSE(current::FromString<bool>("false"));
+  EXPECT_FALSE(current::FromString<bool>("False"));
+  EXPECT_FALSE(current::FromString<bool>("FALSE"));
+
+  // Anything but `0`, `false`, `False`, or `FALSE` is treated as true.
+  EXPECT_TRUE(current::FromString<bool>("whatever"));
 
   EXPECT_EQ(100042ll, current::FromString<std::chrono::milliseconds>("100042").count());
   EXPECT_EQ(100000042ll, current::FromString<std::chrono::microseconds>("100000042").count());

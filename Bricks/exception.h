@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include <exception>
 #include <string>
+#include <cstring>
 
 #include "strings/printf.h"
 
@@ -38,20 +39,45 @@ class Exception : public std::exception {
   Exception(const std::string& what) : what_(what) {}
   virtual ~Exception() = default;
 
-  void SetWhat(const std::string& what) { what_ = what; }
+  void SetWhat(const std::string& what) {
+    what_ = what;
+  }
 
+  virtual std::string DetailedDescription() const noexcept {
+    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + what_;
+  }
   // LCOV_EXCL_START
-  virtual const char* what() const noexcept override { return what_.c_str(); }
+  virtual const char* what() const noexcept override {
+    constexpr size_t MAX_LENGTH = 1024 * 10;
+    static char data[MAX_LENGTH + 1];
+    const std::string message = DetailedDescription();
+    if (message.length() < MAX_LENGTH) {
+      std::strcpy(data, message.data());
+    } else {
+      std::copy(message.begin(), message.begin() + MAX_LENGTH, data);
+      data[MAX_LENGTH] = '\0';
+    }
+    return data;
+  }
   // LCOV_EXCL_STOP
 
-  virtual const std::string& What() const noexcept { return what_; }
+  const std::string& What() const noexcept { return what_; }
+  const char* File() const noexcept { return file_; }
+  int Line() const noexcept { return line_; }
+  const std::string& Caller() const noexcept { return caller_; }
 
-  void SetCaller(const std::string& caller) { what_ = caller + '\t' + what_; }
+  void SetOrigin(const char* file, int line) {
+    file_ = file;
+    line_ = line;
+  }
 
-  void SetOrigin(const char* file, int line) { what_ = strings::Printf("%s:%d\t", file, line) + what_; }
+  void SetCaller(const std::string& caller) { caller_ = caller; }
 
  private:
   std::string what_;
+  const char* file_ = nullptr;
+  int line_ = 0;
+  std::string caller_;
 };
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.

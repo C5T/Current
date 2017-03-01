@@ -134,7 +134,7 @@ inline int run(int& argc, char**& argv) {
     try {
       ParseJSON(FLAGS_matrix, A);
     } catch (const current::Exception& e) {
-      std::cerr << "Exception: " << e.What() << std::endl;
+      std::cerr << "Exception: " << e.DetailedDescription() << std::endl;
       return -1;
     }
     if (A.empty()) {

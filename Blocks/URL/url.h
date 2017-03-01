@@ -36,6 +36,11 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
+#include "exceptions.h"
+
+#include "../../TypeSystem/Reflection/reflection.h"
+#include "../../TypeSystem/Serialization/json.h"
+
 #include "../../Bricks/exception.h"
 
 #include "../../Bricks/strings/printf.h"
@@ -55,6 +60,9 @@ struct EmptyURLException : current::Exception {};
 // * port    (defaults to the default port for supported schemes, zero/unset for unknown ones.)
 //
 // When handling redirects, the previous URL can be provided to properly handle host/port/scheme.
+
+// For `URL::FillObject<T, MODE = Forgiving>(...)`.
+enum class FillObjectMode : bool { Forgiving = false, Strict = true };
 
 namespace impl {
 
@@ -254,6 +262,81 @@ struct URLParametersExtractor {
     }
     const std::map<std::string, std::string>& AsImmutableMap() const { return parameters_; }
     std::map<std::string, std::string> parameters_;
+
+    // NOTE: `FillObject` only populates the fields present in the URL; it doesn't erase what's not in the querystring.
+    template <typename T, FillObjectMode MODE = FillObjectMode::Forgiving>
+    const T& FillObject(T& object) const {
+      QueryParametersObjectFiller<T, MODE> parser{parameters_};
+      current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
+      return object;
+    }
+
+    template <typename T, FillObjectMode MODE = FillObjectMode::Forgiving>
+    T FillObject() const {
+      T object;
+      FillObject<T, MODE>(object);
+      return object;
+    }
+
+   private:
+    template <typename TOP_LEVEL_T, FillObjectMode MODE>
+    struct QueryParametersObjectFiller {
+      const std::map<std::string, std::string>& q;
+
+      // The `std::string` is a special case, as no quotes are expected.
+      void operator()(const std::string& key, std::string& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          value = cit->second;
+        } else if (MODE == FillObjectMode::Strict) {
+          CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, "missing value"));
+        }
+      }
+
+      // The `bool` is a special case as well, as a) just `?b` should set `b` to true,
+      // and b) Current supports 0/1, false/true, False/True, and FALSE/TRUE.
+      void operator()(const std::string& key, bool& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          if (cit->second.empty()) {
+            value = true;  // Just `?b` sets `b` to true.
+          } else if (MODE == FillObjectMode::Forgiving) {
+            current::FromString(cit->second, value);
+          } else {
+            try {
+              ParseJSON(cit->second, value);
+            } catch (const current::TypeSystemParseJSONException& exception) {
+              CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
+            }
+          }
+        }
+      }
+
+      // `Optional<>`-s are special cases, as they can be missing.
+      template <typename T>
+      void operator()(const std::string& key, Optional<T>& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          value = T();
+          operator()(key, Value(value));
+        }
+      }
+
+      // For the remaining field types, use `ParseJSON`. Overkill, but ensures any `CURRENT_STRUCT` can be URL-encoded.
+      template <typename T>
+      void operator()(const std::string& key, T& value) const {
+        const auto cit = q.find(key);
+        if (cit != q.end()) {
+          try {
+            ParseJSON(cit->second, value);
+          } catch (const current::TypeSystemParseJSONException& exception) {
+            CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
+          }
+        } else if (MODE == FillObjectMode::Strict) {
+          CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, "missing value"));
+        }
+      }
+    };
   };
 
   const std::map<std::string, std::string>& AllQueryParameters() const { return query.AsImmutableMap(); }

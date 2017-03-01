@@ -98,13 +98,9 @@ struct UserNicknamesReadModel {
     }
     return current::ss::EntryResponse::More;
   }
-  current::ss::EntryResponse operator()(std::chrono::microseconds) const {
-    return current::ss::EntryResponse::More;
-  }
+  current::ss::EntryResponse operator()(std::chrono::microseconds) const { return current::ss::EntryResponse::More; }
 
-  current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
-    return current::ss::EntryResponse::More;
-  }
+  current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return current::ss::EntryResponse::More; }
 
   current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
 };
@@ -137,8 +133,7 @@ int main(int argc, char** argv) {
 
     std::cerr << "Read model:\n\tcurl '" << url << "/nickname?id=skywalker'" << std::flush << std::endl;
   } else {
-    std::cerr << "Demo Embedded Event Log DB running on localhost:" << FLAGS_db_demo_port << std::flush
-              << std::endl;
+    std::cerr << "Demo Embedded Event Log DB running on localhost:" << FLAGS_db_demo_port << std::flush << std::endl;
   }
 
   HTTP(FLAGS_db_demo_port).Register("/healthz", [](Request r) { r("OK\n"); });
@@ -149,24 +144,22 @@ int main(int argc, char** argv) {
   using reflection::Language;
 
   HTTP(FLAGS_db_demo_port)
-      .Register("/schema.h",
-                [](Request r) {
-                  StructSchema schema;
-                  schema.AddType<Event>();
-                  r(schema.GetSchemaInfo().Describe<Language::CPP>(),
-                    HTTPResponseCode.OK,
-                    "text/plain; charset=us-ascii");
-                });
+      .Register(
+          "/schema.h",
+          [](Request r) {
+            StructSchema schema;
+            schema.AddType<Event>();
+            r(schema.GetSchemaInfo().Describe<Language::CPP>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+          });
 
   HTTP(FLAGS_db_demo_port)
-      .Register("/schema.fs",
-                [](Request r) {
-                  StructSchema schema;
-                  schema.AddType<Event>();
-                  r(schema.GetSchemaInfo().Describe<Language::FSharp>(),
-                    HTTPResponseCode.OK,
-                    "text/plain; charset=us-ascii");
-                });
+      .Register(
+          "/schema.fs",
+          [](Request r) {
+            StructSchema schema;
+            schema.AddType<Event>();
+            r(schema.GetSchemaInfo().Describe<Language::FSharp>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+          });
 
   HTTP(FLAGS_db_demo_port)
       .Register("/schema.json",
@@ -190,7 +183,7 @@ int main(int argc, char** argv) {
                       stream.Publish(std::move(event));
                       r("", HTTPResponseCode.NoContent);
                     } catch (const Exception& e) {
-                      r(Error(e.What()), HTTPResponseCode.BadRequest);
+                      r(Error(e.DetailedDescription()), HTTPResponseCode.BadRequest);
                     }
                   } else {
                     r(Error("This request should be a POST."), HTTPResponseCode.MethodNotAllowed);
