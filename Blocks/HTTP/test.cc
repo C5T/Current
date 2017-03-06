@@ -998,3 +998,14 @@ TEST(HTTPAPI, JSONHasOriginWhenSentViaRequest) {
   ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
   EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
 }
+
+TEST(HTTPAPI, JSONHasOriginWhenSentViaResponse) {
+  const auto scope =
+      HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(Response(SerializableObject())); });
+
+  const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+  ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
+  EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
+}
