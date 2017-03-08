@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "api_types.h"
 
+#include "rest/types.h"
 #include "rest/plain.h"
 
 #include "../TypeSystem/Schema/schema.h"
@@ -395,40 +396,58 @@ void GenerateRESTfulHandler(registerer_t registerer, STORAGE& storage, const std
 template <class STORAGE_IMPL, class REST_IMPL = plain::Plain>
 class RESTfulStorage {
  public:
+  using immutable_fields_t = ImmutableFields<STORAGE_IMPL>;
+  using mutable_fields_t = MutableFields<STORAGE_IMPL>;
+
+  // TODO(dkorolev): `unique_ptr` and move semantics. Move to `-std=c++14` maybe? :-)
+  using cqs_universal_parser_t = std::function<std::shared_ptr<CurrentStruct>(Request&)>;
+  using cqs_query_handler_t = std::function<Response(
+      immutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
+  using cqs_command_handler_t = std::function<Response(
+      mutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
+
   RESTfulStorage(STORAGE_IMPL& storage,
-                 int port,
+                 uint16_t port,
                  const std::string& route_prefix,
                  const std::string& restful_url_prefix_input)
-      : port_(port), up_status_(std::make_unique<std::atomic_bool>(true)), route_prefix_(route_prefix) {
+      : data_(std::make_unique<Data>(port, route_prefix)) {
     const std::string restful_url_prefix = restful_url_prefix_input;
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
+
     // Fill in the map of `Storage field name` -> `HTTP handler`.
-    ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, handlers_);
+    ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(storage, restful_url_prefix, data_->handlers_);
+
+    // Register the CQS handlers as well.
+    RegisterCQSHandlers(storage, restful_url_prefix);
+
     // Register handlers on a specific port under a specific path prefix.
-    for (const auto& endpoint : handlers_) {
+    for (const auto& endpoint : data_->handlers_) {
       RegisterRoute(endpoint.first, endpoint.second);
     }
 
     std::set<std::string> fields_set;
-    for (const auto& handler : handlers_) {
-      fields_set.insert(handler.first);
+    for (const auto& handler : data_->handlers_) {
+      if (!handler.first.empty()) {
+        // TODO(dkorolev): This is a hack, to make sure RESTful storage doesn't enumerate CQS routes in `/data/`.
+        fields_set.insert(handler.first);
+      }
     }
     RESTfulRegisterTopLevelInput<STORAGE_IMPL> input(storage,
                                                      restful_url_prefix,
                                                      port,
-                                                     handlers_scope_,
+                                                     data_->handlers_scope_,
                                                      std::vector<std::string>(fields_set.begin(), fields_set.end()),
                                                      route_prefix.empty() ? "/" : route_prefix,
-                                                     *up_status_);
+                                                     data_->up_status_);
     REST_IMPL::RegisterTopLevel(input);
   }
 
   // To enable exposing fields under different names / URLs.
   void RegisterAlias(const std::string& target, const std::string& alias_name) {
-    const auto lower = handlers_.lower_bound(target);
-    const auto upper = handlers_.upper_bound(target);
+    const auto lower = data_->handlers_.lower_bound(target);
+    const auto upper = data_->handlers_.upper_bound(target);
     if (upper == lower) {
       // LCOV_EXCL_START
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
@@ -440,22 +459,92 @@ class RESTfulStorage {
     }
   }
 
+  template <class QUERY_IMPL>
+  void AddCQSQuery(const std::string& query) {
+    std::lock_guard<std::mutex> lock(data_->cqs_handlers_mutex_);
+    if (data_->cqs_query_map_.count(query)) {
+      CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSQuery(), `" + query + "` is already registered."));
+    }
+    data_->cqs_query_map_[query] = std::make_pair(
+        [](Request& request) -> std::shared_ptr<CurrentStruct> {
+          return ParseCQSRequest<QUERY_IMPL, current::url::FillObjectMode::Forgiving>(request);
+        },
+        [query](immutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_query, const std::string& url)
+            -> Response {
+              try {
+                // Invoke `.template Query<>(...)`, the handler implemented as part of the `QUERY_IMPL` class.
+                // The instance of `QUERY_IMPL` is passed at runtime, in a type-erased fashion, as all possible
+                // query types are not available at compile time. Hence, the query object itself is stored as a
+                // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
+                // down to the respective `QUERY_IMPL` type from within the transaction.
+                return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
+                    .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
+              } catch (const Exception& e) {
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+              } catch (const std::exception& e) {
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+              }
+            });
+  }
+
+  template <class COMMAND_IMPL>
+  void AddCQSCommand(const std::string& command) {
+    std::lock_guard<std::mutex> lock(data_->cqs_handlers_mutex_);
+    if (data_->cqs_command_map_.count(command)) {
+      CURRENT_THROW(current::Exception("RESTfulStorage::AddCQSCommand(), `" + command + "` is already registered."));
+    }
+    data_->cqs_command_map_[command] = std::make_pair(
+        [](Request& request) -> std::shared_ptr<CurrentStruct> {
+          return ParseCQSRequest<COMMAND_IMPL, current::url::FillObjectMode::Strict>(request);
+        },
+        [command](mutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_command, const std::string& url)
+            -> Response {
+              fields.SetTransactionMetaField("X-Current-CQS-Command", command);
+              try {
+                // Invoke `.template Command<>(...)`, the handler implemented as part of the `COMMAND_IMPL` class.
+                // The instance of `COMMAND_IMPL` is passed at runtime, in a type-erased fashion, as all possible
+                // command types are not available at compile time. Hence, the command object itself is stored as a
+                // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
+                // down to the respective `COMMAND_IMPL` type from within the transaction.
+                return dynamic_cast<COMMAND_IMPL&>(*type_erased_command.get())
+                    .template Command<MutableFields<STORAGE_IMPL>>(fields, url);
+              } catch (const StorageRollbackException& e) {
+                return e.FormatAsHTTPResponse();
+              } catch (const Exception& e) {
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+              } catch (const std::exception& e) {
+                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
+              }
+            });
+  }
+
   // Support for graceful shutdown. Alpha.
   void SwitchHTTPEndpointsTo503s() {
-    *up_status_ = false;
-    for (auto& route : handler_routes_) {
-      HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
+    data_->up_status_ = false;
+    for (auto& route : data_->handler_routes_) {
+      HTTP(data_->port_)
+          .template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
     }
   }
 
  private:
-  const int port_;
-  // Need an `std::unique_ptr<>` for the whole REST to stay `std::move()`-able.
-  std::unique_ptr<std::atomic_bool> up_status_;
-  const std::string route_prefix_;
-  std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
-  impl::storage_handlers_map_t handlers_;
-  HTTPRoutesScope handlers_scope_;
+  // Need an `std::unique_ptr<>` for the whole REST object to stay `std::move()`-able.
+  struct Data {
+    const uint16_t port_;
+    const std::string route_prefix_;
+
+    std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
+    impl::storage_handlers_map_t handlers_;
+    HTTPRoutesScope handlers_scope_;
+
+    std::atomic_bool up_status_;
+    mutable std::mutex cqs_handlers_mutex_;
+    std::unordered_map<std::string, std::pair<cqs_universal_parser_t, cqs_query_handler_t>> cqs_query_map_;
+    std::unordered_map<std::string, std::pair<cqs_universal_parser_t, cqs_command_handler_t>> cqs_command_map_;
+
+    Data(uint16_t port, const std::string& route_prefix) : port_(port), route_prefix_(route_prefix), up_status_(true) {}
+  };
+  std::unique_ptr<Data> data_;
 
   // The `BLAH` template parameter is required to fight the "explicit specialization in class scope" error.
   template <typename BLAH, int I>
@@ -480,11 +569,131 @@ class RESTfulStorage {
   };
 
   void RegisterRoute(const std::string& field_name, const RESTfulRoute& route) {
-    const auto path = route_prefix_ + '/' + route.resource_prefix + '/' + field_name + route.resource_suffix;
-    handler_routes_.emplace_back(path, route.resource_args_mask);
-    handlers_scope_ += HTTP(port_).Register(path, route.resource_args_mask, route.handler);
+    const auto path = data_->route_prefix_ + '/' + route.resource_prefix +
+                      (field_name.empty() ? "" : '/' + field_name) + route.resource_suffix;
+    data_->handler_routes_.emplace_back(path, route.resource_args_mask);
+    data_->handlers_scope_ += HTTP(data_->port_).Register(path, route.resource_args_mask, route.handler);
   }
 
+  template <typename T, url::FillObjectMode MODE>
+  static std::shared_ptr<CurrentStruct> ParseCQSRequest(Request& request) {
+    try {
+      auto object = std::make_shared<T>();
+      if (reflection::FieldCounter<T>::value > 0) {
+        if (!request.body.empty()) {
+          ParseJSON(request.body, *object);
+        } else {
+          request.url.query.FillObject<T, MODE>(*object);
+        }
+      }
+      return object;
+    } catch (const TypeSystemParseJSONException& e) {
+      request(cqs::CQSParseJSONException(e.DetailedDescription()), HTTPResponseCode.BadRequest);
+      return nullptr;
+    } catch (const url::URLParseObjectAsURLParameterException& e) {
+      request(cqs::CQSParseURLException(e.DetailedDescription()), HTTPResponseCode.BadRequest);
+      return nullptr;
+    }
+  }
+  void RegisterCQSHandlers(STORAGE_IMPL& storage, const std::string& restful_url_prefix) {
+    const Data& data = *data_;
+
+    const auto cqs_query_handler = [&data, &storage, restful_url_prefix](Request request) {
+      if (request.url_path_args.empty()) {
+        request(Response(cqs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+      } else if (request.method != "GET") {
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS queries must be GET-s."));
+      } else {
+        std::lock_guard<std::mutex> lock(data.cqs_handlers_mutex_);
+        const auto cit = data.cqs_query_map_.find(request.url_path_args[0]);
+        if (cit != data.cqs_query_map_.end()) {
+          const auto& f_parse_query_body = cit->second.first;
+          const auto& f_run_query = cit->second.second;
+          auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
+          using CQSHandlerImpl = typename REST_IMPL::template RESTfulCQSHandler<STORAGE_IMPL>;
+          CQSHandlerImpl handler;
+          std::shared_ptr<CurrentStruct> type_erased_query = f_parse_query_body(request);
+          if (type_erased_query) {
+            typename CQSHandlerImpl::Context context;
+            handler.Enter(std::move(request),
+                          context,
+                          // Capture by reference since this lambda is run synchronously.
+                          [&handler, &f_run_query, &generic_input, &type_erased_query, &context](Request request) {
+                            const STORAGE_IMPL& storage = generic_input.storage;
+                            storage.ReadOnlyTransaction(
+                                        // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                                        // Capture local variables by value for safe async transactions.
+                                        [&storage, &f_run_query, handler, generic_input, type_erased_query, context](
+                                            immutable_fields_t fields) -> Response {
+                                          return handler.RunQuery(context,
+                                                                  f_run_query,
+                                                                  fields,
+                                                                  std::move(type_erased_query),
+                                                                  generic_input.restful_url_prefix);
+                                        },
+                                        std::move(request)).Detach();
+                          });
+          }
+        } else {
+          request(Response(cqs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
+        }
+      }
+    };
+    data_->handlers_.emplace("",
+                             RESTfulRoute(kRESTfulCQSQueryURLComponent,
+                                          "",
+                                          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                          cqs_query_handler));
+
+    const auto cqs_command_handler = [&data, &storage, restful_url_prefix](Request request) {
+      if (storage.GetRole() != StorageRole::Master) {
+        request(Response(cqs::CQSCommandNeedsMasterStorage(), HTTPResponseCode.ServiceUnavailable));
+      } else if (request.method != "POST" && request.method != "POST" && request.method != "PATCH") {
+        request(REST_IMPL::ErrorMethodNotAllowed(request.method, "CQS commands must be {POST|PUT|PATCH}-es."));
+      } else if (request.url_path_args.empty()) {
+        request(Response(cqs::CQSHandlerNotSpecified(), HTTPResponseCode.NotFound));
+      } else {
+        std::lock_guard<std::mutex> lock(data.cqs_handlers_mutex_);
+        const auto cit = data.cqs_command_map_.find(request.url_path_args[0]);
+        if (cit != data.cqs_command_map_.end()) {
+          const auto& f_parse_command_body = cit->second.first;
+          const auto& f_run_command = cit->second.second;
+          auto generic_input = RESTfulGenericInput<STORAGE_IMPL>(storage, restful_url_prefix);
+          using CQSHandlerImpl = typename REST_IMPL::template RESTfulCQSHandler<STORAGE_IMPL>;
+          CQSHandlerImpl handler;
+          std::shared_ptr<CurrentStruct> type_erased_command = f_parse_command_body(request);
+          if (type_erased_command) {
+            typename CQSHandlerImpl::Context ctx;
+            handler.Enter(std::move(request),
+                          ctx,
+                          // Capture by reference since this lambda is run synchronously.
+                          [&handler, &f_run_command, &generic_input, &type_erased_command, &ctx](Request request) {
+                            STORAGE_IMPL& storage = generic_input.storage;
+                            storage.ReadWriteTransaction(
+                                        // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                                        // Capture local variables by value for safe async transactions.
+                                        [&storage, &f_run_command, handler, generic_input, type_erased_command, ctx](
+                                            mutable_fields_t fields) -> Response {
+                                          return handler.RunCommand(ctx,
+                                                                    f_run_command,
+                                                                    fields,
+                                                                    std::move(type_erased_command),
+                                                                    generic_input.restful_url_prefix);
+                                        },
+                                        std::move(request)).Detach();
+                          });
+          }
+        } else {
+          request(Response(cqs::CQSHandlerNotFound(), HTTPResponseCode.NotFound));
+        }
+      }
+    };
+    data_->handlers_.emplace("",
+                             RESTfulRoute(kRESTfulCQSCommandURLComponent,
+                                          "",
+                                          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                          cqs_command_handler));
+  }
   static void Serve503(Request r) {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
   }

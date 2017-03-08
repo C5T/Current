@@ -94,7 +94,8 @@ TEST(SelfModifyingConfig, ReadFileException) {
     std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
   } catch (const current::SelfModifyingConfigReadFileException& e) {
     ExpectStringEndsWith(
-        "config.h:80\tSelfModifyingConfigReadFileException(filename_)\t.current/ReadFileExceptionConfig", e.What());
+        "config.h:80\tSelfModifyingConfigReadFileException(filename_)\t.current/ReadFileExceptionConfig",
+        e.DetailedDescription());
   }
 }
 
@@ -121,7 +122,7 @@ TEST(SelfModifyingConfig, ParseJSONException) {
     ExpectStringEndsWith(
         "config.h:88\tSelfModifyingConfigParseJSONException(what)\tFile doesn't contain a valid JSON: "
         "'De Louboutin.'",
-        e.What());
+        e.DetailedDescription());
   }
 }
 
@@ -150,6 +151,6 @@ TEST(SelfModifyingConfig, WriteFileException) {
     ExpectStringEndsWith(
         "config.h:103\tSelfModifyingConfigWriteFileException(new_filename)\t.current/"
         "WriteFileExceptionConfig.19830816-000000",
-        e.What());
+        e.DetailedDescription());
   }
 }

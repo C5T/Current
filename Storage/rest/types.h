@@ -286,6 +286,64 @@ using HypermediaRESTGenericResponse = hypermedia::HypermediaRESTGenericResponse;
 // Expose helper functions into `current::storage::rest` as well for now. #DIMA_FIXME
 using namespace helpers;
 
+namespace cqs {
+
+// clang-format off
+CURRENT_STRUCT(CQSHandlerNotSpecified, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSHandlerNotSpecified) : SUPER(false, "CQS handler not specified.") {}
+};
+
+CURRENT_STRUCT(CQSHandlerNotFound, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSHandlerNotFound) : SUPER(false, "CQS handler not found.") {}
+};
+
+CURRENT_STRUCT(CQSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSCommandNeedsMasterStorage) :
+      SUPER(false, "CQS commands must be run on the master storage.") {}
+};
+
+CURRENT_STRUCT(CQSParseJSONException, generic::RESTGenericResponse) {
+  CURRENT_CONSTRUCTOR(CQSParseJSONException)(const std::string& what) :
+      SUPER(false, "CQS command or query HTTP body JSON parse error.", generic::RESTError("cqs_json_error", what)) {}
+};
+
+CURRENT_STRUCT(CQSParseURLException, generic::RESTGenericResponse) {
+  CURRENT_CONSTRUCTOR(CQSParseURLException)(const std::string& what) :
+      SUPER(false, "CQS command or query URL parameters parse error.", generic::RESTError("cqs_querystring_error", what)) {}
+};
+
+CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSBadRequest) : SUPER(false, "Bad CQS request.") {}
+};
+// clang-format on
+
+CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
+  using map_t = std::map<std::string, std::string>;
+
+  static map_t DescribeException(const std::exception& e) { return {{"error", e.what()}}; }
+
+  static map_t DescribeException(const current::Exception& e) {
+    map_t map;
+    map["error"] = e.What();
+    map["caller"] = e.Caller();
+    if (e.File()) {
+      map["file"] = e.File();
+    }
+    if (e.Line()) {
+      map["line"] = current::ToString(e.Line());
+    }
+    return map;
+  }
+
+  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const current::Exception& e)
+      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
+
+  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const std::exception& e)
+      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
+};
+
+}  // namespace cqs
+
 }  // namespace rest
 }  // namespace storage
 }  // namespace current

@@ -180,7 +180,7 @@ template <typename INPUT>
 struct FromStringImpl<INPUT, bool, false, false> {
   // Must return a reference as the callers expects it so. -- D.K.
   static const bool& Go(const std::string& input, bool& output) {
-    output = (std::string("") != input && std::string("0") != input && std::string("false") != input);
+    output = !input.empty() && input != "0" && input != "false" && input != "False" && input != "FALSE";
     return output;
   }
 };

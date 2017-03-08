@@ -53,7 +53,7 @@ TEST(Util, BasicException) {
     CURRENT_THROW(current::Exception("Foo"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
-    ExpectStringEndsWith(golden, e.What());
+    ExpectStringEndsWith(golden, e.DetailedDescription());
   }
 }
 
@@ -69,7 +69,7 @@ TEST(Util, CustomException) {
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
-    ExpectStringEndsWith(golden, e.What());
+    ExpectStringEndsWith(golden, e.DetailedDescription());
   }
 }
 

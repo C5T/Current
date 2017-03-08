@@ -504,6 +504,9 @@ struct Structured {
   template <typename STORAGE, typename ENTRY>
   using RESTfulSchemaHandler = plain::Plain::template RESTfulSchemaHandler<STORAGE, ENTRY>;
 
+  template <typename STORAGE>
+  using RESTfulCQSHandler = plain::Plain::template RESTfulCQSHandler<STORAGE>;
+
   static Response ErrorMethodNotAllowed(const std::string& method, const std::string& error_message) {
     return ErrorResponse(MethodNotAllowedError(error_message, method), HTTPResponseCode.MethodNotAllowed);
   }

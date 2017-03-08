@@ -26,6 +26,7 @@ SOFTWARE.
 #define CURRENT_STORAGE_EXCEPTIONS_H
 
 #include "../Blocks/GracefulShutdown/exceptions.h"
+#include "../Blocks/HTTP/response.h"
 
 namespace current {
 namespace storage {
@@ -41,16 +42,49 @@ struct StorageCannotAppendToFileException : StorageException {
 };
 // LCOV_EXCL_STOP
 
-struct StorageRollbackExceptionWithNoValue : StorageException {
+CURRENT_STRUCT(CQSCommandRolledBackResponse) {
+  CURRENT_FIELD(success, bool, false);
+  CURRENT_FIELD(message, std::string, "CQS command rolled back.");
+};
+
+CURRENT_STRUCT_T(CQSCommandRolledBackResponseT, CQSCommandRolledBackResponse) {
+  CURRENT_FIELD(data, T);
+  CURRENT_DEFAULT_CONSTRUCTOR_T(CQSCommandRolledBackResponseT) {}
+  CURRENT_CONSTRUCTOR_T(CQSCommandRolledBackResponseT)(const T& data) : data(data) {}
+};
+
+struct StorageRollbackException : StorageException {
   using StorageException::StorageException;
+  virtual current::http::Response FormatAsHTTPResponse() const = 0;
 };
 
 template <typename T>
-struct StorageRollbackExceptionWithValue : StorageException {
+struct StorageRollbackExceptionWithValue : StorageRollbackException {
   StorageRollbackExceptionWithValue(T&& value, const std::string& what = std::string())
-      : StorageException(what), value(std::move(value)) {}
+      : StorageRollbackException(what), value(std::move(value)) {}
   T value;
+  current::http::Response FormatAsHTTPResponse() const override {
+    return current::http::Response(CQSCommandRolledBackResponseT<T>(value), HTTPResponseCode.BadRequest);
+  }
 };
+
+template <>
+struct StorageRollbackExceptionWithValue<current::http::Response> : StorageRollbackException {
+  StorageRollbackExceptionWithValue(current::http::Response&& value, const std::string& what = std::string())
+      : StorageRollbackException(what), value(std::move(value)) {}
+  current::http::Response value;
+  current::http::Response FormatAsHTTPResponse() const override { return value; }
+};
+
+template <>
+struct StorageRollbackExceptionWithValue<void> : StorageRollbackException {
+  using StorageRollbackException::StorageRollbackException;
+  current::http::Response FormatAsHTTPResponse() const override {
+    return current::http::Response(CQSCommandRolledBackResponse(), HTTPResponseCode.BadRequest);
+  }
+};
+
+using StorageRollbackExceptionWithNoValue = StorageRollbackExceptionWithValue<void>;
 
 struct UnderlyingStreamHasExternalDataAuthorityException : StorageException {
   using StorageException::StorageException;

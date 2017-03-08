@@ -293,6 +293,34 @@ struct Plain {
     }
   };
 
+  template <typename STORAGE>
+  struct RESTfulCQSHandler {
+    struct Context {};
+
+    template <typename F>
+    void Enter(Request request, Context&, F&& next) {
+      next(std::move(request));
+    }
+
+    Response RunQuery(
+        const Context&,
+        std::function<Response(ImmutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const std::string&)> f,
+        ImmutableFields<STORAGE> fields,
+        std::shared_ptr<CurrentStruct> type_erased_query,
+        const std::string& restful_url_prefix) const {
+      return f(fields, std::move(type_erased_query), restful_url_prefix);
+    }
+
+    Response RunCommand(
+        const Context&,
+        std::function<Response(MutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const std::string&)> f,
+        MutableFields<STORAGE> fields,
+        std::shared_ptr<CurrentStruct> type_erased_command,
+        const std::string& restful_url_prefix) const {
+      return f(fields, std::move(type_erased_command), restful_url_prefix);
+    }
+  };
+
   // LCOV_EXCL_START
   static Response ErrorMethodNotAllowed(const std::string& method, const std::string& error_message) {
     return Response("Method " + method + " not allowed. " + error_message + '\n', HTTPResponseCode.MethodNotAllowed);
