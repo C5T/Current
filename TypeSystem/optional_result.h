@@ -68,7 +68,7 @@ class OptionalResult {
     if (exists_) {
       return std::move(value_);
     } else {
-      throw NoValueOfTypeException<T>();
+      CURRENT_THROW(NoValueOfTypeException<T>());
     }
   }
 
@@ -76,7 +76,7 @@ class OptionalResult {
     if (exists_) {
       return value_;
     } else {
-      throw NoValueOfTypeException<T>();  // LCOV_EXCL_LINE
+      CURRENT_THROW(NoValueOfTypeException<T>());  // LCOV_EXCL_LINE
     }
   }
 

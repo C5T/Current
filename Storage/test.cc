@@ -1216,7 +1216,7 @@ TEST(TransactionalStorage, TransactionMetaFields) {
         [](MutableFields<Storage> fields) -> int {
           fields.d.Add(Record{"nonexistent2", 0});
           fields.SetTransactionMetaField("when", "now");
-          throw current::Exception();
+          CURRENT_THROW(current::Exception());
           return 0;
         },
         // LCOV_EXCL_START

@@ -164,7 +164,7 @@ class JSONParser final {
  public:
   explicit JSONParser(const char* json) {
     if (document_.Parse(json).HasParseError()) {
-      throw InvalidJSONException(json);
+      CURRENT_THROW(InvalidJSONException(json));
     }
     current_ = &document_;
   }
@@ -269,7 +269,7 @@ inline void ParseJSON(const std::string& source, T& destination) {
     ParseJSONViaRapidJSON<J>(source, destination);
     CheckIntegrity(destination);
   } catch (UninitializedVariant) {
-    throw JSONUninitializedVariantObjectException();
+    CURRENT_THROW(JSONUninitializedVariantObjectException());
   }
 }
 
@@ -280,7 +280,7 @@ inline void PatchObjectWithJSON(T& object, const std::string& json) {
     ParseJSONViaRapidJSON<JSONPatcher<J>>(json, object);
     CheckIntegrity(object);
   } catch (UninitializedVariant) {
-    throw JSONUninitializedVariantObjectException();
+    CURRENT_THROW(JSONUninitializedVariantObjectException());
   }
 }
 

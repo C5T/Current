@@ -79,8 +79,8 @@ class IOSPushNotificationsSender final {
     try {
       actual = HTTP(GET(url)).body;
     } catch (const Exception&) {
-      throw OneSignalInitializationException(strings::Printf(
-          "OneSignal Integration HTTP request failed on: %s\nLikely misconfigured nginx.", url.c_str()));
+      CURRENT_THROW(OneSignalInitializationException(strings::Printf(
+          "OneSignal Integration HTTP request failed on: %s\nLikely misconfigured nginx.", url.c_str())));
 // Here is the golden nginx config if you need one.
 #if 0
 server {
@@ -96,12 +96,12 @@ server {
 #endif
     }
     if (actual != golden) {
-      throw OneSignalInitializationException(strings::Printf(
+      CURRENT_THROW(OneSignalInitializationException(strings::Printf(
           "OneSignal Integration HTTP request to `%s` returned an unexpected result.\nExpected: %s\nActual:  "
           "%s\n",
           url.c_str(),
           golden.c_str(),
-          actual.c_str()));
+          actual.c_str())));
     }
 #endif
   }
