@@ -32,8 +32,9 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-#include "../../exceptions.h"
+#include "../constants.h"
 
+#include "../../exceptions.h"
 #include "../../../time/chrono.h"
 #include "../../../strings/split.h"
 #include "../../../strings/util.h"
@@ -195,6 +196,11 @@ struct Headers final {
                   [this](const std::pair<std::string, std::string>& h) { Set(h.first, h.second); });
   }
 
+  inline static Headers DefaultJSONHeaders() {
+    return Headers(
+        {{constants::kHTTPAccessControlAllowOriginHeaderName, constants::kHTTPAccessControlAllowOriginHeaderValue}});
+  }
+
   // Can `Set()` / `Get()` / `Has()` headers.
   Headers& Set(const std::string& header, const std::string& value) {
     Header::ThrowIfHeaderIsCookie(header);
@@ -315,6 +321,11 @@ struct Headers final {
     } else {
       Set(header, value);
     }
+  }
+
+  void SetAccessControlOriginHeader() {
+    Set(net::constants::kHTTPAccessControlAllowOriginHeaderName,
+        net::constants::kHTTPAccessControlAllowOriginHeaderValue);
   }
 
   // An externally facing `SetCookie()`, to be used mostly while constructing the `Response`.

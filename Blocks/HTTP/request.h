@@ -109,7 +109,7 @@ struct Request final {
   current::net::HTTPServerConnection::ChunkedResponseSender SendChunkedResponse(
       net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = net::constants::kDefaultJSONContentType,
-      const net::http::Headers& extra_headers = net::constants::DefaultJSONHTTPHeaders()) {
+      const net::http::Headers& extra_headers = net::http::Headers::DefaultJSONHeaders()) {
     return connection.SendChunkedHTTPResponse(code, content_type, extra_headers);
   }
 

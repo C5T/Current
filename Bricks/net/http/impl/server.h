@@ -32,6 +32,7 @@ SOFTWARE.
 #include <memory>
 
 #include "../codes.h"
+#include "../constants.h"
 #include "../mime_type.h"
 #include "../default_messages.h"
 
@@ -53,40 +54,6 @@ SOFTWARE.
 
 namespace current {
 namespace net {
-
-// HTTP constants to parse the header and extract method, URL, headers and body.
-// TODO(dkorolev): Move these constants away from this `.../impl/...` file.
-namespace constants {
-
-constexpr static const char kCRLF[] = "\r\n";
-constexpr const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
-
-constexpr const char* kDefaultContentType = "text/plain";
-constexpr const char* kDefaultJSONContentType = "application/json; charset=utf-8";
-// TODO(dkorolev): Make use of this constant everywhere.
-constexpr const char* kDefaultHTMLContentType = "text/html; charset=utf-8";
-constexpr const char* kDefaultSVGContentType = "image/svg+xml; charset=utf-8";
-constexpr const char* kDefaultPNGContentType = "image/png";
-
-constexpr const char kHeaderKeyValueSeparator[] = ": ";
-constexpr const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
-
-constexpr const char* const kContentLengthHeaderKey = "Content-Length";
-constexpr const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
-constexpr const char* const kTransferEncodingChunkedValue = "chunked";
-constexpr const char* const kHTTPMethodOverrideHeaderKey = "X-HTTP-Method-Override";
-
-inline static const http::Headers DefaultJSONHTTPHeaders() {
-  return http::Headers({{"Access-Control-Allow-Origin", "*"}});
-}
-
-#ifndef CURRENT_MAX_HTTP_PAYLOAD
-constexpr const size_t kMaxHTTPPayloadSizeInBytes = 1024 * 1024 * 16;
-#else
-constexpr const size_t kMaxHTTPPayloadSizeInBytes = CURRENT_MAX_HTTP_PAYLOAD;
-#endif  // CURRENT_MAX_HTTP_PAYLOAD
-
-}  // namespace constants
 
 // HTTP response helpers. Used from both `GenericHTTPRequestData` and `GenericHTTPServerConnection`.
 struct HTTPResponder {
@@ -168,7 +135,7 @@ struct HTTPResponder {
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
+      const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
     SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
@@ -183,7 +150,7 @@ struct HTTPResponder {
       const std::string& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
+      const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
@@ -639,7 +606,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
   inline ChunkedResponseSender SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
+      const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
     if (responded_) {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
