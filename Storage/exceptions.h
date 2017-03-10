@@ -64,7 +64,8 @@ struct StorageRollbackExceptionWithValue : StorageRollbackException {
       : StorageRollbackException(what), value(std::move(value)) {}
   T value;
   current::http::Response FormatAsHTTPResponse() const override {
-    return current::http::Response(CQSCommandRolledBackResponseT<T>(value), HTTPResponseCode.BadRequest);
+    return current::http::GenerateResponseAndUseJSONIfInnerTypeSerializable<CQSCommandRolledBackResponseT, T>(
+        CQSCommandRolledBackResponseT<T>(value), HTTPResponseCode.BadRequest);
   }
 };
 
