@@ -65,6 +65,14 @@ CURRENT_STORAGE(KeyValueDB) {
   CURRENT_STORAGE_FIELD(hashmap_string, PersistedStringKeyValuePair);
 };
 
+struct NonSerializablePairOfTwoSizeT {
+  size_t first;
+  size_t second;
+  NonSerializablePairOfTwoSizeT() = default;
+  NonSerializablePairOfTwoSizeT(const NonSerializablePairOfTwoSizeT&) = default;
+  NonSerializablePairOfTwoSizeT(size_t first, size_t second) : first(first), second(second) {}
+};
+
 SCENARIO(storage, "Storage transactions test.") {
   using storage_t = KeyValueDB<SherlockInMemoryStreamPersister>;
   storage_t db;
@@ -124,16 +132,12 @@ SCENARIO(storage, "Storage transactions test.") {
       CURRENT_ASSERT(false);
     }
 
-    // Note: `pair<size_t, size_t>` would not be JSON-serializable in Current, it must be
-    // the `pair<uint64_t, uint64_t>` instead. Yes, I've fixed `CURRENT_STRUCT`'s `size_t` type
-    // to implicitly become `uint64_t`, but did not touch STL types. -- D.K.
     const auto pair = Value(db.ReadWriteTransaction([](MutableFields<storage_t> fields) {
       for (uint32_t i = 0; i < FLAGS_storage_initial_size; ++i) {
         fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
         fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
       }
-      return std::make_pair(static_cast<uint64_t>(fields.hashmap_uint32.Size()),
-                            static_cast<uint64_t>(fields.hashmap_string.Size()));
+      return NonSerializablePairOfTwoSizeT(fields.hashmap_uint32.Size(), fields.hashmap_string.Size());
     }).Go());
     actual_size_uint32 = pair.first;
     actual_size_string = pair.second;
