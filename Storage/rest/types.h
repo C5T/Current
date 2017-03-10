@@ -324,7 +324,8 @@ CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
 
   static map_t DescribeException(const current::Exception& e) {
     map_t map;
-    map["error"] = e.What();
+    map["error"] = e.OriginalDescription();
+#ifndef NDEBUG
     map["caller"] = e.Caller();
     if (e.File()) {
       map["file"] = e.File();
@@ -332,6 +333,7 @@ CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
     if (e.Line()) {
       map["line"] = current::ToString(e.Line());
     }
+#endif
     return map;
   }
 

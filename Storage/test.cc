@@ -2773,22 +2773,24 @@ TEST(TransactionalStorage, CQSTest) {
       const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_current_exception"));
       EXPECT_EQ(400, static_cast<int>(cqs_response.code));
 #ifndef CURRENT_COVERAGE_REPORT_MODE
-      // LOL at this `clang-format` off and on formtting. -- D.K.
+      // LOL at this `clang-format` off and on formatting. -- D.K.
       // clang-format off
       EXPECT_EQ(
-          current::strings::Printf(
-            "{"
-            "\"success\":false,"
-            "\"message\":null,"
-            "\"error\":{"
-            "\"name\":\"cqs_user_error\","
-            "\"message\":\"Error in CQS user code.\","
-            "\"details\":{"
-            "\"caller\":\"CQSTestException()\","
-            "\"error\":\"CQS test exception.\","
-            "\"file\":\"test.cc\","
-            "\"line\":\"%d\"}}}\n",
-            CQSQuery::DoThrowCurrentExceptionLine()),
+          "{"
+          "\"success\":false,"
+          "\"message\":null,"
+          "\"error\":{"
+          "\"name\":\"cqs_user_error\","
+          "\"message\":\"Error in CQS user code.\","
+          "\"details\":{"
+#ifndef NDEBUG
+          "\"caller\":\"CQSTestException()\","
+#endif
+          "\"error\":\"CQS test exception.\""
+#ifndef NDEBUG
+          ",\"file\":\"test.cc\",\"line\":\"" + current::ToString(CQSQuery::DoThrowCurrentExceptionLine()) + "\""
+#endif
+          "}}}\n",
           cqs_response.body);
 // clang-format on
 #else
@@ -2822,7 +2824,7 @@ TEST(TransactionalStorage, CQSTest) {
         storage_http_interface.template AddCQSQuery<CQSQuery>("list");
         ASSERT_TRUE(false);
       } catch (const current::Exception& e) {
-        EXPECT_EQ("RESTfulStorage::AddCQSQuery(), `list` is already registered.", e.What());
+        EXPECT_EQ("RESTfulStorage::AddCQSQuery(), `list` is already registered.", e.DetailedDescription());
       }
     }
 
@@ -2865,22 +2867,25 @@ TEST(TransactionalStorage, CQSTest) {
       const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_current_exception&users=[]", ""));
       EXPECT_EQ(400, static_cast<int>(cqs_response.code));
 #ifndef CURRENT_COVERAGE_REPORT_MODE
-      // LOL at this `clang-format` off and on formtting. -- D.K.
+      // NOTE(dkorolev): The top-level `make test` is never `NDEBUG`, so we're good wrt relative paths. -- D.K.
+      // LOL at this `clang-format` off and on formatting. -- D.K.
       // clang-format off
       EXPECT_EQ(
-          current::strings::Printf(
-            "{"
-            "\"success\":false,"
-            "\"message\":null,"
-            "\"error\":{"
-            "\"name\":\"cqs_user_error\","
-            "\"message\":\"Error in CQS user code.\","
-            "\"details\":{"
-            "\"caller\":\"CQSTestException()\","
-            "\"error\":\"CQS test exception.\","
-            "\"file\":\"test.cc\","
-            "\"line\":\"%d\"}}}\n",
-            CQSCommand::DoThrowCurrentExceptionLine()),
+          "{"
+          "\"success\":false,"
+          "\"message\":null,"
+          "\"error\":{"
+          "\"name\":\"cqs_user_error\","
+          "\"message\":\"Error in CQS user code.\","
+          "\"details\":{"
+#ifndef NDEBUG
+          "\"caller\":\"CQSTestException()\","
+#endif
+          "\"error\":\"CQS test exception.\""
+#ifndef NDEBUG
+          ",\"file\":\"test.cc\",\"line\":\"" + current::ToString(CQSCommand::DoThrowCurrentExceptionLine()) + "\""
+#endif
+          "}}}\n",
           cqs_response.body);
 // clang-format on
 #else
@@ -2961,7 +2966,7 @@ TEST(TransactionalStorage, CQSTest) {
       storage_http_interface.template AddCQSCommand<CQSCommand>("add");
       ASSERT_TRUE(false);
     } catch (const current::Exception& e) {
-      EXPECT_EQ("RESTfulStorage::AddCQSCommand(), `add` is already registered.", e.What());
+      EXPECT_EQ("RESTfulStorage::AddCQSCommand(), `add` is already registered.", e.DetailedDescription());
     }
   }
 
