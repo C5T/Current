@@ -139,12 +139,14 @@ class GenericClaire final : private DummyClaireNotifiable {
         // Deregister self from Karl.
         try {
           HTTP(DELETE(karl_keepalive_route_));
-        } catch (net::NetworkException&) {
+        } catch (net::NetworkException&) {  // LCOV_EXCL_LINE
         }
       } else {
         // TODO(dkorolev), #FIXME_DIMA: This should not happen.
+        // LCOV_EXCL_START
         std::cerr << "!keepalive_thread_.joinable()\n";
         std::exit(-1);
+        // LCOV_EXCL_STOP
       }
     }
   }
@@ -312,7 +314,7 @@ class GenericClaire final : private DummyClaireNotifiable {
   void StartKeepaliveThread() {
     std::lock_guard<std::mutex> lock(keepalive_thread_running_status_mutex_);
     if (destructing_) {
-      return;
+      return;  // LCOV_EXCL_LINE
     }
     if (!keepalive_thread_running_) {
       keepalive_thread_ = std::thread([this]() {
@@ -327,8 +329,10 @@ class GenericClaire final : private DummyClaireNotifiable {
       }
     } else {
       // TODO(dkorolev), #FIXME_DIMA: This should not happen.
+      // LCOV_EXCL_START
       std::cerr << "Already have `keepalive_thread_running_` in Claire::StartKeepaliveThread().\n";
       std::exit(-1);
+      // LCOV_EXCL_STOP
     }
   }
 
@@ -457,8 +461,10 @@ class GenericClaire final : private DummyClaireNotifiable {
       }
     } else if (r.method == "POST") {
       if (r.url.query.has("initiate_keepalive")) {
+        // LCOV_EXCL_START
         ForceSendKeepalive();
         r("Keepalive will be sent shortly.\n");
+        // LCOV_EXCL_STOP
       } else if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
         URL decomposed_karl_url(r.url.query["report_to"]);
         if (!decomposed_karl_url.host.empty()) {
@@ -466,15 +472,17 @@ class GenericClaire final : private DummyClaireNotifiable {
           SetKarlLocator(Locator(karl_url));
           r("Now reporting to '" + karl_url + "'.\n");
         } else {
-          r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);
+          r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);  // LCOV_EXCL_LINE
         }
       } else {
-        r("Valid URL parameter required.\n", HTTPResponseCode.BadRequest);
+        r("Valid URL parameter required.\n", HTTPResponseCode.BadRequest);  // LCOV_EXCL_LINE
       }
     } else {
+      // LCOV_EXCL_START
       r(current::net::DefaultMethodNotAllowedMessage(),
         HTTPResponseCode.MethodNotAllowed,
         net::constants::kDefaultHTMLContentType);
+      // LCOV_EXCL_STOP
     }
   }
 
