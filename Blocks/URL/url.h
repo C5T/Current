@@ -306,7 +306,8 @@ struct URLParametersExtractor {
             try {
               ParseJSON(cit->second, value);
             } catch (const current::TypeSystemParseJSONException& exception) {
-              CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
+              CURRENT_THROW(
+                  URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.OriginalDescription()));
             }
           }
         }
@@ -330,7 +331,8 @@ struct URLParametersExtractor {
           try {
             ParseJSON(cit->second, value);
           } catch (const current::TypeSystemParseJSONException& exception) {
-            CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.What()));
+            CURRENT_THROW(
+                URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, exception.OriginalDescription()));
           }
         } else if (MODE == FillObjectMode::Strict) {
           CURRENT_THROW(URLParseSpecificObjectAsURLParameterException<TOP_LEVEL_T>(key, "missing value"));

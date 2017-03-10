@@ -45,10 +45,11 @@ struct URLParseObjectAsURLParameterException : URLException {
   URLParseObjectAsURLParameterException(const std::string& key,
                                         const std::string& error,
                                         const std::string& expected_schema = "")
-      : key(key), error(error), expected_schema(expected_schema) {
-    SetWhat("URLParseObjectAsURLParameterException: `" + key + "`, `" + error + "`" +
-            (expected_schema.empty() ? "" : ", expected: ```\n" + expected_schema + "\n```"));
-  }
+      : URLException("URLParseObjectAsURLParameterException: `" + key + "`, `" + error + "`" +
+                     (expected_schema.empty() ? "" : ", expected: ```\n" + expected_schema + "\n```")),
+        key(key),
+        error(error),
+        expected_schema(expected_schema) {}
 };
 
 template <typename T>

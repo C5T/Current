@@ -36,57 +36,51 @@ namespace current {
 class Exception : public std::exception {
  public:
   Exception() {}  // For Visual Studio's IntelliSense.
-  Exception(const std::string& what) : what_(what) {}
+  Exception(const std::string& message) : original_description_(message), detailed_description_(message) {}
   virtual ~Exception() = default;
 
-  void SetWhat(const std::string& what) {
-    what_ = what;
-  }
+  virtual std::string OriginalDescription() const noexcept { return original_description_; }
 
-  virtual std::string DetailedDescription() const noexcept {
-    return strings::Printf("%s:%d", file_, line_) + '\t' + caller_ + '\t' + what_;
-  }
-  // LCOV_EXCL_START
-  virtual const char* what() const noexcept override {
-    constexpr size_t MAX_LENGTH = 1024 * 10;
-    static char data[MAX_LENGTH + 1];
-    const std::string message = DetailedDescription();
-    if (message.length() < MAX_LENGTH) {
-      std::strcpy(data, message.data());
-    } else {
-      std::copy(message.begin(), message.begin() + MAX_LENGTH, data);
-      data[MAX_LENGTH] = '\0';
-    }
-    return data;
-  }
-  // LCOV_EXCL_STOP
+  virtual const std::string& DetailedDescription() const noexcept { return detailed_description_; }
 
-  const std::string& What() const noexcept { return what_; }
+  virtual const char* what() const noexcept override { return detailed_description_.c_str(); }  // LCOV_EXCL_LINE
+
   const char* File() const noexcept { return file_; }
   int Line() const noexcept { return line_; }
   const std::string& Caller() const noexcept { return caller_; }
 
-  void SetOrigin(const char* file, int line) {
+  void FillDetails(const std::string& caller, const char* file, int line) {
+    caller_ = caller;
     file_ = file;
     line_ = line;
   }
 
-  void SetCaller(const std::string& caller) { caller_ = caller; }
-
  private:
-  std::string what_;
+  // The user-defined description of the exception.
+  std::string original_description_;
+
+  // The description augmented with the full body of the invokation of `CURRENT_THROW`,
+  // as well as `__FILE__` and `__LINE__`. This is what is returned by `what()`, `overriding std::exception::what()`.
+  std::string detailed_description_;
+
+  // Extra fields, adding which to `original_description_` results in `detailed_description_`.
+  // Rationale:
+  // 1) On the one hand, the overridden `what()` must return a `const char*`, and this dynamically constructing
+  //    the full message describing the exception is undesirable.
+  // 2) On the other hand, when running unit tests and a full top-level `make test`, the path to `__FILE__` may be
+  //    relative rendering it useless for `EXPECT_EQ` checks. Testing the original message and `__LINE__` is still
+  //    a good idea. Thus, we introduce this minor redundancy into the `current::Exception` class.
   const char* file_ = nullptr;
   int line_ = 0;
   std::string caller_;
 };
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.
-#define CURRENT_THROW(E)             \
-  {                                  \
-    auto e((E));                     \
-    e.SetCaller(#E);                 \
-    e.SetOrigin(__FILE__, __LINE__); \
-    throw e;                         \
+#define CURRENT_THROW(E)                   \
+  {                                        \
+    auto e((E));                           \
+    e.FillDetails(#E, __FILE__, __LINE__); \
+    throw e;                               \
   }
 
 }  // namespace current

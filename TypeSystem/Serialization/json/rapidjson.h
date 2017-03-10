@@ -31,8 +31,7 @@ SOFTWARE.
 
 inline void RapidJSONAssertThrow(const char* text, const char* file, int line) {
   current::serialization::json::RapidJSONAssertionFailedException e(text);
-  e.SetCaller(text);
-  e.SetOrigin(file, line);
+  e.FillDetails(text, file, line);
   throw e;
 }
 
