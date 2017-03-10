@@ -55,6 +55,13 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, reflection::TypeID> {
   }
 };
 
+namespace json {
+template <>
+struct CanBuildJSON<reflection::TypeID> {
+  constexpr static bool value = true;
+};
+}  // namespace json
+
 }  // namespace current::serialization
 }  // namespace current
 

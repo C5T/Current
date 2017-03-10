@@ -64,6 +64,13 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::set<T, EQ, ALLOCATOR>
   }
 };
 
+namespace json {
+template <typename T, typename CMP, typename ALLOC>
+struct CanBuildJSON<std::set<T, CMP, ALLOC>> {
+  constexpr static bool value = CanBuildJSON<T>::value;
+};
+}  // namespace json
+
 }  // namespace current::serialization
 }  // namespace current
 

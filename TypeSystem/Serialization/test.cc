@@ -118,6 +118,26 @@ CURRENT_STRUCT(WithTime) {
   CURRENT_FIELD(micros, std::chrono::microseconds, std::chrono::microseconds(0));
 };
 
+static_assert(current::serialization::json::CanBuildJSON<int>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<std::string>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<bool>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<std::vector<int>>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<std::pair<int, int>>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<std::map<int, int>>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<std::set<int>>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<std::chrono::microseconds>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<Empty>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<Serializable>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<Int>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<Float>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<Double>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<ComplexSerializable>::value, "");
+static_assert(current::serialization::json::CanBuildJSON<ContainsVariant>::value, "");
+
+struct NotSerializable {};
+
+static_assert(!current::serialization::json::CanBuildJSON<NotSerializable>::value, "");
+
 namespace named_variant {
 
 CURRENT_STRUCT(X) { CURRENT_FIELD(x, int32_t, 1); };
@@ -1197,6 +1217,13 @@ CURRENT_STRUCT_T(ComplexTemplatedUsage) {
   CURRENT_FIELD(a, T);
   CURRENT_FIELD(b, TemplatedValue<T>);
 };
+
+static_assert(current::serialization::json::CanBuildJSON<TemplatedValue<int>>::value, "");
+
+// NOTE(dkorolev): This is a "hole" in the current implementation of `CanBuildJSON`.
+// The `static_assert` from the next line will fail.
+// I suggest we keep it this way for now, as the other solution carries the risk of increasing compilation time. -- D.K.
+// static_assert(!current::serialization::json::CanBuildJSON<TemplatedValue<NotSerializable>>::value, "");
 
 CURRENT_STRUCT(DummyBaseClass) {
   CURRENT_FIELD(base, int32_t);
