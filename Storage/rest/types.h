@@ -326,6 +326,7 @@ CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
     map_t map;
     map["error"] = e.OriginalDescription();
 #ifndef NDEBUG
+    // As discussed between @dkorolev and @mzhurovich, only return `caller`, `file`, and `line` in non-`NDEBUG` builds.
     map["caller"] = e.Caller();
     if (e.File()) {
       map["file"] = e.File();

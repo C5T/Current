@@ -76,11 +76,12 @@ class Exception : public std::exception {
 };
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.
-#define CURRENT_THROW(E)                   \
-  {                                        \
-    auto e((E));                           \
-    e.FillDetails(#E, __FILE__, __LINE__); \
-    throw e;                               \
+// Also, call it `_e_` to avoid name collisions.
+#define CURRENT_THROW(E)                     \
+  {                                          \
+    auto _e_((E));                           \
+    _e_.FillDetails(#E, __FILE__, __LINE__); \
+    throw _e_;                               \
   }
 
 }  // namespace current

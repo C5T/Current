@@ -64,12 +64,11 @@ done
 echo -e -n "\033[0m"
 
 (
-  # Compile and run The Big Test.
+  # Build and run The Big Test.
+
   ln -sf "$CURRENT_SCRIPTS_DIR/MakefileWithCurrentBuild" "$FULL_TEST_DIR_NAME/Makefile"
   (cd "$FULL_TEST_DIR_NAME" ; make phony_current_build > /dev/null ; unlink Makefile)
-)
 
-(
   cd "$FULL_TEST_DIR_NAME"
 
   echo -e "\033[0m"

@@ -96,13 +96,6 @@ struct FieldImpl<DF, T> {
   typedef T type;
 };
 
-// Allow `size_t` in JSON-serializable types, but make it `uint64_t` right way.
-// Apparently, this is important when compiling on OS X, where `size_t` and `uint64_t` are different types. -- D.K.
-template <>
-struct FieldImpl<DF, size_t> {
-  typedef uint64_t type;
-};
-
 template <typename T>
 struct FieldImpl<FC, T> {
   // TODO: Read on padding.

@@ -91,7 +91,7 @@ const auto scope = HTTP(port).Register("/penny", [](Request r) {
     }
   } catch (const current::Exception& e) {
     // TODO(dkorolev): Catch the right exception type.
-    r(PennyOutput{e.DetailedDescription(), 0});
+    r(PennyOutput{e.what(), 0});
   }
 });
 ```

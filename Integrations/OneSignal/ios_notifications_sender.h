@@ -109,8 +109,7 @@ server {
   // Send one iOS push notification.
   // Returns true on success.
   // Returns false on "regular" errors.
-  // Throws on terrible errors, with the returned `e.DetailedDescription()` good for journaling and further
-  // investigation.
+  // Throws on terrible errors, with the returned `e.DetailedDescription()` good for journaling.
   bool Push(const std::string& recipient_player_id,
             const std::string& message = "",
             int32_t increase_counter = 0) const {
@@ -147,7 +146,7 @@ server {
           ParseJSON(response.body, parsed_response);
         } catch (const Exception& e) {
           // Resulting JSON error: Fatal.
-          throw OneSignalPushNotificationException("OneSignal iOS push error A: " + e.DetailedDescription());
+          CURRENT_THROW(OneSignalPushNotificationException("OneSignal iOS push error A: " + e.DetailedDescription()));
         }
         if (!Exists(parsed_response.recipients)) {
           if (Exists(parsed_response.errors)) {
@@ -155,7 +154,7 @@ server {
             return false;
           } else {
             // Some unexpected error occurred: Fatal.
-            throw OneSignalPushNotificationException("OneSignal iOS push error Q: " + response.body);
+            CURRENT_THROW(OneSignalPushNotificationException("OneSignal iOS push error Q: " + response.body));
           }
         }
         if (Value(parsed_response.recipients) == 0) {
@@ -163,7 +162,7 @@ server {
           return false;
         } else if (Value(parsed_response.recipients) > 1) {
           // Potentially sent the notification to more than one user: Fatal.
-          throw OneSignalPushNotificationException("OneSignal iOS push error Z: " + response.body);
+          CURRENT_THROW(OneSignalPushNotificationException("OneSignal iOS push error Z: " + response.body));
         } else {
           // The notification has been sent to exactly one user: OK.
           return true;

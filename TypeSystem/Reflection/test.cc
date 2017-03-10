@@ -327,18 +327,6 @@ struct CollectFieldValues {
   }
 };
 
-CURRENT_STRUCT(StructWithSizeTWhichShouldBeUInt64T) {
-  CURRENT_FIELD(a, uint64_t);
-  CURRENT_FIELD(b, size_t);
-};
-
-static_assert(std::is_same<decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().a), uint64_t>::value, "");
-static_assert(std::is_same<decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().b), uint64_t>::value, "");
-
-static_assert(std::is_same<decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().a),
-                           decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().b)>::value,
-              "");
-
 }  // namespace reflection_test
 
 TEST(Reflection, VisitAllFieldsWithoutObject) {
