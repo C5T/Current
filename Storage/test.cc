@@ -2824,7 +2824,7 @@ TEST(TransactionalStorage, CQSTest) {
         storage_http_interface.template AddCQSQuery<CQSQuery>("list");
         ASSERT_TRUE(false);
       } catch (const current::Exception& e) {
-        EXPECT_EQ("RESTfulStorage::AddCQSQuery(), `list` is already registered.", e.DetailedDescription());
+        EXPECT_EQ("RESTfulStorage::AddCQSQuery(), `list` is already registered.", e.OriginalDescription());
       }
     }
 
@@ -2966,7 +2966,7 @@ TEST(TransactionalStorage, CQSTest) {
       storage_http_interface.template AddCQSCommand<CQSCommand>("add");
       ASSERT_TRUE(false);
     } catch (const current::Exception& e) {
-      EXPECT_EQ("RESTfulStorage::AddCQSCommand(), `add` is already registered.", e.DetailedDescription());
+      EXPECT_EQ("RESTfulStorage::AddCQSCommand(), `add` is already registered.", e.OriginalDescription());
     }
   }
 

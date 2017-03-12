@@ -53,6 +53,7 @@ class Exception : public std::exception {
     caller_ = caller;
     file_ = file;
     line_ = line;
+    detailed_description_ = strings::Printf("%s:%d", file, line) + '\t' + caller + '\t' + original_description_;
   }
 
  private:
