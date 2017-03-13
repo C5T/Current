@@ -29,8 +29,6 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
 
-#include "../../Blocks/HTTP/api.h"
-
 namespace current {
 namespace storage {
 namespace rest {
@@ -316,34 +314,6 @@ CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {
   CURRENT_DEFAULT_CONSTRUCTOR(CQSBadRequest) : SUPER(false, "Bad CQS request.") {}
 };
 // clang-format on
-
-CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
-  using map_t = std::map<std::string, std::string>;
-
-  static map_t DescribeException(const std::exception& e) { return {{"error", e.what()}}; }
-
-  static map_t DescribeException(const current::Exception& e) {
-    map_t map;
-    map["error"] = e.OriginalDescription();
-#ifndef NDEBUG
-    // As discussed between @dkorolev and @mzhurovich, only return `caller`, `file`, and `line` in non-`NDEBUG` builds.
-    map["caller"] = e.Caller();
-    if (e.File()) {
-      map["file"] = e.File();
-    }
-    if (e.Line()) {
-      map["line"] = current::ToString(e.Line());
-    }
-#endif
-    return map;
-  }
-
-  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const current::Exception& e)
-      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
-
-  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const std::exception& e)
-      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
-};
 
 }  // namespace cqs
 

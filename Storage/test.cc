@@ -24,7 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // Uncomment the next line for faster Storage REST development iterations. DIMA_FIXME: Remove it.
-#define STORAGE_ONLY_RUN_RESTFUL_TESTS
+// #define STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 #define CURRENT_MOCK_TIME
 
@@ -2622,8 +2622,8 @@ CURRENT_STRUCT(CQSCommand) {
   CURRENT_FIELD(test_current_exception, Optional<bool>, false);
   CURRENT_FIELD(test_native_exception, Optional<bool>, false);
   CURRENT_FIELD(test_simple_rollback, Optional<bool>, false);
-  CURRENT_FIELD(test_rollback_with_value, Optional<bool>, false);
-  CURRENT_FIELD(test_rollback_with_response, Optional<bool>, false);
+  CURRENT_FIELD(test_rollback_with_json, Optional<bool>, false);
+  CURRENT_FIELD(test_rollback_with_raw_response, Optional<bool>, false);
 
   CURRENT_DEFAULT_CONSTRUCTOR(CQSCommand) {}
   CURRENT_CONSTRUCTOR(CQSCommand)(const std::vector<std::string>& users) : users(users) {}
@@ -2651,9 +2651,10 @@ CURRENT_STRUCT(CQSCommand) {
       DoThrowCurrentException();
     } else if (Exists(test_simple_rollback) && Value(test_simple_rollback)) {
       CURRENT_STORAGE_THROW_ROLLBACK();
-    } else if (Exists(test_rollback_with_value) && Value(test_rollback_with_value)) {
-      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(CQSCommandRollbackMessage, CQSCommandRollbackMessage(users));
-    } else if (Exists(test_rollback_with_response) && Value(test_rollback_with_response)) {
+    } else if (Exists(test_rollback_with_json) && Value(test_rollback_with_json)) {
+      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(
+          Response, CQSCommandRollbackMessage(users), HTTPResponseCode.PreconditionFailed);
+    } else if (Exists(test_rollback_with_raw_response) && Value(test_rollback_with_raw_response)) {
       CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(Response, Response("HA!", HTTPResponseCode.OK));
     }
 
@@ -2663,15 +2664,6 @@ CURRENT_STRUCT(CQSCommand) {
 };
 
 }  // namespace transactional_storage_test
-
-static std::string StdOutOfRangeWhat() {
-  try {
-    std::map<int, int>().at(42);  // Throws `std::out_of_range`.
-    return "<no exception, should not happen>";
-  } catch (const std::exception& e) {
-    return e.what();
-  }
-}
 
 TEST(TransactionalStorage, CQSTest) {
   current::time::ResetToZero();
@@ -2762,49 +2754,13 @@ TEST(TransactionalStorage, CQSTest) {
     }
     {
       const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_native_exception"));
-      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
-      EXPECT_EQ(
-          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqs_user_error\",\"message\":\"Error in CQS "
-          "user code.\",\"details\":{\"error\":\"" +
-              StdOutOfRangeWhat() + "\"}}}\n",
-          cqs_response.body);
+      EXPECT_EQ(500, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", cqs_response.body);
     }
     {
       const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list?test_current_exception"));
-      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
-#ifndef CURRENT_COVERAGE_REPORT_MODE
-      // LOL at this `clang-format` off and on formatting. -- D.K.
-      // clang-format off
-      EXPECT_EQ(
-          "{"
-          "\"success\":false,"
-          "\"message\":null,"
-          "\"error\":{"
-          "\"name\":\"cqs_user_error\","
-          "\"message\":\"Error in CQS user code.\","
-          "\"details\":{"
-#ifndef NDEBUG
-          "\"caller\":\"CQSTestException()\","
-#endif
-          "\"error\":\"CQS test exception.\""
-#ifndef NDEBUG
-          ",\"file\":\"test.cc\",\"line\":\"" + current::ToString(CQSQuery::DoThrowCurrentExceptionLine()) + "\""
-#endif
-          "}}}\n",
-          cqs_response.body);
-// clang-format on
-#else
-      // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
-      auto response = ParseJSON<generic::RESTGenericResponse>(cqs_response.body);
-      EXPECT_FALSE(response.success);
-      ASSERT_TRUE(Exists(response.error));
-      EXPECT_EQ("cqs_user_error", Value(response.error).name);
-      EXPECT_EQ("Error in CQS user code.", Value(response.error).message);
-      ASSERT_TRUE(Exists(Value(response.error).details));
-      EXPECT_EQ("CQS test exception.", Value(Value(response.error).details)["error"]);
-      EXPECT_EQ(current::ToString(CQSQuery::DoThrowCurrentExceptionLine()),
-                Value(Value(response.error).details)["line"]);
-#endif
+      EXPECT_EQ(500, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", cqs_response.body);
 
       {
         const auto cqs_response = HTTP(POST(base_url + "/api/cqs/query/list", "<irrelevant POST body>"));
@@ -2856,56 +2812,19 @@ TEST(TransactionalStorage, CQSTest) {
 
     {
       const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_native_exception&users=[]", ""));
-      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
-      EXPECT_EQ(
-          "{\"success\":false,\"message\":null,\"error\":{\"name\":\"cqs_user_error\",\"message\":\"Error in CQS "
-          "user code.\",\"details\":{\"error\":\"" +
-              StdOutOfRangeWhat() + "\"}}}\n",
-          cqs_response.body);
+      EXPECT_EQ(500, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", cqs_response.body);
     }
     {
       const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_current_exception&users=[]", ""));
-      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
-#ifndef CURRENT_COVERAGE_REPORT_MODE
-      // NOTE(dkorolev): The top-level `make test` is never `NDEBUG`, so we're good wrt relative paths. -- D.K.
-      // LOL at this `clang-format` off and on formatting. -- D.K.
-      // clang-format off
-      EXPECT_EQ(
-          "{"
-          "\"success\":false,"
-          "\"message\":null,"
-          "\"error\":{"
-          "\"name\":\"cqs_user_error\","
-          "\"message\":\"Error in CQS user code.\","
-          "\"details\":{"
-#ifndef NDEBUG
-          "\"caller\":\"CQSTestException()\","
-#endif
-          "\"error\":\"CQS test exception.\""
-#ifndef NDEBUG
-          ",\"file\":\"test.cc\",\"line\":\"" + current::ToString(CQSCommand::DoThrowCurrentExceptionLine()) + "\""
-#endif
-          "}}}\n",
-          cqs_response.body);
-// clang-format on
-#else
-      // The `"file":"test.cc"` part will contain the relative path for top-level `make test`.
-      auto response = ParseJSON<generic::RESTGenericResponse>(cqs_response.body);
-      EXPECT_FALSE(response.success);
-      ASSERT_TRUE(Exists(response.error));
-      EXPECT_EQ("cqs_user_error", Value(response.error).name);
-      EXPECT_EQ("Error in CQS user code.", Value(response.error).message);
-      ASSERT_TRUE(Exists(Value(response.error).details));
-      EXPECT_EQ("CQS test exception.", Value(Value(response.error).details)["error"]);
-      EXPECT_EQ(current::ToString(CQSCommand::DoThrowCurrentExceptionLine()),
-                Value(Value(response.error).details)["line"]);
-#endif
+      EXPECT_EQ(500, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", cqs_response.body);
     }
     {
       const auto cqs_response =
           HTTP(POST(base_url + "/api/cqs/command/add?test_simple_rollback&users=[\"foo\",\"bar\",\"baz\"]", ""));
-      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
-      EXPECT_EQ("{\"success\":false,\"message\":\"CQS command rolled back.\"}\n", cqs_response.body);
+      EXPECT_EQ(500, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", cqs_response.body);
     }
     {
       // As the CQS command adding "foo", "bar", and "baz" has been rolled back, they should not be on the list.
@@ -2915,21 +2834,14 @@ TEST(TransactionalStorage, CQSTest) {
     }
     {
       CQSCommand command({"this", "shall", "not", "pass"});
-      command.test_rollback_with_value = true;
+      command.test_rollback_with_json = true;
       const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
-      EXPECT_EQ(400, static_cast<int>(cqs_response.code));
-      // clang-format off
-      EXPECT_EQ(
-          "{"
-          "\"success\":false,"
-          "\"message\":\"CQS command rolled back.\","
-          "\"data\":{\"rolled_back\":true,\"command\":[\"this\",\"shall\",\"not\",\"pass\"]}}\n",
-          cqs_response.body);
-      // clang-format on
+      EXPECT_EQ(412, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("{\"rolled_back\":true,\"command\":[\"this\",\"shall\",\"not\",\"pass\"]}\n", cqs_response.body);
     }
     {
       CQSCommand command({"this", "shall", "not", "pass"});
-      command.test_rollback_with_response = true;
+      command.test_rollback_with_raw_response = true;
       const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add", command));
       EXPECT_EQ(200, static_cast<int>(cqs_response.code));
       EXPECT_EQ("HA!", cqs_response.body);
