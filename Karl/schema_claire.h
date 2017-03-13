@@ -148,6 +148,7 @@ CURRENT_STRUCT(status) {
   CURRENT_FIELD(message, std::string, "OK");
   CURRENT_FIELD(details, (std::map<std::string, std::string>));
 
+  // LCOV_EXCL_START
   // clang-format off
   void Render(std::ostream& os, std::chrono::microseconds) const {
     os << "<TR><TD COLSPAN='2'>" << message << "</TD></TR>";
@@ -156,6 +157,7 @@ CURRENT_STRUCT(status) {
     }
   }
   // clang-format on
+  // LCOV_EXCL_STOP
 };
 }  // namespace current::karl::default_user_status
 

@@ -238,7 +238,7 @@ struct ReflectorImpl {
     if (cit != type_index_by_type_id_.end()) {
       return reflected_cpp_types_.at(cit->second.type_index);
     } else {
-      throw UnknownTypeIDException();  // LCOV_EXCL_LINE
+      CURRENT_THROW(UnknownTypeIDException());  // LCOV_EXCL_LINE
     }
   }
 

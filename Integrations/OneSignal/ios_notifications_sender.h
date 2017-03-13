@@ -79,8 +79,8 @@ class IOSPushNotificationsSender final {
     try {
       actual = HTTP(GET(url)).body;
     } catch (const Exception&) {
-      throw OneSignalInitializationException(strings::Printf(
-          "OneSignal Integration HTTP request failed on: %s\nLikely misconfigured nginx.", url.c_str()));
+      CURRENT_THROW(OneSignalInitializationException(strings::Printf(
+          "OneSignal Integration HTTP request failed on: %s\nLikely misconfigured nginx.", url.c_str())));
 // Here is the golden nginx config if you need one.
 #if 0
 server {
@@ -96,12 +96,12 @@ server {
 #endif
     }
     if (actual != golden) {
-      throw OneSignalInitializationException(strings::Printf(
+      CURRENT_THROW(OneSignalInitializationException(strings::Printf(
           "OneSignal Integration HTTP request to `%s` returned an unexpected result.\nExpected: %s\nActual:  "
           "%s\n",
           url.c_str(),
           golden.c_str(),
-          actual.c_str()));
+          actual.c_str())));
     }
 #endif
   }
@@ -109,7 +109,7 @@ server {
   // Send one iOS push notification.
   // Returns true on success.
   // Returns false on "regular" errors.
-  // Throws on terrible errors, with the returned `e.What()` good for journaling and further investigation.
+  // Throws on terrible errors, with the returned `e.DetailedDescription()` good for journaling.
   bool Push(const std::string& recipient_player_id,
             const std::string& message = "",
             int32_t increase_counter = 0) const {
@@ -146,7 +146,7 @@ server {
           ParseJSON(response.body, parsed_response);
         } catch (const Exception& e) {
           // Resulting JSON error: Fatal.
-          throw OneSignalPushNotificationException("OneSignal iOS push error A: " + e.What());
+          CURRENT_THROW(OneSignalPushNotificationException("OneSignal iOS push error A: " + e.DetailedDescription()));
         }
         if (!Exists(parsed_response.recipients)) {
           if (Exists(parsed_response.errors)) {
@@ -154,7 +154,7 @@ server {
             return false;
           } else {
             // Some unexpected error occurred: Fatal.
-            throw OneSignalPushNotificationException("OneSignal iOS push error Q: " + response.body);
+            CURRENT_THROW(OneSignalPushNotificationException("OneSignal iOS push error Q: " + response.body));
           }
         }
         if (Value(parsed_response.recipients) == 0) {
@@ -162,7 +162,7 @@ server {
           return false;
         } else if (Value(parsed_response.recipients) > 1) {
           // Potentially sent the notification to more than one user: Fatal.
-          throw OneSignalPushNotificationException("OneSignal iOS push error Z: " + response.body);
+          CURRENT_THROW(OneSignalPushNotificationException("OneSignal iOS push error Z: " + response.body));
         } else {
           // The notification has been sent to exactly one user: OK.
           return true;

@@ -39,18 +39,16 @@ struct InconsistentIndexOrTimestampException : Exception {
 
 struct InconsistentIndexException : InconsistentIndexOrTimestampException {
   using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
-  InconsistentIndexException(uint64_t expected, uint64_t found) {
-    using current::strings::Printf;
-    SetWhat(Printf("Expecting index %llu, seeing %llu.", expected, found));
-  }
+  InconsistentIndexException(uint64_t expected, uint64_t found)
+      : InconsistentIndexOrTimestampException(
+            current::strings::Printf("Expecting index %llu, seeing %llu.", expected, found)) {}
 };
 
 struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
   using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
-  InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found) {
-    using current::strings::Printf;
-    SetWhat(Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count()));
-  }
+  InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found)
+      : InconsistentIndexOrTimestampException(
+            current::strings::Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count())) {}
 };
 
 }  // namespace current::ss

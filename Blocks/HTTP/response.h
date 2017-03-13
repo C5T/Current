@@ -248,6 +248,34 @@ struct Response {
   }
 };
 
+template <typename T, bool CAN_JSON>
+struct GenerateResponseFromMaybeSerializableObjectImpl;
+
+template <typename T>
+struct GenerateResponseFromMaybeSerializableObjectImpl<T, true> {
+  template <typename V>
+  static Response DoIt(V&& value, current::net::HTTPResponseCodeValue code) {
+    return Response(value, code);
+  }
+};
+
+template <typename T>
+struct GenerateResponseFromMaybeSerializableObjectImpl<T, false> {
+  template <typename V>
+  static Response DoIt(V&& value, current::net::HTTPResponseCodeValue code) {
+    static_cast<void>(value);
+    return Response("", code);
+  }
+};
+
+template <typename T>
+inline Response GenerateResponseFromMaybeSerializableObject(
+    T&& value, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
+  return GenerateResponseFromMaybeSerializableObjectImpl<
+      T,
+      current::serialization::json::IsJSONSerializable<T>::value>::DoIt(value, code);
+}
+
 static_assert(HasRespondViaHTTP<Response>(0), "");
 
 }  // namespace http

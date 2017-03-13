@@ -41,16 +41,28 @@ struct StorageCannotAppendToFileException : StorageException {
 };
 // LCOV_EXCL_STOP
 
-struct StorageRollbackExceptionWithNoValue : StorageException {
+struct StorageRollbackException : StorageException {
   using StorageException::StorageException;
 };
 
+struct StorageRollbackExceptionWithValueConstructorHelper {};
+
 template <typename T>
-struct StorageRollbackExceptionWithValue : StorageException {
-  StorageRollbackExceptionWithValue(T&& value, const std::string& what = std::string())
-      : StorageException(what), value(std::move(value)) {}
+struct StorageRollbackExceptionWithValue : StorageRollbackException {
+  StorageRollbackExceptionWithValue(const StorageRollbackExceptionWithValue&) = default;
+  StorageRollbackExceptionWithValue(StorageRollbackExceptionWithValue&&) = default;
+  template <typename... ARGS>
+  StorageRollbackExceptionWithValue(StorageRollbackExceptionWithValueConstructorHelper, ARGS&&... args)
+      : value(std::forward<ARGS>(args)...) {}
   T value;
 };
+
+template <>
+struct StorageRollbackExceptionWithValue<void> : StorageRollbackException {
+  using StorageRollbackException::StorageRollbackException;
+};
+
+using StorageRollbackExceptionWithNoValue = StorageRollbackExceptionWithValue<void>;
 
 struct UnderlyingStreamHasExternalDataAuthorityException : StorageException {
   using StorageException::StorageException;
@@ -73,8 +85,9 @@ struct StorageInGracefulShutdownException : InGracefulShutdownException {
 
 #define CURRENT_STORAGE_THROW_ROLLBACK() throw ::current::storage::StorageRollbackExceptionWithNoValue()
 
-#define CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(type, value) \
-  throw ::current::storage::StorageRollbackExceptionWithValue<type>(value)
+#define CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(type, ...)         \
+  throw ::current::storage::StorageRollbackExceptionWithValue<type>( \
+      ::current::storage::StorageRollbackExceptionWithValueConstructorHelper(), __VA_ARGS__)
 
 using StorageCannotAppendToFile = const current::storage::StorageCannotAppendToFileException&;
 using StorageRollbackExceptionWithNoValue = const current::storage::StorageRollbackExceptionWithNoValue&;

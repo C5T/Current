@@ -80,6 +80,42 @@ CURRENT_STRUCT_T(Templated) {
 
 using current::reflection::Reflector;
 
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<uint64_t>,
+                           decltype(Foo::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<uint64_t>>,
+                           decltype(Bar::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<Foo>>,
+                           decltype(Bar::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<std::vector<Foo>>>,
+                           decltype(Bar::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 2>()))>::value,
+              "");
+
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::string>,
+                           decltype(Templated<uint64_t>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<uint64_t>,
+                           decltype(Templated<uint64_t>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+              "");
+
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::string>,
+                           decltype(Templated<Foo>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<Foo>,
+                           decltype(Templated<Foo>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+              "");
+
 }  // namespace reflection_test
 
 TEST(Reflection, StructAndVariant) {

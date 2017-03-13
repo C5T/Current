@@ -63,7 +63,13 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
     static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, copy_free<cpp_type> value) { \
       json_stringifier = value;                                                                                \
     }                                                                                                          \
-  };
+  };                                                                                                           \
+  namespace json {                                                                                             \
+  template <>                                                                                                  \
+  struct IsJSONSerializable<cpp_type> {                                                                        \
+    constexpr static bool value = true;                                                                        \
+  };                                                                                                           \
+  }
 #include "../../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 

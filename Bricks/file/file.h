@@ -124,7 +124,7 @@ struct FileSystem {
     return strings::Printf("/tmp/.current-tmp-%08x", rand());
 #else
     char buffer[L_tmpnam_s];  // NOTE(dkorolev): Changed `[L_tmpnam]` into `[L_tmpnam_s]`, as per
-                              // https://msdn.microsoft.com/en-us/library/18x8h1bh.aspx 
+                              // https://msdn.microsoft.com/en-us/library/18x8h1bh.aspx
     CURRENT_ASSERT(!(::tmpnam_s(buffer)));
     return buffer;
 #endif

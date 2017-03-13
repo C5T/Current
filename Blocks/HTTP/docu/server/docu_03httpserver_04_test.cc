@@ -83,7 +83,7 @@ const auto port = FLAGS_docu_net_server_port_04;
       }
     } catch (const current::Exception& e) {
       // TODO(dkorolev): Catch the right exception type.
-      r(PennyOutput{e.what(), 0});
+      r(PennyOutput{e.OriginalDescription(), 0});
     }
   });
 EXPECT_EQ("{\"error\":\"\",\"result\":5}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{2,3}})).body);

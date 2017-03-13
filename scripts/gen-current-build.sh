@@ -86,6 +86,7 @@ inline std::chrono::microseconds BuildTimestamp() {
   CURRENT_ASSERT(strlen(kBuildDateTime) == 21u); // "mmm dd yyyy, hh:mm:ss".
   const char* s = kBuildDateTime;
   std::tm tm;
+  // LCOV_EXCL_START
   if (s[0] == 'J') {
     if (s[1] == 'a') {
       tm.tm_mon = 0;  // January.
@@ -117,6 +118,7 @@ inline std::chrono::microseconds BuildTimestamp() {
   } else {
       tm.tm_mon = 11;  // December.
   }
+  // LCOV_EXCL_STOP
   tm.tm_mday = (s[4] >= '0' ? (s[4] - '0') * 10 : 0) + (s[5] - '0');
   tm.tm_year = ((s[7] - '0') * 1000 + (s[8] - '0') * 100 + (s[9] - '0') * 10 + (s[10] - '0')) - 1900;
   tm.tm_hour = (s[13] - '0') * 10 + (s[14] - '0');

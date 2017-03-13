@@ -65,6 +65,14 @@ CURRENT_STORAGE(KeyValueDB) {
   CURRENT_STORAGE_FIELD(hashmap_string, PersistedStringKeyValuePair);
 };
 
+struct NonSerializablePairOfTwoSizeT {
+  size_t first;
+  size_t second;
+  NonSerializablePairOfTwoSizeT() = default;
+  NonSerializablePairOfTwoSizeT(const NonSerializablePairOfTwoSizeT&) = default;
+  NonSerializablePairOfTwoSizeT(size_t first, size_t second) : first(first), second(second) {}
+};
+
 SCENARIO(storage, "Storage transactions test.") {
   using storage_t = KeyValueDB<SherlockInMemoryStreamPersister>;
   storage_t db;
@@ -129,7 +137,7 @@ SCENARIO(storage, "Storage transactions test.") {
         fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
         fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
       }
-      return std::make_pair(fields.hashmap_uint32.Size(), fields.hashmap_string.Size());
+      return NonSerializablePairOfTwoSizeT(fields.hashmap_uint32.Size(), fields.hashmap_string.Size());
     }).Go());
     actual_size_uint32 = pair.first;
     actual_size_string = pair.second;

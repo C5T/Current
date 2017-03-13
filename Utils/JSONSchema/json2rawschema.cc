@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
         FLAGS_output.c_str());
     return 0;
   } catch (const current::utils::InferSchemaException& e) {
-    std::cerr << e.What() << std::endl;
+    std::cerr << e.DetailedDescription() << std::endl;
     return -1;
   }
 }

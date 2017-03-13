@@ -28,8 +28,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
-
-#include "../../Blocks/HTTP/api.h"
+#include "../../Blocks/HTTP/response.h"
 
 namespace current {
 namespace storage {
@@ -108,8 +107,8 @@ inline generic::RESTGenericResponse ErrorResponseObject(const generic::RESTError
   return generic::RESTGenericResponse(false, error);
 }
 
-inline Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
-  return Response(ErrorResponseObject(error_object), code);
+inline current::http::Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
+  return current::http::Response(ErrorResponseObject(error_object), code);
 }
 
 inline generic::RESTError MethodNotAllowedError(const std::string& message, const std::string& requested_method) {
@@ -285,6 +284,39 @@ using HypermediaRESTGenericResponse = hypermedia::HypermediaRESTGenericResponse;
 
 // Expose helper functions into `current::storage::rest` as well for now. #DIMA_FIXME
 using namespace helpers;
+
+namespace cqs {
+
+// clang-format off
+CURRENT_STRUCT(CQSHandlerNotSpecified, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSHandlerNotSpecified) : SUPER(false, "CQS handler not specified.") {}
+};
+
+CURRENT_STRUCT(CQSHandlerNotFound, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSHandlerNotFound) : SUPER(false, "CQS handler not found.") {}
+};
+
+CURRENT_STRUCT(CQSCommandNeedsMasterStorage, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSCommandNeedsMasterStorage) :
+      SUPER(false, "CQS commands must be run on the master storage.") {}
+};
+
+CURRENT_STRUCT(CQSParseJSONException, generic::RESTGenericResponse) {
+  CURRENT_CONSTRUCTOR(CQSParseJSONException)(const std::string& what) :
+      SUPER(false, "CQS command or query HTTP body JSON parse error.", generic::RESTError("cqs_json_error", what)) {}
+};
+
+CURRENT_STRUCT(CQSParseURLException, generic::RESTGenericResponse) {
+  CURRENT_CONSTRUCTOR(CQSParseURLException)(const std::string& what) :
+      SUPER(false, "CQS command or query URL parameters parse error.", generic::RESTError("cqs_querystring_error", what)) {}
+};
+
+CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {
+  CURRENT_DEFAULT_CONSTRUCTOR(CQSBadRequest) : SUPER(false, "Bad CQS request.") {}
+};
+// clang-format on
+
+}  // namespace cqs
 
 }  // namespace rest
 }  // namespace storage

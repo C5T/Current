@@ -50,13 +50,13 @@ class AdWordsMobileConversionEventsSender final {
  public:
   AdWordsMobileConversionEventsSender(const AdWordsConversionTrackingParams& params,
                                       uint16_t port = kDefaultAdWordsIntegrationPort)
-      : get_url_(strings::Printf(
-            "localhost:%d/googleadservices/pagead/conversion/%s/?label=%s&bundleid=%s&idtype=%s&rdid=",
-            port,
-            params.conversion_id.c_str(),
-            params.label.c_str(),
-            params.bundleid.c_str(),
-            params.idtype.c_str())) {
+      : get_url_(
+            strings::Printf("localhost:%d/googleadservices/pagead/conversion/%s/?label=%s&bundleid=%s&idtype=%s&rdid=",
+                            port,
+                            params.conversion_id.c_str(),
+                            params.label.c_str(),
+                            params.bundleid.c_str(),
+                            params.idtype.c_str())) {
 #ifndef CURRENT_CI
     const std::string url = strings::Printf("localhost:%d/.current/googleadservices", port);
     const std::string golden = "https://www.googleadservices.com/\n";
@@ -64,8 +64,8 @@ class AdWordsMobileConversionEventsSender final {
     try {
       actual = HTTP(GET(url)).body;
     } catch (const Exception&) {
-      throw AdWordsInitializationException(strings::Printf(
-          "AdWords Integration HTTP request failed on: %s\nLikely misconfigured nginx.", url.c_str()));
+      CURRENT_THROW(AdWordsInitializationException(
+          strings::Printf("AdWords Integration HTTP request failed on: %s\nLikely misconfigured nginx.", url.c_str())));
 // Here is the golden nginx config if you need one.
 #if 0
 server {
@@ -84,12 +84,12 @@ server {
 #endif
     }
     if (actual != golden) {
-      throw AdWordsInitializationException(strings::Printf(
+      CURRENT_THROW(AdWordsInitializationException(strings::Printf(
           "AdWords Integration HTTP request to `%s` returned an unexpected result.\nExpected: %s\nActual:  "
           "%s\n",
           url.c_str(),
           golden.c_str(),
-          actual.c_str()));
+          actual.c_str())));
     }
 #endif  // CURRENT_CI
   }

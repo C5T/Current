@@ -988,3 +988,40 @@ TEST(HTTPAPI, PayloadTooLarge) {
     EXPECT_EQ("<h1>ENTITY TOO LARGE</h1>\n", response.body);
   }
 }
+
+CURRENT_STRUCT_T(HTTPAPITemplatedTestObject) {
+  CURRENT_FIELD(text, std::string, "OK");
+  CURRENT_FIELD(data, T);
+};
+
+struct HTTPAPINonSerializableObject {};
+
+TEST(HTTPAPI, ResponseGeneratorForSerializableAndNonSerializableTypes) {
+  const auto scope =
+      HTTP(FLAGS_net_api_test_port)
+          .Register(
+              "/maybe_json",
+              [](Request r) {
+                if (r.url.query.has("json")) {
+                  static_assert(current::serialization::json::IsJSONSerializable<HTTPAPITestObject>::value, "");
+                  r(current::http::GenerateResponseFromMaybeSerializableObject<
+                      HTTPAPITemplatedTestObject<HTTPAPITestObject> >(HTTPAPITemplatedTestObject<HTTPAPITestObject>()));
+                } else {
+                  static_assert(!current::serialization::json::IsJSONSerializable<HTTPAPINonSerializableObject>::value,
+                                "");
+                  r(current::http::GenerateResponseFromMaybeSerializableObject<
+                      HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject> >(
+                      HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject>()));
+                }
+              });
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/maybe_json?json", FLAGS_net_api_test_port)));
+    EXPECT_EQ("{\"text\":\"OK\",\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n", response.body);
+    EXPECT_EQ(200, static_cast<int>(response.code));
+  }
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/maybe_json", FLAGS_net_api_test_port)));
+    EXPECT_EQ("", response.body);
+    EXPECT_EQ(200, static_cast<int>(response.code));
+  }
+}

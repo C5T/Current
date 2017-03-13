@@ -31,14 +31,92 @@ SOFTWARE.
 
 #include "../serialization.h"
 
-#include "../../helpers.h"
+#include "../../struct.h"
 #include "../../optional.h"
+#include "../../helpers.h"
 
 #include "../../../Bricks/template/pod.h"  // `current::copy_free`.
 
 namespace current {
 namespace serialization {
 namespace json {
+
+// SFINAE doesn't work wrt checking whether `JSON()` is possible for `T`, as the declaration is always there.
+template <bool IS_CURRENT_STRUCT, bool IS_CURRENT_VARIANT, bool IS_ENUM, typename T>
+struct IsJSONSerializableImpl;
+
+template <typename T>
+struct IsJSONSerializable {
+  constexpr static bool value =
+      IsJSONSerializableImpl<IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum<T>::value, T>::value &&
+      !std::is_same<T, CurrentStruct>::value && !std::is_same<T, CurrentStruct>::value;
+};
+
+// Helper logic for `IsJSONSerializable`.
+template <typename T>
+struct IsFieldJSONSerializable;
+
+template <typename T>
+struct IsFieldJSONSerializable<reflection::FieldTypeWrapper<T>> {
+  constexpr static bool value = IsJSONSerializable<T>::value;
+};
+
+template <typename T, int I, int N>
+struct AreCurrentStructFieldsSerializable {
+  constexpr static bool value = IsFieldJSONSerializable<decltype(std::declval<T>().CURRENT_REFLECTION(
+                                    reflection::Index<reflection::FieldType, I>()))>::value &&
+                                AreCurrentStructFieldsSerializable<T, I + 1, N>::value;
+};
+
+template <typename T, int N>
+struct AreCurrentStructFieldsSerializable<T, N, N> {
+  constexpr static bool value = true;
+};
+
+template <typename T>
+struct IsCurrentStructJSONSerializable {
+  constexpr static bool value = IsCurrentStructJSONSerializable<reflection::SuperType<T>>::value &&
+                                AreCurrentStructFieldsSerializable<T, 0, reflection::FieldCounter<T>::value>::value;
+};
+
+template <>
+struct IsCurrentStructJSONSerializable<CurrentStruct> {
+  constexpr static bool value = true;
+};
+
+template <typename T>
+struct AreTypesInTypeListSerializable;
+
+template <typename T, typename... TS>
+struct AreTypesInTypeListSerializable<TypeListImpl<T, TS...>> {
+  constexpr static bool value =
+      IsJSONSerializable<T>::value && AreTypesInTypeListSerializable<TypeListImpl<TS...>>::value;
+};
+
+template <>
+struct AreTypesInTypeListSerializable<TypeListImpl<>> {
+  constexpr static bool value = true;
+};
+
+template <typename T>
+struct IsJSONSerializableImpl<true, false, false, T> {
+  constexpr static bool value = IsCurrentStructJSONSerializable<T>::value;
+};
+
+template <typename T>
+struct IsJSONSerializableImpl<false, true, false, T> {
+  constexpr static bool value = AreTypesInTypeListSerializable<typename T::typelist_t>::value;
+};
+
+template <typename T>
+struct IsJSONSerializableImpl<false, false, true, T> {
+  constexpr static bool value = IsJSONSerializable<typename std::underlying_type<T>::type>::value;
+};
+
+template <typename T>
+struct IsJSONSerializableImpl<false, false, false, T> {
+  constexpr static bool value = false;
+};
 
 // For RapidJSON value assignments, specifically strings (use `SetString`, not `SetValue`) and `std::chrono::*`.
 template <typename T>
@@ -164,7 +242,7 @@ class JSONParser final {
  public:
   explicit JSONParser(const char* json) {
     if (document_.Parse(json).HasParseError()) {
-      throw InvalidJSONException(json);
+      CURRENT_THROW(InvalidJSONException(json));
     }
     current_ = &document_;
   }
@@ -269,7 +347,7 @@ inline void ParseJSON(const std::string& source, T& destination) {
     ParseJSONViaRapidJSON<J>(source, destination);
     CheckIntegrity(destination);
   } catch (UninitializedVariant) {
-    throw JSONUninitializedVariantObjectException();
+    CURRENT_THROW(JSONUninitializedVariantObjectException());
   }
 }
 
@@ -280,7 +358,7 @@ inline void PatchObjectWithJSON(T& object, const std::string& json) {
     ParseJSONViaRapidJSON<JSONPatcher<J>>(json, object);
     CheckIntegrity(object);
   } catch (UninitializedVariant) {
-    throw JSONUninitializedVariantObjectException();
+    CURRENT_THROW(JSONUninitializedVariantObjectException());
   }
 }
 
