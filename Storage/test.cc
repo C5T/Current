@@ -24,7 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // Uncomment the next line for faster Storage REST development iterations. DIMA_FIXME: Remove it.
-// #define STORAGE_ONLY_RUN_RESTFUL_TESTS
+#define STORAGE_ONLY_RUN_RESTFUL_TESTS
 
 #define CURRENT_MOCK_TIME
 
@@ -2902,9 +2902,16 @@ TEST(TransactionalStorage, CQSTest) {
 #endif
     }
     {
-      const auto cqs_response = HTTP(POST(base_url + "/api/cqs/command/add?test_simple_rollback&users=[]", ""));
+      const auto cqs_response =
+          HTTP(POST(base_url + "/api/cqs/command/add?test_simple_rollback&users=[\"foo\",\"bar\",\"baz\"]", ""));
       EXPECT_EQ(400, static_cast<int>(cqs_response.code));
       EXPECT_EQ("{\"success\":false,\"message\":\"CQS command rolled back.\"}\n", cqs_response.body);
+    }
+    {
+      // As the CQS command adding "foo", "bar", and "baz" has been rolled back, they should not be on the list.
+      const auto cqs_response = HTTP(GET(base_url + "/api/cqs/query/list"));
+      EXPECT_EQ(200, static_cast<int>(cqs_response.code));
+      EXPECT_EQ("http://unittest.current.ai = DK,GN,MZ,alice,bob", cqs_response.body);
     }
     {
       CQSCommand command({"this", "shall", "not", "pass"});
