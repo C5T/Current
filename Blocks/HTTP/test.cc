@@ -1004,14 +1004,13 @@ TEST(HTTPAPI, ResponseGeneratorForSerializableAndNonSerializableTypes) {
               [](Request r) {
                 if (r.url.query.has("json")) {
                   static_assert(current::serialization::json::IsJSONSerializable<HTTPAPITestObject>::value, "");
-                  r(current::http::GenerateResponseAndUseJSONIfInnerTypeSerializable<HTTPAPITemplatedTestObject,
-                                                                                     HTTPAPITestObject>(
-                      HTTPAPITemplatedTestObject<HTTPAPITestObject>()));
+                  r(current::http::GenerateResponseFromMaybeSerializableObject<
+                      HTTPAPITemplatedTestObject<HTTPAPITestObject> >(HTTPAPITemplatedTestObject<HTTPAPITestObject>()));
                 } else {
                   static_assert(!current::serialization::json::IsJSONSerializable<HTTPAPINonSerializableObject>::value,
                                 "");
-                  r(current::http::GenerateResponseAndUseJSONIfInnerTypeSerializable<HTTPAPITemplatedTestObject,
-                                                                                     HTTPAPINonSerializableObject>(
+                  r(current::http::GenerateResponseFromMaybeSerializableObject<
+                      HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject> >(
                       HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject>()));
                 }
               });

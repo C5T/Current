@@ -248,19 +248,19 @@ struct Response {
   }
 };
 
-template <template <typename> class TT, typename T, bool CAN_JSON>
-struct GenerateJSONResponseIfInnerTypeSerializableImpl;
+template <typename T, bool CAN_JSON>
+struct GenerateResponseFromMaybeSerializableObjectImpl;
 
-template <template <typename> class TT, typename T>
-struct GenerateJSONResponseIfInnerTypeSerializableImpl<TT, T, true> {
+template <typename T>
+struct GenerateResponseFromMaybeSerializableObjectImpl<T, true> {
   template <typename V>
   static Response DoIt(V&& value, current::net::HTTPResponseCodeValue code) {
     return Response(value, code);
   }
 };
 
-template <template <typename> class TT, typename T>
-struct GenerateJSONResponseIfInnerTypeSerializableImpl<TT, T, false> {
+template <typename T>
+struct GenerateResponseFromMaybeSerializableObjectImpl<T, false> {
   template <typename V>
   static Response DoIt(V&& value, current::net::HTTPResponseCodeValue code) {
     static_cast<void>(value);
@@ -268,11 +268,10 @@ struct GenerateJSONResponseIfInnerTypeSerializableImpl<TT, T, false> {
   }
 };
 
-template <template <typename> class TT, typename T>
-inline Response GenerateResponseAndUseJSONIfInnerTypeSerializable(
-    TT<T>&& value, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-  return GenerateJSONResponseIfInnerTypeSerializableImpl<
-      TT,
+template <typename T>
+inline Response GenerateResponseFromMaybeSerializableObject(
+    T&& value, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
+  return GenerateResponseFromMaybeSerializableObjectImpl<
       T,
       current::serialization::json::IsJSONSerializable<T>::value>::DoIt(value, code);
 }
