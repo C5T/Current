@@ -1218,12 +1218,18 @@ CURRENT_STRUCT_T(ComplexTemplatedUsage) {
   CURRENT_FIELD(b, TemplatedValue<T>);
 };
 
-static_assert(current::serialization::json::IsJSONSerializable<TemplatedValue<int>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::pair<bool, NotSerializable>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::vector<NotSerializable>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::set<NotSerializable>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::unordered_set<NotSerializable>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::map<uint64_t, NotSerializable>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::unordered_map<uint64_t, NotSerializable>>::value,
+              "");
 
-// NOTE(dkorolev): This is a "hole" in the current implementation of `IsJSONSerializable`.
-// The `static_assert` from the next line will fail.
-// I suggest we keep it this way for now, as the other solution carries the risk of increasing compilation time. -- D.K.
-// static_assert(!current::serialization::json::IsJSONSerializable<TemplatedValue<NotSerializable>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<TemplatedValue<int>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<TemplatedValue<NotSerializable>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<Variant<NotSerializable, Empty>>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<Variant<Empty, NotSerializable>>::value, "");
 
 CURRENT_STRUCT(DummyBaseClass) {
   CURRENT_FIELD(base, int32_t);

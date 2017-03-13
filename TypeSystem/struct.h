@@ -102,6 +102,12 @@ struct FieldImpl<FC, T> {
   typedef CountFieldsImplementationType type;
 };
 
+// For compile-time field type by index extraction.
+template <typename T>
+struct FieldTypeWrapper {
+  using type = T;
+};
+
 template <typename INSTANTIATION_TYPE, typename T>
 using Field = typename FieldImpl<INSTANTIATION_TYPE, T>::type;
 
@@ -396,7 +402,9 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                          \
                           ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {        \
     CURRENT_CALL_F(#name, name);                                                                                       \
-  }
+  }                                                                                                                    \
+  static ::crnt::r::FieldTypeWrapper<CURRENT_REMOVE_PARENTHESES(type)> CURRENT_REFLECTION(                             \
+      ::current::reflection::Index<::current::reflection::FieldType, idx>);
 
 #define CURRENT_CONSTRUCTOR(s)                                                                                        \
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
@@ -597,6 +605,8 @@ template <typename INSTANTIATION_TYPE, typename T>
 using Field = ::crnt::r::Field<INSTANTIATION_TYPE, T>;
 
 using ::crnt::r::CurrentStructFieldsConsistency;
+using ::crnt::r::FieldType;
+using ::crnt::r::FieldTypeWrapper;
 
 }  // namespace current::reflection
 }  // namespace current

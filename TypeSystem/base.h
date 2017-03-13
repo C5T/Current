@@ -44,6 +44,7 @@ struct CountFieldsImplementationType {
 };
 
 // Helper structs for reflection.
+class FieldType {};
 class FieldTypeAndName {};
 class FieldTypeAndNameAndIndex {};
 
