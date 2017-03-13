@@ -271,8 +271,10 @@ struct GenerateJSONResponseIfInnerTypeSerializableImpl<TT, T, false> {
 template <template <typename> class TT, typename T>
 inline Response GenerateResponseAndUseJSONIfInnerTypeSerializable(
     TT<T>&& value, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-  return GenerateJSONResponseIfInnerTypeSerializableImpl<TT, T, current::serialization::json::CanBuildJSON<T>::value>::
-      DoIt(value, code);
+  return GenerateJSONResponseIfInnerTypeSerializableImpl<
+      TT,
+      T,
+      current::serialization::json::IsJSONSerializable<T>::value>::DoIt(value, code);
 }
 
 static_assert(HasRespondViaHTTP<Response>(0), "");

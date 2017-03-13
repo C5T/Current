@@ -67,8 +67,8 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_set<T, HASH
 
 namespace json {
 template <typename T, typename HASH, typename ALLOC>
-struct CanBuildJSON<std::unordered_set<T, HASH, ALLOC>> {
-  constexpr static bool value = CanBuildJSON<T>::value;
+struct IsJSONSerializable<std::unordered_set<T, HASH, ALLOC>> {
+  constexpr static bool value = IsJSONSerializable<T>::value;
 };
 }  // namespace json
 

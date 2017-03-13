@@ -44,7 +44,7 @@ namespace json {
 // The best solution I could come up with is to explicitly declare every serializable type serializable.
 // NOTE: This implementation has holes if `CURRENT_STRUCT` or a `Variant<>` contain unserializable types. Be warned.
 template <typename T>
-struct CanBuildJSON {
+struct IsJSONSerializable {
   constexpr static bool value = IS_CURRENT_STRUCT(T) || IS_CURRENT_VARIANT(T) || std::is_enum<T>::value;
 };
 

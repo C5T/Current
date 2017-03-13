@@ -62,8 +62,8 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<TT, TA>> {
 
 namespace json {
 template <typename T, typename ALLOC>
-struct CanBuildJSON<std::vector<T, ALLOC>> {
-  constexpr static bool value = CanBuildJSON<T>::value;
+struct IsJSONSerializable<std::vector<T, ALLOC>> {
+  constexpr static bool value = IsJSONSerializable<T>::value;
 };
 }  // namespace json
 

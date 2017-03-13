@@ -118,25 +118,25 @@ CURRENT_STRUCT(WithTime) {
   CURRENT_FIELD(micros, std::chrono::microseconds, std::chrono::microseconds(0));
 };
 
-static_assert(current::serialization::json::CanBuildJSON<int>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<std::string>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<bool>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<std::vector<int>>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<std::pair<int, int>>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<std::map<int, int>>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<std::set<int>>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<std::chrono::microseconds>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<Empty>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<Serializable>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<Int>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<Float>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<Double>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<ComplexSerializable>::value, "");
-static_assert(current::serialization::json::CanBuildJSON<ContainsVariant>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<int>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::string>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<bool>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::vector<int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::pair<int, int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::map<int, int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::set<int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::chrono::microseconds>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<Empty>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<Serializable>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<Int>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<Float>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<Double>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<ComplexSerializable>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<ContainsVariant>::value, "");
 
 struct NotSerializable {};
 
-static_assert(!current::serialization::json::CanBuildJSON<NotSerializable>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<NotSerializable>::value, "");
 
 namespace named_variant {
 
@@ -1218,12 +1218,12 @@ CURRENT_STRUCT_T(ComplexTemplatedUsage) {
   CURRENT_FIELD(b, TemplatedValue<T>);
 };
 
-static_assert(current::serialization::json::CanBuildJSON<TemplatedValue<int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<TemplatedValue<int>>::value, "");
 
-// NOTE(dkorolev): This is a "hole" in the current implementation of `CanBuildJSON`.
+// NOTE(dkorolev): This is a "hole" in the current implementation of `IsJSONSerializable`.
 // The `static_assert` from the next line will fail.
 // I suggest we keep it this way for now, as the other solution carries the risk of increasing compilation time. -- D.K.
-// static_assert(!current::serialization::json::CanBuildJSON<TemplatedValue<NotSerializable>>::value, "");
+// static_assert(!current::serialization::json::IsJSONSerializable<TemplatedValue<NotSerializable>>::value, "");
 
 CURRENT_STRUCT(DummyBaseClass) {
   CURRENT_FIELD(base, int32_t);

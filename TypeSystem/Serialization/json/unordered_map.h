@@ -118,8 +118,8 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_map<TK, TV,
 
 namespace json {
 template <typename K, typename V, typename HASH, typename ALLOC>
-struct CanBuildJSON<std::unordered_map<K, V, HASH, ALLOC>> {
-  constexpr static bool value = CanBuildJSON<K>::value && CanBuildJSON<V>::value;
+struct IsJSONSerializable<std::unordered_map<K, V, HASH, ALLOC>> {
+  constexpr static bool value = IsJSONSerializable<K>::value && IsJSONSerializable<V>::value;
 };
 }  // namespace json
 

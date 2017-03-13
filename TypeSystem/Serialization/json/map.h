@@ -116,7 +116,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
 
 namespace json {
 template <typename K, typename V, typename CMP, typename ALLOC>
-struct CanBuildJSON<std::map<K, V, CMP, ALLOC>> {
+struct IsJSONSerializable<std::map<K, V, CMP, ALLOC>> {
   constexpr static bool value = true;
 };
 }  // namespace json

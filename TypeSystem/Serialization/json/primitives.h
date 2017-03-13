@@ -66,7 +66,7 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
   };                                                                                                           \
   namespace json {                                                                                             \
   template <>                                                                                                  \
-  struct CanBuildJSON<cpp_type> {                                                                              \
+  struct IsJSONSerializable<cpp_type> {                                                                        \
     constexpr static bool value = true;                                                                        \
   };                                                                                                           \
   }
