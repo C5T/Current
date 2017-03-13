@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
+#include "../../Blocks/HTTP/response.h"
 
 namespace current {
 namespace storage {
@@ -106,8 +107,8 @@ inline generic::RESTGenericResponse ErrorResponseObject(const generic::RESTError
   return generic::RESTGenericResponse(false, error);
 }
 
-inline Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
-  return Response(ErrorResponseObject(error_object), code);
+inline current::http::Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
+  return current::http::Response(ErrorResponseObject(error_object), code);
 }
 
 inline generic::RESTError MethodNotAllowedError(const std::string& message, const std::string& requested_method) {

@@ -41,17 +41,6 @@ struct StorageCannotAppendToFileException : StorageException {
 };
 // LCOV_EXCL_STOP
 
-CURRENT_STRUCT(CQSCommandRolledBackResponse) {
-  CURRENT_FIELD(success, bool, false);
-  CURRENT_FIELD(message, std::string, "CQS command rolled back.");
-};
-
-CURRENT_STRUCT_T(CQSCommandRolledBackResponseT, CQSCommandRolledBackResponse) {
-  CURRENT_FIELD(data, T);
-  CURRENT_DEFAULT_CONSTRUCTOR_T(CQSCommandRolledBackResponseT) {}
-  CURRENT_CONSTRUCTOR_T(CQSCommandRolledBackResponseT)(const T& data) : data(data) {}
-};
-
 struct StorageRollbackException : StorageException {
   using StorageException::StorageException;
 };
