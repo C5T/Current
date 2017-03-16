@@ -39,7 +39,7 @@ struct NetworkException : Exception {
 
 // TCP-level exceptions are derived from SocketException.
 struct SocketException : NetworkException {
-  using NetworkException::NetworkException;
+  using NetworkException::NetworkException;  // LCOV_EXCL_LINE
 };
 
 #ifdef CURRENT_WINDOWS
@@ -61,11 +61,11 @@ struct SocketAcceptException : ServerSocketException {};  // LCOV_EXCL_LINE -- n
 struct ConnectionResetByPeer : SocketException {};  // LCOV_EXCL_LINE
 
 struct ClientSocketException : SocketException {
-  using SocketException::SocketException;
+  using SocketException::SocketException;  // LCOV_EXCL_LINE
 };
 struct SocketConnectException : ClientSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketResolveAddressException : ClientSocketException {
-  using ClientSocketException::ClientSocketException;
+  using ClientSocketException::ClientSocketException;  // LCOV_EXCL_LINE
 };
 
 struct SocketFcntlException : SocketException {};

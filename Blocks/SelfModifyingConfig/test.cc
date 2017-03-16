@@ -93,9 +93,10 @@ TEST(SelfModifyingConfig, ReadFileException) {
   try {
     std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
   } catch (const current::SelfModifyingConfigReadFileException& e) {
-    ExpectStringEndsWith(
-        "config.h:80\tSelfModifyingConfigReadFileException(filename_)\t.current/ReadFileExceptionConfig",
-        e.DetailedDescription());
+    EXPECT_EQ("SelfModifyingConfigReadFileException(filename_)", e.Caller());
+    EXPECT_EQ(".current/ReadFileExceptionConfig", e.OriginalDescription());
+    ExpectStringEndsWith("config.h", e.File());
+    EXPECT_EQ(80, e.Line());
   }
 }
 
@@ -119,10 +120,10 @@ TEST(SelfModifyingConfig, ParseJSONException) {
   try {
     std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
   } catch (const current::SelfModifyingConfigParseJSONException& e) {
-    ExpectStringEndsWith(
-        "config.h:88\tSelfModifyingConfigParseJSONException(what)\tFile doesn't contain a valid JSON: "
-        "'De Louboutin.'",
-        e.DetailedDescription());
+    EXPECT_EQ("SelfModifyingConfigParseJSONException(what)", e.Caller());
+    EXPECT_EQ("File doesn't contain a valid JSON: 'De Louboutin.'", e.OriginalDescription());
+    ExpectStringEndsWith("config.h", e.File());
+    EXPECT_EQ(88, e.Line());
   }
 }
 
@@ -148,9 +149,9 @@ TEST(SelfModifyingConfig, WriteFileException) {
   try {
     std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
   } catch (const current::SelfModifyingConfigWriteFileException& e) {
-    ExpectStringEndsWith(
-        "config.h:103\tSelfModifyingConfigWriteFileException(new_filename)\t.current/"
-        "WriteFileExceptionConfig.19830816-000000",
-        e.DetailedDescription());
+    EXPECT_EQ("SelfModifyingConfigWriteFileException(new_filename)", e.Caller());
+    EXPECT_EQ(".current/WriteFileExceptionConfig.19830816-000000", e.OriginalDescription());
+    ExpectStringEndsWith("config.h", e.File());
+    EXPECT_EQ(103, e.Line());
   }
 }

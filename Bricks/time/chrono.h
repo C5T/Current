@@ -52,11 +52,13 @@ namespace time {
 
 #ifdef CURRENT_MOCK_TIME
 
+// LCOV_EXCL_START
 struct InconsistentSetNowException : Exception {
   InconsistentSetNowException(std::chrono::microseconds was, std::chrono::microseconds attempted)
       : Exception("SetNow() attempted to change time back to " + ToString(attempted) + ' ' + " from " + ToString(was) +
                   '.') {}
 };
+// LCOV_EXCL_STOP
 
 struct MockNowImpl {
   std::chrono::microseconds mock_now_value;
@@ -81,7 +83,7 @@ inline void SetNow(std::chrono::microseconds us, std::chrono::microseconds max_u
     impl.mock_now_value = us;
     impl.max_mock_now_value = max_us;
   } else {
-    CURRENT_THROW(InconsistentSetNowException(impl.mock_now_value, us));
+    CURRENT_THROW(InconsistentSetNowException(impl.mock_now_value, us));  // LCOV_EXCL_LINE
   }
 }
 

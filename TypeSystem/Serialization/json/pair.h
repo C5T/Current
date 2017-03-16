@@ -87,6 +87,13 @@ struct DeserializeImpl<json::JSONParser<JSONFormat::NewtonsoftFSharp>, std::pair
   }
 };
 
+namespace json {
+template <typename F, typename S>
+struct IsJSONSerializable<std::pair<F, S>> {
+  constexpr static bool value = IsJSONSerializable<F>::value && IsJSONSerializable<S>::value;
+};
+}  // namespace json
+
 }  // namespace current::serialization
 }  // namespace current
 

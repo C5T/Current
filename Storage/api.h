@@ -199,7 +199,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                           },
                                           std::move(request)).Detach();
               } catch (const TypeSystemParseJSONException& e) {
-                request(handler.ErrorBadJSON(e.What()));
+                request(handler.ErrorBadJSON(e.DetailedDescription()));
               }
             });
       } else if (request.method == "PUT" && storage_role == StorageRole::Master) {
@@ -230,8 +230,8 @@ struct PerFieldRESTfulHandlerGenerator {
                                             return handler.Run(input);
                                           },
                                           std::move(request)).Detach();
-              } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
-                request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
+              } catch (const TypeSystemParseJSONException& e) {          // LCOV_EXCL_LINE
+                request(handler.ErrorBadJSON(e.DetailedDescription()));  // LCOV_EXCL_LINE
               }
             });
       } else if (request.method == "PATCH" && storage_role == StorageRole::Master) {
@@ -400,6 +400,7 @@ class RESTfulStorage {
   using mutable_fields_t = MutableFields<STORAGE_IMPL>;
 
   // TODO(dkorolev): `unique_ptr` and move semantics. Move to `-std=c++14` maybe? :-)
+  // FIXME_DIMA <-- keep this marker for me to find it once we do move to C++14.
   using cqs_universal_parser_t = std::function<std::shared_ptr<CurrentStruct>(Request&)>;
   using cqs_query_handler_t = std::function<Response(
       immutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
@@ -471,19 +472,13 @@ class RESTfulStorage {
         },
         [query](immutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_query, const std::string& url)
             -> Response {
-              try {
-                // Invoke `.template Query<>(...)`, the handler implemented as part of the `QUERY_IMPL` class.
-                // The instance of `QUERY_IMPL` is passed at runtime, in a type-erased fashion, as all possible
-                // query types are not available at compile time. Hence, the query object itself is stored as a
-                // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
-                // down to the respective `QUERY_IMPL` type from within the transaction.
-                return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
-                    .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
-              } catch (const Exception& e) {
-                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
-              } catch (const std::exception& e) {
-                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
-              }
+              // Invoke `.template Query<>(...)`, the handler implemented as part of the `QUERY_IMPL` class.
+              // The instance of `QUERY_IMPL` is passed at runtime, in a type-erased fashion, as all possible
+              // query types are not available at compile time. Hence, the query object itself is stored as a
+              // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
+              // down to the respective `QUERY_IMPL` type from within the transaction.
+              return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
+                  .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
             });
   }
 
@@ -500,21 +495,13 @@ class RESTfulStorage {
         [command](mutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_command, const std::string& url)
             -> Response {
               fields.SetTransactionMetaField("X-Current-CQS-Command", command);
-              try {
-                // Invoke `.template Command<>(...)`, the handler implemented as part of the `COMMAND_IMPL` class.
-                // The instance of `COMMAND_IMPL` is passed at runtime, in a type-erased fashion, as all possible
-                // command types are not available at compile time. Hence, the command object itself is stored as a
-                // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
-                // down to the respective `COMMAND_IMPL` type from within the transaction.
-                return dynamic_cast<COMMAND_IMPL&>(*type_erased_command.get())
-                    .template Command<MutableFields<STORAGE_IMPL>>(fields, url);
-              } catch (const StorageRollbackException& e) {
-                return e.FormatAsHTTPResponse();
-              } catch (const Exception& e) {
-                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
-              } catch (const std::exception& e) {
-                return Response(cqs::CQSUserCodeError(e), HTTPResponseCode.BadRequest);
-              }
+              // Invoke `.template Command<>(...)`, the handler implemented as part of the `COMMAND_IMPL` class.
+              // The instance of `COMMAND_IMPL` is passed at runtime, in a type-erased fashion, as all possible
+              // command types are not available at compile time. Hence, the command object itself is stored as a
+              // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
+              // down to the respective `COMMAND_IMPL` type from within the transaction.
+              return dynamic_cast<COMMAND_IMPL&>(*type_erased_command.get())
+                  .template Command<MutableFields<STORAGE_IMPL>>(fields, url);
             });
   }
 

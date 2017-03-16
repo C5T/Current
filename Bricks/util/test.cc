@@ -47,13 +47,15 @@ SOFTWARE.
 #include <thread>
 
 TEST(Util, BasicException) {
-  std::string golden;
+  int exception_line = 0;
   try {
-    golden = current::strings::Printf("test.cc:%d\tcurrent::Exception(\"Foo\")\tFoo", __LINE__ + 1);
+    exception_line = __LINE__ + 1;
     CURRENT_THROW(current::Exception("Foo"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
-    ExpectStringEndsWith(golden, e.DetailedDescription());
+    EXPECT_EQ("current::Exception(\"Foo\")", e.Caller());
+    EXPECT_EQ("Foo", e.OriginalDescription());
+    EXPECT_EQ(exception_line, e.Line());
   }
 }
 
@@ -62,14 +64,15 @@ struct TestException : current::Exception {
 };
 
 TEST(Util, CustomException) {
-  std::string golden;
+  int exception_line = 0;
   try {
-    golden = current::strings::Printf("test.cc:%d\tTestException(\"Bar\", \"Baz\")\tBar&Baz", __LINE__ + 1);
+    exception_line = __LINE__ + 1;
     CURRENT_THROW(TestException("Bar", "Baz"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
-    // Relative path prefix will be here when measuring code coverage, take it out.
-    ExpectStringEndsWith(golden, e.DetailedDescription());
+    EXPECT_EQ("TestException(\"Bar\", \"Baz\")", e.Caller());
+    EXPECT_EQ("Bar&Baz", e.OriginalDescription());
+    EXPECT_EQ(exception_line, e.Line());
   }
 }
 

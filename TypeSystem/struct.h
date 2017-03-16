@@ -96,17 +96,16 @@ struct FieldImpl<DF, T> {
   typedef T type;
 };
 
-// Allow `size_t` in JSON-serializable types, but make it `uint64_t` right way.
-// Apparently, this is important when compiling on OS X, where `size_t` and `uint64_t` are different types. -- D.K.
-template <>
-struct FieldImpl<DF, size_t> {
-  typedef uint64_t type;
-};
-
 template <typename T>
 struct FieldImpl<FC, T> {
   // TODO: Read on padding.
   typedef CountFieldsImplementationType type;
+};
+
+// For compile-time field type by index extraction.
+template <typename T>
+struct FieldTypeWrapper {
+  using type = T;
 };
 
 template <typename INSTANTIATION_TYPE, typename T>
@@ -403,7 +402,9 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                          \
                           ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {        \
     CURRENT_CALL_F(#name, name);                                                                                       \
-  }
+  }                                                                                                                    \
+  static ::crnt::r::FieldTypeWrapper<CURRENT_REMOVE_PARENTHESES(type)> CURRENT_REFLECTION(                             \
+      ::current::reflection::Index<::current::reflection::FieldType, idx>);
 
 #define CURRENT_CONSTRUCTOR(s)                                                                                        \
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
@@ -604,6 +605,8 @@ template <typename INSTANTIATION_TYPE, typename T>
 using Field = ::crnt::r::Field<INSTANTIATION_TYPE, T>;
 
 using ::crnt::r::CurrentStructFieldsConsistency;
+using ::crnt::r::FieldType;
+using ::crnt::r::FieldTypeWrapper;
 
 }  // namespace current::reflection
 }  // namespace current

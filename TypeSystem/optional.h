@@ -70,7 +70,7 @@ class ImmutableOptional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     if (exists_) {
       return value_;
     } else {
-      throw NoValueOfTypeException<T>();
+      CURRENT_THROW(NoValueOfTypeException<T>());
     }
   }
 
@@ -104,7 +104,7 @@ class ImmutableOptional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
-      throw NoValueOfTypeException<T>();
+      CURRENT_THROW(NoValueOfTypeException<T>());
     }
   }
 
@@ -259,7 +259,7 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     if (exists_) {
       return value_;
     } else {
-      throw NoValueOfTypeException<T>();
+      CURRENT_THROW(NoValueOfTypeException<T>());
     }
   }
 
@@ -267,7 +267,7 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     if (exists_) {
       return value_;
     } else {
-      throw NoValueOfTypeException<T>();
+      CURRENT_THROW(NoValueOfTypeException<T>());
     }
   }
 
@@ -371,7 +371,7 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
-      throw NoValueOfTypeException<T>();  // LCOV_EXCL_LINE
+      CURRENT_THROW(NoValueOfTypeException<T>());  // LCOV_EXCL_LINE
     }
   }
 
@@ -379,7 +379,7 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
-      throw NoValueOfTypeException<T>();
+      CURRENT_THROW(NoValueOfTypeException<T>());
     }
   }
 

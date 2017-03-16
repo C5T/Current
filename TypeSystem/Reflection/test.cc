@@ -80,6 +80,42 @@ CURRENT_STRUCT_T(Templated) {
 
 using current::reflection::Reflector;
 
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<uint64_t>,
+                           decltype(Foo::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<uint64_t>>,
+                           decltype(Bar::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<Foo>>,
+                           decltype(Bar::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<std::vector<Foo>>>,
+                           decltype(Bar::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 2>()))>::value,
+              "");
+
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::string>,
+                           decltype(Templated<uint64_t>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<uint64_t>,
+                           decltype(Templated<uint64_t>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+              "");
+
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::string>,
+                           decltype(Templated<Foo>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+              "");
+static_assert(std::is_same<current::reflection::FieldTypeWrapper<Foo>,
+                           decltype(Templated<Foo>::CURRENT_REFLECTION(
+                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+              "");
+
 }  // namespace reflection_test
 
 TEST(Reflection, StructAndVariant) {
@@ -326,18 +362,6 @@ struct CollectFieldValues {
     output_.push_back(oss.str());
   }
 };
-
-CURRENT_STRUCT(StructWithSizeTWhichShouldBeUInt64T) {
-  CURRENT_FIELD(a, uint64_t);
-  CURRENT_FIELD(b, size_t);
-};
-
-static_assert(std::is_same<decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().a), uint64_t>::value, "");
-static_assert(std::is_same<decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().b), uint64_t>::value, "");
-
-static_assert(std::is_same<decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().a),
-                           decltype(std::declval<StructWithSizeTWhichShouldBeUInt64T>().b)>::value,
-              "");
 
 }  // namespace reflection_test
 

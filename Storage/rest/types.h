@@ -28,8 +28,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
-
-#include "../../Blocks/HTTP/api.h"
+#include "../../Blocks/HTTP/response.h"
 
 namespace current {
 namespace storage {
@@ -108,8 +107,8 @@ inline generic::RESTGenericResponse ErrorResponseObject(const generic::RESTError
   return generic::RESTGenericResponse(false, error);
 }
 
-inline Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
-  return Response(ErrorResponseObject(error_object), code);
+inline current::http::Response ErrorResponse(const generic::RESTError& error_object, net::HTTPResponseCodeValue code) {
+  return current::http::Response(ErrorResponseObject(error_object), code);
 }
 
 inline generic::RESTError MethodNotAllowedError(const std::string& message, const std::string& requested_method) {
@@ -316,31 +315,6 @@ CURRENT_STRUCT(CQSBadRequest, generic::RESTGenericResponse) {
   CURRENT_DEFAULT_CONSTRUCTOR(CQSBadRequest) : SUPER(false, "Bad CQS request.") {}
 };
 // clang-format on
-
-CURRENT_STRUCT(CQSUserCodeError, generic::RESTGenericResponse) {
-  using map_t = std::map<std::string, std::string>;
-
-  static map_t DescribeException(const std::exception& e) { return {{"error", e.what()}}; }
-
-  static map_t DescribeException(const current::Exception& e) {
-    map_t map;
-    map["error"] = e.What();
-    map["caller"] = e.Caller();
-    if (e.File()) {
-      map["file"] = e.File();
-    }
-    if (e.Line()) {
-      map["line"] = current::ToString(e.Line());
-    }
-    return map;
-  }
-
-  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const current::Exception& e)
-      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
-
-  CURRENT_CONSTRUCTOR(CQSUserCodeError)(const std::exception& e)
-      : SUPER(false, generic::RESTError("cqs_user_error", "Error in CQS user code.", DescribeException(e))) {}
-};
 
 }  // namespace cqs
 
