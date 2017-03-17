@@ -121,7 +121,6 @@ struct HTTPResponder {
   // Special case to handle std::string.
   static void SendHTTPResponse(Connection& connection,
                                const std::string& string,
-
                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                const std::string& content_type = constants::kDefaultContentType,
                                const http::Headers& extra_headers = http::Headers()) {
