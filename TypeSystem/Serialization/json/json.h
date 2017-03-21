@@ -35,6 +35,7 @@ SOFTWARE.
 #include "../../optional.h"
 #include "../../helpers.h"
 
+#include "../../../Bricks/strings/chunk.h"
 #include "../../../Bricks/template/pod.h"  // `current::copy_free`.
 
 namespace current {
@@ -246,7 +247,6 @@ class JSONParser final {
     }
     current_ = &document_;
   }
-  explicit JSONParser(const std::string& json) : JSONParser(json.c_str()) {}
 
   operator bool() const { return current_; }
   rapidjson::Value& Current() { return *current_; }
@@ -324,7 +324,7 @@ class JSONParser final {
 };
 
 template <class J, typename T>
-void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
+void ParseJSONViaRapidJSON(const char* json, T& destination) {
   JSONParser<J> json_parser(json);
   Deserialize(json_parser, destination);
 }
@@ -342,7 +342,7 @@ inline std::string JSON(const char* special_case_bare_c_string) {
 }
 
 template <typename T, class J = JSONFormat::Current>
-inline void ParseJSON(const std::string& source, T& destination) {
+inline void ParseJSON(const char* source, T& destination) {
   try {
     ParseJSONViaRapidJSON<J>(source, destination);
     CheckIntegrity(destination);
@@ -352,7 +352,17 @@ inline void ParseJSON(const std::string& source, T& destination) {
 }
 
 template <typename T, class J = JSONFormat::Current>
-inline void PatchObjectWithJSON(T& object, const std::string& json) {
+inline void ParseJSON(const std::string& source, T& destination) {
+  ParseJSON(source.c_str(), destination);
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline void ParseJSON(const strings::Chunk& source, T& destination) {
+  ParseJSON(source.c_str(), destination);
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline void PatchObjectWithJSON(T& object, const char* json) {
   try {
     CheckIntegrity(object);  // TODO(dkorolev): Different exception for "was uninitialized before"?
     ParseJSONViaRapidJSON<JSONPatcher<J>>(json, object);
@@ -363,14 +373,34 @@ inline void PatchObjectWithJSON(T& object, const std::string& json) {
 }
 
 template <typename T, class J = JSONFormat::Current>
-inline T ParseJSON(const std::string& source) {
+inline void PatchObjectWithJSON(T& object, const std::string& json) {
+  PatchObjectWithJSON<T, J>(object, json.c_str());
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline void PatchObjectWithJSON(T& object, const strings::Chunk& json) {
+  PatchObjectWithJSON<T, J>(object, json.c_str());
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline T ParseJSON(const char* source) {
   T result;
   ParseJSON<T, J>(source, result);
   return result;
 }
 
 template <typename T, class J = JSONFormat::Current>
-inline Optional<T> TryParseJSON(const std::string& source) {
+inline T ParseJSON(const std::string& source) {
+  return ParseJSON<T, J>(source.c_str());
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline T ParseJSON(const strings::Chunk& source) {
+  return ParseJSON<T, J>(source.c_str());
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline Optional<T> TryParseJSON(const char* source) {
   try {
     T result;
     ParseJSON<T, J>(source, result);
@@ -378,6 +408,16 @@ inline Optional<T> TryParseJSON(const std::string& source) {
   } catch (const TypeSystemParseJSONException&) {
     return nullptr;
   }
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline Optional<T> TryParseJSON(const std::string& source) {
+  return TryParseJSON<T, J>(source.c_str());
+}
+
+template <typename T, class J = JSONFormat::Current>
+inline Optional<T> TryParseJSON(const strings::Chunk& source) {
+  return TryParseJSON<T, J>(source.c_str());
 }
 
 }  // namespace current::serialization::json
