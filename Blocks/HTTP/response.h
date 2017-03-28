@@ -42,28 +42,33 @@ namespace http {
 
 namespace impl {
 template <bool IS_STRING>
-struct StringBodyGenerator;
+struct FillResponseHelper;
 
 template <>
-struct StringBodyGenerator<true> {
+struct FillResponseHelper<true> {
   template <typename T>
   static std::string AsString(T&& object) {
     return object;
   }
-  static std::string DefaultContentType() { return current::net::constants::kDefaultContentType; }
+  static std::string DefaultContentType() { return net::constants::kDefaultContentType; }
+  static void SetAccessControlAllowOriginHeaderIfJSON(net::http::Headers&) {}
 };
 
 template <>
-struct StringBodyGenerator<false> {
+struct FillResponseHelper<false> {
   template <typename T>
   static std::string AsString(T&& object) {
-    return current::JSON(std::forward<T>(object)) + '\n';
+    return JSON(std::forward<T>(object)) + '\n';
   }
   template <typename T>
   static std::string AsString(T&& object, const std::string& object_name) {
-    return "{\"" + object_name + "\":" + current::JSON(std::forward<T>(object)) + "}\n";
+    return "{\"" + object_name + "\":" + JSON(std::forward<T>(object)) + "}\n";
   }
-  static std::string DefaultContentType() { return current::net::constants::kDefaultJSONContentType; }
+  static std::string DefaultContentType() { return net::constants::kDefaultJSONContentType; }
+  static void SetAccessControlAllowOriginHeaderIfJSON(net::http::Headers& headers) {
+    headers.Set(net::constants::kHTTPAccessControlAllowOriginHeaderName,
+                net::constants::kHTTPAccessControlAllowOriginHeaderValue);
+  }
 };
 }  // namespace impl
 
@@ -71,11 +76,11 @@ struct Response {
   bool initialized = false;
 
   std::string body;
-  current::net::HTTPResponseCodeValue code;
+  net::HTTPResponseCodeValue code;
   std::string content_type;
-  current::net::http::Headers headers;
+  net::http::Headers headers;
 
-  Response() : body(""), code(HTTPResponseCode.OK), content_type(current::net::constants::kDefaultContentType) {}
+  Response() : body(""), code(HTTPResponseCode.OK), content_type(net::constants::kDefaultContentType) {}
 
   Response(const Response&) = default;
   Response(Response&&) = default;
@@ -105,9 +110,9 @@ struct Response {
     headers = rhs.headers;
   }
 
-  void Construct(current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                 const std::string& content_type = current::net::constants::kDefaultContentType,
-                 const current::net::http::Headers& headers = current::net::http::Headers()) {
+  void Construct(net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                 const std::string& content_type = net::constants::kDefaultContentType,
+                 const net::http::Headers& headers = net::http::Headers()) {
     this->body = "";
     this->code = code;
     this->content_type = content_type;
@@ -115,67 +120,71 @@ struct Response {
   }
 
   template <typename T>
-  void Construct(T&& object, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
+  void Construct(T&& object, net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
+    using G = impl::FillResponseHelper<strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
+    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
+  }
+
+  template <typename T>
+  void Construct(T&& object, const std::string& object_name, net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
+    using G = impl::FillResponseHelper<strings::is_string_type<T>::value>;
+    this->body = G::AsString(std::forward<T>(object), object_name);
+    this->code = code;
+    this->content_type = G::DefaultContentType();
+    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
+  }
+
+  template <typename T>
+  void Construct(T&& object, net::HTTPResponseCodeValue code, const net::http::Headers& headers) {
+    using G = impl::FillResponseHelper<strings::is_string_type<T>::value>;
+    this->body = G::AsString(std::forward<T>(object));
+    this->code = code;
+    this->content_type = G::DefaultContentType();
+    this->headers = headers;
+    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
   void Construct(T&& object,
                  const std::string& object_name,
-                 current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
-    this->body = G::AsString(std::forward<T>(object), object_name);
-    this->code = code;
-    this->content_type = G::DefaultContentType();
-  }
-
-  template <typename T>
-  void Construct(T&& object, current::net::HTTPResponseCodeValue code, const current::net::http::Headers& headers) {
-    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
-    this->body = G::AsString(std::forward<T>(object));
-    this->code = code;
-    this->content_type = G::DefaultContentType();
-    this->headers = headers;
-  }
-
-  template <typename T>
-  void Construct(T&& object,
-                 const std::string& object_name,
-                 current::net::HTTPResponseCodeValue code,
-                 const current::net::http::Headers& headers) {
-    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
+                 net::HTTPResponseCodeValue code,
+                 const net::http::Headers& headers) {
+    using G = impl::FillResponseHelper<strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
     this->headers = headers;
+    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
   void Construct(T&& object,
-                 current::net::HTTPResponseCodeValue code,
+                 net::HTTPResponseCodeValue code,
                  const std::string& content_type,
-                 const current::net::http::Headers& headers = current::net::http::Headers()) {
-    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
+                 const net::http::Headers& headers = net::http::Headers()) {
+    using G = impl::FillResponseHelper<strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = content_type;
     this->headers = headers;
+    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
   void Construct(T&& object,
                  const std::string& object_name,
-                 current::net::HTTPResponseCodeValue code,
+                 net::HTTPResponseCodeValue code,
                  const std::string& content_type,
-                 const current::net::http::Headers& headers = current::net::http::Headers()) {
-    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
+                 const net::http::Headers& headers = net::http::Headers()) {
+    using G = impl::FillResponseHelper<strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = content_type;
     this->headers = headers;
+    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   Response& Body(const std::string& s) {
@@ -187,7 +196,7 @@ struct Response {
   template <typename T>
   Response& JSON(const T& object) {
     body = current::JSON(object) + '\n';
-    content_type = current::net::constants::kDefaultJSONContentType;
+    content_type = net::constants::kDefaultJSONContentType;
     initialized = true;
     return *this;
   }
@@ -195,12 +204,12 @@ struct Response {
   template <typename T>
   Response& JSON(const T& object, const std::string& object_name) {
     body = "{\"" + object_name + "\":" + current::JSON(object) + "}\n";
-    content_type = current::net::constants::kDefaultJSONContentType;
+    content_type = net::constants::kDefaultJSONContentType;
     initialized = true;
     return *this;
   }
 
-  Response& Code(current::net::HTTPResponseCodeValue c) {
+  Response& Code(net::HTTPResponseCodeValue c) {
     code = c;
     initialized = true;
     return *this;
@@ -212,7 +221,7 @@ struct Response {
     return *this;
   }
 
-  Response& Headers(const current::net::http::Headers& h) {
+  Response& Headers(const net::http::Headers& h) {
     headers = h;
     initialized = true;
     return *this;

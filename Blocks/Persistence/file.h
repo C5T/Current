@@ -53,10 +53,10 @@ namespace persistence {
 namespace impl {
 
 namespace constants {
-constexpr const char kDirectiveMarker = '#';
-constexpr const char* kSignatureDirective = "#signature";
-constexpr const char* kHeadDirective = "#head";
-constexpr const char* kHeadFromatString = "%020lld";
+constexpr char kDirectiveMarker = '#';
+constexpr char kSignatureDirective[] = "#signature";
+constexpr char kHeadDirective[] = "#head";
+constexpr char kHeadFromatString[] = "%020lld";
 }  // namespace current::persistence::impl::constants
 
 typedef int64_t head_value_t;

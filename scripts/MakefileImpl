@@ -22,7 +22,7 @@ LOCAL_HEADERS_DEPS=$(shell find . -maxdepth 1 -name '*.h' -exec echo '{}' ';' | 
 LOCAL_HEADERS_LIST=$(shell find . -maxdepth 1 -name '*.h' -exec echo '"{}"' ';' | grep -v "current_build.h" | sort -g)
 
 CPLUSPLUS?=g++
-CPPFLAGS=-std=c++11 -Wall -Wno-strict-aliasing -W  # `-Wno-strict-aliasing` to supress FnCAS warnings.
+CPPFLAGS=-std=c++11 -Wall -Wno-strict-aliasing -W  # `-Wno-strict-aliasing` to suppress FnCAS warnings.
 CPPFLAGS+= -ftemplate-backtrace-limit=0  -ftemplate-depth=10000
 ifeq ($(NDEBUG),1)
   CPPFLAGS+= -O3 -DNDEBUG
