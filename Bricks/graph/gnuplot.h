@@ -155,6 +155,11 @@ struct GNUPlot {
     return *this;
   }
 
+  GNUPlot& LogScale(const std::string& logscale) {
+    parameters_["logscale"] = logscale;
+    return *this;
+  }
+
   GNUPlot& Grid(const std::string& grid) {
     parameters_["grid"] = grid;
     return *this;

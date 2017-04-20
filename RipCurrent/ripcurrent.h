@@ -1013,8 +1013,11 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
 }  // namespace current
 
 // Macros to wrap user code into RipCurrent building blocks.
+// Remove the first `struct` -- apparently, requiring the user to write `struct RIPCURENT_NODE` fixes clang-format.
+// Sadly, it breaks `clang-format`-ting this very macro, but that's easy to fix. -- D.K.
+// clang-format off
 #define RIPCURRENT_NODE(USER_CLASS, LHS_TS, RHS_TS)                                                                \
-  struct USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                                      \
+  USER_CLASS##_RIPCURRENT_CLASS_NAME {                                                                             \
     static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS; }                                             \
   };                                                                                                               \
   struct USER_CLASS final                                                                                          \
@@ -1022,6 +1025,7 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
         ::current::ripcurrent::UserCode<::current::ripcurrent::VoidOrLHSTypes<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
                                         ::current::ripcurrent::VoidOrRHSTypes<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
                                         USER_CLASS>
+// clang-format on
 
 #define RIPCURRENT_MACRO(USER_CLASS, ...)                                                                       \
   ::current::ripcurrent::UserCodeImpl<typename USER_CLASS::input_t, typename USER_CLASS::output_t, USER_CLASS>( \
@@ -1029,8 +1033,11 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
       std::make_tuple(__VA_ARGS__))
 
 // The macros for templated RipCurrent nodes.
+// Remove the first `struct` -- apparently, requiring the user to write `struct RIPCURENT_NODE` fixes clang-format.
+// Sadly, it breaks `clang-format`-ting this very macro, but that's easy to fix. -- D.K.
+// clang-format off
 #define RIPCURRENT_NODE_T(USER_CLASS_T, LHS_TS, RHS_TS)                                                            \
-  struct USER_CLASS_T##_RIPCURRENT_CLASS_NAME {                                                                    \
+  USER_CLASS_T##_RIPCURRENT_CLASS_NAME {                                                                           \
     static const char* RIPCURRENT_CLASS_NAME() { return #USER_CLASS_T "<T>"; }                                     \
   };                                                                                                               \
   template <typename T>                                                                                            \
@@ -1039,6 +1046,7 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
         ::current::ripcurrent::UserCode<::current::ripcurrent::VoidOrLHSTypes<CURRENT_REMOVE_PARENTHESES(LHS_TS)>, \
                                         ::current::ripcurrent::VoidOrRHSTypes<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
                                         USER_CLASS_T<T>>
+// clang-format on
 
 #define RIPCURRENT_MACRO_T(USER_CLASS, T, ...)                                                         \
   ::current::ripcurrent::UserCodeImpl<typename USER_CLASS<T>::input_t,                                 \

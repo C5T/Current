@@ -41,9 +41,6 @@ SOFTWARE.
 
 DEFINE_uint16(ripcurrent_http_test_port, PickPortForUnitTest(), "Local port to use for RipCurrent unit test.");
 
-// `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
-
-// clang-format off
 namespace ripcurrent_unittest {
 
 struct LifeUniverseAndEverything {};
@@ -55,7 +52,7 @@ CURRENT_STRUCT(Integer) {
 };
 
 // `RCEmit`: The emitter of events. Emits the integers passed to its constructor.
-RIPCURRENT_NODE(RCEmit, void, Integer) {
+struct RIPCURRENT_NODE(RCEmit, void, Integer) {
   static std::string UnitTestClassName() { return "RCEmit"; }
   RCEmit() {}  // LCOV_EXCL_LINE
   RCEmit(int a) { emit<Integer>(a); }
@@ -72,7 +69,7 @@ RIPCURRENT_NODE(RCEmit, void, Integer) {
 #define RCEmit(...) RIPCURRENT_MACRO(RCEmit, __VA_ARGS__)
 
 // `RCMult`: The processor of events. Multiplies each integer by what was passed to its constructor.
-RIPCURRENT_NODE(RCMult, Integer, Integer) {
+struct RIPCURRENT_NODE(RCMult, Integer, Integer) {
   static std::string UnitTestClassName() { return "RCMult"; }
   int k;
   RCMult(int k = 1) : k(k) {}
@@ -81,7 +78,7 @@ RIPCURRENT_NODE(RCMult, Integer, Integer) {
 #define RCMult(...) RIPCURRENT_MACRO(RCMult, __VA_ARGS__)
 
 // `RCDump`: The destination of events. Collects the output integers.
-RIPCURRENT_NODE(RCDump, Integer, void) {
+struct RIPCURRENT_NODE(RCDump, Integer, void) {
   static std::string UnitTestClassName() { return "RCDump"; }
   std::vector<int>* ptr;
   std::atomic_size_t* cnt = nullptr;
@@ -99,7 +96,6 @@ RIPCURRENT_NODE(RCDump, Integer, void) {
 #define RCDump(...) RIPCURRENT_MACRO(RCDump, __VA_ARGS__)
 
 }  // namespace ripcurrent_unittest
-// clang-format on
 
 TEST(RipCurrent, TypeStaticAsserts) {
   using namespace ripcurrent_unittest;
@@ -434,7 +430,6 @@ TEST(RipCurrent, UnusedRipCurrentBlockYieldsAnException) {
   EXPECT_EQ("NO ERROR ONCE AGAIN", captured_error_message);
 }
 
-// clang-format off
 namespace ripcurrent_unittest {
 
 CURRENT_STRUCT(String) {
@@ -448,28 +443,22 @@ CURRENT_STRUCT(Bool) {
   CURRENT_CONSTRUCTOR(Bool)(bool flag = false) : flag(flag) {}
 };
 
-RIPCURRENT_NODE(EmitString, (), String) {  // Note: `()` is same as `void`.
-  EmitString() {
-    emit<String>("Answer");
-  }
+struct RIPCURRENT_NODE(EmitString, (), String) {  // Note: `()` is same as `void`.
+  EmitString() { emit<String>("Answer"); }
 };
 #define EmitString(...) RIPCURRENT_MACRO(EmitString, __VA_ARGS__)
 
-RIPCURRENT_NODE(EmitBool, (), Bool) {  // Note: `()` is same as `void`.
-  EmitBool(bool value = true) {
-    emit<Bool>(value);
-  }
+struct RIPCURRENT_NODE(EmitBool, (), Bool) {  // Note: `()` is same as `void`.
+  EmitBool(bool value = true) { emit<Bool>(value); }
 };
 #define EmitBool(...) RIPCURRENT_MACRO(EmitBool, __VA_ARGS__)
 
-RIPCURRENT_NODE(EmitInteger, (), Integer) {  // Note: Intentionally somewhat duplicates `RCEmit`. -- D.K.
-  EmitInteger() {
-    emit<Integer>(42);
-  }
+struct RIPCURRENT_NODE(EmitInteger, (), Integer) {  // Note: Intentionally somewhat duplicates `RCEmit`. -- D.K.
+  EmitInteger() { emit<Integer>(42); }
 };
 #define EmitInteger(...) RIPCURRENT_MACRO(EmitInteger, __VA_ARGS__)
 
-RIPCURRENT_NODE(EmitIntegerAndString, (), (Integer, String)) {  // Note: `()` is same as `void`.
+struct RIPCURRENT_NODE(EmitIntegerAndString, (), (Integer, String)) {  // Note: `()` is same as `void`.
   EmitIntegerAndString() {
     emit<String>("Answer");
     emit<Integer>(42);
@@ -477,19 +466,15 @@ RIPCURRENT_NODE(EmitIntegerAndString, (), (Integer, String)) {  // Note: `()` is
 };
 #define EmitIntegerAndString(...) RIPCURRENT_MACRO(EmitIntegerAndString, __VA_ARGS__)
 
-RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
+struct RIPCURRENT_NODE(MultIntegerOrString, (Integer, String), (Integer, String)) {
   const int k;
   MultIntegerOrString(int k = 101) : k(k) {}
-  void f(Integer x) {
-    emit<Integer>(x.value * k);
-  }
-  void f(String s) {
-    emit<String>("Yo? " + s.value + " Yo!");
-  }
+  void f(Integer x) { emit<Integer>(x.value * k); }
+  void f(String s) { emit<String>("Yo? " + s.value + " Yo!"); }
 };
 #define MultIntegerOrString(...) RIPCURRENT_MACRO(MultIntegerOrString, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpInteger, Integer, ()) {
+struct RIPCURRENT_NODE(DumpInteger, Integer, ()) {
   std::vector<std::string>* ptr;
   DumpInteger() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpInteger(std::vector<std::string>& ref) : ptr(&ref) {}
@@ -500,7 +485,7 @@ RIPCURRENT_NODE(DumpInteger, Integer, ()) {
 };
 #define DumpInteger(...) RIPCURRENT_MACRO(DumpInteger, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpString, String, ()) {
+struct RIPCURRENT_NODE(DumpString, String, ()) {
   std::vector<std::string>* ptr;
   DumpString() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpString(std::vector<std::string>& ref) : ptr(&ref) {}
@@ -511,7 +496,7 @@ RIPCURRENT_NODE(DumpString, String, ()) {
 };
 #define DumpString(...) RIPCURRENT_MACRO(DumpString, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpBool, Bool, ()) {
+struct RIPCURRENT_NODE(DumpBool, Bool, ()) {
   std::vector<std::string>* ptr;
   DumpBool() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpBool(std::vector<std::string>& ref) : ptr(&ref) {}
@@ -522,7 +507,7 @@ RIPCURRENT_NODE(DumpBool, Bool, ()) {
 };
 #define DumpBool(...) RIPCURRENT_MACRO(DumpBool, __VA_ARGS__)
 
-RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {
+struct RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {
   std::vector<std::string>* ptr;
   DumpIntegerAndString() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   DumpIntegerAndString(std::vector<std::string>& ref) : ptr(&ref) {}
@@ -538,7 +523,6 @@ RIPCURRENT_NODE(DumpIntegerAndString, (Integer, String), ()) {
 #define DumpIntegerAndString(...) RIPCURRENT_MACRO(DumpIntegerAndString, __VA_ARGS__)
 
 }  // namespace ripcurrent_unittest
-// clang-format on
 
 TEST(RipCurrent, CustomTypesIntrospection) {
   using namespace ripcurrent_unittest;
@@ -697,29 +681,21 @@ TEST(RipCurrent, PlusFlow) {
 
 namespace ripcurrent_unittest {
 
-// clang-format off
-
-RIPCURRENT_NODE(ManuallyImplementedGenericPassThrough1, (Integer, String), (Integer, String)) {
-  void f(Integer x) {
-    emit<Integer>(x);
-  }
-  void f(String s) {
-    emit<String>(s);
-  }
+struct RIPCURRENT_NODE(ManuallyImplementedGenericPassThrough1, (Integer, String), (Integer, String)) {
+  void f(Integer x) { emit<Integer>(x); }
+  void f(String s) { emit<String>(s); }
 };
 #define ManuallyImplementedGenericPassThrough1(...) \
   RIPCURRENT_MACRO(ManuallyImplementedGenericPassThrough1, __VA_ARGS__)
 
-RIPCURRENT_NODE(ManuallyImplementedGenericPassThrough2, (Integer, String), (Integer, String)) {
- template <typename X>
- void f(X && x) {
-   emit<current::decay<X>>(std::forward<X>(x));
+struct RIPCURRENT_NODE(ManuallyImplementedGenericPassThrough2, (Integer, String), (Integer, String)) {
+  template <typename X>
+  void f(X&& x) {
+    emit<current::decay<X>>(std::forward<X>(x));
   }
 };
 #define ManuallyImplementedGenericPassThrough2(...) \
   RIPCURRENT_MACRO(ManuallyImplementedGenericPassThrough2, __VA_ARGS__)
-
-// clang-format on
 
 }  // namespace ripcurrent_unittest
 
@@ -793,12 +769,10 @@ namespace ripcurrent_unittest {
 
 CURRENT_STRUCT(RequestContainer) {
   CURRENT_FIELD(request, Request);  // Obviously, move-only, no copy allowed.
-  // clang-format off
-  CURRENT_CONSTRUCTOR(RequestContainer)(Request&& request) : request(std::move(request)) {}
-  // clang-format on
+  CURRENT_CONSTRUCTOR(RequestContainer)(Request && request) : request(std::move(request)) {}
 };
 
-RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
+struct RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
   RCHTTPAcceptor(uint16_t port)
       : scope(HTTP(port)
                   .Register("/ripcurrent", [this](Request request) { emit<RequestContainer>(std::move(request)); })) {
@@ -811,13 +785,10 @@ RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
 };
 #define RCHTTPAcceptor(...) RIPCURRENT_MACRO(RCHTTPAcceptor, __VA_ARGS__)
 
-RIPCURRENT_NODE(RCHTTPResponder, RequestContainer, void) {
+struct RIPCURRENT_NODE(RCHTTPResponder, RequestContainer, void) {
   int index = 0;
   std::vector<std::string>& calls;
-  // clang-format off
-  // Messes with " & " -- D.K.
   RCHTTPResponder(std::vector<std::string>& calls) : calls(calls) {}
-  // clang-format on
   void f(RequestContainer container) {
     if (container.request.method == "POST") {
       calls.push_back("POST " + container.request.body);
@@ -855,8 +826,7 @@ TEST(RipCurrent, CanHandleHTTPRequests) {
 
 namespace ripcurrent_unittest {
 
-// clang-format off
-RIPCURRENT_NODE(RCEmitterWithTimestamps, void, Integer) {
+struct RIPCURRENT_NODE(RCEmitterWithTimestamps, void, Integer) {
   RCEmitterWithTimestamps(std::function<void(int, std::chrono::microseconds)>& post_callback,
                           std::function<void(int, std::chrono::microseconds)>& schedule_callback,
                           std::function<void(std::chrono::microseconds)>& head_callback) {
@@ -865,7 +835,6 @@ RIPCURRENT_NODE(RCEmitterWithTimestamps, void, Integer) {
     head_callback = [this](std::chrono::microseconds t) { head(t); };
   }
 };
-// clang-format on
 #define RCEmitterWithTimestamps(...) RIPCURRENT_MACRO(RCEmitterWithTimestamps, __VA_ARGS__)
 
 }  // namespace ripcurrent_unittest
@@ -985,14 +954,12 @@ TEST(RipCurrent, SchedulingEventsIntoTheFutureAndUpdatingHead) {
 
 namespace ripcurrent_unittest {
 
-// clang-format off
-RIPCURRENT_NODE_T(TemplatedEmitter, void, T) {
+struct RIPCURRENT_NODE_T(TemplatedEmitter, void, T) {
   TemplatedEmitter() {
     // Too bad we need this ugly syntax for now. -- D.K.
     RIPCURRENT_TEMPLATED_EMIT((T), T, LifeUniverseAndEverything());
   }
 };
-// clang-format on
 #define TemplatedEmitter(...) RIPCURRENT_MACRO_T(TemplatedEmitter, __VA_ARGS__)
 
 }  // namespace ripcurrent_unittest
