@@ -537,7 +537,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
             connection_.BlockingWrite(constants::kCRLF, false);
           } catch (const SocketException&) {
             // For chunked HTTP responses, if the receiving end has closed the connection,
-            // as detected during `Send`, surpass logging about the failure to send the final "zero" chunk.
+            // as detected during `Send`, suppress logging about the failure to send the final "zero" chunk.
             can_no_longer_write_ = true;
             throw;
           }

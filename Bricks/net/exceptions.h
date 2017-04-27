@@ -75,7 +75,7 @@ struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
 // We noticed some browsers, Firefox and Chrome included, may pre-open a TCP connection for performance reasons,
 // but never send any data. While it is a legitimate case, it results in an annoying warning dumped by Current.
-// We surpass those "HTTP route failed" warnings if no data at all was sent in through the socket.
+// We suppress those "HTTP route failed" warnings if no data at all was sent in through the socket.
 
 // LCOV_EXCL_START
 struct EmptySocketException : SocketException {};
