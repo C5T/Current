@@ -294,7 +294,7 @@ class GenericHTTPRequestData : public HELPER {
               // A chunk of length `chunk_length` bytes starts right at next_line_offset.
               const size_t chunk_offset = next_line_offset;
               // First, make sure it has been read.
-              const size_t next_offset = chunk_offset + chunk_length;
+              size_t next_offset = chunk_offset + chunk_length;
               if (offset < next_offset) {
                 const size_t bytes_to_read = next_offset - offset;
                 // The very minimum for this condition is `buffer_.size() < next_offset + 2`:
@@ -310,10 +310,16 @@ class GenericHTTPRequestData : public HELPER {
                 // compile Current for a device that is extremely short on memory, for which `buffer_growth_k`
                 // could be some 1.0001. -- D.K.
                 if (buffer_.size() < next_offset + 2) {
-                  // LCOV_EXCL_START
-                  // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
-                  buffer_.resize(std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 2));
-                  // LCOV_EXCL_STOP
+                  if (chunk_offset >= bytes_to_read + 2) {
+                    std::memmove(&buffer_[0], &buffer_[chunk_offset], offset - chunk_offset);
+                    offset -= chunk_offset;
+                    next_offset -= chunk_offset;
+                  } else {
+                    // LCOV_EXCL_START
+                    // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
+                    buffer_.resize(std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 2));
+                    // LCOV_EXCL_STOP
+                  }
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
                   CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
