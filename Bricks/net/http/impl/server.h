@@ -218,7 +218,7 @@ class GenericHTTPRequestData : public HELPER {
     size_t body_offset = static_cast<size_t>(-1);
     size_t body_length = static_cast<size_t>(-1);
 
-    // `first_line_parsed` denotes whether the line being parsed is the first one, with method and URL.
+    // `first_line_parsed` denotes whether the line being parsed is not the first one, with method and URL.
     bool first_line_parsed = false;
 
     // `chunked_transfer_encoding` is set when body should be received in chunks insted of a single read.
@@ -230,7 +230,7 @@ class GenericHTTPRequestData : public HELPER {
     while (offset < length_cap) {
       size_t chunk;
       size_t read_count;
-      // Use `- offset - 1` instead of just `- offset` to leave room for the '\0'.
+      // Use `offset + 1` instead of just `offset` to leave room for the '\0'.
       CURRENT_ASSERT(buffer_.size() > offset + 1);
       // NOTE: This `if` should not be made a `while`, as it may so happen that the boundary between two
       // consecutively received packets lays right on the final size, but instead of parsing the received body,
@@ -324,12 +324,8 @@ class GenericHTTPRequestData : public HELPER {
 
               // Then, append this newly parsed or received chunk to the body.
               HELPER::OnChunk(&buffer_[chunk_offset], chunk_length);
-
-              // In chunked mode, span the next line to the beginning of the buffer to prevent infinite RAM growth.
               CURRENT_ASSERT(body_offset == static_cast<size_t>(-1));
-              std::memmove(&buffer_[0], &buffer_[next_offset], offset - next_offset);
-              offset -= next_offset;
-              next_line_offset = 0;
+              next_line_offset = next_offset;
             }
           }
         } else if (!line_is_blank) {
@@ -388,6 +384,16 @@ class GenericHTTPRequestData : public HELPER {
           }
         }
         current_line_offset = next_line_offset;
+      }
+      if (receiving_body_in_chunks && current_line_offset) {
+        if (offset > current_line_offset) {
+          // In chunked mode, span the last line to the beginning of the buffer to prevent infinite RAM growth.
+          std::memmove(&buffer_[0], &buffer_[current_line_offset], offset - current_line_offset);
+          offset -= current_line_offset;
+        } else {
+          offset = 0;
+        }
+        current_line_offset = 0;
       }
     }
   }
