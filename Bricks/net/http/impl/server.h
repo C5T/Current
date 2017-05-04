@@ -327,7 +327,7 @@ class GenericHTTPRequestData : public HELPER {
 
               // In chunked mode, span the next line to the beginning of the buffer to prevent infinite RAM growth.
               CURRENT_ASSERT(body_offset == static_cast<size_t>(-1));
-              std::memmove(&buffer_[0], &buffer_[next_offset], buffer_.size() - next_offset);
+              std::memmove(&buffer_[0], &buffer_[next_offset], offset - next_offset);
               offset -= next_offset;
               next_line_offset = 0;
             }
