@@ -292,7 +292,7 @@ class GenericHTTPRequestData : public HELPER {
               return;
             } else {
               // A chunk of length `chunk_length` bytes starts right at next_line_offset.
-              const size_t chunk_offset = next_line_offset;
+              size_t chunk_offset = next_line_offset;
               // First, make sure it has been read.
               size_t next_offset = chunk_offset + chunk_length;
               if (offset < next_offset) {
@@ -314,6 +314,7 @@ class GenericHTTPRequestData : public HELPER {
                     std::memmove(&buffer_[0], &buffer_[chunk_offset], offset - chunk_offset);
                     offset -= chunk_offset;
                     next_offset -= chunk_offset;
+                    chunk_offset = 0;
                   } else {
                     // LCOV_EXCL_START
                     // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
