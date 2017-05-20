@@ -568,7 +568,7 @@ class RESTfulStorage {
       auto object = std::make_shared<T>();
       if (reflection::FieldCounter<T>::value > 0) {
         if (!request.body.empty()) {
-          ParseJSON(request.body, *object);
+          ParseJSON<T, JSONFormat::Minimalistic>(request.body, *object);
         } else {
           request.url.query.FillObject<T, MODE>(*object);
         }
