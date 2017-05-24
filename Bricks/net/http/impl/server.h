@@ -329,7 +329,17 @@ class GenericHTTPRequestData : public HELPER {
           if (p) {
             *p = '\0';
             const char* const key = &buffer_[current_line_offset];
-            const char* const value = p + constants::kHeaderKeyValueSeparatorLength;
+            const char* value = p + constants::kHeaderKeyValueSeparatorLength;
+
+            // Ignore trailing spaces and tabs before and after the value
+            while (value < next_crlf_ptr && ::isspace(*value)) {
+              ++value;
+            }
+            while (next_crlf_ptr > value && ::isspace(*(next_crlf_ptr - 1))) {
+              --next_crlf_ptr;
+            }
+            *next_crlf_ptr = '\0';
+
             HELPER::OnHeader(key, value);
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
