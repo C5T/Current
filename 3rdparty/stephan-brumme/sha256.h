@@ -28,6 +28,7 @@ Altered source versions must be plainly marked as such, and must not be misrepre
 #include <cstdint>
 
 // File structure adjusted slightly to be header only -- D.K.
+// C-style pointer casts replaced with `static_cast`-s -- M.Z.
 
 ///////////////////////////////////////////////////////////
 // sha256.cpp + sha256.h -- Combined by D.K.
@@ -124,7 +125,7 @@ public:
   /// add arbitrary number of bytes
   void add(const void* data, size_t numBytes)
   {
-    const uint8_t* current = (const uint8_t*) data;
+    const uint8_t* current = static_cast<const uint8_t*>(data);
 
     if (m_bufferSize > 0)
     {
@@ -242,7 +243,7 @@ private:
     uint32_t h = m_hash[7];
 
     // data represented as 16x 32-bit words
-    const uint32_t* input = (uint32_t*) data;
+    const uint32_t* input = static_cast<const uint32_t*>(data);
     // convert to big endian
     uint32_t words[64];
     int i;
