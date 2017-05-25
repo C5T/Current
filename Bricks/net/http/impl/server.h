@@ -332,10 +332,11 @@ class GenericHTTPRequestData : public HELPER {
             const char* value = p;
 
             // Ignore trailing spaces and tabs before and after the value.
-            while (value < next_crlf_ptr && (*value == ' ' || *value == '\t')) {
+            const auto IsSpaceOrTab = [](const char c) { return c == ' ' || c == '\t'; };
+            while (value < next_crlf_ptr && IsSpaceOrTab(*value)) {
               ++value;
             }
-            while (next_crlf_ptr > value && (*(next_crlf_ptr - 1) == ' ' || *(next_crlf_ptr - 1) == '\t')) {
+            while (next_crlf_ptr > value && IsSpaceOrTab(*(next_crlf_ptr - 1))) {
               --next_crlf_ptr;
             }
             *next_crlf_ptr = '\0';
