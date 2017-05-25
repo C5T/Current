@@ -325,11 +325,11 @@ class GenericHTTPRequestData : public HELPER {
             }
           }
         } else if (!line_is_blank) {
-          char* p = strstr(&buffer_[current_line_offset], constants::kHeaderKeyValueSeparator);
+          char* p = strchr(&buffer_[current_line_offset], constants::kHeaderKeyValueSeparator);
           if (p) {
-            *p = '\0';
+            *p++ = '\0';
             const char* const key = &buffer_[current_line_offset];
-            const char* value = p + constants::kHeaderKeyValueSeparatorLength;
+            const char* value = p;
 
             // Ignore trailing spaces and tabs before and after the value.
             while (value < next_crlf_ptr && (*value == ' ' || *value == '\t')) {
