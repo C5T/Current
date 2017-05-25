@@ -129,13 +129,13 @@ TEST(PosixHTTPServerTest, SmokeWithTrailingSpaces) {
   connection.BlockingWrite("BODY", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-                  "HTTP/1.1 200 OK\r\n"
-                  "Content-Type: text/plain\r\n"
-                  "Connection: close\r\n"
-                  "Content-Length: 10\r\n"
-                  "\r\n"
-                  "Data: BODY",
-                  connection);
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 10\r\n"
+      "\r\n"
+      "Data: BODY",
+      connection);
   t.join();
 }
 

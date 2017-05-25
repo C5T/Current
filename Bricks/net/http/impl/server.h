@@ -331,11 +331,11 @@ class GenericHTTPRequestData : public HELPER {
             const char* const key = &buffer_[current_line_offset];
             const char* value = p + constants::kHeaderKeyValueSeparatorLength;
 
-            // Ignore trailing spaces and tabs before and after the value
-            while (value < next_crlf_ptr && ::isspace(*value)) {
+            // Ignore trailing spaces and tabs before and after the value.
+            while (value < next_crlf_ptr && (*value == ' ' || *value == '\t')) {
               ++value;
             }
-            while (next_crlf_ptr > value && ::isspace(*(next_crlf_ptr - 1))) {
+            while (next_crlf_ptr > value && (*(next_crlf_ptr - 1) == ' ' || *(next_crlf_ptr - 1) == '\t')) {
               --next_crlf_ptr;
             }
             *next_crlf_ptr = '\0';
