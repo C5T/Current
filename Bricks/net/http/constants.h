@@ -43,8 +43,7 @@ constexpr char kDefaultHTMLContentType[] = "text/html; charset=utf-8";
 constexpr char kDefaultSVGContentType[] = "image/svg+xml; charset=utf-8";
 constexpr char kDefaultPNGContentType[] = "image/png";
 
-constexpr char kHeaderKeyValueSeparator[] = ": ";
-constexpr size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
+constexpr char kHeaderKeyValueSeparator = ':';
 
 constexpr char kContentLengthHeaderKey[] = "Content-Length";
 constexpr char kTransferEncodingHeaderKey[] = "Transfer-Encoding";

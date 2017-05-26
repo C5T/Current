@@ -325,11 +325,22 @@ class GenericHTTPRequestData : public HELPER {
             }
           }
         } else if (!line_is_blank) {
-          char* p = strstr(&buffer_[current_line_offset], constants::kHeaderKeyValueSeparator);
+          char* p = strchr(&buffer_[current_line_offset], constants::kHeaderKeyValueSeparator);
           if (p) {
-            *p = '\0';
+            *p++ = '\0';
             const char* const key = &buffer_[current_line_offset];
-            const char* const value = p + constants::kHeaderKeyValueSeparatorLength;
+            const char* value = p;
+
+            // Ignore trailing spaces and tabs before and after the value.
+            const auto IsSpaceOrTab = [](const char c) { return c == ' ' || c == '\t'; };
+            while (value < next_crlf_ptr && IsSpaceOrTab(*value)) {
+              ++value;
+            }
+            while (next_crlf_ptr > value && IsSpaceOrTab(*(next_crlf_ptr - 1))) {
+              --next_crlf_ptr;
+            }
+            *next_crlf_ptr = '\0';
+
             HELPER::OnHeader(key, value);
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
