@@ -440,11 +440,10 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
     }
     body += chunk;
   }
-  size_t case_number = 0;
   for (size_t length = body.length(); length > 2; length -= (length / 3)) {
+    const auto offset = body.length() - length;
     for (size_t chunks = length; chunks; chunks /= 2) {
       std::string chunked_body;
-      const auto offset = body.length() - length;
       for (size_t i = 0; i < chunks; ++i) {
         const size_t start = offset + length * i / chunks;
         const size_t end = offset + length * (i + 1) / chunks;
@@ -470,6 +469,128 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
                       connection);
       t.join();
     }
+  }
+}
+
+TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
+  const auto EchoServerThreadEntryWithOptions =
+      [](Socket s, const int initial_buffer_size, const double buffer_growth_k) {
+        HTTPServerConnection c(
+            s.Accept(), current::net::HTTPDefaultHelper::ConstructionParams(), initial_buffer_size, buffer_growth_k);
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(c.HTTPRequest().Body());
+      };
+  const std::string headers = "POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked";
+  const std::string headers_suffixes[] = {std::string(100 - headers.length() - 4 /*\r\n\r\n*/, ' '),
+                                          std::string(100 - headers.length() - 5 /*\r\n\r\n\0*/, ' '),
+                                          std::string(100 - headers.length() - 6, ' ')};
+  // Body for all the cases: four chunks of 90, 399, 393 and 792 bytes.
+  const std::string body = std::string(90, 'a') + std::string(399, 'b') + std::string(393, 'c') + std::string(792, 'd');
+  // Encoded lenghts of the chunks: 94, 404, 398 and 797
+  const std::string chunks[] = {"5A\r\n" + std::string(90, 'a'),
+                                "18F\r\n" + std::string(399, 'b'),
+                                "189\r\n" + std::string(393, 'c'),
+                                "318\r\n" + std::string(792, 'd')};
+  const std::string expect_to_receive = current::strings::Printf(
+                                            "HTTP/1.1 200 OK\r\n"
+                                            "Content-Type: text/plain\r\n"
+                                            "Connection: close\r\n"
+                                            "Content-Length: %d\r\n"
+                                            "\r\n",
+                                            static_cast<int>(body.length())) +
+                                        body;
+
+  // Test case 1.0 (100 bytes header):
+  // Iteration 0: read 99 bytes of the header. Resized the buffer 100 -> 200.
+  // Iteration 1: read 1 byte of header + 94 bytes (chunk 0) + 5 bytes (chunk 1). Resized the buffer 200 -> 400.
+  //   parsed header fields and processed the chunk 0;
+  //   read the length of the chunk 1 and made a fake memmove (0 bytes) to the beginning of the buffer;
+  //   read the remaining 399 bytes of the chunk 1;
+  //   processed the chunk 1.
+  // Iteration 2: read 398 (chunk 2) + 1 bytes (chunk 3). Resized the buffer 400 -> 800.
+  //   processed the chunk 2;
+  //   memmoved the first byte of the chunk 3 length to the beginning of the buffer.
+  // Iteration 3: read 796 (chunk 3) + 2 bytes (terminal sequence). Resized the buffer 800 -> 1600.
+  //   processed the chunk 3;
+  //   memmoved the first 2 bytes of the terminal sequence to the beginning of the buffer.
+  // Iteration 4: read 1 last byte of the terminal sequence, parse it and exit.
+
+  // Test case 1.1 (99 bytes header):
+  // Iteration 0: read and parse all the headers (99 bytes). Resized the buffer 100 -> 200.
+  // Iteration 1: read 94 (chunk 0) + 105 bytes (chunk 1, length + 100 bytes of the data). Resized the buffer 200 ->
+  // 400.
+  //   processed the chunk 0;
+  //   read the length of the chunk 1 and memmoved the first 100 bytes of its data to the beginning of the buffer;
+  //   read the remaining 299 bytes of the chunk 1;
+  //   processed the chunk 1.
+  // Iterations 2, 3 and 4: the same as in the test case 1.0.
+
+  // Test case 1.2 (98 bytes header):
+  // Iteration 0: read 98 (all the headers) + 1 bytes (chunk 0). Resized the buffer 100 -> 200.
+  //   parsed header fields;
+  //   memmoved the first byte of the chunk 0 to the beginning of the buffer.
+  // Iteration 1: read 93 (chunk 0) + 105 bytes (chunk 1, length + 100 bytes of the data). Resized the buffer 200 ->
+  // 400.
+  //   processed the chunk 0;
+  //   read the length of the chunk 1 and memmove the first 100 bytes of its data to the beginning of the buffer;
+  //   read the remaining 299 bytes of the chunk 1;
+  //   processed the chunk 1.
+  // Iterations 2, 3 and 4: the same as in the test case 1.0.
+
+  const auto chunked_body = chunks[0] + chunks[1] + chunks[2] + chunks[3] + "0\r\n";
+  for (const auto& suffix : headers_suffixes) {
+    thread t(EchoServerThreadEntryWithOptions, Socket(FLAGS_net_http_test_port), 100, 2.0);
+    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+    connection.BlockingWrite(headers + suffix + "\r\n\r\n" + chunked_body, false);
+    ExpectToReceive(expect_to_receive, connection);
+    t.join();
+  }
+
+  // Test case 2.0 (100 bytes header):
+  // Iteration 0: read 99 bytes of the header. Resized the buffer 100 -> 200.
+  // Iteration 1: read the remaining 1 byte of the headers and parse it.
+  // Iteration 2: read 94 bytes (chunk 0) and processed the chunk.
+  // Iteration 3: read 199 bytes (chunk 1). Resized the buffer 200 -> 400.
+  //   read the length of the chunk 1 and memmoved the first 194 bytes of its data to the beginning of the buffer;
+  //   read the remaining 205 bytes of the chunk 1;
+  //   processed the chunk 1.
+  // Iteration 4: read 398 bytes (chunk 2) and processed the chunk.
+  // Iteration 5: read 399 bytes (chunk 3). Resized the buffer 400 -> 800.
+  //   read the length of the chunk 3;
+  //   read the remaining 398 bytes of the chunk 3;
+  //   processed the chunk 3.
+  // Iteration 6: read 3 bytes of the terminal sequence, parse it and exit.
+
+  // Test case 2.1 (99 bytes header):
+  // Iteration 0: read 99 bytes of the header and parse it. Resized the buffer 100 -> 200.
+  // Iterations 1-5: the same as iterations 2-6 of the test case 2.0, correspondingly.
+
+  // Test case 2.2 (98 bytes header):
+  // Iteration 0: read 98 bytes of the header and parse it.
+  // Iteration 1: read 94 bytes (chunk 0) and processed the chunk.
+  // Iteration 2: read 99 bytes (chunk 1). Resized the buffer 100 -> 200.
+  //   read the lenght of the chunk 1 and resized the buffer 200 -> 405 to fit the entire chunk.
+  //   read the remaining 305 bytes of the chunk 1.
+  //   processed the chunk 1.
+  // Iteration 3: read 398 bytes (chunk 2) and processed the chunk 2.
+  // Iteration 4: read 404 bytes (chunk 3). Resized the buffer 405 -> 810.
+  //   read the length of the chunk 3;
+  //   read the remaining 393 bytes of the chunk 3;
+  //   processed the chunk 3.
+  // Iteration 5: read 3 bytes of the terminal sequence, parse it and exit.
+
+  for (const auto& suffix : headers_suffixes) {
+    thread t(EchoServerThreadEntryWithOptions, Socket(FLAGS_net_http_test_port), 100, 2.0);
+    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+    connection.BlockingWrite(headers + suffix + "\r\n\r\n", false);
+    for (const auto& chunk : chunks) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      connection.BlockingWrite(chunk, false);
+    }
+    connection.BlockingWrite("0\r\n", false);
+    ExpectToReceive(expect_to_receive, connection);
+    t.join();
   }
 }
 

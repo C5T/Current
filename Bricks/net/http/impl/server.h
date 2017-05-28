@@ -478,10 +478,9 @@ class GenericHTTPServerConnection final : public HTTPResponder {
  public:
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
-  GenericHTTPServerConnection(
-      Connection&& c,
-      const typename HTTP_REQUEST_DATA::ConstructionParams& params = typename HTTP_REQUEST_DATA::ConstructionParams())
-      : connection_(std::move(c)), message_(connection_, params) {}
+  template <typename... ARGS>
+  GenericHTTPServerConnection(Connection&& c, ARGS&&... args)
+      : connection_(std::move(c)), message_(connection_, std::forward<ARGS>(args)...) {}
   ~GenericHTTPServerConnection() {
     if (!responded_) {
       // If a user code throws an exception in a different thread, it will not be caught.
