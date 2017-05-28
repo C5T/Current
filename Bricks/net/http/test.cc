@@ -425,6 +425,54 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   t.join();
 }
 
+TEST(PosixHTTPServerTest, ChunkedSmoke) {
+  auto EchoServerThreadEntry = [](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("POST", c.HTTPRequest().Method());
+    EXPECT_EQ("/", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse(c.HTTPRequest().Body());
+  };
+  std::string body;
+  std::string chunk(10, '.');
+  for (size_t i = 0; i < 10000; ++i) {
+    for (size_t j = 0; j < 10; ++j) {
+      chunk[j] = 'A' + ((i + j) % 26);
+    }
+    body += chunk;
+  }
+  size_t case_number = 0;
+  for (size_t length = body.length(); length > 2; length -= (length / 3)) {
+    for (size_t chunks = length; chunks; chunks /= 2) {
+      std::string chunked_body;
+      const auto offset = body.length() - length;
+      for (size_t i = 0; i < chunks; ++i) {
+        const size_t start = offset + length * i / chunks;
+        const size_t end = offset + length * (i + 1) / chunks;
+        chunked_body += current::strings::Printf("%X\r\n", end - start) + body.substr(start, end - start);
+      }
+
+      thread t(EchoServerThreadEntry, Socket(FLAGS_net_http_test_port));
+      Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+      connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+      connection.BlockingWrite("Host: localhost\r\n", true);
+      connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+      connection.BlockingWrite("\r\n", true);
+      connection.BlockingWrite(chunked_body, true);
+      connection.BlockingWrite("0\r\n", false);
+      ExpectToReceive(current::strings::Printf(
+                          "HTTP/1.1 200 OK\r\n"
+                          "Content-Type: text/plain\r\n"
+                          "Connection: close\r\n"
+                          "Content-Length: %d\r\n"
+                          "\r\n",
+                          static_cast<int>(length)) +
+                          body.substr(offset),
+                      connection);
+      t.join();
+    }
+  }
+}
+
 TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
   std::atomic_bool wrong_chunk_size_exception_thrown(false);
   thread t([&wrong_chunk_size_exception_thrown](Socket s) {
