@@ -440,9 +440,9 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
     }
     body += chunk;
   }
-  for (size_t length = body.length(); length > 2; length -= (length / 3)) {
+  for (size_t length = body.length(); length > 1500; length -= (length / 7)) {
     const auto offset = body.length() - length;
-    for (size_t chunks = length; chunks; chunks /= 2) {
+    for (size_t chunks = length; chunks; chunks = chunks * 2 / 3) {
       std::string chunked_body;
       for (size_t i = 0; i < chunks; ++i) {
         const size_t start = offset + length * i / chunks;
