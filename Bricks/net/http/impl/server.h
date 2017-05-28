@@ -299,7 +299,7 @@ class GenericHTTPRequestData : public HELPER {
                 const size_t bytes_to_read = next_offset - offset;
                 // We need at least one more byte for the padding `\0`.
                 if (buffer_.size() < next_offset + 1) {
-                  if (chunk_offset >= bytes_to_read + 1) {
+                  if (chunk_offset >= next_offset + 1 - buffer_.size()) {
                     std::memmove(&buffer_[0], &buffer_[chunk_offset], offset - chunk_offset);
                     offset -= chunk_offset;
                     next_offset -= chunk_offset;
