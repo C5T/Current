@@ -63,7 +63,7 @@ SOFTWARE.
 #include "../../../strings/printf.h"
 #include "../../../util/singleton.h"
 
-#define BRICKS_LOG_HTTP_EVENT(...) current::net::HTTPDataJournal().events.push_back(current::strings::Printf(__VA_ARGS__))
+#define BRICKS_LOG_HTTP_EVENT(...) current::net::HTTPDataJournal().LogEvent(__VA_ARGS__)
 
 #endif
 
@@ -71,11 +71,26 @@ namespace current {
 namespace net {
 
 #ifdef BRICKS_DEBUG_HTTP
-struct HTTPDataEventsJournal {
+struct EventsJournal {
   std::vector<std::string> events;
+  bool active = false;
+
+  void Start() {
+    events.clear();
+    active = true;
+  }
+  void Stop() {
+    active = false;
+  }
+  template <typename... ARGS>
+  void LogEvent(ARGS&&... args) {
+    if (active) {
+      events.push_back(current::strings::Printf(std::forward<ARGS>(args)...));
+    }
+  }
 };
 
-inline HTTPDataEventsJournal& HTTPDataJournal() { return current::Singleton<HTTPDataEventsJournal>(); }
+inline EventsJournal& HTTPDataJournal() { return current::Singleton<EventsJournal>(); }
 #endif
 
 // HTTP response helpers. Used from both `GenericHTTPRequestData` and `GenericHTTPServerConnection`.

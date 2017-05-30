@@ -567,7 +567,7 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
 
   const auto chunked_body = chunks[0] + chunks[1] + chunks[2] + chunks[3] + "0\r\n";
   for (size_t i = 0; i < 3; ++i) {
-    current::net::HTTPDataJournal().events.clear();
+    current::net::HTTPDataJournal().Start();
     std::thread t(EchoServerThreadEntryWithOptions, Socket(FLAGS_net_http_test_port), 100, 2.0);
     Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
     connection.BlockingWrite(headers + headers_paddings[i] + "\r\n\r\n" + chunked_body, false);
@@ -577,6 +577,7 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
     for (size_t j = 0; j < expected_events_block1[i].size(); ++j) {
       EXPECT_EQ(expected_events_block1[i][j], current::net::HTTPDataJournal().events[j]);
     }
+    current::net::HTTPDataJournal().Stop();
   }
 
   // Test cases block 2: http header and each chunk is sent separatedly with sufficiently long delays in between.
@@ -643,7 +644,7 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
   };
 
   for (size_t i = 0; i < 3; ++i) {
-    current::net::HTTPDataJournal().events.clear();
+    current::net::HTTPDataJournal().Start();
     std::thread t(EchoServerThreadEntryWithOptions, Socket(FLAGS_net_http_test_port), 100, 2.0);
     Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
     connection.BlockingWrite(headers + headers_paddings[i] + "\r\n\r\n", false);
@@ -658,6 +659,7 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
     for (size_t j = 0; j < expected_events_block2[i].size(); ++j) {
       EXPECT_EQ(expected_events_block2[i][j], current::net::HTTPDataJournal().events[j]);
     }
+    current::net::HTTPDataJournal().Stop();
   }
 }
 
