@@ -79,9 +79,7 @@ struct EventsJournal {
     events.clear();
     active = true;
   }
-  void Stop() {
-    active = false;
-  }
+  void Stop() { active = false; }
   template <typename... ARGS>
   void LogEvent(ARGS&&... args) {
     if (active) {
@@ -240,9 +238,9 @@ class GenericHTTPRequestData : public HELPER {
   inline GenericHTTPRequestData(
       Connection& c,
       const typename HELPER::ConstructionParams& params = typename HELPER::ConstructionParams(),
-      const int intial_buffer_size = 1600,
+      const int initial_buffer_size = 16 * 1024 + 1,
       const double buffer_growth_k = 1.95)
-      : HELPER(params), buffer_(intial_buffer_size) {
+      : HELPER(params), buffer_(initial_buffer_size) {
     // `offset` is the number of bytes read into `buffer_` so far.
     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
     // of the end of HTTP body in the buffer_, once `Content-Length` and two consecutive CRLS have been seen.
@@ -533,9 +531,12 @@ class GenericHTTPServerConnection final : public HTTPResponder {
  public:
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
-  template <typename... ARGS>
-  GenericHTTPServerConnection(Connection&& c, ARGS&&... args)
-      : connection_(std::move(c)), message_(connection_, std::forward<ARGS>(args)...) {}
+  GenericHTTPServerConnection(
+      Connection&& c,
+      const typename HTTP_REQUEST_DATA::ConstructionParams& params = typename HTTP_REQUEST_DATA::ConstructionParams(),
+      const int initial_buffer_size = 16 * 1024 + 1,
+      const double buffer_growth_k = 1.95)
+      : connection_(std::move(c)), message_(connection_, params, initial_buffer_size, buffer_growth_k) {}
   ~GenericHTTPServerConnection() {
     if (!responded_) {
       // If a user code throws an exception in a different thread, it will not be caught.
