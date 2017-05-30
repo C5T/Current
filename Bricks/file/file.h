@@ -215,8 +215,8 @@ struct FileSystem {
   typedef std::ofstream OutputFile;
 
   struct ScanDirItemInfo {
-    const std::string& name;
-    const std::string& path;
+    const std::string name;
+    const std::string path;
     const bool is_directory;
 
     ScanDirItemInfo() = delete;
