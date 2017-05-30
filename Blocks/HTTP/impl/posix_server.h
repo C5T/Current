@@ -206,17 +206,17 @@ class HTTPServerPOSIX final {
     HTTPRoutesScope scope;
     current::FileSystem::ScanDir(
         dir,
-        [this, &dir, &route_prefix, &scope](const std::string& file) {
-          const std::string content_type(current::net::GetFileMimeType(file, ""));
+        [this, &route_prefix, &scope](const current::FileSystem::ScanDirItemInfo& item_info) {
+          const std::string content_type(current::net::GetFileMimeType(item_info.name, ""));
           if (!content_type.empty()) {
             // TODO(dkorolev): Wrap keeping file contents into a singleton
             // that keeps a map from a (SHA256) hash to the contents.
             auto static_file_server = std::make_unique<StaticFileServer>(
-                current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)), content_type);
-            scope += Register(route_prefix + file, *static_file_server);
+                current::FileSystem::ReadFileAsString(item_info.path), content_type);
+            scope += Register(route_prefix + item_info.name, *static_file_server);
             static_file_servers_.push_back(std::move(static_file_server));
           } else {
-            CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
+            CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(item_info.name));
           }
         });
     return scope;

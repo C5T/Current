@@ -214,7 +214,22 @@ struct FileSystem {
   // TODO(dkorolev): Make OutputFile not as tightly coupled with std::ofstream as it is now.
   typedef std::ofstream OutputFile;
 
+  struct ScanDirItemInfo {
+    const std::string& name;
+    const std::string& path;
+    const bool is_directory;
+
+    ScanDirItemInfo() = delete;
+    ScanDirItemInfo(const std::string& name, const std::string& path, const bool& is_directory)
+        : name(name), path(path), is_directory(is_directory) {}
+  };
+
   enum class ScanDirParameters : int { ListFilesOnly = 1, ListDirsOnly = 2, ListFilesAndDirs = 3 };
+
+  static inline bool ScanDirCanHandleName(const char* const name) {
+    return (*name && ::strcmp(name, ".") && ::strcmp(name, ".."));
+  }
+
   template <typename F>
   static inline void ScanDirUntil(const std::string& directory,
                                   F&& f,
@@ -232,12 +247,16 @@ struct FileSystem {
       };
       const ScopedCloseFindFileHandle closer(handle);
       do {
-        const ScanDirParameters mask = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        const char* const name = find_data.cFileName;
+        if (ScanDirCanHandleName(name)) {
+          const bool is_directory = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+          const ScanDirParameters mask = is_directory
                                            ? ScanDirParameters::ListDirsOnly
                                            : ScanDirParameters::ListFilesOnly;
-        if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-          if (!f(find_data.cFileName)) {
-            return;
+          if (static_cast<int>(parameters) & static_cast<int>(mask)) {
+            if (!f(ScanDirItemInfo(name, JoinPath(directory, name), is_directory))) {
+              return;
+            }
           }
         }
       } while (::FindNextFileA(handle, &find_data) != 0);
@@ -251,15 +270,17 @@ struct FileSystem {
     });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
-        if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..")) {
-          const char* const filename = entry->d_name;
-          // Proved to be required on Ubuntu running in Parallels on a Mac,
+        const char* const name = entry->d_name;
+        if (ScanDirCanHandleName(name)) {
+          // `IsDir` is proved to be required on Ubuntu running in Parallels on a Mac,
           // with Bricks' directory mounted from Mac's filesystem.
           // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
+          const std::string& path = JoinPath(directory, name);
+          const bool is_directory = IsDir(path);
           const ScanDirParameters mask =
-              IsDir(JoinPath(directory, filename)) ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
+              is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
           if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-            if (!f(filename)) {
+            if (!f(ScanDirItemInfo(name, path, is_directory))) {
               return;
             }
           }
@@ -277,13 +298,13 @@ struct FileSystem {
 #endif
   }
 
-  template <typename F>
+  template <typename ITEM_HANDLER>
   static inline void ScanDir(const std::string& directory,
-                             F&& f,
+                             ITEM_HANDLER&& item_handler,
                              ScanDirParameters parameters = ScanDirParameters::ListFilesOnly) {
     ScanDirUntil(directory,
-                 [&f](const std::string& filename) {
-                   f(filename);
+                 [&item_handler](const ScanDirItemInfo& item_info) {
+                   item_handler(item_info);
                    return true;
                  },
                  parameters);
@@ -340,17 +361,14 @@ struct FileSystem {
     } else {
       try {
         ScanDir(directory,
-                [&directory, parameters](const std::string& name) {
-                  const std::string full_name = JoinPath(directory, name);
-                  if (name != "." && name != "..") {
-                    if (IsDir(full_name)) {
-                      RmDir(full_name, parameters, RmDirRecursive::Yes);
-                    } else {
-                      RmFile(full_name,
-                             (parameters == RmDirParameters::ThrowExceptionOnError)
-                                 ? RmFileParameters::ThrowExceptionOnError
-                                 : RmFileParameters::Silent);
-                    }
+                [parameters](const ScanDirItemInfo& item_info) {
+                  if (item_info.is_directory) {
+                    RmDir(item_info.path, parameters, RmDirRecursive::Yes);
+                  } else {
+                    RmFile(item_info.path,
+                           (parameters == RmDirParameters::ThrowExceptionOnError)
+                               ? RmFileParameters::ThrowExceptionOnError
+                               : RmFileParameters::Silent);
                   }
                 },
                 ScanDirParameters::ListFilesAndDirs);

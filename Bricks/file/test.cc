@@ -231,18 +231,17 @@ TEST(File, ScanDir) {
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
   struct Scanner {
-    explicit Scanner(const std::string& dir, bool return_code = true) : dir_(dir), return_code_(return_code) {}
+    explicit Scanner(bool return_value) : return_value_(return_value) {}
     Scanner(const Scanner&) = delete;  // Make sure ScanDir()/ScanDirUntil() don't copy the argument.
-    bool operator()(const std::string& file_name) {
-      files_.push_back(std::make_pair(file_name, FileSystem::ReadFileAsString(FileSystem::JoinPath(dir_, file_name))));
-      return return_code_;
+    bool operator()(const FileSystem::ScanDirItemInfo& item_info) {
+      files_.push_back(std::make_pair(item_info.name, FileSystem::ReadFileAsString(item_info.path)));
+      return return_value_;
     }
-    const std::string dir_;
-    const bool return_code_;
+    const bool return_value_;
     std::vector<std::pair<std::string, std::string>> files_;
   };
 
-  Scanner scanner_before(dir);
+  Scanner scanner_before(true);
   ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), DirDoesNotExistException);
   ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), DirDoesNotExistException);
 
@@ -261,7 +260,7 @@ TEST(File, ScanDir) {
   FileSystem::WriteStringToFile("bar", fn2.c_str());
   FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir"));
 
-  Scanner scanner_after(dir);
+  Scanner scanner_after(true);
   FileSystem::ScanDir(dir, scanner_after);
   ASSERT_EQ(2u, scanner_after.files_.size());
   std::sort(scanner_after.files_.begin(), scanner_after.files_.end());
@@ -270,7 +269,7 @@ TEST(File, ScanDir) {
   EXPECT_EQ("two", scanner_after.files_[1].first);
   EXPECT_EQ("bar", scanner_after.files_[1].second);
 
-  Scanner scanner_after_until(dir, false);
+  Scanner scanner_after_until(false);
   FileSystem::ScanDirUntil(dir, scanner_after_until);
   ASSERT_EQ(1u, scanner_after_until.files_.size());
   EXPECT_TRUE(scanner_after_until.files_[0].first == "one" || scanner_after_until.files_[0].first == "two");
@@ -294,28 +293,36 @@ TEST(File, ScanDirParameters) {
 
   {
     std::set<std::string> xs;
-    FileSystem::ScanDir(base_dir, [&xs](const std::string& x) { xs.insert(x); });
+    FileSystem::ScanDir(
+        base_dir,
+        [&xs](const FileSystem::ScanDirItemInfo& x) { xs.insert(x.name); });
     EXPECT_EQ("f", current::strings::Join(xs, ','));
   }
 
   {
     std::set<std::string> xs;
     FileSystem::ScanDir(
-        base_dir, [&xs](const std::string& x) { xs.insert(x); }, FileSystem::ScanDirParameters::ListFilesOnly);
+        base_dir,
+        [&xs](const FileSystem::ScanDirItemInfo& x) { xs.insert(x.name); },
+        FileSystem::ScanDirParameters::ListFilesOnly);
     EXPECT_EQ("f", current::strings::Join(xs, ','));
   }
 
   {
     std::set<std::string> xs;
     FileSystem::ScanDir(
-        base_dir, [&xs](const std::string& x) { xs.insert(x); }, FileSystem::ScanDirParameters::ListDirsOnly);
+        base_dir,
+        [&xs](const FileSystem::ScanDirItemInfo& x) { xs.insert(x.name); },
+        FileSystem::ScanDirParameters::ListDirsOnly);
     EXPECT_EQ("d", current::strings::Join(xs, ','));
   }
 
   {
     std::set<std::string> xs;
     FileSystem::ScanDir(
-        base_dir, [&xs](const std::string& x) { xs.insert(x); }, FileSystem::ScanDirParameters::ListFilesAndDirs);
+        base_dir,
+        [&xs](const FileSystem::ScanDirItemInfo& x) { xs.insert(x.name); },
+        FileSystem::ScanDirParameters::ListFilesAndDirs);
     EXPECT_EQ("d,f", current::strings::Join(xs, ','));
   }
 }
