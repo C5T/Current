@@ -215,13 +215,17 @@ struct FileSystem {
   typedef std::ofstream OutputFile;
 
   struct ScanDirItemInfo {
+    std::string dirname;
     std::string basename;
     std::string pathname;
     bool is_directory;
 
     ScanDirItemInfo() = delete;
-    ScanDirItemInfo(std::string basename, std::string pathname, bool is_directory)
-        : basename(std::move(basename)), pathname(std::move(pathname)), is_directory(is_directory) {}
+    ScanDirItemInfo(std::string dirname, std::string basename, std::string pathname, bool is_directory)
+        : dirname(std::move(dirname)),
+          basename(std::move(basename)),
+          pathname(std::move(pathname)),
+          is_directory(is_directory) {}
   };
 
   enum class ScanDirParameters : int { ListFilesOnly = 1, ListDirsOnly = 2, ListFilesAndDirs = 3 };
@@ -256,7 +260,7 @@ struct FileSystem {
             const ScanDirParameters mask =
                 is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-              if (!item_handler(ScanDirItemInfo(name, JoinPath(directory, name), is_directory))) {
+              if (!item_handler(ScanDirItemInfo(directory, name, JoinPath(directory, name), is_directory))) {
                 return;
               }
             }
@@ -282,7 +286,7 @@ struct FileSystem {
             const ScanDirParameters mask =
                 is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-              if (!item_handler(ScanDirItemInfo(name, std::move(path), is_directory))) {
+              if (!item_handler(ScanDirItemInfo(directory, name, std::move(path), is_directory))) {
                 return;
               }
             }
