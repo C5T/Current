@@ -253,9 +253,8 @@ struct FileSystem {
           const char* const name = find_data.cFileName;
           if (ScanDirCanHandleName(name)) {
             const bool is_directory = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
-            const ScanDirParameters mask = is_directory
-                                             ? ScanDirParameters::ListDirsOnly
-                                             : ScanDirParameters::ListFilesOnly;
+            const ScanDirParameters mask =
+                is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
               if (!item_handler(ScanDirItemInfo(name, JoinPath(directory, name), is_directory))) {
                 return;
@@ -300,24 +299,22 @@ struct FileSystem {
       }
 #endif
     } else {
-      const std::function<bool(const ScanDirItemInfo&)> item_handler_recursive = [&item_handler, parameters](const ScanDirItemInfo& item_info) {
-        const ScanDirParameters mask = item_info.is_directory
-                                         ? ScanDirParameters::ListDirsOnly
-                                         : ScanDirParameters::ListFilesOnly;
-        if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-          if (!item_handler(item_info)) {
-            return false;
-          }
-        }
-        if (item_info.is_directory) {
-          ScanDirUntil<ITEM_HANDLER>(item_info.pathname, std::forward<ITEM_HANDLER>(item_handler), parameters, ScanDirRecursive::Yes);
-        }
-        return true;
-      };
-      ScanDirUntil(directory,
-                   item_handler_recursive,
-                   ScanDirParameters::ListFilesAndDirs,
-                   ScanDirRecursive::No);
+      const std::function<bool(const ScanDirItemInfo&)> item_handler_recursive =
+          [&item_handler, parameters](const ScanDirItemInfo& item_info) {
+            const ScanDirParameters mask =
+                item_info.is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
+            if (static_cast<int>(parameters) & static_cast<int>(mask)) {
+              if (!item_handler(item_info)) {
+                return false;
+              }
+            }
+            if (item_info.is_directory) {
+              ScanDirUntil<ITEM_HANDLER>(
+                  item_info.pathname, std::forward<ITEM_HANDLER>(item_handler), parameters, ScanDirRecursive::Yes);
+            }
+            return true;
+          };
+      ScanDirUntil(directory, item_handler_recursive, ScanDirParameters::ListFilesAndDirs, ScanDirRecursive::No);
     }
   }
 
