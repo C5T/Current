@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include <thread>
 
-#define BRICKS_DEBUG_HTTP
+#define CURRENT_BRICKS_DEBUG_HTTP
 #include "http.h"
 
 #include "../../dflags/dflags.h"
@@ -502,65 +502,65 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
   const std::vector<std::string> expected_events_block1[] = {
       // clang-format off
     {// Test case 1.0 (100 bytes header).
-      "read 99 bytes (buffer offset 0)\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
       "resize the buffer 100 -> 200\n",
-      "read 100 bytes (buffer offset 99)\n",
+      "read 100 bytes while requested 100 (buffer offset 99)\n",
       "resize the buffer 200 -> 400\n",
       "http header is parsed\n",
       "process a 90 bytes long chunk\n",
-      "memmove 0 bytes from offset 199 to fit an entire chunk\n",
-      "read 399 more bytes of a chunk\n",
+      "memmove 0 bytes from offset 199 to fit the entire chunk\n",
+      "read 399 more bytes of a chunk at offset 0\n",
       "process a 399 bytes long chunk\n",
-      "read 399 bytes (buffer offset 0)\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
       "resize the buffer 400 -> 800\n",
       "process a 393 bytes long chunk\n",
       "memmove 1 bytes from offset 398 to the beginning\n",
-      "read 798 bytes (buffer offset 1)\n",
+      "read 798 bytes while requested 798 (buffer offset 1)\n",
       "resize the buffer 800 -> 1600\n",
       "process a 792 bytes long chunk\n",
       "memmove 2 bytes from offset 797 to the beginning\n",
-      "read 1 bytes (buffer offset 2)\n"
+      "read 1 bytes while requested 1597 (buffer offset 2)\n"
     },
     {// Test case 1.1 (99 bytes header).
-      "read 99 bytes (buffer offset 0)\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
       "resize the buffer 100 -> 200\n",
       "http header is parsed\n",
-      "read 199 bytes (buffer offset 0)\n",
+      "read 199 bytes while requested 199 (buffer offset 0)\n",
       "resize the buffer 200 -> 400\n",
       "process a 90 bytes long chunk\n",
-      "memmove 100 bytes from offset 99 to fit an entire chunk\n",
-      "read 299 more bytes of a chunk\n",
+      "memmove 100 bytes from offset 99 to fit the entire chunk\n",
+      "read 299 more bytes of a chunk at offset 100\n",
       "process a 399 bytes long chunk\n",
-      "read 399 bytes (buffer offset 0)\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
       "resize the buffer 400 -> 800\n",
       "process a 393 bytes long chunk\n",
       "memmove 1 bytes from offset 398 to the beginning\n",
-      "read 798 bytes (buffer offset 1)\n",
+      "read 798 bytes while requested 798 (buffer offset 1)\n",
       "resize the buffer 800 -> 1600\n",
       "process a 792 bytes long chunk\n",
       "memmove 2 bytes from offset 797 to the beginning\n",
-      "read 1 bytes (buffer offset 2)\n"
+      "read 1 bytes while requested 1597 (buffer offset 2)\n"
     },
     {// Test case 1.2 (98 bytes header).
-      "read 99 bytes (buffer offset 0)\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
       "resize the buffer 100 -> 200\n",
       "http header is parsed\n",
       "memmove 1 bytes from offset 98 to the beginning\n",
-      "read 198 bytes (buffer offset 1)\n",
+      "read 198 bytes while requested 198 (buffer offset 1)\n",
       "resize the buffer 200 -> 400\n",
       "process a 90 bytes long chunk\n",
-      "memmove 100 bytes from offset 99 to fit an entire chunk\n",
-      "read 299 more bytes of a chunk\n",
+      "memmove 100 bytes from offset 99 to fit the entire chunk\n",
+      "read 299 more bytes of a chunk at offset 100\n",
       "process a 399 bytes long chunk\n",
-      "read 399 bytes (buffer offset 0)\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
       "resize the buffer 400 -> 800\n",
       "process a 393 bytes long chunk\n",
       "memmove 1 bytes from offset 398 to the beginning\n",
-      "read 798 bytes (buffer offset 1)\n",
+      "read 798 bytes while requested 798 (buffer offset 1)\n",
       "resize the buffer 800 -> 1600\n",
       "process a 792 bytes long chunk\n",
       "memmove 2 bytes from offset 797 to the beginning\n",
-      "read 1 bytes (buffer offset 2)\n"
+      "read 1 bytes while requested 1597 (buffer offset 2)\n"
     }
       // clang-format on
   };
@@ -573,8 +573,10 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
     connection.BlockingWrite(headers + headers_paddings[i] + "\r\n\r\n" + chunked_body, false);
     ExpectToReceive(expect_to_receive, connection);
     t.join();
-    ASSERT_EQ(expected_events_block1[i].size(), current::net::HTTPDataJournal().events.size());
-    for (size_t j = 0; j < expected_events_block1[i].size(); ++j) {
+    EXPECT_EQ(expected_events_block1[i].size(), current::net::HTTPDataJournal().events.size());
+    for (size_t j = 0, sz = std::min(expected_events_block1[i].size(), current::net::HTTPDataJournal().events.size());
+         j < sz;
+         ++j) {
       EXPECT_EQ(expected_events_block1[i][j], current::net::HTTPDataJournal().events[j]);
     }
     current::net::HTTPDataJournal().Stop();
@@ -584,61 +586,61 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
   const std::vector<std::string> expected_events_block2[] = {
       // clang-format off
     {// Test case 2.0 (100 bytes header).
-      "read 99 bytes (buffer offset 0)\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
       "resize the buffer 100 -> 200\n",
-      "read 1 bytes (buffer offset 99)\n",
+      "read 1 bytes while requested 100 (buffer offset 99)\n",
       "http header is parsed\n",
-      "read 94 bytes (buffer offset 0)\n",
+      "read 94 bytes while requested 199 (buffer offset 0)\n",
       "process a 90 bytes long chunk\n",
-      "read 199 bytes (buffer offset 0)\n",
+      "read 199 bytes while requested 199 (buffer offset 0)\n",
       "resize the buffer 200 -> 400\n",
-      "memmove 194 bytes from offset 5 to fit an entire chunk\n",
-      "read 205 more bytes of a chunk\n",
+      "memmove 194 bytes from offset 5 to fit the entire chunk\n",
+      "read 205 more bytes of a chunk at offset 194\n",
       "process a 399 bytes long chunk\n",
-      "read 398 bytes (buffer offset 0)\n",
+      "read 398 bytes while requested 399 (buffer offset 0)\n",
       "process a 393 bytes long chunk\n",
-      "read 399 bytes (buffer offset 0)\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
       "resize the buffer 400 -> 800\n",
-      "read 398 more bytes of a chunk\n",
+      "read 398 more bytes of a chunk at offset 399\n",
       "process a 792 bytes long chunk\n",
-      "read 3 bytes (buffer offset 0)\n"
+      "read 3 bytes while requested 799 (buffer offset 0)\n"
     },
     {// Test case 2.1 (99 bytes header).
-      "read 99 bytes (buffer offset 0)\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
       "resize the buffer 100 -> 200\n",
       "http header is parsed\n",
-      "read 94 bytes (buffer offset 0)\n",
+      "read 94 bytes while requested 199 (buffer offset 0)\n",
       "process a 90 bytes long chunk\n",
-      "read 199 bytes (buffer offset 0)\n",
+      "read 199 bytes while requested 199 (buffer offset 0)\n",
       "resize the buffer 200 -> 400\n",
-      "memmove 194 bytes from offset 5 to fit an entire chunk\n",
-      "read 205 more bytes of a chunk\n",
+      "memmove 194 bytes from offset 5 to fit the entire chunk\n",
+      "read 205 more bytes of a chunk at offset 194\n",
       "process a 399 bytes long chunk\n",
-      "read 398 bytes (buffer offset 0)\n",
+      "read 398 bytes while requested 399 (buffer offset 0)\n",
       "process a 393 bytes long chunk\n",
-      "read 399 bytes (buffer offset 0)\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
       "resize the buffer 400 -> 800\n",
-      "read 398 more bytes of a chunk\n",
+      "read 398 more bytes of a chunk at offset 399\n",
       "process a 792 bytes long chunk\n",
-      "read 3 bytes (buffer offset 0)\n"
+      "read 3 bytes while requested 799 (buffer offset 0)\n"
     },
     {// Test case 2.2 (98 bytes header).
-      "read 98 bytes (buffer offset 0)\n",
+      "read 98 bytes while requested 99 (buffer offset 0)\n",
       "http header is parsed\n",
-      "read 94 bytes (buffer offset 0)\n",
+      "read 94 bytes while requested 99 (buffer offset 0)\n",
       "process a 90 bytes long chunk\n",
-      "read 99 bytes (buffer offset 0)\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
       "resize the buffer 100 -> 200\n",
-      "resize the buffer 200 -> 405 to fit an entire chunk\n",
-      "read 305 more bytes of a chunk\n",
+      "resize the buffer 200 -> 405 to fit the entire chunk\n",
+      "read 305 more bytes of a chunk at offset 99\n",
       "process a 399 bytes long chunk\n",
-      "read 398 bytes (buffer offset 0)\n",
+      "read 398 bytes while requested 404 (buffer offset 0)\n",
       "process a 393 bytes long chunk\n",
-      "read 404 bytes (buffer offset 0)\n",
+      "read 404 bytes while requested 404 (buffer offset 0)\n",
       "resize the buffer 405 -> 810\n",
-      "read 393 more bytes of a chunk\n",
+      "read 393 more bytes of a chunk at offset 404\n",
       "process a 792 bytes long chunk\n",
-      "read 3 bytes (buffer offset 0)\n"
+      "read 3 bytes while requested 809 (buffer offset 0)\n"
     }
       // clang-format on
   };
@@ -655,8 +657,10 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
     connection.BlockingWrite("0\r\n", false);
     ExpectToReceive(expect_to_receive, connection);
     t.join();
-    ASSERT_EQ(expected_events_block2[i].size(), current::net::HTTPDataJournal().events.size());
-    for (size_t j = 0; j < expected_events_block2[i].size(); ++j) {
+    EXPECT_EQ(expected_events_block2[i].size(), current::net::HTTPDataJournal().events.size());
+    for (size_t j = 0, sz = std::min(expected_events_block2[i].size(), current::net::HTTPDataJournal().events.size());
+         j < sz;
+         ++j) {
       EXPECT_EQ(expected_events_block2[i][j], current::net::HTTPDataJournal().events[j]);
     }
     current::net::HTTPDataJournal().Stop();

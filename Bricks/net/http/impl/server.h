@@ -52,25 +52,25 @@ SOFTWARE.
 
 #include "../../../../Blocks/URL/url.h"
 
-#ifndef BRICKS_DEBUG_HTTP
+#ifndef CURRENT_BRICKS_DEBUG_HTTP
 
-#define BRICKS_LOG_HTTP_EVENT(...) \
-  do {                             \
-  } while (false)
+// clang-format off
+#define CURRENT_BRICKS_LOG_HTTP_EVENT(...) do ; while (false)
+// clang-format on
 
 #else
 
 #include "../../../strings/printf.h"
 #include "../../../util/singleton.h"
 
-#define BRICKS_LOG_HTTP_EVENT(...) current::net::HTTPDataJournal().LogEvent(__VA_ARGS__)
+#define CURRENT_BRICKS_LOG_HTTP_EVENT(...) current::net::HTTPDataJournal().LogEvent(__VA_ARGS__)
 
-#endif
+#endif  // CURRENT_BRICKS_DEBUG_HTTP
 
 namespace current {
 namespace net {
 
-#ifdef BRICKS_DEBUG_HTTP
+#ifdef CURRENT_BRICKS_DEBUG_HTTP
 struct EventsJournal {
   std::vector<std::string> events;
   bool active = false;
@@ -89,7 +89,7 @@ struct EventsJournal {
 };
 
 inline EventsJournal& HTTPDataJournal() { return current::Singleton<EventsJournal>(); }
-#endif
+#endif  // CURRENT_BRICKS_DEBUG_HTTP
 
 // HTTP response helpers. Used from both `GenericHTTPRequestData` and `GenericHTTPServerConnection`.
 struct HTTPResponder {
@@ -273,13 +273,16 @@ class GenericHTTPRequestData : public HELPER {
       // the server would wait forever for more data to arrive from the client.
       chunk = buffer_.size() - offset - 1;
       read_count = c.BlockingRead(&buffer_[offset], chunk);
-      BRICKS_LOG_HTTP_EVENT("read %lu bytes (buffer offset %lu)\n", read_count, offset);
+      CURRENT_BRICKS_LOG_HTTP_EVENT(
+          "read %lu bytes while requested %lu (buffer offset %lu)\n", read_count, chunk, offset);
       offset += read_count;
       if (read_count == chunk && offset < length_cap) {
         // The `std::max()` condition is kept just in case we compile Current for a device
         // that is extremely short on memory, for which `buffer_growth_k` could be some 1.0001. -- D.K.
-        buffer_.resize(std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), buffer_.size() + 1));
-        BRICKS_LOG_HTTP_EVENT("resize the buffer %lu -> %lu\n", offset + 1, buffer_.size());
+        const size_t new_buffer_size =
+            std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), buffer_.size() + 1);
+        CURRENT_BRICKS_LOG_HTTP_EVENT("resize the buffer %lu -> %lu\n", buffer_.size(), new_buffer_size);
+        buffer_.resize(new_buffer_size);
       }
       if (!read_count) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
@@ -324,8 +327,6 @@ class GenericHTTPRequestData : public HELPER {
                 CURRENT_THROW(ChunkSizeNotAValidHEXValue());
               }
             }());
-            //            printf("Chunk %lu, offset %lu, chunk_offset %lu, next_offset %lu\n",
-            //              chunk_length, offset, next_line_offset, next_line_offset + chunk_length);
             if (chunk_length == 0) {
               // Done with the body.
               HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_end_);
@@ -340,9 +341,9 @@ class GenericHTTPRequestData : public HELPER {
                 // We need at least one more byte for the padding `\0`.
                 if (buffer_.size() < next_offset + 1) {
                   if (chunk_offset >= next_offset + 1 - buffer_.size()) {
-                    BRICKS_LOG_HTTP_EVENT("memmove %lu bytes from offset %lu to fit an entire chunk\n",
-                                          offset - chunk_offset,
-                                          chunk_offset);
+                    CURRENT_BRICKS_LOG_HTTP_EVENT("memmove %lu bytes from offset %lu to fit the entire chunk\n",
+                                                  offset - chunk_offset,
+                                                  chunk_offset);
                     std::memmove(&buffer_[0], &buffer_[chunk_offset], offset - chunk_offset);
                     offset -= chunk_offset;
                     next_offset -= chunk_offset;
@@ -352,8 +353,8 @@ class GenericHTTPRequestData : public HELPER {
                     // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
                     const size_t new_buffer_size =
                         std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1);
-                    BRICKS_LOG_HTTP_EVENT(
-                        "resize the buffer %lu -> %lu to fit an entire chunk\n", buffer_.size(), new_buffer_size);
+                    CURRENT_BRICKS_LOG_HTTP_EVENT(
+                        "resize the buffer %lu -> %lu to fit the entire chunk\n", buffer_.size(), new_buffer_size);
                     buffer_.resize(new_buffer_size);
                     // LCOV_EXCL_STOP
                   }
@@ -361,13 +362,13 @@ class GenericHTTPRequestData : public HELPER {
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
                   CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
+                CURRENT_BRICKS_LOG_HTTP_EVENT("read %lu more bytes of a chunk at offset %lu\n", bytes_to_read, offset);
                 offset = next_offset;
                 buffer_[offset] = '\0';
-                BRICKS_LOG_HTTP_EVENT("read %lu more bytes of a chunk\n", bytes_to_read);
               }
 
               // Then, append this newly parsed or received chunk to the body.
-              BRICKS_LOG_HTTP_EVENT("process a %lu bytes long chunk\n", chunk_length);
+              CURRENT_BRICKS_LOG_HTTP_EVENT("process a %lu bytes long chunk\n", chunk_length);
               HELPER::OnChunk(&buffer_[chunk_offset], chunk_length);
               CURRENT_ASSERT(body_offset == static_cast<size_t>(-1));
               next_line_offset = next_offset;
@@ -409,7 +410,7 @@ class GenericHTTPRequestData : public HELPER {
             }
           }
         } else {
-          BRICKS_LOG_HTTP_EVENT("http header is parsed\n");
+          CURRENT_BRICKS_LOG_HTTP_EVENT("http header is parsed\n");
           // The blank line is what separates HTTP headers from HTTP body.
           if (!chunked_transfer_encoding) {
             // HTTP body starts right after this last CRLF.
@@ -444,9 +445,9 @@ class GenericHTTPRequestData : public HELPER {
       }
       if (receiving_body_in_chunks && current_line_offset) {
         if (offset > current_line_offset) {
-          BRICKS_LOG_HTTP_EVENT("memmove %lu bytes from offset %lu to the beginning\n",
-                                offset - current_line_offset,
-                                current_line_offset);
+          CURRENT_BRICKS_LOG_HTTP_EVENT("memmove %lu bytes from offset %lu to the beginning\n",
+                                        offset - current_line_offset,
+                                        current_line_offset);
           // In chunked mode, span the last line to the beginning of the buffer to prevent infinite RAM growth.
           std::memmove(&buffer_[0], &buffer_[current_line_offset], offset - current_line_offset);
           offset -= current_line_offset;
