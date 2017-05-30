@@ -301,7 +301,7 @@ TEST(File, ScanDirParameters) {
                         });
     EXPECT_EQ("f", current::strings::Join(names, ','));
     EXPECT_EQ(f, item_infos.at("f").pathname);
-    EXPECT_EQ(false, item_infos.at("f").is_directory);
+    EXPECT_FALSE(item_infos.at("f").is_directory);
   }
 
   {
@@ -315,7 +315,7 @@ TEST(File, ScanDirParameters) {
                         FileSystem::ScanDirParameters::ListFilesOnly);
     EXPECT_EQ("f", current::strings::Join(names, ','));
     EXPECT_EQ(f, item_infos.at("f").pathname);
-    EXPECT_EQ(false, item_infos.at("f").is_directory);
+    EXPECT_FALSE(item_infos.at("f").is_directory);
   }
 
   {
@@ -329,7 +329,7 @@ TEST(File, ScanDirParameters) {
                         FileSystem::ScanDirParameters::ListDirsOnly);
     EXPECT_EQ("d", current::strings::Join(names, ','));
     EXPECT_EQ(d, item_infos.at("d").pathname);
-    EXPECT_EQ(true, item_infos.at("d").is_directory);
+    EXPECT_TRUE(item_infos.at("d").is_directory);
   }
 
   {
@@ -343,9 +343,9 @@ TEST(File, ScanDirParameters) {
                         FileSystem::ScanDirParameters::ListFilesAndDirs);
     EXPECT_EQ("d,f", current::strings::Join(names, ','));
     EXPECT_EQ(d, item_infos.at("d").pathname);
-    EXPECT_EQ(true, item_infos.at("d").is_directory);
+    EXPECT_TRUE(item_infos.at("d").is_directory);
     EXPECT_EQ(f, item_infos.at("f").pathname);
-    EXPECT_EQ(false, item_infos.at("f").is_directory);
+    EXPECT_FALSE(item_infos.at("f").is_directory);
   }
 }
 
