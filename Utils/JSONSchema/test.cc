@@ -36,7 +36,8 @@ static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& 
   std::vector<std::string> names;
   const std::string suffix = '.' + ext;
   current::FileSystem::ScanDir(dir,
-                               [&](const std::string& filename) {
+                               [&](const current::FileSystem::ScanDirItemInfo& item_info) {
+                                 const std::string& filename = item_info.basename;
                                  if (filename.length() >= suffix.length()) {
                                    const std::string prefix = filename.substr(0, filename.length() - suffix.length());
                                    if (prefix + suffix == filename) {
