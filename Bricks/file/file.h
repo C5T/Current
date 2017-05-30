@@ -215,17 +215,17 @@ struct FileSystem {
   typedef std::ofstream OutputFile;
 
   struct ScanDirItemInfo {
-    const std::string name;
-    const std::string path;
-    const bool is_directory;
+    std::string basename;
+    std::string pathname;
+    bool is_directory;
 
     ScanDirItemInfo() = delete;
-    ScanDirItemInfo(const std::string& name, const std::string& path, const bool& is_directory)
-        : name(name), path(path), is_directory(is_directory) {}
+    ScanDirItemInfo(std::string basename, std::string pathname, bool is_directory)
+        : basename(std::move(basename)), pathname(std::move(pathname)), is_directory(is_directory) {}
   };
 
   enum class ScanDirParameters : int { ListFilesOnly = 1, ListDirsOnly = 2, ListFilesAndDirs = 3 };
-  enum class ScanDirRecursive { No, Yes };
+  enum class ScanDirRecursive : bool { No = false, Yes = true };
 
   static inline bool ScanDirCanHandleName(const char* const name) {
     return (*name && ::strcmp(name, ".") && ::strcmp(name, ".."));
@@ -278,12 +278,12 @@ struct FileSystem {
             // `IsDir` is proved to be required on Ubuntu running in Parallels on a Mac,
             // with Bricks' directory mounted from Mac's filesystem.
             // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
-            const std::string& path = JoinPath(directory, name);
+            std::string path = JoinPath(directory, name);
             const bool is_directory = IsDir(path);
             const ScanDirParameters mask =
                 is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-              if (!item_handler(ScanDirItemInfo(name, path, is_directory))) {
+              if (!item_handler(ScanDirItemInfo(name, std::move(path), is_directory))) {
                 return;
               }
             }
@@ -310,7 +310,7 @@ struct FileSystem {
           }
         }
         if (item_info.is_directory) {
-          ScanDirUntil<ITEM_HANDLER>(item_info.path, std::forward<ITEM_HANDLER>(item_handler), parameters, ScanDirRecursive::Yes);
+          ScanDirUntil<ITEM_HANDLER>(item_info.pathname, std::forward<ITEM_HANDLER>(item_handler), parameters, ScanDirRecursive::Yes);
         }
         return true;
       };
@@ -388,9 +388,9 @@ struct FileSystem {
         ScanDir(directory,
                 [parameters](const ScanDirItemInfo& item_info) {
                   if (item_info.is_directory) {
-                    RmDir(item_info.path, parameters, RmDirRecursive::Yes);
+                    RmDir(item_info.pathname, parameters, RmDirRecursive::Yes);
                   } else {
-                    RmFile(item_info.path,
+                    RmFile(item_info.pathname,
                            (parameters == RmDirParameters::ThrowExceptionOnError)
                                ? RmFileParameters::ThrowExceptionOnError
                                : RmFileParameters::Silent);
