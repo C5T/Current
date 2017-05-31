@@ -91,15 +91,9 @@ struct ServeStaticFilesFromOptions {
   std::string url_base;
   std::vector<std::string> index_filenames;
 
-  ServeStaticFilesFromOptions(const std::string& url_base,
-                              const std::vector<std::string>& index_filenames)
-      : url_base(url_base), index_filenames(index_filenames) {}
-
-  ServeStaticFilesFromOptions(const std::string& url_base)
-      : ServeStaticFilesFromOptions(url_base, {"index.html", "index.htm"}) {}
-
-  ServeStaticFilesFromOptions()
-      : ServeStaticFilesFromOptions("/") {}
+  explicit ServeStaticFilesFromOptions(std::string url_base = "/",
+                                       std::vector<std::string> index_filenames = {"index.html", "index.htm"})
+      : url_base(std::move(url_base)), index_filenames(std::move(index_filenames)) {}
 };
 
 // Helper to serve a static file.
