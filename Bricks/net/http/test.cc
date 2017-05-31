@@ -627,6 +627,11 @@ TEST(HTTPMimeTypeTest, SmokeTest) {
   EXPECT_EQ("text/plain", GetFileMimeType("file.FOO"));
   EXPECT_EQ("text/html", GetFileMimeType("file.hTmL"));
   EXPECT_EQ("image/png", GetFileMimeType("file.PNG"));
+  EXPECT_EQ("application/javascript", GetFileMimeType("file.js"));
+  EXPECT_EQ("text/css", GetFileMimeType("file.css"));
+  EXPECT_EQ("application/json; charset=utf-8", GetFileMimeType("file.json"));
+  EXPECT_EQ("application/json; charset=utf-8", GetFileMimeType("file.js.map"));
+  EXPECT_EQ("application/json; charset=utf-8", GetFileMimeType("file.css.map"));
 }
 
 // TODO(dkorolev): Figure out a way to test ConnectionResetByPeer exceptions.
