@@ -245,6 +245,8 @@ class HTTPServerPOSIX final {
 
   HTTPRoutesScope ServeStaticFilesFrom(const std::string& dir,
                                        const ServeStaticFilesFromOptions& options = ServeStaticFilesFromOptions()) {
+    ValidateURLPath(options.url_base);
+
     HTTPRoutesScope scope;
     current::FileSystem::ScanDir(
         dir,
@@ -416,6 +418,18 @@ class HTTPServerPOSIX final {
     }
   }
 
+  void ValidateURLPath(const std::string& path) {
+    if (path.empty() || path[0] != '/') {
+      CURRENT_THROW(PathDoesNotStartWithSlash("HTTP URL path does not start with a slash: `" + path + "`."));
+    }
+    if (path != "/" && path[path.length() - 1] == '/') {
+      CURRENT_THROW(PathEndsWithSlash("HTTP URL path ends with slash: `" + path + "`."));
+    }
+    if (!URL::IsPathValidToRegister(path)) {
+      CURRENT_THROW(PathContainsInvalidCharacters("HTTP URL path contains invalid characters: `" + path + "`."));
+    }
+  }
+
   HTTPRoutesScopeEntry DoRegisterHandler(const std::string& path,
                                          std::function<void(Request)> handler,
                                          const URLPathArgs::CountMask path_args_count_mask,
@@ -424,17 +438,9 @@ class HTTPServerPOSIX final {
     if (static_cast<uint16_t>(path_args_count_mask) == 0) {
       return HTTPRoutesScopeEntry();
     }
-
-    if (path.empty() || path[0] != '/') {
-      CURRENT_THROW(PathDoesNotStartWithSlash("HTTP path does not start with a slash: `" + path + "`."));
-    }
-    if (path != "/" && path[path.length() - 1] == '/') {
-      CURRENT_THROW(PathEndsWithSlash("HTTP path ends with slash: `" + path + "`."));
-    }
-    if (!URL::IsPathValidToRegister(path)) {
-      CURRENT_THROW(PathContainsInvalidCharacters("HTTP path contains invalid characters: `" + path + "`."));
-    }
     // LCOV_EXCL_STOP
+
+    ValidateURLPath(path);
 
     {
       // Step 1: Confirm the request is valid.

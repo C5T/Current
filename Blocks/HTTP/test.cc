@@ -905,7 +905,7 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
       static_cast<int>(HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port), "")).code));
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptions) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBase) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -922,14 +922,46 @@ TEST(HTTPAPI, ServeStaticFilesFromOptions) {
   EXPECT_EQ(Printf("http://localhost:%d/static/", FLAGS_net_api_test_port), response.url);
 }
 
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBaseWithTrailingSlash) {
+  const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/"}), PathEndsWithSlash);
+}
+
+TEST(HTTPAPI, ServeStaticFilesFromOptionsEmptyURLBase) {
+  const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{""}), PathDoesNotStartWithSlash);
+}
+
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomIndexFiles) {
+  FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
+  const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
+  FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::WriteStringToFile("TXT index", FileSystem::JoinPath(dir, "index.txt").c_str());
+  const auto scope = HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/", {"index.txt"}});
+  EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("TXT index",
+            HTTP(GET(Printf("http://localhost:%d/index.txt", FLAGS_net_api_test_port))).body);
+}
+
+TEST(HTTPAPI, ServeStaticFilesFromOnlyServesOneIndexFilePerDirectory) {
+  FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  const std::string dir = FLAGS_net_api_test_tmpdir + "/more_than_one_index";
+  const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
+  FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::WriteStringToFile("<h1>HTML index 1</h1>", FileSystem::JoinPath(dir, "index.html").c_str());
+  FileSystem::WriteStringToFile("<h1>HTML index 2</h1>", FileSystem::JoinPath(dir, "index.htm").c_str());
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir), ServeStaticFilesFromCannotServeMoreThanOneIndexFile);
+}
+
 TEST(HTTPAPI, ServeStaticFilesFromOnlyServesFilesOfKnownMIMEType) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FLAGS_net_api_test_tmpdir + "/wrong_static_files";
+  const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("TXT is okay.", FileSystem::JoinPath(dir, "file.txt").c_str());
   FileSystem::WriteStringToFile("FOO is not! ", FileSystem::JoinPath(dir, "file.foo").c_str());
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir), ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType);
-  FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 }
 
 TEST(HTTPAPI, ResponseSmokeTest) {
