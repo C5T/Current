@@ -50,8 +50,8 @@ namespace current {
 namespace http {
 
 // LCOV_EXCL_START
-struct InvalidHandlerPathException : current::net::HTTPException {
-  using current::net::HTTPException::HTTPException;
+struct InvalidHandlerPathException : Exception {
+  using Exception::Exception;
 };
 // LCOV_EXCL_STOP
 
@@ -67,63 +67,64 @@ struct PathContainsInvalidCharacters : InvalidHandlerPathException {
   using InvalidHandlerPathException::InvalidHandlerPathException;
 };
 
-struct HandlerAlreadyExistsException : current::net::HTTPException {
-  using current::net::HTTPException::HTTPException;
+struct HandlerAlreadyExistsException : InvalidHandlerPathException {
+  using InvalidHandlerPathException::InvalidHandlerPathException;
 };
 
-struct HandlerDoesNotExistException : current::net::HTTPException {
-  using current::net::HTTPException::HTTPException;
+struct HandlerDoesNotExistException : InvalidHandlerPathException {
+  using InvalidHandlerPathException::InvalidHandlerPathException;
+};
+
+struct ServeStaticFilesException : Exception {
+  using Exception::Exception;
+};
+
+struct ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType : ServeStaticFilesException {
+  using ServeStaticFilesException::ServeStaticFilesException;
+};
+
+struct ServeStaticFilesFromCannotServeMoreThanOneIndexFile : ServeStaticFilesException {
+  using ServeStaticFilesException::ServeStaticFilesException;
 };
 
 struct ServeStaticFilesFromOptions {
-  std::string url_dirname;
+  std::string url_base;
   std::vector<std::string> index_filenames;
 
-  ServeStaticFilesFromOptions(const std::string& url_dirname,
+  ServeStaticFilesFromOptions(const std::string& url_base,
                               const std::vector<std::string>& index_filenames)
-      : url_dirname(url_dirname), index_filenames(index_filenames) {}
+      : url_base(url_base), index_filenames(index_filenames) {}
 
-  ServeStaticFilesFromOptions(const std::string& url_dirname)
-      : ServeStaticFilesFromOptions(url_dirname, {"index.html", "index.htm"}) {}
+  ServeStaticFilesFromOptions(const std::string& url_base)
+      : ServeStaticFilesFromOptions(url_base, {"index.html", "index.htm"}) {}
 
-  ServeStaticFilesFromOptions() : ServeStaticFilesFromOptions(std::string{current::url::GetURLPathSeparator()}) {}
+  ServeStaticFilesFromOptions()
+      : ServeStaticFilesFromOptions("/") {}
 };
 
 // Helper to serve a static file.
 // TODO(dkorolev): Expose it externally under a better name, and add a comment/example.
 struct StaticFileServer {
-  std::string body;
+  std::string content;
   std::string content_type;
-  std::string filename;
-  bool is_index;
-  explicit StaticFileServer(const std::string& body, const std::string& content_type, const std::string& filename, const bool is_index)
-      : body(body), content_type(content_type), filename(filename), is_index(is_index) {}
+  bool url_path_points_to_directory;
+  explicit StaticFileServer(const std::string& content, const std::string& content_type, const bool url_path_points_to_directory)
+      : content(content), content_type(content_type), url_path_points_to_directory(url_path_points_to_directory) {}
   void operator()(Request r) {
     if (r.method == "GET") {
-      // NOTE(sompylasar): The same `StaticFileServer` is used to serve both directory and file URLs, but we need to distinguish these cases.
-      const std::string& url_original_path = r.url_original.path;
-      if (is_index && url_original_path.back() == current::url::GetURLPathSeparator()) {
-        // NOTE(sompylasar): Serve the index file at the directory URL. Example: `/static/` serves `/static/index.html`.
-        r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
+      if (r.url_path_had_trailing_slash == url_path_points_to_directory) {
+        // NOTE(sompylasar): 1) Serve the file if we're serving a directory and have a trailing slash. Example: `/static/` (`static` is a directory, not a file).
+        // NOTE(sompylasar): 2) Serve the file if we're serving a file and don't have a trailing slash. Example: `/static/index.html`, `/static/file.png`.
+        r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, content_type);
       } else {
-        const bool ends_with_slash_and_filename =
-            (url_original_path.length() >= (filename.length() + 1) &&
-             url_original_path.at(url_original_path.length() - (filename.length() + 1)) == current::url::GetURLPathSeparator() &&
-             0 == url_original_path.compare(
-                      url_original_path.length() - filename.length(), filename.length(), filename));
-        if (ends_with_slash_and_filename) {
-          // NOTE(sompylasar): Serve the file at the file URL. Example: `/static/index.html`, `/static/file.png`, `/foo.txt`.
-          r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
-        } else {
-          // NOTE(sompylasar): Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
-          // NOTE(sompylasar): The trailing slash is required to make the browser relative URL resolution algorithm use directory as base URL for the index file served at that directory URL (without filename).
-          // NOTE(sompylasar): See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
-          r.connection.SendHTTPResponse(
-              "",
-              HTTPResponseCode.Found,
-              content_type,
-              current::net::http::Headers({{"Location", url_original_path + current::url::GetURLPathSeparator()}}));
-        }
+        // NOTE(sompylasar): Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
+        // NOTE(sompylasar): The trailing slash is required to make the browser relative URL resolution algorithm use directory as base URL for the index file served at that directory URL (without filename).
+        // NOTE(sompylasar): See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
+        r.connection.SendHTTPResponse(
+            "",
+            HTTPResponseCode.Found,
+            content_type,
+            current::net::http::Headers({{"Location", r.url.path + '/'}}));
       }
     } else {
       r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
@@ -256,15 +257,15 @@ class HTTPServerPOSIX final {
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
             // NOTE(sompylasar): `url_dirname` has no trailing slash.
-            const std::string url_dirname =
-                current::url::ConvertFileSystemPathToURLPath(dir, item_info.dirname, options.url_dirname);
-            const std::string url_pathname = current::url::JoinURLPath(url_dirname, item_info.basename);
+            const std::string url_dirname = options.url_base + current::strings::Join(item_info.path_components, '/');
 
             // NOTE(sompylasar): Ignore files nested in directories named with a leading dot (means hidden in POSIX).
-            const std::string slash_dot{current::url::GetURLPathSeparator(), '.'};
-            if (url_pathname.find(slash_dot) != std::string::npos) {
+            if (url_dirname.find("/.") != std::string::npos) {
               return;
             }
+
+            const std::string url_pathname = url_dirname +
+                (url_dirname.length() == 1 && url_dirname.front() == '/' ? "" : "/") + item_info.basename;
 
             const bool is_index =
                 (std::find(options.index_filenames.begin(), options.index_filenames.end(), item_info.basename) !=
@@ -272,19 +273,24 @@ class HTTPServerPOSIX final {
 
             // TODO(dkorolev): Wrap keeping file contents into a singleton
             // that keeps a map from a (SHA256) hash to the contents.
-            auto static_file_server = std::make_unique<StaticFileServer>(
-                current::FileSystem::ReadFileAsString(item_info.pathname), content_type, item_info.basename, is_index);
+            const std::string content = current::FileSystem::ReadFileAsString(item_info.pathname);
 
             // NOTE(sompylasar): If it's an index file, serve it at the route without filename, too.
             if (is_index) {
+              if (handlers_.find(url_dirname) != handlers_.end()) {
+                CURRENT_THROW(ServeStaticFilesFromCannotServeMoreThanOneIndexFile(url_dirname + ' ' + item_info.basename));
+              }
+
+              auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true);
               scope += Register(url_dirname, *static_file_server);
+              static_file_servers_.push_back(std::move(static_file_server));
             }
 
+            auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, false);
             scope += Register(url_pathname, *static_file_server);
-
             static_file_servers_.push_back(std::move(static_file_server));
           } else {
-            CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(item_info.basename));
+            CURRENT_THROW(ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType(item_info.basename));
           }
         },
         FileSystem::ScanDirParameters::ListFilesOnly,

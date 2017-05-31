@@ -448,63 +448,6 @@ inline URLPathArgs::CountMask& operator<<=(URLPathArgs::CountMask& lhs, const si
 }
 
 
-constexpr char URLPathSeparator = '/';
-
-inline char GetURLPathSeparator() {
-  return URLPathSeparator;
-}
-
-
-inline std::string JoinURLPath(const std::string& left, const std::string& right) {
-  std::string left_trimmed = left;
-  std::string right_trimmed = right;
-
-  // NOTE(sompylasar): The only case we need to re-add the slash at the left is the root URL case.
-  const bool is_root = (left.length() == 1 && left.front() == URLPathSeparator);
-
-  // "/" -> ""; "////" -> ""; "/xxx/" -> "/xxx"; "xxx/" -> "xxx";
-  left_trimmed.erase(left_trimmed.find_last_not_of(URLPathSeparator) + 1);  // trim right
-
-  // "xxx" -> "xxx"; "/xxx" -> "xxx"; "////xxx" -> "xxx";
-  right_trimmed.erase(0, right_trimmed.find_first_not_of(URLPathSeparator));  // trim left
-
-  std::string joined;
-
-  if (is_root) {
-    joined += URLPathSeparator;
-  }
-
-  joined += left_trimmed;
-
-  if (!left_trimmed.empty() && !right_trimmed.empty()) {
-    joined += URLPathSeparator;
-  }
-
-  joined += right_trimmed;
-
-  return joined;
-}
-
-
-struct ConvertFileSystemPathToURLPathDirectoryMismatchException : current::Exception {
-  ConvertFileSystemPathToURLPathDirectoryMismatchException(const std::string& basedir, const std::string& pathname) : current::Exception("Expected \"" + pathname + "\" to start with \"" + basedir + "\".") {}
-};
-
-inline std::string ConvertFileSystemPathToURLPath(const std::string& fs_dirname, const std::string& fs_pathname, const std::string& url_dirname) {
-  if (fs_pathname.substr(0, fs_dirname.length()) != fs_dirname) {
-    CURRENT_THROW(ConvertFileSystemPathToURLPathDirectoryMismatchException(fs_dirname, fs_pathname));
-  }
-
-  std::string url_pathname = fs_pathname.substr(fs_dirname.length());
-  std::replace(url_pathname.begin(), url_pathname.end(), current::FileSystem::GetPathSeparator(), URLPathSeparator);
-
-  // NOTE(sompylasar): Eliminate the trailing slashes (trim right). If needed, please concat explicitly in the outer code.
-  url_pathname.erase(url_pathname.find_last_not_of(URLPathSeparator) + 1);
-
-  return JoinURLPath(url_dirname, url_pathname);
-}
-
-
 }  // namespace url
 }  // namespace current
 

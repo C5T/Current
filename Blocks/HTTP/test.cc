@@ -67,7 +67,6 @@ using current::net::DefaultMethodNotAllowedMessage;
 using current::net::HTTPRedirectNotAllowedException;
 using current::net::HTTPRedirectLoopException;
 using current::net::SocketResolveAddressException;
-using current::net::CannotServeStaticFilesOfUnknownMIMEType;
 
 using namespace current::http;
 
@@ -110,7 +109,7 @@ TEST(HTTPAPI, RegisterExceptions) {
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
   const auto handler = [](Request r) {
-                         r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ") " + r.url_original.path);
+                         r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ") " + (r.url_path_had_trailing_slash ? "url_path_had_trailing_slash" : ""));
                        };
 
   const auto scope = HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler) +
@@ -130,38 +129,38 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
     return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
   };
 
-  EXPECT_EQ("/ () /", run("/"));
-  EXPECT_EQ("/ (foo) /foo", run("/foo"));
-  EXPECT_EQ("/ (foo) /foo/", run("/foo/"));
-  EXPECT_EQ("/ (foo, bar) /foo/bar", run("/foo/bar"));
-  EXPECT_EQ("/ (foo, bar) /foo/bar/", run("/foo/bar/"));
-  EXPECT_EQ("/ (user) /user", run("/user"));
-  EXPECT_EQ("/ (user) /user/", run("/user/"));
+  EXPECT_EQ("/ () url_path_had_trailing_slash", run("/"));
+  EXPECT_EQ("/ (foo) ", run("/foo"));
+  EXPECT_EQ("/ (foo) url_path_had_trailing_slash", run("/foo/"));
+  EXPECT_EQ("/ (foo, bar) ", run("/foo/bar"));
+  EXPECT_EQ("/ (foo, bar) url_path_had_trailing_slash", run("/foo/bar/"));
+  EXPECT_EQ("/ (user) ", run("/user"));
+  EXPECT_EQ("/ (user) url_path_had_trailing_slash", run("/user/"));
 
-  EXPECT_EQ("/ () //", run("//"));
-  EXPECT_EQ("/ () ///", run("///"));
+  EXPECT_EQ("/ () url_path_had_trailing_slash", run("//"));
+  EXPECT_EQ("/ () url_path_had_trailing_slash", run("///"));
 
-  EXPECT_EQ("/user (a) /user/a", run("/user/a"));
-  EXPECT_EQ("/user (a) /user/a/", run("/user/a/"));
-  EXPECT_EQ("/user (a) /user///a", run("/user///a"));
-  EXPECT_EQ("/user (a) /user///a///", run("/user///a///"));
+  EXPECT_EQ("/user (a) ", run("/user/a"));
+  EXPECT_EQ("/user (a) url_path_had_trailing_slash", run("/user/a/"));
+  EXPECT_EQ("/user (a) ", run("/user///a"));
+  EXPECT_EQ("/user (a) url_path_had_trailing_slash", run("/user///a///"));
 
-  EXPECT_EQ("/user (x, y) /user/x/y", run("/user/x/y"));
-  EXPECT_EQ("/user (x, y) /user/x/y/", run("/user/x/y/"));
-  EXPECT_EQ("/user (x, y) /user///x//y//", run("/user///x//y//"));
-  EXPECT_EQ("/user (x, y) /user///x//y//", run("/user///x//y//"));
+  EXPECT_EQ("/user (x, y) ", run("/user/x/y"));
+  EXPECT_EQ("/user (x, y) url_path_had_trailing_slash", run("/user/x/y/"));
+  EXPECT_EQ("/user (x, y) ", run("/user///x//y"));
+  EXPECT_EQ("/user (x, y) url_path_had_trailing_slash", run("/user///x//y//"));
 
-  EXPECT_EQ("/user/a (0) /user/a/0", run("/user/a/0"));
-  EXPECT_EQ("/user/a (0) /user/a/0/", run("/user/a/0/"));
+  EXPECT_EQ("/user/a (0) ", run("/user/a/0"));
+  EXPECT_EQ("/user/a (0) url_path_had_trailing_slash", run("/user/a/0/"));
 
-  EXPECT_EQ("/user/a/1 () /user/a/1", run("/user/a/1"));
-  EXPECT_EQ("/user/a/1 () /user/a/1/", run("/user/a/1/"));
+  EXPECT_EQ("/user/a/1 () ", run("/user/a/1"));
+  EXPECT_EQ("/user/a/1 () url_path_had_trailing_slash", run("/user/a/1/"));
 
-  EXPECT_EQ("/user/a (2) /user/a/2", run("/user/a/2"));
-  EXPECT_EQ("/user/a (2) /user/a/2/", run("/user/a/2/"));
+  EXPECT_EQ("/user/a (2) ", run("/user/a/2"));
+  EXPECT_EQ("/user/a (2) url_path_had_trailing_slash", run("/user/a/2/"));
 
-  EXPECT_EQ("/ (user, a, 1, blah) /user/a/1/blah", run("/user/a/1/blah"));
-  EXPECT_EQ("/ (user, a, 1, blah) /user/a/1/blah/", run("/user/a/1/blah/"));
+  EXPECT_EQ("/ (user, a, 1, blah) ", run("/user/a/1/blah"));
+  EXPECT_EQ("/ (user, a, 1, blah) url_path_had_trailing_slash", run("/user/a/1/blah/"));
 }
 
 TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {
@@ -929,7 +928,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOnlyServesFilesOfKnownMIMEType) {
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("TXT is okay.", FileSystem::JoinPath(dir, "file.txt").c_str());
   FileSystem::WriteStringToFile("FOO is not! ", FileSystem::JoinPath(dir, "file.foo").c_str());
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir), CannotServeStaticFilesOfUnknownMIMEType);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir), ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 }
 
