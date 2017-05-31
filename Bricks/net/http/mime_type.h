@@ -50,6 +50,7 @@ inline std::string GetFileMimeType(const std::string& file_name, const std::stri
       {"jpg", "image/jpeg"},
       {"jpeg", "image/jpeg"},
       {"gif", "image/gif"},
+      {"ico", "image/x-icon"},
       {"svg", "image/svg+xml"}};
 
   std::string extension = current::FileSystem::GetFileExtension(file_name);

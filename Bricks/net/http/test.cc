@@ -632,6 +632,7 @@ TEST(HTTPMimeTypeTest, SmokeTest) {
   EXPECT_EQ("application/json; charset=utf-8", GetFileMimeType("file.json"));
   EXPECT_EQ("application/json; charset=utf-8", GetFileMimeType("file.js.map"));
   EXPECT_EQ("application/json; charset=utf-8", GetFileMimeType("file.css.map"));
+  EXPECT_EQ("image/x-icon", GetFileMimeType("favicon.ico"));
 }
 
 // TODO(dkorolev): Figure out a way to test ConnectionResetByPeer exceptions.
