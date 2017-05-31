@@ -41,6 +41,14 @@ using current::DirNotEmptyException;
 
 DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
+TEST(File, GetPathSeparator) {
+#ifndef CURRENT_WINDOWS
+  EXPECT_EQ('/', FileSystem::GetPathSeparator());
+#else
+  EXPECT_EQ('\\', FileSystem::GetPathSeparator());
+#endif
+}
+
 TEST(File, JoinPath) {
 #ifndef CURRENT_WINDOWS
   EXPECT_EQ("foo/bar", FileSystem::JoinPath("foo", "bar"));

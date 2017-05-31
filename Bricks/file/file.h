@@ -54,12 +54,17 @@ namespace current {
 // Platform-indepenent, injection-friendly filesystem wrapper.
 struct FileSystem {
 #ifndef CURRENT_WINDOWS
-  static constexpr char PathSeparatingSlash = '/';
+  static constexpr char PathSeparator = '/';
   static inline std::string NullDeviceName() { return "/dev/null"; }
 #else
-  static constexpr char PathSeparatingSlash = '\\';
+  static constexpr char PathSeparator = '\\';
   static inline std::string NullDeviceName() { return "NUL"; }
 #endif
+
+  static inline char GetPathSeparator() {
+    return PathSeparator;
+  }
+
   static inline std::string GetFileExtension(const std::string& file_name) {
     const size_t i = file_name.find_last_of("/\\.");
     if (i == std::string::npos || file_name[i] != '.') {
@@ -139,12 +144,12 @@ struct FileSystem {
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {
     if (base_name.empty()) {
       CURRENT_THROW(FileException(base_name));
-    } else if (path_name.empty() || base_name.front() == PathSeparatingSlash) {
+    } else if (path_name.empty() || base_name.front() == PathSeparator) {
       return base_name;
-    } else if (path_name.back() == PathSeparatingSlash) {
+    } else if (path_name.back() == PathSeparator) {
       return path_name + base_name;
     } else {
-      return path_name + PathSeparatingSlash + base_name;
+      return path_name + PathSeparator + base_name;
     }
   }
 
