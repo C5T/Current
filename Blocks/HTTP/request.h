@@ -58,8 +58,8 @@ struct Request final {
   const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const current::url::URL url;
-  // NOTE(sompylasar): `url_path_had_trailing_slash` is needed to distinguish requests with and without a trailing slash and redirect the latter to the former.
-  // NOTE(sompylasar): Do not store the original `url` to avoid taking extra memory.
+  // `url_path_had_trailing_slash` is needed to distinguish requests with and without a trailing slash and redirect the latter to the former.
+  // Do not store the original `url` to avoid taking extra memory.
   const bool url_path_had_trailing_slash;
   const current::url::URLPathArgs url_path_args;
   const std::string method;

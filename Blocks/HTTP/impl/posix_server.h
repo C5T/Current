@@ -113,13 +113,13 @@ struct StaticFileServer {
   void operator()(Request r) {
     if (r.method == "GET") {
       if (r.url_path_had_trailing_slash == url_path_points_to_directory) {
-        // NOTE(sompylasar): 1) Serve the file if we're serving a directory and have a trailing slash. Example: `/static/` (`static` is a directory, not a file).
-        // NOTE(sompylasar): 2) Serve the file if we're serving a file and don't have a trailing slash. Example: `/static/index.html`, `/static/file.png`.
+        // 1) Serve the file if we're serving a directory and have a trailing slash. Example: `/static/` (`static` is a directory, not a file).
+        // 2) Serve the file if we're serving a file and don't have a trailing slash. Example: `/static/index.html`, `/static/file.png`.
         r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, content_type);
       } else {
-        // NOTE(sompylasar): Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
-        // NOTE(sompylasar): The trailing slash is required to make the browser relative URL resolution algorithm use directory as base URL for the index file served at that directory URL (without filename).
-        // NOTE(sompylasar): See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
+        // Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
+        // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base URL for the index file served at that directory URL (without filename).
+        // See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
         r.connection.SendHTTPResponse(
             "",
             HTTPResponseCode.Found,
@@ -251,17 +251,17 @@ class HTTPServerPOSIX final {
     current::FileSystem::ScanDir(
         dir,
         [this, &dir, &options, &scope](const current::FileSystem::ScanDirItemInfo& item_info) {
-          // NOTE(sompylasar): Ignore files named with a leading dot (means hidden in POSIX) before checking MIME type.
+          // Ignore files named with a leading dot (means hidden in POSIX) before checking MIME type.
           if (item_info.basename.front() == '.') {
             return;
           }
 
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
-            // NOTE(sompylasar): `url_dirname` has no trailing slash.
+            // `url_dirname` has no trailing slash.
             const std::string url_dirname = options.url_base + current::strings::Join(item_info.path_components, '/');
 
-            // NOTE(sompylasar): Ignore files nested in directories named with a leading dot (means hidden in POSIX).
+            // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (url_dirname.find("/.") != std::string::npos) {
               return;
             }
@@ -277,7 +277,7 @@ class HTTPServerPOSIX final {
             // that keeps a map from a (SHA256) hash to the contents.
             const std::string content = current::FileSystem::ReadFileAsString(item_info.pathname);
 
-            // NOTE(sompylasar): If it's an index file, serve it at the route without filename, too.
+            // If it's an index file, serve it at the route without filename, too.
             if (is_index) {
               if (handlers_.find(url_dirname) != handlers_.end()) {
                 CURRENT_THROW(ServeStaticFilesFromCannotServeMoreThanOneIndexFile(url_dirname + ' ' + item_info.basename));
