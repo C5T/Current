@@ -79,7 +79,7 @@ struct ServeStaticFilesException : Exception {
   using Exception::Exception;
 };
 
-struct ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType : ServeStaticFilesException {
+struct ServeStaticFilesFromCanNotServeStaticFilesOfUnknownMIMEType : ServeStaticFilesException {
   using ServeStaticFilesException::ServeStaticFilesException;
 };
 
@@ -292,7 +292,7 @@ class HTTPServerPOSIX final {
             scope += Register(url_pathname, *static_file_server);
             static_file_servers_.push_back(std::move(static_file_server));
           } else {
-            CURRENT_THROW(ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType(item_info.basename));
+            CURRENT_THROW(ServeStaticFilesFromCanNotServeStaticFilesOfUnknownMIMEType(item_info.basename));
           }
         },
         FileSystem::ScanDirParameters::ListFilesOnly,

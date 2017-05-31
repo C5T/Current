@@ -961,7 +961,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOnlyServesFilesOfKnownMIMEType) {
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("TXT is okay.", FileSystem::JoinPath(dir, "file.txt").c_str());
   FileSystem::WriteStringToFile("FOO is not! ", FileSystem::JoinPath(dir, "file.foo").c_str());
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir), ServeStaticFilesFromCannotServeStaticFilesOfUnknownMIMEType);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir), ServeStaticFilesFromCanNotServeStaticFilesOfUnknownMIMEType);
 }
 
 TEST(HTTPAPI, ResponseSmokeTest) {
