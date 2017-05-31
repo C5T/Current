@@ -109,7 +109,9 @@ TEST(HTTPAPI, RegisterExceptions) {
 }
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
-  const auto handler = [](Request r) { r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ')'); };
+  const auto handler = [](Request r) {
+                         r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ") " + r.url_original.path);
+                       };
 
   const auto scope = HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler) +
                      HTTP(FLAGS_net_api_test_port)
@@ -128,38 +130,38 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
     return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
   };
 
-  EXPECT_EQ("/ ()", run("/"));
-  EXPECT_EQ("/ (foo)", run("/foo"));
-  EXPECT_EQ("/ (foo)", run("/foo/"));
-  EXPECT_EQ("/ (foo, bar)", run("/foo/bar"));
-  EXPECT_EQ("/ (foo, bar)", run("/foo/bar/"));
-  EXPECT_EQ("/ (user)", run("/user"));
-  EXPECT_EQ("/ (user)", run("/user/"));
+  EXPECT_EQ("/ () /", run("/"));
+  EXPECT_EQ("/ (foo) /foo", run("/foo"));
+  EXPECT_EQ("/ (foo) /foo/", run("/foo/"));
+  EXPECT_EQ("/ (foo, bar) /foo/bar", run("/foo/bar"));
+  EXPECT_EQ("/ (foo, bar) /foo/bar/", run("/foo/bar/"));
+  EXPECT_EQ("/ (user) /user", run("/user"));
+  EXPECT_EQ("/ (user) /user/", run("/user/"));
 
-  EXPECT_EQ("/ ()", run("//"));
-  EXPECT_EQ("/ ()", run("///"));
+  EXPECT_EQ("/ () //", run("//"));
+  EXPECT_EQ("/ () ///", run("///"));
 
-  EXPECT_EQ("/user (a)", run("/user/a"));
-  EXPECT_EQ("/user (a)", run("/user/a/"));
-  EXPECT_EQ("/user (a)", run("/user///a"));
-  EXPECT_EQ("/user (a)", run("/user///a///"));
+  EXPECT_EQ("/user (a) /user/a", run("/user/a"));
+  EXPECT_EQ("/user (a) /user/a/", run("/user/a/"));
+  EXPECT_EQ("/user (a) /user///a", run("/user///a"));
+  EXPECT_EQ("/user (a) /user///a///", run("/user///a///"));
 
-  EXPECT_EQ("/user (x, y)", run("/user/x/y"));
-  EXPECT_EQ("/user (x, y)", run("/user/x/y/"));
-  EXPECT_EQ("/user (x, y)", run("/user///x//y//"));
-  EXPECT_EQ("/user (x, y)", run("/user///x//y//"));
+  EXPECT_EQ("/user (x, y) /user/x/y", run("/user/x/y"));
+  EXPECT_EQ("/user (x, y) /user/x/y/", run("/user/x/y/"));
+  EXPECT_EQ("/user (x, y) /user///x//y//", run("/user///x//y//"));
+  EXPECT_EQ("/user (x, y) /user///x//y//", run("/user///x//y//"));
 
-  EXPECT_EQ("/user/a (0)", run("/user/a/0"));
-  EXPECT_EQ("/user/a (0)", run("/user/a/0/"));
+  EXPECT_EQ("/user/a (0) /user/a/0", run("/user/a/0"));
+  EXPECT_EQ("/user/a (0) /user/a/0/", run("/user/a/0/"));
 
-  EXPECT_EQ("/user/a/1 ()", run("/user/a/1"));
-  EXPECT_EQ("/user/a/1 ()", run("/user/a/1/"));
+  EXPECT_EQ("/user/a/1 () /user/a/1", run("/user/a/1"));
+  EXPECT_EQ("/user/a/1 () /user/a/1/", run("/user/a/1/"));
 
-  EXPECT_EQ("/user/a (2)", run("/user/a/2"));
-  EXPECT_EQ("/user/a (2)", run("/user/a/2/"));
+  EXPECT_EQ("/user/a (2) /user/a/2", run("/user/a/2"));
+  EXPECT_EQ("/user/a (2) /user/a/2/", run("/user/a/2/"));
 
-  EXPECT_EQ("/ (user, a, 1, blah)", run("/user/a/1/blah"));
-  EXPECT_EQ("/ (user, a, 1, blah)", run("/user/a/1/blah/"));
+  EXPECT_EQ("/ (user, a, 1, blah) /user/a/1/blah", run("/user/a/1/blah"));
+  EXPECT_EQ("/ (user, a, 1, blah) /user/a/1/blah/", run("/user/a/1/blah/"));
 }
 
 TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {

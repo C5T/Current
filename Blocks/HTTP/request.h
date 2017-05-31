@@ -58,6 +58,8 @@ struct Request final {
   const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const current::url::URL url;
+  // NOTE(sompylasar): `url_original` is needed to distinguish requests with and without a trailing slash and redirect the latter to the former.
+  const current::url::URL url_original;
   const current::url::URLPathArgs url_path_args;
   const std::string method;
   const current::net::http::Headers& headers;
@@ -70,6 +72,7 @@ struct Request final {
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
+        url_original(url),
         url_path_args(url_path_args),
         method(http_data.Method()),
         headers(http_data.headers()),
@@ -88,6 +91,7 @@ struct Request final {
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
         url(rhs.url),
+        url_original(rhs.url_original),
         url_path_args(rhs.url_path_args),
         method(http_data.Method()),
         headers(http_data.headers()),
