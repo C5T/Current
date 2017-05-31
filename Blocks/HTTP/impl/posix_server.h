@@ -248,6 +248,11 @@ class HTTPServerPOSIX final {
     current::FileSystem::ScanDir(
         dir,
         [this, &dir, &options, &scope](const current::FileSystem::ScanDirItemInfo& item_info) {
+          // NOTE(sompylasar): Ignore files named with a leading dot (means hidden in POSIX) before checking MIME type.
+          if (item_info.basename.front() == '.') {
+            return;
+          }
+
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
             // NOTE(sompylasar): `url_dirname` has no trailing slash.
@@ -255,7 +260,7 @@ class HTTPServerPOSIX final {
                 current::url::ConvertFileSystemPathToURLPath(dir, item_info.dirname, options.url_dirname);
             const std::string url_pathname = current::url::JoinURLPath(url_dirname, item_info.basename);
 
-            // NOTE(sompylasar): Do not serve directories and files named with a leading dot (means hidden in POSIX).
+            // NOTE(sompylasar): Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             const std::string slash_dot{current::url::GetURLPathSeparator(), '.'};
             if (url_pathname.find(slash_dot) != std::string::npos) {
               return;
