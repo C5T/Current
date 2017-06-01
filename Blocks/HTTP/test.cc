@@ -46,6 +46,7 @@ SOFTWARE.
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/file/file.h"
+#include "../../Bricks/exception.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -392,6 +393,48 @@ TEST(HTTPAPI, FourOhFourNotFound) {
   EXPECT_EQ(DefaultNotFoundMessage(), response.body);
   EXPECT_EQ(url, response.url);
 }
+
+TEST(HTTPAPI, FourOhFiveMethodNotAllowed) {
+  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n", DefaultMethodNotAllowedMessage());
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/method_not_allowed",
+                                   [](Request r) {
+                                     r(DefaultMethodNotAllowedMessage(),
+                                       HTTPResponseCode.MethodNotAllowed,
+                                       current::net::constants::kDefaultHTMLContentType);
+                                   });
+  const string url = Printf("http://localhost:%d/method_not_allowed", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(405, static_cast<int>(response.code));
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(), response.body);
+  EXPECT_EQ(url, response.url);
+}
+
+TEST(HTTPAPI, AnyMethodAllowed) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/foo", [](Request r) { r(r.method); });
+  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+  // A slightly more internal version to allow custom HTTP verb (request method).
+  HTTPClientPOSIX client((current::http::impl::HTTPRedirectHelper::ConstructionParams()));
+  client.request_method_ = "ANYTHING";
+  client.request_url_ = url;
+  ASSERT_TRUE(client.Go());
+  // The current behavior does not validate the request method, delegates this to user-land code.
+  EXPECT_EQ(200, static_cast<int>(client.response_code_));
+  EXPECT_EQ("ANYTHING", client.HTTPRequest().Body());
+}
+
+TEST(HTTPAPI, DefaultInternalServerErrorCausedByExceptionInHandler) {
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/oh_snap",
+                                                            [](Request) {
+                                                              // Only `current::Exception` is caught and handled.
+                                                              CURRENT_THROW(current::Exception());
+                                                            });
+  const string url = Printf("http://localhost:%d/oh_snap", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(500, static_cast<int>(response.code));
+  EXPECT_EQ(DefaultInternalServerErrorMessage(), response.body);
   EXPECT_EQ(url, response.url);
 }
 
@@ -833,7 +876,6 @@ TEST(HTTPAPI, InvalidUrl) {
 #endif
 
 TEST(HTTPAPI, ServeStaticFilesFrom) {
-  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n", DefaultMethodNotAllowedMessage());
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
