@@ -44,10 +44,13 @@ inline std::string GetFileMimeType(const std::string& file_name, const std::stri
       {"html", "text/html"},
       {"htm", "text/html"},
       {"txt", "text/plain"},
+      // `.map` are frontend sourcemaps. http://ivanvanderbyl.com/debugging-sourcemaps/#fixingmiddlemanoption1
+      {"map", "application/json; charset=utf-8"},
       {"png", "image/png"},
       {"jpg", "image/jpeg"},
       {"jpeg", "image/jpeg"},
       {"gif", "image/gif"},
+      {"ico", "image/x-icon"},
       {"svg", "image/svg+xml"}};
 
   std::string extension = current::FileSystem::GetFileExtension(file_name);

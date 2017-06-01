@@ -90,9 +90,6 @@ struct HTTPException : NetworkException {
 
 struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
-struct CannotServeStaticFilesOfUnknownMIMEType : HTTPException {
-  using HTTPException::HTTPException;
-};
 struct HTTPPayloadTooLarge : HTTPException {};
 struct ChunkSizeNotAValidHEXValue : HTTPException {};
 
