@@ -901,7 +901,7 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   EXPECT_EQ("<h1>HTML file</h1>", HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("This is text.", HTTP(GET(Printf("http://localhost:%d/file.txt", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("\211PNG\r\n\032\n", HTTP(GET(Printf("http://localhost:%d/file.png", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n", HTTP(GET(Printf("http://localhost:%d/.DS_Store", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(), HTTP(GET(Printf("http://localhost:%d/.DS_Store", FLAGS_net_api_test_port))).body);
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/sub_dir", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
   const auto sub_dir_response = HTTP(GET(Printf("http://localhost:%d/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
   EXPECT_EQ("<h1>HTML sub_dir index</h1>", sub_dir_response.body);
@@ -913,25 +913,25 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
             HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("alert('JavaScript')",
             HTTP(GET(Printf("http://localhost:%d/sub_dir/file_in_sub_dir.js", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir/.file_hidden", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index/", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
             HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
             HTTP(PUT(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
             HTTP(PATCH(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
             HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port), "")).body);
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).code));
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
