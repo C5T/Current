@@ -447,7 +447,6 @@ inline URLPathArgs::CountMask& operator<<=(URLPathArgs::CountMask& lhs, const si
   return lhs;
 }
 
-
 }  // namespace url
 }  // namespace current
 

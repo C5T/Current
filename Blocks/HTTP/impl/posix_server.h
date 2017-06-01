@@ -102,28 +102,31 @@ struct StaticFileServer {
   std::string content;
   std::string content_type;
   bool url_path_points_to_directory;
-  explicit StaticFileServer(const std::string& content, const std::string& content_type, const bool url_path_points_to_directory)
+  explicit StaticFileServer(const std::string& content,
+                            const std::string& content_type,
+                            const bool url_path_points_to_directory)
       : content(content), content_type(content_type), url_path_points_to_directory(url_path_points_to_directory) {}
   void operator()(Request r) {
     if (r.method == "GET") {
       if (url_path_points_to_directory == r.url_path_had_trailing_slash) {
-        // 1) Respond with the content if we're serving a directory and have a trailing slash. Example: `/static/` (`static` is a directory, not a file).
-        // 2) Respond with the content if we're serving a file and don't have a trailing slash. Example: `/static/index.html`, `/static/file.png`.
+        // 1) Respond with the content if we're serving a directory and have a trailing slash. Example: `/static/`
+        // (`static` is a directory, not a file).
+        // 2) Respond with the content if we're serving a file and don't have a trailing slash. Example:
+        // `/static/index.html`, `/static/file.png`.
         r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, content_type);
       } else if (!url_path_points_to_directory && r.url_path_had_trailing_slash) {
-        // Respond with HTTP 404 Not Found if we're serving a file and have a trailing slash. Example: `/static/index.html/`.
+        // Respond with HTTP 404 Not Found if we're serving a file and have a trailing slash. Example:
+        // `/static/index.html/`.
         r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
                                       HTTPResponseCode.NotFound,
                                       current::net::constants::kDefaultHTMLContentType);
       } else {
         // Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
-        // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base URL for the index file served at that directory URL (without filename).
+        // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base
+        // URL for the index file served at that directory URL (without filename).
         // See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
         r.connection.SendHTTPResponse(
-            "",
-            HTTPResponseCode.Found,
-            content_type,
-            current::net::http::Headers({{"Location", r.url.path + '/'}}));
+            "", HTTPResponseCode.Found, content_type, current::net::http::Headers({{"Location", r.url.path + '/'}}));
       }
     } else {
       r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
@@ -258,15 +261,15 @@ class HTTPServerPOSIX final {
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
             // `url_dirname` has no trailing slash.
-            const std::string url_dirname = options.url_base + current::strings::Join(item_info.path_components_cref, '/');
+            const std::string url_dirname =
+                options.url_base + current::strings::Join(item_info.path_components_cref, '/');
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (url_dirname.find("/.") != std::string::npos) {
               return;
             }
 
-            const std::string url_pathname = url_dirname +
-                (url_dirname == "/" ? "" : "/") + item_info.basename;
+            const std::string url_pathname = url_dirname + (url_dirname == "/" ? "" : "/") + item_info.basename;
 
             const bool is_index =
                 (std::find(options.index_filenames.begin(), options.index_filenames.end(), item_info.basename) !=
@@ -279,7 +282,8 @@ class HTTPServerPOSIX final {
             // If it's an index file, serve it at the route without filename, too.
             if (is_index) {
               if (handlers_.find(url_dirname) != handlers_.end()) {
-                CURRENT_THROW(ServeStaticFilesFromCannotServeMoreThanOneIndexFile(url_dirname + ' ' + item_info.basename));
+                CURRENT_THROW(
+                    ServeStaticFilesFromCannotServeMoreThanOneIndexFile(url_dirname + ' ' + item_info.basename));
               }
 
               auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true);

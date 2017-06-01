@@ -63,9 +63,7 @@ struct FileSystem {
   static inline std::string NullDeviceName() { return "NUL"; }
 #endif
 
-  static inline char GetPathSeparator() {
-    return PathSeparator;
-  }
+  static inline char GetPathSeparator() { return PathSeparator; }
 
   static inline std::string GetFileExtension(const std::string& file_name) {
     const size_t i = file_name.find_last_of("/\\.");
@@ -233,7 +231,11 @@ struct FileSystem {
     const std::vector<std::string>& path_components_cref;
 
     ScanDirItemInfo() = delete;
-    ScanDirItemInfo(std::string dirname, std::string basename, std::string pathname, bool is_directory, const std::vector<std::string>& path_components_cref)
+    ScanDirItemInfo(std::string dirname,
+                    std::string basename,
+                    std::string pathname,
+                    bool is_directory,
+                    const std::vector<std::string>& path_components_cref)
         : dirname(std::move(dirname)),
           basename(std::move(basename)),
           pathname(std::move(pathname)),
@@ -274,7 +276,8 @@ struct FileSystem {
             const ScanDirParameters mask =
                 is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-              if (!item_handler(ScanDirItemInfo(directory, name, JoinPath(directory, name), is_directory, context.path_components))) {
+              if (!item_handler(ScanDirItemInfo(
+                      directory, name, JoinPath(directory, name), is_directory, context.path_components))) {
                 return;
               }
             }
@@ -300,7 +303,8 @@ struct FileSystem {
             const ScanDirParameters mask =
                 is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-              if (!item_handler(ScanDirItemInfo(directory, name, std::move(path), is_directory, context.path_components))) {
+              if (!item_handler(
+                      ScanDirItemInfo(directory, name, std::move(path), is_directory, context.path_components))) {
                 return;
               }
             }
@@ -319,32 +323,30 @@ struct FileSystem {
     } else {
       // Inner lambdas have distinct types thus creating template instantiation limit,
       // which is fixed by casting the lambda to its canonical type.
-      ScanDirUntil(
-          directory,
-          static_cast<const std::function<bool(const ScanDirItemInfo&)>>(
-              [&item_handler, parameters, &context](const ScanDirItemInfo& item_info) {
-                const ScanDirParameters mask =
-                    item_info.is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
-                if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-                  if (!item_handler(item_info)) {
-                    return false;
-                  }
-                }
-                if (item_info.is_directory) {
-                  context.path_components.push_back(item_info.basename);
-                  const auto guard = current::MakeScopeGuard([&context]() { context.path_components.pop_back(); });
-                  ScanDirUntil<ITEM_HANDLER>(
-                      item_info.pathname,
-                      std::forward<ITEM_HANDLER>(item_handler),
-                      parameters,
-                      ScanDirRecursive::Yes,
-                      context);
-                }
-                return true;
-              }),
-          ScanDirParameters::ListFilesAndDirs,
-          ScanDirRecursive::No,
-          context);
+      ScanDirUntil(directory,
+                   static_cast<const std::function<bool(const ScanDirItemInfo&)>>([&item_handler, parameters, &context](
+                       const ScanDirItemInfo& item_info) {
+                     const ScanDirParameters mask =
+                         item_info.is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
+                     if (static_cast<int>(parameters) & static_cast<int>(mask)) {
+                       if (!item_handler(item_info)) {
+                         return false;
+                       }
+                     }
+                     if (item_info.is_directory) {
+                       context.path_components.push_back(item_info.basename);
+                       const auto guard = current::MakeScopeGuard([&context]() { context.path_components.pop_back(); });
+                       ScanDirUntil<ITEM_HANDLER>(item_info.pathname,
+                                                  std::forward<ITEM_HANDLER>(item_handler),
+                                                  parameters,
+                                                  ScanDirRecursive::Yes,
+                                                  context);
+                     }
+                     return true;
+                   }),
+                   ScanDirParameters::ListFilesAndDirs,
+                   ScanDirRecursive::No,
+                   context);
     }
   }
 
