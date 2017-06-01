@@ -73,7 +73,7 @@ struct Request final {
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
-        url_path_had_trailing_slash(url.path.back() == '/'),
+        url_path_had_trailing_slash(!url.path.empty() && url.path.back() == '/'),
         url_path_args(url_path_args),
         method(http_data.Method()),
         headers(http_data.headers()),
