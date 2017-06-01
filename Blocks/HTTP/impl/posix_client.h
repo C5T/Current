@@ -110,7 +110,7 @@ class GenericHTTPClientPOSIX final {
           connection.BlockingWrite("\r\n", true);
           connection.BlockingWrite(request_body_contents_, false);
 #else
-          // TODO(grigoriyn): this fix for the PayloadTooLarge test on Windows is temporary, need to revisit it.
+          // TODO(grixa): this fix for the PayloadTooLarge test on Windows is temporary, need to revisit it.
           connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n\r\n" +
                                        request_body_contents_,
                                    false);
