@@ -102,10 +102,10 @@ struct StaticFileServer {
   std::string content;
   std::string content_type;
   bool url_path_points_to_directory;
-  explicit StaticFileServer(const std::string& content,
-                            const std::string& content_type,
-                            const bool url_path_points_to_directory)
-      : content(content), content_type(content_type), url_path_points_to_directory(url_path_points_to_directory) {}
+  StaticFileServer(std::string content, std::string content_type, bool url_path_points_to_directory)
+      : content(std::move(content)),
+        content_type(std::move(content_type)),
+        url_path_points_to_directory(url_path_points_to_directory) {}
   void operator()(Request r) {
     if (r.method == "GET") {
       if (url_path_points_to_directory == r.url_path_had_trailing_slash) {
@@ -277,7 +277,7 @@ class HTTPServerPOSIX final {
 
             // TODO(dkorolev): Wrap keeping file contents into a singleton
             // that keeps a map from a (SHA256) hash to the contents.
-            const std::string content = current::FileSystem::ReadFileAsString(item_info.pathname);
+            std::string content = current::FileSystem::ReadFileAsString(item_info.pathname);
 
             // If it's an index file, serve it at the route without filename, too.
             if (is_index) {
@@ -291,7 +291,7 @@ class HTTPServerPOSIX final {
               static_file_servers_.push_back(std::move(static_file_server));
             }
 
-            auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, false);
+            auto static_file_server = std::make_unique<StaticFileServer>(std::move(content), content_type, false);
             scope += Register(url_pathname, *static_file_server);
             static_file_servers_.push_back(std::move(static_file_server));
           } else {
