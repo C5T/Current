@@ -914,6 +914,10 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   EXPECT_EQ("alert('JavaScript')",
             HTTP(GET(Printf("http://localhost:%d/sub_dir/file_in_sub_dir.js", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/index.html/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir/.file_hidden", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index", FLAGS_net_api_test_port))).body);

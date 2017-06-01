@@ -106,10 +106,15 @@ struct StaticFileServer {
       : content(content), content_type(content_type), url_path_points_to_directory(url_path_points_to_directory) {}
   void operator()(Request r) {
     if (r.method == "GET") {
-      if (r.url_path_had_trailing_slash == url_path_points_to_directory) {
-        // 1) Serve the file if we're serving a directory and have a trailing slash. Example: `/static/` (`static` is a directory, not a file).
-        // 2) Serve the file if we're serving a file and don't have a trailing slash. Example: `/static/index.html`, `/static/file.png`.
+      if (url_path_points_to_directory == r.url_path_had_trailing_slash) {
+        // 1) Respond with the content if we're serving a directory and have a trailing slash. Example: `/static/` (`static` is a directory, not a file).
+        // 2) Respond with the content if we're serving a file and don't have a trailing slash. Example: `/static/index.html`, `/static/file.png`.
         r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, content_type);
+      } else if (!url_path_points_to_directory && r.url_path_had_trailing_slash) {
+        // Respond with HTTP 404 Not Found if we're serving a file and have a trailing slash. Example: `/static/index.html/`.
+        r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
+                                      HTTPResponseCode.NotFound,
+                                      current::net::constants::kDefaultHTMLContentType);
       } else {
         // Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
         // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base URL for the index file served at that directory URL (without filename).
