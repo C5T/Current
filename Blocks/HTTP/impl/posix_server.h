@@ -258,7 +258,7 @@ class HTTPServerPOSIX final {
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
             // `url_dirname` has no trailing slash.
-            const std::string url_dirname = options.url_base + current::strings::Join(item_info.path_components, '/');
+            const std::string url_dirname = options.url_base + current::strings::Join(item_info.path_components_cref, '/');
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (url_dirname.find("/.") != std::string::npos) {

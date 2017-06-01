@@ -230,15 +230,15 @@ struct FileSystem {
     std::string basename;
     std::string pathname;
     bool is_directory;
-    const std::vector<std::string>& path_components;
+    const std::vector<std::string>& path_components_cref;
 
     ScanDirItemInfo() = delete;
-    ScanDirItemInfo(std::string dirname, std::string basename, std::string pathname, bool is_directory, const std::vector<std::string>& path_components)
+    ScanDirItemInfo(std::string dirname, std::string basename, std::string pathname, bool is_directory, const std::vector<std::string>& path_components_cref)
         : dirname(std::move(dirname)),
           basename(std::move(basename)),
           pathname(std::move(pathname)),
           is_directory(is_directory),
-          path_components(path_components) {}
+          path_components_cref(path_components_cref) {}
   };
 
   enum class ScanDirParameters : int { ListFilesOnly = 1, ListDirsOnly = 2, ListFilesAndDirs = 3 };
