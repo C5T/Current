@@ -395,7 +395,7 @@ class HTTPServerPOSIX final {
             std::cerr << "HTTP route failed in user code: " << e.what() << '\n';  // LCOV_EXCL_LINE
           }
         } else {
-          connection->SendHTTPResponse(current::net::DefaultFourOhFourMessage(),
+          connection->SendHTTPResponse(current::net::DefaultNotFoundMessage(),
                                        HTTPResponseCode.NotFound,
                                        current::net::constants::kDefaultHTMLContentType);
         }

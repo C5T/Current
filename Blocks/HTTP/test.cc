@@ -61,7 +61,7 @@ using current::net::HTTPResponseCodeValue;
 using current::net::http::Headers;
 
 using current::net::DefaultInternalServerErrorMessage;
-using current::net::DefaultFourOhFourMessage;
+using current::net::DefaultNotFoundMessage;
 using current::net::DefaultMethodNotAllowedMessage;
 
 using current::net::HTTPRedirectNotAllowedException;
@@ -384,12 +384,14 @@ TEST(HTTPAPI, RedirectLoop) {
 }
 #endif
 
-TEST(HTTPAPI, FourOhFour) {
-  EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultFourOhFourMessage());
+TEST(HTTPAPI, FourOhFourNotFound) {
+  EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultNotFoundMessage());
   const string url = Printf("http://localhost:%d/ORLY", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(404, static_cast<int>(response.code));
-  EXPECT_EQ(DefaultFourOhFourMessage(), response.body);
+  EXPECT_EQ(DefaultNotFoundMessage(), response.body);
+  EXPECT_EQ(url, response.url);
+}
   EXPECT_EQ(url, response.url);
 }
 
