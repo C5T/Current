@@ -559,7 +559,9 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
       template <typename T>
-      inline ENABLE_IF<sizeof(typename T::value_type) == 1> Send(T&& data) {
+	  inline ENABLE_IF<std::is_same<typename T::value_type, char>::value
+		  || std::is_same<typename T::value_type, uint8_t>::value
+		  || std::is_same<typename T::value_type, int8_t>::value> Send(T&& data) {
         SendImpl(std::forward<T>(data));
       }
 

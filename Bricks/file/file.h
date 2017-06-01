@@ -272,7 +272,7 @@ struct FileSystem {
         do {
           const char* const name = find_data.cFileName;
           if (ScanDirCanHandleName(name)) {
-            const bool is_directory = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+            const bool is_directory = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
             const ScanDirParameters mask =
                 is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
             if (static_cast<int>(parameters) & static_cast<int>(mask)) {
