@@ -27,10 +27,10 @@ SOFTWARE.
 
 #include "../port.h"
 
-#ifndef BRICKS_DEBUG_NET
+#ifndef CURRENT_BRICKS_DEBUG_NET
 
 // If `BRICKS_DEBUG_NET` is not defined, all `BRICKS_NET_LOG` statements are plain ignored.
-#define BRICKS_NET_LOG(...)
+#define CURRENT_BRICKS_NET_LOG(...)
 
 #else
 
@@ -43,7 +43,7 @@ SOFTWARE.
 struct DebugLogMutex {
   std::mutex mutex;
 };
-#define BRICKS_NET_LOG(...)                                                         \
+#define CURRENT_BRICKS_NET_LOG(...)                                                         \
   ([=] {                                                                            \
     std::unique_lock<std::mutex> lock(::current::Singleton<DebugLogMutex>().mutex); \
     std::cout << 'T' << std::this_thread::get_id() << ' ';                          \
@@ -51,6 +51,6 @@ struct DebugLogMutex {
     fflush(stdout);                                                                 \
   }())
 
-#endif
+#endif  // CURRENT_BRICKS_DEBUG_NET
 
 #endif  // BRICKS_NET_DEBUG_LOG_H

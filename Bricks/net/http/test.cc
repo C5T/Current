@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <thread>
 
+#define CURRENT_BRICKS_DEBUG_HTTP
 #include "http.h"
 
 #include "../../dflags/dflags.h"
@@ -37,10 +38,6 @@ SOFTWARE.
 #include "../../strings/printf.h"
 
 DEFINE_int32(net_http_test_port, PickPortForUnitTest(), "Local port to use for the test HTTP server.");
-
-using std::string;
-using std::thread;
-using std::to_string;
 
 using current::net::Socket;
 using current::net::ClientSocket;
@@ -74,7 +71,7 @@ CURRENT_STRUCT(HTTPTestObject) {
 };
 
 TEST(PosixHTTPServerTest, Smoke) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
     EXPECT_EQ(FLAGS_net_http_test_port, c.LocalIPAndPort().port);
@@ -107,7 +104,7 @@ TEST(PosixHTTPServerTest, Smoke) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithTrailingSpaces) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
     EXPECT_EQ(FLAGS_net_http_test_port, c.LocalIPAndPort().port);
@@ -140,7 +137,7 @@ TEST(PosixHTTPServerTest, SmokeWithTrailingSpaces) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithArray) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
     EXPECT_EQ("/vector_char", c.HTTPRequest().RawPath());
@@ -163,7 +160,7 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithObject) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
     EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
@@ -187,7 +184,7 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
     EXPECT_EQ("/test_named_object", c.HTTPRequest().RawPath());
@@ -210,7 +207,7 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
 }
 
 TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
     EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
@@ -245,7 +242,7 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithHeaders) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/header", c.HTTPRequest().RawPath());
@@ -275,7 +272,7 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithLowercaseContentLength) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
     EXPECT_EQ(FLAGS_net_http_test_port, c.LocalIPAndPort().port);
@@ -307,7 +304,7 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseContentLength) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithMethodInHeader) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("PATCH", c.HTTPRequest().Method());
     EXPECT_EQ("/ugly", c.HTTPRequest().RawPath());
@@ -334,7 +331,7 @@ TEST(PosixHTTPServerTest, SmokeWithMethodInHeader) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("PATCH", c.HTTPRequest().Method());
     EXPECT_EQ("/ugly2", c.HTTPRequest().RawPath());
@@ -361,13 +358,13 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
 }
 
 TEST(PosixHTTPServerTest, LargeBody) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/", c.HTTPRequest().RawPath());
     c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
   }, Socket(FLAGS_net_http_test_port));
-  string body(1000000, '.');
+  std::string body(1000000, '.');
   for (size_t i = 0; i < body.length(); ++i) {
     body[i] = 'A' + (i % 26);
   }
@@ -390,7 +387,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
 }
 
 TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/", c.HTTPRequest().RawPath());
@@ -401,8 +398,8 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
   connection.BlockingWrite("\r\n", true);
-  string chunk(10, '.');
-  string body = "";
+  std::string chunk(10, '.');
+  std::string body = "";
   for (size_t i = 0; i < 10000; ++i) {
     connection.BlockingWrite("A\r\n", true);  // "A" is hexadecimal for 10.
     for (size_t j = 0; j < 10; ++j) {
@@ -425,9 +422,254 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   t.join();
 }
 
+TEST(PosixHTTPServerTest, ChunkedSmoke) {
+  const auto EchoServerThreadEntry = [](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("POST", c.HTTPRequest().Method());
+    EXPECT_EQ("/", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse(c.HTTPRequest().Body());
+  };
+  std::string body;
+  std::string chunk(10, '.');
+  for (size_t i = 0; i < 10000; ++i) {
+    for (size_t j = 0; j < 10; ++j) {
+      chunk[j] = 'A' + ((i + j) % 26);
+    }
+    body += chunk;
+  }
+  for (size_t length = body.length(); length > 1500; length -= (length / 7)) {
+    const auto offset = body.length() - length;
+    for (size_t chunks = length; chunks; chunks = chunks * 2 / 3) {
+      std::string chunked_body;
+      for (size_t i = 0; i < chunks; ++i) {
+        const size_t start = offset + length * i / chunks;
+        const size_t end = offset + length * (i + 1) / chunks;
+        chunked_body += current::strings::Printf("%X\r\n", end - start) + body.substr(start, end - start);
+      }
+
+      std::thread t(EchoServerThreadEntry, Socket(FLAGS_net_http_test_port));
+      Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+      connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+      connection.BlockingWrite("Host: localhost\r\n", true);
+      connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+      connection.BlockingWrite("\r\n", true);
+      connection.BlockingWrite(chunked_body, true);
+      connection.BlockingWrite("0\r\n", false);
+      ExpectToReceive(current::strings::Printf(
+                          "HTTP/1.1 200 OK\r\n"
+                          "Content-Type: text/plain\r\n"
+                          "Connection: close\r\n"
+                          "Content-Length: %d\r\n"
+                          "\r\n",
+                          static_cast<int>(length)) +
+                          body.substr(offset),
+                      connection);
+      t.join();
+    }
+  }
+}
+
+TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
+  const auto EchoServerThreadEntryWithOptions =
+      [](Socket s, const int initial_buffer_size, const double buffer_growth_k) {
+        HTTPServerConnection c(
+            s.Accept(), current::net::HTTPDefaultHelper::ConstructionParams(), initial_buffer_size, buffer_growth_k);
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(c.HTTPRequest().Body());
+      };
+  const std::string headers = "POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked";
+  const std::string headers_paddings[] = {std::string(100 - headers.length() - 4 /*\r\n\r\n*/, ' '),
+                                          std::string(100 - headers.length() - 5 /*\r\n\r\n\0*/, ' '),
+                                          std::string(100 - headers.length() - 6, ' ')};
+  // Body for all the test cases: four chunks of 90, 399, 393 and 792 bytes.
+  const std::string body = std::string(90, 'a') + std::string(399, 'b') + std::string(393, 'c') + std::string(792, 'd');
+  // Encoded lenghts of the chunks: 94, 404, 398 and 797.
+  const std::string chunks[] = {"5A\r\n" + std::string(90, 'a'),
+                                "18F\r\n" + std::string(399, 'b'),
+                                "189\r\n" + std::string(393, 'c'),
+                                "318\r\n" + std::string(792, 'd')};
+  const std::string expect_to_receive = current::strings::Printf(
+                                            "HTTP/1.1 200 OK\r\n"
+                                            "Content-Type: text/plain\r\n"
+                                            "Connection: close\r\n"
+                                            "Content-Length: %d\r\n"
+                                            "\r\n",
+                                            static_cast<int>(body.length())) +
+                                        body;
+
+  // Test cases block 1: http header and all the chunks are sent instantly.
+  const std::vector<std::string> expected_events_block1[] = {
+      // clang-format off
+    {// Test case 1.0 (100 bytes header).
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
+      "resize the buffer 100 -> 200\n",
+      "read 100 bytes while requested 100 (buffer offset 99)\n",
+      "resize the buffer 200 -> 400\n",
+      "http header is parsed\n",
+      "process a 90 bytes long chunk\n",
+      "memmove 0 bytes from offset 199 to fit the entire chunk\n",
+      "read 399 more bytes of a chunk at offset 0\n",
+      "process a 399 bytes long chunk\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
+      "resize the buffer 400 -> 800\n",
+      "process a 393 bytes long chunk\n",
+      "memmove 1 bytes from offset 398 to the beginning\n",
+      "read 798 bytes while requested 798 (buffer offset 1)\n",
+      "resize the buffer 800 -> 1600\n",
+      "process a 792 bytes long chunk\n",
+      "memmove 2 bytes from offset 797 to the beginning\n",
+      "read 1 bytes while requested 1597 (buffer offset 2)\n"
+    },
+    {// Test case 1.1 (99 bytes header).
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
+      "resize the buffer 100 -> 200\n",
+      "http header is parsed\n",
+      "read 199 bytes while requested 199 (buffer offset 0)\n",
+      "resize the buffer 200 -> 400\n",
+      "process a 90 bytes long chunk\n",
+      "memmove 100 bytes from offset 99 to fit the entire chunk\n",
+      "read 299 more bytes of a chunk at offset 100\n",
+      "process a 399 bytes long chunk\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
+      "resize the buffer 400 -> 800\n",
+      "process a 393 bytes long chunk\n",
+      "memmove 1 bytes from offset 398 to the beginning\n",
+      "read 798 bytes while requested 798 (buffer offset 1)\n",
+      "resize the buffer 800 -> 1600\n",
+      "process a 792 bytes long chunk\n",
+      "memmove 2 bytes from offset 797 to the beginning\n",
+      "read 1 bytes while requested 1597 (buffer offset 2)\n"
+    },
+    {// Test case 1.2 (98 bytes header).
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
+      "resize the buffer 100 -> 200\n",
+      "http header is parsed\n",
+      "memmove 1 bytes from offset 98 to the beginning\n",
+      "read 198 bytes while requested 198 (buffer offset 1)\n",
+      "resize the buffer 200 -> 400\n",
+      "process a 90 bytes long chunk\n",
+      "memmove 100 bytes from offset 99 to fit the entire chunk\n",
+      "read 299 more bytes of a chunk at offset 100\n",
+      "process a 399 bytes long chunk\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
+      "resize the buffer 400 -> 800\n",
+      "process a 393 bytes long chunk\n",
+      "memmove 1 bytes from offset 398 to the beginning\n",
+      "read 798 bytes while requested 798 (buffer offset 1)\n",
+      "resize the buffer 800 -> 1600\n",
+      "process a 792 bytes long chunk\n",
+      "memmove 2 bytes from offset 797 to the beginning\n",
+      "read 1 bytes while requested 1597 (buffer offset 2)\n"
+    }
+      // clang-format on
+  };
+
+  const auto chunked_body = chunks[0] + chunks[1] + chunks[2] + chunks[3] + "0\r\n";
+  for (size_t i = 0; i < 3; ++i) {
+    current::net::HTTPDataJournal().Start();
+    std::thread t(EchoServerThreadEntryWithOptions, Socket(FLAGS_net_http_test_port), 100, 2.0);
+    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+    connection.BlockingWrite(headers + headers_paddings[i] + "\r\n\r\n" + chunked_body, false);
+    ExpectToReceive(expect_to_receive, connection);
+    t.join();
+    EXPECT_EQ(expected_events_block1[i].size(), current::net::HTTPDataJournal().events.size());
+    for (size_t j = 0, sz = std::min(expected_events_block1[i].size(), current::net::HTTPDataJournal().events.size());
+         j < sz;
+         ++j) {
+      EXPECT_EQ(expected_events_block1[i][j], current::net::HTTPDataJournal().events[j]);
+    }
+    current::net::HTTPDataJournal().Stop();
+  }
+
+  // Test cases block 2: http header and each chunk is sent separatedly with sufficiently long delays in between.
+  const std::vector<std::string> expected_events_block2[] = {
+      // clang-format off
+    {// Test case 2.0 (100 bytes header).
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
+      "resize the buffer 100 -> 200\n",
+      "read 1 bytes while requested 100 (buffer offset 99)\n",
+      "http header is parsed\n",
+      "read 94 bytes while requested 199 (buffer offset 0)\n",
+      "process a 90 bytes long chunk\n",
+      "read 199 bytes while requested 199 (buffer offset 0)\n",
+      "resize the buffer 200 -> 400\n",
+      "memmove 194 bytes from offset 5 to fit the entire chunk\n",
+      "read 205 more bytes of a chunk at offset 194\n",
+      "process a 399 bytes long chunk\n",
+      "read 398 bytes while requested 399 (buffer offset 0)\n",
+      "process a 393 bytes long chunk\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
+      "resize the buffer 400 -> 800\n",
+      "read 398 more bytes of a chunk at offset 399\n",
+      "process a 792 bytes long chunk\n",
+      "read 3 bytes while requested 799 (buffer offset 0)\n"
+    },
+    {// Test case 2.1 (99 bytes header).
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
+      "resize the buffer 100 -> 200\n",
+      "http header is parsed\n",
+      "read 94 bytes while requested 199 (buffer offset 0)\n",
+      "process a 90 bytes long chunk\n",
+      "read 199 bytes while requested 199 (buffer offset 0)\n",
+      "resize the buffer 200 -> 400\n",
+      "memmove 194 bytes from offset 5 to fit the entire chunk\n",
+      "read 205 more bytes of a chunk at offset 194\n",
+      "process a 399 bytes long chunk\n",
+      "read 398 bytes while requested 399 (buffer offset 0)\n",
+      "process a 393 bytes long chunk\n",
+      "read 399 bytes while requested 399 (buffer offset 0)\n",
+      "resize the buffer 400 -> 800\n",
+      "read 398 more bytes of a chunk at offset 399\n",
+      "process a 792 bytes long chunk\n",
+      "read 3 bytes while requested 799 (buffer offset 0)\n"
+    },
+    {// Test case 2.2 (98 bytes header).
+      "read 98 bytes while requested 99 (buffer offset 0)\n",
+      "http header is parsed\n",
+      "read 94 bytes while requested 99 (buffer offset 0)\n",
+      "process a 90 bytes long chunk\n",
+      "read 99 bytes while requested 99 (buffer offset 0)\n",
+      "resize the buffer 100 -> 200\n",
+      "resize the buffer 200 -> 405 to fit the entire chunk\n",
+      "read 305 more bytes of a chunk at offset 99\n",
+      "process a 399 bytes long chunk\n",
+      "read 398 bytes while requested 404 (buffer offset 0)\n",
+      "process a 393 bytes long chunk\n",
+      "read 404 bytes while requested 404 (buffer offset 0)\n",
+      "resize the buffer 405 -> 810\n",
+      "read 393 more bytes of a chunk at offset 404\n",
+      "process a 792 bytes long chunk\n",
+      "read 3 bytes while requested 809 (buffer offset 0)\n"
+    }
+      // clang-format on
+  };
+
+  for (size_t i = 0; i < 3; ++i) {
+    current::net::HTTPDataJournal().Start();
+    std::thread t(EchoServerThreadEntryWithOptions, Socket(FLAGS_net_http_test_port), 100, 2.0);
+    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+    connection.BlockingWrite(headers + headers_paddings[i] + "\r\n\r\n", false);
+    for (const auto& chunk : chunks) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      connection.BlockingWrite(chunk, false);
+    }
+    connection.BlockingWrite("0\r\n", false);
+    ExpectToReceive(expect_to_receive, connection);
+    t.join();
+    EXPECT_EQ(expected_events_block2[i].size(), current::net::HTTPDataJournal().events.size());
+    for (size_t j = 0, sz = std::min(expected_events_block2[i].size(), current::net::HTTPDataJournal().events.size());
+         j < sz;
+         ++j) {
+      EXPECT_EQ(expected_events_block2[i][j], current::net::HTTPDataJournal().events[j]);
+    }
+    current::net::HTTPDataJournal().Stop();
+  }
+}
+
 TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
   std::atomic_bool wrong_chunk_size_exception_thrown(false);
-  thread t([&wrong_chunk_size_exception_thrown](Socket s) {
+  std::thread t([&wrong_chunk_size_exception_thrown](Socket s) {
     try {
       HTTPServerConnection c(s.Accept());
     } catch (const ChunkSizeNotAValidHEXValue&) {
@@ -457,7 +699,7 @@ TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
 
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
 TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/", c.HTTPRequest().RawPath());
@@ -468,8 +710,8 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
   connection.BlockingWrite("\r\n", true);
-  string chunk(10000, '.');
-  string body = "";
+  std::string chunk(10000, '.');
+  std::string body = "";
   for (size_t i = 0; i < 10; ++i) {
     connection.BlockingWrite(current::strings::Printf("%X\r\n", 10000), true);
     for (size_t j = 0; j < 10000; ++j) {
@@ -493,7 +735,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
 
 #ifndef CURRENT_WINDOWS
 struct HTTPClientImplCURL {
-  static string Syscall(const string& cmdline) {
+  static std::string Syscall(const std::string& cmdline) {
     FILE* pipe = ::popen(cmdline.c_str(), "r");
     CURRENT_ASSERT(pipe);
     char s[1024];
@@ -503,15 +745,18 @@ struct HTTPClientImplCURL {
     return s;
   }
 
-  static string Fetch(thread& server_thread, const string& url, const string& method) {
-    const string result = Syscall(current::strings::Printf(
+  static std::string Fetch(std::thread& server_thread, const std::string& url, const std::string& method) {
+    const std::string result = Syscall(current::strings::Printf(
         "curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
 
-  static string FetchWithBody(thread& server_thread, const string& url, const string& method, const string& data) {
-    const string result = Syscall(current::strings::Printf(
+  static std::string FetchWithBody(std::thread& server_thread,
+                                   const std::string& url,
+                                   const std::string& method,
+                                   const std::string& data) {
+    const std::string result = Syscall(current::strings::Printf(
         "curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
@@ -521,21 +766,27 @@ struct HTTPClientImplCURL {
 
 class HTTPClientImplPOSIX {
  public:
-  static string Fetch(thread& server_thread, const string& url, const string& method) {
+  static std::string Fetch(std::thread& server_thread, const std::string& url, const std::string& method) {
     return Impl(server_thread, url, method);
   }
 
-  static string FetchWithBody(thread& server_thread, const string& url, const string& method, const string& data) {
+  static std::string FetchWithBody(std::thread& server_thread,
+                                   const std::string& url,
+                                   const std::string& method,
+                                   const std::string& data) {
     return Impl(server_thread, url, method, true, data);
   }
 
  private:
-  static string Impl(
-      thread& server_thread, const string& url, const string& method, bool has_data = false, const string& data = "") {
+  static std::string Impl(std::thread& server_thread,
+                          const std::string& url,
+                          const std::string& method,
+                          bool has_data = false,
+                          const std::string& data = "") {
     Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
     connection.BlockingWrite(method + ' ' + url + "\r\n", true);
     if (has_data) {
-      connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n", true);
+      connection.BlockingWrite("Content-Length: " + std::to_string(data.length()) + "\r\n", true);
       connection.BlockingWrite("\r\n", true);
       connection.BlockingWrite(data, false);
     } else {
@@ -543,7 +794,7 @@ class HTTPClientImplPOSIX {
     }
     HTTPRequestData http_request(connection);
     CURRENT_ASSERT(!http_request.Body().empty());
-    const string body = http_request.Body();
+    const std::string body = http_request.Body();
     server_thread.join();
     return body;
   }
@@ -561,7 +812,7 @@ typedef ::testing::Types<HTTPClientImplPOSIX> HTTPClientImplsTypeList;
 TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
 
 TYPED_TEST(HTTPTest, GET) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
     EXPECT_EQ("/unittest?foo=bar", c.HTTPRequest().RawPath());
@@ -573,7 +824,7 @@ TYPED_TEST(HTTPTest, GET) {
 }
 
 TYPED_TEST(HTTPTest, POST) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
@@ -585,7 +836,7 @@ TYPED_TEST(HTTPTest, POST) {
 }
 
 TYPED_TEST(HTTPTest, NoBodyPOST) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
     EXPECT_EQ("/unittest_empty_post", c.HTTPRequest().RawPath());
@@ -596,7 +847,7 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
 }
 
 TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
-  thread t([](Socket s) {
+  std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     c.SendHTTPResponse("one");
     ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
@@ -607,7 +858,7 @@ TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
 
 TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
-  thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
+  std::thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
   EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::Fetch(t, "/", "GET"));
 }
 
@@ -641,7 +892,7 @@ TEST(HTTPMimeTypeTest, SmokeTest) {
 
 TEST(HTTPServerTest, ConnectionResetByPeerException) {
   bool connection_reset_by_peer = false;
-  thread t([&connection_reset_by_peer](Socket s) {
+  std::thread t([&connection_reset_by_peer](Socket s) {
              try {
                HTTPServerConnection(s.Accept());
              } catch (const ConnectionResetByPeer&) {
@@ -662,7 +913,7 @@ TEST(HTTPServerTest, ConnectionResetByPeerException) {
 // A dedicated test to cover the `ConnectionResetByPeer` case while receiving a chunk.
 TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
   bool connection_reset_by_peer = false;
-  thread t([&connection_reset_by_peer](Socket s) {
+  std::thread t([&connection_reset_by_peer](Socket s) {
              try {
                HTTPServerConnection(s.Accept());
              } catch (const ConnectionResetByPeer&) {
