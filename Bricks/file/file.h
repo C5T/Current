@@ -332,13 +332,13 @@ struct FileSystem {
                 }
                 if (item_info.is_directory) {
                   context.path_components.push_back(item_info.basename);
+                  const auto guard = current::MakeScopeGuard([&context]() { context.path_components.pop_back(); });
                   ScanDirUntil<ITEM_HANDLER>(
                       item_info.pathname,
                       std::forward<ITEM_HANDLER>(item_handler),
                       parameters,
                       ScanDirRecursive::Yes,
                       context);
-                  context.path_components.pop_back();
                 }
                 return true;
               }),
