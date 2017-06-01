@@ -266,7 +266,7 @@ class HTTPServerPOSIX final {
             }
 
             const std::string url_pathname = url_dirname +
-                (url_dirname.length() == 1 && url_dirname.front() == '/' ? "" : "/") + item_info.basename;
+                (url_dirname == "/" ? "" : "/") + item_info.basename;
 
             const bool is_index =
                 (std::find(options.index_filenames.begin(), options.index_filenames.end(), item_info.basename) !=
