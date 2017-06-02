@@ -1,18 +1,18 @@
 /*******************************************************************************
  The MIT License (MIT)
- 
+
  Copyright (c) 2017 Grigory Nikolaenko <nikolaenko.grigory@gmail.com>
- 
+
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
- 
+
  The above copyright notice and this permission notice shall be included in all
  copies or substantial portions of the Software.
- 
+
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -28,11 +28,10 @@
 #include "../../../TypeSystem/struct.h"
 
 CURRENT_STRUCT(Entry) {
-  CURRENT_FIELD(x, uint32_t, 0);
   CURRENT_FIELD(s, std::string, "");
 
   CURRENT_DEFAULT_CONSTRUCTOR(Entry) {}
-  CURRENT_CONSTRUCTOR(Entry)(int32_t x, const std::string& s) : x(x), s(s) {}
+  CURRENT_CONSTRUCTOR(Entry)(std::string s) : s(std::move(s)) {}
 };
 
 #endif  // BENCHMARK_REPLICATION_ENTRY_H
