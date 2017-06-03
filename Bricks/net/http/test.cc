@@ -431,20 +431,20 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
   };
   std::string body;
   std::string chunk(10, '.');
-  for (size_t i = 0; i < 10000; ++i) {
-    for (size_t j = 0; j < 10; ++j) {
+  for (uint64_t i = 0; i < 10000; ++i) {
+    for (uint64_t j = 0; j < 10; ++j) {
       chunk[j] = 'A' + ((i + j) % 26);
     }
     body += chunk;
   }
-  for (size_t length = body.length(); length > 1500; length -= (length / 7)) {
+  for (uint64_t length = body.length(); length > 1500; length -= (length / 7)) {
     const auto offset = body.length() - length;
-    for (size_t chunks = length; chunks; chunks = chunks * 2 / 3) {
+    for (uint64_t chunks = length; chunks; chunks = chunks * 2 / 3) {
       std::string chunked_body;
       for (uint64_t i = 0; i < chunks; ++i) {
-        const size_t start = offset + static_cast<size_t>(length * i / chunks);
-        const size_t end = offset + static_cast<size_t>(length * (i + 1) / chunks);
-        chunked_body += current::strings::Printf("%lX\r\n", end - start) + body.substr(start, end - start);
+        const uint64_t start = offset + length * i / chunks;
+        const uint64_t end = offset + length * (i + 1) / chunks;
+        chunked_body += current::strings::Printf("%llX\r\n", end - start) + body.substr(start, end - start);
       }
 
       std::thread t(EchoServerThreadEntry, Socket(FLAGS_net_http_test_port));
