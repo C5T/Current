@@ -896,13 +896,23 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   FileSystem::WriteStringToFile("<h1>HTML hidden</h1>", FileSystem::JoinPath(sub_dir_hidden, "index.html").c_str());
   FileSystem::WriteStringToFile("", FileSystem::JoinPath(dir, ".DS_Store").c_str());
   FileSystem::WriteStringToFile("", FileSystem::JoinPath(sub_dir, ".file_hidden").c_str());
+
   const auto scope = HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir);
+
+  // Root index file.
   EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).code));
+
+  // Root index file direct link.
   EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/index.html", FLAGS_net_api_test_port))).body);
+
+  // Misc files.
   EXPECT_EQ("<h1>HTML file</h1>", HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("This is text.", HTTP(GET(Printf("http://localhost:%d/file.txt", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("\211PNG\r\n\032\n", HTTP(GET(Printf("http://localhost:%d/file.png", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ(DefaultNotFoundMessage(), HTTP(GET(Printf("http://localhost:%d/.DS_Store", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+
+  // Redirect from directory without trailing slash to directory with trailing slash.
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/sub_dir", FLAGS_net_api_test_port))),
                HTTPRedirectNotAllowedException);
   const auto sub_dir_response =
@@ -910,68 +920,152 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   EXPECT_EQ("<h1>HTML sub_dir index</h1>", sub_dir_response.body);
   EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
   EXPECT_EQ(Printf("http://localhost:%d/sub_dir/", FLAGS_net_api_test_port), sub_dir_response.url);
+
+  // Subdirectory index file.
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
             HTTP(GET(Printf("http://localhost:%d/sub_dir/", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
             HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm", FLAGS_net_api_test_port))).body);
+
+  // File in subdirectory.
   EXPECT_EQ("alert('JavaScript')",
             HTTP(GET(Printf("http://localhost:%d/sub_dir/file_in_sub_dir.js", FLAGS_net_api_test_port))).body);
+
+  // Trailing slash for files should result in HTTP 404.
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/index.html/", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm/", FLAGS_net_api_test_port))).body);
+
+  // Hidden files should result in HTTP 404.
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/.DS_Store", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir/.file_hidden", FLAGS_net_api_test_port))).body);
+
+  // Missing index file should result in HTTP 404.
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index/", FLAGS_net_api_test_port))).body);
+
+  // Hidden directory should result in HTTP 404.
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
             HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(PUT(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(PATCH(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port), "")).body);
-  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).code));
-  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/index.html", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(404,
             static_cast<int>(HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port))).code));
+  EXPECT_EQ(404,
+            static_cast<int>(HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden/index.html", FLAGS_net_api_test_port), "")).code));
+
+  // POST to file URL.
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
+            HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
   EXPECT_EQ(405,
             static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
+
+  // PUT to file URL.
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
+            HTTP(PUT(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
   EXPECT_EQ(405,
             static_cast<int>(HTTP(PUT(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
+
+  // PATCH to file URL.
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
+            HTTP(PATCH(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
   EXPECT_EQ(405,
             static_cast<int>(HTTP(PATCH(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
+
+  // DELETE to file URL.
+  EXPECT_EQ(DefaultMethodNotAllowedMessage(),
+            HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
-  EXPECT_EQ(
-      404,
-      static_cast<int>(HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port), "")).code));
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBase) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
+  const std::string sub_dir = FileSystem::JoinPath(dir, "sub_dir");
+  const std::string sub_sub_dir = FileSystem::JoinPath(sub_dir, "sub_sub_dir");
+  const std::string sub_dir_hidden = FileSystem::JoinPath(dir, ".sub_dir_hidden");
+  const std::string sub_sub_dir_hidden = FileSystem::JoinPath(sub_dir, ".sub_sub_dir_hidden");
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::MkDir(sub_dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::MkDir(sub_sub_dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::MkDir(sub_dir_hidden, FileSystem::MkDirParameters::Silent);
+  FileSystem::MkDir(sub_sub_dir_hidden, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(dir, "index.html").c_str());
-  const auto scope = HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static"});
-  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/", FLAGS_net_api_test_port))).body);
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(sub_dir, "index.html").c_str());
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(sub_sub_dir, "index.html").c_str());
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(sub_dir_hidden, "index.html").c_str());
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(sub_sub_dir_hidden, "index.html").c_str());
+
+  const auto scope = HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/something"});
+
+  // Root index file.
+  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port))).body);
+
+  // Root index file direct link.
   EXPECT_EQ("<h1>HTML index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/index.html", FLAGS_net_api_test_port))).body);
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static", FLAGS_net_api_test_port))),
+            HTTP(GET(Printf("http://localhost:%d/static/something/index.html", FLAGS_net_api_test_port))).body);
+
+  // Redirect from directory without trailing slash to directory with trailing slash.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port))),
                HTTPRedirectNotAllowedException);
-  const auto response = HTTP(GET(Printf("http://localhost:%d/static", FLAGS_net_api_test_port)).AllowRedirects());
-  EXPECT_EQ("<h1>HTML index</h1>", response.body);
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ(Printf("http://localhost:%d/static/", FLAGS_net_api_test_port), response.url);
+  const auto dir_response = HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ("<h1>HTML index</h1>", dir_response.body);
+  EXPECT_EQ(200, static_cast<int>(dir_response.code));
+  EXPECT_EQ(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port), dir_response.url);
+
+  // Subdirectory index file.
+  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("<h1>HTML index</h1>",
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/index.html", FLAGS_net_api_test_port))).body);
+
+  // Redirect from subdirectory without trailing slash to subdirectory with trailing slash.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port))),
+               HTTPRedirectNotAllowedException);
+  const auto sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ("<h1>HTML index</h1>", sub_dir_response.body);
+  EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
+  EXPECT_EQ(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port), sub_dir_response.url);
+
+  // Subsubdirectory index file.
+  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("<h1>HTML index</h1>",
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/index.html", FLAGS_net_api_test_port))).body);
+
+  // Redirect from subsubdirectory without trailing slash to subsubdirectory with trailing slash.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port))),
+               HTTPRedirectNotAllowedException);
+  const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ("<h1>HTML index</h1>", sub_sub_dir_response.body);
+  EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
+  EXPECT_EQ(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port), sub_sub_dir_response.url);
+
+  // Hidden subdirectory.
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/static/something/.sub_dir_hidden", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/static/something/.sub_dir_hidden/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/static/something/.sub_dir_hidden/index.html", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(404,
+            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/static/something/.sub_dir_hidden", FLAGS_net_api_test_port))).code));
+
+  // Hidden subsubdirectory.
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/.sub_sub_dir_hidden", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/.sub_sub_dir_hidden/", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(),
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/.sub_sub_dir_hidden/index.html", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(404,
+            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/.sub_sub_dir_hidden", FLAGS_net_api_test_port))).code));
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBaseWithTrailingSlash) {
