@@ -441,9 +441,9 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
     const auto offset = body.length() - length;
     for (size_t chunks = length; chunks; chunks = chunks * 2 / 3) {
       std::string chunked_body;
-      for (size_t i = 0; i < chunks; ++i) {
-        const size_t start = offset + length * i / chunks;
-        const size_t end = offset + length * (i + 1) / chunks;
+      for (uint64_t i = 0; i < chunks; ++i) {
+        const size_t start = offset + static_cast<size_t>(length * i / chunks);
+        const size_t end = offset + static_cast<size_t>(length * (i + 1) / chunks);
         chunked_body += current::strings::Printf("%lX\r\n", end - start) + body.substr(start, end - start);
       }
 

@@ -63,12 +63,12 @@ SOFTWARE.
 #include "../../../strings/printf.h"
 #include "../../../util/singleton.h"
 
-#define CURRENT_BRICKS_LOG_HTTP_EVENT(...) \
-  do { \
-    auto& journal = current::net::HTTPDataJournal(); \
-    if (journal.active) {\
+#define CURRENT_BRICKS_LOG_HTTP_EVENT(...)                             \
+  do {                                                                 \
+    auto& journal = current::net::HTTPDataJournal();                   \
+    if (journal.active) {                                              \
       journal.events.push_back(current::strings::Printf(__VA_ARGS__)); \
-    } \
+    }                                                                  \
   } while (false)
 
 #endif  // CURRENT_BRICKS_DEBUG_HTTP
