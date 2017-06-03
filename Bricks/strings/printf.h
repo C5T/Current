@@ -33,9 +33,9 @@ SOFTWARE.
 namespace current {
 namespace strings {
 
-#ifndef CURRENT_WINDOWS
-__attribute__((__format__ (__printf__, 1, 2)))
-#endif  // CURRENT_WINDOWS
+#ifdef __GNUC__
+__attribute__((__format__(__printf__, 1, 2)))
+#endif
 inline std::string Printf(const char *fmt, ...) {
   // `Printf()` crops the output to five KiB.
   const int max_formatted_output_length = 5 * 1024;
