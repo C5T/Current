@@ -444,7 +444,7 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
       for (size_t i = 0; i < chunks; ++i) {
         const size_t start = offset + length * i / chunks;
         const size_t end = offset + length * (i + 1) / chunks;
-        chunked_body += current::strings::Printf("%X\r\n", end - start) + body.substr(start, end - start);
+        chunked_body += current::strings::Printf("%lX\r\n", end - start) + body.substr(start, end - start);
       }
 
       std::thread t(EchoServerThreadEntry, Socket(FLAGS_net_http_test_port));
