@@ -46,6 +46,8 @@ SOFTWARE.
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/strings/split.h"
 
+#include "../../Bricks/file/file.h"
+
 namespace current {
 namespace url {
 

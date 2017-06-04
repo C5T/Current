@@ -71,12 +71,12 @@ struct SocketSystemInitializer {
 #ifdef CURRENT_WINDOWS
   struct OneTimeInitializer {
     OneTimeInitializer() {
-      BRICKS_NET_LOG("WSAStartup() ...\n");
+      CURRENT_BRICKS_NET_LOG("WSAStartup() ...\n");
       WSADATA wsaData;
       if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
         CURRENT_THROW(SocketWSAStartupException());
       }
-      BRICKS_NET_LOG("WSAStartup() : OK\n");
+      CURRENT_BRICKS_NET_LOG("WSAStartup() : OK\n");
     }
   };
   SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
@@ -97,7 +97,7 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ < 0) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
-    BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
+    CURRENT_BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
 
 #ifndef CURRENT_WINDOWS
     int just_one = 1;
@@ -142,12 +142,12 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ < 0) {
       CURRENT_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
-    BRICKS_NET_LOG("S%05d == initialized externally.\n", socket_);
+    CURRENT_BRICKS_NET_LOG("S%05d == initialized externally.\n", socket_);
   }
 
   inline ~SocketHandle() {
     if (socket_ != static_cast<SOCKET>(-1)) {
-      BRICKS_NET_LOG("S%05d close() ...\n", socket_);
+      CURRENT_BRICKS_NET_LOG("S%05d close() ...\n", socket_);
 #ifndef CURRENT_WINDOWS
       ::shutdown(socket, SHUT_RDWR);
       ::close(socket_);
@@ -155,7 +155,7 @@ class SocketHandle : private SocketSystemInitializer {
       ::shutdown(socket, SD_BOTH);
       ::closesocket(socket_);
 #endif
-      BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
+      CURRENT_BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
     }
   }
 
@@ -273,22 +273,22 @@ class Connection : public SocketHandle {
       int wsa_last_error = 0;
 #endif
 
-      BRICKS_NET_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
+      CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
       do {
         const size_t remaining_bytes_to_read = (max_length - (ptr - buffer));
-        BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
-                       static_cast<SOCKET>(socket),
-                       static_cast<int>(remaining_bytes_to_read));
+        CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
+                               static_cast<SOCKET>(socket),
+                               static_cast<int>(remaining_bytes_to_read));
 #ifndef CURRENT_WINDOWS
         const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, flags);
 #else
         const int retval =
             ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), flags);
 #endif
-        BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d, errno = %d.\n",
-                       static_cast<SOCKET>(socket),
-                       static_cast<int>(retval),
-                       errno);
+        CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d, errno = %d.\n",
+                               static_cast<SOCKET>(socket),
+                               static_cast<int>(retval),
+                               errno);
         if (retval > 0) {
           ptr += retval;
           if ((policy == BlockingReadPolicy::ReturnASAP) || (ptr == end)) {
@@ -323,19 +323,19 @@ class Connection : public SocketHandle {
 #ifndef CURRENT_WINDOWS
       if (errno == ECONNRESET) {
         if (ptr != buffer) {
-          BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
-                         static_cast<SOCKET>(socket),
-                         static_cast<int>(ptr - buffer));
+          CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                                 static_cast<SOCKET>(socket),
+                                 static_cast<int>(ptr - buffer));
           CURRENT_THROW(ConnectionResetByPeer());
         } else {
           CURRENT_THROW(EmptyConnectionResetByPeer());
         }
       } else {
         if (ptr != buffer) {
-          BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
-                         static_cast<SOCKET>(socket),
-                         static_cast<int>(ptr - buffer),
-                         errno);
+          CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                                 static_cast<SOCKET>(socket),
+                                 static_cast<int>(ptr - buffer),
+                                 errno);
           CURRENT_THROW(SocketReadException());
         } else {
           CURRENT_THROW(EmptySocketReadException());
@@ -345,19 +345,19 @@ class Connection : public SocketHandle {
       if (wsa_last_error == WSAECONNRESET) {
         // Effectively, `errno == ECONNRESET`.
         if (ptr != buffer) {
-          BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
-                         static_cast<SOCKET>(socket),
-                         static_cast<int>(ptr - buffer));
+          CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                                 static_cast<SOCKET>(socket),
+                                 static_cast<int>(ptr - buffer));
           CURRENT_THROW(ConnectionResetByPeer());
         } else {
           CURRENT_THROW(EmptyConnectionResetByPeer());
         }
       } else {
         if (ptr != buffer) {
-          BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
-                         static_cast<SOCKET>(socket),
-                         static_cast<int>(ptr - buffer),
-                         errno);
+          CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                                 static_cast<SOCKET>(socket),
+                                 static_cast<int>(ptr - buffer),
+                                 errno);
           CURRENT_THROW(SocketReadException());
         } else {
           CURRENT_THROW(EmptySocketReadException());
@@ -373,7 +373,8 @@ class Connection : public SocketHandle {
     static_cast<void>(more);  // Supress the 'unused parameter' warning.
 #endif
     CURRENT_ASSERT(buffer);
-    BRICKS_NET_LOG("S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
+    CURRENT_BRICKS_NET_LOG(
+        "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
 #if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
     const int result = static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL | (more ? MSG_MORE : 0)));
 #else
@@ -387,7 +388,8 @@ class Connection : public SocketHandle {
     } else if (static_cast<size_t>(result) != write_length) {
       CURRENT_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
     }
-    BRICKS_NET_LOG("S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
+    CURRENT_BRICKS_NET_LOG(
+        "S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
     return *this;
   }
 
@@ -435,25 +437,25 @@ class Socket final : public SocketHandle {
     // Catch a level 4 warning of MSVS.
     addr_server.sin_port = htons(static_cast<decltype(std::declval<sockaddr_in>().sin_port)>(port));
 
-    BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
+    CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
 
     if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == static_cast<SOCKET>(-1)) {
       CURRENT_THROW(SocketBindException());
     }
 
-    BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
+    CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
 
     if (::listen(socket, max_connections)) {
       CURRENT_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
-    BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
+    CURRENT_BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
   }
 
   Socket(Socket&&) = default;
 
   inline Connection Accept() {
-    BRICKS_NET_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
+    CURRENT_BRICKS_NET_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
     sockaddr_in addr_client;
     memset(&addr_client, 0, sizeof(addr_client));
 
@@ -466,10 +468,10 @@ class Socket final : public SocketHandle {
 #endif
     const SOCKET handle = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (handle == invalid_socket) {
-      BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
+      CURRENT_BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
-    BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
+    CURRENT_BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
 
     sockaddr_in addr_serv;
 #ifndef CURRENT_WINDOWS
@@ -537,7 +539,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
    public:
     inline explicit ClientSocket(const std::string& host, const std::string& serv)
         : SocketHandle(SocketHandle::NewHandle()) {
-      BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));
+      CURRENT_BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));
       // Deliberately left non-const because of possible Windows issues. -- M.Z.
       auto addr_info = GetAddrInfo(host, serv);
       struct sockaddr* p_addr = addr_info->ai_addr;
@@ -549,7 +551,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       remote_ip_and_port.ip = InetAddrToString(&(p_addr_in->sin_addr));
       remote_ip_and_port.port = htons(p_addr_in->sin_port);
 
-      BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
+      CURRENT_BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
       const int retval = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval) {
         CURRENT_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
@@ -567,7 +569,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       local_ip_and_port.ip = InetAddrToString(&addr_client.sin_addr);
       local_ip_and_port.port = htons(addr_client.sin_port);
 
-      BRICKS_NET_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
+      CURRENT_BRICKS_NET_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
     }
     IPAndPort local_ip_and_port;
     IPAndPort remote_ip_and_port;
