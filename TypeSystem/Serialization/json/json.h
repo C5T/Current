@@ -248,7 +248,7 @@ class JSONParser final {
     current_ = &document_;
   }
 
-  operator bool() const { return current_; }
+  operator bool() const { return current_ != nullptr; }
   rapidjson::Value& Current() { return *current_; }
   rapidjson::Value* CurrentAsPtr() { return current_; }
 

@@ -63,7 +63,13 @@ SOFTWARE.
 #include "../../../strings/printf.h"
 #include "../../../util/singleton.h"
 
-#define CURRENT_BRICKS_LOG_HTTP_EVENT(...) current::net::HTTPDataJournal().LogEvent(__VA_ARGS__)
+#define CURRENT_BRICKS_LOG_HTTP_EVENT(...)                             \
+  do {                                                                 \
+    auto& journal = current::net::HTTPDataJournal();                   \
+    if (journal.active) {                                              \
+      journal.events.push_back(current::strings::Printf(__VA_ARGS__)); \
+    }                                                                  \
+  } while (false)
 
 #endif  // CURRENT_BRICKS_DEBUG_HTTP
 
@@ -80,12 +86,6 @@ struct EventsJournal {
     active = true;
   }
   void Stop() { active = false; }
-  template <typename... ARGS>
-  void LogEvent(ARGS&&... args) {
-    if (active) {
-      events.push_back(current::strings::Printf(std::forward<ARGS>(args)...));
-    }
-  }
 };
 
 inline EventsJournal& HTTPDataJournal() { return current::Singleton<EventsJournal>(); }
@@ -599,7 +599,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       void SendImpl(T&& data) {
         if (!data.empty()) {
           try {
-            connection_.BlockingWrite(strings::Printf("%X", data.size()), true);
+            connection_.BlockingWrite(strings::Printf("%lX", data.size()), true);
             connection_.BlockingWrite(constants::kCRLF, true);
             connection_.BlockingWrite(std::forward<T>(data), true);
             // Force every chunk to be sent out by passing `false` as the second argument.
@@ -615,7 +615,10 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
       template <typename T>
-      inline ENABLE_IF<sizeof(typename T::value_type) == 1> Send(T&& data) {
+      inline ENABLE_IF<std::is_same<typename T::value_type, char>::value ||
+                       std::is_same<typename T::value_type, uint8_t>::value ||
+                       std::is_same<typename T::value_type, int8_t>::value>
+      Send(T&& data) {
         SendImpl(std::forward<T>(data));
       }
 

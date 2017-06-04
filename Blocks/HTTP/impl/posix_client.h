@@ -105,9 +105,16 @@ class GenericHTTPClientPOSIX final {
         // It swallows the `SocketWriteException` exception for huge payloads, as Current's HTTP server logic
         // does intentionally close the HTTP connection prematurely if `Content-Length` exceeds a reasonable limit.
         try {
+#ifndef CURRENT_WINDOWS
           connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n", true);
           connection.BlockingWrite("\r\n", true);
           connection.BlockingWrite(request_body_contents_, false);
+#else
+          // TODO(grixa): this fix for the PayloadTooLarge test on Windows is temporary, need to revisit it.
+          connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n\r\n" +
+                                       request_body_contents_,
+                                   false);
+#endif
         } catch (const net::SocketWriteException&) {
           if (request_body_contents_.length() <= net::constants::kMaxHTTPPayloadSizeInBytes) {
             throw;
