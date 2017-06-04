@@ -45,9 +45,14 @@ make test
 make check
 ```
 
-Run tests for each module separately:
+Build and run tests for each module separately:
 ```
 make individual_tests
+```
+
+Build and run tests for one of the modules (e.g. `Blocks/HTTP`):
+```
+( cd Blocks/HTTP && make -j test )
 ```
 
 ## Development Dependencies
