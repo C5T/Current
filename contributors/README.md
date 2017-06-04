@@ -22,4 +22,5 @@ As a true engineer, you'll probably be glad to know we have an [example](https:/
 Wait until we merge your pull request, and we're good to go.
 
 Thanks!
-Current Maintainers
+
+-- Current Maintainers
