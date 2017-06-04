@@ -36,27 +36,43 @@ Welcome, contributors! Please [start here by signing the CLA](https://github.com
 
 ## Quick Start
 
-Install the development dependencies (see below).
+### Install the development dependencies
 
-Clean, build and run all tests, verify code:
+- `nasm` for `FnCAS`.
+  - **macOS**: `brew install nasm`
+- `geninfo` from `lcov` for coverage report.
+  - **macOS**: `brew install lcov`
+- `clang-format-3.6` for code formatting (`make indent`).
+  - **macOS**: Only `clang-format-3.8` is available via Homebrew: `brew install clang-format@3.8 && ln -s /usr/local/bin/clang-format-3.6 /usr/local/opt/clang-format@3.8/bin/clang-format` _(pretend we've got 3.6)_
+
+### Clean the output of the previous builds
+
 ```
 make clean
-make test
-make check
 ```
 
-Build and run tests for each module separately:
+### Run the tests
+
+Builds and runs all the tests as a single binary. Slow, eats up tons of CPU, but measures coverage.
+Consider `make individual_tests` or `make test` within individual directories to run the subset of tests.
+```
+make test
+```
+
+Builds and runs the tests for each module separately:
 ```
 make individual_tests
 ```
 
-Build and run tests for one of the modules (e.g. `Blocks/HTTP`):
+Builds and runs the tests for one of the modules (e.g. `Blocks/HTTP`):
 ```
-( cd Blocks/HTTP && make -j test )
+( cd Blocks/HTTP && make test )
 ```
 
-## Development Dependencies
+### Verify the code
 
-- `nasm` for `FnCAS`. **macOS**: `brew install nasm`
-- `geninfo` from `lcov` for coverage report. **macOS**: `brew install lcov`
-- `clang-format` for code formatting. **macOS**: `brew install clang-format`
+"Builds" all header files individually, twice each header file, and "links" these pairs together.
+Ensures no symbols are exported, and the ODR will not be violated when linking together two objects, each of which is independently using Current.
+```
+make check
+```
