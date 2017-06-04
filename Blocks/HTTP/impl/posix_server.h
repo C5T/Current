@@ -262,7 +262,8 @@ class HTTPServerPOSIX final {
           if (!content_type.empty()) {
             // `url_dirname` has no trailing slash.
             const std::string url_dirname =
-                options.url_base + current::strings::Join(item_info.path_components_cref, '/');
+                options.url_base + ((options.url_base == "/" || item_info.path_components_cref.empty()) ? "" : "/") +
+                current::strings::Join(item_info.path_components_cref, '/');
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (url_dirname.find("/.") != std::string::npos) {
