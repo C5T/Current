@@ -346,22 +346,22 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     return description;                                                 \
   }
 
-#define CURRENT_USE_FIELD_AS_KEY(field)                                 \
-  using cf_key_t = current::copy_free<decltype(field)>;                 \
-  cf_key_t key() const { return field; }                                \
-  void set_key(cf_key_t new_key_value) const { field = new_key_value; } \
+#define CURRENT_USE_FIELD_AS_KEY(field)                           \
+  using cf_key_t = current::copy_free<decltype(field)>;           \
+  cf_key_t key() const { return field; }                          \
+  void set_key(cf_key_t new_key_value) { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_ROW(field)                                 \
-  using cf_row_t = current::copy_free<decltype(field)>;                 \
-  cf_row_t row() const { return field; }                                \
-  void set_row(cf_row_t new_row_value) const { field = new_row_value; } \
+#define CURRENT_USE_FIELD_AS_ROW(field)                           \
+  using cf_row_t = current::copy_free<decltype(field)>;           \
+  cf_row_t row() const { return field; }                          \
+  void set_row(cf_row_t new_row_value) { field = new_row_value; } \
   using CURRENT_USE_FIELD_AS_ROW_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_COL(field)                                 \
-  using cf_col_t = current::copy_free<decltype(field)>;                 \
-  cf_col_t col() const { return field; }                                \
-  void set_col(cf_col_t new_col_value) const { field = new_col_value; } \
+#define CURRENT_USE_FIELD_AS_COL(field)                           \
+  using cf_col_t = current::copy_free<decltype(field)>;           \
+  cf_col_t col() const { return field; }                          \
+  void set_col(cf_col_t new_col_value) { field = new_col_value; } \
   using CURRENT_USE_FIELD_AS_COL_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_TIMESTAMP(field) \
