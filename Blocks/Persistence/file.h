@@ -409,7 +409,7 @@ class FilePersister {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
     iterator.head = timestamp;
-    const auto head_str = Printf(constants::kHeadFromatString, timestamp.count());
+    const auto head_str = Printf(constants::kHeadFromatString, static_cast<long long>(timestamp.count()));
     if (file_persister_impl_->head_offset) {
       auto& rewriter = file_persister_impl_->head_rewriter;
       rewriter.seekp(file_persister_impl_->head_offset, std::ios_base::beg);

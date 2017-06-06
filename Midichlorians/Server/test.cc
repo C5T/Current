@@ -60,17 +60,17 @@ class GenericConsumer {
 
   void operator()(const TickLogEntry& e) {
     std::lock_guard<std::mutex> lock(mutex_);
-    events_.push_back(Printf("[%lld][Tick]", e.server_us.count()));
+    events_.push_back(Printf("[%lld][Tick]", static_cast<long long>(e.server_us.count())));
   }
 
   void operator()(const UnparsableLogEntry& e) {
     std::lock_guard<std::mutex> lock(mutex_);
-    errors_.push_back(Printf("[%lld][Error]", e.server_us.count()));
+    errors_.push_back(Printf("[%lld][Error]", static_cast<long long>(e.server_us.count())));
   }
 
   void operator()(const EventLogEntry& e) {
     std::lock_guard<std::mutex> lock(mutex_);
-    events_.push_back(Printf("[%lld]", e.server_us.count()));
+    events_.push_back(Printf("[%lld]", static_cast<long long>(e.server_us.count())));
     e.event.Call(*this);
   }
 
@@ -103,19 +103,22 @@ class GenericConsumer {
 
   // iOS events.
   void operator()(const iOSAppLaunchEvent& event) {
-    AppendToLastEvent(Printf("[iOSAppLaunchEvent user_ms=%lld]", event.user_ms.count()));
+    AppendToLastEvent(Printf("[iOSAppLaunchEvent user_ms=%lld]", static_cast<long long>(event.user_ms.count())));
   }
 
   void operator()(const iOSIdentifyEvent& event) {
-    AppendToLastEvent(Printf("[iOSIdentifyEvent user_ms=%lld client_id=", event.user_ms.count()) + event.client_id +
-                      ']');
+    AppendToLastEvent(
+        Printf("[iOSIdentifyEvent user_ms=%lld client_id=", static_cast<long long>(event.user_ms.count())) +
+        event.client_id + ']');
   }
 
   void operator()(const iOSFocusEvent& event) {
     if (event.gained_focus) {
-      AppendToLastEvent(Printf("[iOSFocusEvent user_ms=%lld gained_focus=true]", event.user_ms.count()));
+      AppendToLastEvent(
+          Printf("[iOSFocusEvent user_ms=%lld gained_focus=true]", static_cast<long long>(event.user_ms.count())));
     } else {
-      AppendToLastEvent(Printf("[iOSFocusEvent user_ms=%lld gained_focus=false]", event.user_ms.count()));
+      AppendToLastEvent(
+          Printf("[iOSFocusEvent user_ms=%lld gained_focus=false]", static_cast<long long>(event.user_ms.count())));
     }
   }
 
@@ -126,7 +129,8 @@ class GenericConsumer {
       params += ' ';
       params += f.first + '=' + f.second;
     }
-    AppendToLastEvent(Printf("[iOSGenericEvent user_ms=%lld ", event.user_ms.count()) + params + ']');
+    AppendToLastEvent(Printf("[iOSGenericEvent user_ms=%lld ", static_cast<long long>(event.user_ms.count())) + params +
+                      ']');
   }
   void operator()(const iOSBaseEvent&) {}
   // LCOV_EXCL_STOP

@@ -118,8 +118,12 @@ struct SherlockTestProcessorImpl {
       data_.results_ += ",";
     }
     if (with_idx_ts_) {
-      data_.results_ +=
-          Printf("[%llu:%llu,%llu:%llu] %i", current.index, current.us.count(), last.index, last.us.count(), entry.x);
+      data_.results_ += Printf("[%llu:%llu,%llu:%llu] %i",
+                               static_cast<unsigned long long>(current.index),
+                               static_cast<unsigned long long>(current.us.count()),
+                               static_cast<unsigned long long>(last.index),
+                               static_cast<unsigned long long>(last.us.count()),
+                               entry.x);
     } else {
       data_.results_ += current::ToString(entry.x);
     }

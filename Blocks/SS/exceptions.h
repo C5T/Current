@@ -40,15 +40,16 @@ struct InconsistentIndexOrTimestampException : Exception {
 struct InconsistentIndexException : InconsistentIndexOrTimestampException {
   using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
   InconsistentIndexException(uint64_t expected, uint64_t found)
-      : InconsistentIndexOrTimestampException(
-            current::strings::Printf("Expecting index %llu, seeing %llu.", expected, found)) {}
+      : InconsistentIndexOrTimestampException(current::strings::Printf(
+            "Expecting index %lld, seeing %lld.", static_cast<long long>(expected), static_cast<long long>(found))) {}
 };
 
 struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
   using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
   InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found)
-      : InconsistentIndexOrTimestampException(
-            current::strings::Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count())) {}
+      : InconsistentIndexOrTimestampException(current::strings::Printf("Expecting timestamp >= %lld, seeing %lld.",
+                                                                       static_cast<long long>(expected.count()),
+                                                                       static_cast<long long>(found.count()))) {}
 };
 
 }  // namespace current::ss
