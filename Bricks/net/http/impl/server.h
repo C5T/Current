@@ -55,7 +55,7 @@ SOFTWARE.
 #ifndef CURRENT_BRICKS_DEBUG_HTTP
 
 // clang-format off
-#define CURRENT_BRICKS_LOG_HTTP_EVENT(...) do ; while (false)
+#define CURRENT_BRICKS_LOG_HTTP_EVENT(...) do {} while (false)
 // clang-format on
 
 #else
@@ -77,6 +77,7 @@ namespace current {
 namespace net {
 
 #ifdef CURRENT_BRICKS_DEBUG_HTTP
+#define CURRENT_HTTP_DATA_JOURNAL_ENABLED
 struct EventsJournal {
   std::vector<std::string> events;
   bool active = false;

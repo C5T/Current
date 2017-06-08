@@ -444,7 +444,8 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
       for (uint64_t i = 0; i < chunks; ++i) {
         const uint64_t start = offset + length * i / chunks;
         const uint64_t end = offset + length * (i + 1) / chunks;
-        chunked_body += current::strings::Printf("%llX\r\n", end - start) + body.substr(start, end - start);
+        chunked_body +=
+            current::strings::Printf("%llX\r\n", static_cast<long long>(end - start)) + body.substr(start, end - start);
       }
 
       std::thread t(EchoServerThreadEntry, Socket(FLAGS_net_http_test_port));
@@ -469,6 +470,10 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
   }
 }
 
+// `CURRENT_HTTP_DATA_JOURNAL_ENABLED` will be `#define`-d if `CURRENT_BRICKS_DEBUG_HTTP`
+// was `#define`-d _the first time_ `impl/server.h` was included.
+// This is to guard against header inclusion order, particularly in the top-level `make test`.
+#ifdef CURRENT_HTTP_DATA_JOURNAL_ENABLED
 TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
   const auto EchoServerThreadEntryWithOptions =
       [](Socket s, const int initial_buffer_size, const double buffer_growth_k) {
@@ -666,6 +671,7 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
     current::net::HTTPDataJournal().Stop();
   }
 }
+#endif  // CURRENT_HTTP_DATA_JOURNAL_ENABLED
 
 TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
   std::atomic_bool wrong_chunk_size_exception_thrown(false);
