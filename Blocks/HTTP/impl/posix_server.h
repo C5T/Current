@@ -291,18 +291,24 @@ class HTTPServerPOSIX final {
             const bool path_components_empty = item_info.path_components_cref.empty();
             const std::string path_components_joined = current::strings::Join(item_info.path_components_cref, '/');
 
-            // `route_for_directory` has no trailing slash.
+            // `route_for_directory` must have leading slash and must not have trailing slash except if it's a root.
             const std::string route_for_directory =
                 options.public_route_prefix +
                 ((options.public_route_prefix == "/" || path_components_empty) ? "" : "/") +
                 path_components_joined;
+            CURRENT_ASSERT(route_for_directory == "/" || (route_for_directory.front() == '/' && route_for_directory.back() != '/'));
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (route_for_directory.find("/.") != std::string::npos) {
               return;
             }
 
-            const std::string route_for_file = route_for_directory + (route_for_directory == "/" ? "" : "/") + item_info.basename;
+            // `route_for_file` must have leading slash and must not have trailing slash.
+            const std::string route_for_file =
+                route_for_directory +
+                (route_for_directory == "/" ? "" : "/") +
+                item_info.basename;
+            CURRENT_ASSERT(route_for_file.front() == '/' && route_for_file.back() != '/');
 
             const bool is_index_file =
                 (std::find(options.index_filenames.begin(), options.index_filenames.end(), item_info.basename) !=
@@ -319,10 +325,12 @@ class HTTPServerPOSIX final {
                     ServeStaticFilesFromCannotServeMoreThanOneIndexFile(route_for_directory + ' ' + item_info.basename));
               }
 
+              // `trailing_slash_redirect_url` must have trailing slash.
               std::string trailing_slash_redirect_url =
                   options.public_url_prefix +
-                  ((options.public_url_prefix.back() == '/' || path_components_empty) ? "" : "/") +
+                  (options.public_url_prefix.back() == '/' ? "" : "/") +
                   (path_components_empty ? "" : path_components_joined + "/");
+              CURRENT_ASSERT(trailing_slash_redirect_url.length() > 0 && trailing_slash_redirect_url.back() == '/');
 
               auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true, trailing_slash_redirect_url);
               scope += Register(route_for_directory, *static_file_server);
