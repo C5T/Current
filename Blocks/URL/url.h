@@ -82,7 +82,7 @@ struct URLWithoutParametersParser {
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
   URLWithoutParametersParser(const std::string& url,
-                             const std::string& previous_scheme = kDefaultScheme,
+                             const std::string& previous_scheme = "",
                              const std::string& previous_host = "",
                              const int previous_port = 0) {
     if (url.empty()) {
@@ -90,10 +90,10 @@ struct URLWithoutParametersParser {
     }
     scheme = "";
     size_t offset_past_scheme = 0;
-    const size_t i = url.find("://");
-    if (i != std::string::npos) {
-      scheme = url.substr(0, i);
-      offset_past_scheme = i + 3;
+    const size_t colon_double_slash = url.find("://");
+    if (colon_double_slash != std::string::npos) {
+      scheme = url.substr(0, colon_double_slash);
+      offset_past_scheme = colon_double_slash + 3;
     }
 
     // TODO(dkorolev): Support `http://user:pass@host:80/` in the future.
@@ -102,12 +102,11 @@ struct URLWithoutParametersParser {
     host = url.substr(offset_past_scheme, std::min(colon, slash) - offset_past_scheme);
     if (host.empty()) {
       host = previous_host;
+      port = previous_port;
     }
 
-    if (colon < slash) {
+    if (colon != std::string::npos && colon < slash) {
       port = atoi(url.c_str() + colon + 1);
-    } else {
-      port = previous_port;
     }
 
     if (slash != std::string::npos) {
@@ -119,11 +118,15 @@ struct URLWithoutParametersParser {
       path = "/";
     }
 
-    if (scheme.empty()) {
+    if (colon_double_slash == std::string::npos) {
       if (!previous_scheme.empty()) {
         scheme = previous_scheme;
-      } else {
+      } else if (port > 0) {
         scheme = DefaultSchemeForPort(port);
+      } else if (previous_port > 0) {
+        scheme = DefaultSchemeForPort(previous_port);
+      } else {
+        scheme = kDefaultScheme;
       }
     }
 
@@ -142,7 +145,7 @@ struct URLWithoutParametersParser {
         os << scheme << "://";
       }
       os << host;
-      if (port != DefaultPortForScheme(scheme)) {
+      if (port > 0 && port != DefaultPortForScheme(scheme)) {
         os << ':' << port;
       }
       os << path;
@@ -356,7 +359,7 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
   URL(const std::string& url,
-      const std::string& previous_scheme = kDefaultScheme,
+      const std::string& previous_scheme = "",
       const std::string& previous_host = "",
       const int previous_port = 0)
       : URLParametersExtractor(url),

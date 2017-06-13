@@ -338,7 +338,7 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
 
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
-TEST(HTTPAPI, Redirect) {
+TEST(HTTPAPI, RedirectToRelativeURL) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/from",
                                    [](Request r) {
@@ -346,6 +346,28 @@ TEST(HTTPAPI, Redirect) {
                                        HTTPResponseCode.Found,
                                        current::net::constants::kDefaultHTMLContentType,
                                        Headers({{"Location", "/to"}}));
+                                   }) +
+                     HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
+  // Redirect not allowed by default.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
+  // Redirect allowed when `.AllowRedirects()` is set.
+  const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("Done.", response.body);
+  EXPECT_EQ(Printf("http://localhost:%d/to", FLAGS_net_api_test_port), response.url);
+}
+
+TEST(HTTPAPI, RedirectToFullURL) {
+  // TODO(sompylasar): Cannot test redirect to a different port because the HTTP client
+  // is following the redirect and tries to connect to the redirect target,
+  // and we do not have a second port to occupy for the tests.
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/from",
+                                   [](Request r) {
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", Printf("http://localhost:%d/to", FLAGS_net_api_test_port)}}));
                                    }) +
                      HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
@@ -382,7 +404,8 @@ TEST(HTTPAPI, RedirectLoop) {
                                        current::net::constants::kDefaultHTMLContentType,
                                        Headers({{"Location", "/p1"}}));
                                    });
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port)).AllowRedirects()),
+               HTTPRedirectLoopException);
 }
 #endif
 
@@ -985,7 +1008,7 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBase) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefix) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1068,13 +1091,60 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBase) {
             static_cast<int>(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/.sub_sub_dir_hidden", FLAGS_net_api_test_port))).code));
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomURLBaseWithTrailingSlash) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixAndPublicUrlPrefix) {
+  FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
+  const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
+  const std::string sub_dir = FileSystem::JoinPath(dir, "sub_dir");
+  const std::string sub_sub_dir = FileSystem::JoinPath(sub_dir, "sub_sub_dir");
+  FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::MkDir(sub_dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::MkDir(sub_sub_dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(dir, "index.html").c_str());
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(sub_dir, "index.html").c_str());
+  FileSystem::WriteStringToFile("<h1>HTML index</h1>", FileSystem::JoinPath(sub_sub_dir, "index.html").c_str());
+
+  // Below, use `localhost`, not arbitrary domain name, because the HTTP client follows
+  // the redirect and tries to resolve its target domain name.
+  // Below, do not assert on response code and body, they will be HTTP 404 for the redirected URL.
+
+  const auto scope = HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/something", "http://localhost/anything"});
+
+  // Root index file.
+  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port))).body);
+
+  // Redirect from directory without trailing slash to directory with trailing slash.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port))),
+               HTTPRedirectNotAllowedException);
+  const auto dir_response = HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ("http://localhost/anything/", dir_response.url);
+
+  // Subdirectory index file.
+  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port))).body);
+
+  // Redirect from subdirectory without trailing slash to subdirectory with trailing slash.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port))),
+               HTTPRedirectNotAllowedException);
+  const auto sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ("http://localhost/anything/sub_dir/", sub_dir_response.url);
+
+  // Subsubdirectory index file.
+  EXPECT_EQ("<h1>HTML index</h1>", HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port))).body);
+
+  // Redirect from subsubdirectory without trailing slash to subsubdirectory with trailing slash.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port))),
+               HTTPRedirectNotAllowedException);
+  const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ("http://localhost/anything/sub_dir/sub_sub_dir/", sub_sub_dir_response.url);
+}
+
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixWithTrailingSlash) {
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/"}),
                PathEndsWithSlash);
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsEmptyURLBase) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsEmptyPublicRoutePrefix) {
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{""}),
                PathDoesNotStartWithSlash);
@@ -1087,7 +1157,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomIndexFiles) {
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("TXT index", FileSystem::JoinPath(dir, "index.txt").c_str());
   const auto scope =
-      HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/", {"index.txt"}});
+      HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/", "", {"index.txt"}});
   EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/index.txt", FLAGS_net_api_test_port))).body);
 }

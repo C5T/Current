@@ -49,7 +49,7 @@ TEST(URLTest, SmokeTest) {
   u = URL("www.google.com:8080");
   EXPECT_EQ("www.google.com", u.host);
   EXPECT_EQ("/", u.path);
-  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ("", u.scheme);  // Since there is no rule for port "8080", no scheme is returned.
   EXPECT_EQ(8080, u.port);
 
   u = URL("meh://www.google.com:27960");
@@ -87,6 +87,12 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+
+  u = URL("/test");
+  EXPECT_EQ("", u.host);
+  EXPECT_EQ("/test", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
 }
 
 TEST(URLTest, CompositionTest) {
@@ -95,42 +101,58 @@ TEST(URLTest, CompositionTest) {
   EXPECT_EQ("http://www.google.com/", URL("www.google.com:80").ComposeURL());
   EXPECT_EQ("http://www.google.com/", URL("http://www.google.com").ComposeURL());
   EXPECT_EQ("http://www.google.com/", URL("http://www.google.com:80").ComposeURL());
-  EXPECT_EQ("http://www.google.com:8080/", URL("www.google.com:8080").ComposeURL());
+  EXPECT_EQ("www.google.com:8080/", URL("www.google.com:8080").ComposeURL());  // Since there is no rule for port "8080", no scheme is returned.
   EXPECT_EQ("http://www.google.com:8080/", URL("http://www.google.com:8080").ComposeURL());
   EXPECT_EQ("meh://www.google.com:8080/", URL("meh://www.google.com:8080").ComposeURL());
 }
 
-TEST(URLTest, DerivesSchemeFromPreviousPort) {
+TEST(URLTest, DerivesSchemeFromPort) {
   // Smoke tests for non-default scheme, setting the 2nd parameter to the URL() constructor.
-  EXPECT_EQ("www.google.com/", URL("www.google.com", "").ComposeURL());
-  EXPECT_EQ("telnet://www.google.com:23/", URL("www.google.com", "telnet", "", 23).ComposeURL());
+  EXPECT_EQ("http://www.google.com/", URL("www.google.com", "").ComposeURL());
+  EXPECT_EQ("telnet://www.google.com/", URL("www.google.com", "telnet").ComposeURL());
+  EXPECT_EQ("telnet://www.google.com:23/", URL("www.google.com:23", "telnet").ComposeURL());
   // Keeps the scheme if it was explicitly specified, even for the port that maps to a different scheme.
-  EXPECT_EQ("foo://www.google.com:80/", URL("foo://www.google.com", "", "", 80).ComposeURL());
+  EXPECT_EQ("foo://www.google.com/", URL("foo://www.google.com").ComposeURL());
+  EXPECT_EQ("foo://www.google.com:80/", URL("foo://www.google.com:80").ComposeURL());
   // Maps port 80 into "http://".
+  EXPECT_EQ("http://www.google.com/", URL("www.google.com:80").ComposeURL());
+  EXPECT_EQ("http://www.google.com/", URL("www.google.com:80", "").ComposeURL());
+  EXPECT_EQ("http://www.google.com/", URL("www.google.com:80", "", "", 80).ComposeURL());
   EXPECT_EQ("http://www.google.com/", URL("www.google.com", "", "", 80).ComposeURL());
   // Maps port 443 into "https://".
+  EXPECT_EQ("https://www.google.com/", URL("www.google.com:443").ComposeURL());
+  EXPECT_EQ("https://www.google.com/", URL("www.google.com:443", "").ComposeURL());
+  EXPECT_EQ("https://www.google.com/", URL("www.google.com:443", "", "", 443).ComposeURL());
   EXPECT_EQ("https://www.google.com/", URL("www.google.com", "", "", 443).ComposeURL());
   // Assumes port 80 for "http://".
-  EXPECT_EQ("http://www.google.com:79/", URL("www.google.com", "http", "", 79).ComposeURL());
-  EXPECT_EQ("http://www.google.com/", URL("www.google.com", "http", "", 80).ComposeURL());
-  EXPECT_EQ("http://www.google.com:81/", URL("www.google.com", "http", "", 81).ComposeURL());
+  EXPECT_EQ("http://www.google.com:79/", URL("http://www.google.com:79").ComposeURL());
+  EXPECT_EQ("http://www.google.com/", URL("http://www.google.com:80").ComposeURL());
+  EXPECT_EQ("http://www.google.com:81/", URL("http://www.google.com:81").ComposeURL());
   // Assumes port 443 for "https://".
-  EXPECT_EQ("https://www.google.com:442/", URL("www.google.com", "https", "", 442).ComposeURL());
-  EXPECT_EQ("https://www.google.com/", URL("www.google.com", "https", "", 443).ComposeURL());
-  EXPECT_EQ("https://www.google.com:444/", URL("www.google.com", "https", "", 444).ComposeURL());
-  // Since there is no rule from "23" to "telnet", no scheme is specified.
-  EXPECT_EQ("www.google.com:23/", URL("www.google.com", "", "", 23).ComposeURL());
+  EXPECT_EQ("https://www.google.com:442/", URL("https://www.google.com:442").ComposeURL());
+  EXPECT_EQ("https://www.google.com/", URL("https://www.google.com:443").ComposeURL());
+  EXPECT_EQ("https://www.google.com:444/", URL("https://www.google.com:444").ComposeURL());
+  // Since there is no rule for port "23", no scheme is returned.
+  EXPECT_EQ("www.google.com:23/", URL("www.google.com:23").ComposeURL());
 }
 
 TEST(URLTest, RedirectPreservesSchemeHostAndPortTest) {
+  // Relative URL preserves scheme, host, port.
   EXPECT_EQ("http://localhost/foo", URL("/foo", URL("localhost")).ComposeURL());
   EXPECT_EQ("meh://localhost/foo", URL("/foo", URL("meh://localhost")).ComposeURL());
-  EXPECT_EQ("http://localhost:8080/foo", URL("/foo", URL("localhost:8080")).ComposeURL());
-  EXPECT_EQ("meh://localhost:8080/foo", URL("/foo", URL("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("meh://localhost:27960/foo", URL(":27960/foo", URL("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("ftp://foo:8080/", URL("ftp://foo", URL("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("ftp://localhost:8080/bar", URL("ftp:///bar", URL("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("blah://new_host:5000/foo", URL("blah://new_host/foo", URL("meh://localhost:5000")).ComposeURL());
+  // Since there is no rule for port "8080", and no previous scheme, no scheme is returned.
+  EXPECT_EQ("localhost:8080/empty_all_with_previous_empty_scheme", URL("/empty_all_with_previous_empty_scheme", URL("localhost:8080")).ComposeURL());
+  EXPECT_EQ("meh://localhost:8080/empty_all_with_previous_all", URL("/empty_all_with_previous_all", URL("meh://localhost:8080")).ComposeURL());
+
+  // Port-only full URL replaces port and preserves host from previous URL.
+  EXPECT_EQ("meh://localhost:27960/empty_scheme_host", URL(":27960/empty_scheme_host", URL("meh://localhost:8080")).ComposeURL());
+
+  // Schema-only full URL preserves host and port from previous URL.
+  EXPECT_EQ("ftp://localhost:8080/empty_host", URL("ftp:///empty_host", URL("meh://localhost:8080")).ComposeURL());
+
+  // Full URL replaces scheme, host, port, does not preserve anything from previous URL.
+  EXPECT_EQ("ftp://host_no_port_path/", URL("ftp://host_no_port_path", URL("meh://localhost:8080")).ComposeURL());
+  EXPECT_EQ("blah://new_host/foo", URL("blah://new_host/foo", URL("meh://localhost:5000")).ComposeURL());
   EXPECT_EQ("blah://new_host:6000/foo", URL("blah://new_host:6000/foo", URL("meh://localhost:5000")).ComposeURL());
 }
 
