@@ -76,7 +76,7 @@ struct URLWithoutParametersParser {
   std::string host = "";
   mutable std::string path = "/";
   std::string scheme = kDefaultScheme;
-  int port = 0;
+  uint16_t port = 0;
 
   URLWithoutParametersParser() = default;
 
@@ -84,7 +84,7 @@ struct URLWithoutParametersParser {
   URLWithoutParametersParser(const std::string& url,
                              const std::string& previous_scheme = "",
                              const std::string& previous_host = "",
-                             const int previous_port = 0) {
+                             const uint16_t previous_port = 0) {
     if (url.empty()) {
       CURRENT_THROW(EmptyURLException());
     }
@@ -106,7 +106,7 @@ struct URLWithoutParametersParser {
     }
 
     if (colon != std::string::npos && colon < slash) {
-      port = atoi(url.c_str() + colon + 1);
+      port = static_cast<uint16_t>(atoi(url.c_str() + colon + 1));
     }
 
     if (slash != std::string::npos) {
@@ -361,7 +361,7 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
   URL(const std::string& url,
       const std::string& previous_scheme = "",
       const std::string& previous_host = "",
-      const int previous_port = 0)
+      const uint16_t previous_port = 0)
       : URLParametersExtractor(url),
         URLWithoutParametersParser(
             URLParametersExtractor::url_without_parameters, previous_scheme, previous_host, previous_port) {}
