@@ -120,7 +120,12 @@ struct StaticFileServer {
       : content(std::move(content)),
         content_type(std::move(content_type)),
         serves_directory(serves_directory),
-        trailing_slash_redirect_url(trailing_slash_redirect_url) {}
+        trailing_slash_redirect_url(trailing_slash_redirect_url) {
+    // TODO(sompylasar): Test the empty `trailing_slash_redirect_url` case when this class goes public.
+    // For now, make `trailing_slash_redirect_url` mandatory for serving directories.
+    CURRENT_ASSERT((serves_directory ? !trailing_slash_redirect_url.empty() : true));
+  }
+
   void operator()(Request r) {
     if (r.method == "GET") {
       if (serves_directory == r.url_path_had_trailing_slash) {
@@ -135,13 +140,21 @@ struct StaticFileServer {
         r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
                                       HTTPResponseCode.NotFound,
                                       current::net::constants::kDefaultHTMLContentType);
-      } else {
+      } else if (!trailing_slash_redirect_url.empty()) {
         // Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
         // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base
         // URL for the index file served at that directory URL (without filename).
         // See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
         r.connection.SendHTTPResponse(
             "", HTTPResponseCode.Found, content_type, current::net::http::Headers({{"Location", trailing_slash_redirect_url}}));
+      } else {
+        // TODO(sompylasar): Test the empty `trailing_slash_redirect_url` case this class goes public: this piece.
+        // Respond with HTTP 404 Not Found if we're serving a directory, don't have a trailing slash,
+        // and don't know where to redirect that. Example: `/static`.
+        // Note: This should never happen with `ServeStaticFilesFrom` because for directories it always provides the URL.
+        r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
+                                      HTTPResponseCode.NotFound,
+                                      current::net::constants::kDefaultHTMLContentType);
       }
     } else {
       r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
