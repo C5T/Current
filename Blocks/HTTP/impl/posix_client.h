@@ -80,7 +80,7 @@ class GenericHTTPClientPOSIX final {
       redirected = false;
       const std::string composed_url = parsed_url.ComposeURL();
       if (all_urls.count(composed_url)) {
-        CURRENT_THROW(current::net::HTTPRedirectLoopException());
+        CURRENT_THROW(current::net::HTTPRedirectLoopException(current::strings::Join(all_urls, ' ') + ' ' + composed_url));
       }
       all_urls.insert(composed_url);
       current::net::Connection connection(
