@@ -275,11 +275,14 @@ class HTTPServerPOSIX final {
 
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
+            const bool path_components_empty = item_info.path_components_cref.empty();
+            const std::string path_components_joined = current::strings::Join(item_info.path_components_cref, '/');
+
             // `route_for_directory` has no trailing slash.
             const std::string route_for_directory =
                 options.public_route_prefix +
-                ((options.public_route_prefix == "/" || item_info.path_components_cref.empty()) ? "" : "/") +
-                current::strings::Join(item_info.path_components_cref, '/');
+                ((options.public_route_prefix == "/" || path_components_empty) ? "" : "/") +
+                path_components_joined;
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (route_for_directory.find("/.") != std::string::npos) {
@@ -305,8 +308,9 @@ class HTTPServerPOSIX final {
 
               std::string trailing_slash_redirect_url =
                   options.public_url_prefix +
-                  ((options.public_url_prefix.back() == '/' || item_info.path_components_cref.empty()) ? "" : "/") +
-                  current::strings::Join(item_info.path_components_cref, '/') + '/';
+                  ((options.public_url_prefix.back() == '/' || path_components_empty) ? "" : "/") +
+                  (path_components_empty ? "" : path_components_joined + "/");
+
               auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true, trailing_slash_redirect_url);
               scope += Register(route_for_directory, *static_file_server);
               static_file_servers_.push_back(std::move(static_file_server));
