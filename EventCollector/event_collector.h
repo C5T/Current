@@ -89,7 +89,7 @@ class EventCollectorHTTPServer {
                                             std::lock_guard<std::mutex> lock(mutex_);
                                             entry.t = now.count();
                                             entry.m = r.method;
-                                            entry.u = r.url.url_without_parameters;
+                                            entry.u = r.url.ComposeURLWithoutParameters();
                                             entry.q = r.url.AllQueryParameters();
                                             entry.h = r.headers.AsMap();
                                             entry.c = r.headers.CookiesAsString();

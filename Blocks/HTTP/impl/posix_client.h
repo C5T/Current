@@ -135,7 +135,7 @@ class GenericHTTPClientPOSIX final {
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !http_request_->location.empty()) {
         // Note: This is by no means a complete redirect implementation.
         redirected = true;
-        parsed_url = URL(http_request_->location, parsed_url);
+        parsed_url.RedirectToURL(http_request_->location);
         response_url_after_redirects_ = parsed_url.ComposeURL();
       }
     } while (redirected);

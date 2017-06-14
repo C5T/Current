@@ -123,7 +123,7 @@ class MidichloriansHTTPServer {
             return r.url.AllQueryParameters();
           } else if (r.method == "POST") {
             is_allowed_method = true;
-            extracted_q = current::url::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
+            extracted_q = current::url::URL("/?" + r.body).AllQueryParameters();
             for (const auto& cit : r.url.AllQueryParameters()) {
               extracted_q.insert(cit);
             }
