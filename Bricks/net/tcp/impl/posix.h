@@ -517,10 +517,10 @@ inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv =
   hints.ai_protocol = IPPROTO_TCP;
   const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &result);
   if (!result) {
-    CURRENT_THROW(SocketResolveAddressException());
+    CURRENT_THROW(SocketResolveAddressException(host + ' ' + serv));
   } else if (retval) {
     freeaddrinfo(result);
-    CURRENT_THROW(SocketResolveAddressException(gai_strerror(retval)));
+    CURRENT_THROW(SocketResolveAddressException(host + ' ' + serv + ' ' + gai_strerror(retval)));
   }
   return addrinfo_t(result);
 }
