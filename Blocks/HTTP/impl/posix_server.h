@@ -88,12 +88,21 @@ struct ServeStaticFilesFromCannotServeMoreThanOneIndexFile : ServeStaticFilesExc
 };
 
 struct ServeStaticFilesFromOptions {
-  std::string url_base;
+  // HTTP server route prefix.
+  std::string public_route_prefix;
+
+  // User-facing URL prefix. Used to prefix the route in the trailing slash redirects.
+  std::string public_url_prefix;
+
+  // Names of files to serve if a directory URL is requested, in the priority order (first found will be served).
   std::vector<std::string> index_filenames;
 
-  explicit ServeStaticFilesFromOptions(std::string url_base = "/",
-                                       std::vector<std::string> index_filenames = {"index.html", "index.htm"})
-      : url_base(std::move(url_base)), index_filenames(std::move(index_filenames)) {}
+  explicit ServeStaticFilesFromOptions(std::string public_route_prefix_in = "/",
+                                       std::string public_url_prefix_in = "",
+                                       std::vector<std::string> index_filenames_in = {"index.html", "index.htm"})
+    : public_route_prefix(std::move(public_route_prefix_in)),
+      public_url_prefix(public_url_prefix_in.empty() ? public_route_prefix : std::move(public_url_prefix_in)),
+      index_filenames(std::move(index_filenames_in)) {}
 };
 
 // Helper to serve a static file.
@@ -101,32 +110,51 @@ struct ServeStaticFilesFromOptions {
 struct StaticFileServer {
   std::string content;
   std::string content_type;
-  bool url_path_points_to_directory;
-  StaticFileServer(std::string content, std::string content_type, bool url_path_points_to_directory)
+  bool serves_directory;
+  std::string trailing_slash_redirect_url;
+
+  StaticFileServer(std::string content,
+                   std::string content_type,
+                   bool serves_directory,
+                   std::string trailing_slash_redirect_url = "")
       : content(std::move(content)),
         content_type(std::move(content_type)),
-        url_path_points_to_directory(url_path_points_to_directory) {}
+        serves_directory(serves_directory),
+        trailing_slash_redirect_url(trailing_slash_redirect_url) {
+    // TODO(sompylasar): Test the empty `trailing_slash_redirect_url` case when this class goes public.
+    // For now, make `trailing_slash_redirect_url` mandatory for serving directories.
+    CURRENT_ASSERT((serves_directory ? !trailing_slash_redirect_url.empty() : true));
+  }
+
   void operator()(Request r) {
     if (r.method == "GET") {
-      if (url_path_points_to_directory == r.url_path_had_trailing_slash) {
+      if (serves_directory == r.url_path_had_trailing_slash) {
         // 1) Respond with the content if we're serving a directory and have a trailing slash. Example: `/static/`
         // (`static` is a directory, not a file).
         // 2) Respond with the content if we're serving a file and don't have a trailing slash. Example:
         // `/static/index.html`, `/static/file.png`.
         r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, content_type);
-      } else if (!url_path_points_to_directory && r.url_path_had_trailing_slash) {
+      } else if (!serves_directory && r.url_path_had_trailing_slash) {
         // Respond with HTTP 404 Not Found if we're serving a file and have a trailing slash. Example:
         // `/static/index.html/`.
         r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
                                       HTTPResponseCode.NotFound,
                                       current::net::constants::kDefaultHTMLContentType);
-      } else {
+      } else if (!trailing_slash_redirect_url.empty()) {
         // Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
         // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base
         // URL for the index file served at that directory URL (without filename).
         // See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
         r.connection.SendHTTPResponse(
-            "", HTTPResponseCode.Found, content_type, current::net::http::Headers({{"Location", r.url.path + '/'}}));
+            "", HTTPResponseCode.Found, content_type, current::net::http::Headers({{"Location", trailing_slash_redirect_url}}));
+      } else {
+        // TODO(sompylasar): Test the empty `trailing_slash_redirect_url` case this class goes public: this piece.
+        // Respond with HTTP 404 Not Found if we're serving a directory, don't have a trailing slash,
+        // and don't know where to redirect that. Example: `/static`.
+        // Note: This should never happen with `ServeStaticFilesFrom` because for directories it always provides the URL.
+        r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
+                                      HTTPResponseCode.NotFound,
+                                      current::net::constants::kDefaultHTMLContentType);
       }
     } else {
       r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
@@ -247,7 +275,7 @@ class HTTPServerPOSIX final {
 
   HTTPRoutesScope ServeStaticFilesFrom(const std::string& dir,
                                        const ServeStaticFilesFromOptions& options = ServeStaticFilesFromOptions()) {
-    ValidateURLPath(options.url_base);
+    ValidateRoute(options.public_route_prefix);
 
     HTTPRoutesScope scope;
     current::FileSystem::ScanDir(
@@ -260,19 +288,29 @@ class HTTPServerPOSIX final {
 
           const std::string content_type(current::net::GetFileMimeType(item_info.basename, ""));
           if (!content_type.empty()) {
-            // `url_dirname` has no trailing slash.
-            const std::string url_dirname =
-                options.url_base + ((options.url_base == "/" || item_info.path_components_cref.empty()) ? "" : "/") +
-                current::strings::Join(item_info.path_components_cref, '/');
+            const bool path_components_empty = item_info.path_components_cref.empty();
+            const std::string path_components_joined = current::strings::Join(item_info.path_components_cref, '/');
+
+            // `route_for_directory` must have leading slash and must not have trailing slash except if it's a root.
+            const std::string route_for_directory =
+                options.public_route_prefix +
+                ((options.public_route_prefix == "/" || path_components_empty) ? "" : "/") +
+                path_components_joined;
+            CURRENT_ASSERT(route_for_directory == "/" || (route_for_directory.front() == '/' && route_for_directory.back() != '/'));
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
-            if (url_dirname.find("/.") != std::string::npos) {
+            if (route_for_directory.find("/.") != std::string::npos) {
               return;
             }
 
-            const std::string url_pathname = url_dirname + (url_dirname == "/" ? "" : "/") + item_info.basename;
+            // `route_for_file` must have leading slash and must not have trailing slash.
+            const std::string route_for_file =
+                route_for_directory +
+                (route_for_directory == "/" ? "" : "/") +
+                item_info.basename;
+            CURRENT_ASSERT(route_for_file.front() == '/' && route_for_file.back() != '/');
 
-            const bool is_index =
+            const bool is_index_file =
                 (std::find(options.index_filenames.begin(), options.index_filenames.end(), item_info.basename) !=
                  options.index_filenames.end());
 
@@ -280,20 +318,27 @@ class HTTPServerPOSIX final {
             // that keeps a map from a (SHA256) hash to the contents.
             std::string content = current::FileSystem::ReadFileAsString(item_info.pathname);
 
-            // If it's an index file, serve it at the route without filename, too.
-            if (is_index) {
-              if (handlers_.find(url_dirname) != handlers_.end()) {
+            // If it's an index file, serve it additionally at the route without the filename (i.e. the directory route).
+            if (is_index_file) {
+              if (handlers_.find(route_for_directory) != handlers_.end()) {
                 CURRENT_THROW(
-                    ServeStaticFilesFromCannotServeMoreThanOneIndexFile(url_dirname + ' ' + item_info.basename));
+                    ServeStaticFilesFromCannotServeMoreThanOneIndexFile(route_for_directory + ' ' + item_info.basename));
               }
 
-              auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true);
-              scope += Register(url_dirname, *static_file_server);
+              // `trailing_slash_redirect_url` must have trailing slash.
+              std::string trailing_slash_redirect_url =
+                  options.public_url_prefix +
+                  (options.public_url_prefix.back() == '/' ? "" : "/") +
+                  (path_components_empty ? "" : path_components_joined + "/");
+              CURRENT_ASSERT(trailing_slash_redirect_url.length() > 0 && trailing_slash_redirect_url.back() == '/');
+
+              auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true, trailing_slash_redirect_url);
+              scope += Register(route_for_directory, *static_file_server);
               static_file_servers_.push_back(std::move(static_file_server));
             }
 
             auto static_file_server = std::make_unique<StaticFileServer>(std::move(content), content_type, false);
-            scope += Register(url_pathname, *static_file_server);
+            scope += Register(route_for_file, *static_file_server);
             static_file_servers_.push_back(std::move(static_file_server));
           } else {
             CURRENT_THROW(ServeStaticFilesFromCanNotServeStaticFilesOfUnknownMIMEType(item_info.basename));
@@ -422,7 +467,7 @@ class HTTPServerPOSIX final {
     }
   }
 
-  void ValidateURLPath(const std::string& path) {
+  void ValidateRoute(const std::string& path) {
     if (path.empty() || path[0] != '/') {
       CURRENT_THROW(PathDoesNotStartWithSlash("HTTP URL path does not start with a slash: `" + path + "`."));
     }
@@ -444,7 +489,7 @@ class HTTPServerPOSIX final {
     }
     // LCOV_EXCL_STOP
 
-    ValidateURLPath(path);
+    ValidateRoute(path);
 
     {
       // Step 1: Confirm the request is valid.
