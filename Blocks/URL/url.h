@@ -70,80 +70,89 @@ namespace impl {
 
 namespace {
 const char* const kDefaultScheme = "http";
+const char* const kDefaultHost = "localhost";
 }
 
 struct URLWithoutParametersParser {
   std::string host = "";
   mutable std::string path = "/";
   std::string scheme = kDefaultScheme;
-  int port = 0;
+  uint16_t port = 0;
+  std::string username = "";
+  std::string password = "";
 
+ protected:
   URLWithoutParametersParser() = default;
 
-  // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URLWithoutParametersParser(const std::string& url,
-                             const std::string& previous_scheme = kDefaultScheme,
-                             const std::string& previous_host = "",
-                             const int previous_port = 0) {
+  void ParseURLWithoutParameters(const std::string& url) {
     if (url.empty()) {
       CURRENT_THROW(EmptyURLException());
     }
+
+    // Can parse a full URL: `scheme://host.name:80/path`, `scheme://host.name/path`.
+    // Can parse a protocol-relative URL: `//host.name:80/path`, `//host.name/path`.
+    // Can parse a username-password pair: `http://user:pass@host.name/`.
+    // Can parse a username only: `http://user@host.name/`.
+    // Can parse a port-only URL: `:12345/path`.
+    // Can parse a relative URL: `/path/anything`.
+    // Query string and fragment identifier are parsed separately in `URLParametersExtractor`.
+
     scheme = "";
-    size_t offset_past_scheme = 0;
-    const size_t i = url.find("://");
-    if (i != std::string::npos) {
-      scheme = url.substr(0, i);
-      offset_past_scheme = i + 3;
+    size_t parsed_offset = 0;
+    const size_t double_slash = url.find("//");
+    if (double_slash != std::string::npos && (double_slash == 0 || url[double_slash - 1] == ':')) {
+      scheme = (double_slash == 0 ? "" : url.substr(0, double_slash - 1));
+      parsed_offset = double_slash + 2;
     }
 
-    // TODO(dkorolev): Support `http://user:pass@host:80/` in the future.
-    const size_t colon = url.find(':', offset_past_scheme);
-    const size_t slash = url.find('/', offset_past_scheme);
-    host = url.substr(offset_past_scheme, std::min(colon, slash) - offset_past_scheme);
-    if (host.empty()) {
-      host = previous_host;
+    const size_t host_end = url.find('/', parsed_offset);
+    const size_t at_sign = url.find('@', parsed_offset);
+    if (at_sign != std::string::npos && at_sign < host_end) {
+      const size_t user_pass_colon = url.find(':', parsed_offset);
+      if (user_pass_colon != std::string::npos && user_pass_colon < at_sign) {
+        username = url.substr(parsed_offset, user_pass_colon - parsed_offset);
+        password = url.substr(user_pass_colon + 1, at_sign - (user_pass_colon + 1));
+      } else {
+        username = url.substr(parsed_offset, at_sign - parsed_offset);
+      }
+      parsed_offset = at_sign + 1;
     }
 
-    if (colon < slash) {
-      port = atoi(url.c_str() + colon + 1);
+    const size_t port_colon = url.find(':', parsed_offset);
+    if (port_colon != std::string::npos && port_colon < host_end) {
+      host = url.substr(parsed_offset, port_colon - parsed_offset);
+      port = static_cast<uint16_t>(atoi(url.c_str() + port_colon + 1));
     } else {
-      port = previous_port;
+      host = url.substr(parsed_offset, host_end - parsed_offset);
     }
 
-    if (slash != std::string::npos) {
-      path = url.substr(slash);
+    if (host_end != std::string::npos) {
+      path = url.substr(host_end);
     } else {
       path = "";
     }
     if (path.empty()) {
       path = "/";
     }
-
-    if (scheme.empty()) {
-      if (!previous_scheme.empty()) {
-        scheme = previous_scheme;
-      } else {
-        scheme = DefaultSchemeForPort(port);
-      }
-    }
-
-    if (port == 0) {
-      port = DefaultPortForScheme(scheme);
-    }
   }
-
-  URLWithoutParametersParser(const std::string& url, const URLWithoutParametersParser& previous)
-      : URLWithoutParametersParser(url, previous.scheme, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     if (!host.empty()) {
+      const std::string scheme_for_compose = (!scheme.empty() ? scheme : (port > 0 ? DefaultSchemeForPort(port) : kDefaultScheme));
+      const uint16_t port_for_compose = (port > 0 && port != DefaultPortForScheme(scheme_for_compose) ? port : 0);
+
       std::ostringstream os;
-      if (!scheme.empty()) {
-        os << scheme << "://";
+      os << (!scheme_for_compose.empty() ? scheme_for_compose : kDefaultScheme) << "://";
+      if (!username.empty()) {
+        os << username;
+        if (!password.empty()) {
+          os << ':' << password;
+        }
+        os << '@';
       }
       os << host;
-      if (port != DefaultPortForScheme(scheme)) {
-        os << ':' << port;
+      if (port_for_compose > 0) {
+        os << ':' << port_for_compose;
       }
       os << path;
       return os.str();
@@ -153,6 +162,7 @@ struct URLWithoutParametersParser {
     }
   }
 
+ public:
   static int DefaultPortForScheme(const std::string& scheme) {
     // We don't really "support" other schemes yet -- D.K.
     if (scheme == "http") {
@@ -176,17 +186,20 @@ struct URLWithoutParametersParser {
 };
 
 struct URLParametersExtractor {
+ protected:
   URLParametersExtractor() = default;
-  URLParametersExtractor(std::string url) {
+
+  void ExtractURLParametersFromURL(std::string url, size_t& parameters_start_index) {
+    parameters_start_index = url.length();
     const size_t pound_sign_index = url.find('#');
     if (pound_sign_index != std::string::npos) {
       fragment = url.substr(pound_sign_index + 1);
-      url = url.substr(0, pound_sign_index);
+      parameters_start_index = pound_sign_index;
     }
     const size_t question_mark_index = url.find('?');
-    if (question_mark_index != std::string::npos) {
+    if (question_mark_index != std::string::npos && question_mark_index < pound_sign_index) {
       auto& v = parameters_vector;
-      current::strings::Split(url.substr(question_mark_index + 1),
+      current::strings::Split(url.substr(question_mark_index + 1, parameters_start_index - (question_mark_index + 1)),
                               '&',
                               [&v](const std::string& chunk) {
                                 const size_t i = chunk.find('=');
@@ -201,38 +214,51 @@ struct URLParametersExtractor {
         it.second = DecodeURIComponent(it.second);
       }
       query = QueryParameters(parameters_vector);
-      url = url.substr(0, question_mark_index);
+      parameters_start_index = question_mark_index;
     }
-    url_without_parameters = url;
   }
 
+ public:
   static bool IsHexDigit(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
 
+  static bool IsURIComponentSpecialCharacter(char c) {
+    // https://github.com/lyokato/cpp-urilite/blob/723083f98ddf42f2b610b62444c598236b5ce3e8/include/urilite.h#L52-L65
+    // RFC2396 unreserved?
+    return ((c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '-'  || c == '_'  || c == '.' || c == '~'
+            || c == '!'  || c == '\'' || c == '(' || c == ')');
+  }
+
   static std::string DecodeURIComponent(const std::string& encoded) {
-    std::string decoded;
+    std::ostringstream decoded;
     for (size_t i = 0; i < encoded.length(); ++i) {
-      if (i + 3 <= encoded.length() && encoded[i] == '%' && IsHexDigit(encoded[i + 1]) && IsHexDigit(encoded[i + 2])) {
-        decoded += static_cast<char>(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));
+      const char c = encoded[i];
+      if (c == '+') {
+        decoded << ' ';
+      } else if (c == '%' && i + 3 <= encoded.length() && IsHexDigit(encoded[i + 1]) && IsHexDigit(encoded[i + 2])) {
+        decoded << static_cast<char>(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));
         i += 2;
-      } else if (encoded[i] == '+') {
-        decoded += ' ';
       } else {
-        decoded += encoded[i];
+        decoded << c;
       }
     }
-    return decoded;
+    return decoded.str();
   }
 
   static std::string EncodeURIComponent(const std::string& decoded) {
-    std::string encoded;
+    std::ostringstream encoded;
     for (const char c : decoded) {
-      if (::isalpha(c) || ::isdigit(c)) {
-        encoded += c;
+      if (IsURIComponentSpecialCharacter(c)) {
+        encoded << c;
+      } else if (c == ' ') {
+        encoded << "%20";
       } else {
-        encoded += current::strings::Printf("%%%02X", static_cast<int>(c));
+        encoded << current::strings::Printf("%%%02X", static_cast<int>(c));
       }
     }
-    return encoded;
+    return encoded.str();
   }
 
   std::string ComposeParameters() const {
@@ -348,24 +374,71 @@ struct URLParametersExtractor {
   std::vector<std::pair<std::string, std::string>> parameters_vector;
   QueryParameters query;
   std::string fragment;
-  std::string url_without_parameters;
 };
 
 struct URL : URLParametersExtractor, URLWithoutParametersParser {
   URL() = default;
 
-  // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URL(const std::string& url,
-      const std::string& previous_scheme = kDefaultScheme,
-      const std::string& previous_host = "",
-      const int previous_port = 0)
-      : URLParametersExtractor(url),
-        URLWithoutParametersParser(
-            URLParametersExtractor::url_without_parameters, previous_scheme, previous_host, previous_port) {}
+  URL(const std::string& url) {
+    size_t parameters_start_index = 0;
+    URLParametersExtractor::ExtractURLParametersFromURL(url, parameters_start_index);
+    URLWithoutParametersParser::ParseURLWithoutParameters(url.substr(0, parameters_start_index));
+  }
 
-  URL(const std::string& url, const URLWithoutParametersParser& previous)
-      : URLParametersExtractor(url),
-        URLWithoutParametersParser(URLParametersExtractor::url_without_parameters, previous) {}
+  URL& FillWithDefaults() {
+    if (scheme.empty()) {
+      if (port == 0) {
+        scheme = kDefaultScheme;
+      } else {
+        scheme = DefaultSchemeForPort(port);
+        if (scheme.empty()) {
+          scheme = kDefaultScheme;
+        }
+      }
+    }
+
+    if (host.empty()) {
+      host = kDefaultHost;
+    }
+
+    if (port == 0) {
+      port = DefaultPortForScheme(scheme);
+    }
+
+    return *this;
+  }
+
+  URL& RedirectToURL(const URL& target_url_parsed) {
+    if (!target_url_parsed.scheme.empty()) {
+      scheme = target_url_parsed.scheme;
+    }
+
+    if (!target_url_parsed.host.empty()) {
+      host = target_url_parsed.host;
+      port = target_url_parsed.port;
+    } else if (target_url_parsed.port > 0) {
+      port = target_url_parsed.port;
+    }
+
+    username = target_url_parsed.username;
+    password = target_url_parsed.password;
+
+    path = target_url_parsed.path;
+
+    parameters_vector = target_url_parsed.parameters_vector;
+    query = target_url_parsed.query;
+    fragment = target_url_parsed.fragment;
+
+    return *this;
+  }
+
+  URL& RedirectToURL(const std::string& url) {
+    return RedirectToURL(URL(url));
+  }
+
+  std::string ComposeURLWithoutParameters() const {
+    return URLWithoutParametersParser::ComposeURL();
+  }
 
   std::string ComposeURL() const {
     return URLWithoutParametersParser::ComposeURL() + URLParametersExtractor::ComposeParameters();
