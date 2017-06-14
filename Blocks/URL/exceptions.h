@@ -25,11 +25,11 @@ SOFTWARE.
 #ifndef BLOCKS_URL_EXCEPTIONS_H
 #define BLOCKS_URL_EXCEPTIONS_H
 
-#include "../../port.h"
 #include "../../Bricks/exception.h"
-#include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Reflection/reflection.h"
 #include "../../TypeSystem/Schema/schema.h"
+#include "../../TypeSystem/struct.h"
+#include "../../port.h"
 
 namespace current {
 namespace url {

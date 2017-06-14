@@ -87,6 +87,12 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+
+  u = URL("/test");
+  EXPECT_EQ("", u.host);
+  EXPECT_EQ("/test", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
 }
 
 TEST(URLTest, CompositionTest) {
@@ -132,6 +138,23 @@ TEST(URLTest, RedirectPreservesSchemeHostAndPortTest) {
   EXPECT_EQ("ftp://localhost:8080/bar", URL("ftp:///bar", URL("meh://localhost:8080")).ComposeURL());
   EXPECT_EQ("blah://new_host:5000/foo", URL("blah://new_host/foo", URL("meh://localhost:5000")).ComposeURL());
   EXPECT_EQ("blah://new_host:6000/foo", URL("blah://new_host:6000/foo", URL("meh://localhost:5000")).ComposeURL());
+
+  // Since there is no rule for port "8080", and no previous scheme, no scheme is returned.
+  EXPECT_EQ("localhost:8080/empty_all_with_previous_empty_scheme",
+            URL("/empty_all_with_previous_empty_scheme", URL("localhost:8080")).ComposeURL());
+  EXPECT_EQ("meh://localhost:8080/empty_all_with_previous_all",
+            URL("/empty_all_with_previous_all", URL("meh://localhost:8080")).ComposeURL());
+
+  // Port-only full URL replaces port, preserves scheme and host from previous URL.
+  EXPECT_EQ("meh://localhost:27960/empty_scheme_host",
+            URL(":27960/empty_scheme_host", URL("meh://localhost:8080")).ComposeURL());
+
+  // Schema-only full URL preserves host and port from previous URL.
+  EXPECT_EQ("ftp://localhost:8080/empty_host", URL("ftp:///empty_host", URL("meh://localhost:8080")).ComposeURL());
+
+  // Full URL replaces scheme, host, port, does not preserve anything from previous URL.
+  EXPECT_EQ("ftp://host_no_port_path/", URL("ftp://host_no_port_path", URL("meh://localhost:8080")).ComposeURL());
+  EXPECT_EQ("blah://new_host/foo", URL("blah://new_host/foo", URL("meh://localhost:5000")).ComposeURL());
 }
 
 TEST(URLTest, ExtractsURLParameters) {
