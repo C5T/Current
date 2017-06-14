@@ -139,7 +139,7 @@ class GenericHTTPClientPOSIX final {
           CURRENT_THROW(current::net::HTTPRedirectNotAllowedException());
         }
         redirected = true;
-        parsed_url = URL(http_request_->location, parsed_url);
+        parsed_url.RedirectToURL(http_request_->location);
         response_url_after_redirects_ = parsed_url.ComposeURL();
       }
     } while (redirected);
