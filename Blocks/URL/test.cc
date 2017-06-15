@@ -74,8 +74,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ(8080, u.port);
   EXPECT_EQ("", u.username);
   EXPECT_EQ("", u.password);
-  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute
-  // URLs).
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty,
+  // not known by port, but host is present (i.e. absolute URLs).
   EXPECT_EQ("http://www.google.com:8080/", u.ComposeURL());
 
   u = URL("meh://www.google.com:27960");
