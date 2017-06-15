@@ -133,8 +133,12 @@ class GenericHTTPClientPOSIX final {
       // the numerical response code "200" can be accessed with the same method as the "/path".
       const int response_code_as_int = atoi(http_request_->RawPath().c_str());
       response_code_ = HTTPResponseCode(response_code_as_int);
+      // Follow the redirects automatically.
+      // Note: This is by no means a complete redirect implementation.
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !http_request_->location.empty()) {
-        // Note: This is by no means a complete redirect implementation.
+        if (!allow_redirects_) {
+          CURRENT_THROW(current::net::HTTPRedirectNotAllowedException());
+        }
         redirected = true;
         parsed_url = URL(http_request_->location, parsed_url);
         response_url_after_redirects_ = parsed_url.ComposeURL();
@@ -154,6 +158,7 @@ class GenericHTTPClientPOSIX final {
   std::string request_user_agent_ = "";
   current::net::http::Headers request_headers_;
   const typename HTTP_HELPER::ConstructionParams request_data_construction_params_;
+  bool allow_redirects_ = false;
 
   // Output parameters.
   current::net::HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;
@@ -172,6 +177,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;
     client.request_headers_ = request.custom_headers;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const HEAD& request, HTTPClientPOSIX& client) {
@@ -179,6 +185,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;
     client.request_headers_ = request.custom_headers;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const POST& request, HTTPClientPOSIX& client) {
@@ -188,6 +195,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_headers_ = request.custom_headers;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientPOSIX& client) {
@@ -198,6 +206,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_body_contents_ =
         current::FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const PUT& request, HTTPClientPOSIX& client) {
@@ -207,6 +216,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_headers_ = request.custom_headers;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const PATCH& request, HTTPClientPOSIX& client) {
@@ -216,6 +226,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_headers_ = request.custom_headers;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const DELETE& request, HTTPClientPOSIX& client) {
@@ -223,6 +234,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     client.request_headers_ = request.custom_headers;
+    client.allow_redirects_ = request.allow_redirects;
   }
 
   inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientPOSIX&) {}
@@ -232,13 +244,10 @@ struct ImplWrapper<HTTPClientPOSIX> {
   }
 
   template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
-  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+  inline static void ParseOutput(const REQUEST_PARAMS& /*request_params*/,
                                  const RESPONSE_PARAMS& /*response_params*/,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
-    if (!request_params.allow_redirects && request_params.url != response.response_url_after_redirects_) {
-      CURRENT_THROW(current::net::HTTPRedirectNotAllowedException());
-    }
     output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;
     const auto& http_request = response.HTTPRequest();
