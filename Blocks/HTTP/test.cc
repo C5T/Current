@@ -382,7 +382,21 @@ TEST(HTTPAPI, RedirectLoop) {
                                        current::net::constants::kDefaultHTMLContentType,
                                        Headers({{"Location", "/p1"}}));
                                    });
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
+  {
+    bool thrown = false;
+    try {
+      HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port)).AllowRedirects());
+    } catch (HTTPRedirectLoopException& e) {
+      thrown = true;
+      std::string loop;
+      loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port) + " ";
+      loop += Printf("http://localhost:%d/p2", FLAGS_net_api_test_port) + " ";
+      loop += Printf("http://localhost:%d/p3", FLAGS_net_api_test_port) + " ";
+      loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port);
+      EXPECT_EQ(loop, e.OriginalDescription());
+    }
+    EXPECT_TRUE(thrown);
+  }
 }
 #endif
 
