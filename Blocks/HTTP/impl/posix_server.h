@@ -100,9 +100,9 @@ struct ServeStaticFilesFromOptions {
   explicit ServeStaticFilesFromOptions(std::string route_prefix_in = "/",
                                        std::string public_url_prefix_in = "",
                                        std::vector<std::string> index_filenames_in = {"index.html", "index.htm"})
-    : route_prefix(std::move(route_prefix_in)),
-      public_url_prefix(public_url_prefix_in.empty() ? route_prefix : std::move(public_url_prefix_in)),
-      index_filenames(std::move(index_filenames_in)) {}
+      : route_prefix(std::move(route_prefix_in)),
+        public_url_prefix(public_url_prefix_in.empty() ? route_prefix : std::move(public_url_prefix_in)),
+        index_filenames(std::move(index_filenames_in)) {}
 };
 
 // Helper to serve a static file.
@@ -141,8 +141,10 @@ struct StaticFileServer {
         // The trailing slash is required to make the browser relative URL resolution algorithm use directory as base
         // URL for the index file served at that directory URL (without filename).
         // See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
-        r.connection.SendHTTPResponse(
-            "", HTTPResponseCode.Found, content_type, current::net::http::Headers({{"Location", trailing_slash_redirect_url}}));
+        r.connection.SendHTTPResponse("",
+                                      HTTPResponseCode.Found,
+                                      content_type,
+                                      current::net::http::Headers({{"Location", trailing_slash_redirect_url}}));
       }
     } else {
       r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
@@ -281,10 +283,10 @@ class HTTPServerPOSIX final {
 
             // `route_for_directory` must have leading slash and must not have trailing slash except if it's a root.
             const std::string route_for_directory =
-                options.route_prefix +
-                ((options.route_prefix == "/" || path_components_empty) ? "" : "/") +
+                options.route_prefix + ((options.route_prefix == "/" || path_components_empty) ? "" : "/") +
                 path_components_joined;
-            CURRENT_ASSERT(route_for_directory == "/" || (route_for_directory.front() == '/' && route_for_directory.back() != '/'));
+            CURRENT_ASSERT(route_for_directory == "/" ||
+                           (route_for_directory.front() == '/' && route_for_directory.back() != '/'));
 
             // Ignore files nested in directories named with a leading dot (means hidden in POSIX).
             if (route_for_directory.find("/.") != std::string::npos) {
@@ -293,9 +295,7 @@ class HTTPServerPOSIX final {
 
             // `route_for_file` must have leading slash and must not have trailing slash.
             const std::string route_for_file =
-                route_for_directory +
-                (route_for_directory == "/" ? "" : "/") +
-                item_info.basename;
+                route_for_directory + (route_for_directory == "/" ? "" : "/") + item_info.basename;
             CURRENT_ASSERT(route_for_file.front() == '/' && route_for_file.back() != '/');
 
             const bool is_index_file =
@@ -306,21 +306,22 @@ class HTTPServerPOSIX final {
             // that keeps a map from a (SHA256) hash to the contents.
             std::string content = current::FileSystem::ReadFileAsString(item_info.pathname);
 
-            // If it's an index file, serve it additionally at the route without the filename (i.e. the directory route).
+            // If it's an index file, serve it additionally at the route without the filename (i.e. the directory
+            // route).
             if (is_index_file) {
               if (handlers_.find(route_for_directory) != handlers_.end()) {
-                CURRENT_THROW(
-                    ServeStaticFilesFromCannotServeMoreThanOneIndexFile(route_for_directory + ' ' + item_info.basename));
+                CURRENT_THROW(ServeStaticFilesFromCannotServeMoreThanOneIndexFile(route_for_directory + ' ' +
+                                                                                  item_info.basename));
               }
 
               // `trailing_slash_redirect_url` must have trailing slash.
-              std::string trailing_slash_redirect_url =
-                  options.public_url_prefix +
-                  (options.public_url_prefix.back() == '/' ? "" : "/") +
-                  (path_components_empty ? "" : path_components_joined + "/");
+              std::string trailing_slash_redirect_url = options.public_url_prefix +
+                                                        (options.public_url_prefix.back() == '/' ? "" : "/") +
+                                                        (path_components_empty ? "" : path_components_joined + "/");
               CURRENT_ASSERT(trailing_slash_redirect_url.length() > 0 && trailing_slash_redirect_url.back() == '/');
 
-              auto static_file_server = std::make_unique<StaticFileServer>(content, content_type, true, trailing_slash_redirect_url);
+              auto static_file_server =
+                  std::make_unique<StaticFileServer>(content, content_type, true, trailing_slash_redirect_url);
               scope += Register(route_for_directory, *static_file_server);
               static_file_servers_.push_back(std::move(static_file_server));
             }

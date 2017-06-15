@@ -74,7 +74,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ(8080, u.port);
   EXPECT_EQ("", u.username);
   EXPECT_EQ("", u.password);
-  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute
+  // URLs).
   EXPECT_EQ("http://www.google.com:8080/", u.ComposeURL());
 
   u = URL("meh://www.google.com:27960");
@@ -164,7 +165,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ(0, u.port);
   EXPECT_EQ("", u.username);
   EXPECT_EQ("", u.password);
-  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute
+  // URLs).
   EXPECT_EQ("http://host.name/path", u.ComposeURL());
 
   // Can parse a protocol-relative URL: `//host.name:80/path`.
@@ -175,7 +177,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ(80, u.port);
   EXPECT_EQ("", u.username);
   EXPECT_EQ("", u.password);
-  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute
+  // URLs).
   EXPECT_EQ("http://host.name/path", u.ComposeURL());
 
   // Can parse a protocol-relative URL: `//host.name:1234/path`.
@@ -186,7 +189,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ(1234, u.port);
   EXPECT_EQ("", u.username);
   EXPECT_EQ("", u.password);
-  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute
+  // URLs).
   EXPECT_EQ("http://host.name:1234/path", u.ComposeURL());
 
   // Can parse a username-password pair: `http://user1:pass234@host.name:123/`.
@@ -422,36 +426,52 @@ TEST(URLTest, MakeRedirectedURLTest) {
   // Relative URL preserves scheme, host, port.
   EXPECT_EQ("http://localhost/foo", URL::MakeRedirectedURL(URL("localhost"), "/foo").ComposeURL());
   EXPECT_EQ("meh://localhost/foo", URL::MakeRedirectedURL(URL("meh://localhost"), "/foo").ComposeURL());
-  EXPECT_EQ("http://localhost:8080/empty_all_with_previous_empty_scheme", URL::MakeRedirectedURL(URL("localhost:8080"), "/empty_all_with_previous_empty_scheme").ComposeURL());
-  EXPECT_EQ("meh://localhost:8080/empty_all_with_previous_full", URL::MakeRedirectedURL(URL("meh://localhost:8080"), "/empty_all_with_previous_full").ComposeURL());
-  EXPECT_EQ("foo://www.website.com:321/second", URL::MakeRedirectedURL(URL("foo://www.website.com:321/first"), "/second").ComposeURL());
+  EXPECT_EQ("http://localhost:8080/empty_all_with_previous_empty_scheme",
+            URL::MakeRedirectedURL(URL("localhost:8080"), "/empty_all_with_previous_empty_scheme").ComposeURL());
+  EXPECT_EQ("meh://localhost:8080/empty_all_with_previous_full",
+            URL::MakeRedirectedURL(URL("meh://localhost:8080"), "/empty_all_with_previous_full").ComposeURL());
+  EXPECT_EQ("foo://www.website.com:321/second",
+            URL::MakeRedirectedURL(URL("foo://www.website.com:321/first"), "/second").ComposeURL());
 
   // Port-only full URL replaces port and preserves host from previous URL.
-  EXPECT_EQ("meh://localhost:27960/empty_scheme_host", URL::MakeRedirectedURL(URL("meh://localhost:8080"), ":27960/empty_scheme_host").ComposeURL());
+  EXPECT_EQ("meh://localhost:27960/empty_scheme_host",
+            URL::MakeRedirectedURL(URL("meh://localhost:8080"), ":27960/empty_scheme_host").ComposeURL());
 
   // Schema-only full URL preserves host and port from previous URL.
-  EXPECT_EQ("ftp://localhost:8080/empty_host", URL::MakeRedirectedURL(URL("meh://localhost:8080"), "ftp:///empty_host").ComposeURL());
+  EXPECT_EQ("ftp://localhost:8080/empty_host",
+            URL::MakeRedirectedURL(URL("meh://localhost:8080"), "ftp:///empty_host").ComposeURL());
 
   // Full URL replaces scheme, host, port, does not preserve anything from previous URL.
-  EXPECT_EQ("ftp://host_no_port_path/", URL::MakeRedirectedURL(URL("meh://localhost:8080"), "ftp://host_no_port_path").ComposeURL());
-  EXPECT_EQ("blah://new_host/foo", URL::MakeRedirectedURL(URL("meh://localhost:5000"), "blah://new_host/foo").ComposeURL());
-  EXPECT_EQ("blah://new_host:6000/foo", URL::MakeRedirectedURL(URL("meh://localhost:5000"), "blah://new_host:6000/foo").ComposeURL());
-  EXPECT_EQ("https://new_host/foo", URL::MakeRedirectedURL(URL("http://localhost/test"), "https://new_host/foo").ComposeURL());
+  EXPECT_EQ("ftp://host_no_port_path/",
+            URL::MakeRedirectedURL(URL("meh://localhost:8080"), "ftp://host_no_port_path").ComposeURL());
+  EXPECT_EQ("blah://new_host/foo",
+            URL::MakeRedirectedURL(URL("meh://localhost:5000"), "blah://new_host/foo").ComposeURL());
+  EXPECT_EQ("blah://new_host:6000/foo",
+            URL::MakeRedirectedURL(URL("meh://localhost:5000"), "blah://new_host:6000/foo").ComposeURL());
+  EXPECT_EQ("https://new_host/foo",
+            URL::MakeRedirectedURL(URL("http://localhost/test"), "https://new_host/foo").ComposeURL());
 
   // The username-password pair is always taken from the next URL.
-  EXPECT_EQ("http://user1:pass345@new_host/foo", URL::MakeRedirectedURL(URL("meh://localhost:5000"), "http://user1:pass345@new_host/foo").ComposeURL());
-  EXPECT_EQ("http://user1:pass345@new_host/foo", URL::MakeRedirectedURL(URL("meh://a:b@localhost:5000"), "http://user1:pass345@new_host/foo").ComposeURL());
-  EXPECT_EQ("http://new_host/foo", URL::MakeRedirectedURL(URL("meh://a:b@localhost:5000"), "http://new_host/foo").ComposeURL());
+  EXPECT_EQ("http://user1:pass345@new_host/foo",
+            URL::MakeRedirectedURL(URL("meh://localhost:5000"), "http://user1:pass345@new_host/foo").ComposeURL());
+  EXPECT_EQ("http://user1:pass345@new_host/foo",
+            URL::MakeRedirectedURL(URL("meh://a:b@localhost:5000"), "http://user1:pass345@new_host/foo").ComposeURL());
+  EXPECT_EQ("http://new_host/foo",
+            URL::MakeRedirectedURL(URL("meh://a:b@localhost:5000"), "http://new_host/foo").ComposeURL());
 }
 
 TEST(URLTest, MakeRedirectedURLWithParametersTest) {
-  const auto redirected_url_parsed = URL::MakeRedirectedURL(URL("localhost/?replace=this&and=this"), "/foo?bar=baz&qoo=xdoo");
+  const auto redirected_url_parsed =
+      URL::MakeRedirectedURL(URL("localhost/?replace=this&and=this"), "/foo?bar=baz&qoo=xdoo");
   EXPECT_EQ("http://localhost/foo?bar=baz&qoo=xdoo", redirected_url_parsed.ComposeURL());
   EXPECT_EQ("http://localhost/foo", redirected_url_parsed.ComposeURLWithoutParameters());
 
-  EXPECT_EQ("http://localhost:1234/foo?bar=baz&qoo=xdoo#with-fragment", URL::MakeRedirectedURL(URL("localhost:1234/?replace=this&and=this"), "/foo?bar=baz&qoo=xdoo#with-fragment").ComposeURL());
+  EXPECT_EQ("http://localhost:1234/foo?bar=baz&qoo=xdoo#with-fragment",
+            URL::MakeRedirectedURL(URL("localhost:1234/?replace=this&and=this"), "/foo?bar=baz&qoo=xdoo#with-fragment")
+                .ComposeURL());
 
-  const auto redirected_to_full_url_parsed = URL::MakeRedirectedURL(URL("localhost/?replace=this&and=this"), "http://other.domain/foo?bar=baz&qoo=xdoo");
+  const auto redirected_to_full_url_parsed =
+      URL::MakeRedirectedURL(URL("localhost/?replace=this&and=this"), "http://other.domain/foo?bar=baz&qoo=xdoo");
   EXPECT_EQ("http://other.domain/foo?bar=baz&qoo=xdoo", redirected_to_full_url_parsed.ComposeURL());
   EXPECT_EQ("http://other.domain/foo", redirected_to_full_url_parsed.ComposeURLWithoutParameters());
 }
@@ -482,7 +502,9 @@ TEST(URLTest, ExtractURLParametersAndComposeURLTest) {
     EXPECT_FALSE(u.query.has("key"));
     EXPECT_EQ("", u.query["key"]);
     EXPECT_EQ("default_value", u.query.get("key", "default_value"));
-    EXPECT_EQ("http://www.google.com/a#encoded-fragment-with_unreserved~chars!and%25reserved%3A%5Bchars%5D%2Band%20space", u.ComposeURL());
+    EXPECT_EQ(
+        "http://www.google.com/a#encoded-fragment-with_unreserved~chars!and%25reserved%3A%5Bchars%5D%2Band%20space",
+        u.ComposeURL());
     EXPECT_EQ("http://www.google.com/a", u.ComposeURLWithoutParameters());
   }
   {
@@ -548,7 +570,10 @@ TEST(URLTest, ExtractURLParametersAndComposeURLTest) {
     EXPECT_EQ("foo", u.fragment);
     EXPECT_TRUE(u.query.has("encoded#query-with_unreserved~chars!and%reserved:[chars]plus+and space"));
     EXPECT_EQ("", u.query["encoded#query-with_unreserved~chars!and%reserved:[chars]plus+and space"]);
-    EXPECT_EQ("http://www.google.com/a?encoded%23query-with_unreserved~chars!and%25reserved%3A%5Bchars%5Dplus%2Band%20space=#foo", u.ComposeURL());
+    EXPECT_EQ(
+        "http://www.google.com/"
+        "a?encoded%23query-with_unreserved~chars!and%25reserved%3A%5Bchars%5Dplus%2Band%20space=#foo",
+        u.ComposeURL());
     EXPECT_EQ("http://www.google.com/a", u.ComposeURLWithoutParameters());
   }
   {
