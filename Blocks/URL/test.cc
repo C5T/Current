@@ -42,6 +42,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://www.google.com/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `www.google.com/test` is pathname.
@@ -50,6 +52,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://www.google.com/test", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `www.google.com` is protocol (scheme), `443/test` is pathname.
@@ -58,6 +62,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(443, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("https://www.google.com/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `www.google.com` is protocol (scheme), `8080/test` is pathname.
@@ -66,7 +72,9 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(8080, u.port);
-  // Unknown port `8080` falls back to default scheme in `ComposeURL`.
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
   EXPECT_EQ("http://www.google.com:8080/", u.ComposeURL());
 
   u = URL("meh://www.google.com:27960");
@@ -74,6 +82,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("meh://www.google.com:27960/", u.ComposeURL());
 
   u = URL("meh://www.google.com:27960/bazinga");
@@ -81,6 +91,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/bazinga", u.path);
   EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("meh://www.google.com:27960/bazinga", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost/` is pathname.
@@ -89,6 +101,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://localhost/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost/test` is pathname.
@@ -97,6 +111,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://localhost/test", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost` is protocol (scheme), `/test` is pathname.
@@ -105,6 +121,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://localhost/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost` is protocol (scheme), `/test` is pathname.
@@ -113,6 +131,9 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://localhost/test", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `:1234/test` is assumed pathname.
   u = URL(":1234/test");
@@ -120,6 +141,8 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(1234, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   // NOTE: `ComposeURL` ignores the `port` if `host` is empty.
   EXPECT_EQ("/test", u.ComposeURL());
 
@@ -129,7 +152,20 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/path-name.ext", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("/path-name.ext", u.ComposeURL());
+
+  // Can parse a protocol-relative URL: `//host.name/path`.
+  u = URL("//host.name/path");
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/path", u.path);
+  EXPECT_EQ("", u.scheme);
+  EXPECT_EQ(0, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
+  EXPECT_EQ("http://host.name/path", u.ComposeURL());
 
   // Can parse a protocol-relative URL: `//host.name:80/path`.
   u = URL("//host.name:80/path");
@@ -137,8 +173,41 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("/path", u.path);
   EXPECT_EQ("", u.scheme);
   EXPECT_EQ(80, u.port);
-  // NOTE: `ComposeURL` does not add the leading two slashes if scheme is empty.
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
   EXPECT_EQ("http://host.name/path", u.ComposeURL());
+
+  // Can parse a protocol-relative URL: `//host.name:1234/path`.
+  u = URL("//host.name:1234/path");
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/path", u.path);
+  EXPECT_EQ("", u.scheme);
+  EXPECT_EQ(1234, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  // NOTE: `ComposeURL` renders default scheme if scheme is empty, not known by port, but host is present (i.e. absolute URLs).
+  EXPECT_EQ("http://host.name:1234/path", u.ComposeURL());
+
+  // Can parse a username-password pair: `http://user1:pass234@host.name:123/`.
+  u = URL("http://user1:pass234@host.name:123/");
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(123, u.port);
+  EXPECT_EQ("user1", u.username);
+  EXPECT_EQ("pass234", u.password);
+  EXPECT_EQ("http://user1:pass234@host.name:123/", u.ComposeURL());
+
+  // Can parse a username only: `http://user1@host.name:123/`.
+  u = URL("http://user1@host.name:123/");
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(123, u.port);
+  EXPECT_EQ("user1", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://user1@host.name:123/", u.ComposeURL());
 }
 
 TEST(URLTest, MakeURLWithDefaultsTest) {
@@ -152,6 +221,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://www.google.com/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `www.google.com/test` is pathname.
@@ -160,6 +231,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://www.google.com/test", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `www.google.com` is protocol (scheme), `443/test` is pathname.
@@ -168,6 +241,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("https", u.scheme);
   EXPECT_EQ(443, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("https://www.google.com/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `www.google.com` is protocol (scheme), `8080/test` is pathname.
@@ -176,6 +251,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("http", u.scheme);  // Unknown port `8080` falls back to default scheme in `MakeURLWithDefaults`.
   EXPECT_EQ(8080, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://www.google.com:8080/", u.ComposeURL());
 
   u = URL::MakeURLWithDefaults(URL("meh://www.google.com:27960"));
@@ -183,6 +260,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("meh://www.google.com:27960/", u.ComposeURL());
 
   u = URL::MakeURLWithDefaults(URL("meh://www.google.com:27960/bazinga"));
@@ -190,6 +269,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/bazinga", u.path);
   EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("meh://www.google.com:27960/bazinga", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost/` is pathname.
@@ -198,6 +279,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://localhost/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost/test` is pathname.
@@ -206,6 +289,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://localhost/test", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost` is protocol (scheme), `/test` is pathname.
@@ -214,6 +299,8 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
   EXPECT_EQ("http://localhost/", u.ComposeURL());
 
   // WARNING: Browser implementation differs: `localhost` is protocol (scheme), `/test` is pathname.
@@ -222,6 +309,79 @@ TEST(URLTest, MakeURLWithDefaultsTest) {
   EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://localhost/test", u.ComposeURL());
+
+  // WARNING: Browser implementation differs: `:1234/test` is assumed pathname.
+  u = URL::MakeURLWithDefaults(URL(":1234/test"));
+  EXPECT_EQ("localhost", u.host);
+  EXPECT_EQ("/test", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(1234, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://localhost:1234/test", u.ComposeURL());
+
+  // Can parse a relative URL: `/path-name.ext`.
+  u = URL::MakeURLWithDefaults(URL("/path-name.ext"));
+  EXPECT_EQ("localhost", u.host);
+  EXPECT_EQ("/path-name.ext", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://localhost/path-name.ext", u.ComposeURL());
+
+  // Can parse a protocol-relative URL: `//host.name/path`.
+  u = URL::MakeURLWithDefaults(URL("//host.name/path"));
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/path", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://host.name/path", u.ComposeURL());
+
+  // Can parse a protocol-relative URL: `//host.name:80/path`.
+  u = URL::MakeURLWithDefaults(URL("//host.name:80/path"));
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/path", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://host.name/path", u.ComposeURL());
+
+  // Can parse a protocol-relative URL: `//host.name:1234/path`.
+  u = URL::MakeURLWithDefaults(URL("//host.name:1234/path"));
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/path", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(1234, u.port);
+  EXPECT_EQ("", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://host.name:1234/path", u.ComposeURL());
+
+  // Can parse a username-password pair: `http://user1:pass234@host.name:123/`.
+  u = URL::MakeURLWithDefaults(URL("http://user1:pass234@host.name:123/"));
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(123, u.port);
+  EXPECT_EQ("user1", u.username);
+  EXPECT_EQ("pass234", u.password);
+  EXPECT_EQ("http://user1:pass234@host.name:123/", u.ComposeURL());
+
+  // Can parse a username only: `http://user1@host.name:123/`.
+  u = URL::MakeURLWithDefaults(URL("http://user1@host.name:123/"));
+  EXPECT_EQ("host.name", u.host);
+  EXPECT_EQ("/", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(123, u.port);
+  EXPECT_EQ("user1", u.username);
+  EXPECT_EQ("", u.password);
+  EXPECT_EQ("http://user1@host.name:123/", u.ComposeURL());
 }
 
 TEST(URLTest, ComposeURLHandlesEmptyURLComponents) {
@@ -277,6 +437,11 @@ TEST(URLTest, MakeRedirectedURLTest) {
   EXPECT_EQ("blah://new_host/foo", URL::MakeRedirectedURL(URL("meh://localhost:5000"), "blah://new_host/foo").ComposeURL());
   EXPECT_EQ("blah://new_host:6000/foo", URL::MakeRedirectedURL(URL("meh://localhost:5000"), "blah://new_host:6000/foo").ComposeURL());
   EXPECT_EQ("https://new_host/foo", URL::MakeRedirectedURL(URL("http://localhost/test"), "https://new_host/foo").ComposeURL());
+
+  // The username-password pair is always taken from the next URL.
+  EXPECT_EQ("http://user1:pass345@new_host/foo", URL::MakeRedirectedURL(URL("meh://localhost:5000"), "http://user1:pass345@new_host/foo").ComposeURL());
+  EXPECT_EQ("http://user1:pass345@new_host/foo", URL::MakeRedirectedURL(URL("meh://a:b@localhost:5000"), "http://user1:pass345@new_host/foo").ComposeURL());
+  EXPECT_EQ("http://new_host/foo", URL::MakeRedirectedURL(URL("meh://a:b@localhost:5000"), "http://new_host/foo").ComposeURL());
 }
 
 TEST(URLTest, MakeRedirectedURLWithParametersTest) {
