@@ -250,25 +250,17 @@ TEST(TCPTest, ResolveAddress) {
     EXPECT_EQ("127.0.0.1", ResolveIPFromHostname("localhost"));
     EXPECT_EQ("127.0.0.1", ResolveIPFromHostname("127.0.0.1"));
     EXPECT_EQ("9.8.7.6", ResolveIPFromHostname("9.8.7.6"));
-    {
-      bool thrown = false;
-      try {
-        ResolveIPFromHostname("someunknownhostname.domain");
-      } catch (SocketResolveAddressException& e) {
-        thrown = true;
-        EXPECT_EQ("someunknownhostname.domain", e.OriginalDescription());
-      }
-      EXPECT_TRUE(thrown);
+    try {
+      ResolveIPFromHostname("someunknownhostname.domain");
+      ASSERT_TRUE(false);
+    } catch (SocketResolveAddressException& e) {
+      EXPECT_EQ("someunknownhostname.domain", e.OriginalDescription());
     }
-    {
-      bool thrown = false;
-      try {
-        ClientSocket("999.999.999.999", 80);
-      } catch (SocketResolveAddressException& e) {
-        thrown = true;
-        EXPECT_EQ("999.999.999.999 80", e.OriginalDescription());
-      }
-      EXPECT_TRUE(thrown);
+    try {
+      ClientSocket("999.999.999.999", 80);
+      ASSERT_TRUE(false);
+    } catch (SocketResolveAddressException& e) {
+      EXPECT_EQ("999.999.999.999 80", e.OriginalDescription());
     }
     done = true;
   }
