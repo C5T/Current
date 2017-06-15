@@ -1057,7 +1057,7 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefix) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1113,7 +1113,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefix) {
   }
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixAndPublicUrlPrefixRelative) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRelative) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1176,7 +1176,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixAndPublicUrlPref
   }
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixAndPublicUrlPrefixAbsolute) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbsolute) {
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1239,7 +1239,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixAndPublicUrlPref
   }
 }
 
-TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomPublicRoutePrefixWithTrailingSlash) {
+TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixWithTrailingSlash) {
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/"}),
                PathEndsWithSlash);
