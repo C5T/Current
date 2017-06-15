@@ -70,6 +70,7 @@ namespace impl {
 
 namespace {
 const char* const kDefaultScheme = "http";
+const char* const kDefaultHost = "localhost";
 }
 
 struct URLWithoutParametersParser {
@@ -78,72 +79,62 @@ struct URLWithoutParametersParser {
   std::string scheme = kDefaultScheme;
   uint16_t port = 0;
 
+ protected:
   URLWithoutParametersParser() = default;
 
-  // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URLWithoutParametersParser(const std::string& url,
-                             const std::string& previous_scheme = kDefaultScheme,
-                             const std::string& previous_host = "",
-                             const uint16_t previous_port = 0) {
+  void ParseURLWithoutParameters(const std::string& url) {
     if (url.empty()) {
       CURRENT_THROW(EmptyURLException());
     }
+
+    // Can parse a full URL: `scheme://host.name:80/path`, `scheme://host.name/path`.
+    // Can parse a protocol-relative URL: `//host.name:80/path`, `//host.name/path`.
+    // Can parse a username-password pair: `http://user:pass@host.name/`.
+    // Can parse a username only: `http://user@host.name/`.
+    // Can parse a port-only URL: `:12345/path`.
+    // Can parse a relative URL: `/path/anything`.
+    // Query string and fragment identifier are parsed separately in `URLParametersExtractor`.
+
     scheme = "";
-    size_t offset_past_scheme = 0;
-    const size_t i = url.find("://");
-    if (i != std::string::npos) {
-      scheme = url.substr(0, i);
-      offset_past_scheme = i + 3;
+    size_t parsed_offset = 0;
+    const size_t double_slash = url.find("//");
+    if (double_slash != std::string::npos && (double_slash == 0 || url[double_slash - 1] == ':')) {
+      scheme = (double_slash == 0 ? "" : url.substr(0, double_slash - 1));
+      parsed_offset = double_slash + 2;
     }
+
+    const size_t host_end = url.find('/', parsed_offset);
 
     // TODO(dkorolev): Support `http://user:pass@host:80/` in the future.
-    const size_t colon = url.find(':', offset_past_scheme);
-    const size_t slash = url.find('/', offset_past_scheme);
-    host = url.substr(offset_past_scheme, std::min(colon, slash) - offset_past_scheme);
-    if (host.empty()) {
-      host = previous_host;
-    }
 
-    if (colon < slash) {
-      port = static_cast<uint16_t>(atoi(url.c_str() + colon + 1));
+    const size_t port_colon = url.find(':', parsed_offset);
+    if (port_colon != std::string::npos && port_colon < host_end) {
+      host = url.substr(parsed_offset, port_colon - parsed_offset);
+      port = static_cast<uint16_t>(atoi(url.c_str() + port_colon + 1));
     } else {
-      port = previous_port;
+      host = url.substr(parsed_offset, host_end - parsed_offset);
     }
 
-    if (slash != std::string::npos) {
-      path = url.substr(slash);
+    if (host_end != std::string::npos) {
+      path = url.substr(host_end);
     } else {
       path = "";
     }
     if (path.empty()) {
       path = "/";
     }
-
-    if (scheme.empty()) {
-      if (!previous_scheme.empty()) {
-        scheme = previous_scheme;
-      } else {
-        scheme = DefaultSchemeForPort(port);
-      }
-    }
-
-    if (port == 0) {
-      port = DefaultPortForScheme(scheme);
-    }
   }
-
-  URLWithoutParametersParser(const std::string& url, const URLWithoutParametersParser& previous)
-      : URLWithoutParametersParser(url, previous.scheme, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     if (!host.empty()) {
+      const std::string scheme_for_compose = (!scheme.empty() ? scheme : (port > 0 ? DefaultSchemeForPort(port) : kDefaultScheme));
+      const uint16_t port_for_compose = (port > 0 && port != DefaultPortForScheme(scheme_for_compose) ? port : 0);
+
       std::ostringstream os;
-      if (!scheme.empty()) {
-        os << scheme << "://";
-      }
+      os << (!scheme_for_compose.empty() ? scheme_for_compose : kDefaultScheme) << "://";
       os << host;
-      if (port != DefaultPortForScheme(scheme)) {
-        os << ':' << port;
+      if (port_for_compose > 0) {
+        os << ':' << port_for_compose;
       }
       os << path;
       return os.str();
@@ -153,6 +144,7 @@ struct URLWithoutParametersParser {
     }
   }
 
+ public:
   static int DefaultPortForScheme(const std::string& scheme) {
     // We don't really "support" other schemes yet -- D.K.
     if (scheme == "http") {
@@ -176,17 +168,20 @@ struct URLWithoutParametersParser {
 };
 
 struct URLParametersExtractor {
+ protected:
   URLParametersExtractor() = default;
-  URLParametersExtractor(std::string url) {
+
+  void ExtractURLParametersFromURL(std::string url, size_t& parameters_start_index) {
+    parameters_start_index = url.length();
     const size_t pound_sign_index = url.find('#');
     if (pound_sign_index != std::string::npos) {
       fragment = url.substr(pound_sign_index + 1);
-      url = url.substr(0, pound_sign_index);
+      parameters_start_index = pound_sign_index;
     }
     const size_t question_mark_index = url.find('?');
-    if (question_mark_index != std::string::npos) {
+    if (question_mark_index != std::string::npos && question_mark_index < pound_sign_index) {
       auto& v = parameters_vector;
-      current::strings::Split(url.substr(question_mark_index + 1),
+      current::strings::Split(url.substr(question_mark_index + 1, parameters_start_index - (question_mark_index + 1)),
                               '&',
                               [&v](const std::string& chunk) {
                                 const size_t i = chunk.find('=');
@@ -201,11 +196,11 @@ struct URLParametersExtractor {
         it.second = DecodeURIComponent(it.second);
       }
       query = QueryParameters(parameters_vector);
-      url = url.substr(0, question_mark_index);
+      parameters_start_index = question_mark_index;
     }
-    url_without_parameters = url;
   }
 
+ public:
   static bool IsHexDigit(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
 
   static bool IsURIComponentSpecialCharacter(char c) {
@@ -361,27 +356,80 @@ struct URLParametersExtractor {
   std::vector<std::pair<std::string, std::string>> parameters_vector;
   QueryParameters query;
   std::string fragment;
-  std::string url_without_parameters;
 };
 
 struct URL : URLParametersExtractor, URLWithoutParametersParser {
   URL() = default;
 
-  // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URL(const std::string& url,
-      const std::string& previous_scheme = kDefaultScheme,
-      const std::string& previous_host = "",
-      const uint16_t previous_port = 0)
-      : URLParametersExtractor(url),
-        URLWithoutParametersParser(
-            URLParametersExtractor::url_without_parameters, previous_scheme, previous_host, previous_port) {}
+  URL(const std::string& url) {
+    size_t parameters_start_index = 0;
+    URLParametersExtractor::ExtractURLParametersFromURL(url, parameters_start_index);
+    URLWithoutParametersParser::ParseURLWithoutParameters(url.substr(0, parameters_start_index));
+  }
 
-  URL(const std::string& url, const URLWithoutParametersParser& previous)
-      : URLParametersExtractor(url),
-        URLWithoutParametersParser(URLParametersExtractor::url_without_parameters, previous) {}
+  std::string ComposeURLWithoutParameters() const {
+    return URLWithoutParametersParser::ComposeURL();
+  }
 
   std::string ComposeURL() const {
     return URLWithoutParametersParser::ComposeURL() + URLParametersExtractor::ComposeParameters();
+  }
+
+  static URL MakeURLWithDefaults(const URL& source_url_parsed) {
+    URL url = URL(source_url_parsed);
+
+    if (url.scheme.empty()) {
+      if (url.port == 0) {
+        url.scheme = kDefaultScheme;
+      } else {
+        url.scheme = DefaultSchemeForPort(url.port);
+        if (url.scheme.empty()) {
+          url.scheme = kDefaultScheme;
+        }
+      }
+    }
+
+    if (url.host.empty()) {
+      url.host = kDefaultHost;
+    }
+
+    if (url.port == 0) {
+      url.port = DefaultPortForScheme(url.scheme);
+    }
+
+    return url;
+  }
+
+  static URL MakeRedirectedURL(const URL& source_url_parsed, const URL& target_url_parsed) {
+    URL url = URL(source_url_parsed);
+
+    if (!target_url_parsed.scheme.empty()) {
+      url.scheme = target_url_parsed.scheme;
+    }
+
+    if (!target_url_parsed.host.empty()) {
+      url.host = target_url_parsed.host;
+      url.port = target_url_parsed.port;
+    } else if (target_url_parsed.port > 0) {
+      url.port = target_url_parsed.port;
+    }
+
+    url.path = target_url_parsed.path;
+
+    url.parameters_vector = target_url_parsed.parameters_vector;
+    url.query = target_url_parsed.query;
+    url.fragment = target_url_parsed.fragment;
+
+    return MakeURLWithDefaults(url);
+  }
+
+  static URL MakeRedirectedURL(const URL& source_url_parsed, const std::string& url) {
+    return URL::MakeRedirectedURL(source_url_parsed, URL(url));
+  }
+
+  // Parses query strings without the question mark and `application/x-www-form-urlencoded` HTTP bodies.
+  static const std::map<std::string, std::string> ParseQueryString(const std::string& body) {
+    return URL("/?" + body).AllQueryParameters();
   }
 
   // Pretty simple, though not fully RFC-compliant way to check if URL path is valid.
