@@ -208,31 +208,44 @@ struct URLParametersExtractor {
 
   static bool IsHexDigit(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
 
+  static bool IsURIComponentSpecialCharacter(char c) {
+    // https://github.com/lyokato/cpp-urilite/blob/723083f98ddf42f2b610b62444c598236b5ce3e8/include/urilite.h#L52-L65
+    // RFC2396 unreserved?
+    return ((c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '-'  || c == '_'  || c == '.' || c == '~'
+            || c == '!'  || c == '\'' || c == '(' || c == ')');
+  }
+
   static std::string DecodeURIComponent(const std::string& encoded) {
-    std::string decoded;
+    std::ostringstream decoded;
     for (size_t i = 0; i < encoded.length(); ++i) {
-      if (i + 3 <= encoded.length() && encoded[i] == '%' && IsHexDigit(encoded[i + 1]) && IsHexDigit(encoded[i + 2])) {
-        decoded += static_cast<char>(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));
+      const char c = encoded[i];
+      if (c == '+') {
+        decoded << ' ';
+      } else if (c == '%' && i + 3 <= encoded.length() && IsHexDigit(encoded[i + 1]) && IsHexDigit(encoded[i + 2])) {
+        decoded << static_cast<char>(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));
         i += 2;
-      } else if (encoded[i] == '+') {
-        decoded += ' ';
       } else {
-        decoded += encoded[i];
+        decoded << c;
       }
     }
-    return decoded;
+    return decoded.str();
   }
 
   static std::string EncodeURIComponent(const std::string& decoded) {
-    std::string encoded;
+    std::ostringstream encoded;
     for (const char c : decoded) {
-      if (::isalpha(c) || ::isdigit(c)) {
-        encoded += c;
+      if (IsURIComponentSpecialCharacter(c)) {
+        encoded << c;
+      } else if (c == ' ') {
+        encoded << "%20";
       } else {
-        encoded += current::strings::Printf("%%%02X", static_cast<int>(c));
+        encoded << current::strings::Printf("%%%02X", static_cast<int>(c));
       }
     }
-    return encoded;
+    return encoded.str();
   }
 
   std::string ComposeParameters() const {
