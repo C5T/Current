@@ -143,11 +143,13 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("http://www.google.com/", u.ComposeURL());
   }
   {
-    URL u("www.google.com/a#fragment");
-    EXPECT_EQ("fragment", u.fragment);
+    // Fragment is not passed through `DecodeURIComponent`.
+    URL u("www.google.com/a#encoded-fragment-with_unreserved~chars!and%25reserved%3A%5Bchars%5D%2Band%20space");
+    EXPECT_EQ("encoded-fragment-with_unreserved~chars!and%25reserved%3A%5Bchars%5D%2Band%20space", u.fragment);
+    EXPECT_FALSE(u.query.has("key"));
     EXPECT_EQ("", u.query["key"]);
     EXPECT_EQ("default_value", u.query.get("key", "default_value"));
-    EXPECT_EQ("http://www.google.com/a#fragment", u.ComposeURL());
+    EXPECT_EQ("http://www.google.com/a#encoded-fragment-with_unreserved~chars!and%25reserved%3A%5Bchars%5D%2Band%20space", u.ComposeURL());
   }
   {
     URL u("www.google.com/a#fragment?foo=bar&baz=meh");
@@ -181,6 +183,13 @@ TEST(URLTest, ExtractsURLParameters) {
     ASSERT_TRUE(key3 == as_map.end());
     EXPECT_EQ("value", key->second);
     EXPECT_EQ("value2", key2->second);
+  }
+  {
+    URL u("www.google.com/a?encoded%23query-with_unreserved~chars!and%25reserved%3A%5Bchars%5Dplus%2Band%20space=#foo");
+    EXPECT_EQ("foo", u.fragment);
+    EXPECT_TRUE(u.query.has("encoded#query-with_unreserved~chars!and%reserved:[chars]plus+and space"));
+    EXPECT_EQ("", u.query["encoded#query-with_unreserved~chars!and%reserved:[chars]plus+and space"]);
+    EXPECT_EQ("http://www.google.com/a?encoded%23query-with_unreserved~chars!and%25reserved%3A%5Bchars%5Dplus%2Band%20space=#foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/a?k=a%3Db%26s%3D%25s%23#foo");
@@ -248,6 +257,21 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("==", u.query["= ="]);
     EXPECT_EQ("==", u.query.get("= =", "default_value"));
     EXPECT_EQ("http://www.google.com/q?%3D%20%3D=%3D%3D", u.ComposeURL());
+  }
+  {
+    ASSERT_THROW(URL("?parameters=only"), EmptyURLException);
+    ASSERT_THROW(URL("#fragment-only"), EmptyURLException);
+  }
+  {
+    // The following construct can be used to parse the `application/x-www-form-urlencoded` request body.
+    URL u("/?parameters=only");
+    EXPECT_EQ("http", u.scheme);
+    EXPECT_EQ("", u.host);
+    EXPECT_EQ(80, u.port);
+    EXPECT_EQ("/", u.path);
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("only", u.query["parameters"]);
+    EXPECT_EQ("/?parameters=only", u.ComposeURL());
   }
 }
 
