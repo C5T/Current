@@ -76,6 +76,11 @@ DEFINE_int32(net_api_test_port,
              "Local port to use for the test API-based HTTP server. NOTE: This port should be different from "
              "ports in other network-based tests, since API-driven HTTP server will hold it open for the whole "
              "lifetime of the binary.");
+DEFINE_int32(net_api_test_port_secondary,
+             PickPortForUnitTest(),
+             "Local port to use for the test API-based HTTP server for multi-port tests. NOTE: This port should be different from "
+             "ports in other network-based tests, since API-driven HTTP server will hold it open for the whole "
+             "lifetime of the binary.");
 DEFINE_string(net_api_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 CURRENT_STRUCT(HTTPAPITestObject) {
@@ -338,7 +343,7 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
 
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
-TEST(HTTPAPI, Redirect) {
+TEST(HTTPAPI, RedirectToRelativeURL) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/from",
                                    [](Request r) {
@@ -356,6 +361,52 @@ TEST(HTTPAPI, Redirect) {
   EXPECT_EQ("Done.", response.body);
   EXPECT_EQ(Printf("http://localhost:%d/to", FLAGS_net_api_test_port), response.url);
 }
+
+TEST(HTTPAPI, RedirectToFullURL) {
+  // Need a live port for the redirect target because the HTTP client is following the redirect
+  // and tries to connect to the redirect target, otherwise throws a `SocketConnectException`.
+  const auto scope_redirect_to = HTTP(FLAGS_net_api_test_port_secondary).Register("/to", [](Request r) { r("Done."); });
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/from",
+                                   [](Request r) {
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary)}}));
+                                   });
+  // Redirect not allowed by default.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
+  // Redirect allowed when `.AllowRedirects()` is set.
+  const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("Done.", response.body);
+  EXPECT_EQ(Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary), response.url);
+}
+
+#if 0
+TEST(HTTPAPI, RedirectToFullURLWithoutPort) {
+  // WARNING: This test requires root access to bind to the reserved port `80`.
+  // Need a live port for the redirect target because the HTTP client is following the redirect
+  // and tries to connect to the redirect target, otherwise throws a `SocketConnectException`.
+  const uint16_t default_http_port = 80;
+  const auto scope_redirect_to = HTTP(default_http_port).Register("/to", [](Request r) { r("Done."); });
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/from",
+                                   [](Request r) {
+                                     r("",
+                                       HTTPResponseCode.Found,
+                                       current::net::constants::kDefaultHTMLContentType,
+                                       Headers({{"Location", "http://localhost/to"}}));
+                                   });
+  // Redirect not allowed by default.
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
+  // Redirect allowed when `.AllowRedirects()` is set.
+  const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("Done.", response.body);
+  EXPECT_EQ("http://localhost/to", response.url);
+}
+#endif
 
 TEST(HTTPAPI, RedirectLoop) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
