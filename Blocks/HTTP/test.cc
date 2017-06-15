@@ -382,7 +382,8 @@ TEST(HTTPAPI, RedirectLoop) {
                                        current::net::constants::kDefaultHTMLContentType,
                                        Headers({{"Location", "/p1"}}));
                                    });
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port)).AllowRedirects()),
+               HTTPRedirectLoopException);
 }
 #endif
 
