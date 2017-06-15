@@ -243,10 +243,12 @@ struct ImplWrapper<HTTPClientPOSIX> {
   }
 
   template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
-  inline static void ParseOutput(const REQUEST_PARAMS& /*request_params*/,
-                                 const RESPONSE_PARAMS& /*response_params*/,
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
+    static_cast<void>(request_params);
+    static_cast<void>(response_params);
     output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;
     const auto& http_request = response.HTTPRequest();
