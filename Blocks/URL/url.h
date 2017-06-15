@@ -78,6 +78,8 @@ struct URLWithoutParametersParser {
   mutable std::string path = "/";
   std::string scheme = kDefaultScheme;
   uint16_t port = 0;
+  std::string username = "";
+  std::string password = "";
 
  protected:
   URLWithoutParametersParser() = default;
@@ -89,14 +91,16 @@ struct URLWithoutParametersParser {
 
     // Can parse a full URL: `scheme://host.name:80/path`, `scheme://host.name/path`.
     // Can parse a protocol-relative URL: `//host.name:80/path`, `//host.name/path`.
-    // Can parse a username-password pair: `http://user:pass@host.name/`.
-    // Can parse a username only: `http://user@host.name/`.
+    // Can parse a username-password pair: `http://user1:pass234@host.name:123/`.
+    // Can parse a username only: `http://user1@host.name:123/`.
     // Can parse a port-only URL: `:12345/path`.
     // Can parse a relative URL: `/path/anything`.
     // Query string and fragment identifier are parsed separately in `URLParametersExtractor`.
 
     scheme = "";
     size_t parsed_offset = 0;
+
+    // This piece parses scheme.
     const size_t double_slash = url.find("//");
     if (double_slash != std::string::npos && (double_slash == 0 || url[double_slash - 1] == ':')) {
       scheme = (double_slash == 0 ? "" : url.substr(0, double_slash - 1));
@@ -105,8 +109,20 @@ struct URLWithoutParametersParser {
 
     const size_t host_end = url.find('/', parsed_offset);
 
-    // TODO(dkorolev): Support `http://user:pass@host:80/` in the future.
+    // This piece parses optional username-password pair with optional password: `user:pass@` or `user@`.
+    const size_t at_sign = url.find('@', parsed_offset);
+    if (at_sign != std::string::npos && at_sign < host_end) {
+      const size_t user_pass_colon = url.find(':', parsed_offset);
+      if (user_pass_colon != std::string::npos && user_pass_colon < at_sign) {
+        username = url.substr(parsed_offset, user_pass_colon - parsed_offset);
+        password = url.substr(user_pass_colon + 1, at_sign - (user_pass_colon + 1));
+      } else {
+        username = url.substr(parsed_offset, at_sign - parsed_offset);
+      }
+      parsed_offset = at_sign + 1;
+    }
 
+    // This piece parses host and optional port.
     const size_t port_colon = url.find(':', parsed_offset);
     if (port_colon != std::string::npos && port_colon < host_end) {
       host = url.substr(parsed_offset, port_colon - parsed_offset);
@@ -115,6 +131,7 @@ struct URLWithoutParametersParser {
       host = url.substr(parsed_offset, host_end - parsed_offset);
     }
 
+    // This piece parses path.
     if (host_end != std::string::npos) {
       path = url.substr(host_end);
     } else {
@@ -132,6 +149,13 @@ struct URLWithoutParametersParser {
 
       std::ostringstream os;
       os << (!scheme_for_compose.empty() ? scheme_for_compose : kDefaultScheme) << "://";
+      if (!username.empty()) {
+        os << username;
+        if (!password.empty()) {
+          os << ':' << password;
+        }
+        os << '@';
+      }
       os << host;
       if (port_for_compose > 0) {
         os << ':' << port_for_compose;
@@ -406,6 +430,9 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
     if (!target_url_parsed.scheme.empty()) {
       url.scheme = target_url_parsed.scheme;
     }
+
+    url.username = target_url_parsed.username;
+    url.password = target_url_parsed.password;
 
     if (!target_url_parsed.host.empty()) {
       url.host = target_url_parsed.host;
