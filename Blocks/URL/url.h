@@ -144,7 +144,8 @@ struct URLWithoutParametersParser {
 
   std::string ComposeURL() const {
     if (!host.empty()) {
-      const std::string scheme_for_compose = (!scheme.empty() ? scheme : (port > 0 ? DefaultSchemeForPort(port) : kDefaultScheme));
+      const std::string scheme_for_compose =
+          (!scheme.empty() ? scheme : (port > 0 ? DefaultSchemeForPort(port) : kDefaultScheme));
       const uint16_t port_for_compose = (port > 0 && port != DefaultPortForScheme(scheme_for_compose) ? port : 0);
 
       std::ostringstream os;
@@ -230,11 +231,8 @@ struct URLParametersExtractor {
   static bool IsURIComponentSpecialCharacter(char c) {
     // https://github.com/lyokato/cpp-urilite/blob/723083f98ddf42f2b610b62444c598236b5ce3e8/include/urilite.h#L52-L65
     // RFC2396 unreserved?
-    return ((c >= 'a' && c <= 'z')
-            || (c >= 'A' && c <= 'Z')
-            || (c >= '0' && c <= '9')
-            || c == '-'  || c == '_'  || c == '.' || c == '~'
-            || c == '!'  || c == '\'' || c == '(' || c == ')');
+    return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' ||
+            c == '.' || c == '~' || c == '!' || c == '\'' || c == '(' || c == ')');
   }
 
   static std::string DecodeURIComponent(const std::string& encoded) {
@@ -391,9 +389,7 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
     URLWithoutParametersParser::ParseURLWithoutParameters(url.substr(0, parameters_start_index));
   }
 
-  std::string ComposeURLWithoutParameters() const {
-    return URLWithoutParametersParser::ComposeURL();
-  }
+  std::string ComposeURLWithoutParameters() const { return URLWithoutParametersParser::ComposeURL(); }
 
   std::string ComposeURL() const {
     return URLWithoutParametersParser::ComposeURL() + URLParametersExtractor::ComposeParameters();
