@@ -22,34 +22,33 @@
  SOFTWARE.
  *******************************************************************************/
 
-#include "../../../Bricks/dflags/dflags.h"
-
 #include "../../../Sherlock/sherlock.h"
 
 #include "entry.h"
 
-DEFINE_uint32(entry_length, 1000, "The length of the string member values in the generated entries.");
-DEFINE_uint32(entries_count, 100000, "The number of entries in the output data.");
-DEFINE_string(output_file, "data.json", "The path to persist the stream to.");
+#ifndef BENCHMARK_REPLICATION_GENERATE_STREAM_H
+#define BENCHMARK_REPLICATION_GENERATE_STREAM_H
 
-int main(int argc, char** argv) {
-  ParseDFlags(&argc, &argv);
-  std::cout << "Generate stream consisted of " << FLAGS_entries_count << " entries." << std::endl;
+namespace benchmark {
 
+using entry_t = Entry;
+using stream_t = current::sherlock::Stream<entry_t, current::persistence::File>;
+
+void GenerateStreamData(const std::string& output_file, uint32_t entry_length, uint32_t entries_count) {
   const char symbols[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const uint32_t symbols_count = sizeof(symbols) / sizeof(symbols[0]) - 1;
-  std::vector<char> pattern(FLAGS_entry_length + 1);
+  std::vector<char> pattern(entry_length + 1);
 
-  using stream_t = current::sherlock::Stream<Entry, current::persistence::File>;
-  stream_t stream(FLAGS_output_file);
+  stream_t stream(output_file);
 
-  for (uint32_t i = 0; i < FLAGS_entries_count; ++i) {
-    for (uint32_t j = 0; j < FLAGS_entry_length; ++j) {
+  for (uint32_t i = 0; i < entries_count; ++i) {
+    for (uint32_t j = 0; j < entry_length; ++j) {
       pattern[j] = symbols[(i / symbols_count + (i + 1) * j) % symbols_count];
     }
     stream.Publish(Entry(&pattern[0]));
   }
-
-  std::cout << "Successfully generated and saved to " << FLAGS_output_file << std::endl;
-  return 0;
 }
+  
+}  // namespace benchmark
+
+#endif  // BENCHMARK_REPLICATION_GENERATE_STREAM_H

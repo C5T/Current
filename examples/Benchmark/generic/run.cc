@@ -29,6 +29,7 @@ SOFTWARE.
 #include "scenario_simple_http.h"
 #include "scenario_storage.h"
 #include "scenario_nginx_client.h"
+#include "scenario_replication.h"
 
 using namespace current;
 
