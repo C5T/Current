@@ -46,6 +46,7 @@ DECLARE_string(remote_url);
 DECLARE_uint16(local_port);
 DECLARE_string(db);
 DECLARE_bool(regenerate_db);
+DECLARE_bool(use_file_persistence);
 DECLARE_uint32(entry_length);
 DECLARE_uint32(entries_count);
 #endif
@@ -75,7 +76,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   void Replicate(ARGS && ... args) {
     STREAM replicated_stream(std::forward<ARGS>(args)...);
     using RemoteStreamReplicator = current::sherlock::StreamReplicator<STREAM>;
-    current::sherlock::SubscribableRemoteStream<benchmark::entry_t> remote_stream(stream_url);
+    current::sherlock::SubscribableRemoteStream<Entry> remote_stream(stream_url);
     auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
     {
       const auto subscriber_scope = remote_stream.Subscribe(*replicator);
@@ -91,7 +92,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
       const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
       Replicate<benchmark::stream_t>(filename);
     } else {
-      Replicate<current::sherlock::Stream<benchmark::entry_t, current::persistence::Memory>>();
+      Replicate<current::sherlock::Stream<Entry, current::persistence::Memory>>();
     }
   }
 };
