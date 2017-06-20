@@ -34,21 +34,24 @@ namespace benchmark {
 using entry_t = Entry;
 using stream_t = current::sherlock::Stream<entry_t, current::persistence::File>;
 
-void GenerateStreamData(const std::string& output_file, uint32_t entry_length, uint32_t entries_count) {
+std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
+                                         uint32_t entry_length,
+                                         uint32_t entries_count) {
   const char symbols[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const uint32_t symbols_count = sizeof(symbols) / sizeof(symbols[0]) - 1;
   std::vector<char> pattern(entry_length + 1);
 
-  stream_t stream(output_file);
+  auto stream = std::make_unique<stream_t>(output_file);
 
   for (uint32_t i = 0; i < entries_count; ++i) {
     for (uint32_t j = 0; j < entry_length; ++j) {
       pattern[j] = symbols[(i / symbols_count + (i + 1) * j) % symbols_count];
     }
-    stream.Publish(Entry(&pattern[0]));
+    stream->Publish(Entry(&pattern[0]));
   }
+  return stream;
 }
-  
+
 }  // namespace benchmark
 
 #endif  // BENCHMARK_REPLICATION_GENERATE_STREAM_H
