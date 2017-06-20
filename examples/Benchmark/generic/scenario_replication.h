@@ -35,17 +35,16 @@
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_string(remote_url, "", "Remote url to subscribe to.");
-DEFINE_uint16(local_port, 8383, "Local port to subscribe to.");
-DEFINE_string(remote_db, "db.json", "Path to load the stream data from.");
-DEFINE_string(local_db, "db_copy.json", "Path to write the replicated stream to.");
+DEFINE_uint16(local_port, 8383, "Local port to spawn the source stream on.");
+DEFINE_string(db, "db.json", "Path to load the source stream data from.");
 DEFINE_bool(regenerate_db, true, "Regenerate the stream data to replicate.");
-DEFINE_uint32(entry_length, 100, "The length of the string member values in the generated entries.");
-DEFINE_uint32(entries_count, 1000, "The number of entries in the output data.");
+DEFINE_bool(use_file_persistence, true, "Use file persisters in the replicated streams.");
+DEFINE_uint32(entry_length, 100, "The length of the string member values in the generated stream entries.");
+DEFINE_uint32(entries_count, 1000, "The number of entries to replicate.");
 #else
 DECLARE_string(remote_url);
 DECLARE_uint16(local_port);
-DECLARE_string(remote_db);
-DECLARE_string(local_db);
+DECLARE_string(db);
 DECLARE_bool(regenerate_db);
 DECLARE_uint32(entry_length);
 DECLARE_uint32(entries_count);
@@ -59,10 +58,10 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   stream_replication() {
     if (FLAGS_remote_url.empty()) {
       if (FLAGS_regenerate_db) {
-        current::FileSystem::RmFile(FLAGS_remote_db, current::FileSystem::RmFileParameters::Silent);
-        stream = benchmark::GenerateStream(FLAGS_remote_db, FLAGS_entry_length, FLAGS_entries_count);
+        current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
+        stream = benchmark::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
       } else {
-        stream = std::make_unique<benchmark::stream_t>(FLAGS_remote_db);
+        stream = std::make_unique<benchmark::stream_t>(FLAGS_db);
       }
       stream_url = current::strings::Printf("127.0.0.1:%u/raw_log", FLAGS_local_port);
       scope += HTTP(FLAGS_local_port)
@@ -87,12 +86,12 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   }
 
   void RunOneQuery() override {
-    if (FLAGS_local_db.empty()) {
-      Replicate<current::sherlock::Stream<benchmark::entry_t, current::persistence::Memory>>();
-    } else {
+    if (FLAGS_use_file_persistence) {
       const auto filename = current::FileSystem::GenTmpFileName();
       const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
       Replicate<benchmark::stream_t>(filename);
+    } else {
+      Replicate<current::sherlock::Stream<benchmark::entry_t, current::persistence::Memory>>();
     }
   }
 };
