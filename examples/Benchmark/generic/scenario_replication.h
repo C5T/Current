@@ -52,7 +52,7 @@ DECLARE_uint32(entries_count);
 #endif
 
 SCENARIO(stream_replication, "Replicate the Current stream of simple string entries.") {
-  std::unique_ptr<benchmark::stream_t> stream;
+  std::unique_ptr<benchmark::replication::stream_t> stream;
   std::string stream_url;
   HTTPRoutesScope scope;
 
@@ -60,9 +60,9 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
     if (FLAGS_remote_url.empty()) {
       if (FLAGS_regenerate_db) {
         current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
-        stream = benchmark::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
+        stream = benchmark::replication::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
       } else {
-        stream = std::make_unique<benchmark::stream_t>(FLAGS_db);
+        stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
       }
       stream_url = current::strings::Printf("127.0.0.1:%u/raw_log", FLAGS_local_port);
       scope += HTTP(FLAGS_local_port)
@@ -76,7 +76,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   void Replicate(ARGS && ... args) {
     STREAM replicated_stream(std::forward<ARGS>(args)...);
     using RemoteStreamReplicator = current::sherlock::StreamReplicator<STREAM>;
-    current::sherlock::SubscribableRemoteStream<Entry> remote_stream(stream_url);
+    current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(stream_url);
     auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
     {
       const auto subscriber_scope = remote_stream.Subscribe(*replicator);
@@ -90,9 +90,9 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
     if (FLAGS_use_file_persistence) {
       const auto filename = current::FileSystem::GenTmpFileName();
       const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
-      Replicate<benchmark::stream_t>(filename);
+      Replicate<benchmark::replication::stream_t>(filename);
     } else {
-      Replicate<current::sherlock::Stream<Entry, current::persistence::Memory>>();
+      Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
     }
   }
 };

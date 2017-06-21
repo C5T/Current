@@ -30,12 +30,13 @@
 #define BENCHMARK_REPLICATION_GENERATE_STREAM_H
 
 namespace benchmark {
+namespace replication {
 
 using stream_t = current::sherlock::Stream<Entry, current::persistence::File>;
 
-std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
-                                         uint32_t entry_length,
-                                         uint32_t entries_count) {
+inline std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
+                                                uint32_t entry_length,
+                                                uint32_t entries_count) {
   const char symbols[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const uint32_t symbols_count = sizeof(symbols) / sizeof(symbols[0]) - 1;
   std::vector<char> pattern(entry_length + 1);
@@ -51,6 +52,7 @@ std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
   return stream;
 }
 
+}  // namespace replication
 }  // namespace benchmark
 
 #endif  // BENCHMARK_REPLICATION_GENERATE_STREAM_H

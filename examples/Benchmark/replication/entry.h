@@ -27,11 +27,17 @@
 
 #include "../../../TypeSystem/struct.h"
 
+namespace benchmark {
+namespace replication {
+
 CURRENT_STRUCT(Entry) {
   CURRENT_FIELD(s, std::string, "");
 
   CURRENT_DEFAULT_CONSTRUCTOR(Entry) {}
   CURRENT_CONSTRUCTOR(Entry)(std::string s) : s(std::move(s)) {}
 };
+
+}  // namespace replication
+}  // namespace benchmark
 
 #endif  // BENCHMARK_REPLICATION_ENTRY_H

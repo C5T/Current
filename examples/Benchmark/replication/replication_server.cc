@@ -37,16 +37,16 @@ DEFINE_uint32(entries_count, 10000, "The number of entries to replicate.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  std::unique_ptr<benchmark::stream_t> stream;
+  std::unique_ptr<benchmark::replication::stream_t> stream;
   if (FLAGS_regenerate_db) {
     current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
-    stream = benchmark::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
+    stream = benchmark::replication::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
   } else {
-    stream = std::make_unique<benchmark::stream_t>(FLAGS_db);
+    stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
   }
   auto scope =
       HTTP(FLAGS_port).Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
-  std::cout << "Server spawned on " << FLAGS_port << " port" << std::endl;
+  std::cout << "Server is spawned on port " << FLAGS_port << std::endl;
   HTTP(FLAGS_port).Join();
   return 0;
 }

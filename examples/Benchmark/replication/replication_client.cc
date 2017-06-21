@@ -35,7 +35,7 @@ template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
   STREAM replicated_stream(std::forward<ARGS>(args)...);
   using RemoteStreamReplicator = current::sherlock::StreamReplicator<STREAM>;
-  current::sherlock::SubscribableRemoteStream<Entry> remote_stream(FLAGS_url);
+  current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
   auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
 
   const auto start_time = std::chrono::system_clock::now();
@@ -55,9 +55,9 @@ int main(int argc, char** argv) {
   if (!FLAGS_db.empty()) {
     const auto filename = current::FileSystem::GenTmpFileName();
     const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
-    Replicate<current::sherlock::Stream<Entry, current::persistence::File>>(filename);
+    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(filename);
   } else {
-    Replicate<current::sherlock::Stream<Entry, current::persistence::Memory>>();
+    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
   }
   return 0;
 }
