@@ -34,20 +34,27 @@ DEFINE_uint32(total_entries, 10000, "Entries number to replicate.");
 template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
   STREAM replicated_stream(std::forward<ARGS>(args)...);
-  using RemoteStreamReplicator = current::sherlock::StreamReplicator<STREAM>;
+  std::cout << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
   current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
-  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
+  auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
 
   const auto start_time = std::chrono::system_clock::now();
   {
+    std::cout << "\b\b\bOK\nSubscribing to the stream ..." << std::flush;
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
+    std::cout << "\b\b\bOK" << std::endl;
+    auto next_print_time = start_time + std::chrono::milliseconds(100);
     while (replicated_stream.Persister().Size() != FLAGS_total_entries) {
       std::this_thread::yield();
+      if (std::chrono::system_clock::now() >= next_print_time) {
+        next_print_time += std::chrono::milliseconds(100);
+        std::cout << "\rReplicated " << replicated_stream.Persister().Size() << " of " << FLAGS_total_entries << " entries" << std::flush;
+      }
     }
   }
   const auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count();
-  std::cout << "Replication filished, total time: " << duration / 1000.0 << " seconds." << std::endl;
+  std::cout << "\rReplication filished, total time: " << duration / 1000.0 << " seconds." << std::endl;
 }
 
 int main(int argc, char** argv) {

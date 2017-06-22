@@ -84,9 +84,8 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   template <typename STREAM, typename... ARGS>
   void Replicate(ARGS && ... args) {
     STREAM replicated_stream(std::forward<ARGS>(args)...);
-    using RemoteStreamReplicator = current::sherlock::StreamReplicator<STREAM>;
     current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(stream_url);
-    auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
+    auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
     {
       const auto subscriber_scope = remote_stream.Subscribe(*replicator);
       while (replicated_stream.Persister().Size() != FLAGS_entries_count) {

@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   } else {
     stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
   }
-  auto scope =
+  const auto scope =
       HTTP(FLAGS_port).Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
   std::cout << "Server is spawned on port " << FLAGS_port << std::endl;
   HTTP(FLAGS_port).Join();
