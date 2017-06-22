@@ -30,7 +30,7 @@
 
 DEFINE_string(route, "/raw_log", "Route to spawn the stream on.");
 DEFINE_uint16(port, 8383, "Port to spawn the stream on.");
-DEFINE_string(db, "db.json", "Path to load the stream data from.");
+DEFINE_string(db, "data.json", "Path to load the stream data from.");
 DEFINE_bool(regenerate_db, true, "Regenerate the stream data.");
 DEFINE_uint32(entry_length, 1000, "The length of the string member values in the generated stream entries.");
 DEFINE_uint32(entries_count, 10000, "The number of entries to replicate.");

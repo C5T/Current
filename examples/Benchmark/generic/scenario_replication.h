@@ -36,9 +36,9 @@
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_string(remote_url, "", "Remote url to subscribe to.");
 DEFINE_uint16(local_port, 8383, "Local port to spawn the source stream on.");
-DEFINE_string(db, "db.json", "Path to load the source stream data from.");
+DEFINE_string(db, "data.json", "Path to load the source stream data from.");
 DEFINE_bool(regenerate_db, true, "Regenerate the stream data to replicate.");
-DEFINE_bool(use_file_persistence, true, "Use file persisters in the replicated streams.");
+DEFINE_string(persister, "disk", "The type of the replicator-side persister - one of 'disk' / 'memory'");
 DEFINE_uint32(entry_length, 100, "The length of the string member values in the generated stream entries.");
 DEFINE_uint32(entries_count, 1000, "The number of entries to replicate.");
 #else
@@ -46,7 +46,7 @@ DECLARE_string(remote_url);
 DECLARE_uint16(local_port);
 DECLARE_string(db);
 DECLARE_bool(regenerate_db);
-DECLARE_bool(use_file_persistence);
+DECLARE_string(persister);
 DECLARE_uint32(entry_length);
 DECLARE_uint32(entries_count);
 #endif
@@ -55,6 +55,8 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   std::unique_ptr<benchmark::replication::stream_t> stream;
   std::string stream_url;
   HTTPRoutesScope scope;
+  enum class PERSISTER_TYPE : int { DISK, MEMORY };
+  PERSISTER_TYPE persister_type;
 
   stream_replication() {
     if (FLAGS_remote_url.empty()) {
@@ -69,6 +71,13 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
                    .Register("/raw_log", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
     } else {
       stream_url = FLAGS_remote_url;
+    }
+    const std::map<std::string, PERSISTER_TYPE> supported_persisters = {{"disk", PERSISTER_TYPE::DISK},
+                                                                        {"memory", PERSISTER_TYPE::MEMORY}};
+    try {
+      persister_type = supported_persisters.at(FLAGS_persister);
+    } catch (const std::out_of_range&) {
+      throw std::logic_error(current::strings::Printf("Unsupported persister type: %s", FLAGS_persister.c_str()));
     }
   }
 
@@ -87,7 +96,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   }
 
   void RunOneQuery() override {
-    if (FLAGS_use_file_persistence) {
+    if (persister_type == PERSISTER_TYPE::DISK) {
       const auto filename = current::FileSystem::GenTmpFileName();
       const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
       Replicate<benchmark::replication::stream_t>(filename);

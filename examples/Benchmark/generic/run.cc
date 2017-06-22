@@ -113,6 +113,8 @@ int main(int argc, char** argv) {
     } catch (const std::out_of_range&) {
       std::cout << "Scenario `" << FLAGS_scenario << "` is not defined." << std::endl;
       return -1;
+    } catch (const std::exception& e) {
+      std::cout << e.what() << std::endl;
     }
   }
 }

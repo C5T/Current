@@ -28,7 +28,7 @@
 #include "entry.h"
 
 DEFINE_string(url, "127.0.0.1:8383/raw_log", "Url to subscribe to.");
-DEFINE_string(db, "replicated_db.json", "Path to load the source stream data from.");
+DEFINE_string(db, "replicated_data.json", "Path to load the source stream data from.");
 DEFINE_uint32(total_entries, 10000, "Entries number to replicate.");
 
 template <typename STREAM, typename... ARGS>
