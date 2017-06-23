@@ -52,7 +52,8 @@ void Replicate(ARGS&&... args) {
       std::this_thread::yield();
       if (std::chrono::system_clock::now() >= next_print_time) {
         next_print_time += std::chrono::milliseconds(100);
-        std::cout << "\rReplicated " << replicated_stream.Persister().Size() << " of " << FLAGS_total_entries << " entries" << std::flush;
+        std::cout << "\rReplicated " << replicated_stream.Persister().Size() << " of " << FLAGS_total_entries
+                  << " entries" << std::flush;
       }
     }
   }

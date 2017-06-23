@@ -57,20 +57,24 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   HTTPRoutesScope scope;
   enum class PERSISTER_TYPE : int { DISK, MEMORY };
   PERSISTER_TYPE persister_type;
+  uint64_t entries_count;
 
   stream_replication() {
     if (FLAGS_remote_url.empty()) {
       if (FLAGS_regenerate_db) {
         current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
         stream = benchmark::replication::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
+        entries_count = FLAGS_entries_count;
       } else {
         stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
+        entries_count = stream->Persister().Size();
       }
-      stream_url = current::strings::Printf("127.0.0.1:%u/raw_log", FLAGS_local_port);
-      scope += HTTP(FLAGS_local_port)
-                   .Register("/raw_log", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
+      stream_url = current::strings::Printf("127.0.0.1:%u/", FLAGS_local_port);
+      scope +=
+          HTTP(FLAGS_local_port).Register("/", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
     } else {
       stream_url = FLAGS_remote_url;
+      entries_count = current::FromString<uint64_t>(HTTP(GET(stream_url + "?sizeonly")).body);
     }
     const std::map<std::string, PERSISTER_TYPE> supported_persisters = {{"disk", PERSISTER_TYPE::DISK},
                                                                         {"memory", PERSISTER_TYPE::MEMORY}};
@@ -88,7 +92,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
     auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
     {
       const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-      while (replicated_stream.Persister().Size() != FLAGS_entries_count) {
+      while (replicated_stream.Persister().Size() != entries_count) {
         std::this_thread::yield();
       }
     }
