@@ -39,12 +39,14 @@ inline std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
                                                 uint32_t entries_count) {
   const char symbols[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const uint32_t symbols_count = sizeof(symbols) / sizeof(symbols[0]) - 1;
-  std::vector<char> pattern(entry_length + 1);
+  const uint32_t empty_entry_length = JSON(Entry()).length() + 1;
+  const uint32_t entry_member_length = entry_length > empty_entry_length ? entry_length - empty_entry_length : 0;
+  std::vector<char> pattern(entry_member_length + 1);
 
   auto stream = std::make_unique<stream_t>(output_file);
 
   for (uint32_t i = 0; i < entries_count; ++i) {
-    for (uint32_t j = 0; j < entry_length; ++j) {
+    for (uint32_t j = 0; j < entry_member_length; ++j) {
       pattern[j] = symbols[(i / symbols_count + (i + 1) * j) % symbols_count];
     }
     stream->Publish(Entry(&pattern[0]));
