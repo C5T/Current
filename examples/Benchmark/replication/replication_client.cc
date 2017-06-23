@@ -48,7 +48,7 @@ void Replicate(ARGS&&... args) {
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
     std::cout << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + std::chrono::milliseconds(100);
-    while (replicated_stream.Persister().Size() != FLAGS_total_entries) {
+    while (replicated_stream.Persister().Size() < FLAGS_total_entries) {
       std::this_thread::yield();
       if (std::chrono::system_clock::now() >= next_print_time) {
         next_print_time += std::chrono::milliseconds(100);
@@ -57,9 +57,19 @@ void Replicate(ARGS&&... args) {
       }
     }
   }
+  std::cout << "\rReplication filished, calculating the stats ..." << std::flush;
+  const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
+  uint64_t replicated_data_size = 0;
+  for (const auto& e : replicated_stream.Persister().Iterate(0, -1)) {
+    replicated_data_size += empty_entry_length + e.entry.s.length();
+  }
+
   const auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count();
-  std::cout << "\rReplication filished, total time: " << duration / 1000.0 << " seconds." << std::endl;
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() /
+      1000.0;
+  std::cout << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
+  std::cout << duration << '\t' << replicated_stream.Persister().Size() / duration << '\t'
+            << replicated_data_size / duration / 1024 / 1024 << std::endl;
 }
 
 int main(int argc, char** argv) {
