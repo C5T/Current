@@ -37,10 +37,14 @@ void Replicate(ARGS&&... args) {
   std::cout << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
   current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
   auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
+  std::cout << "\b\b\bOK" << std::endl;
+
+  const auto stream_size = current::FromString<uint64_t>(HTTP(GET(FLAGS_url + "?sizeonly")).body);
+  CURRENT_ASSERT(stream_size >= FLAGS_total_entries);
 
   const auto start_time = std::chrono::system_clock::now();
   {
-    std::cout << "\b\b\bOK\nSubscribing to the stream ..." << std::flush;
+    std::cout << "Subscribing to the stream ..." << std::flush;
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
     std::cout << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + std::chrono::milliseconds(100);
@@ -60,9 +64,8 @@ void Replicate(ARGS&&... args) {
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
   if (!FLAGS_db.empty()) {
-    const auto filename = current::FileSystem::GenTmpFileName();
-    const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
-    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(filename);
+    current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
+    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(FLAGS_db);
   } else {
     Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
   }
