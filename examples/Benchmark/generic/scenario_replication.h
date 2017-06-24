@@ -98,9 +98,10 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
     auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
     {
       const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-      while (replicated_stream.Persister().Size() != entries_count) {
+      while (replicated_stream.Persister().Size() < entries_count) {
         std::this_thread::yield();
       }
+      CURRENT_ASSERT(replicated_stream.Persister().Size() == entries_count);
     }
   }
 

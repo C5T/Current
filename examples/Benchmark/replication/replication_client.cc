@@ -34,14 +34,14 @@ DEFINE_uint32(total_entries, 10000, "Entries number to replicate.");
 template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
   STREAM replicated_stream(std::forward<ARGS>(args)...);
-  std::cout << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
+  std::cerr << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
   current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
   auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
-  std::cout << "\b\b\bOK" << std::endl;
+  std::cerr << "\b\b\bOK" << std::endl;
 
   const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
   if (size_response.code != HTTPResponseCode.OK) {
-    std::cout << "Cannot obtain the remote stream size, got an error " << static_cast<uint32_t>(size_response.code)
+    std::cerr << "Cannot obtain the remote stream size, got an error " << static_cast<uint32_t>(size_response.code)
               << " response: " << size_response.body << std::endl;
     return;
   }
@@ -50,31 +50,32 @@ void Replicate(ARGS&&... args) {
 
   const auto start_time = std::chrono::system_clock::now();
   {
-    std::cout << "Subscribing to the stream ..." << std::flush;
+    std::cerr << "Subscribing to the stream ..." << std::flush;
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    std::cout << "\b\b\bOK" << std::endl;
+    std::cerr << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + std::chrono::milliseconds(100);
     while (replicated_stream.Persister().Size() < FLAGS_total_entries) {
       std::this_thread::yield();
-      if (std::chrono::system_clock::now() >= next_print_time) {
+      if (std::chrono::system_clock::now() >= next_print_time ||
+          replicated_stream.Persister().Size() >= FLAGS_total_entries) {
         next_print_time += std::chrono::milliseconds(100);
-        std::cout << "\rReplicated " << replicated_stream.Persister().Size() << " of " << FLAGS_total_entries
-                  << " entries" << std::flush;
+        std::cerr << "\rReplicated " << replicated_stream.Persister().Size() << " of " << FLAGS_total_entries
+                  << " entries." << std::flush;
       }
     }
   }
-  std::cout << "\rReplication filished, calculating the stats ..." << std::flush;
+  std::cerr << "\nReplication filished, calculating the stats ..." << std::flush;
   // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
   uint64_t replicated_data_size = 0;
-  for (const auto& e : replicated_stream.Persister().Iterate(0, -1)) {
+  for (const auto& e : replicated_stream.Persister().Iterate()) {
     replicated_data_size += empty_entry_length + e.entry.s.length();
   }
 
   const auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() /
       1000.0;
-  std::cout << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
+  std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration << '\t' << replicated_stream.Persister().Size() / duration << '\t'
             << replicated_data_size / duration / 1024 / 1024 << std::endl;
 }
