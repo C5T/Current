@@ -74,7 +74,13 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
           HTTP(FLAGS_local_port).Register("/", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
     } else {
       stream_url = FLAGS_remote_url;
-      entries_count = current::FromString<uint64_t>(HTTP(GET(stream_url + "?sizeonly")).body);
+      const auto size_response = HTTP(GET(stream_url + "?sizeonly"));
+      if (size_response.code != HTTPResponseCode.OK) {
+        throw std::logic_error(current::strings::Printf("Cannot obtain the remote stream size, got an error %u: %s",
+                                                        static_cast<uint32_t>(size_response.code),
+                                                        size_response.body.c_str()));
+      }
+      entries_count = current::FromString<uint64_t>(size_response.body);
     }
     const std::map<std::string, PERSISTER_TYPE> supported_persisters = {{"disk", PERSISTER_TYPE::DISK},
                                                                         {"memory", PERSISTER_TYPE::MEMORY}};

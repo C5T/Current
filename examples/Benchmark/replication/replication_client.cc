@@ -39,7 +39,13 @@ void Replicate(ARGS&&... args) {
   auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
   std::cout << "\b\b\bOK" << std::endl;
 
-  const auto stream_size = current::FromString<uint64_t>(HTTP(GET(FLAGS_url + "?sizeonly")).body);
+  const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
+  if (size_response.code != HTTPResponseCode.OK) {
+    std::cout << "Cannot obtain the remote stream size, got an error " << static_cast<uint32_t>(size_response.code)
+              << " response: " << size_response.body << std::endl;
+    return;
+  }
+  const auto stream_size = current::FromString<uint64_t>(size_response.body);
   CURRENT_ASSERT(stream_size >= FLAGS_total_entries);
 
   const auto start_time = std::chrono::system_clock::now();
@@ -58,6 +64,7 @@ void Replicate(ARGS&&... args) {
     }
   }
   std::cout << "\rReplication filished, calculating the stats ..." << std::flush;
+  // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
   uint64_t replicated_data_size = 0;
   for (const auto& e : replicated_stream.Persister().Iterate(0, -1)) {

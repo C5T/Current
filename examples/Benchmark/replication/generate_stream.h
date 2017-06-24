@@ -39,6 +39,7 @@ inline std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
                                                 uint32_t entries_count) {
   const char symbols[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const uint32_t symbols_count = sizeof(symbols) / sizeof(symbols[0]) - 1;
+  // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint32_t empty_entry_length = JSON(Entry()).length() + 1;
   CURRENT_ASSERT(entry_length >= empty_entry_length);
   const uint32_t entry_member_length = entry_length > empty_entry_length ? entry_length - empty_entry_length : 0;
