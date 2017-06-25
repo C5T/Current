@@ -64,6 +64,10 @@ void Replicate(ARGS&&... args) {
       }
     }
   }
+  if (replicated_stream.Persister().Size() > FLAGS_total_entries) {
+    std::cerr << "\nWarning: more (" << replicated_stream.Persister().Size() << ") entries then requested ("
+              << FLAGS_total_entries << ") were replicated" << std::endl;
+  }
   std::cerr << "\nReplication filished, calculating the stats ..." << std::flush;
   // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;

@@ -59,6 +59,17 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   PERSISTER_TYPE persister_type;
   uint64_t entries_count;
 
+  struct InvalidPersisterTypeException : current::Exception {
+    explicit InvalidPersisterTypeException(const std::string& persister)
+        : current::Exception("Unsupported persister type: " + persister) {}
+  };
+  struct GetStreamSizeFailedException : current::Exception {
+    explicit GetStreamSizeFailedException(const current::http::HTTPResponseWithBuffer& response)
+        : current::Exception(current::strings::Printf("Cannot obtain the remote stream size, got an error %u: %s",
+                                                      static_cast<uint32_t>(response.code),
+                                                      response.body.c_str())) {}
+  };
+
   stream_replication() {
     if (FLAGS_remote_url.empty()) {
       if (FLAGS_regenerate_db) {
@@ -76,9 +87,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
       stream_url = FLAGS_remote_url;
       const auto size_response = HTTP(GET(stream_url + "?sizeonly"));
       if (size_response.code != HTTPResponseCode.OK) {
-        throw std::logic_error(current::strings::Printf("Cannot obtain the remote stream size, got an error %u: %s",
-                                                        static_cast<uint32_t>(size_response.code),
-                                                        size_response.body.c_str()));
+        CURRENT_THROW(GetStreamSizeFailedException(size_response));
       }
       entries_count = current::FromString<uint64_t>(size_response.body);
     }
@@ -87,7 +96,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
     try {
       persister_type = supported_persisters.at(FLAGS_persister);
     } catch (const std::out_of_range&) {
-      throw std::logic_error(current::strings::Printf("Unsupported persister type: %s", FLAGS_persister.c_str()));
+      CURRENT_THROW(InvalidPersisterTypeException(FLAGS_persister));
     }
   }
 
