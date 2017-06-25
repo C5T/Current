@@ -31,16 +31,19 @@
 DEFINE_string(route, "/raw_log", "Route to spawn the stream on.");
 DEFINE_uint16(port, 8383, "Port to spawn the stream on.");
 DEFINE_string(db, "data.json", "Path to load the stream data from.");
-DEFINE_bool(regenerate_db, true, "Regenerate the stream data.");
+DEFINE_bool(existing_db, false, "Used existing stream data instead of generating a temporary one.");
 DEFINE_uint32(entry_length, 1000, "The length of the string member values in the generated stream entries.");
 DEFINE_uint32(entries_count, 10000, "The number of entries to replicate.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
   std::unique_ptr<benchmark::replication::stream_t> stream;
-  if (FLAGS_regenerate_db) {
-    current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
-    stream = benchmark::replication::GenerateStream(FLAGS_db, FLAGS_entry_length, FLAGS_entries_count);
+  std::unique_ptr<current::FileSystem::ScopedRmFile> tmp_db_remover;
+  if (!FLAGS_existing_db) {
+    const auto filename = current::FileSystem::GenTmpFileName();
+    tmp_db_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
+    std::cout << "use generated db from " << filename << std::endl;
+    stream = benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count);
   } else {
     stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
   }
