@@ -36,8 +36,7 @@
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_string(remote_url, "", "Remote url to subscribe to.");
 DEFINE_uint16(local_port, 8383, "Local port to spawn the source stream on.");
-DEFINE_string(db, "data.json", "Path to load the source stream data from.");
-DEFINE_bool(existing_db, false, "Used existing stream data instead of generating a temporary one.");
+DEFINE_string(db, "", "If set, path to load the stream data from. If not, the data is generated from scratch.");
 DEFINE_string(persister, "disk", "The type of the replicator-side persister - one of 'disk' / 'memory'");
 DEFINE_uint32(entry_length, 100, "The length of the string member values in the generated stream entries.");
 DEFINE_uint32(entries_count, 1000, "The number of entries to replicate.");
@@ -45,7 +44,6 @@ DEFINE_uint32(entries_count, 1000, "The number of entries to replicate.");
 DECLARE_string(remote_url);
 DECLARE_uint16(local_port);
 DECLARE_string(db);
-DECLARE_bool(existing_db);
 DECLARE_string(persister);
 DECLARE_uint32(entry_length);
 DECLARE_uint32(entries_count);
@@ -73,7 +71,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
 
   stream_replication() {
     if (FLAGS_remote_url.empty()) {
-      if (!FLAGS_existing_db) {
+      if (FLAGS_db.empty()) {
         const auto filename = current::FileSystem::GenTmpFileName();
         tmp_db_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
         stream = benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count);
