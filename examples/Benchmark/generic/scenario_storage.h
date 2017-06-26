@@ -54,8 +54,8 @@ CURRENT_STRUCT(UInt32KeyValuePair) {
 CURRENT_STRUCT(StringKeyValuePair) {
   CURRENT_FIELD(key, std::string);
   CURRENT_FIELD(value, uint32_t);
-  CURRENT_CONSTRUCTOR(StringKeyValuePair)(const std::string& key = "", uint32_t value = 0)
-      : key(key), value(value) {}
+  CURRENT_CONSTRUCTOR(StringKeyValuePair)(const std::string key = "", uint32_t value = 0)
+      : key(std::move(key)), value(value) {}
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, UInt32KeyValuePair, PersistedUInt32KeyValuePair);

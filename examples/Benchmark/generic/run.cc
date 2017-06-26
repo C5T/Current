@@ -29,6 +29,7 @@ SOFTWARE.
 #include "scenario_simple_http.h"
 #include "scenario_storage.h"
 #include "scenario_nginx_client.h"
+#include "scenario_replication.h"
 
 using namespace current;
 
@@ -45,8 +46,8 @@ DEFINE_int32(threads,
 static double NowInSeconds() {
   // Don't use `current::time::Now()`, as it's under a mutex, and guaranteed to increase by at least 1 per call.
   return 1e-6 *
-         std::chrono::duration_cast<std::chrono::microseconds>(
-             std::chrono::system_clock::now().time_since_epoch()).count();
+         std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+             .count();
 }
 
 template <typename SCENARIO>
@@ -112,6 +113,8 @@ int main(int argc, char** argv) {
     } catch (const std::out_of_range&) {
       std::cout << "Scenario `" << FLAGS_scenario << "` is not defined." << std::endl;
       return -1;
+    } catch (const std::exception& e) {
+      std::cout << e.what() << std::endl;
     }
   }
 }
