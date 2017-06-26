@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "../port.h"
 #include "../exception.h"
+#include "../strings/util.h"
 
 namespace current {
 namespace net {
@@ -53,8 +54,14 @@ struct InvalidSocketException : SocketException {};  // LCOV_EXCL_LINE -- not co
 struct AttemptedToUseMovedAwayConnection : SocketException {};
 struct SocketCreateException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 
-struct ServerSocketException : SocketException {};
-struct SocketBindException : ServerSocketException {};
+struct ServerSocketException : SocketException {
+  using SocketException::SocketException;
+};
+
+struct SocketBindException : ServerSocketException {
+  explicit SocketBindException(uint16_t port) : ServerSocketException(current::ToString(port)) {}
+};
+
 struct SocketListenException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketAcceptException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 

@@ -440,7 +440,7 @@ class Socket final : public SocketHandle {
     CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
 
     if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == static_cast<SOCKET>(-1)) {
-      CURRENT_THROW(SocketBindException());
+      CURRENT_THROW(SocketBindException(port));
     }
 
     CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));

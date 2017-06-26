@@ -30,24 +30,33 @@
 
 DEFINE_string(route, "/raw_log", "Route to spawn the stream on.");
 DEFINE_uint16(port, 8383, "Port to spawn the stream on.");
-DEFINE_string(db, "", "If set, path to load the stream data from. If not, the data is generated from scratch.");
+DEFINE_string(stream_data_filename,
+              "",
+              "If set, path to load the stream data from. If not, the data is generated from scratch.");
 DEFINE_uint32(entry_length, 1000, "The length of the string member values in the generated stream entries.");
 DEFINE_uint32(entries_count, 10000, "The number of entries to replicate.");
+DEFINE_bool(do_not_remove_autogen_data, false, "Set to not remove the data file.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
   std::unique_ptr<benchmark::replication::stream_t> stream;
-  std::unique_ptr<current::FileSystem::ScopedRmFile> tmp_db_remover;
-  if (FLAGS_db.empty()) {
+  std::unique_ptr<current::FileSystem::ScopedRmFile> temp_file_remover;
+  if (FLAGS_stream_data_filename.empty()) {
     const auto filename = current::FileSystem::GenTmpFileName();
-    tmp_db_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
+    std::cout << "Generating " << filename << " with " << FLAGS_entries_count << " entries of " << FLAGS_entry_length
+              << " bytes each." << std::endl;
+    if (!FLAGS_do_not_remove_autogen_data) {
+      temp_file_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
+    }
     stream = benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count);
   } else {
-    stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
+    const auto filename = current::FileSystem::GenTmpFileName();
+    stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_stream_data_filename);
   }
+  std::cout << "Spawning the server on port " << FLAGS_port << std::endl;
   const auto scope =
       HTTP(FLAGS_port).Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
-  std::cout << "Server is spawned on port " << FLAGS_port << std::endl;
+  std::cout << "The server is up on http://localhost:" << FLAGS_port << FLAGS_route << std::endl;
   HTTP(FLAGS_port).Join();
   return 0;
 }
