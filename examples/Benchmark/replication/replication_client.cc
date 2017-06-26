@@ -28,8 +28,19 @@
 #include "entry.h"
 
 DEFINE_string(url, "127.0.0.1:8383/raw_log", "Url to subscribe to.");
-DEFINE_string(db, "replicated_data.json", "Path to load the source stream data from.");
-DEFINE_uint32(total_entries, 10000, "Entries number to replicate.");
+#ifndef CURRENT_WINDOWS
+DEFINE_string(replicated_stream_data_filename,
+              ".current/replicated_data.json",
+              "Path to load the source stream data from.");
+#else
+DEFINE_string(replicated_stream_data_filename, "replicated_data.json", "Path to load the source stream data from.");
+#endif  // CURRENT_WINDOWS
+DEFINE_uint64(total_entries, 0, "If set, the maximum number of entries to replicate.");
+DEFINE_double(seconds, 0, "If set, the maximum number of seconds to run the benchmark for.");
+
+inline std::chrono::microseconds FastNow() {
+  return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
+}
 
 template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
@@ -46,29 +57,36 @@ void Replicate(ARGS&&... args) {
     return;
   }
   const auto stream_size = current::FromString<uint64_t>(size_response.body);
-  CURRENT_ASSERT(stream_size >= FLAGS_total_entries);
+  const uint64_t records_to_replicate = FLAGS_total_entries ? std::min(FLAGS_total_entries, stream_size) : stream_size;
 
-  const auto start_time = std::chrono::system_clock::now();
+  const auto start_time = FastNow();
+  const auto stop_time =
+      std::chrono::microseconds(FLAGS_seconds ? start_time.count() + static_cast<int64_t>(1e6 * FLAGS_seconds)
+                                              : std::numeric_limits<int64_t>::max());
+
   {
     std::cerr << "Subscribing to the stream ..." << std::flush;
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
     std::cerr << "\b\b\bOK" << std::endl;
-    auto next_print_time = start_time + std::chrono::milliseconds(100);
-    while (replicated_stream.Persister().Size() < FLAGS_total_entries) {
+    auto next_print_time = start_time + std::chrono::microseconds(100);
+    while (replicated_stream.Persister().Size() < records_to_replicate) {
       std::this_thread::yield();
-      if (std::chrono::system_clock::now() >= next_print_time ||
-          replicated_stream.Persister().Size() >= FLAGS_total_entries) {
-        next_print_time += std::chrono::milliseconds(100);
-        std::cerr << "\rReplicated " << replicated_stream.Persister().Size() << " of " << FLAGS_total_entries
+      const auto now = FastNow();
+      if (now >= next_print_time || replicated_stream.Persister().Size() >= records_to_replicate) {
+        next_print_time = now + std::chrono::microseconds(1000);
+        std::cerr << "\rReplicated " << replicated_stream.Persister().Size() << " of " << records_to_replicate
                   << " entries." << std::flush;
+      }
+      if (now >= stop_time) {
+        break;
       }
     }
   }
-  if (replicated_stream.Persister().Size() > FLAGS_total_entries) {
+  if (replicated_stream.Persister().Size() > records_to_replicate) {
     std::cerr << "\nWarning: more (" << replicated_stream.Persister().Size() << ") entries then requested ("
-              << FLAGS_total_entries << ") were replicated" << std::endl;
+              << records_to_replicate << ") were replicated" << std::endl;
   }
-  std::cerr << "\nReplication filished, calculating the stats ..." << std::flush;
+  std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
   // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
   uint64_t replicated_data_size = 0;
@@ -76,19 +94,18 @@ void Replicate(ARGS&&... args) {
     replicated_data_size += empty_entry_length + e.entry.s.length();
   }
 
-  const auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time).count() /
-      1000.0;
+  const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
-  std::cout << duration << '\t' << replicated_stream.Persister().Size() / duration << '\t'
-            << replicated_data_size / duration / 1024 / 1024 << std::endl;
+  std::cout << duration_in_seconds << '\t' << replicated_stream.Persister().Size() / duration_in_seconds << '\t'
+            << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
 }
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  if (!FLAGS_db.empty()) {
-    current::FileSystem::RmFile(FLAGS_db, current::FileSystem::RmFileParameters::Silent);
-    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(FLAGS_db);
+  if (!FLAGS_replicated_stream_data_filename.empty()) {
+    current::FileSystem::RmFile(FLAGS_replicated_stream_data_filename, current::FileSystem::RmFileParameters::Silent);
+    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(
+        FLAGS_replicated_stream_data_filename);
   } else {
     Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
   }

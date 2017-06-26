@@ -50,6 +50,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../util/make_scope_guard.h"
+#include "../util/random.h"
 
 namespace current {
 
@@ -126,7 +127,7 @@ struct FileSystem {
   static inline std::string GenTmpFileName() {
 #ifndef CURRENT_WINDOWS
     // TODO(dkorolev): Fix temporary file names generation.
-    return strings::Printf("/tmp/.current-tmp-%08x", rand());
+    return strings::Printf("/tmp/.current-tmp-%08x", random::CSRandomInt(0, ~0));
 #else
     char buffer[L_tmpnam_s];  // NOTE(dkorolev): Changed `[L_tmpnam]` into `[L_tmpnam_s]`, as per
                               // https://msdn.microsoft.com/en-us/library/18x8h1bh.aspx
