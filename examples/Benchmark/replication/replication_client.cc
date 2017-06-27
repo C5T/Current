@@ -27,16 +27,14 @@
 
 #include "entry.h"
 
-DEFINE_string(url, "127.0.0.1:8383/raw_log", "Url to subscribe to.");
-#ifndef CURRENT_WINDOWS
+DEFINE_string(url, "127.0.0.1:8383/raw_log", "The URL to subscribe to.");
+DEFINE_string(replicated_stream_persister, "file", "`file` or `memory`.");
 DEFINE_string(replicated_stream_data_filename,
-              ".current/replicated_data.json",
-              "Path to load the source stream data from.");
-#else
-DEFINE_string(replicated_stream_data_filename, "replicated_data.json", "Path to load the source stream data from.");
-#endif  // CURRENT_WINDOWS
+              "",
+              "If set, in `--replicated_stream_persister=fail` mode use this file for the destination of replication.");
 DEFINE_uint64(total_entries, 0, "If set, the maximum number of entries to replicate.");
 DEFINE_double(seconds, 0, "If set, the maximum number of seconds to run the benchmark for.");
+DEFINE_bool(do_not_remove_replicated_data, false, "Set to not remove the data file.");
 
 inline std::chrono::microseconds FastNow() {
   return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
@@ -66,14 +64,15 @@ void Replicate(ARGS&&... args) {
 
   {
     std::cerr << "Subscribing to the stream ..." << std::flush;
+    const std::chrono::milliseconds print_delay(500);
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
     std::cerr << "\b\b\bOK" << std::endl;
-    auto next_print_time = start_time + std::chrono::microseconds(100);
+    auto next_print_time = start_time + print_delay;
     while (replicated_stream.Persister().Size() < records_to_replicate) {
       std::this_thread::yield();
       const auto now = FastNow();
       if (now >= next_print_time || replicated_stream.Persister().Size() >= records_to_replicate) {
-        next_print_time = now + std::chrono::microseconds(1000);
+        next_print_time = now + print_delay;
         std::cerr << "\rReplicated " << replicated_stream.Persister().Size() << " of " << records_to_replicate
                   << " entries." << std::flush;
       }
@@ -102,12 +101,20 @@ void Replicate(ARGS&&... args) {
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  if (!FLAGS_replicated_stream_data_filename.empty()) {
-    current::FileSystem::RmFile(FLAGS_replicated_stream_data_filename, current::FileSystem::RmFileParameters::Silent);
-    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(
-        FLAGS_replicated_stream_data_filename);
-  } else {
+  if (FLAGS_replicated_stream_persister == "file") {
+    const std::string filename = !FLAGS_replicated_stream_data_filename.empty() ? FLAGS_replicated_stream_data_filename
+                                                                                : current::FileSystem::GenTmpFileName();
+    std::unique_ptr<current::FileSystem::ScopedRmFile> temp_file_remover;
+    if (!FLAGS_do_not_remove_replicated_data) {
+      temp_file_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
+    }
+    std::cerr << "Replicating to " << filename << std::endl;
+    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(filename);
+  } else if (FLAGS_replicated_stream_persister == "memory") {
     Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
+  } else {
+    std::cout << "--replicated_stream_persister should be `file` or `memory`." << std::endl;
+    return -1;
   }
   return 0;
 }
