@@ -64,10 +64,10 @@ class MemoryPersister {
  public:
   MemoryPersister(std::mutex& mutex_ref, const ss::StreamNamespaceName&) : container_(mutex_ref) {}
 
-  class IterableRange {
+  class Iterator {
    public:
-    explicit IterableRange(ScopeOwned<Container>& container, uint64_t begin, uint64_t end)
-        : container_(container, [this]() { valid_ = false; }), begin_(begin), end_(end) {}
+    Iterator(ScopeOwned<Container>& container, uint64_t i)
+        : container_(container, [this]() { valid_ = false; }), i_(i) {}
 
     struct Entry {
       const idxts_t idx_ts;
@@ -78,45 +78,84 @@ class MemoryPersister {
           : idx_ts(index, input.first), entry(input.second) {}
     };
 
-    class Iterator {
-     public:
-      Iterator(ScopeOwned<Container>& container, uint64_t i)
-          : container_(container, [this]() { valid_ = false; }), i_(i) {}
-
-      Entry operator*() const {
-        if (!valid_) {
-          CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-        }
-        std::lock_guard<std::mutex> lock(container_->mutex_ref);
-        return Entry(i_, container_->entries[i_]);
+    Entry operator*() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
-      void operator++() {
-        if (!valid_) {
-          CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-        }
-        ++i_;
+      std::lock_guard<std::mutex> lock(container_->mutex_ref);
+      return Entry(i_, container_->entries[i_]);
+    }
+    void operator++() {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
-      bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
-      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      operator bool() const { return valid_; }
+      ++i_;
+    }
+    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    operator bool() const { return valid_; }
 
-     private:
-      mutable ScopeOwnedBySomeoneElse<Container> container_;
-      bool valid_ = true;
-      uint64_t i_;
+   private:
+    mutable ScopeOwnedBySomeoneElse<Container> container_;
+    bool valid_ = true;
+    uint64_t i_;
+  };
+
+  class IteratorUnchecked {
+   public:
+    IteratorUnchecked(ScopeOwned<Container>& container, uint64_t i)
+        : container_(container, [this]() { valid_ = false; }), i_(i) {}
+
+    struct Entry {
+      const idxts_t idx_ts;
+      const ENTRY& entry;
+
+      Entry() = delete;
+      Entry(uint64_t index, const std::pair<std::chrono::microseconds, ENTRY>& input)
+          : idx_ts(index, input.first), entry(input.second) {}
     };
 
-    Iterator begin() const {
+    std::string operator*() const {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
-      return Iterator(container_, begin_);
+      std::lock_guard<std::mutex> lock(container_->mutex_ref);
+      const auto& entry = container_->entries[i_];
+      return JSON(idxts_t(i_, entry.first)) + '\t' + JSON(entry.second);
     }
-    Iterator end() const {
+    void operator++() {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
-      return Iterator(container_, end_);
+      ++i_;
+    }
+    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    operator bool() const { return valid_; }
+
+   private:
+    mutable ScopeOwnedBySomeoneElse<Container> container_;
+    bool valid_ = true;
+    uint64_t i_;
+  };
+
+  template <typename ITERATOR>
+  class IterableRangeImpl {
+   public:
+    explicit IterableRangeImpl(ScopeOwned<Container>& container, uint64_t begin, uint64_t end)
+        : container_(container, [this]() { valid_ = false; }), begin_(begin), end_(end) {}
+
+    ITERATOR begin() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      return ITERATOR(container_, begin_);
+    }
+    ITERATOR end() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      return ITERATOR(container_, end_);
     }
     operator bool() const { return valid_; }
 
@@ -126,6 +165,9 @@ class MemoryPersister {
     const uint64_t begin_;
     const uint64_t end_;
   };
+
+  using IterableRange = IterableRangeImpl<Iterator>;
+  using IterableRangeUnchecked = IterableRangeImpl<IteratorUnchecked>;
 
   template <current::locks::MutexLockStatus MLS, typename E, typename US>
   idxts_t DoPublish(E&& entry, const US us) {
@@ -248,6 +290,44 @@ class MemoryPersister {
       return Iterate(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
       return IterableRange(container_, 0, 0);
+    }
+  }
+
+  IterableRangeUnchecked IterateUnchecked(uint64_t begin, uint64_t end) const {
+    const uint64_t size = [this]() {
+      std::lock_guard<std::mutex> lock(container_->mutex_ref);
+      return static_cast<uint64_t>(container_->entries.size());
+    }();
+
+    if (end == static_cast<uint64_t>(-1)) {
+      end = size;
+    }
+
+    if (end > size) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    if (begin == end) {
+      return IterableRangeUnchecked(container_, 0, 0);
+    }
+    if (begin >= size) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    if (end < begin) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+
+    return IterableRangeUnchecked(container_, begin, end);
+  }
+
+  IterableRangeUnchecked IterateUnchecked(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    if (till.count() > 0 && till < from) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    const auto index_range = IndexRangeByTimestampRange(from, till);
+    if (index_range.first != static_cast<uint64_t>(-1)) {
+      return IterateUnchecked(index_range.first, index_range.second);
+    } else {  // No entries found in the given range.
+      return IterableRangeUnchecked(container_, 0, 0);
     }
   }
 

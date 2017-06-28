@@ -249,117 +249,185 @@ class FilePersister {
                          const std::string& filename)
       : file_persister_impl_(mutex_ref, namespace_name, filename) {}
 
-  class IterableRange {
+  class Iterator final {
    public:
-    explicit IterableRange(ScopeOwned<FilePersisterImpl>& file_persister_impl,
-                           uint64_t begin,
-                           uint64_t end,
-                           std::streampos begin_offset)
-        : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }),
-          begin_(begin),
-          end_(end),
-          begin_offset_(begin_offset) {}
-
     struct Entry {
       idxts_t idx_ts;
       ENTRY entry;
     };
 
-    class Iterator final {
-     public:
-      Iterator() = delete;
-      Iterator(const Iterator&) = delete;
-      Iterator(Iterator&&) = default;
-      Iterator& operator=(const Iterator&) = delete;
-      Iterator& operator=(Iterator&&) = default;
+    Iterator() = delete;
+    Iterator(const Iterator&) = delete;
+    Iterator(Iterator&&) = default;
+    Iterator& operator=(const Iterator&) = delete;
+    Iterator& operator=(Iterator&&) = default;
 
-      Iterator(ScopeOwned<FilePersisterImpl>& file_persister_impl,
-               const std::string& filename,
-               uint64_t i,
-               std::streampos offset,
-               uint64_t index_at_offset)
-          : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }), i_(i) {
-        if (!filename.empty()) {
-          fi_ = std::make_unique<std::ifstream>(filename);
-          // This `if` condition is only here to test performance with vs. without the `seekg`.
-          // The high performance version jumps to the desired entry right away,
-          // The poor performance one scans the file from the very beginning for each new iterator created.
-          if (true) {
-            cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, offset, index_at_offset);
-          } else {
-            // Inefficient, scan the file from the very beginning.
-            cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, 0, 0);
-          }
+    Iterator(ScopeOwned<FilePersisterImpl>& file_persister_impl,
+             const std::string& filename,
+             uint64_t i,
+             std::streampos offset,
+             uint64_t index_at_offset)
+        : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }), i_(i) {
+      if (!filename.empty()) {
+        fi_ = std::make_unique<std::ifstream>(filename);
+        // This `if` condition is only here to test performance with vs. without the `seekg`.
+        // The high performance version jumps to the desired entry right away,
+        // The poor performance one scans the file from the very beginning for each new iterator created.
+        if (true) {
+          cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, offset, index_at_offset);
+        } else {
+          // Inefficient, scan the file from the very beginning.
+          cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, 0, 0);
         }
-      }
-
-      // `operator*` relies on the fact each entry will be requested at most once.
-      // The range-based for-loop works fine. -- D.K.
-      Entry operator*() const {
-        if (!valid_) {
-          CURRENT_THROW(PersistenceFileNoLongerAvailable(
-              file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
-        }
-        Entry result;
-        bool found = false;
-        while (!found) {
-          if (!(cit_->ProcessNextEntry(
-                  [this, &found, &result](const idxts_t& cursor, const char* json) {
-                    if (cursor.index == i_) {
-                      found = true;
-                      result.idx_ts = cursor;
-                      result.entry = ParseJSON<ENTRY>(json);
-                    } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
-                      CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
-                    }
-                  },
-                  [](const std::string&) {}))) {
-            // End of file. Should never happen as long as the user only iterates over valid ranges.
-            CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
-          }
-        }
-        return result;
-      }
-
-      void operator++() {
-        if (!valid_) {
-          CURRENT_THROW(PersistenceFileNoLongerAvailable(
-              file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
-        }
-        ++i_;
-      }
-      bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
-      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      operator bool() const { return valid_; }
-
-     private:
-      ScopeOwnedBySomeoneElse<FilePersisterImpl> file_persister_impl_;
-      bool valid_ = true;
-      std::unique_ptr<std::ifstream> fi_;
-      std::unique_ptr<IteratorOverFileOfPersistedEntries<ENTRY>> cit_;
-      uint64_t i_;
-    };
-
-    Iterator begin() const {
-      if (!valid_) {
-        CURRENT_THROW(
-            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
-      }
-      if (begin_ == end_) {
-        return Iterator(file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
-      } else {
-        return Iterator(file_persister_impl_, file_persister_impl_->filename, begin_, begin_offset_, begin_);
       }
     }
-    Iterator end() const {
+
+    // `operator*` relies on the fact each entry will be requested at most once.
+    // The range-based for-loop works fine. -- D.K.
+    Entry operator*() const {
+      if (!valid_) {
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+      }
+      Entry result;
+      bool found = false;
+      while (!found) {
+        if (!(cit_->ProcessNextEntry(
+                [this, &found, &result](const idxts_t& cursor, const char* json) {
+                  if (cursor.index == i_) {
+                    found = true;
+                    result.idx_ts = cursor;
+                    result.entry = ParseJSON<ENTRY>(json);
+                  } else if (cursor.index > i_) {                                     // LCOV_EXCL_LINE
+                    CURRENT_THROW(ss::InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
+                  }
+                },
+                [](const std::string&) {}))) {
+          // End of file. Should never happen as long as the user only iterates over valid ranges.
+          CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
+        }
+      }
+      return result;
+    }
+
+    void operator++() {
+      if (!valid_) {
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+      }
+      ++i_;
+    }
+    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    operator bool() const { return valid_; }
+
+   private:
+    ScopeOwnedBySomeoneElse<FilePersisterImpl> file_persister_impl_;
+    bool valid_ = true;
+    std::unique_ptr<std::ifstream> fi_;
+    std::unique_ptr<IteratorOverFileOfPersistedEntries<ENTRY>> cit_;
+    uint64_t i_;
+  };
+
+  class IteratorUnchecked final {
+   public:
+    IteratorUnchecked() = delete;
+    IteratorUnchecked(const Iterator&) = delete;
+    IteratorUnchecked(Iterator&&) = default;
+    IteratorUnchecked& operator=(const Iterator&) = delete;
+    IteratorUnchecked& operator=(Iterator&&) = default;
+
+    IteratorUnchecked(ScopeOwned<FilePersisterImpl>& file_persister_impl,
+                      const std::string& filename,
+                      uint64_t i,
+                      std::streampos offset,
+                      uint64_t)
+        : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }), i_(i), current_offset_(offset) {
+      if (!filename.empty()) {
+        fi_ = std::make_unique<std::ifstream>(filename);
+        CURRENT_ASSERT(!fi_->bad());
+        if (offset) {
+          fi_->seekg(offset, std::ios_base::beg);
+        }
+      }
+    }
+
+    // `operator*` relies on the fact each entry will be requested at most once.
+    // The range-based for-loop works fine. -- D.K.
+    std::string operator*() const {
+      if (!valid_) {
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+      }
+      if (current_entry_.empty()) {
+        const auto offset = file_persister_impl_->offset[i_];
+        if (offset != current_offset_) {
+          fi_->seekg(offset, std::ios_base::beg);
+          current_offset_ = offset;
+        }
+        if (std::getline(*fi_, current_entry_)) {
+          CURRENT_ASSERT(current_entry_[0] != constants::kDirectiveMarker);
+        } else {
+          // End of file. Should never happen as long as the user only iterates over valid ranges.
+          CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
+        }
+      }
+      return current_entry_;
+    }
+
+    void operator++() {
+      if (!valid_) {
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+      }
+      ++i_;
+      current_entry_.clear();
+    }
+    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    operator bool() const { return valid_; }
+
+   private:
+    ScopeOwnedBySomeoneElse<FilePersisterImpl> file_persister_impl_;
+    bool valid_ = true;
+    std::unique_ptr<std::ifstream> fi_;
+    uint64_t i_;
+    std::string current_entry_;
+    std::streampos current_offset_;
+  };
+
+  template <typename ITERATOR>
+  class IterableRangeImpl {
+   public:
+    explicit IterableRangeImpl(ScopeOwned<FilePersisterImpl>& file_persister_impl,
+                               uint64_t begin,
+                               uint64_t end,
+                               std::streampos begin_offset)
+        : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }),
+          begin_(begin),
+          end_(end),
+          begin_offset_(begin_offset) {}
+
+    ITERATOR begin() const {
       if (!valid_) {
         CURRENT_THROW(
             PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       if (begin_ == end_) {
-        return Iterator(file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return ITERATOR(file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator(
+        return ITERATOR(file_persister_impl_, file_persister_impl_->filename, begin_, begin_offset_, begin_);
+      }
+    }
+    ITERATOR end() const {
+      if (!valid_) {
+        CURRENT_THROW(
+            PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
+      }
+      if (begin_ == end_) {
+        return ITERATOR(file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
+      } else {
+        return ITERATOR(
             file_persister_impl_, "", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
       }
     }
@@ -373,6 +441,9 @@ class FilePersister {
     const uint64_t end_;
     const std::streampos begin_offset_;
   };
+
+  using IterableRange = IterableRangeImpl<Iterator>;
+  using IterableRangeUnchecked = IterableRangeImpl<IteratorUnchecked>;
 
   template <current::locks::MutexLockStatus MLS, typename E, typename US>
   idxts_t DoPublish(E&& entry, const US us) {
@@ -510,6 +581,40 @@ class FilePersister {
       return Iterate(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
       return IterableRange(file_persister_impl_, 0, 0, 0);
+    }
+  }
+
+  IterableRangeUnchecked IterateUnchecked(uint64_t begin_index, uint64_t end_index) const {
+    const uint64_t current_size = file_persister_impl_->end.load().next_index;
+    if (end_index == static_cast<uint64_t>(-1)) {
+      end_index = current_size;
+    }
+    if (end_index > current_size) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    if (begin_index == end_index) {
+      return IterableRangeUnchecked(
+          file_persister_impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
+    }
+    if (end_index < begin_index) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
+    CURRENT_ASSERT(file_persister_impl_->offset.size() >=
+                   current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
+    return IterableRangeUnchecked(
+        file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
+  }
+
+  IterableRangeUnchecked IterateUnchecked(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    if (till.count() > 0 && till < from) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    const auto index_range = IndexRangeByTimestampRange(from, till);
+    if (index_range.first != static_cast<uint64_t>(-1)) {
+      return IterateUnchecked(index_range.first, index_range.second);
+    } else {  // No entries found in the given range.
+      return IterableRangeUnchecked(file_persister_impl_, 0, 0, 0);
     }
   }
 
