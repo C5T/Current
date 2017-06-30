@@ -106,15 +106,6 @@ class MemoryPersister {
     IteratorUnchecked(ScopeOwned<Container>& container, uint64_t i)
         : container_(container, [this]() { valid_ = false; }), i_(i) {}
 
-    struct Entry {
-      const idxts_t idx_ts;
-      const ENTRY& entry;
-
-      Entry() = delete;
-      Entry(uint64_t index, const std::pair<std::chrono::microseconds, ENTRY>& input)
-          : idx_ts(index, input.first), entry(input.second) {}
-    };
-
     std::string operator*() const {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
@@ -129,8 +120,8 @@ class MemoryPersister {
       }
       ++i_;
     }
-    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
-    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    bool operator==(const IteratorUnchecked& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const IteratorUnchecked& rhs) const { return !operator==(rhs); }
     operator bool() const { return valid_; }
 
    private:

@@ -108,8 +108,12 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::Iterate(from, std::chrono::microseconds(-1));
   }
   IterableRange Iterate() const { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
-  IterableRangeUnchecked IterateUnchecked(uint64_t begin, uint64_t end) const { return IMPL::Iterate(begin, end); }
-  IterableRangeUnchecked IterateUnchecked(uint64_t begin) const { return IMPL::Iterate(begin, static_cast<uint64_t>(-1)); }
+  IterableRangeUnchecked IterateUnchecked(uint64_t begin, uint64_t end) const {
+    return IMPL::IterateUnchecked(begin, end);
+  }
+  IterableRangeUnchecked IterateUnchecked(uint64_t begin) const {
+    return IMPL::IterateUnchecked(begin, static_cast<uint64_t>(-1));
+  }
   IterableRangeUnchecked IterateUnchecked(std::chrono::microseconds from, std::chrono::microseconds till) const {
     return IMPL::IterateUnchecked(from, till);
   }

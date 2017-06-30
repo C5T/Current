@@ -383,8 +383,8 @@ class FilePersister {
       ++i_;
       current_entry_.clear();
     }
-    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
-    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    bool operator==(const IteratorUnchecked& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const IteratorUnchecked& rhs) const { return !operator==(rhs); }
     operator bool() const { return valid_; }
 
    private:

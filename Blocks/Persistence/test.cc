@@ -101,6 +101,11 @@ TEST(PersistenceLayer, Memory) {
         just_the_last_one.push_back(e.entry);
       }
       EXPECT_EQ("meh", Join(just_the_last_one, ","));
+      std::vector<std::string> just_the_last_one_unchecked;
+      for (const auto& e : impl.IterateUnchecked(2)) {
+        just_the_last_one_unchecked.push_back(e);
+      }
+      EXPECT_EQ("{\"index\":2,\"us\":300}\t\"meh\"", Join(just_the_last_one_unchecked, ","));
     }
 
     {
@@ -109,6 +114,11 @@ TEST(PersistenceLayer, Memory) {
         just_the_last_one.push_back(e.entry);
       }
       EXPECT_EQ("meh", Join(just_the_last_one, ","));
+      std::vector<std::string> just_the_last_one_unchecked;
+      for (const auto& e : impl.IterateUnchecked(std::chrono::microseconds(300))) {
+        just_the_last_one_unchecked.push_back(e);
+      }
+      EXPECT_EQ("{\"index\":2,\"us\":300}\t\"meh\"", Join(just_the_last_one_unchecked, ","));
     }
   }
 
