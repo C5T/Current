@@ -332,10 +332,10 @@ class FilePersister {
   class IteratorUnchecked final {
    public:
     IteratorUnchecked() = delete;
-    IteratorUnchecked(const Iterator&) = delete;
-    IteratorUnchecked(Iterator&&) = default;
-    IteratorUnchecked& operator=(const Iterator&) = delete;
-    IteratorUnchecked& operator=(Iterator&&) = default;
+    IteratorUnchecked(const IteratorUnchecked&) = delete;
+    IteratorUnchecked(IteratorUnchecked&&) = default;
+    IteratorUnchecked& operator=(const IteratorUnchecked&) = delete;
+    IteratorUnchecked& operator=(IteratorUnchecked&&) = default;
 
     IteratorUnchecked(ScopeOwned<FilePersisterImpl>& file_persister_impl,
                       const std::string& filename,
@@ -392,8 +392,8 @@ class FilePersister {
     bool valid_ = true;
     std::unique_ptr<std::ifstream> fi_;
     uint64_t i_;
-    std::string current_entry_;
-    std::streampos current_offset_;
+    mutable std::string current_entry_;
+    mutable std::streampos current_offset_;
   };
 
   template <typename ITERATOR>

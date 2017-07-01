@@ -81,6 +81,14 @@ TEST(PersistenceLayer, Memory) {
             "%s %d %d", e.entry.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
+      std::vector<std::string> first_two_unchecked;
+      for (const auto& e : impl.IterateUnchecked()) {
+        first_two_unchecked.push_back(e);
+      }
+      EXPECT_EQ(
+          "{\"index\":0,\"us\":100}\t\"foo\","
+          "{\"index\":1,\"us\":200}\t\"bar\"",
+          Join(first_two_unchecked, ","));
     }
 
     impl.Publish("meh");
@@ -93,6 +101,15 @@ TEST(PersistenceLayer, Memory) {
             "%s %d %d", e.entry.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 300", Join(all_three, ","));
+      std::vector<std::string> all_three_unchecked;
+      for (const auto& e : impl.IterateUnchecked()) {
+        all_three_unchecked.push_back(e);
+      }
+      EXPECT_EQ(
+          "{\"index\":0,\"us\":100}\t\"foo\","
+          "{\"index\":1,\"us\":200}\t\"bar\","
+          "{\"index\":2,\"us\":300}\t\"meh\"",
+          Join(all_three_unchecked, ","));
     }
 
     {
@@ -197,8 +214,11 @@ TEST(PersistenceLayer, MemoryExceptions) {
     impl.Publish("2", std::chrono::microseconds(2));
     impl.Publish("3", std::chrono::microseconds(3));
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnchecked(1, 0), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnchecked(100, 101), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnchecked(100, 100), current::persistence::InvalidIterableRangeException);
   }
 }
 
@@ -217,10 +237,15 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
 
   {
     auto iterable = p->Iterate();
+    auto iterable_unchecked = p->IterateUnchecked();
     EXPECT_TRUE(static_cast<bool>(iterable));
+    EXPECT_TRUE(static_cast<bool>(iterable_unchecked));
     auto iterator = iterable.begin();
+    auto iterator_unchecked = iterable_unchecked.begin();
     EXPECT_TRUE(static_cast<bool>(iterator));
+    EXPECT_TRUE(static_cast<bool>(iterator_unchecked));
     EXPECT_EQ("1", (*iterator).entry);
+    EXPECT_EQ("{\"index\":0,\"us\":1}\t\"1\"", *iterator_unchecked);
 
     t = std::thread([&p]() {
       // Release the persister. Well, begin to, as this "call" would block until the iterators are done.
@@ -232,7 +257,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
       std::mutex mutex;
       while (true) {
         std::lock_guard<std::mutex> lock(mutex);
-        if (!iterator) {
+        if (!iterator && !iterator_unchecked) {
           break;
         }
         std::this_thread::yield();
@@ -241,13 +266,15 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
 
     ASSERT_THROW(*iterator, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
     ASSERT_THROW(++iterator, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    ASSERT_THROW(*iterator_unchecked, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    ASSERT_THROW(++iterator_unchecked, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
 
     // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
     {
       std::mutex mutex;
       while (true) {
         std::lock_guard<std::mutex> lock(mutex);
-        if (!iterable) {
+        if (!iterable && !iterable_unchecked) {
           break;
         }
         std::this_thread::yield();
@@ -256,6 +283,8 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
 
     ASSERT_THROW(iterable.begin(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
     ASSERT_THROW(iterable.end(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    ASSERT_THROW(iterable_unchecked.begin(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    ASSERT_THROW(iterable_unchecked.end(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
   }
 
   t.join();
@@ -293,6 +322,14 @@ TEST(PersistenceLayer, File) {
             "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
+      std::vector<std::string> first_two_unchecked;
+      for (const auto& e : impl.IterateUnchecked()) {
+        first_two_unchecked.push_back(e);
+      }
+      EXPECT_EQ(
+          "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"},"
+          "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}",
+          Join(first_two_unchecked, ","));
     }
 
     current::time::SetNow(std::chrono::microseconds(500));
@@ -314,6 +351,15 @@ TEST(PersistenceLayer, File) {
             "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
+      std::vector<std::string> all_three_unchecked;
+      for (const auto& e : impl.IterateUnchecked()) {
+        all_three_unchecked.push_back(e);
+      }
+      EXPECT_EQ(
+          "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"},"
+          "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"},"
+          "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}",
+          Join(all_three_unchecked, ","));
     }
   }
 
@@ -342,6 +388,15 @@ TEST(PersistenceLayer, File) {
             "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
+      std::vector<std::string> all_three_unchecked;
+      for (const auto& e : impl.IterateUnchecked()) {
+        all_three_unchecked.push_back(e);
+      }
+      EXPECT_EQ(
+          "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"},"
+          "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"},"
+          "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}",
+          Join(all_three_unchecked, ","));
     }
 
     current::time::SetNow(std::chrono::microseconds(998));
@@ -360,6 +415,16 @@ TEST(PersistenceLayer, File) {
             "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
+      std::vector<std::string> all_four_unchecked;
+      for (const auto& e : impl.IterateUnchecked()) {
+        all_four_unchecked.push_back(e);
+      }
+      EXPECT_EQ(
+          "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"},"
+          "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"},"
+          "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"},"
+          "{\"index\":3,\"us\":999}\t{\"s\":\"blah\"}",
+          Join(all_four_unchecked, ","));
     }
   }
 
@@ -375,6 +440,16 @@ TEST(PersistenceLayer, File) {
           "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
     }
     EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
+    std::vector<std::string> all_four_unchecked;
+    for (const auto& e : impl.IterateUnchecked()) {
+      all_four_unchecked.push_back(e);
+    }
+    EXPECT_EQ(
+        "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"},"
+        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"},"
+        "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"},"
+        "{\"index\":3,\"us\":999}\t{\"s\":\"blah\"}",
+        Join(all_four_unchecked, ","));
   }
 }
 
@@ -555,8 +630,11 @@ TEST(PersistenceLayer, FileExceptions) {
     current::time::SetNow(std::chrono::microseconds(3));
     impl.Publish("3");
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnchecked(1, 0), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnchecked(100, 101), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnchecked(100, 100), current::persistence::InvalidIterableRangeException);
   }
 }
 
@@ -627,24 +705,32 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
     EXPECT_EQ(0ull, (*impl.Iterate(0, 1).begin()).idx_ts.index);
     EXPECT_EQ(0ll, (*impl.Iterate(0, 1).begin()).idx_ts.us.count());
     EXPECT_EQ("0000000 aaa", (*impl.Iterate(0, 1).begin()).entry.s);
+    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}", (*impl.IterateUnchecked(0, 1).begin()));
     EXPECT_EQ(10ull, (*impl.Iterate(10, 11).begin()).idx_ts.index);
     EXPECT_EQ(10000ll, (*impl.Iterate(10, 11).begin()).idx_ts.us.count());
     EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(10, 11).begin()).entry.s);
+    EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}", (*impl.IterateUnchecked(10, 11).begin()));
     EXPECT_EQ(100ull, (*impl.Iterate(100, 101).begin()).idx_ts.index);
     EXPECT_EQ(100000ll, (*impl.Iterate(100, 101).begin()).idx_ts.us.count());
     EXPECT_EQ("0000100 wwwww", (*impl.Iterate(100, 101).begin()).entry.s);
+    EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}", (*impl.IterateUnchecked(100, 101).begin()));
   }
   {
     // By timestamp.
     EXPECT_EQ(0ull, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.index);
     EXPECT_EQ(0ll, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000000 aaa", (*impl.Iterate(us_t(0), us_t(1000)).begin()).entry.s);
+    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}", (*impl.IterateUnchecked(us_t(0), us_t(1000)).begin()));
     EXPECT_EQ(10ull, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.index);
     EXPECT_EQ(10000ll, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(us_t(10000), us_t(11000)).begin()).entry.s);
+    EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}",
+              (*impl.IterateUnchecked(us_t(10000), us_t(11000)).begin()));
     EXPECT_EQ(100ull, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.index);
     EXPECT_EQ(100000ll, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000100 wwwww", (*impl.Iterate(us_t(100000), us_t(101000)).begin()).entry.s);
+    EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}",
+              (*impl.IterateUnchecked(us_t(100000), us_t(101000)).begin()));
   }
 
   // Perftest the creation of a large number of iterators.
@@ -653,10 +739,15 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   for (int i = 0; i < N; ++i) {
     const auto cit = impl.Iterate(i, i + 1).begin();
     const auto& e = *cit;
+    const auto cit_unchecked = impl.IterateUnchecked(i, i + 1).begin();
+    const auto& e_unchecked = *cit_unchecked;
     EXPECT_EQ(JSON(e.idx_ts), JSON((*impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin()).idx_ts));
     EXPECT_EQ(static_cast<uint64_t>(i), e.idx_ts.index);
     EXPECT_EQ(static_cast<int64_t>(i * 1000), e.idx_ts.us.count());
     EXPECT_EQ(LargeTestStorableString(i).s, e.entry.s);
+    EXPECT_EQ(JSON((*impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin()).idx_ts) + '\t' +
+                  JSON(LargeTestStorableString(i)),
+              e_unchecked);
   }
 }
 
@@ -708,10 +799,15 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
 
   {
     auto iterable = p->Iterate();
+    auto iterable_unchecked = p->IterateUnchecked();
     EXPECT_TRUE(static_cast<bool>(iterable));
+    EXPECT_TRUE(static_cast<bool>(iterable_unchecked));
     auto iterator = iterable.begin();
+    auto iterator_unchecked = iterable_unchecked.begin();
     EXPECT_TRUE(static_cast<bool>(iterator));
+    EXPECT_TRUE(static_cast<bool>(iterator_unchecked));
     EXPECT_EQ("1", (*iterator).entry);
+    EXPECT_EQ("{\"index\":0,\"us\":1}\t\"1\"", *iterator_unchecked);
 
     t = std::thread([&p]() {
       // Release the persister. Well, begin to, as this "call" would block until the iterators are done.
@@ -723,7 +819,7 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
       std::mutex aux_mutex;
       while (true) {
         std::lock_guard<std::mutex> lock(aux_mutex);
-        if (!iterator) {
+        if (!iterator && !iterator_unchecked) {
           break;
         }
         std::this_thread::yield();
@@ -732,13 +828,15 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
 
     ASSERT_THROW(*iterator, current::persistence::PersistenceFileNoLongerAvailable);
     ASSERT_THROW(++iterator, current::persistence::PersistenceFileNoLongerAvailable);
+    ASSERT_THROW(*iterator_unchecked, current::persistence::PersistenceFileNoLongerAvailable);
+    ASSERT_THROW(++iterator_unchecked, current::persistence::PersistenceFileNoLongerAvailable);
 
     // Spin lock, and w/o a mutex it would hang with `NDEBUG=1`.
     {
       std::mutex aux_mutex;
       while (true) {
         std::lock_guard<std::mutex> lock(aux_mutex);
-        if (!iterable) {
+        if (!iterable && !iterable_unchecked) {
           break;
         }
         std::this_thread::yield();
@@ -747,6 +845,8 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
 
     ASSERT_THROW(iterable.begin(), current::persistence::PersistenceFileNoLongerAvailable);
     ASSERT_THROW(iterable.end(), current::persistence::PersistenceFileNoLongerAvailable);
+    ASSERT_THROW(iterable_unchecked.begin(), current::persistence::PersistenceFileNoLongerAvailable);
+    ASSERT_THROW(iterable_unchecked.end(), current::persistence::PersistenceFileNoLongerAvailable);
   }
 
   t.join();
