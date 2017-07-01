@@ -289,6 +289,7 @@ TEST(Schema, SmokeTestFullStruct) {
     FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), Golden("smoke_test_struct.json").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::InternalFormat>(),
                                   Golden("smoke_test_struct.internal_json").c_str());
+    FileSystem::WriteStringToFile(schema.Describe<Language::TypeScript>(), Golden("smoke_test_struct.d.ts").c_str());
     // LCOV_EXCL_STOP
   }
 
@@ -297,6 +298,7 @@ TEST(Schema, SmokeTestFullStruct) {
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.cc")), schema.Describe<Language::CPP>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.fs")), schema.Describe<Language::FSharp>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.md")), schema.Describe<Language::Markdown>());
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.d.ts")), schema.Describe<Language::TypeScript>());
 
   // Don't just `EXPECT_EQ(golden, ReadFileAsString("golden/...))`, but compare re-generated JSON,
   // as the JSON file in the golden directory is pretty-printed.
@@ -316,6 +318,8 @@ TEST(Schema, SmokeTestFullStruct) {
   const auto restored_short_schema = ParseJSON<current::reflection::JSONSchema, JSONFormat::Minimalistic>(
       FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
   EXPECT_EQ(schema.Describe<Language::JSON>(), JSON<JSONFormat::Minimalistic>(restored_short_schema));
+
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.d.ts")), restored_schema.Describe<Language::TypeScript>());
 }
 
 namespace schema_test {
@@ -411,6 +415,7 @@ TEST(Schema, LanguageEnumToString) {
   EXPECT_EQ("fs", current::ToString(current::reflection::Language::FSharp));
   EXPECT_EQ("md", current::ToString(current::reflection::Language::Markdown));
   EXPECT_EQ("json", current::ToString(current::reflection::Language::JSON));
+  EXPECT_EQ("d.ts", current::ToString(current::reflection::Language::TypeScript));
 }
 
 TEST(Schema, LanguageEnumIteration) {
@@ -419,7 +424,7 @@ TEST(Schema, LanguageEnumIteration) {
   for (auto l = Language::begin; l != Language::end; ++l) {
     s.push_back(current::ToString(l));
   }
-  EXPECT_EQ("internal_json h cpp fs md json", current::strings::Join(s, ' '));
+  EXPECT_EQ("internal_json h cpp fs md json d.ts", current::strings::Join(s, ' '));
 }
 
 namespace schema_test {
@@ -436,7 +441,7 @@ TEST(Schema, LanguageEnumCompileTimeForEach) {
   auto it = schema_test::LanguagesIterator();
   EXPECT_EQ("", current::strings::Join(it.s, ' '));
   current::reflection::ForEachLanguage(it);
-  EXPECT_EQ("internal_json h cpp fs md json", current::strings::Join(it.s, ' '));
+  EXPECT_EQ("internal_json h cpp fs md json d.ts", current::strings::Join(it.s, ' '));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC
