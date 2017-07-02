@@ -101,9 +101,9 @@ class MemoryPersister {
     uint64_t i_;
   };
 
-  class IteratorUnchecked {
+  class IteratorUnsafe {
    public:
-    IteratorUnchecked(ScopeOwned<Container>& container, uint64_t i)
+    IteratorUnsafe(ScopeOwned<Container>& container, uint64_t i)
         : container_(container, [this]() { valid_ = false; }), i_(i) {}
 
     std::string operator*() const {
@@ -120,8 +120,8 @@ class MemoryPersister {
       }
       ++i_;
     }
-    bool operator==(const IteratorUnchecked& rhs) const { return i_ == rhs.i_; }
-    bool operator!=(const IteratorUnchecked& rhs) const { return !operator==(rhs); }
+    bool operator==(const IteratorUnsafe& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const IteratorUnsafe& rhs) const { return !operator==(rhs); }
     operator bool() const { return valid_; }
 
    private:
@@ -158,7 +158,7 @@ class MemoryPersister {
   };
 
   using IterableRange = IterableRangeImpl<Iterator>;
-  using IterableRangeUnchecked = IterableRangeImpl<IteratorUnchecked>;
+  using IterableRangeUnsafe = IterableRangeImpl<IteratorUnsafe>;
 
   template <current::locks::MutexLockStatus MLS, typename E, typename US>
   idxts_t DoPublish(E&& entry, const US us) {
@@ -284,7 +284,7 @@ class MemoryPersister {
     }
   }
 
-  IterableRangeUnchecked IterateUnchecked(uint64_t begin, uint64_t end) const {
+  IterableRangeUnsafe IterateUnsafe(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
       std::lock_guard<std::mutex> lock(container_->mutex_ref);
       return static_cast<uint64_t>(container_->entries.size());
@@ -298,7 +298,7 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin == end) {
-      return IterableRangeUnchecked(container_, 0, 0);
+      return IterableRangeUnsafe(container_, 0, 0);
     }
     if (begin >= size) {
       CURRENT_THROW(InvalidIterableRangeException());
@@ -307,18 +307,18 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
 
-    return IterableRangeUnchecked(container_, begin, end);
+    return IterableRangeUnsafe(container_, begin, end);
   }
 
-  IterableRangeUnchecked IterateUnchecked(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = IndexRangeByTimestampRange(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return IterateUnchecked(index_range.first, index_range.second);
+      return IterateUnsafe(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
-      return IterableRangeUnchecked(container_, 0, 0);
+      return IterableRangeUnsafe(container_, 0, 0);
     }
   }
 

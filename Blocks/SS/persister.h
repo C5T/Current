@@ -96,7 +96,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::IndexRangeByTimestampRange(from, till);
   }
   using IterableRange = typename IMPL::IterableRange;
-  using IterableRangeUnchecked = typename IMPL::IterableRangeUnchecked;
+  using IterableRangeUnsafe = typename IMPL::IterableRangeUnsafe;
 
   // NOTE: `IMPL::Iterate()` may throw.
   IterableRange Iterate(uint64_t begin, uint64_t end) const { return IMPL::Iterate(begin, end); }
@@ -108,19 +108,19 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::Iterate(from, std::chrono::microseconds(-1));
   }
   IterableRange Iterate() const { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
-  IterableRangeUnchecked IterateUnchecked(uint64_t begin, uint64_t end) const {
-    return IMPL::IterateUnchecked(begin, end);
+  IterableRangeUnsafe IterateUnsafe(uint64_t begin, uint64_t end) const {
+    return IMPL::IterateUnsafe(begin, end);
   }
-  IterableRangeUnchecked IterateUnchecked(uint64_t begin) const {
-    return IMPL::IterateUnchecked(begin, static_cast<uint64_t>(-1));
+  IterableRangeUnsafe IterateUnsafe(uint64_t begin) const {
+    return IMPL::IterateUnsafe(begin, static_cast<uint64_t>(-1));
   }
-  IterableRangeUnchecked IterateUnchecked(std::chrono::microseconds from, std::chrono::microseconds till) const {
-    return IMPL::IterateUnchecked(from, till);
+  IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return IMPL::IterateUnsafe(from, till);
   }
-  IterableRangeUnchecked IterateUnchecked(std::chrono::microseconds from) const {
-    return IMPL::IterateUnchecked(from, std::chrono::microseconds(-1));
+  IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from) const {
+    return IMPL::IterateUnsafe(from, std::chrono::microseconds(-1));
   }
-  IterableRangeUnchecked IterateUnchecked() const { return IMPL::IterateUnchecked(0, static_cast<uint64_t>(-1)); }
+  IterableRangeUnsafe IterateUnsafe() const { return IMPL::IterateUnsafe(0, static_cast<uint64_t>(-1)); }
 };
 
 // For `static_assert`-s.
