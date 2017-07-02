@@ -684,6 +684,125 @@ TEST(PersistenceLayer, FileSignatureExceptions) {
   }
 }
 
+TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
+  using namespace persistence_test;
+
+  using IMPL = current::persistence::File<StorableString>;
+
+  const auto namespace_name = current::ss::StreamNamespaceName("namespace", "entry_name");
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  current::reflection::StructSchema struct_schema;
+  struct_schema.AddType<StorableString>();
+  const std::string signature =
+      "#signature " + JSON(current::ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo())) + '\n';
+  std::string lines[] = {"{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n",
+                         "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n",
+                         "#head 00000000000000000300\n",
+                         "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
+                         "#head 00000000000000000600\n"};
+  const auto CombineFileContents = [&]() -> std::string {
+    std::string contents = signature;
+    for (const auto& line : lines) {
+      contents += line;
+    }
+    return contents;
+  };
+
+  current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+  std::mutex mutex;
+  IMPL impl(mutex, namespace_name, persistence_file_name);
+
+  const auto CheckUnsafeIteration = [&]() {
+    std::vector<std::string> all_entries_unsafe;
+    for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
+      all_entries_unsafe.push_back(e);
+    }
+    EXPECT_EQ(lines[0] + lines[1] + lines[3], Join(all_entries_unsafe, "\n") + '\n');
+  };
+
+  {
+    std::vector<std::string> all_entries;
+    for (const auto& e : impl.Iterate()) {
+      all_entries.push_back(Printf(
+          "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
+    }
+    EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_entries, ","));
+    CheckUnsafeIteration();
+  }
+
+  {
+    EXPECT_NO_THROW(*impl.Iterate(0, 1).begin());
+    EXPECT_NO_THROW(*impl.Iterate(1, 2).begin());
+    EXPECT_NO_THROW(*impl.Iterate().begin());
+    EXPECT_NO_THROW(*(++impl.Iterate().begin()));
+
+    // swap the first two entries to provoke the InconsistentIndexException exceptions.
+    lines[0].swap(lines[1]);
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    // Check that "safe" iterators throw the InconsistentIndexException while "unsafe" ones don't.
+    EXPECT_THROW(*impl.Iterate(0, 1).begin(), current::ss::InconsistentIndexException);
+    EXPECT_THROW(*impl.Iterate(1, 2).begin(), current::ss::InconsistentIndexException);
+    EXPECT_THROW(*impl.Iterate().begin(), current::ss::InconsistentIndexException);
+    EXPECT_THROW(*(++impl.Iterate().begin()), current::ss::InconsistentIndexException);
+    EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(0, 1).begin());
+    EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(1, 2).begin());
+    EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>().begin());
+    EXPECT_NO_THROW(*(++impl.Iterate<current::ss::IterationMode::Unsafe>().begin()));
+    CheckUnsafeIteration();
+    lines[0].swap(lines[1]);
+  }
+
+  {
+    // Produce wrong JSON instead of an entry: replace all symbols, except last \n one.
+    lines[1].replace(0, lines[1].length() - 1, lines[1].length() - 1, 'A');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    // Check that "safe" iterators throw the MalformedEntryException while "unsafe" ones don't.
+    EXPECT_THROW(*(++(impl.Iterate().begin())), current::persistence::MalformedEntryException);
+    EXPECT_THROW(*impl.Iterate(1, 2).begin(), current::persistence::MalformedEntryException);
+    EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(1, 2).begin());
+    EXPECT_NO_THROW(*(++impl.Iterate<current::ss::IterationMode::Unsafe>().begin()));
+    CheckUnsafeIteration();
+  }
+
+  {
+    EXPECT_NO_THROW(*impl.Iterate(0, 1).begin());
+    EXPECT_NO_THROW(*impl.Iterate().begin());
+
+    // Produce wrong JSON instead of the index and timestamp only and leave the entry value valid.
+    const auto tab_pos = lines[0].find('\t');
+    ASSERT_FALSE(std::string::npos == tab_pos);
+    lines[0].replace(0, tab_pos, tab_pos, 'B');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    // Check that "safe" iterators throw the InvalidJSONException while "unsafe" ones don't.
+    EXPECT_THROW(*impl.Iterate(0, 1).begin(), current::serialization::json::InvalidJSONException);
+    EXPECT_THROW(*impl.Iterate().begin(), current::serialization::json::InvalidJSONException);
+    EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(0, 1).begin());
+    CheckUnsafeIteration();
+  }
+
+  {
+    EXPECT_NO_THROW(*impl.Iterate(2, 3).begin());
+
+    // Produce wrong JSON instead of the entry's value only and leave index and timestamp section valid.
+    const auto tab_pos = lines[3].find('\t');
+    ASSERT_FALSE(std::string::npos == tab_pos);
+    const auto length_to_replace = (lines[3].length() - 1) - (tab_pos + 1);
+    lines[3].replace(tab_pos + 1, length_to_replace, length_to_replace, 'C');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    // Check that "safe" iterators throw the InvalidJSONException while "unsafe" ones don't.
+    EXPECT_THROW(*impl.Iterate(2, 3).begin(), current::serialization::json::InvalidJSONException);
+    EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(2, 3).begin());
+    CheckUnsafeIteration();
+  }
+}
+
 namespace persistence_test {
 
 inline StorableString LargeTestStorableString(int index) {

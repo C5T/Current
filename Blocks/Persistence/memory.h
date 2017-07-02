@@ -85,11 +85,12 @@ class MemoryPersister {
       std::lock_guard<std::mutex> lock(container_->mutex_ref);
       return Entry(i_, container_->entries[i_]);
     }
-    void operator++() {
+    Iterator& operator++() {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
       ++i_;
+      return *this;
     }
     bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
@@ -114,11 +115,12 @@ class MemoryPersister {
       const auto& entry = container_->entries[i_];
       return JSON(idxts_t(i_, entry.first)) + '\t' + JSON(entry.second);
     }
-    void operator++() {
+    IteratorUnsafe& operator++() {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
       ++i_;
+      return *this;
     }
     bool operator==(const IteratorUnsafe& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const IteratorUnsafe& rhs) const { return !operator==(rhs); }

@@ -310,12 +310,13 @@ class FilePersister {
       return result;
     }
 
-    void operator++() {
+    Iterator& operator++() {
       if (!valid_) {
         CURRENT_THROW(
             PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       ++i_;
+      return *this;
     }
     bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
@@ -375,13 +376,14 @@ class FilePersister {
       return current_entry_;
     }
 
-    void operator++() {
+    IteratorUnsafe& operator++() {
       if (!valid_) {
         CURRENT_THROW(
             PersistenceFileNoLongerAvailable(file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       ++i_;
       current_entry_.clear();
+      return *this;
     }
     bool operator==(const IteratorUnsafe& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const IteratorUnsafe& rhs) const { return !operator==(rhs); }
