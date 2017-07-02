@@ -442,9 +442,6 @@ class FilePersister {
     const std::streampos begin_offset_;
   };
 
-  using IterableRange = IterableRangeImpl<Iterator>;
-  using IterableRangeUnsafe = IterableRangeImpl<IteratorUnsafe>;
-
   template <current::locks::MutexLockStatus MLS, typename E, typename US>
   idxts_t DoPublish(E&& entry, const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
@@ -551,7 +548,13 @@ class FilePersister {
     return result;
   }
 
-  IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
+  template <ss::IterationMode IM>
+  using IterableRange = typename std::conditional<IM == ss::IterationMode::Safe,
+                                                  IterableRangeImpl<Iterator>,
+                                                  IterableRangeImpl<IteratorUnsafe>>::type;
+
+  template <ss::IterationMode IM>
+  IterableRange<IM> Iterate(uint64_t begin_index, uint64_t end_index) const {
     const uint64_t current_size = file_persister_impl_->end.load().next_index;
     if (end_index == static_cast<uint64_t>(-1)) {
       end_index = current_size;
@@ -560,7 +563,7 @@ class FilePersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin_index == end_index) {
-      return IterableRange(
+      return IterableRange<IM>(
           file_persister_impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
     }
     if (end_index < begin_index) {
@@ -569,51 +572,19 @@ class FilePersister {
     std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
     CURRENT_ASSERT(file_persister_impl_->offset.size() >=
                    current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
-    return IterableRange(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
+    return IterableRange<IM>(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
   }
 
-  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  template <ss::IterationMode IM>
+  IterableRange<IM> Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = IndexRangeByTimestampRange(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return Iterate(index_range.first, index_range.second);
+      return Iterate<IM>(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
-      return IterableRange(file_persister_impl_, 0, 0, 0);
-    }
-  }
-
-  IterableRangeUnsafe IterateUnsafe(uint64_t begin_index, uint64_t end_index) const {
-    const uint64_t current_size = file_persister_impl_->end.load().next_index;
-    if (end_index == static_cast<uint64_t>(-1)) {
-      end_index = current_size;
-    }
-    if (end_index > current_size) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-    if (begin_index == end_index) {
-      return IterableRangeUnsafe(
-          file_persister_impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
-    }
-    if (end_index < begin_index) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
-    CURRENT_ASSERT(file_persister_impl_->offset.size() >=
-                   current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
-    return IterableRangeUnsafe(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
-  }
-
-  IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
-    if (till.count() > 0 && till < from) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-    const auto index_range = IndexRangeByTimestampRange(from, till);
-    if (index_range.first != static_cast<uint64_t>(-1)) {
-      return IterateUnsafe(index_range.first, index_range.second);
-    } else {  // No entries found in the given range.
-      return IterableRangeUnsafe(file_persister_impl_, 0, 0, 0);
+      return IterableRange<IM>(file_persister_impl_, 0, 0, 0);
     }
   }
 

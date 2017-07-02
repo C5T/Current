@@ -157,9 +157,6 @@ class MemoryPersister {
     const uint64_t end_;
   };
 
-  using IterableRange = IterableRangeImpl<Iterator>;
-  using IterableRangeUnsafe = IterableRangeImpl<IteratorUnsafe>;
-
   template <current::locks::MutexLockStatus MLS, typename E, typename US>
   idxts_t DoPublish(E&& entry, const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
@@ -246,7 +243,13 @@ class MemoryPersister {
     return result;
   }
 
-  IterableRange Iterate(uint64_t begin, uint64_t end) const {
+  template <ss::IterationMode IM>
+  using IterableRange = typename std::conditional<IM == ss::IterationMode::Safe,
+                                                  IterableRangeImpl<Iterator>,
+                                                  IterableRangeImpl<IteratorUnsafe>>::type;
+
+  template <ss::IterationMode IM>
+  IterableRange<IM> Iterate(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
       std::lock_guard<std::mutex> lock(container_->mutex_ref);
       return static_cast<uint64_t>(container_->entries.size());
@@ -260,7 +263,7 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin == end) {
-      return IterableRange(container_, 0, 0);
+      return IterableRange<IM>(container_, 0, 0);
     }
     if (begin >= size) {
       CURRENT_THROW(InvalidIterableRangeException());
@@ -269,56 +272,19 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
 
-    return IterableRange(container_, begin, end);
+    return IterableRange<IM>(container_, begin, end);
   }
 
-  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  template <ss::IterationMode IM>
+  IterableRange<IM> Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = IndexRangeByTimestampRange(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return Iterate(index_range.first, index_range.second);
+      return Iterate<IM>(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
-      return IterableRange(container_, 0, 0);
-    }
-  }
-
-  IterableRangeUnsafe IterateUnsafe(uint64_t begin, uint64_t end) const {
-    const uint64_t size = [this]() {
-      std::lock_guard<std::mutex> lock(container_->mutex_ref);
-      return static_cast<uint64_t>(container_->entries.size());
-    }();
-
-    if (end == static_cast<uint64_t>(-1)) {
-      end = size;
-    }
-
-    if (end > size) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-    if (begin == end) {
-      return IterableRangeUnsafe(container_, 0, 0);
-    }
-    if (begin >= size) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-    if (end < begin) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-
-    return IterableRangeUnsafe(container_, begin, end);
-  }
-
-  IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
-    if (till.count() > 0 && till < from) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
-    const auto index_range = IndexRangeByTimestampRange(from, till);
-    if (index_range.first != static_cast<uint64_t>(-1)) {
-      return IterateUnsafe(index_range.first, index_range.second);
-    } else {  // No entries found in the given range.
-      return IterableRangeUnsafe(container_, 0, 0);
+      return IterableRange<IM>(container_, 0, 0);
     }
   }
 

@@ -82,7 +82,7 @@ TEST(PersistenceLayer, Memory) {
       }
       EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
       std::vector<std::string> first_two_unsafe;
-      for (const auto& e : impl.IterateUnsafe()) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
         first_two_unsafe.push_back(e);
       }
       EXPECT_EQ(
@@ -102,7 +102,7 @@ TEST(PersistenceLayer, Memory) {
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 300", Join(all_three, ","));
       std::vector<std::string> all_three_unsafe;
-      for (const auto& e : impl.IterateUnsafe()) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
         all_three_unsafe.push_back(e);
       }
       EXPECT_EQ(
@@ -119,7 +119,7 @@ TEST(PersistenceLayer, Memory) {
       }
       EXPECT_EQ("meh", Join(just_the_last_one, ","));
       std::vector<std::string> just_the_last_one_unsafe;
-      for (const auto& e : impl.IterateUnsafe(2)) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>(2)) {
         just_the_last_one_unsafe.push_back(e);
       }
       EXPECT_EQ("{\"index\":2,\"us\":300}\t\"meh\"", Join(just_the_last_one_unsafe, ","));
@@ -132,7 +132,7 @@ TEST(PersistenceLayer, Memory) {
       }
       EXPECT_EQ("meh", Join(just_the_last_one, ","));
       std::vector<std::string> just_the_last_one_unsafe;
-      for (const auto& e : impl.IterateUnsafe(std::chrono::microseconds(300))) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>(std::chrono::microseconds(300))) {
         just_the_last_one_unsafe.push_back(e);
       }
       EXPECT_EQ("{\"index\":2,\"us\":300}\t\"meh\"", Join(just_the_last_one_unsafe, ","));
@@ -214,11 +214,14 @@ TEST(PersistenceLayer, MemoryExceptions) {
     impl.Publish("2", std::chrono::microseconds(2));
     impl.Publish("3", std::chrono::microseconds(3));
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW(impl.IterateUnsafe(1, 0), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate<current::ss::IterationMode::Unsafe>(1, 0),
+                 current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW(impl.IterateUnsafe(100, 101), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate<current::ss::IterationMode::Unsafe>(100, 101),
+                 current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW(impl.IterateUnsafe(100, 100), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate<current::ss::IterationMode::Unsafe>(100, 100),
+                 current::persistence::InvalidIterableRangeException);
   }
 }
 
@@ -237,7 +240,7 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
 
   {
     auto iterable = p->Iterate();
-    auto iterable_unsafe = p->IterateUnsafe();
+    auto iterable_unsafe = p->Iterate<current::ss::IterationMode::Unsafe>();
     EXPECT_TRUE(static_cast<bool>(iterable));
     EXPECT_TRUE(static_cast<bool>(iterable_unsafe));
     auto iterator = iterable.begin();
@@ -323,7 +326,7 @@ TEST(PersistenceLayer, File) {
       }
       EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
       std::vector<std::string> first_two_unsafe;
-      for (const auto& e : impl.IterateUnsafe()) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
         first_two_unsafe.push_back(e);
       }
       EXPECT_EQ(
@@ -352,7 +355,7 @@ TEST(PersistenceLayer, File) {
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
       std::vector<std::string> all_three_unsafe;
-      for (const auto& e : impl.IterateUnsafe()) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
         all_three_unsafe.push_back(e);
       }
       EXPECT_EQ(
@@ -389,7 +392,7 @@ TEST(PersistenceLayer, File) {
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
       std::vector<std::string> all_three_unsafe;
-      for (const auto& e : impl.IterateUnsafe()) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
         all_three_unsafe.push_back(e);
       }
       EXPECT_EQ(
@@ -416,7 +419,7 @@ TEST(PersistenceLayer, File) {
       }
       EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
       std::vector<std::string> all_four_unsafe;
-      for (const auto& e : impl.IterateUnsafe()) {
+      for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
         all_four_unsafe.push_back(e);
       }
       EXPECT_EQ(
@@ -441,7 +444,7 @@ TEST(PersistenceLayer, File) {
     }
     EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
     std::vector<std::string> all_four_unsafe;
-    for (const auto& e : impl.IterateUnsafe()) {
+    for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
       all_four_unsafe.push_back(e);
     }
     EXPECT_EQ(
@@ -630,11 +633,14 @@ TEST(PersistenceLayer, FileExceptions) {
     current::time::SetNow(std::chrono::microseconds(3));
     impl.Publish("3");
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW(impl.IterateUnsafe(1, 0), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate<current::ss::IterationMode::Unsafe>(1, 0),
+                 current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW(impl.IterateUnsafe(100, 101), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate<current::ss::IterationMode::Unsafe>(100, 101),
+                 current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW(impl.IterateUnsafe(100, 100), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate<current::ss::IterationMode::Unsafe>(100, 100),
+                 current::persistence::InvalidIterableRangeException);
   }
 }
 
@@ -705,32 +711,36 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
     EXPECT_EQ(0ull, (*impl.Iterate(0, 1).begin()).idx_ts.index);
     EXPECT_EQ(0ll, (*impl.Iterate(0, 1).begin()).idx_ts.us.count());
     EXPECT_EQ("0000000 aaa", (*impl.Iterate(0, 1).begin()).entry.s);
-    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}", (*impl.IterateUnsafe(0, 1).begin()));
+    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}",
+              (*impl.template Iterate<current::ss::IterationMode::Unsafe>(0, 1).begin()));
     EXPECT_EQ(10ull, (*impl.Iterate(10, 11).begin()).idx_ts.index);
     EXPECT_EQ(10000ll, (*impl.Iterate(10, 11).begin()).idx_ts.us.count());
     EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(10, 11).begin()).entry.s);
-    EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}", (*impl.IterateUnsafe(10, 11).begin()));
+    EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}",
+              (*impl.template Iterate<current::ss::IterationMode::Unsafe>(10, 11).begin()));
     EXPECT_EQ(100ull, (*impl.Iterate(100, 101).begin()).idx_ts.index);
     EXPECT_EQ(100000ll, (*impl.Iterate(100, 101).begin()).idx_ts.us.count());
     EXPECT_EQ("0000100 wwwww", (*impl.Iterate(100, 101).begin()).entry.s);
-    EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}", (*impl.IterateUnsafe(100, 101).begin()));
+    EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}",
+              (*impl.template Iterate<current::ss::IterationMode::Unsafe>(100, 101).begin()));
   }
   {
     // By timestamp.
     EXPECT_EQ(0ull, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.index);
     EXPECT_EQ(0ll, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000000 aaa", (*impl.Iterate(us_t(0), us_t(1000)).begin()).entry.s);
-    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}", (*impl.IterateUnsafe(us_t(0), us_t(1000)).begin()));
+    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}",
+              (*impl.template Iterate<current::ss::IterationMode::Unsafe>(us_t(0), us_t(1000)).begin()));
     EXPECT_EQ(10ull, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.index);
     EXPECT_EQ(10000ll, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(us_t(10000), us_t(11000)).begin()).entry.s);
     EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}",
-              (*impl.IterateUnsafe(us_t(10000), us_t(11000)).begin()));
+              (*impl.template Iterate<current::ss::IterationMode::Unsafe>(us_t(10000), us_t(11000)).begin()));
     EXPECT_EQ(100ull, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.index);
     EXPECT_EQ(100000ll, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000100 wwwww", (*impl.Iterate(us_t(100000), us_t(101000)).begin()).entry.s);
     EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}",
-              (*impl.IterateUnsafe(us_t(100000), us_t(101000)).begin()));
+              (*impl.template Iterate<current::ss::IterationMode::Unsafe>(us_t(100000), us_t(101000)).begin()));
   }
 
   // Perftest the creation of a large number of iterators.
@@ -739,7 +749,7 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   for (int i = 0; i < N; ++i) {
     const auto cit = impl.Iterate(i, i + 1).begin();
     const auto& e = *cit;
-    const auto cit_unsafe = impl.IterateUnsafe(i, i + 1).begin();
+    const auto cit_unsafe = impl.template Iterate<current::ss::IterationMode::Unsafe>(i, i + 1).begin();
     const auto& e_unsafe = *cit_unsafe;
     EXPECT_EQ(JSON(e.idx_ts), JSON((*impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin()).idx_ts));
     EXPECT_EQ(static_cast<uint64_t>(i), e.idx_ts.index);
@@ -799,7 +809,7 @@ TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
 
   {
     auto iterable = p->Iterate();
-    auto iterable_unsafe = p->IterateUnsafe();
+    auto iterable_unsafe = p->Iterate<current::ss::IterationMode::Unsafe>();
     EXPECT_TRUE(static_cast<bool>(iterable));
     EXPECT_TRUE(static_cast<bool>(iterable_unsafe));
     auto iterator = iterable.begin();
