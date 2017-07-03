@@ -906,12 +906,15 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       std::ostringstream temporary_os;
       RecursivelyListStructFields(temporary_os, s);
       const std::string fields = temporary_os.str();
+      // Print empty structs to Markdown, too. Their names need to be documented anyway.
+      os_ << "\n### `" << s.CanonicalName() << '`';
+      if (s.super_id != TypeID::CurrentStruct) {
+        os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).CanonicalName() << '`';
+      }
       if (!fields.empty()) {
-        os_ << "\n### `" << s.CanonicalName() << '`';
-        if (s.super_id != TypeID::CurrentStruct) {
-          os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).CanonicalName() << '`';
-        }
         os_ << "\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n" << fields << '\n';
+      } else {
+        os_ << "\n_No own fields._\n";
       }
     }
   };  // struct LanguageSyntax<Language::Markdown>::FullSchemaPrinter

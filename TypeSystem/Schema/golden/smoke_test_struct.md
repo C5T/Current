@@ -39,6 +39,9 @@
 | `a` | Integer (32-bit signed) |
 
 
+### `Empty`
+_No own fields._
+
 ### `X`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
