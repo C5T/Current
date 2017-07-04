@@ -270,15 +270,7 @@ class FilePersister {
         : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }), i_(i) {
       if (!filename.empty()) {
         fi_ = std::make_unique<std::ifstream>(filename);
-        // This `if` condition is only here to test performance with vs. without the `seekg`.
-        // The high performance version jumps to the desired entry right away,
-        // The poor performance one scans the file from the very beginning for each new iterator created.
-        if (true) {
-          cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, offset, index_at_offset);
-        } else {
-          // Inefficient, scan the file from the very beginning.
-          cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, 0, 0);
-        }
+        cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, offset, index_at_offset);
       }
     }
 

@@ -697,15 +697,15 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
   struct_schema.AddType<StorableString>();
   const std::string signature =
       "#signature " + JSON(current::ss::StreamSignature(namespace_name, struct_schema.GetSchemaInfo())) + '\n';
-  std::string lines[] = {"{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n",
-                         "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n",
-                         "#head 00000000000000000300\n",
-                         "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
-                         "#head 00000000000000000600\n"};
+  std::vector<std::string> lines = {"{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}",
+                                    "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}",
+                                    "#head 00000000000000000300",
+                                    "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}",
+                                    "#head 00000000000000000600"};
   const auto CombineFileContents = [&]() -> std::string {
     std::string contents = signature;
     for (const auto& line : lines) {
-      contents += line;
+      contents += line + '\n';
     }
     return contents;
   };
@@ -715,12 +715,12 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
   std::mutex mutex;
   IMPL impl(mutex, namespace_name, persistence_file_name);
 
-  const auto CheckUnsafeIteration = [&]() {
-    std::vector<std::string> all_entries_unsafe;
+  const auto GetUnsafeIterationResult = [&]() -> std::string {
+    std::string combined_result;
     for (const auto& e : impl.Iterate<current::ss::IterationMode::Unsafe>()) {
-      all_entries_unsafe.push_back(e);
+      combined_result += e + '\n';
     }
-    EXPECT_EQ(lines[0] + lines[1] + lines[3], Join(all_entries_unsafe, "\n") + '\n');
+    return combined_result;
   };
 
   {
@@ -730,7 +730,11 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
           "%s %d %d", e.entry.s.c_str(), static_cast<int>(e.idx_ts.index), static_cast<int>(e.idx_ts.us.count())));
     }
     EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_entries, ","));
-    CheckUnsafeIteration();
+    EXPECT_EQ(
+        "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+        "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
+        GetUnsafeIterationResult());
   }
 
   {
@@ -740,7 +744,7 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     EXPECT_NO_THROW(*(++impl.Iterate().begin()));
 
     // swap the first two entries to provoke the InconsistentIndexException exceptions.
-    lines[0].swap(lines[1]);
+    std::swap(lines[0], lines[1]);
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
     // Check that "safe" iterators throw the InconsistentIndexException while "unsafe" ones don't.
@@ -752,13 +756,17 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(1, 2).begin());
     EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>().begin());
     EXPECT_NO_THROW(*(++impl.Iterate<current::ss::IterationMode::Unsafe>().begin()));
-    CheckUnsafeIteration();
-    lines[0].swap(lines[1]);
+    EXPECT_EQ(
+        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+        "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
+        GetUnsafeIterationResult());
+    std::swap(lines[0], lines[1]);
   }
 
   {
-    // Produce wrong JSON instead of an entry: replace all symbols, except last \n one.
-    lines[1].replace(0, lines[1].length() - 1, lines[1].length() - 1, 'A');
+    // Produce wrong JSON instead of an entire entry - replace both index and value with garbage.
+    lines[1].replace(0, lines[1].length(), lines[1].length(), 'A');
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
     // Check that "safe" iterators throw the MalformedEntryException while "unsafe" ones don't.
@@ -766,7 +774,11 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     EXPECT_THROW(*impl.Iterate(1, 2).begin(), current::persistence::MalformedEntryException);
     EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(1, 2).begin());
     EXPECT_NO_THROW(*(++impl.Iterate<current::ss::IterationMode::Unsafe>().begin()));
-    CheckUnsafeIteration();
+    EXPECT_EQ(
+        "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
+        GetUnsafeIterationResult());
   }
 
   {
@@ -783,7 +795,11 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     EXPECT_THROW(*impl.Iterate(0, 1).begin(), current::serialization::json::InvalidJSONException);
     EXPECT_THROW(*impl.Iterate().begin(), current::serialization::json::InvalidJSONException);
     EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(0, 1).begin());
-    CheckUnsafeIteration();
+    EXPECT_EQ(
+        "BBBBBBBBBBBBBBBBBBBB\t{\"s\":\"foo\"}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
+        GetUnsafeIterationResult());
   }
 
   {
@@ -792,14 +808,18 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     // Produce wrong JSON instead of the entry's value only and leave index and timestamp section valid.
     const auto tab_pos = lines[3].find('\t');
     ASSERT_FALSE(std::string::npos == tab_pos);
-    const auto length_to_replace = (lines[3].length() - 1) - (tab_pos + 1);
+    const auto length_to_replace = lines[3].length() - (tab_pos + 1);
     lines[3].replace(tab_pos + 1, length_to_replace, length_to_replace, 'C');
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
     // Check that "safe" iterators throw the InvalidJSONException while "unsafe" ones don't.
     EXPECT_THROW(*impl.Iterate(2, 3).begin(), current::serialization::json::InvalidJSONException);
     EXPECT_NO_THROW(*impl.Iterate<current::ss::IterationMode::Unsafe>(2, 3).begin());
-    CheckUnsafeIteration();
+    EXPECT_EQ(
+        "BBBBBBBBBBBBBBBBBBBB\t{\"s\":\"foo\"}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":500}\tCCCCCCCCCCC\n",
+        GetUnsafeIterationResult());
   }
 }
 
