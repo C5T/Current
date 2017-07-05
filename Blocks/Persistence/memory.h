@@ -64,10 +64,10 @@ class MemoryPersister {
  public:
   MemoryPersister(std::mutex& mutex_ref, const ss::StreamNamespaceName&) : container_(mutex_ref) {}
 
-  class IterableRange {
+  class Iterator {
    public:
-    explicit IterableRange(ScopeOwned<Container>& container, uint64_t begin, uint64_t end)
-        : container_(container, [this]() { valid_ = false; }), begin_(begin), end_(end) {}
+    Iterator(ScopeOwned<Container>& container, uint64_t i)
+        : container_(container, [this]() { valid_ = false; }), i_(i) {}
 
     struct Entry {
       const idxts_t idx_ts;
@@ -78,45 +78,77 @@ class MemoryPersister {
           : idx_ts(index, input.first), entry(input.second) {}
     };
 
-    class Iterator {
-     public:
-      Iterator(ScopeOwned<Container>& container, uint64_t i)
-          : container_(container, [this]() { valid_ = false; }), i_(i) {}
-
-      Entry operator*() const {
-        if (!valid_) {
-          CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-        }
-        std::lock_guard<std::mutex> lock(container_->mutex_ref);
-        return Entry(i_, container_->entries[i_]);
-      }
-      void operator++() {
-        if (!valid_) {
-          CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-        }
-        ++i_;
-      }
-      bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
-      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      operator bool() const { return valid_; }
-
-     private:
-      mutable ScopeOwnedBySomeoneElse<Container> container_;
-      bool valid_ = true;
-      uint64_t i_;
-    };
-
-    Iterator begin() const {
+    Entry operator*() const {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
-      return Iterator(container_, begin_);
+      std::lock_guard<std::mutex> lock(container_->mutex_ref);
+      return Entry(i_, container_->entries[i_]);
     }
-    Iterator end() const {
+    Iterator& operator++() {
       if (!valid_) {
         CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
       }
-      return Iterator(container_, end_);
+      ++i_;
+      return *this;
+    }
+    bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    operator bool() const { return valid_; }
+
+   private:
+    mutable ScopeOwnedBySomeoneElse<Container> container_;
+    bool valid_ = true;
+    uint64_t i_;
+  };
+
+  class IteratorUnsafe {
+   public:
+    IteratorUnsafe(ScopeOwned<Container>& container, uint64_t i)
+        : container_(container, [this]() { valid_ = false; }), i_(i) {}
+
+    std::string operator*() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      std::lock_guard<std::mutex> lock(container_->mutex_ref);
+      const auto& entry = container_->entries[i_];
+      return JSON(idxts_t(i_, entry.first)) + '\t' + JSON(entry.second);
+    }
+    IteratorUnsafe& operator++() {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      ++i_;
+      return *this;
+    }
+    bool operator==(const IteratorUnsafe& rhs) const { return i_ == rhs.i_; }
+    bool operator!=(const IteratorUnsafe& rhs) const { return !operator==(rhs); }
+    operator bool() const { return valid_; }
+
+   private:
+    mutable ScopeOwnedBySomeoneElse<Container> container_;
+    bool valid_ = true;
+    uint64_t i_;
+  };
+
+  template <typename ITERATOR>
+  class IterableRangeImpl {
+   public:
+    explicit IterableRangeImpl(ScopeOwned<Container>& container, uint64_t begin, uint64_t end)
+        : container_(container, [this]() { valid_ = false; }), begin_(begin), end_(end) {}
+
+    ITERATOR begin() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      return ITERATOR(container_, begin_);
+    }
+    ITERATOR end() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      return ITERATOR(container_, end_);
     }
     operator bool() const { return valid_; }
 
@@ -213,7 +245,13 @@ class MemoryPersister {
     return result;
   }
 
-  IterableRange Iterate(uint64_t begin, uint64_t end) const {
+  template <ss::IterationMode IM>
+  using IterableRange = typename std::conditional<IM == ss::IterationMode::Safe,
+                                                  IterableRangeImpl<Iterator>,
+                                                  IterableRangeImpl<IteratorUnsafe>>::type;
+
+  template <ss::IterationMode IM>
+  IterableRange<IM> Iterate(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
       std::lock_guard<std::mutex> lock(container_->mutex_ref);
       return static_cast<uint64_t>(container_->entries.size());
@@ -227,7 +265,7 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin == end) {
-      return IterableRange(container_, 0, 0);
+      return IterableRange<IM>(container_, 0, 0);
     }
     if (begin >= size) {
       CURRENT_THROW(InvalidIterableRangeException());
@@ -236,18 +274,19 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
 
-    return IterableRange(container_, begin, end);
+    return IterableRange<IM>(container_, begin, end);
   }
 
-  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  template <ss::IterationMode IM>
+  IterableRange<IM> Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = IndexRangeByTimestampRange(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return Iterate(index_range.first, index_range.second);
+      return Iterate<IM>(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
-      return IterableRange(container_, 0, 0);
+      return IterableRange<IM>(container_, 0, 0);
     }
   }
 
