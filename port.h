@@ -42,7 +42,7 @@ SOFTWARE.
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
 #define _CRT_SECURE_NO_WARNINGS
-#endif // !_CRT_SECURE_NO_WARNINGS
+#endif  // !_CRT_SECURE_NO_WARNINGS
 #endif
 
 // TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
@@ -225,6 +225,10 @@ using namespace enable_strptime_on_windows;
 
 inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int line) {
   fprintf(stderr, "Current assertion failed:\n\t%s\n\t%s : %d\n", text, file, line);
+#ifdef CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
+  volatile int* fffuuuuu = nullptr;
+  *fffuuuuu = 42;
+#endif  // CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
 }
 
 #ifndef CURRENT_ASSERT
@@ -233,7 +237,7 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 
 // The `VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME` macro, when set, moves `Variant` type checks
 // from compile time to run time.
-// Pros: 
+// Pros:
 // * Human-readable types in error messages, helpful for debugging.
 // * Faster and less RAM-demanding compilation [ Uncertain. -- D.K. ]
 // Cons:
@@ -244,6 +248,6 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 #ifdef CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
 #undef _CRT_SECURE_NO_WARNINGS
 #undef CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
-#endif // CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
+#endif  // CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
 
 #endif

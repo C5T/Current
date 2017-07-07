@@ -35,35 +35,39 @@ SOFTWARE.
 #include <thread>
 
 #include "exceptions.h"
-#include "stream_data.h"
+#include "stream_impl.h"
 #include "pubsub.h"
 
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/Schema/schema.h"
 
 #include "../Blocks/HTTP/api.h"
-#include "../Blocks/Persistence/persistence.h"
+#include "../Blocks/Persistence/memory.h"
+#include "../Blocks/Persistence/file.h"
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/SS/signature.h"
 
 #include "../Bricks/sync/locks.h"
-#include "../Bricks/sync/scope_owned.h"
+#include "../Bricks/sync/owned_borrowed.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/util/sha256.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
 // Sherlock is the overlord of streamed data storage and processing in Current.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records ("entries").
-// Each record is annotated with its the 1-based index and its epoch microsecond timestamp.
+// Each record is annotated with its 0-based index and its epoch microsecond timestamp.
 // Within the stream, timestamps are strictly increasing.
 //
-// A stream is constructed as `auto my_stream = sherlock::Stream<ENTRY>()`. This creates an in-memory stream.
-
+// An in-memory stream can be constructed as `auto my_stream = sherlock::Stream<ENTRY>::CreateStream();`.
+//
 // To create a persisted one, pass in the type of persister and its construction parameters, such as:
-// `auto my_stream = sherlock::Stream<ENTRY, current::persistence::File>("data.json");`.
+// `auto my_stream = sherlock::Stream<ENTRY, current::persistence::File>::CreateStream("data.json");`.
 //
 // Sherlock streams can be published into and subscribed to.
 //
-// Publishing is done via `my_stream.Publish(ENTRY{...});`.
+// Publishing is done via `my_stream.Publisher()->Publish(ENTRY{...});`.
+// At a given point in time, there can only be one master ("owned") publisher of the stream, as well as
+// any number of "borrowed" publishers, forked off the master one.
 //
 // Subscription is done via `auto scope = my_stream.Subscribe(my_subscriber);`, where `my_subscriber`
 // is an instance of the class doing the subscription. Sherlock runs each subscriber in a dedicated thread.
@@ -87,200 +91,177 @@ constexpr const char* kDefaultTopLevelName = "TopLevelTransaction";
 CURRENT_STRUCT(SherlockSchema) {
   CURRENT_FIELD(language, (std::map<std::string, std::string>));
   CURRENT_FIELD(type_name, std::string);
-  CURRENT_FIELD(type_id, current::reflection::TypeID);
+  CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
   CURRENT_FIELD(type_schema, reflection::SchemaInfo);
-  CURRENT_DEFAULT_CONSTRUCTOR(SherlockSchema) {}
 };
 
 CURRENT_STRUCT(SubscribableSherlockSchema) {
   CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
   CURRENT_FIELD(entry_name, std::string);
   CURRENT_FIELD(namespace_name, std::string);
+
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
   CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
       current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
       : type_id(type_id), entry_name(entry_name), namespace_name(namespace_name) {}
+
   bool operator==(const SubscribableSherlockSchema& rhs) const {
     return type_id == rhs.type_id && namespace_name == rhs.namespace_name && entry_name == rhs.entry_name;
   }
   bool operator!=(const SubscribableSherlockSchema& rhs) const { return !operator==(rhs); }
 };
 
-CURRENT_STRUCT(SherlockSchemaFormatNotFound) {
+CURRENT_STRUCT(SherlockSchemaFormatNotFoundError) {
   CURRENT_FIELD(error, std::string, "Unsupported schema format requested.");
   CURRENT_FIELD(unsupported_format_requested, Optional<std::string>);
 };
-
-enum class StreamDataAuthority : bool { Own = true, External = false };
 
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
-class StreamImpl {
+class Stream final {
  public:
+  // Inner types.
   using entry_t = ENTRY;
   using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
-  using stream_data_t = StreamData<entry_t, PERSISTENCE_LAYER>;
+  using impl_t = StreamImpl<entry_t, PERSISTENCE_LAYER>;
+  using publisher_t = ss::StreamPublisher<StreamPublisherImpl<ENTRY, PERSISTENCE_LAYER>, entry_t>;
 
-  class StreamPublisher {
-   public:
-    explicit StreamPublisher(ScopeOwned<stream_data_t>& data) : data_(data, []() {}) {}
+ private:
+  // Data members.
+  // The `const` ones to be initialized first (just in case they are needed while `Stream` is being destructed).
+  const ss::StreamNamespaceName schema_namespace_name_ =
+      ss::StreamNamespaceName(constants::kDefaultNamespaceName, constants::kDefaultTopLevelName);
 
-    template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(const entry_t& entry, const current::time::DefaultTimeArgument) {
-      return PublishImpl<MLS>(entry);
-    }
+  const SherlockSchema schema_as_object_;
 
-    template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us) {
-      return PublishImpl<MLS>(entry, us);
-    }
+  const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
+                                                     HTTPResponseCode.OK,
+                                                     current::net::constants::kDefaultJSONContentType);
 
-    template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(entry_t&& entry, const current::time::DefaultTimeArgument) {
-      return PublishImpl<MLS>(std::move(entry));
-    }
+  // The unique instance of stream data and associated logic (mutexes, HTTP subscribers list, etc.)
+  Owned<impl_t> impl_;
 
-    template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us) {
-      return PublishImpl<MLS>(std::move(entry), us);
-    }
+  // The unique instance of the publisher. Can be recreated to notify all presently borrowed publishers
+  // and wait until all of them are released.
+  Optional<Owned<publisher_t>> owned_publisher_;
 
-    template <current::locks::MutexLockStatus MLS>
-    void DoUpdateHead(const current::time::DefaultTimeArgument) {
-      UpdateHeadImpl<MLS>();
-    }
+  // The "reference" to the publisher that can be borrowed -- iff the stream owns its publisher, i.e. is the Master.
+  // DIMA Optional<BorrowedOfGuaranteedLifetime<publisher_t>> borrowable_publisher_;
+  Optional<Borrowed<publisher_t>> borrowable_publisher_;
 
-    template <current::locks::MutexLockStatus MLS>
-    void DoUpdateHead(const std::chrono::microseconds us) {
-      UpdateHeadImpl<MLS>(us);
-    }
-
-    operator bool() const { return data_; }
-
-   private:
-    template <current::locks::MutexLockStatus MLS, typename... ARGS>
-    idxts_t PublishImpl(ARGS&&... args) {
-      try {
-        auto& data = *data_;
-        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        const auto result = data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(
-            std::forward<ARGS>(args)...);
-        data.notifier.NotifyAllOfExternalWaitableEvent();
-        return result;
-      } catch (const current::sync::InDestructingModeException&) {
-        CURRENT_THROW(StreamInGracefulShutdownException());
-      }
-    }
-
-    template <current::locks::MutexLockStatus MLS, typename... ARGS>
-    void UpdateHeadImpl(ARGS&&... args) {
-      try {
-        auto& data = *data_;
-        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
-        data.persistence.template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(
-            std::forward<ARGS>(args)...);
-        data.notifier.NotifyAllOfExternalWaitableEvent();
-      } catch (const current::sync::InDestructingModeException&) {
-        CURRENT_THROW(StreamInGracefulShutdownException());
-      }
-    }
-
-    ScopeOwnedBySomeoneElse<stream_data_t> data_;
-  };
-  using publisher_t = ss::StreamPublisher<StreamPublisher, entry_t>;
-
-  StreamImpl()
-      : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(schema_namespace_name_),
-        publisher_(std::make_unique<publisher_t>(own_data_)),
-        authority_(StreamDataAuthority::Own) {}
-
-  StreamImpl(const ss::StreamNamespaceName& namespace_name)
-      : schema_namespace_name_(namespace_name),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(schema_namespace_name_),
-        publisher_(std::make_unique<publisher_t>(own_data_)),
-        authority_(StreamDataAuthority::Own) {}
-
-  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<X, ss::StreamNamespaceName>::value>>
-  StreamImpl(X&& x, XS&&... xs)
-      : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
-        publisher_(std::make_unique<publisher_t>(own_data_)),
-        authority_(StreamDataAuthority::Own) {}
-
-  template <typename X, typename... XS>
-  StreamImpl(const ss::StreamNamespaceName& namespace_name, X&& x, XS&&... xs)
-      : schema_namespace_name_(namespace_name),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(schema_namespace_name_, std::forward<X>(x), std::forward<XS>(xs)...),
-        publisher_(std::make_unique<publisher_t>(own_data_)),
-        authority_(StreamDataAuthority::Own) {}
-
-  StreamImpl(StreamImpl&& rhs)
-      : schema_namespace_name_(rhs.schema_namespace_name_),
-        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
-        own_data_(std::move(rhs.own_data_)),
-        publisher_(std::move(rhs.publisher_)),
-        authority_(rhs.authority_) {
-    rhs.authority_ = StreamDataAuthority::External;
+ public:
+  // "Constructors" and the destructor.
+  template <typename... ARGS>
+  static Owned<Stream> CreateStream(ARGS&&... args) {
+    return current::MakeOwned<Stream>(PrivateConstructorWithoutNamespace(), std::forward<ARGS>(args)...);
   }
 
-  ~StreamImpl() {
-    // TODO(dkorolev): These should be erased in an ongoing fashion.
+  template <typename... ARGS>
+  static Owned<Stream> CreateStreamWithCustomNamespaceName(const ss::StreamNamespaceName& namespace_name,
+                                                           ARGS&&... args) {
+    return current::MakeOwned<Stream>(PrivateConstructorWithNamespace(), namespace_name, std::forward<ARGS>(args)...);
+  }
+
+  ~Stream() {
     // Order of destruction in `http_subscriptions` does matter - scopes should be deleted first -- M.Z.
-    for (auto& it : own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions) {
+    for (auto& it : impl_->http_subscriptions) {
       it.second.first = nullptr;
     }
-    own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions.clear();
+    impl_->http_subscriptions.clear();
   }
 
-  void operator=(StreamImpl&& rhs) {
-    own_data_ = std::move(rhs.own_data_);
-    publisher_ = std::move(rhs.publisher_);
-    authority_ = rhs.authority_;
-    rhs.authority_ = StreamDataAuthority::External;
-  }
+ private:
+  // Magic to enable `current::MakeOwned<Stream>` create instances of `Stream`.
+  struct PrivateConstructorWithoutNamespace {};
+  struct PrivateConstructorWithNamespace {};
+  friend struct sync::impl::UniqueInstance<Stream>;
 
-  idxts_t Publish(const entry_t& entry) { return PublishImpl(entry); }
+  template <typename... ARGS>
+  Stream(PrivateConstructorWithoutNamespace, ARGS&&... args)
+      : schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        impl_(MakeOwned<impl_t>(schema_namespace_name_, std::forward<ARGS>(args)...)),
+        owned_publisher_(MakeOwned<publisher_t>(impl_)),
+        borrowable_publisher_(Value(owned_publisher_)) {}
 
-  idxts_t Publish(const entry_t& entry, const std::chrono::microseconds us) { return PublishImpl(entry, us); }
+  template <typename... ARGS>
+  Stream(PrivateConstructorWithNamespace, const ss::StreamNamespaceName& namespace_name, ARGS&&... args)
+      : schema_namespace_name_(namespace_name),
+        schema_as_object_(StaticConstructSchemaAsObject(schema_namespace_name_)),
+        impl_(MakeOwned<impl_t>(schema_namespace_name_, std::forward<ARGS>(args)...)),
+        owned_publisher_(MakeOwned<publisher_t>(impl_)),
+        borrowable_publisher_(Value(owned_publisher_)) {}
 
-  idxts_t Publish(entry_t&& entry) { return PublishImpl(std::move(entry)); }
-
-  idxts_t Publish(entry_t&& entry, const std::chrono::microseconds us) { return PublishImpl(std::move(entry), us); }
-
-  void UpdateHead() { UpdateHeadImpl(); }
-
-  void UpdateHead(const std::chrono::microseconds us) { UpdateHeadImpl(us); }
-
-  template <typename ACQUIRER>
-  void MovePublisherTo(ACQUIRER&& acquirer) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (publisher_) {
-      acquirer.AcceptPublisher(std::move(publisher_));
-      authority_ = StreamDataAuthority::External;
+ public:
+  // `Publisher()`: The caller assumes full responsibility for making sure the underlying stream
+  // is not destroyed while it is being published to.
+  // CAN THROW `PublisherNotAvailableException`.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  WeakBorrowed<publisher_t>& Publisher() {
+    current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
+    if (Exists(borrowable_publisher_)) {
+      return Value(borrowable_publisher_);
     } else {
-      CURRENT_THROW(PublisherAlreadyReleasedException());
+      CURRENT_THROW(PublisherNotAvailableException());
     }
   }
 
-  void AcquirePublisher(std::unique_ptr<publisher_t> publisher) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (!publisher_) {
-      publisher_ = std::move(publisher);
-      authority_ = StreamDataAuthority::Own;
+  // `BorrowPublisher()`: The called can count on the fact that if the call succeeded,
+  // the returned borrowed publisher will be valid until voluntarily released.
+  // CAN THROW `PublisherNotAvailableException`.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  Borrowed<publisher_t> BorrowPublisher() {
+    current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
+    if (Exists(borrowable_publisher_)) {
+      return Value(borrowable_publisher_);
     } else {
-      CURRENT_THROW(PublisherAlreadyOwnedException());
+      CURRENT_THROW(PublisherNotAvailableException());
     }
   }
 
-  StreamDataAuthority DataAuthority() const {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    return authority_;
+  // Master-follower logic.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  bool IsMasterStream() const {
+    current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
+    return Exists(borrowable_publisher_);
   }
+
+  // `BecomeMasterStream` invalidates all external publishers to this stream, and restores "the order",
+  // where to publish to the stream a publisher should be retrieved directly from the stream.
+  // NOTE: The call to `BecomeMasterStream` will wait indefinitely if external publishers are not giving up.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  void BecomeMasterStream() {
+    current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
+    // First, "unlock" the stream's own publisher it can be giving away. This is to avoid the deadlock.
+    borrowable_publisher_ = nullptr;
+    // Kill existing borrowers of the publisher. Yes, even though the stream itself is not its own data authority,
+    // as the present data authority may have delegated the "publish access" to various other pieces of logic.
+    // Wait as needed, for as long as needed.
+    owned_publisher_ = nullptr;
+    // Create a fresh new publisher. And keep it within the stream.
+    owned_publisher_ = MakeOwned<publisher_t>(impl_);
+    borrowable_publisher_ = Value(owned_publisher_);
+  }
+
+  // `BecomeFollowingStream` first invalidates all external publishers to this stream,
+  // but instead of "restoring the order" where this stream can publish into itself,
+  // it gives this only publisher away, making it such that the only possible way to publish into this stream
+  // is to borrow the publisher from the caller of `BecomeFollowingStream`, not from the stream itself.
+  // NOTE: The call to `BecomeFollowingStream` will wait indefinitely if external publishers are not giving up.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  Borrowed<publisher_t> BecomeFollowingStream() {
+    current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
+    // Kill existing borrowers of the publisher. Wait as needed, for as long as needed.
+    // This is essential to gracefully invalidate all the previously-issued borrowed publishers.
+    borrowable_publisher_ = nullptr;
+    owned_publisher_ = nullptr;
+    // Create a fresh new publisher and give it away.
+    owned_publisher_ = MakeOwned<publisher_t>(impl_);
+    return Value(owned_publisher_);
+  }
+
+  // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
 
   template <typename TYPE_SUBSCRIBED_TO, typename F>
   class SubscriberThreadInstance final : public current::sherlock::SubscriberScope::SubscriberThread {
@@ -288,7 +269,7 @@ class StreamImpl {
     bool this_is_valid_;
     std::function<void()> done_callback_;
     current::WaitableTerminateSignal terminate_signal_;
-    ScopeOwnedBySomeoneElse<stream_data_t> data_;
+    BorrowedWithCallback<impl_t> impl_;
     F& subscriber_;
     const uint64_t begin_idx_;
     std::thread thread_;
@@ -300,36 +281,38 @@ class StreamImpl {
     void operator=(SubscriberThreadInstance&&) = delete;
 
    public:
-    SubscriberThreadInstance(ScopeOwned<stream_data_t>& data,
+    SubscriberThreadInstance(current::Borrowed<impl_t> impl,
                              F& subscriber,
                              uint64_t begin_idx,
                              std::function<void()> done_callback)
         : this_is_valid_(false),
           done_callback_(done_callback),
           terminate_signal_(),
-          data_(data,
+          impl_(std::move(impl),
                 [this]() {
-                  std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
+                  // NOTE(dkorolev): I'm uncertain whether this lock is necessary here. Keeping it for safety now.
+                  std::lock_guard<std::mutex> lock(impl_->publishing_mutex);
                   terminate_signal_.SignalExternalTermination();
                 }),
           subscriber_(subscriber),
           begin_idx_(begin_idx),
           thread_(&SubscriberThreadInstance::Thread, this) {
-      // Must guard against the constructor of `ScopeOwnedBySomeoneElse<stream_data_t> data_` throwing.
+      // Must guard against the constructor of `BorrowedWithCallback<impl_t> impl_` throwing.
+      // NOTE(dkorolev): This is obsolete now, but keeping the logic for now, to keep it safe. -- D.K.
       this_is_valid_ = true;
     }
 
     ~SubscriberThreadInstance() {
       if (this_is_valid_) {
-        // The constructor has completed successfully. The thread has started, and `data_` is valid.
+        // The constructor has completed successfully. The thread has started, and `impl_` is valid.
         CURRENT_ASSERT(thread_.joinable());
         if (!subscriber_thread_done_) {
-          std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
+          std::lock_guard<std::mutex> lock(impl_->publishing_mutex);
           terminate_signal_.SignalExternalTermination();
         }
         thread_.join();
       } else {
-        // The constructor has not completed successfully. The thread was not started, and `data_` is garbage.
+        // The constructor has not completed successfully. The thread was not started, and `impl_` is garbage.
         if (done_callback_) {
           // TODO(dkorolev): Fix this ownership issue.
           done_callback_();
@@ -339,35 +322,33 @@ class StreamImpl {
 
     void Thread() {
       // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
-      // strictly within the scope of existence of `stream_data_t` contained in `data_`.
-      stream_data_t& bare_data = data_.ObjectAccessorDespitePossiblyDestructing();
-      ThreadImpl(bare_data, begin_idx_);
+      // strictly within the scope of existence of `impl_t` contained in `impl_`.
+      const impl_t& bare_impl = *impl_;
+      ThreadImpl(bare_impl, begin_idx_);
       subscriber_thread_done_ = true;
-      std::lock_guard<std::mutex> lock(bare_data.http_subscriptions_mutex);
+      std::lock_guard<std::mutex> lock(bare_impl.http_subscriptions_mutex);
       if (done_callback_) {
         done_callback_();
       }
     }
 
-    void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
+    void ThreadImpl(const impl_t& bare_impl, uint64_t begin_idx) {
       auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
       bool terminate_sent = false;
       while (true) {
-        // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
-        // TODO(dkorolev): This is actually more a case of `EndReached()` first, right?
         if (!terminate_sent && terminate_signal_) {
           terminate_sent = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
         }
-        auto head_idx = bare_data.persistence.HeadAndLastPublishedIndexAndTimestamp();
+        const auto head_idx = bare_impl.persister.HeadAndLastPublishedIndexAndTimestamp();
         size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
         if (head_idx.head > head) {
           if (size > index) {
-            for (const auto& e : bare_data.persistence.Iterate(index, size)) {
+            for (const auto& e : bare_impl.persister.Iterate(index, size)) {
               if (!terminate_sent && terminate_signal_) {
                 terminate_sent = true;
                 if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
@@ -379,7 +360,7 @@ class StreamImpl {
                       [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
                       e.entry,
                       e.idx_ts,
-                      bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+                      bare_impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
                 return;
               }
             }
@@ -391,15 +372,15 @@ class StreamImpl {
           }
           head = head_idx.head;
         } else {
-          std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
-          current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
+          std::unique_lock<std::mutex> lock(bare_impl.publishing_mutex);
+          current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_impl.notifier, terminate_signal_);
           terminate_signal_.WaitUntil(
               lock,
-              [this, &bare_data, &index, &begin_idx, &head]() {
+              [this, &bare_impl, &index, &begin_idx, &head]() {
                 return terminate_signal_ ||
-                       bare_data.persistence.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                       bare_impl.persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
                        (index > begin_idx &&
-                        bare_data.persistence.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
+                        bare_impl.persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
                             head);
               });
         }
@@ -417,170 +398,177 @@ class StreamImpl {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
-    SubscriberScope(ScopeOwned<stream_data_t>& data,
+    SubscriberScope(current::Borrowed<impl_t> impl,
                     F& subscriber,
                     uint64_t begin_idx,
                     std::function<void()> done_callback)
-        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {}
+        : base_t(
+              std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
+    }
+
+    SubscriberScope(SubscriberScope&&) = default;
+    SubscriberScope& operator=(SubscriberScope&&) = default;
+
+    SubscriberScope() = delete;
+    SubscriberScope(const SubscriberScope&) = delete;
+    SubscriberScope& operator=(const SubscriberScope&) = delete;
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
                                                    uint64_t begin_idx = 0u,
-                                                   std::function<void()> done_callback = nullptr) {
+                                                   std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    try {
-      return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, begin_idx, done_callback);
-    } catch (const current::sync::InDestructingModeException&) {
-      CURRENT_THROW(StreamInGracefulShutdownException());
-    }
+    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(impl_, subscriber, begin_idx, done_callback);
+  }
+
+  // Generates a random HTTP subscription.
+  static std::string GenerateRandomHTTPSubscriptionID() {
+    return current::SHA256("sherlock_http_subscription_" +
+                           current::ToString(current::random::CSRandomUInt64(0ull, ~0ull)));
   }
 
   // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
   template <class J>
-  void ServeDataViaHTTP(Request r) {
-    try {
-      // Prevent `own_data_` from being destroyed between the entry into this function
-      // and the call to the construction of `PubSubHTTPEndpoint`.
-      //
-      // Granted, an overkill, as whoever could call `ServeDataViaHTTP` from another thread should have
-      // its own `ScopeOwnedBySomeoneElse<>` copy of the stream object. But err on the safe side. -- D.K.
-      ScopeOwnedBySomeoneElse<stream_data_t> scoped_data(own_data_, []() {});
-      stream_data_t& data = *scoped_data;
+  void ServeDataViaHTTP(Request r) const {
+    if (r.method != "GET" && r.method != "HEAD") {
+      r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
+      return;
+    }
 
-      auto request_params = ParsePubSubHTTPRequest(r);  // Mutable as `tail` may change. -- D.K.
-
-      if (request_params.terminate_requested) {
-        typename stream_data_t::http_subscriptions_t::iterator it;
-        {
-          // NOTE: This is not thread-safe!!!
-          // The iterator may get invalidated in between the next few lines.
-          // However, during the call to `= nullptr` the mutex will be locked again from within the
-          // thread terminating callback. Need to clean this up. TODO(dkorolev).
-          std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-          it = data.http_subscriptions.find(request_params.terminate_id);
-        }
-        if (it != data.http_subscriptions.end()) {
-          // Subscription found. Delete the scope, triggering the thread to shut down.
-          // TODO(dkorolev): This should certainly not happen synchronously.
-          it->second.first = nullptr;
-          // Subscription terminated.
-          r("", HTTPResponseCode.OK);
-        } else {
-          // Subscription not found.
-          r("", HTTPResponseCode.NotFound);
-        }
-        return;
-      }
-
-      // Unsupported HTTP method.
-      if (r.method != "GET" && r.method != "HEAD") {
-        r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
-        return;
-      }
-
-      const auto stream_size = data.persistence.Size();
-
-      if (request_params.size_only) {
-        // Return the number of entries in the stream in `X-Current-Stream-Size` header and in the body in
-        // case of `GET` method.
-        const std::string size_str = current::ToString(stream_size);
-        const std::string body = (r.method == "GET") ? size_str + '\n' : "";
-        r(body,
-          HTTPResponseCode.OK,
-          current::net::constants::kDefaultContentType,
-          current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, size_str}}));
-        return;
-      }
-
-      if (request_params.schema_requested) {
-        const std::string& schema_format = request_params.schema_format;
-        // Return the schema the user is requesting, in a top-level, or more fine-grained format.
-        if (schema_format.empty()) {
-          r(schema_as_http_response_);
-        } else if (schema_format == "simple") {
-          r(SubscribableSherlockSchema(
-              schema_as_object_.type_id, schema_namespace_name_.entry_name, schema_namespace_name_.namespace_name));
-        } else {
-          const auto cit = schema_as_object_.language.find(schema_format);
-          if (cit != schema_as_object_.language.end()) {
-            r(cit->second);
-          } else {
-            SherlockSchemaFormatNotFound four_oh_four;
-            four_oh_four.unsupported_format_requested = schema_format;
-            r(four_oh_four, HTTPResponseCode.NotFound);
-          }
-        }
-      } else {
-        uint64_t begin_idx = 0u;
-        std::chrono::microseconds from_timestamp(0);
-        if (request_params.tail) {
-          if (request_params.tail == static_cast<uint64_t>(-1)) {
-            begin_idx = stream_size;
-            request_params.tail = stream_size;
-          } else {
-            const uint64_t idx_by_tail = request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
-            begin_idx = std::max(request_params.i, idx_by_tail);
-          }
-        } else if (request_params.recent.count() > 0) {
-          from_timestamp = r.timestamp - request_params.recent;
-        } else if (request_params.since.count() > 0) {
-          from_timestamp = request_params.since;
-        } else {
-          begin_idx = request_params.i;
-        }
-
-        if (from_timestamp.count() > 0) {
-          const auto idx_by_timestamp =
-              std::min(data.persistence.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
-                       stream_size);
-          begin_idx = std::max(begin_idx, idx_by_timestamp);
-        }
-
-        if (request_params.no_wait && begin_idx >= stream_size) {
-          // Return "200 OK" if there is nothing to return now and we were asked to not wait for new entries.
-          r("", HTTPResponseCode.OK);
-          return;
-        }
-
-        const std::string subscription_id = data.GenerateRandomHTTPSubscriptionID();
-
-        auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
-            subscription_id, scoped_data, std::move(r), std::move(request_params));
-
-        current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-            Subscribe(*http_chunked_subscriber,
-                      begin_idx,
-                      [this, &data, subscription_id]() {
-                        // NOTE: Need to figure out when and where to lock.
-                        // Chat w/ Max about the logic to clean up completed listeners.
-                        // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                        data.http_subscriptions[subscription_id].second = nullptr;
-                      });
-
-        {
-          std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-          // TODO(dkorolev): This condition is to be rewritten correctly.
-          if (!data.http_subscriptions.count(subscription_id)) {
-            data.http_subscriptions[subscription_id] =
-                std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
-          }
-        }
-      }
-    } catch (const current::sync::InDestructingModeException&) {
+    // First, ensure we're not in the destruction mode, and atomically claim we should not be
+    // without destructing this HTTP subscription, assuming we do follow up with creating one.
+    const Borrowed<impl_t> borrowed_impl(impl_);
+    if (!borrowed_impl) {
       r("", HTTPResponseCode.ServiceUnavailable);
+      return;
+    }
+
+    auto request_params = ParsePubSubHTTPRequest(r);  // Mutable as `tail` may change. -- D.K.
+
+    if (request_params.terminate_requested) {
+      typename impl_t::http_subscriptions_t::iterator it;
+      {
+        // NOTE: This is not thread-safe!!!
+        // The iterator may get invalidated in between the next few lines.
+        // However, during the call to `= nullptr` the mutex will be locked again from within the
+        // thread terminating callback. Need to clean this up. TODO(dkorolev).
+        std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);
+        it = borrowed_impl->http_subscriptions.find(request_params.terminate_id);
+      }
+      if (it != borrowed_impl->http_subscriptions.end()) {
+        // Subscription found. Delete the scope, triggering the thread to shut down.
+        // TODO(dkorolev): This should certainly not happen synchronously.
+        it->second.first = nullptr;
+        // Subscription terminated.
+        r("", HTTPResponseCode.OK);
+      } else {
+        // Subscription not found.
+        r("", HTTPResponseCode.NotFound);
+      }
+      return;
+    }
+
+    const auto stream_size = borrowed_impl->persister.Size();
+
+    if (request_params.size_only) {
+      // Return the number of entries in the stream in `X-Current-Stream-Size` header
+      // and in the body in case of the `GET` method.
+      const std::string size_str = current::ToString(stream_size);
+      const std::string body = (r.method == "GET") ? size_str + '\n' : "";
+      r(body,
+        HTTPResponseCode.OK,
+        current::net::constants::kDefaultContentType,
+        current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, size_str}}));
+      return;
+    }
+
+    if (request_params.schema_requested) {
+      const std::string& schema_format = request_params.schema_format;
+      // Return the schema the user is requesting, in a top-level, or more fine-grained format.
+      if (schema_format.empty()) {
+        r(schema_as_http_response_);
+      } else if (schema_format == "simple") {
+        r(SubscribableSherlockSchema(
+            schema_as_object_.type_id, schema_namespace_name_.entry_name, schema_namespace_name_.namespace_name));
+      } else {
+        const auto cit = schema_as_object_.language.find(schema_format);
+        if (cit != schema_as_object_.language.end()) {
+          r(cit->second);
+        } else {
+          SherlockSchemaFormatNotFoundError four_oh_four;
+          four_oh_four.unsupported_format_requested = schema_format;
+          r(four_oh_four, HTTPResponseCode.NotFound);
+        }
+      }
+    } else {
+      uint64_t begin_idx = 0u;
+      std::chrono::microseconds from_timestamp(0);
+      if (request_params.tail) {
+        if (request_params.tail == static_cast<uint64_t>(-1)) {
+          // Special case for `&tail=0`: act as `tail -f` from the current end of the stream.
+          begin_idx = stream_size;
+          request_params.tail = stream_size;
+        } else {
+          const uint64_t idx_by_tail = request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
+          begin_idx = std::max(request_params.i, idx_by_tail);
+        }
+      } else if (request_params.recent.count() > 0) {
+        from_timestamp = r.timestamp - request_params.recent;
+      } else if (request_params.since.count() > 0) {
+        from_timestamp = request_params.since;
+      } else {
+        begin_idx = request_params.i;
+      }
+
+      if (from_timestamp.count() > 0) {
+        const auto idx_by_timestamp = std::min(
+            borrowed_impl->persister.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
+            stream_size);
+        begin_idx = std::max(begin_idx, idx_by_timestamp);
+      }
+
+      if (request_params.no_wait && begin_idx >= stream_size) {
+        // Return "204 No Content" if there is nothing to return now and we were asked to not wait for new entries.
+        r("", HTTPResponseCode.NoContent);
+        return;
+      }
+
+      const std::string subscription_id = GenerateRandomHTTPSubscriptionID();
+
+      auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
+          subscription_id, borrowed_impl, std::move(r), std::move(request_params));
+
+      current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+          Subscribe(*http_chunked_subscriber,
+                    begin_idx,
+                    [this, borrowed_impl, subscription_id]() {
+                      // Note: Called from a locked section of `borrowed_impl->http_subscriptions_mutex`.
+                      borrowed_impl->http_subscriptions[subscription_id].second = nullptr;
+                    });
+
+      {
+        std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);
+        // Note: Silently relying on no collision here. Suboptimal.
+        if (!borrowed_impl->http_subscriptions.count(subscription_id)) {
+          borrowed_impl->http_subscriptions[subscription_id] =
+              std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+        }
+      }
     }
   }
 
   void operator()(Request r) {
     if (r.url.query.has("json")) {
       const auto& json = r.url.query["json"];
-      if (json == "js") {
+      if (json == "minimalistic") {
         ServeDataViaHTTP<JSONFormat::Minimalistic>(std::move(r));
+      } else if (json == "js") {
+        ServeDataViaHTTP<JSONFormat::JavaScript>(std::move(r));
       } else if (json == "fs") {
         ServeDataViaHTTP<JSONFormat::NewtonsoftFSharp>(std::move(r));
       } else {
-        r("The `?json` parameter is invalid, legal values are `js`, `fs`, or omit the parameter.\n",
+        r("The `?json` parameter is invalid, legal values are `minimalistic`, `js`, `fs`, or omit the parameter.\n",
           HTTPResponseCode.NotFound);
       }
     } else {
@@ -588,7 +576,14 @@ class StreamImpl {
     }
   }
 
-  persistence_layer_t& Persister() { return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence; }
+  Borrowed<impl_t> BorrowImpl() const { return impl_; }
+  const WeakBorrowed<impl_t>& Impl() const { return impl_; }
+  WeakBorrowed<impl_t>& Impl() { return impl_; }
+
+  // `Entries` never throws. It enables iterating over the stream's impl in synchronous fashion
+  // ("IEnumerable", as opposed to "IObservable"), although its primary usecase is `.Size()` in the unit test.
+  // NOTE(dkorolev): Returns the pointer, because we're using `->` everywhere now. -- D.K.
+  const persistence_layer_t* Data() const { return &impl_->persister; }
 
  private:
   struct FillPerLanguageSchema {
@@ -620,48 +615,15 @@ class StreamImpl {
     return schema;
   }
 
-  template <typename... ARGS>
-  idxts_t PublishImpl(ARGS&&... args) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (publisher_) {
-      return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::forward<ARGS>(args)...);
-    } else {
-      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
-    }
-  }
-
-  template <typename... ARGS>
-  void UpdateHeadImpl(ARGS&&... args) {
-    std::lock_guard<std::mutex> lock(publisher_mutex_);
-    if (publisher_) {
-      return publisher_->template UpdateHead<current::locks::MutexLockStatus::AlreadyLocked>(
-          std::forward<ARGS>(args)...);
-    } else {
-      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
-    }
-  }
-
  private:
-  const ss::StreamNamespaceName schema_namespace_name_ =
-      ss::StreamNamespaceName(constants::kDefaultNamespaceName, constants::kDefaultTopLevelName);
-  const SherlockSchema schema_as_object_;
-  const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
-                                                     HTTPResponseCode.OK,
-                                                     current::net::constants::kDefaultJSONContentType);
-  ScopeOwnedByMe<stream_data_t> own_data_;
-  mutable std::mutex publisher_mutex_;
-  std::unique_ptr<publisher_t> publisher_;
-  StreamDataAuthority authority_;
-
-  StreamImpl(const StreamImpl&) = delete;
-  void operator=(const StreamImpl&) = delete;
+  // `Stream` instances are meant to be used as `Owned<Stream>`, created via `Stream<...>::CreateStream(...)`.
+  // No need for moving those around whatsoever.
+  Stream() = delete;
+  Stream(const Stream&) = delete;
+  Stream& operator=(const Stream&) = delete;
+  Stream(Stream&& rhs) = delete;
+  Stream& operator=(Stream&& rhs) = delete;
 };
-
-template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
-using Stream = StreamImpl<ENTRY, PERSISTENCE_LAYER>;
-
-// TODO(dkorolev) + TODO(mzhurovich): Shouldn't this be:
-// using Stream = ss::StreamPublisher<StreamImpl<ENTRY, PERSISTENCE_LAYER>, ENTRY>;
 
 }  // namespace sherlock
 }  // namespace current

@@ -29,6 +29,7 @@ SOFTWARE.
 #include "../../port.h"
 
 #include "idx_ts.h"
+#include "types.h"
 
 #include "../../TypeSystem/variant.h"
 #include "../../Bricks/time/chrono.h"
@@ -44,42 +45,42 @@ struct GenericEntryPublisher : GenericPublisher {};
 
 template <typename IMPL, typename ENTRY>
 class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
+ private:
+  using MutexLockStatus = current::locks::MutexLockStatus;
+
  public:
   template <typename... ARGS>
   explicit EntryPublisher(ARGS&&... args)
       : IMPL(std::forward<ARGS>(args)...) {}
+
   virtual ~EntryPublisher() {}
 
-  using MutexLockStatus = current::locks::MutexLockStatus;
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t Publish(const ENTRY& e) {
-    return IMPL::template DoPublish<MLS>(e, current::time::DefaultTimeArgument());
-  }
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t Publish(const ENTRY& e, std::chrono::microseconds us) {
-    return IMPL::template DoPublish<MLS>(e, us);
-  }
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t Publish(ENTRY&& e) {
-    return IMPL::template DoPublish<MLS>(std::move(e), current::time::DefaultTimeArgument());
-  }
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t Publish(ENTRY&& e, std::chrono::microseconds us) {
-    return IMPL::template DoPublish<MLS>(std::move(e), us);
-  }
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  void UpdateHead() {
-    IMPL::template DoUpdateHead<MLS>(current::time::DefaultTimeArgument());
-  }
-  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  void UpdateHead(std::chrono::microseconds us) {
-    IMPL::template DoUpdateHead<MLS>(us);
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
+            typename E,
+            class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
+  idxts_t Publish(E&& e) {
+    return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), current::time::DefaultTimeArgument());
   }
 
-  // template <typename... ARGS>
-  // idxts_t Emplace(ARGS&&... args) {
-  //   return IMPL::DoEmplace(std::forward<ARGS>(args)...);
-  // }
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
+            typename E,
+            class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
+  idxts_t Publish(E&& e, std::chrono::microseconds us) {
+    return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), us);
+  }
+
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  void UpdateHead() {
+    IMPL::template PublisherUpdateHeadImpl<MLS>(current::time::DefaultTimeArgument());
+  }
+
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  void UpdateHead(std::chrono::microseconds us) {
+    IMPL::template PublisherUpdateHeadImpl<MLS>(us);
+  }
+
+  // NOTE(dkorolev): The publisher ("publishable") has no business knowing the size of the stream (`Empty()`/`Size()`),
+  //                 That's what the subscriber ("subscribable") and persister ("iterable") primitives are for.
 };
 
 template <typename ENTRY>
@@ -89,11 +90,10 @@ template <typename IMPL, typename ENTRY>
 class StreamPublisher : public GenericStreamPublisher<ENTRY>, public EntryPublisher<IMPL, ENTRY> {
  public:
   using EntryPublisher<IMPL, ENTRY>::EntryPublisher;
-  // I've removed `PublishReplayed()` from `StreamPublisher`. -- D.K.
-  // The real differentiation would be `UpdateHead()`. -- D.K.
 };
 
 // For `static_assert`-s. Must `decay<>` for template xvalue references support.
+// TODO(dkorolev): `Variant` stream types, and publishing those?
 template <typename T>
 struct IsPublisher {
   static constexpr bool value = std::is_base_of<GenericPublisher, current::decay<T>>::value;
@@ -133,8 +133,7 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
 
   // If a type-filtered subscriber hits the end which it doesn't see as the last entry does not pass the filter,
   // we need a way to ask that subscriber whether it wants to terminate or continue.
-  EntryResponse EntryResponseIfNoMorePassTypeFilter() { return IMPL::EntryResponseIfNoMorePassTypeFilter(); }
-
+  EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return IMPL::EntryResponseIfNoMorePassTypeFilter(); }
   TerminationResponse Terminate() { return IMPL::Terminate(); }
 };
 

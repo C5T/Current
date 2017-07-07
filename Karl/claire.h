@@ -48,10 +48,13 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/sync/locks.h"
 #include "../Bricks/util/random.h"
 
 namespace current {
 namespace karl {
+
+enum class ForceSendKeepaliveWaitRequest : bool { DoNotWait = false, Wait = true };
 
 // No need for `CURRENT_FIELD_DESCRIPTION`-s in this structure. -- D.K.
 CURRENT_STRUCT(InternalKeepaliveAttemptResult) {
@@ -128,25 +131,17 @@ class GenericClaire final : private DummyClaireNotifiable {
     destructing_ = true;
 
     if (keepalive_thread_running_) {
-      if (keepalive_thread_.joinable()) {
-        {
-          std::lock_guard<std::mutex> keepalive_mutex_lock(keepalive_mutex_);
-          keepalive_condition_variable_.notify_one();
-        }
-        lock.unlock();
-
-        keepalive_thread_.join();
+      {
+        std::lock_guard<std::mutex> keepalive_mutex_lock(keepalive_mutex_);
+        keepalive_condition_variable_.notify_all();
+      }
+      lock.unlock();
+      keepalive_thread_.join();
+      CURRENT_ASSERT(!keepalive_thread_running_);
+      try {
         // Deregister self from Karl.
-        try {
-          HTTP(DELETE(karl_keepalive_route_));
-        } catch (net::NetworkException&) {  // LCOV_EXCL_LINE
-        }
-      } else {
-        // TODO(dkorolev), #FIXME_DIMA: This should not happen.
-        // LCOV_EXCL_START
-        std::cerr << "!keepalive_thread_.joinable()\n";
-        std::exit(-1);
-        // LCOV_EXCL_STOP
+        HTTP(DELETE(karl_keepalive_route_));
+      } catch (net::NetworkException&) {  // LCOV_EXCL_LINE
       }
     }
   }
@@ -202,11 +197,33 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   const std::string& Codename() const { return codename_; }
 
-  void ForceSendKeepalive() {
+  void ForceSendKeepalive(ForceSendKeepaliveWaitRequest wait_for_keepalive = ForceSendKeepaliveWaitRequest::DoNotWait) {
+    {
+      std::lock_guard<std::mutex> lock(keepalive_thread_running_status_mutex_);
+      if (!keepalive_thread_running_) {
+        StartKeepaliveThread<current::locks::MutexLockStatus::AlreadyLocked>();
+      }
+    }
+
+    // Generally, unnecessary. For debugging / troubleshooting purposes. -- D.K.
+    if (wait_for_keepalive == ForceSendKeepaliveWaitRequest::Wait) {
+      std::lock_guard<std::mutex> lock(keepalive_mutex_);
+      keepalive_sent_ = false;
+    }
+
     keepalive_thread_force_wakeup_ = true;
     {
       std::lock_guard<std::mutex> lock(keepalive_mutex_);
-      keepalive_condition_variable_.notify_one();
+      keepalive_condition_variable_.notify_all();
+    }
+
+    // Generally, unnecessary. For debugging / troubleshooting purposes. -- D.K.
+    if (wait_for_keepalive == ForceSendKeepaliveWaitRequest::Wait) {
+      std::unique_lock<std::mutex> lock(keepalive_mutex_);
+      while (!keepalive_sent_) {
+        keepalive_condition_variable_.wait_for(
+            lock, std::chrono::milliseconds(1), [this]() { return keepalive_sent_; });
+      }
     }
   }
 
@@ -215,14 +232,15 @@ class GenericClaire final : private DummyClaireNotifiable {
     return karl_;
   }
 
-  void SetKarlLocator(const Locator& new_karl_locator) {
+  void SetKarlLocator(const Locator& new_karl_locator,
+                      ForceSendKeepaliveWaitRequest wait_for_keepalive = ForceSendKeepaliveWaitRequest::DoNotWait) {
     {
       std::lock_guard<std::mutex> lock(keepalive_mutex_);
       karl_ = new_karl_locator;
       karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
       notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
-    ForceSendKeepalive();
+    ForceSendKeepalive(wait_for_keepalive);
   }
 
   ClaireStatus& BoilerplateStatus() { return boilerplate_status_; }
@@ -311,8 +329,9 @@ class GenericClaire final : private DummyClaireNotifiable {
     return status;
   }
 
+  template <typename current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void StartKeepaliveThread() {
-    std::lock_guard<std::mutex> lock(keepalive_thread_running_status_mutex_);
+    current::locks::SmartMutexLockGuard<MLS> lock(keepalive_thread_running_status_mutex_);
     if (destructing_) {
       return;  // LCOV_EXCL_LINE
     }
@@ -343,6 +362,8 @@ class GenericClaire final : private DummyClaireNotifiable {
     // Basically, throw in case of any error, and throw only one type: `ClaireRegistrationException`.
     const auto keepalive_body = GenerateKeepaliveStatus();
 
+    std::string error_message = "";
+
     try {
       {
         std::lock_guard<std::mutex> lock(status_mutex_);
@@ -366,13 +387,14 @@ class GenericClaire final : private DummyClaireNotifiable {
           last_keepalive_attempt_result_.http_code = static_cast<uint16_t>(code);
         }
       }
-    } catch (const current::Exception&) {
+    } catch (const current::Exception& e) {
       last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::CouldNotConnect;
+      error_message = e.DetailedDescription();
     }
     // OK to throw here. In the thread that sends repeated keepalives, this exception would be caught,
     // and if an exception is thrown during the initial registration, it is an emergency unless the user
     // decides otherwise.
-    CURRENT_THROW(ClaireRegistrationException(service_, route));
+    CURRENT_THROW(ClaireRegistrationException(service_, route, error_message));
   }
 
   // The semantic to ensure keepalives only happen from a locked section.
@@ -402,7 +424,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       }
 
       if (destructing_) {
-        return;
+        break;
       }
 
       if (keepalive_thread_force_wakeup_) {
@@ -414,7 +436,14 @@ class GenericClaire final : private DummyClaireNotifiable {
       } catch (const ClaireRegistrationException&) {
         // Ignore exceptions if there's a problem talking to Karl. He'll come back. He's Karl.
       }
+
+      // Generally, unnecessary. For debugging / troubleshooting purposes. -- D.K.
+      if (!keepalive_sent_) {
+        keepalive_sent_ = true;
+        keepalive_condition_variable_.notify_all();
+      }
     }
+
     {
       // Yes, it's an `atomic_bool`, but still lock the mutex to make sure
       // the change from `true` to `false` doesn't interfere with:
@@ -462,7 +491,8 @@ class GenericClaire final : private DummyClaireNotifiable {
     } else if (r.method == "POST") {
       if (r.url.query.has("initiate_keepalive")) {
         // LCOV_EXCL_START
-        ForceSendKeepalive();
+        ForceSendKeepalive(r.url.query["initiate_keepalive"] == "wait" ? ForceSendKeepaliveWaitRequest::Wait
+                                                                       : ForceSendKeepaliveWaitRequest::DoNotWait);
         r("Keepalive will be sent shortly.\n");
         // LCOV_EXCL_STOP
       } else if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
@@ -516,6 +546,8 @@ class GenericClaire final : private DummyClaireNotifiable {
   std::mutex keepalive_thread_running_status_mutex_;
   std::atomic_bool keepalive_thread_running_;
   std::thread keepalive_thread_;
+
+  bool keepalive_sent_ = false;  // For `ForceSendKeepalive(wait == ForceSendKeepaliveWaitRequest::Wait)`. -- D.K.
 };
 
 using Claire = GenericClaire<Variant<default_user_status::status>>;

@@ -75,7 +75,8 @@ struct TypeListContains;
 
 template <typename... TS, typename T>
 struct TypeListContains<TypeListImpl<TS...>, T> {
-  enum { value = std::is_base_of<DuplicateTypeInTypeList<T>, ConfirmTypeListContainsNoDuplicates<TS...>>::value };
+  constexpr static bool value =
+      std::is_base_of<DuplicateTypeInTypeList<T>, ConfirmTypeListContainsNoDuplicates<TS...>>::value;
 };
 
 static_assert(!TypeListContains<TypeListImpl<>, int>::value, "");

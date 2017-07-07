@@ -62,7 +62,12 @@ current::Future
 
 current::WaitableAtomic
 
-ScopeOwned<T>, ScopeOwnedByMe<T>, ScopeOwnedBySomeoneElse<T>
+current::Owned<T>
+current::Borrowed<T>
+current::BorrowedWithCallback<T>
+current::BorrowedOfGuaranteedLifetime<T>
+current::MakeOwned<T>
+current::WeakBorrowed<T>
 ```
 
 ## Functions.
@@ -129,7 +134,6 @@ current::LazyInstantiationStrategy
 
 current::StrictFuture
 
-JSONFilePersister
 SherlockStreamPersister
 ```
 

@@ -240,7 +240,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
   const field_t& field;
   const std::string field_name;
   Optional<url_key_t> get_url_key;
-  const StorageRole role;
+  const bool is_master;
   Optional<FieldExportParams> requested_export_params;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
@@ -248,28 +248,28 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
                   const field_t& field,
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
-                  const StorageRole role,
+                  const bool is_master,
                   const Optional<FieldExportParams>& requested_export_params)
       : RESTfulGenericInput<STORAGE>(input),
         fields(fields),
         field(field),
         field_name(field_name),
         get_url_key(get_url_key),
-        role(role),
+        is_master(is_master),
         requested_export_params(requested_export_params) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
                   immutable_fields_t fields,
                   const field_t& field,
                   const std::string& field_name,
                   const Optional<url_key_t>& get_url_key,
-                  const StorageRole role,
+                  const bool is_master,
                   const Optional<FieldExportParams>& requested_export_params)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
         fields(fields),
         field(field),
         field_name(field_name),
         get_url_key(get_url_key),
-        role(role),
+        is_master(is_master),
         requested_export_params(requested_export_params) {}
 };
 

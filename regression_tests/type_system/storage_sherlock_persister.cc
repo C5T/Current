@@ -44,7 +44,7 @@ TEST(TypeTest, Storage) {
 
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
 
-  storage_t storage("data");
+  auto storage = storage_t::CreateMasterStorage("data");
 
 #include "include/storage.cc"
 }

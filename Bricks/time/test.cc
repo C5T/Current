@@ -75,6 +75,13 @@ TEST(Time, SmokeTest) {
 
 #endif  // CURRENT_MOCK_TIME
 
+static_assert(current::time::IsTimestamp<std::chrono::microseconds>::value, "");
+static_assert(current::time::IsTimestamp<current::time::DefaultTimeArgument>::value, "");
+
+static_assert(!current::time::IsTimestamp<std::chrono::hours>::value, "");
+static_assert(!current::time::IsTimestamp<uint64_t>::value, "");
+static_assert(!current::time::IsTimestamp<size_t>::value, "");
+
 TEST(Time, DateTimeFormatFunctions) {
   // Smoke test.
   ASSERT_NE(current::IMFFixDateTimeStringToTimestamp("Sun, 24 Apr 2016 01:31:01 GMT").count(),

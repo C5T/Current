@@ -35,15 +35,11 @@ struct SherlockException : current::Exception {
   using current::Exception::Exception;
 };
 
-struct PublishToStreamWithReleasedPublisherException : SherlockException {
+struct PublisherNotAvailableException : SherlockException {
   using SherlockException::SherlockException;
 };
 
-struct PublisherAlreadyReleasedException : SherlockException {
-  using SherlockException::SherlockException;
-};
-
-struct PublisherAlreadyOwnedException : SherlockException {
+struct AttemptedToPublishToStreamWithReleasedPublisherException : SherlockException {
   using SherlockException::SherlockException;
 };
 
@@ -57,10 +53,6 @@ struct RemoteStreamInvalidSchemaException : SherlockException {
 
 struct StreamTerminatedBySubscriber : SherlockException {
   using SherlockException::SherlockException;
-};
-
-struct StreamInGracefulShutdownException : InGracefulShutdownException {
-  using InGracefulShutdownException::InGracefulShutdownException;
 };
 
 }  // namespace sherlock

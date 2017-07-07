@@ -55,7 +55,7 @@ SOFTWARE.
 #include "container/one_to_one.h"
 #include "container/one_to_many.h"
 
-#include "persister/file.h"
+#include "persister/sherlock.h"
 
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/Serialization/json.h"
@@ -191,27 +191,26 @@ using CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM = persister::NoCustomPersisterPara
 template <typename T>
 using CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY = transaction_policy::Synchronous<T>;
 
-enum class StorageRole : bool { Master = true, Follower = false };
-
 // Generic storage implementation.
 template <template <typename...> class PERSISTER,
           typename FIELDS,
           template <typename> class TRANSACTION_POLICY,
           typename CUSTOM_PERSISTER_PARAM>
-class GenericStorageImpl {
+class StorageImpl {
  public:
+  // This has to stay an `enum`, as `constexpr static` doesn't nail it here due to symbol visibility.
   enum { FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value };
+
   using fields_type_list_t = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;
   using fields_variant_t = Variant<fields_type_list_t>;
   using persister_t = PERSISTER<fields_variant_t, CUSTOM_PERSISTER_PARAM>;
+  using stream_t = typename persister_t::stream_t;
 
  private:
-  std::mutex mutex_;
   FIELDS fields_;
-  WaitableAtomic<uint64_t> transactions_count_;
+  Optional<Owned<stream_t>> owned_stream_;  // Valid iff the Storage has been constructed to keep its own stream.
   persister_t persister_;
   TRANSACTION_POLICY<persister_t> transaction_policy_;
-  std::atomic<StorageRole> role_;
 
  public:
   using fields_by_ref_t = FIELDS&;
@@ -219,26 +218,52 @@ class GenericStorageImpl {
   using transaction_t = current::storage::Transaction<fields_variant_t>;
   using transaction_meta_fields_t = TransactionMetaFields;
 
-  GenericStorageImpl(const GenericStorageImpl&) = delete;
-  GenericStorageImpl(GenericStorageImpl&&) = delete;
-  GenericStorageImpl& operator=(const GenericStorageImpl&) = delete;
-  GenericStorageImpl& operator=(GenericStorageImpl&&) = delete;
-
   template <typename... ARGS>
-  GenericStorageImpl(ARGS&&... args)
-      : transactions_count_(0u),
-        persister_(mutex_,
-                   [this](const fields_variant_t& entry) {
-                     entry.Call(fields_);
-                     transactions_count_.MutableUse([](uint64_t& value) { ++value; });
-                   },
-                   std::forward<ARGS>(args)...),
-        transaction_policy_(mutex_, persister_, fields_.current_storage_mutation_journal_) {
-    role_ = (persister_.DataAuthority() == persister::PersisterDataAuthority::Own) ? StorageRole::Master
-                                                                                   : StorageRole::Follower;
+  static Owned<StorageImpl> CreateMasterStorage(ARGS&&... args) {
+    return MakeOwned<StorageImpl>(typename persister_t::Master(), CreateStreamAsWell(), std::forward<ARGS>(args)...);
   }
 
-  StorageRole GetRole() const { return role_; }
+  template <typename... ARGS>
+  static Owned<StorageImpl> CreateFollowingStorage(ARGS&&... args) {
+    return MakeOwned<StorageImpl>(typename persister_t::Following(), CreateStreamAsWell(), std::forward<ARGS>(args)...);
+  }
+
+  static Owned<StorageImpl> CreateMasterStorageAtopExistingStream(Borrowed<stream_t> stream) {
+    return MakeOwned<StorageImpl>(typename persister_t::Master(), UseExistingStream(), stream);
+  }
+
+  static Owned<StorageImpl> CreateFollowingStorageAtopExistingStream(Borrowed<stream_t> stream) {
+    return MakeOwned<StorageImpl>(typename persister_t::Following(), UseExistingStream(), stream);
+  }
+
+ private:
+  // Magic to enable `current::MakeOwned<Storage>` create instances of `Storage`.
+  friend struct sync::impl::UniqueInstance<StorageImpl>;
+  struct CreateStreamAsWell {};
+  struct UseExistingStream {};
+
+  template <typename CONSTRUCTION_TYPE>
+  StorageImpl(CONSTRUCTION_TYPE, UseExistingStream, Borrowed<stream_t> stream)
+      : persister_(CONSTRUCTION_TYPE(), [this](const fields_variant_t& entry) { entry.Call(fields_); }, stream),
+        transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {}
+
+  template <typename CONSTRUCTION_TYPE, typename... ARGS>
+  StorageImpl(CONSTRUCTION_TYPE, CreateStreamAsWell, ARGS&&... args)
+      : owned_stream_(std::move(stream_t::CreateStream(std::forward<ARGS>(args)...))),
+        persister_(
+            CONSTRUCTION_TYPE(), [this](const fields_variant_t& entry) { entry.Call(fields_); }, Value(owned_stream_)),
+        transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {}
+
+ public:
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  bool IsMasterStorage() {
+    return persister_.template IsMasterStoragePersister<MLS>();
+  }
+
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  std::chrono::microseconds UpToDateUntil() const {
+    return persister_.template UpToDateUntilPersister<MLS>();
+  }
 
   // Used for applying updates by dispatching corresponding events.
   template <typename... ARGS>
@@ -249,80 +274,93 @@ class GenericStorageImpl {
   template <typename F>
   using f_result_t = typename std::result_of<F(fields_by_ref_t)>::type;
 
-  template <typename F>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename F>
   ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict>
   ReadWriteTransaction(F&& f) {
-    if (role_ == StorageRole::Follower) {
+    current::locks::SmartMutexLockGuard<MLS> lock(persister_.Stream()->Impl()->publishing_mutex);
+    if (!IsMasterStorage<current::locks::MutexLockStatus::AlreadyLocked>()) {
       CURRENT_THROW(ReadWriteTransactionInFollowerStorageException());
     }
-    return transaction_policy_.Transaction([&f, this]() { return f(fields_); });
+    return transaction_policy_.TransactionFromLockedSection([&f, this]() { return f(fields_); });
   }
 
-  template <typename F1, typename F2>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename F1, typename F2>
   ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict> ReadWriteTransaction(
       F1&& f1, F2&& f2) {
-    if (role_ == StorageRole::Follower) {
+    current::locks::SmartMutexLockGuard<MLS> lock(persister_.Stream()->Impl()->publishing_mutex);
+    if (!IsMasterStorage<current::locks::MutexLockStatus::AlreadyLocked>()) {
       CURRENT_THROW(ReadWriteTransactionInFollowerStorageException());
     }
-    return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));
+    return transaction_policy_.TransactionFromLockedSection([&f1, this]() { return f1(fields_); },
+                                                            std::forward<F2>(f2));
   }
 
-  template <typename F>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename F>
   ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict>
   ReadOnlyTransaction(F&& f) const {
-    return transaction_policy_.Transaction([&f, this]() { return f(static_cast<const FIELDS&>(fields_)); });
+    current::locks::SmartMutexLockGuard<MLS> lock(persister_.Stream()->Impl()->publishing_mutex);
+    return transaction_policy_.TransactionFromLockedSection(
+        [&f, this]() { return f(static_cast<const FIELDS&>(fields_)); });
   }
 
-  template <typename F1, typename F2>
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename F1, typename F2>
   ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict> ReadOnlyTransaction(
       F1&& f1, F2&& f2) const {
-    return transaction_policy_.Transaction([&f1, this]() { return f1(static_cast<const FIELDS&>(fields_)); },
-                                           std::forward<F2>(f2));
+    current::locks::SmartMutexLockGuard<MLS> lock(persister_.Stream()->Impl()->publishing_mutex);
+    return transaction_policy_.TransactionFromLockedSection(
+        [&f1, this]() { return f1(static_cast<const FIELDS&>(fields_)); }, std::forward<F2>(f2));
   }
 
   void ExposeRawLogViaHTTP(int port, const std::string& route) { persister_.ExposeRawLogViaHTTP(port, route); }
 
-  typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type InternalExposeStream() {
-    return persister_.InternalExposeStream();
+  Borrowed<stream_t> BorrowUnderlyingStream() const { return persister_.BorrowStream(); }
+  const WeakBorrowed<stream_t>& UnderlyingStream() const { return persister_.Stream(); }
+
+  // TODO(dkorolev): Custom publisher that refuses to publish transactions!
+  Borrowed<typename stream_t::publisher_t> PublisherUsed() { return persister_.PublisherUsed(); }
+
+  template <typename TYPE_SUBSCRIBED_TO = typename stream_t::entry_t, typename F>
+  typename stream_t::template SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(
+      F& subscriber, uint64_t begin_idx = 0u, std::function<void()> done_callback = nullptr) const {
+    return persister_.Stream()->template Subscribe<TYPE_SUBSCRIBED_TO, F>(subscriber, begin_idx, done_callback);
   }
 
-  persister_t& Persister() { return persister_; }
-
-  uint64_t TransactionsCount() const { return transactions_count_.GetValue(); }
-
-  void WaitForTransactionsCount(uint64_t count) const {
-    transactions_count_.Wait([count](uint64_t value) { return value >= count; });
-  }
-
+  // Note: This method must be called from the stream-publishing-mutex-unlocked section,
+  // as terminating the transactions-replaying stream subscription thread from the following storage
+  // neeeds to lock that mutex from the destructor when de-registering its stream subscriber.
+  // TODO(dkorolev): Revisit the Sherlock-related logic here. Flip Sherlock first!
   void FlipToMaster() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (role_ == StorageRole::Follower) {
-      persister_.template AcquireDataAuthority<current::locks::MutexLockStatus::AlreadyLocked>();
-      role_ = StorageRole::Master;
-    } else {
-      CURRENT_THROW(StorageIsAlreadyMasterException());
-    }
+    // TODO(dkorolev): Lock the mutex.
+    // TODO(dkorolev): Start from the stream.
+    persister_.BecomeMasterStorage();
   }
 
   void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }
+
+ private:
+  StorageImpl() = delete;
+  StorageImpl(const StorageImpl&) = delete;
+  StorageImpl(StorageImpl&&) = delete;
+  StorageImpl& operator=(const StorageImpl&) = delete;
+  StorageImpl& operator=(StorageImpl&&) = delete;
 };
 
-#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                   \
-  template <typename INSTANTIATION_TYPE>                                                                       \
-  struct CURRENT_STORAGE_FIELDS_##name;                                                                        \
-  template <template <typename...> class PERSISTER,                                                            \
-            template <typename> class TRANSACTION_POLICY =                                                     \
-                ::current::storage::CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY,                                \
-            typename CUSTOM_PERSISTER_PARAM = ::current::storage::CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>     \
-  using name =                                                                                                 \
-      ::current::storage::GenericStorageImpl<PERSISTER,                                                        \
-                                             CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
-                                             TRANSACTION_POLICY,                                               \
-                                             CUSTOM_PERSISTER_PARAM>;                                          \
+#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                     \
+  template <typename INSTANTIATION_TYPE>                                                                         \
+  struct CURRENT_STORAGE_FIELDS_##name;                                                                          \
+  template <template <typename...> class PERSISTER,                                                              \
+            template <typename> class TRANSACTION_POLICY =                                                       \
+                ::current::storage::CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY,                                  \
+            typename CUSTOM_PERSISTER_PARAM = ::current::storage::CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>       \
+  using name = ::current::storage::StorageImpl<PERSISTER,                                                        \
+                                               CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
+                                               TRANSACTION_POLICY,                                               \
+                                               CUSTOM_PERSISTER_PARAM>;                                          \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
 
 // A minimalistic `PERSISTER` which compiles with the above `CURRENT_STORAGE_IMPLEMENTATION` macro.
 // Used for the sole purpose of extracting the underlying `transaction_t` type without extra template magic.
+// UPDATE: It is used from within the compilation/regression test too.
 namespace persister {
 
 template <typename MUTATIONS_VARIANT, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
@@ -335,14 +373,20 @@ class NullStoragePersisterImpl {
   // using fields_update_function_t = std::function<void(const variant_t&)>;
   // NullStoragePersisterImpl(std::mutex&, fields_update_function_t) {}
 
-  template <typename T>
-  NullStoragePersisterImpl(std::mutex&, T) {}
-
-  void InternalExposeStream() {}
-
   void PersistJournal(MutationJournal& journal) { journal.Clear(); }
 
-  PersisterDataAuthority DataAuthority() const { return PersisterDataAuthority::Own; }
+  // No-ops to make everything compile.
+  struct stream_t {
+    struct impl_t {};
+    struct entry_t {};
+    template <class, class>
+    struct SubscriberScope {};
+    struct publisher_t {};
+    publisher_t PublisherUsed() { return publisher_t(); }
+  };
+
+  template <typename T>
+  NullStoragePersisterImpl(std::mutex&, T) {}
 };
 
 template <typename>

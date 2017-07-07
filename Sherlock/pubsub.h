@@ -30,14 +30,14 @@ SOFTWARE.
 
 #include <utility>
 
-#include "stream_data.h"
+#include "stream_impl.h"
 
 #include "../TypeSystem/timestamp.h"
 
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/HTTP/api.h"
 
-#include "../Bricks/sync/scope_owned.h"
+#include "../Bricks/sync/owned_borrowed.h"
 #include "../Bricks/time/chrono.h"
 
 // HTTP publish-subscribe configuration.
@@ -226,13 +226,13 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
 template <typename E, template <typename> class PERSISTENCE_LAYER, class J>
 class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
  public:
-  using stream_data_t = StreamData<E, PERSISTENCE_LAYER>;
+  using impl_t = StreamImpl<E, PERSISTENCE_LAYER>;
 
   PubSubHTTPEndpointImpl(const std::string& subscription_id,
-                         ScopeOwned<stream_data_t>& data,
+                         current::Borrowed<impl_t> data,
                          Request r,
                          ParsedHTTPRequestParams params)
-      : data_(data, [this]() { time_to_terminate_ = true; }),
+      : impl_(std::move(data), [this]() { time_to_terminate_ = true; }),
         http_request_(std::move(r)),
         params_(std::move(params)),
         output_started_(false),
@@ -241,7 +241,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
             current::net::constants::kDefaultJSONContentType,
             current::net::http::Headers({
                 {kSherlockHeaderCurrentSubscriptionId, subscription_id},
-                {kSherlockHeaderCurrentStreamSize, current::ToString(data_->persistence.Size())},
+                {kSherlockHeaderCurrentStreamSize, current::ToString(impl_->persister.Size())},
             }))) {
     if (params_.recent.count() > 0) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
@@ -371,7 +371,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
 
  private:
   // The HTTP listener must register itself as a user of stream data to ensure the lifetime of stream data.
-  ScopeOwnedBySomeoneElse<stream_data_t> data_;
+  const BorrowedWithCallback<impl_t> impl_;
   std::atomic_bool time_to_terminate_{false};
 
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.

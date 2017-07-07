@@ -329,7 +329,7 @@ class WaitableAtomicImpl {
     }
 
    protected:
-    bool destructing_ = false;
+    volatile bool destructing_ = false;
     size_t ref_count_ = 0;
     std::condition_variable cv_;
     CustomWaitableAtomicDestructor* destructor_ptr_ = nullptr;

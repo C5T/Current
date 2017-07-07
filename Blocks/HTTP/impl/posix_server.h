@@ -22,9 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Refactor the code to disallow BODY-less POST requests.
-// TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
-
 #ifndef BLOCKS_HTTP_IMPL_POSIX_SERVER_H
 #define BLOCKS_HTTP_IMPL_POSIX_SERVER_H
 
@@ -40,10 +37,13 @@ SOFTWARE.
 
 #include "../../URL/url.h"
 
+#include "../../../TypeSystem/optional.h"
+
 #include "../../../Bricks/net/exceptions.h"
 #include "../../../Bricks/net/http/http.h"
-#include "../../../Bricks/time/chrono.h"
 #include "../../../Bricks/strings/printf.h"
+#include "../../../Bricks/sync/owned_borrowed.h"
+#include "../../../Bricks/time/chrono.h"
 #include "../../../Bricks/util/accumulative_scoped_deleter.h"
 
 namespace current {
@@ -346,18 +346,24 @@ class HTTPServerPOSIX final {
   }
 
  private:
-  void FindHandler(const std::string& path,
-                   std::function<void(Request)>& output_handler,
-                   URLPathArgs& output_url_args) {
+  // Although this may look complicated, all it does is making sure the handler, if found,
+  // is returned wrapped into a special object which prohibits its de-registration while in use.
+  // Note: If the user code handles the request synchronously, the scoped HTTP registerers will do the job.
+  // If the user handles the request from another thread, it's the responsibility of the user to make sure
+  // the very object ("this") does not get destroyed while the request is being handled.
+  Optional<Borrowed<std::function<void(Request)>>> FindHandler(const std::string& path,
+                                                               URLPathArgs& output_url_args) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     // Just `return` is safe. Uninitialized `output_handler` would be interpreted as "no handler found".
     // LCOV_EXCL_START
     if (path.empty()) {
       std::cerr << "HTTP: path is empty.\n";
-      return;
+      return nullptr;
     }
     if (path[0] != '/') {
       std::cerr << "HTTP: path does not start with a slash.\n";
-      return;
+      return nullptr;
     }
     // LCOV_EXCL_STOP
 
@@ -377,8 +383,7 @@ class HTTPServerPOSIX final {
       if (cit != handlers_.end()) {
         const auto cit2 = cit->second.find(output_url_args.size());
         if (cit2 != cit->second.end()) {
-          output_handler = cit2->second;
-          return;
+          return Borrowed<std::function<void(Request)>>(cit2->second);
         }
       }
 
@@ -390,6 +395,8 @@ class HTTPServerPOSIX final {
       output_url_args.add(remaining_path.substr(arg_begin_index));
       remaining_path.resize(arg_begin_index);
     }
+
+    return nullptr;
   }
 
   void Thread(current::net::Socket socket) {
@@ -404,14 +411,9 @@ class HTTPServerPOSIX final {
           connection->DoNotSendAnyResponse();
           break;
         }
-        std::function<void(Request)> handler;
         URLPathArgs url_path_args;
-        {
-          // TODO(dkorolev): Read-write lock for performance?
-          std::lock_guard<std::mutex> lock(mutex_);
-          FindHandler(connection->HTTPRequest().URL().path, handler, url_path_args);
-        }
-        if (handler) {
+        const auto handler = FindHandler(connection->HTTPRequest().URL().path, url_path_args);
+        if (Exists(handler)) {
           // OK, here's the tricky part with error handling and exceptions in this multithreaded world.
           // * On the one hand, the connection should be std::move-d into the request,
           //   since it might end up being served in another thread, via a message queue, etc.
@@ -431,7 +433,7 @@ class HTTPServerPOSIX final {
           // It is the job of the user of this library to ensure no exceptions leave their code.
           // In practice, a top-level try-catch for `const current::Exception& e` is good enough.
           try {
-            handler(Request(std::move(connection), url_path_args));
+            (*Value(handler))(Request(std::move(connection), url_path_args));
           } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
             // WARNING: This `catch` is really not sufficient, it just logs a message
             // if a user exception occurred in the same thread that ran the handler.
@@ -508,7 +510,7 @@ class HTTPServerPOSIX final {
       URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;  // `None` == 1 == (1 << 0).
       for (size_t i = 0; i <= URLPathArgs::MaxArgsCount; ++i, mask = mask << 1) {
         if ((path_args_count_mask & mask) == mask) {
-          handlers_per_path[i] = handler;
+          handlers_per_path[i] = MakeOwned<std::function<void(Request)>>(handler);
         }
       }
     }
@@ -529,7 +531,7 @@ class HTTPServerPOSIX final {
   // TODO(dkorolev): Look into read-write mutexes here.
   mutable std::mutex mutex_;
 
-  std::map<std::string, std::map<size_t, std::function<void(Request)>>> handlers_;
+  std::map<std::string, std::map<size_t, Owned<std::function<void(Request)>>>> handlers_;
   std::vector<std::unique_ptr<StaticFileServer>> static_file_servers_;
 };
 

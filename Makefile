@@ -22,6 +22,9 @@ wc:
 	(find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | grep -v zzz_full_test | grep -v "/sandbox/" | xargs wc -l | sort -gr
 
 clean:
-	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name coverage -type d)
+	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name "coverage" -type d)
+	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name "coverage*.info")
+	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name "everything")
+	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name "everything.*")
 	rm -rf $(shell find . -name ".current")
 	rm -rf $(shell find . -name "everything")

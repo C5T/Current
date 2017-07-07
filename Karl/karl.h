@@ -84,16 +84,16 @@ CURRENT_STRUCT_T(KarlPersistedKeepalive) {
 template <class STORAGE>
 class KarlNginxManager {
  protected:
-  explicit KarlNginxManager(STORAGE& storage,
+  explicit KarlNginxManager(current::Borrowed<STORAGE> storage,
                             const KarlNginxParameters& nginx_parameters,
                             uint16_t karl_keepalives_port,
                             uint16_t karl_fleet_view_port)
-      : storage_ref_(storage),
+      : storage_(std::move(storage)),
         has_nginx_config_file_(!nginx_parameters.config_file.empty()),
         nginx_parameters_(nginx_parameters),
         karl_keepalives_port_(karl_keepalives_port),
         karl_fleet_view_port_(karl_fleet_view_port),
-        last_reflected_state_stream_size_(0u) {
+        last_reflected_stream_head_(std::chrono::microseconds(-1)) {
     if (has_nginx_config_file_) {
       if (!nginx::NginxInvoker().IsNginxAvailable()) {
         CURRENT_THROW(NginxRequestedButNotAvailableException());
@@ -109,11 +109,11 @@ class KarlNginxManager {
     // To spawn Nginx `server` at startup even if the storage is empty.
     static bool first_run = true;
     if (has_nginx_config_file_) {
-      const uint64_t current_stream_size = storage_ref_.InternalExposeStream().Persister().Size();
-      if (first_run || current_stream_size != last_reflected_state_stream_size_) {
+      const std::chrono::microseconds current_stream_head = storage_->UpToDateUntil();
+      if (first_run || current_stream_head != last_reflected_stream_head_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
         server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));
-        storage_ref_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
+        storage_->ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
           // Proxy status pages of the services via `{route_prefix}/{codename}`.
           for (const auto& claire : fields.claires) {
             if (claire.registered_state == ClaireRegisteredState::Active) {
@@ -126,7 +126,7 @@ class KarlNginxManager {
           }
         }).Go();
         nginx_manager_->UpdateConfig(std::move(server));
-        last_reflected_state_stream_size_ = current_stream_size;
+        last_reflected_stream_head_ = current_stream_head;
         first_run = false;
       }
     }
@@ -135,7 +135,7 @@ class KarlNginxManager {
   virtual ~KarlNginxManager() {}
 
  protected:
-  STORAGE& storage_ref_;
+  Borrowed<STORAGE> storage_;
   const bool has_nginx_config_file_;
   const KarlNginxParameters nginx_parameters_;
   const uint16_t karl_keepalives_port_;
@@ -143,7 +143,7 @@ class KarlNginxManager {
   std::unique_ptr<nginx::NginxManager> nginx_manager_;
 
  private:
-  uint64_t last_reflected_state_stream_size_;
+  std::chrono::microseconds last_reflected_stream_head_;
 };
 
 struct UseOwnStorage {};
@@ -154,19 +154,21 @@ struct UseOwnStorage {};
 template <class STORAGE_TYPE>
 struct KarlStorage {
   using storage_t = STORAGE_TYPE;
-  storage_t& storage_;
+  Borrowed<storage_t> storage_;
 
  protected:
-  explicit KarlStorage(storage_t& storage) : storage_(storage) {}
+  explicit KarlStorage(Borrowed<storage_t> storage) : storage_(std::move(storage)) {}
 };
 
 template <>
 struct KarlStorage<UseOwnStorage> {
   using storage_t = ServiceStorage<SherlockStreamPersister>;
-  storage_t storage_;
+  using stream_t = typename storage_t::stream_t;
+  Owned<storage_t> storage_;
 
  protected:
-  explicit KarlStorage(const std::string& persistence_file) : storage_(persistence_file) {}
+  explicit KarlStorage(const std::string& persistence_file)
+      : storage_(storage_t::CreateMasterStorage(persistence_file)) {}
 };
 
 // Interface to implement for receiving callbacks/notifications from Karl.
@@ -232,13 +234,13 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
             parameters.storage_persistence_file, parameters, notifiable, renderer, PrivateConstructorSelector()) {}
 
   template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
-  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters)
+  GenericKarl(Borrowed<STORAGE_TYPE> storage, const KarlParameters& parameters)
       : GenericKarl(storage, parameters, *this, *this, PrivateConstructorSelector()) {}
-  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters, karl_notifiable_t& notifiable)
+  GenericKarl(Borrowed<STORAGE_TYPE> storage, const KarlParameters& parameters, karl_notifiable_t& notifiable)
       : GenericKarl(storage, parameters, notifiable, *this, PrivateConstructorSelector()) {}
-  GenericKarl(STORAGE_TYPE& storage, const KarlParameters& parameters, fleet_view_renderer_t& renderer)
+  GenericKarl(Borrowed<STORAGE_TYPE> storage, const KarlParameters& parameters, fleet_view_renderer_t& renderer)
       : GenericKarl(storage, parameters, *this, renderer, PrivateConstructorSelector()) {}
-  GenericKarl(STORAGE_TYPE& storage,
+  GenericKarl(Borrowed<STORAGE_TYPE> storage,
               const KarlParameters& parameters,
               karl_notifiable_t& notifiable,
               fleet_view_renderer_t& renderer)
@@ -270,7 +272,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
                                : parameters_.public_url),
         notifiable_ref_(notifiable),
         fleet_view_renderer_ref_(renderer),
-        keepalives_stream_(parameters_.stream_persistence_file),
+        keepalives_stream_(stream_t::CreateStream(parameters_.stream_persistence_file)),
         state_update_thread_running_(false),
         state_update_thread_force_wakeup_(false),
         state_update_thread_([this]() {
@@ -312,12 +314,11 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       std::exit(-1);
     }
     // Report this Karl as up and running.
-    // Oh, look, I'm doing work in constructor body. Sigh. -- D.K.
-    storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
-      const auto& stream_persister = keepalives_stream_.Persister();
+    storage_->ReadWriteTransaction([this](MutableFields<storage_t> fields) {
+      const auto& keepalives_data = keepalives_stream_->Data();
       KarlInfo self_info;
-      if (!stream_persister.Empty()) {
-        self_info.persisted_keepalives_info = stream_persister.LastPublishedIndexAndTimestamp();
+      if (!keepalives_data->Empty()) {
+        self_info.persisted_keepalives_info = keepalives_data->LastPublishedIndexAndTimestamp();
       }
       fields.karl.Add(self_info);
 
@@ -335,7 +336,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
  public:
   ~GenericKarl() {
     destructing_ = true;
-    storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
+    storage_->ReadWriteTransaction([this](MutableFields<storage_t> fields) {
       KarlInfo self_info;
       self_info.up = false;
       fields.karl.Add(self_info);
@@ -363,7 +364,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     return local_ips_;
   }
 
-  const storage_t& InternalExposeStorage() const { return storage_; }
+  Borrowed<storage_t> BorrowStorage() const { return storage_; }
 
  private:
   void StateUpdateThread() {
@@ -385,24 +386,24 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       }
       if (!timeouted_codenames.empty()) {
         auto& notifiable_ref = notifiable_ref_;
-        storage_.ReadWriteTransaction([&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields)
-                                          -> void {
-                                            for (const auto& codename : timeouted_codenames) {
-                                              const auto& current_claire_info = fields.claires[codename];
-                                              // OK to call from within a transaction.
-                                              // The call is fast, and `storage_`'s transaction guarantees thread
-                                              // safety. -- D.K.
-                                              ClaireInfo claire;
-                                              if (Exists(current_claire_info)) {
-                                                claire = Value(current_claire_info);
-                                                notifiable_ref.OnTimedOut(now, codename, current_claire_info);
-                                              } else {
-                                                claire.codename = codename;
-                                              }
-                                              claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
-                                              fields.claires.Add(claire);
-                                            }
-                                          }).Wait();
+        storage_->ReadWriteTransaction([&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields)
+                                           -> void {
+                                             for (const auto& codename : timeouted_codenames) {
+                                               const auto& current_claire_info = fields.claires[codename];
+                                               // OK to call from within a transaction.
+                                               // The call is fast, and `storage_`'s transaction guarantees thread
+                                               // safety. -- D.K.
+                                               ClaireInfo claire;
+                                               if (Exists(current_claire_info)) {
+                                                 claire = Value(current_claire_info);
+                                                 notifiable_ref.OnTimedOut(now, codename, current_claire_info);
+                                               } else {
+                                                 claire.codename = codename;
+                                               }
+                                               claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
+                                               fields.claires.Add(claire);
+                                             }
+                                           }).Wait();
       }
       UpdateNginxIfNeeded();
 #ifdef CURRENT_MOCK_TIME
@@ -450,7 +451,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         const std::string codename = qs["codename"];
         const auto now = current::time::Now();
         auto& notifiable_ref = notifiable_ref_;
-        storage_.ReadWriteTransaction([codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
+        storage_->ReadWriteTransaction([codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
           const auto& current_claire_info = fields.claires[codename];
           // OK to call from within a transaction.
           // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
@@ -464,7 +465,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           claire.registered_state = ClaireRegisteredState::Deregistered;
           fields.claires.Add(claire);
           return Response("OK\n");
-        }, std::move(r)).Detach();
+        }, std::move(r)).Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
         {
           // Delete this `codename` from cache.
           std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
@@ -534,7 +535,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
             {
               std::lock_guard<std::mutex> lock(latest_keepalive_index_mutex_);
               latest_keepalive_index_plus_one_[parsed_status.codename] =
-                  keepalives_stream_.Publish(std::move(record)).index;
+                  keepalives_stream_->Publisher()->Publish(std::move(record)).index;
             }
           }
 
@@ -545,105 +546,105 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           }
 
           auto& notifiable_ref = notifiable_ref_;
-          storage_.ReadWriteTransaction(
-                       [this,
-                        now,
-                        location,
-                        &parsed_status,
-                        &detailed_parsed_status,
-                        optional_behind_this_by,
-                        &notifiable_ref](MutableFields<storage_t> fields) -> Response {
-                         // OK to call from within a transaction.
-                         // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                         notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
+          storage_->ReadWriteTransaction(
+                        [this,
+                         now,
+                         location,
+                         &parsed_status,
+                         &detailed_parsed_status,
+                         optional_behind_this_by,
+                         &notifiable_ref](MutableFields<storage_t> fields) -> Response {
+                          // OK to call from within a transaction.
+                          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                          notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
 
-                         const auto& service = parsed_status.service;
-                         const auto& codename = parsed_status.codename;
-                         const auto& optional_build = parsed_status.build;
-                         const auto& optional_instance = parsed_status.cloud_instance_name;
-                         const auto& optional_av_group = parsed_status.cloud_availability_group;
+                          const auto& service = parsed_status.service;
+                          const auto& codename = parsed_status.codename;
+                          const auto& optional_build = parsed_status.build;
+                          const auto& optional_instance = parsed_status.cloud_instance_name;
+                          const auto& optional_av_group = parsed_status.cloud_availability_group;
 
-                         // Update per-server information in the `DB`.
-                         ServerInfo server;
-                         server.ip = location.ip;
-                         bool need_to_update_server_info = false;
-                         const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
-                         if (Exists(current_server_info)) {
-                           server = Value(current_server_info);
-                         }
-                         // Check the instance name.
-                         if (Exists(optional_instance)) {
-                           if (!Exists(server.cloud_instance_name) ||
-                               Value(server.cloud_instance_name) != Value(optional_instance)) {
-                             server.cloud_instance_name = Value(optional_instance);
-                             need_to_update_server_info = true;
-                           }
-                         }
-                         // Check the availability group.
-                         if (Exists(optional_av_group)) {
-                           if (!Exists(server.cloud_availability_group) ||
-                               Value(server.cloud_availability_group) != Value(optional_av_group)) {
-                             server.cloud_availability_group = Value(optional_av_group);
-                             need_to_update_server_info = true;
-                           }
-                         }
-                         // Check the time skew.
-                         if (Exists(optional_behind_this_by)) {
-                           const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
-                           const auto time_skew_difference = server.behind_this_by - behind_this_by;
-                           if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
-                               kUpdateServerInfoThresholdByTimeSkewDifference) {
-                             server.behind_this_by = behind_this_by;
-                             need_to_update_server_info = true;
-                           }
-                         }
-                         if (need_to_update_server_info) {
-                           fields.servers.Add(server);
-                         }
+                          // Update per-server information in the `DB`.
+                          ServerInfo server;
+                          server.ip = location.ip;
+                          bool need_to_update_server_info = false;
+                          const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
+                          if (Exists(current_server_info)) {
+                            server = Value(current_server_info);
+                          }
+                          // Check the instance name.
+                          if (Exists(optional_instance)) {
+                            if (!Exists(server.cloud_instance_name) ||
+                                Value(server.cloud_instance_name) != Value(optional_instance)) {
+                              server.cloud_instance_name = Value(optional_instance);
+                              need_to_update_server_info = true;
+                            }
+                          }
+                          // Check the availability group.
+                          if (Exists(optional_av_group)) {
+                            if (!Exists(server.cloud_availability_group) ||
+                                Value(server.cloud_availability_group) != Value(optional_av_group)) {
+                              server.cloud_availability_group = Value(optional_av_group);
+                              need_to_update_server_info = true;
+                            }
+                          }
+                          // Check the time skew.
+                          if (Exists(optional_behind_this_by)) {
+                            const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
+                            const auto time_skew_difference = server.behind_this_by - behind_this_by;
+                            if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
+                                kUpdateServerInfoThresholdByTimeSkewDifference) {
+                              server.behind_this_by = behind_this_by;
+                              need_to_update_server_info = true;
+                            }
+                          }
+                          if (need_to_update_server_info) {
+                            fields.servers.Add(server);
+                          }
 
-                         // Update the `DB` if the build information was not stored there yet.
-                         const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
-                         if (Exists(optional_build) &&
-                             (!Exists(current_claire_build_info) ||
-                              Value(current_claire_build_info).build != Value(optional_build))) {
-                           ClaireBuildInfo build;
-                           build.codename = codename;
-                           build.build = Value(optional_build);
-                           fields.builds.Add(build);
-                         }
+                          // Update the `DB` if the build information was not stored there yet.
+                          const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
+                          if (Exists(optional_build) &&
+                              (!Exists(current_claire_build_info) ||
+                               Value(current_claire_build_info).build != Value(optional_build))) {
+                            ClaireBuildInfo build;
+                            build.codename = codename;
+                            build.build = Value(optional_build);
+                            fields.builds.Add(build);
+                          }
 
-                         // Update the `DB` if "codename", "location", or "dependencies" differ.
-                         const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
-                         if ([&]() {
-                               if (!Exists(current_claire_info)) {
-                                 return true;
-                               } else if (Value(current_claire_info).location != location) {
-                                 return true;
-                               } else if (Value(current_claire_info).registered_state !=
-                                          ClaireRegisteredState::Active) {
-                                 return true;
-                               } else {
-                                 return false;
-                               }
-                             }()) {
-                           ClaireInfo claire;
-                           if (Exists(current_claire_info)) {
-                             // Do not overwrite `build` with `null`.
-                             claire = Value(current_claire_info);
-                           }
+                          // Update the `DB` if "codename", "location", or "dependencies" differ.
+                          const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
+                          if ([&]() {
+                                if (!Exists(current_claire_info)) {
+                                  return true;
+                                } else if (Value(current_claire_info).location != location) {
+                                  return true;
+                                } else if (Value(current_claire_info).registered_state !=
+                                           ClaireRegisteredState::Active) {
+                                  return true;
+                                } else {
+                                  return false;
+                                }
+                              }()) {
+                            ClaireInfo claire;
+                            if (Exists(current_claire_info)) {
+                              // Do not overwrite `build` with `null`.
+                              claire = Value(current_claire_info);
+                            }
 
-                           claire.codename = codename;
-                           claire.service = service;
-                           claire.location = location;
-                           claire.reported_timestamp = now;
-                           claire.url_status_page_direct = location.StatusPageURL();
-                           claire.registered_state = ClaireRegisteredState::Active;
+                            claire.codename = codename;
+                            claire.service = service;
+                            claire.location = location;
+                            claire.reported_timestamp = now;
+                            claire.url_status_page_direct = location.StatusPageURL();
+                            claire.registered_state = ClaireRegisteredState::Active;
 
-                           fields.claires.Add(claire);
-                         }
-                         return Response("OK\n");
-                       },
-                       std::move(r)).Wait();
+                            fields.claires.Add(claire);
+                          }
+                          return Response("OK\n");
+                        },
+                        std::move(r)).Wait();
           {
             std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
             auto& placeholder = services_keepalive_time_cache_[parsed_status.codename];
@@ -701,7 +702,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
   void ServeBuild(Request r) {
     const auto codename = r.url_path_args[0];
-    storage_.ReadOnlyTransaction([this, codename](ImmutableFields<storage_t> fields) -> Response {
+    storage_->ReadOnlyTransaction([this, codename](ImmutableFields<storage_t> fields) -> Response {
       const auto result = fields.builds[codename];
       if (Exists(result)) {
         return Value(result);
@@ -709,7 +710,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         return Response(current_service_state::Error("Codename '" + codename + "' not found."),
                         HTTPResponseCode.NotFound);
       }
-    }, std::move(r)).Detach();
+    }, std::move(r)).Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
   }
 
   void ServeSnapshot(Request r) {
@@ -720,10 +721,12 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       return std::ref(latest_keepalive_index_plus_one_[codename]);
     }();
 
+    const auto& keepalives_data = keepalives_stream_->Data();
+
     uint64_t index = index_placeholder;
     if (!index) {
       // If no latest keepalive index in cache, go through the whole log.
-      for (const auto& e : keepalives_stream_.Persister().Iterate()) {
+      for (const auto& e : keepalives_data->Iterate()) {
         if (e.entry.keepalive.codename == codename) {
           index = e.idx_ts.index + 1;
         }
@@ -735,7 +738,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     }
 
     if (index) {
-      const auto e = (*keepalives_stream_.Persister().Iterate(index - 1).begin());
+      const auto e = *(keepalives_data->Iterate(index - 1).begin());
       if (!r.url.query.has("nobuild")) {
         r(JSON<JSONFormat::Minimalistic>(
               SnapshotOfKeepalive<runtime_status_variant_t>(e.idx_ts.us - current::time::Now(), e.entry.keepalive)),
@@ -801,7 +804,9 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     std::map<std::string, std::set<std::string>> codenames_per_service;
     std::map<ClaireServiceKey, std::string> service_key_into_codename;
 
-    for (const auto& e : keepalives_stream_.Persister().Iterate(from, to)) {
+    CURRENT_ASSERT(to >= from);
+    const auto& keepalives_data(keepalives_stream_->Data());
+    for (const auto& e : keepalives_data->Iterate(from, to)) {
       const claire_status_t& keepalive = e.entry.keepalive;
 
       codenames_to_resolve.insert(keepalive.codename);
@@ -857,106 +862,107 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     }();
 
     const std::string public_url = actual_public_url_;
-    storage_.ReadOnlyTransaction(
-                 [this,
-                  now,
-                  from,
-                  to,
-                  active_only,
-                  response_format,
-                  public_url,
-                  codenames_to_resolve,
-                  report_for_codename,
-                  codenames_per_service,
-                  service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
-                   std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
-                   karl_status_t result;
-                   result.now = now;
-                   result.from = from;
-                   result.to = to;
-                   for (const auto& codename : codenames_to_resolve) {
-                     resolved_codenames[codename] = [&]() -> ClaireServiceKey {
-                       const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
-                       if (Exists(resolved)) {
-                         return Value(resolved).location;
-                       } else {
-                         ClaireServiceKey key;
-                         key.ip = "zombie/" + codename;
-                         key.port = 0;
-                         return key;
-                       }
-                     }();
-                   }
-                   for (const auto& iterating_over_services : codenames_per_service) {
-                     const std::string& service = iterating_over_services.first;
-                     for (const auto& codename : iterating_over_services.second) {
-                       ServiceToReport<runtime_status_variant_t> blob;
-                       const auto& rhs = report_for_codename.at(codename);
-                       if (active_only) {
-                         const auto& persisted_claire = fields.claires[codename];
-                         if (Exists(persisted_claire) &&
-                             Value(persisted_claire).registered_state != ClaireRegisteredState::Active) {
-                           continue;
-                         }
-                       }
-                       blob.currently = rhs.currently;
-                       blob.service = service;
-                       blob.codename = codename;
-                       blob.location = resolved_codenames[codename];
-                       for (const auto& dep : rhs.dependencies) {
-                         const auto cit = service_key_into_codename.find(dep);
-                         if (cit != service_key_into_codename.end()) {
-                           blob.dependencies.push_back(cit->second);
-                         } else {
-                           blob.unresolved_dependencies.push_back(dep.StatusPageURL());
-                         }
-                       }
+    storage_->ReadOnlyTransaction(
+                  [this,
+                   now,
+                   from,
+                   to,
+                   active_only,
+                   response_format,
+                   public_url,
+                   codenames_to_resolve,
+                   report_for_codename,
+                   codenames_per_service,
+                   service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
+                    std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
+                    karl_status_t result;
+                    result.now = now;
+                    result.from = from;
+                    result.to = to;
+                    for (const auto& codename : codenames_to_resolve) {
+                      resolved_codenames[codename] = [&]() -> ClaireServiceKey {
+                        const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
+                        if (Exists(resolved)) {
+                          return Value(resolved).location;
+                        } else {
+                          ClaireServiceKey key;
+                          key.ip = "zombie/" + codename;
+                          key.port = 0;
+                          return key;
+                        }
+                      }();
+                    }
+                    for (const auto& iterating_over_services : codenames_per_service) {
+                      const std::string& service = iterating_over_services.first;
+                      for (const auto& codename : iterating_over_services.second) {
+                        ServiceToReport<runtime_status_variant_t> blob;
+                        const auto& rhs = report_for_codename.at(codename);
+                        if (active_only) {
+                          const auto& persisted_claire = fields.claires[codename];
+                          if (Exists(persisted_claire) &&
+                              Value(persisted_claire).registered_state != ClaireRegisteredState::Active) {
+                            continue;
+                          }
+                        }
+                        blob.currently = rhs.currently;
+                        blob.service = service;
+                        blob.codename = codename;
+                        blob.location = resolved_codenames[codename];
+                        for (const auto& dep : rhs.dependencies) {
+                          const auto cit = service_key_into_codename.find(dep);
+                          if (cit != service_key_into_codename.end()) {
+                            blob.dependencies.push_back(cit->second);
+                          } else {
+                            blob.unresolved_dependencies.push_back(dep.StatusPageURL());
+                          }
+                        }
 
-                       {
-                         const auto optional_build = fields.builds[codename];
-                         if (Exists(optional_build)) {
-                           const auto& info = Value(optional_build).build;
-                           blob.build_time = info.build_time;
-                           blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
-                           blob.git_commit = info.git_commit_hash;
-                           blob.git_branch = info.git_branch;
-                           blob.git_dirty = Exists(info.git_dirty_files) && !Value(info.git_dirty_files).empty();
-                         }
-                       }
+                        {
+                          const auto optional_build = fields.builds[codename];
+                          if (Exists(optional_build)) {
+                            const auto& info = Value(optional_build).build;
+                            blob.build_time = info.build_time;
+                            blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
+                            blob.git_commit = info.git_commit_hash;
+                            blob.git_branch = info.git_branch;
+                            blob.git_dirty = Exists(info.git_dirty_files) && !Value(info.git_dirty_files).empty();
+                          }
+                        }
 
-                       if (has_nginx_config_file_) {
-                         blob.url_status_page_proxied =
-                             actual_public_url_ + nginx_parameters_.route_prefix + '/' + codename;
-                       }
-                       blob.url_status_page_direct = blob.location.StatusPageURL();
-                       blob.location = resolved_codenames[codename];
-                       blob.runtime = rhs.runtime;
-                       result.machines[blob.location.ip].services[codename] = std::move(blob);
-                     }
-                   }
-                   // Update per-server information.
-                   for (auto& iterating_over_reported_servers : result.machines) {
-                     const std::string& ip = iterating_over_reported_servers.first;
-                     auto& server = iterating_over_reported_servers.second;
-                     const auto& optional_persisted_server_info = fields.servers[ip];
-                     if (Exists(optional_persisted_server_info)) {
-                       const auto& persisted_server_info = Value(optional_persisted_server_info);
-                       server.cloud_instance_name = persisted_server_info.cloud_instance_name;
-                       server.cloud_availability_group = persisted_server_info.cloud_availability_group;
-                       const int64_t behind_this_by_us = persisted_server_info.behind_this_by.count();
-                       if (std::abs(behind_this_by_us) < 100000) {
-                         server.time_skew = "NTP OK";
-                       } else if (behind_this_by_us > 0) {
-                         server.time_skew = current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
-                       } else {
-                         server.time_skew = current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
-                       }
-                     }
-                   }
-                   result.generation_time = current::time::Now() - now;
-                   return fleet_view_renderer_ref_.RenderResponse(response_format, parameters_, std::move(result));
-                 },
-                 std::move(r)).Detach();
+                        if (has_nginx_config_file_) {
+                          blob.url_status_page_proxied =
+                              actual_public_url_ + nginx_parameters_.route_prefix + '/' + codename;
+                        }
+                        blob.url_status_page_direct = blob.location.StatusPageURL();
+                        blob.location = resolved_codenames[codename];
+                        blob.runtime = rhs.runtime;
+                        result.machines[blob.location.ip].services[codename] = std::move(blob);
+                      }
+                    }
+                    // Update per-server information.
+                    for (auto& iterating_over_reported_servers : result.machines) {
+                      const std::string& ip = iterating_over_reported_servers.first;
+                      auto& server = iterating_over_reported_servers.second;
+                      const auto& optional_persisted_server_info = fields.servers[ip];
+                      if (Exists(optional_persisted_server_info)) {
+                        const auto& persisted_server_info = Value(optional_persisted_server_info);
+                        server.cloud_instance_name = persisted_server_info.cloud_instance_name;
+                        server.cloud_availability_group = persisted_server_info.cloud_availability_group;
+                        const int64_t behind_this_by_us = persisted_server_info.behind_this_by.count();
+                        if (std::abs(behind_this_by_us) < 100000) {
+                          server.time_skew = "NTP OK";
+                        } else if (behind_this_by_us > 0) {
+                          server.time_skew = current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
+                        } else {
+                          server.time_skew = current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
+                        }
+                      }
+                    }
+                    result.generation_time = current::time::Now() - now;
+                    return fleet_view_renderer_ref_.RenderResponse(response_format, parameters_, std::move(result));
+                  },
+                  std::move(r))
+        .Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
   }
 
   std::atomic_bool destructing_;
@@ -974,7 +980,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   // Plus one to have `0` == "no keepalives", and avoid the corner case of record at index 0 being the one.
   std::unordered_map<std::string, uint64_t> latest_keepalive_index_plus_one_;
 
-  stream_t keepalives_stream_;
+  current::Owned<stream_t> keepalives_stream_;
   std::atomic_bool state_update_thread_running_;
   std::atomic_bool state_update_thread_force_wakeup_;
   std::condition_variable update_thread_condition_variable_;

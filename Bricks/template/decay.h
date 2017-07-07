@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_DECAY_H
 #define BRICKS_TEMPLATE_DECAY_H
 
+#include "../../port.h"
+
 #include <string>
 #include <type_traits>
 
@@ -176,6 +178,8 @@ static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std:
 static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string&>>>::value, "");
 static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string&>&>>::value, "");
 static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string&>&&>>::value, "");
+
+static_assert(is_same<char[5], decay<decltype("test")>>::value, "");
 
 // YO DAWG! I HEARD YOU LIKE TUPLES!
 static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string>>>>::value,

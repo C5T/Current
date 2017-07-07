@@ -150,7 +150,7 @@ class GenericDictionary {
 
  private:
   map_t map_;
-  std::unordered_map<key_t, std::chrono::microseconds, CurrentHashFunction<key_t>> last_modified_;
+  std::unordered_map<key_t, std::chrono::microseconds, GenericHashFunction<key_t>> last_modified_;
   MutationJournal& journal_;
 };
 

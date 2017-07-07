@@ -75,7 +75,7 @@ struct NonSerializablePairOfTwoSizeT {
 
 SCENARIO(storage, "Storage transactions test.") {
   using storage_t = KeyValueDB<SherlockInMemoryStreamPersister>;
-  storage_t db;
+  current::Owned<storage_t> db;
   size_t actual_size_uint32;
   size_t actual_size_string;
   std::function<void()> f;
@@ -83,14 +83,14 @@ SCENARIO(storage, "Storage transactions test.") {
   static uint32_t RandomUInt32() { return current::random::RandomIntegral<uint32_t>(1000000, 999999); }
   static std::string RandomString() { return current::ToString(RandomUInt32()); }
 
-  storage() {
+  storage() : db(storage_t::CreateMasterStorage()) {
     const bool testing_string = FLAGS_storage_test_string;
 
     std::map<std::string, std::function<void()>> tests = {
-        {{"empty"}, [this]() { db.ReadOnlyTransaction([](ImmutableFields<storage_t>) {}).Wait(); }},
+        {{"empty"}, [this]() { db->ReadOnlyTransaction([](ImmutableFields<storage_t>) {}).Wait(); }},
         {{"size"},
          [this]() {
-           db.ReadOnlyTransaction([this](ImmutableFields<storage_t> fields) {
+           db->ReadOnlyTransaction([this](ImmutableFields<storage_t> fields) {
              if (fields.hashmap_uint32.Size() != actual_size_uint32 ||
                  fields.hashmap_string.Size() != actual_size_string) {
                std::cerr << "Test failed." << std::endl;
@@ -100,7 +100,7 @@ SCENARIO(storage, "Storage transactions test.") {
          }},
         {{"get"},
          [this, testing_string]() {
-           Value(db.ReadOnlyTransaction([this, testing_string](ImmutableFields<storage_t> fields) {
+           Value(db->ReadOnlyTransaction([this, testing_string](ImmutableFields<storage_t> fields) {
              if (!testing_string) {
                return Exists(fields.hashmap_uint32[RandomUInt32()]);
              } else {
@@ -110,7 +110,7 @@ SCENARIO(storage, "Storage transactions test.") {
          }},
         {{"put"},
          [this, testing_string]() {
-           db.ReadWriteTransaction([this, testing_string](MutableFields<storage_t> fields) {
+           db->ReadWriteTransaction([this, testing_string](MutableFields<storage_t> fields) {
              if (!testing_string) {
                fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
              } else {
@@ -132,7 +132,7 @@ SCENARIO(storage, "Storage transactions test.") {
       CURRENT_ASSERT(false);
     }
 
-    const auto pair = Value(db.ReadWriteTransaction([](MutableFields<storage_t> fields) {
+    const auto pair = Value(db->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       for (uint32_t i = 0; i < FLAGS_storage_initial_size; ++i) {
         fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
         fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));

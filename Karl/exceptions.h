@@ -35,8 +35,8 @@ struct KarlException : Exception {
 };
 
 struct ClaireRegistrationException : KarlException {
-  ClaireRegistrationException(const std::string& service, const std::string& route)
-      : KarlException(service + " @ " + route) {}
+  ClaireRegistrationException(const std::string& service, const std::string& route, const std::string& message = "")
+      : KarlException(service + " @ " + route + (message.empty() ? "" : " # " + message)) {}
 };
 
 struct NginxRequestedButNotAvailableException : KarlException {

@@ -199,7 +199,9 @@ template <typename BASE>
 struct FieldsBase : BASE {
   FieldsBase() = default;
   FieldsBase(const FieldsBase&) = delete;
+  FieldsBase& operator=(const FieldsBase&) = delete;
   FieldsBase(FieldsBase&&) = delete;
+  FieldsBase& operator=(FieldsBase&&) = delete;
 
   MutationJournal current_storage_mutation_journal_;
 

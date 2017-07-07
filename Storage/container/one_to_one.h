@@ -32,7 +32,7 @@ SOFTWARE.
 #include "../base.h"
 
 #include "../../TypeSystem/optional.h"
-#include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
+#include "../../Bricks/util/comparators.h"  // For `GenericHashFunction`.
 #include "../../Bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
 
 namespace current {
@@ -50,7 +50,7 @@ class GenericOneToOne {
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
-  using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
+  using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, GenericHashFunction<key_t>>;
   using forward_map_t = ROW_MAP<row_t, const T*>;
   using transposed_map_t = COL_MAP<col_t, const T*>;
   using semantics_t = storage::semantics::OneToOne;
@@ -278,7 +278,7 @@ class GenericOneToOne {
   elements_map_t map_;
   forward_map_t forward_;
   transposed_map_t transposed_;
-  std::unordered_map<key_t, std::chrono::microseconds, CurrentHashFunction<key_t>> last_modified_;
+  std::unordered_map<key_t, std::chrono::microseconds, GenericHashFunction<key_t>> last_modified_;
   MutationJournal& journal_;
 };
 

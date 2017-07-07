@@ -34,9 +34,9 @@ namespace replication {
 
 using stream_t = current::sherlock::Stream<Entry, current::persistence::File>;
 
-inline std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
-                                                uint32_t entry_length,
-                                                uint32_t entries_count) {
+inline current::Owned<stream_t> GenerateStream(const std::string& output_file,
+                                               uint32_t entry_length,
+                                               uint32_t entries_count) {
   const char symbols[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const uint32_t symbols_count = sizeof(symbols) / sizeof(symbols[0]) - 1;
   // The length of the json-serialized empty entry, including the '\n' in the end.
@@ -45,13 +45,12 @@ inline std::unique_ptr<stream_t> GenerateStream(const std::string& output_file,
   const uint32_t entry_member_length = entry_length > empty_entry_length ? entry_length - empty_entry_length : 0;
   std::vector<char> pattern(entry_member_length + 1);
 
-  auto stream = std::make_unique<stream_t>(output_file);
-
+  auto stream = stream_t::CreateStream(output_file);
   for (uint32_t i = 0; i < entries_count; ++i) {
     for (uint32_t j = 0; j < entry_member_length; ++j) {
       pattern[j] = symbols[(i / symbols_count + (i + 1) * j) % symbols_count];
     }
-    stream->Publish(Entry(&pattern[0]));
+    stream->Publisher()->Publish(Entry(&pattern[0]));
   }
   return stream;
 }

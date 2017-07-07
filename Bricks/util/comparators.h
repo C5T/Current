@@ -43,7 +43,7 @@ namespace custom_comparator_and_hash_function {
 
 // Universal hash function implementation.
 template <typename T, bool HAS_MEMBER_HASH_FUNCTION, bool IS_ENUM>
-struct CurrentHashFunctionImpl;
+struct GenericHashFunctionImpl;
 
 template <typename T>
 constexpr bool HasHashMethod(char) {
@@ -56,46 +56,46 @@ constexpr auto HasHashMethod(int) -> decltype(std::declval<const T>().Hash(), bo
 }
 
 template <typename T>
-struct CurrentHashFunctionSelector {
-  typedef custom_comparator_and_hash_function::CurrentHashFunctionImpl<T, HasHashMethod<T>(0), std::is_enum<T>::value>
+struct GenericHashFunctionSelector {
+  typedef custom_comparator_and_hash_function::GenericHashFunctionImpl<T, HasHashMethod<T>(0), std::is_enum<T>::value>
       type;
 };
 
 }  // namespace custom_comparator_and_hash_function
 
-//  `current::CurrentHashFunction<T>`.
+//  `current::GenericHashFunction<T>`.
 template <typename T>
-using CurrentHashFunction = typename custom_comparator_and_hash_function::CurrentHashFunctionSelector<T>::type;
+using GenericHashFunction = typename custom_comparator_and_hash_function::GenericHashFunctionSelector<T>::type;
 
 namespace custom_comparator_and_hash_function {
 
 template <typename T>
-struct CurrentHashFunctionImpl<T, false, false> : std::hash<T> {};
+struct GenericHashFunctionImpl<T, false, false> : std::hash<T> {};
 
 template <typename TF, typename TS>
-struct CurrentHashFunctionImpl<std::pair<TF, TS>, false, false> {
+struct GenericHashFunctionImpl<std::pair<TF, TS>, false, false> {
   std::size_t operator()(const std::pair<TF, TS>& p) const {
     std::size_t seed = 0u;
-    HashCombine<TF, CurrentHashFunction<TF>>(seed, p.first);
-    HashCombine<TS, CurrentHashFunction<TS>>(seed, p.second);
+    HashCombine<TF, GenericHashFunction<TF>>(seed, p.first);
+    HashCombine<TS, GenericHashFunction<TS>>(seed, p.second);
     return seed;
   }
 };
 
 template <typename R, typename P>
-struct CurrentHashFunctionImpl<std::chrono::duration<R, P>, false, false> {
+struct GenericHashFunctionImpl<std::chrono::duration<R, P>, false, false> {
   std::size_t operator()(std::chrono::duration<R, P> x) const {
     return std::hash<int64_t>()(std::chrono::duration_cast<std::chrono::microseconds>(x).count());
   }
 };
 
 template <typename T>
-struct CurrentHashFunctionImpl<T, false, true> {
+struct GenericHashFunctionImpl<T, false, true> {
   std::size_t operator()(T x) const { return static_cast<size_t>(x); }
 };
 
 template <typename T>
-struct CurrentHashFunctionImpl<T, true, false> {
+struct GenericHashFunctionImpl<T, true, false> {
   std::size_t operator()(const T& x) const { return x.Hash(); }
 };
 

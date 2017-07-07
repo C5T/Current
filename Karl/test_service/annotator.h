@@ -44,8 +44,8 @@ class ServiceAnnotator final {
                    const current::karl::Locator& karl)
       : source_numbers_stream_(service_generator + "/numbers"),
         is_prime_logic_endpoint_(service_is_prime + "/is_prime"),
-        stream_(current::sherlock::Stream<Number>()),
-        http_scope_(HTTP(port).Register("/annotated", stream_)),
+        stream_(current::sherlock::Stream<Number>::CreateStream()),
+        http_scope_(HTTP(port).Register("/annotated", *stream_)),
         destructing_(false),
         http_stream_subscriber_(source_numbers_stream_, [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "annotator", port, {service_generator, service_is_prime}) {
@@ -66,12 +66,12 @@ class ServiceAnnotator final {
     const auto prime_result = HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
     CURRENT_ASSERT(prime_result == "YES\n" || prime_result == "NO\n");
     number.is_prime = (prime_result == "YES\n");
-    stream_.Publish(std::move(number));
+    stream_->Publisher()->Publish(std::move(number));
   }
 
   const std::string source_numbers_stream_;
   const std::string is_prime_logic_endpoint_;
-  current::sherlock::Stream<Number> stream_;
+  current::Owned<current::sherlock::Stream<Number>> stream_;
   const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   HTTPStreamSubscriber<Number> http_stream_subscriber_;

@@ -187,7 +187,7 @@ struct Structured {
 #ifndef CURRENT_ALLOW_STORAGE_EXPORT_FROM_MASTER
           // Export requested via `?export`, dump all the records.
           // Slow. Only available off the followers.
-          if (input.role != StorageRole::Follower) {
+          if (input.is_master) {
             return ErrorResponse(RESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
                                  HTTPResponseCode.Forbidden);
           } else
@@ -197,7 +197,7 @@ struct Structured {
             // Have to create it in memory for now. -- D.K.
             // TODO(dkorolev): Migrate to a better way.
             const auto& export_params = Value(input.requested_export_params);
-            const auto hasher = CurrentHashFunction<KEY>();
+            const auto hasher = GenericHashFunction<KEY>();
             std::ostringstream result;
             if (export_params.format == FieldExportFormat::Detailed) {
               result << '[';

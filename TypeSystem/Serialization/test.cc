@@ -99,13 +99,13 @@ CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std
 CURRENT_STRUCT(WithTrivialUnorderedMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
 
 CURRENT_STRUCT(WithNontrivialUnorderedMap) {
-  CURRENT_FIELD(q, (std::unordered_map<Serializable, std::string, current::CurrentHashFunction<Serializable>>));
+  CURRENT_FIELD(q, (std::unordered_map<Serializable, std::string, current::GenericHashFunction<Serializable>>));
 };
 
 CURRENT_STRUCT(WithTrivialSet) { CURRENT_FIELD(s, (std::set<std::string>)); };
 
 CURRENT_STRUCT(WithNontrivialUnorderedSet) {
-  CURRENT_FIELD(s, (std::unordered_set<Serializable, current::CurrentHashFunction<Serializable>>));
+  CURRENT_FIELD(s, (std::unordered_set<Serializable, current::GenericHashFunction<Serializable>>));
 };
 
 CURRENT_STRUCT(WithOptional) {

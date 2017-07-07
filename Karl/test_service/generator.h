@@ -46,8 +46,8 @@ class ServiceGenerator final {
  public:
   ServiceGenerator(uint16_t port, std::chrono::microseconds sleep_between_numbers, const current::karl::Locator& karl)
       : current_value_(0),
-        stream_(current::sherlock::Stream<Number>()),
-        http_scope_(HTTP(port).Register("/numbers", stream_)),
+        stream_(current::sherlock::Stream<Number>::CreateStream()),
+        http_scope_(HTTP(port).Register("/numbers", *stream_)),
         sleep_between_numbers_(sleep_between_numbers),
         destructing_(false),
         thread_([this]() { Thread(); }),
@@ -86,9 +86,10 @@ class ServiceGenerator final {
       std::unique_lock<std::mutex> lock(mutex_);
 #ifdef CURRENT_MOCK_TIME
       // Removed `SetNow` to avoid problems with service timeout tests -- M.Z.
-      stream_.Publish(Number(current_value_), std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull));
+      stream_->Publisher()->Publish(Number(current_value_),
+                                    std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull));
 #else
-      stream_.Publish(Number(current_value_));
+      stream_->Publisher()->Publish(Number(current_value_));
 #endif
       ++current_value_;
       condition_variable_.wait_for(lock, sleep_between_numbers_, [this]() { return destructing_.load(); });
@@ -97,7 +98,7 @@ class ServiceGenerator final {
 
  private:
   std::atomic_int current_value_;
-  current::sherlock::Stream<Number> stream_;
+  current::Owned<current::sherlock::Stream<Number>> stream_;
   const HTTPRoutesScope http_scope_;
   const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;

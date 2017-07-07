@@ -24,9 +24,15 @@ SOFTWARE.
 *******************************************************************************/
 
 // A simple, reference, implementation of an in-memory persister.
-// Store all entries in an `std::vector<std::pair<std::chrono::microseconds, ENTRY>>`,
-// and accesses this vector by indexes from under a mutex when iterating over the entries.
+// Stores all entries in an `std::deque<std::pair<std::chrono::microseconds, ENTRY>>`,
+// and accesses this "deque" by indexes from under a mutex when iterating over the entries.
 // Iterators never outlive the persister.
+
+// NOTE(dkorolev): I've took the liberty to use a dedicated `std::mutex` in `MemoryPersister`.
+// Rationale: While it's possible to optimize mutex usage for thread-safety, I've concluded
+// that's what `FilePersister` does. The `MemoryPersister` one is just for safe unit-testing;
+// its primary goal is to help find issues unrelated to the persister itself. Thus,
+// rather than making it mutex-efficient, I'd rather make it mutex-bulletproof.
 
 #ifndef BLOCKS_PERSISTENCE_MEMORY_H
 #define BLOCKS_PERSISTENCE_MEMORY_H
@@ -41,7 +47,7 @@ SOFTWARE.
 #include "../SS/signature.h"
 
 #include "../../Bricks/sync/locks.h"
-#include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/sync/owned_borrowed.h"
 #include "../../Bricks/time/chrono.h"
 
 namespace current {
@@ -54,20 +60,23 @@ class MemoryPersister {
  private:
   struct Container {
     using entry_t = std::pair<std::chrono::microseconds, ENTRY>;
-    std::mutex& mutex_ref;  // Guards `entries` and `head`.
-    std::deque<entry_t> entries;
-    std::chrono::microseconds head = std::chrono::microseconds(-1);
 
-    Container(std::mutex& mutex_ref) : mutex_ref(mutex_ref) {}
+    mutable std::mutex memory_persister_container_mutex_;
+    std::deque<entry_t> entries_;
+    std::chrono::microseconds head_ = std::chrono::microseconds(-1);
+
+    explicit Container(std::mutex& unused_publish_mutex_ref) {
+      static_cast<void>(unused_publish_mutex_ref);  // `MemoryPersister` is not mutex-efficient. -- D.K.
+    }
   };
 
  public:
-  MemoryPersister(std::mutex& mutex_ref, const ss::StreamNamespaceName&) : container_(mutex_ref) {}
+  MemoryPersister(std::mutex& unused_publish_mutex_ref, const ss::StreamNamespaceName&)
+      : container_(MakeOwned<Container>(unused_publish_mutex_ref)) {}
 
   class Iterator {
    public:
-    Iterator(ScopeOwned<Container>& container, uint64_t i)
-        : container_(container, [this]() { valid_ = false; }), i_(i) {}
+    Iterator(Borrowed<Container> container, uint64_t i) : container_(std::move(container)), i_(i) {}
 
     struct Entry {
       const idxts_t idx_ts;
@@ -78,168 +87,158 @@ class MemoryPersister {
           : idx_ts(index, input.first), entry(input.second) {}
     };
 
+    Iterator() = delete;
+    Iterator(const Iterator&) = delete;
+    Iterator(Iterator&& rhs) : container_(std::move(rhs.container_)), i_(rhs.i_) {}
+    Iterator& operator=(const Iterator&) = delete;
+    Iterator& operator=(Iterator&&) = default;
+
     Entry operator*() const {
-      if (!valid_) {
-        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-      }
-      std::lock_guard<std::mutex> lock(container_->mutex_ref);
-      return Entry(i_, container_->entries[i_]);
+      std::lock_guard<std::mutex> lock(container_->memory_persister_container_mutex_);
+      return Entry(i_, container_->entries_[i_]);
     }
     Iterator& operator++() {
-      if (!valid_) {
-        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-      }
       ++i_;
       return *this;
     }
     bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    operator bool() const { return valid_; }
+    operator bool() const { return container_; }
 
    private:
-    mutable ScopeOwnedBySomeoneElse<Container> container_;
-    bool valid_ = true;
+    mutable Borrowed<Container> container_;  // DIMA: Why `mutable`?
     uint64_t i_;
   };
 
   class IteratorUnsafe {
    public:
-    IteratorUnsafe(ScopeOwned<Container>& container, uint64_t i)
-        : container_(container, [this]() { valid_ = false; }), i_(i) {}
+    IteratorUnsafe(Borrowed<Container> container, uint64_t i) : container_(std::move(container)), i_(i) {}
 
     std::string operator*() const {
-      if (!valid_) {
-        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-      }
-      std::lock_guard<std::mutex> lock(container_->mutex_ref);
-      const auto& entry = container_->entries[i_];
+      std::lock_guard<std::mutex> lock(container_->memory_persister_container_mutex_);
+      const auto& entry = container_->entries_[i_];
       return JSON(idxts_t(i_, entry.first)) + '\t' + JSON(entry.second);
     }
     IteratorUnsafe& operator++() {
-      if (!valid_) {
-        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-      }
       ++i_;
       return *this;
     }
     bool operator==(const IteratorUnsafe& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const IteratorUnsafe& rhs) const { return !operator==(rhs); }
-    operator bool() const { return valid_; }
+    operator bool() const { return container_; }
 
    private:
-    mutable ScopeOwnedBySomeoneElse<Container> container_;
-    bool valid_ = true;
+    mutable Borrowed<Container> container_;
     uint64_t i_;
   };
 
-  template <typename ITERATOR>
+  template <class ITERATOR>
   class IterableRangeImpl {
    public:
-    explicit IterableRangeImpl(ScopeOwned<Container>& container, uint64_t begin, uint64_t end)
-        : container_(container, [this]() { valid_ = false; }), begin_(begin), end_(end) {}
+    IterableRangeImpl(Borrowed<Container> container, uint64_t begin, uint64_t end)
+        : container_(std::move(container)), begin_(begin), end_(end) {}
 
-    ITERATOR begin() const {
-      if (!valid_) {
-        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-      }
-      return ITERATOR(container_, begin_);
-    }
-    ITERATOR end() const {
-      if (!valid_) {
-        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
-      }
-      return ITERATOR(container_, end_);
-    }
-    operator bool() const { return valid_; }
+    IterableRangeImpl(IterableRangeImpl&& rhs)
+        : container_(std::move(rhs.container_)), begin_(rhs.begin_), end_(rhs.end_) {}
+
+    ITERATOR begin() const { return ITERATOR(container_, begin_); }
+    ITERATOR end() const { return ITERATOR(container_, end_); }
+    operator bool() const { return container_; }
 
    private:
-    mutable ScopeOwnedBySomeoneElse<Container> container_;
-    bool valid_ = true;
+    const Borrowed<Container> container_;
     const uint64_t begin_;
     const uint64_t end_;
   };
 
   template <current::locks::MutexLockStatus MLS, typename E, typename US>
-  idxts_t DoPublish(E&& entry, const US us) {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
-    const auto head = container_->head;
+  idxts_t PersisterPublishImpl(E&& entry, const US us) {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+    const auto head = container_->head_;
     const auto timestamp = current::time::GetTimestampFromLockedSection(us);
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
-    const auto index = static_cast<uint64_t>(container_->entries.size());
-    container_->entries.emplace_back(timestamp, std::forward<E>(entry));
-    container_->head = timestamp;
+    const auto index = static_cast<uint64_t>(container_->entries_.size());
+    container_->entries_.emplace_back(timestamp, std::forward<E>(entry));
+    container_->head_ = timestamp;
+    CURRENT_ASSERT(container_->head_ >= container_->entries_.back().first);
     return idxts_t(index, timestamp);
   }
 
   template <current::locks::MutexLockStatus MLS, typename US>
-  void DoUpdateHead(const US us) {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
+  void PersisterUpdateHeadImpl(const US us) {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+
     const auto timestamp = current::time::GetTimestampFromLockedSection(us);
-    const auto head = container_->head;
+    const auto head = container_->head_;
     if (!(timestamp > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), timestamp));
     }
-    container_->head = timestamp;
+    container_->head_ = timestamp;
   }
 
   template <current::locks::MutexLockStatus MLS>
-  bool Empty() const noexcept {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
-    return container_->entries.empty();
+  bool PersisterEmptyImpl() const noexcept {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+    return container_->entries_.empty();
   }
 
   template <current::locks::MutexLockStatus MLS>
-  uint64_t Size() const noexcept {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
-    return static_cast<uint64_t>(container_->entries.size());
+  uint64_t PersisterSizeImpl() const noexcept {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+    return static_cast<uint64_t>(container_->entries_.size());
   }
 
-  idxts_t LastPublishedIndexAndTimestamp() const {
-    std::lock_guard<std::mutex> lock(container_->mutex_ref);
-    if (!container_->entries.empty()) {
-      return idxts_t(container_->entries.size() - 1, container_->entries.back().first);
+  template <current::locks::MutexLockStatus MLS>
+  idxts_t PersisterLastPublishedIndexAndTimestampImpl() const {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+    if (!container_->entries_.empty()) {
+      CURRENT_ASSERT(container_->head_ >= container_->entries_.back().first);
+      return idxts_t(container_->entries_.size() - 1, container_->entries_.back().first);
     } else {
       CURRENT_THROW(NoEntriesPublishedYet());
     }
   }
 
-  head_optidxts_t HeadAndLastPublishedIndexAndTimestamp() const noexcept {
-    std::lock_guard<std::mutex> lock(container_->mutex_ref);
-    if (!container_->entries.empty()) {
-      return head_optidxts_t(container_->head, container_->entries.size() - 1, container_->entries.back().first);
+  template <current::locks::MutexLockStatus MLS>
+  head_optidxts_t PersisterHeadAndLastPublishedIndexAndTimestampImpl() const noexcept {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+    if (!container_->entries_.empty()) {
+      CURRENT_ASSERT(container_->head_ >= container_->entries_.back().first);
+      return head_optidxts_t(container_->head_, container_->entries_.size() - 1, container_->entries_.back().first);
     } else {
-      return head_optidxts_t(container_->head);
+      return head_optidxts_t(container_->head_);
     }
   }
 
   template <current::locks::MutexLockStatus MLS>
-  std::chrono::microseconds CurrentHead() const noexcept {
-    current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
-    return container_->head;
+  std::chrono::microseconds PersisterCurrentHeadImpl() const noexcept {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+    return container_->head_;
   }
 
-  std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
-                                                           std::chrono::microseconds till) const {
+  template <current::locks::MutexLockStatus MLS>
+  std::pair<uint64_t, uint64_t> PersisterIndexRangeByTimestampRangeImpl(std::chrono::microseconds from,
+                                                                        std::chrono::microseconds till) const {
+    current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     std::pair<uint64_t, uint64_t> result{static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
-    std::lock_guard<std::mutex> lock(container_->mutex_ref);
     const auto begin_it =
-        std::lower_bound(container_->entries.begin(),
-                         container_->entries.end(),
+        std::lower_bound(container_->entries_.begin(),
+                         container_->entries_.end(),
                          from,
                          [](const typename Container::entry_t& e, std::chrono::microseconds t) { return e.first < t; });
-    if (begin_it != container_->entries.end()) {
-      result.first = std::distance(container_->entries.begin(), begin_it);
+    if (begin_it != container_->entries_.end()) {
+      result.first = std::distance(container_->entries_.begin(), begin_it);
     }
     if (till.count() > 0) {
       const auto end_it = std::upper_bound(
-          container_->entries.begin(),
-          container_->entries.end(),
+          container_->entries_.begin(),
+          container_->entries_.end(),
           till,
           [](std::chrono::microseconds t, const typename Container::entry_t& e) { return t < e.first; });
-      if (end_it != container_->entries.end()) {
-        result.second = std::distance(container_->entries.begin(), end_it);
+      if (end_it != container_->entries_.end()) {
+        result.second = std::distance(container_->entries_.begin(), end_it);
       }
     }
     return result;
@@ -250,11 +249,11 @@ class MemoryPersister {
                                                   IterableRangeImpl<Iterator>,
                                                   IterableRangeImpl<IteratorUnsafe>>::type;
 
-  template <ss::IterationMode IM>
-  IterableRange<IM> Iterate(uint64_t begin, uint64_t end) const {
+  template <current::locks::MutexLockStatus MLS, ss::IterationMode IM>
+  IterableRange<IM> PersisterIterateImpl(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
-      std::lock_guard<std::mutex> lock(container_->mutex_ref);
-      return static_cast<uint64_t>(container_->entries.size());
+      current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
+      return static_cast<uint64_t>(container_->entries_.size());
     }();
 
     if (end == static_cast<uint64_t>(-1)) {
@@ -277,21 +276,21 @@ class MemoryPersister {
     return IterableRange<IM>(container_, begin, end);
   }
 
-  template <ss::IterationMode IM>
-  IterableRange<IM> Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  template <current::locks::MutexLockStatus MLS, ss::IterationMode IM>
+  IterableRange<IM> PersisterIterateImpl(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-    const auto index_range = IndexRangeByTimestampRange(from, till);
+    const auto index_range = PersisterIndexRangeByTimestampRangeImpl<MLS>(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return Iterate<IM>(index_range.first, index_range.second);
-    } else {  // No entries found in the given range.
+      return PersisterIterateImpl<MLS, IM>(index_range.first, index_range.second);
+    } else {  // No entries_ found in the given range.
       return IterableRange<IM>(container_, 0, 0);
     }
   }
 
  private:
-  mutable ScopeOwnedByMe<Container> container_;
+  Owned<Container> container_;  // `Owned`, as iterators borrow it.
 };
 
 }  // namespace current::persistence::impl

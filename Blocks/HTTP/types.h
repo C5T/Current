@@ -95,7 +95,7 @@ struct ChunkedGET {
   explicit ChunkedGET(const std::string& url,
                       std::function<void(const std::string&, const std::string&)> header_callback,
                       std::function<void(const std::string&)> chunk_callback,
-                      std::function<void()> done_callback)
+                      std::function<void()> done_callback = []() {})
       : url(url), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
 };
 

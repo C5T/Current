@@ -59,18 +59,9 @@ struct InvalidSignatureLocation : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
-struct PersistenceMemoryBlockNoLongerAvailable : InGracefulShutdownException {
-  using InGracefulShutdownException::InGracefulShutdownException;
-};
-
-struct PersistenceFileNoLongerAvailable : InGracefulShutdownException {
-  explicit PersistenceFileNoLongerAvailable(const std::string& filename)
-      : InGracefulShutdownException("Persistence file no longer available: `" + filename + "`.") {}
-};
-
-struct PersistenceFileNotWritable : InGracefulShutdownException {
+struct PersistenceFileNotWritable : PersistenceException {
   explicit PersistenceFileNotWritable(const std::string& filename)
-      : InGracefulShutdownException("Persistence file not writable: `" + filename + "`.") {}
+      : PersistenceException("Persistence file not writable: `" + filename + "`.") {}
 };
 
 }  // namespace peristence

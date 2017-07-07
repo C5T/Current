@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
-          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2017 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +22,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BLOCKS_PERSISTENCE_PERSISTENCE_H
-#define BLOCKS_PERSISTENCE_PERSISTENCE_H
+#ifndef BLOCKS_SS_TYPES_H
+#define BLOCKS_SS_TYPES_H
 
-#include "memory.h"
-#include "file.h"
+#include "../../port.h"
 
-// Enable legacy names for now. Confirmed Current compiles with the next four lines commented out. -- D.K.
+#include "../../TypeSystem/variant.h"
+#include "../../Bricks/time/chrono.h"
+#include "../../Bricks/sync/locks.h"
 
 namespace current {
-namespace persistence {
+namespace ss {
 
-template <typename ENTRY>
-using MemoryOnly = Memory<ENTRY>;
-template <typename ENTRY>
-using AppendToFile = File<ENTRY>;
+template <typename ENTRY, typename STREAM_ENTRY>
+struct CanPublish {
+  constexpr static bool value = false;
+};
 
-}  // namespace current::persistence
+template <typename E>
+struct CanPublish<E, E> {
+  constexpr static bool value = true;
+};
+
+template <typename E, typename NAME, typename... TS>
+struct CanPublish<E, VariantImpl<NAME, TypeListImpl<TS...>>> {
+  constexpr static bool value = TypeListContains<TypeListImpl<TS...>, E>::value;
+};
+
+// Special case, mostly for unit tests: can publish C-strings as C++ strings.
+template <>
+struct CanPublish<char*, std::string> {
+  constexpr static bool value = true;
+};
+template <int N>
+struct CanPublish<char[N], std::string> {
+  constexpr static bool value = true;
+};
+
+}  // namespace current::ss
 }  // namespace current
 
-#endif  // BLOCKS_PERSISTENCE_PERSISTENCE_H
+#endif  // BLOCKS_SS_TYPES_H

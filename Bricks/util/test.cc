@@ -739,13 +739,13 @@ struct hash<WithHashFunctionTestStruct> {
 }  // namespace std
 
 TEST(CustomHashFunction, Smoke) {
-  using current::CurrentHashFunction;
+  using current::GenericHashFunction;
 
   EXPECT_EQ(1u, std::hash<WithoutHashFunctionTestStruct>()(WithoutHashFunctionTestStruct()));
   EXPECT_EQ(1u, std::hash<WithHashFunctionTestStruct>()(WithHashFunctionTestStruct()));
 
-  EXPECT_EQ(1u, CurrentHashFunction<WithoutHashFunctionTestStruct>()(WithoutHashFunctionTestStruct()));
-  EXPECT_EQ(2u, CurrentHashFunction<WithHashFunctionTestStruct>()(WithHashFunctionTestStruct()));
+  EXPECT_EQ(1u, GenericHashFunction<WithoutHashFunctionTestStruct>()(WithoutHashFunctionTestStruct()));
+  EXPECT_EQ(2u, GenericHashFunction<WithHashFunctionTestStruct>()(WithHashFunctionTestStruct()));
 }
 
 struct ObjectWithInterface {

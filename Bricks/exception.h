@@ -25,6 +25,10 @@ SOFTWARE.
 #ifndef BRICKS_EXCEPTIONS_H
 #define BRICKS_EXCEPTIONS_H
 
+#ifdef CURRENT_LOG_EVERY_THROW_TO_STDERR
+#include <iostream>
+#endif  // CURRENT_LOG_EVERY_THROW_TO_STDERR
+
 #include <exception>
 #include <string>
 #include <cstring>
@@ -78,12 +82,22 @@ class Exception : public std::exception {
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.
 // Also, call it `_e_` to avoid name collisions.
+#ifndef CURRENT_LOG_EVERY_THROW_TO_STDERR
 #define CURRENT_THROW(E)                     \
   {                                          \
     auto _e_((E));                           \
     _e_.FillDetails(#E, __FILE__, __LINE__); \
     throw _e_;                               \
   }
+#else
+#define CURRENT_THROW(E)                                                  \
+  {                                                                       \
+    std::cerr << #E << " @ " << __FILE__ << ':' << __LINE__ << std::endl; \
+    auto _e_((E));                                                        \
+    _e_.FillDetails(#E, __FILE__, __LINE__);                              \
+    throw _e_;                                                            \
+  }
+#endif  // CURRENT_LOG_EVERY_THROW_TO_STDERR
 
 }  // namespace current
 

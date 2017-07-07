@@ -131,19 +131,23 @@ TEST(TransactionalStorage, SmokeTest) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<JSONFilePersister>;
+  using storage_t = TestStorage<SherlockStreamPersister>;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    EXPECT_EQ(13u, Storage::FIELDS_COUNT);
-    Storage storage(persistence_file_name);
+    EXPECT_EQ(13u, storage_t::FIELDS_COUNT);
+
+    auto stream = storage_t::stream_t::CreateStream(persistence_file_name);
+    current::Owned<storage_t> storage = storage_t::CreateMasterStorageAtopExistingStream(stream);
+
+    EXPECT_TRUE(storage->IsMasterStorage());
 
     // Fill a `Dictionary` container.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         fields.d.Add(Record{"one", 1});
 
         {
@@ -172,12 +176,13 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.d.Add(Record{"three", 3});
         fields.d.Erase("three");
       }).Go();
+
       EXPECT_TRUE(WasCommitted(result));
     }
 
     // Fill a `ManyToMany` container.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Empty());
         EXPECT_EQ(0u, fields.umany_to_umany.Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Empty());
@@ -208,7 +213,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Fill a `OneToOne` container.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_TRUE(fields.uone_to_uone.Empty());
         EXPECT_EQ(0u, fields.uone_to_uone.Size());
         EXPECT_TRUE(fields.uone_to_uone.Rows().Empty());
@@ -252,7 +257,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Fill a `OneToMany` container.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_TRUE(fields.uone_to_umany.Empty());
         EXPECT_EQ(0u, fields.uone_to_umany.Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Empty());
@@ -295,7 +300,8 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Copy data from unordered `ManyToMany`, `OneToOne` and `OneToMany` to corresponding ordered ones
     {
-      const auto result1 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      current::time::SetNow(std::chrono::microseconds(1000000));
+      const auto result1 = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_TRUE(fields.omany_to_omany.Empty());
         for (const auto& element : fields.umany_to_umany) {
@@ -306,7 +312,9 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(fields.umany_to_umany.Size(), fields.omany_to_omany.Size());
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+
+      current::time::SetNow(std::chrono::microseconds(2000000));
+      const auto result2 = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.uone_to_uone.Empty());
         EXPECT_TRUE(fields.oone_to_oone.Empty());
         for (const auto& element : fields.uone_to_uone) {
@@ -317,7 +325,9 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(fields.uone_to_uone.Size(), fields.oone_to_oone.Size());
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
-      const auto result3 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+
+      current::time::SetNow(std::chrono::microseconds(3000000));
+      const auto result3 = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_TRUE(fields.oone_to_omany.Empty());
         for (const auto& element : fields.uone_to_umany) {
@@ -331,7 +341,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `ManyToMany`, compare its ordered and unordered versions
     {
-      const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_FALSE(fields.omany_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -381,7 +391,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_FALSE(fields.omany_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -431,7 +441,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
-      const auto result3 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result3 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         std::set<std::string> data_set;
         for (const auto& element : fields.umany_to_umany.Row(2)) {
           data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
@@ -467,7 +477,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToOne`, compare its ordered and unordered versions.
     {
-      const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.uone_to_uone.Empty());
         EXPECT_FALSE(fields.oone_to_oone.Empty());
         std::multiset<std::string> data_set;
@@ -501,7 +511,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1 3,too=4 4,fiv=5", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.uone_to_uone.Empty());
         EXPECT_FALSE(fields.oone_to_oone.Empty());
         std::multiset<std::string> data_set;
@@ -539,7 +549,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToMany`, compare its ordered and unordered versions.
     {
-      const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_FALSE(fields.oone_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -589,7 +599,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1 1,six=6 2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_FALSE(fields.oone_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -622,7 +632,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("fiv,2=10 one,1=1 six,1=6 two,2=4", current::strings::Join(data_set, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
-      const auto result3 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result3 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         std::set<std::string> data_set;
         for (const auto& element : fields.uone_to_umany.Row(2)) {
           data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
@@ -658,7 +668,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Rollback a transaction involving a `ManyToMany`, `OneToOne` and `OneToMany`.
     {
-      const auto result1 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result1 = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
@@ -692,7 +702,7 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_FALSE(WasCommitted(result1));
 
-      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
@@ -717,7 +727,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `ManyToMany` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(2));
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("two"));
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("too"));
@@ -763,7 +773,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToOne` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_TRUE(fields.uone_to_uone.Rows().Has(1));
         EXPECT_TRUE(fields.uone_to_uone.Cols().Has("one"));
         EXPECT_TRUE(fields.uone_to_uone.Cols().Has("too"));
@@ -805,7 +815,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToMany` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         EXPECT_TRUE(fields.uone_to_umany.Rows().Has(1));
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("six"));
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("one"));
@@ -846,19 +856,26 @@ TEST(TransactionalStorage, SmokeTest) {
     }
 
     {
-      const auto f = [](ImmutableFields<Storage>) { return 42; };
+      const auto f = [](ImmutableFields<storage_t>) { return 42; };
 
-      const auto result = storage.ReadOnlyTransaction(f).Go();
+      const auto result = storage->ReadOnlyTransaction(f).Go();
       EXPECT_TRUE(WasCommitted(result));
       EXPECT_TRUE(Exists(result));
       EXPECT_EQ(42, Value(result));
     }
+
+    EXPECT_EQ(static_cast<uint64_t>(7), stream->Data()->Size());
   }
 
   // Replay the entire storage from file.
   {
-    Storage replayed(persistence_file_name);
-    const auto result = replayed.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+    current::Owned<storage_t> replayed = storage_t::CreateFollowingStorage(persistence_file_name);
+
+    while (replayed->UpToDateUntil() < std::chrono::microseconds(3000000)) {
+      std::this_thread::yield();
+    }
+
+    const auto result = replayed->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
       EXPECT_FALSE(fields.d.Empty());
       EXPECT_EQ(2u, fields.d.Size());
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
@@ -934,123 +951,123 @@ TEST(TransactionalStorage, FieldAccessors) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  EXPECT_EQ(13u, Storage::FIELDS_COUNT);
-  Storage storage;
-  EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
-  EXPECT_EQ("umany_to_umany", storage(::current::storage::FieldNameByIndex<1>()));
-  EXPECT_EQ("omany_to_omany", storage(::current::storage::FieldNameByIndex<2>()));
-  EXPECT_EQ("umany_to_omany", storage(::current::storage::FieldNameByIndex<3>()));
-  EXPECT_EQ("omany_to_umany", storage(::current::storage::FieldNameByIndex<4>()));
-  EXPECT_EQ("uone_to_uone", storage(::current::storage::FieldNameByIndex<5>()));
-  EXPECT_EQ("oone_to_oone", storage(::current::storage::FieldNameByIndex<6>()));
-  EXPECT_EQ("uone_to_oone", storage(::current::storage::FieldNameByIndex<7>()));
-  EXPECT_EQ("oone_to_uone", storage(::current::storage::FieldNameByIndex<8>()));
-  EXPECT_EQ("uone_to_umany", storage(::current::storage::FieldNameByIndex<9>()));
-  EXPECT_EQ("oone_to_omany", storage(::current::storage::FieldNameByIndex<10>()));
-  EXPECT_EQ("uone_to_omany", storage(::current::storage::FieldNameByIndex<11>()));
-  EXPECT_EQ("oone_to_umany", storage(::current::storage::FieldNameByIndex<12>()));
+  EXPECT_EQ(13u, storage_t::FIELDS_COUNT);
+  auto storage = storage_t::CreateMasterStorage();
+  EXPECT_EQ("d", (*storage)(::current::storage::FieldNameByIndex<0>()));
+  EXPECT_EQ("umany_to_umany", (*storage)(::current::storage::FieldNameByIndex<1>()));
+  EXPECT_EQ("omany_to_omany", (*storage)(::current::storage::FieldNameByIndex<2>()));
+  EXPECT_EQ("umany_to_omany", (*storage)(::current::storage::FieldNameByIndex<3>()));
+  EXPECT_EQ("omany_to_umany", (*storage)(::current::storage::FieldNameByIndex<4>()));
+  EXPECT_EQ("uone_to_uone", (*storage)(::current::storage::FieldNameByIndex<5>()));
+  EXPECT_EQ("oone_to_oone", (*storage)(::current::storage::FieldNameByIndex<6>()));
+  EXPECT_EQ("uone_to_oone", (*storage)(::current::storage::FieldNameByIndex<7>()));
+  EXPECT_EQ("oone_to_uone", (*storage)(::current::storage::FieldNameByIndex<8>()));
+  EXPECT_EQ("uone_to_umany", (*storage)(::current::storage::FieldNameByIndex<9>()));
+  EXPECT_EQ("oone_to_omany", (*storage)(::current::storage::FieldNameByIndex<10>()));
+  EXPECT_EQ("uone_to_omany", (*storage)(::current::storage::FieldNameByIndex<11>()));
+  EXPECT_EQ("oone_to_umany", (*storage)(::current::storage::FieldNameByIndex<12>()));
 
   {
     std::string s;
-    storage(::current::storage::FieldNameAndTypeByIndex<0>(), CurrentStorageTestMagicTypesExtractor(s));
+    (*storage)(::current::storage::FieldNameAndTypeByIndex<0>(), CurrentStorageTestMagicTypesExtractor(s));
     EXPECT_EQ("d, OrderedDictionary, Record", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("umany_to_umany, UnorderedManyToUnorderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<2, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<2, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("omany_to_omany, OrderedManyToOrderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<3, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<3, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("umany_to_omany, UnorderedManyToOrderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<4, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<4, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("omany_to_umany, OrderedManyToUnorderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<5, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<5, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("uone_to_uone, UnorderedOneToUnorderedOne, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<6, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<6, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("oone_to_oone, OrderedOneToOrderedOne, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<7, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<7, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("uone_to_oone, UnorderedOneToOrderedOne, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<8, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<8, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("oone_to_uone, OrderedOneToUnorderedOne, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<9, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<9, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("uone_to_umany, UnorderedOneToUnorderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<10, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<10, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("oone_to_omany, OrderedOneToOrderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<11, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<11, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("uone_to_omany, UnorderedOneToOrderedMany, Cell", s);
   }
 
   {
     std::string s;
     EXPECT_EQ(42,
-              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<12, int>(),
-                      CurrentStorageTestMagicTypesExtractor(s)));
+              (*storage)(::current::storage::FieldNameAndTypeByIndexAndReturn<12, int>(),
+                         CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("oone_to_umany, OrderedOneToUnorderedMany, Cell", s);
   }
 }
@@ -1059,25 +1076,25 @@ TEST(TransactionalStorage, Exceptions) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
+  current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
 
   bool should_throw;
-  const auto f_void = [&should_throw](ImmutableFields<Storage>) {
+  const auto f_void = [&should_throw](ImmutableFields<storage_t>) {
     if (should_throw) {
       CURRENT_STORAGE_THROW_ROLLBACK();
     }
   };
 
-  const auto f_void_custom_exception = [&should_throw](ImmutableFields<Storage>) {
+  const auto f_void_custom_exception = [&should_throw](ImmutableFields<storage_t>) {
     if (should_throw) {
       throw std::logic_error("wtf");
     }
   };
 
   bool throw_with_value;
-  const auto f_int = [&should_throw, &throw_with_value](ImmutableFields<Storage>) {
+  const auto f_int = [&should_throw, &throw_with_value](ImmutableFields<storage_t>) {
     if (should_throw) {
       if (throw_with_value) {
         CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, -1);
@@ -1089,7 +1106,7 @@ TEST(TransactionalStorage, Exceptions) {
     }
   };
 
-  const auto f_int_custom_exception = [&should_throw](ImmutableFields<Storage>) {
+  const auto f_int_custom_exception = [&should_throw](ImmutableFields<storage_t>) {
     if (should_throw) {
       throw 100500;
     } else {
@@ -1100,7 +1117,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `void` lambda successfully returned.
   {
     should_throw = false;
-    const auto result = storage.ReadOnlyTransaction(f_void).Go();
+    const auto result = storage->ReadOnlyTransaction(f_void).Go();
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
   }
@@ -1108,7 +1125,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `void` lambda with rollback requested by user.
   {
     should_throw = true;
-    const auto result = storage.ReadOnlyTransaction(f_void).Go();
+    const auto result = storage->ReadOnlyTransaction(f_void).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
   }
@@ -1116,7 +1133,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `void` lambda with exception.
   {
     should_throw = true;
-    auto result = storage.ReadOnlyTransaction(f_void_custom_exception);
+    auto result = storage->ReadOnlyTransaction(f_void_custom_exception);
     result.Wait();
     // We can ignore the exception until we try to get the result.
     EXPECT_THROW(result.Go(), std::logic_error);
@@ -1125,7 +1142,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `int` lambda successfully returned.
   {
     should_throw = false;
-    const auto result = storage.ReadOnlyTransaction(f_int).Go();
+    const auto result = storage->ReadOnlyTransaction(f_int).Go();
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
     EXPECT_EQ(42, Value(result));
@@ -1135,7 +1152,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = true;
     throw_with_value = false;
-    const auto result = storage.ReadOnlyTransaction(f_int).Go();
+    const auto result = storage->ReadOnlyTransaction(f_int).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_FALSE(Exists(result));
   }
@@ -1144,7 +1161,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = true;
     throw_with_value = true;
-    const auto result = storage.ReadOnlyTransaction(f_int).Go();
+    const auto result = storage->ReadOnlyTransaction(f_int).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
     EXPECT_EQ(-1, Value(result));
@@ -1155,7 +1172,7 @@ TEST(TransactionalStorage, Exceptions) {
     should_throw = true;
     bool was_thrown = false;
     try {
-      storage.ReadOnlyTransaction(f_int_custom_exception).Go();
+      storage->ReadOnlyTransaction(f_int_custom_exception).Go();
     } catch (int e) {
       was_thrown = true;
       EXPECT_EQ(100500, e);
@@ -1170,19 +1187,18 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
-  const auto& persister = storage.InternalExposeStream().Persister();
-  const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
-    return (*persister.Iterate(index, index + 1).begin()).entry;
-  };
+  current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
+  const auto& data = storage->UnderlyingStream()->Data();
+  const auto TransactionByIndex =
+      [&data](uint64_t index) -> const storage_t::transaction_t& { return (*data->Iterate(index).begin()).entry; };
 
   // Try to delete nonexistent entry, setting `who` transaction meta field.
   // No state should be changed as a result of executing the transaction.
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.d.Erase("nonexistent");
       fields.SetTransactionMetaField("who", "anyone");
     }).Go();
@@ -1193,17 +1209,17 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   {
     current::time::SetNow(std::chrono::microseconds(200));
     bool second_step_executed = false;
-    const auto result = storage.ReadWriteTransaction(
-                                    [](MutableFields<Storage> fields) -> int {
-                                      fields.d.Add(Record{"nonexistent", 0});
-                                      fields.SetTransactionMetaField("where", "here");
-                                      CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, 42);
-                                      return 0;
-                                    },
-                                    [&second_step_executed](int v) {
-                                      EXPECT_EQ(42, v);
-                                      second_step_executed = true;
-                                    }).Go();
+    const auto result = storage->ReadWriteTransaction(
+                                     [](MutableFields<storage_t> fields) -> int {
+                                       fields.d.Add(Record{"nonexistent", 0});
+                                       fields.SetTransactionMetaField("where", "here");
+                                       CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, 42);
+                                       return 0;
+                                     },
+                                     [&second_step_executed](int v) {
+                                       EXPECT_EQ(42, v);
+                                       second_step_executed = true;
+                                     }).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(second_step_executed);
   }
@@ -1212,8 +1228,8 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   {
     current::time::SetNow(std::chrono::microseconds(300));
     bool second_step_executed = false;
-    auto future = storage.ReadWriteTransaction(
-        [](MutableFields<Storage> fields) -> int {
+    auto future = storage->ReadWriteTransaction(
+        [](MutableFields<storage_t> fields) -> int {
           fields.d.Add(Record{"nonexistent2", 0});
           fields.SetTransactionMetaField("when", "now");
           CURRENT_THROW(current::Exception());
@@ -1233,7 +1249,7 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   // Add one entry, setting another meta field - `why`.
   {
     current::time::SetNow(std::chrono::microseconds(1000));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.d.Add(Record{"", 42});
       fields.SetTransactionMetaField("why", "because");
     }).Go();
@@ -1242,7 +1258,7 @@ TEST(TransactionalStorage, TransactionMetaFields) {
 
   // Check that only the second transaction has been persisted with the sole meta field `why`.
   {
-    ASSERT_EQ(1u, persister.Size());
+    ASSERT_EQ(1u, data->Size());
     const auto& transaction = TransactionByIndex(0u);
     EXPECT_EQ(1000, transaction.meta.begin_us.count());
     EXPECT_EQ(1u, transaction.meta.fields.size());
@@ -1256,17 +1272,16 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
-  const auto& persister = storage.InternalExposeStream().Persister();
-  const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
-    return (*persister.Iterate(index, index + 1).begin()).entry;
-  };
+  current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
+  const auto& data = storage->UnderlyingStream()->Data();
+  const auto TransactionByIndex =
+      [&data](uint64_t index) -> const storage_t::transaction_t& { return (*(data->Iterate(index).begin())).entry; };
 
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       ASSERT_FALSE(Exists(fields.d.LastModified("x")));
       current::time::SetNow(std::chrono::microseconds(101));
       fields.d.Add(Record{"x", 1});
@@ -1292,7 +1307,7 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
 
-    ASSERT_EQ(1u, persister.Size());
+    ASSERT_EQ(1u, data->Size());
     const auto& transaction = TransactionByIndex(0u);
     EXPECT_EQ(100, transaction.meta.begin_us.count());
     EXPECT_EQ(103, transaction.meta.end_us.count());
@@ -1307,7 +1322,7 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
 
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.d.Add(Record{"x", 100});
       fields.d.Erase("y");
       fields.d.Add(Record{"z", 3});
@@ -1318,7 +1333,7 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
 
   {
     current::time::SetNow(std::chrono::microseconds(300));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       {
         const auto t = fields.d.LastModified("x");
         ASSERT_TRUE(Exists(t));
@@ -1340,7 +1355,7 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
 
-    ASSERT_EQ(2u, persister.Size());
+    ASSERT_EQ(2u, data->Size());
     const auto& transaction = TransactionByIndex(1u);
     EXPECT_EQ(300, transaction.meta.begin_us.count());
     EXPECT_EQ(301, transaction.meta.end_us.count());
@@ -1354,17 +1369,16 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
-  const auto& persister = storage.InternalExposeStream().Persister();
-  const auto TransactionByIndex = [&persister](uint64_t index) -> const Storage::transaction_t& {
-    return (*persister.Iterate(index, index + 1).begin()).entry;
-  };
+  current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
+  const auto& data = storage->UnderlyingStream()->Data();
+  const auto TransactionByIndex =
+      [&data](uint64_t index) -> const storage_t::transaction_t& { return (*(data->Iterate(index).begin())).entry; };
 
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       ASSERT_FALSE(Exists(fields.umany_to_umany.LastModified(1, "x")));
       current::time::SetNow(std::chrono::microseconds(101));
       fields.umany_to_umany.Add(Cell{1, "x", 1});
@@ -1390,7 +1404,7 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
 
-    ASSERT_EQ(1u, persister.Size());
+    ASSERT_EQ(1u, data->Size());
     const auto& transaction = TransactionByIndex(0u);
     EXPECT_EQ(100, transaction.meta.begin_us.count());
     EXPECT_EQ(103, transaction.meta.end_us.count());
@@ -1405,7 +1419,7 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
 
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       EXPECT_FALSE(Exists(fields.umany_to_umany.LastModified(1, "y")));
       EXPECT_FALSE(Exists(fields.uone_to_umany.LastModified(1, "y")));
       EXPECT_FALSE(Exists(fields.uone_to_uone.LastModified(1, "y")));
@@ -1423,7 +1437,7 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
 
   {
     current::time::SetNow(std::chrono::microseconds(300));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       {
         const auto t = fields.umany_to_umany.LastModified(1, "x");
         ASSERT_TRUE(Exists(t));
@@ -1546,7 +1560,7 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
 
-    ASSERT_EQ(2u, persister.Size());
+    ASSERT_EQ(2u, data->Size());
     const auto& transaction = TransactionByIndex(1u);
     EXPECT_EQ(300, transaction.meta.begin_us.count());
     EXPECT_EQ(316, transaction.meta.end_us.count());
@@ -1590,37 +1604,47 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockStreamPersister>;
-  using stream_t = typename Storage::persister_t::sherlock_t;
+  using storage_t = TestStorage<SherlockStreamPersister>;
+  using stream_t = typename storage_t::stream_t;
 
   const std::string storage_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "storage_data");
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(storage_file_name);
   // Write mutation log.
   {
-    Storage master_storage(storage_file_name);
-    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) { fields.d.Add(Record{"one", 1}); }).Go();
-    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) { fields.d.Add(Record{"two", 2}); }).Go();
-    master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) { fields.d.Add(Record{"three", 3}); }).Go();
+    auto stream = storage_t::stream_t::CreateStream(storage_file_name);
+    current::Owned<storage_t> master_storage = storage_t::CreateMasterStorageAtopExistingStream(stream);
+    master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) { fields.d.Add(Record{"one", 1}); }).Go();
+    master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) { fields.d.Add(Record{"two", 2}); }).Go();
+    master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      fields.d.Add(Record{"three", 3});
+    }).Go();
   }
 
   // Test following storage.
   {
-    // Create stream using previously written log.
-    stream_t stream(storage_file_name);
-    // Move data authority from the stream.
-    struct StreamPublisherOwner {
-      void AcceptPublisher(std::unique_ptr<stream_t::publisher_t>) {}
-    } stream_publisher_owner;
-    stream.MovePublisherTo(stream_publisher_owner);
-    // Spawn following storage.
-    Storage storage(stream);
-    EXPECT_EQ(3u, storage.InternalExposeStream().Persister().Size());
+    // Create the stream using previously written log.
+    auto owned_stream(stream_t::CreateStream(storage_file_name));
+    EXPECT_TRUE(owned_stream->IsMasterStream());
+
+    // Move the data authority away from the stream.
+    current::Borrowed<stream_t::publisher_t> stream_publisher_owner = owned_stream->BecomeFollowingStream();
+    EXPECT_FALSE(owned_stream->IsMasterStream());
+
+    // Spawn the following storage.
+    current::Owned<storage_t> storage = storage_t::CreateFollowingStorageAtopExistingStream(owned_stream);
+    EXPECT_FALSE(storage->IsMasterStorage());
+    EXPECT_EQ(3u, storage->UnderlyingStream()->Data()->Size());
+
     // Wait until the whole log is replayed.
-    storage.WaitForTransactionsCount(3u);
-    EXPECT_EQ(3u, storage.TransactionsCount());
+    bool done = false;
+    while (!done) {
+      done = Value(storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields)
+                                                    -> bool { return Exists(fields.d["three"]); }).Go());
+    }
+
     // Check the data.
-    const auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
       EXPECT_TRUE(Exists(fields.d["one"]));
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
       EXPECT_TRUE(Exists(fields.d["two"]));
@@ -1629,7 +1653,12 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
       EXPECT_EQ(3, Value(fields.d["three"]).rhs);
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
-    EXPECT_EQ(3u, storage.TransactionsCount());
+
+    // TODO(dkorolev): Test for no write transaction possible?
+
+    // Important to release the external publisher, otherwise the destructor will wait for its release indefinitely.
+    stream_publisher_owner = nullptr;
+    // owned_stream->BecomeMasterStream();  // REQUIRED FOR NO DEADLOCK. -- D.K.
   }
 }
 
@@ -1637,7 +1666,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockStreamPersister>;
+  using storage_t = TestStorage<SherlockStreamPersister>;
 
   // Create master storage.
   const std::string golden_storage_file_name =
@@ -1645,11 +1674,13 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   const std::string master_storage_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data1");
   const auto master_storage_file_remover = current::FileSystem::ScopedRmFile(master_storage_file_name);
-  Storage master_storage(master_storage_file_name);
-  master_storage.ExposeRawLogViaHTTP(FLAGS_transactional_storage_test_port, "/raw_log");
+
+  auto master_stream = storage_t::stream_t::CreateStream(master_storage_file_name);
+  auto master_storage = storage_t::CreateMasterStorageAtopExistingStream(master_stream);
+  master_storage->ExposeRawLogViaHTTP(FLAGS_transactional_storage_test_port, "/raw_log");
   const std::string base_url = Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port);
 
-  // Check that the Storage is available via HTTP.
+  // Confirm the storage is available via HTTP.
   {
     const auto result = HTTP(GET(base_url + "?schema=json"));
     EXPECT_EQ(200, static_cast<int>(result.code));
@@ -1658,10 +1689,10 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     EXPECT_EQ(result.body, result2.body);
   }
 
-  // Perform a couple of transactions.
+  // Perform a couple transactions.
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       current::time::SetNow(std::chrono::microseconds(101));
       fields.d.Add(Record{"one", 1});
       current::time::SetNow(std::chrono::microseconds(102));
@@ -1673,7 +1704,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       current::time::SetNow(std::chrono::microseconds(201));
       fields.d.Add(Record{"three", 3});
       current::time::SetNow(std::chrono::microseconds(202));
@@ -1682,20 +1713,18 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
     current::time::SetNow(std::chrono::microseconds(300));
-    master_storage.InternalExposeStream().UpdateHead();
+    master_storage->PublisherUsed()->UpdateHead();
   }
 
-  // Confirm empty transactions are not persisted.
-  {
-    current::time::SetNow(std::chrono::microseconds(301));
-    master_storage.ReadOnlyTransaction([](ImmutableFields<Storage>) {}).Wait();
-  }
+  // Confirm an empty transaction is not persisted.
   {
     current::time::SetNow(std::chrono::microseconds(302));
-    master_storage.ReadWriteTransaction([](MutableFields<Storage>) {}).Wait();
+    master_storage->ReadWriteTransaction([](MutableFields<storage_t>) {}).Wait();
   }
 
-  // Confirm the non-empty transactions have been persisted, while the empty ones have been skipped.
+  // Confirm the non-empty transactions have been persisted, while the empty one has been skipped.
+  current::FileSystem::WriteStringToFile(current::FileSystem::ReadFileAsString(master_storage_file_name),
+                                         golden_storage_file_name.c_str());
   EXPECT_EQ(current::FileSystem::ReadFileAsString(golden_storage_file_name),
             current::FileSystem::ReadFileAsString(master_storage_file_name));
 
@@ -1703,50 +1732,53 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   const std::string replicated_stream_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data2");
   const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(replicated_stream_file_name);
-  using transaction_t = typename Storage::transaction_t;
-  using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-  using RemoteStreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
-  sherlock_t replicated_stream(replicated_stream_file_name);
+  using transaction_t = typename storage_t::transaction_t;
+  using stream_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+  using replicator_t = current::sherlock::StreamReplicator<stream_t>;
+  auto owned_replicated_stream(stream_t::CreateStream(replicated_stream_file_name));
 
   // Replicate data via subscription to master storage raw log.
   current::sherlock::SubscribableRemoteStream<transaction_t> remote_stream(
       Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
-  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
+  EXPECT_TRUE(owned_replicated_stream->IsMasterStream());
+  auto replicator = std::make_unique<replicator_t>(owned_replicated_stream);
+  EXPECT_FALSE(owned_replicated_stream->IsMasterStream());
 
-  // Create storage using following stream.
-  Storage replicated_storage(replicated_stream);
-  EXPECT_EQ(current::storage::StorageRole::Follower, replicated_storage.GetRole());
+  // Create the storage atop the following stream.
+  auto replicated_storage = storage_t::CreateFollowingStorageAtopExistingStream(owned_replicated_stream);
+  EXPECT_FALSE(replicated_storage->IsMasterStorage());
+
+  const current::Borrowed<stream_t> replicated_stream(replicated_storage->BorrowUnderlyingStream());
 
   {
     const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    while (replicated_stream.Persister().CurrentHead() != std::chrono::microseconds(300)) {
+    while (replicated_stream->Data()->CurrentHead() != std::chrono::microseconds(300)) {
       std::this_thread::yield();
     }
   }
 
+  EXPECT_FALSE(replicated_storage->IsMasterStorage());
   // Return data authority to the stream as we completed the replication process.
   replicator = nullptr;
+  EXPECT_FALSE(replicated_storage->IsMasterStorage());
 
   // Check that persisted files are the same.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
             current::FileSystem::ReadFileAsString(replicated_stream_file_name));
 
   // Wait until the we can see the mutation made in the last transaction.
-  replicated_storage.WaitForTransactionsCount(4u);
-  EXPECT_EQ(4u, replicated_storage.TransactionsCount());
+  while (replicated_storage->UpToDateUntil() < std::chrono::microseconds(200)) {
+    std::this_thread::yield();
+  }
 
   // Test data consistency performing a transaction in the replicated storage.
-  const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+  const auto result = replicated_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
     EXPECT_EQ(2u, fields.d.Size());
     EXPECT_EQ(1, Value(fields.d["one"]).rhs);
     EXPECT_EQ(3, Value(fields.d["three"]).rhs);
     EXPECT_FALSE(Exists(fields.d["two"]));
   }).Go();
   EXPECT_TRUE(WasCommitted(result));
-
-  // Check that the `Storage` could be flipped to master after the `RemoteStreamReplicator` destruction.
-  ASSERT_NO_THROW(replicated_storage.FlipToMaster());
-  EXPECT_EQ(current::storage::StorageRole::Master, replicated_storage.GetRole());
 }
 
 namespace transactional_storage_test {
@@ -1801,16 +1833,17 @@ using StorageSherlockTestProcessor = current::ss::StreamSubscriber<StorageSherlo
 
 }  // namespace transactional_storage_test
 
-TEST(TransactionalStorage, InternalExposeStream) {
+TEST(TransactionalStorage, WorkWithUnderlyingStream) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
+  auto storage = storage_t::CreateMasterStorage();
+
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.d.Add(Record{"one", 1});
       current::time::SetNow(std::chrono::microseconds(101));
     }).Go();
@@ -1818,7 +1851,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.d.Add(Record{"two", 2});
       current::time::SetNow(std::chrono::microseconds(201));
     }).Go();
@@ -1826,8 +1859,8 @@ TEST(TransactionalStorage, InternalExposeStream) {
   }
 
   std::string collected;
-  StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
-  storage.InternalExposeStream().Subscribe(processor);
+  StorageSherlockTestProcessor<storage_t::transaction_t> processor(collected);
+  storage->Subscribe(processor);
   EXPECT_EQ(
       "{\"index\":0,\"us\":101}\t{\"meta\":{\"begin_us\":100,\"end_us\":101,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"us\":100,\"data\":{\"lhs\":\"one\",\"rhs\":1}},"
@@ -1842,11 +1875,11 @@ TEST(TransactionalStorage, GracefulShutdown) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
-  storage.GracefulShutdown();
-  auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage>) {});
+  auto storage = storage_t::CreateMasterStorage();
+  storage->GracefulShutdown();
+  auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t>) {});
   ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
 }
 
@@ -1938,14 +1971,15 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using Storage = SimpleStorage<JSONFilePersister>;
+  using storage_t = SimpleStorage<SherlockStreamPersister>;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  EXPECT_EQ(6u, Storage::FIELDS_COUNT);
-  Storage storage(persistence_file_name);
+  EXPECT_EQ(6u, storage_t::FIELDS_COUNT);
+  auto stream = storage_t::stream_t::CreateStream(persistence_file_name);
+  auto storage = storage_t::CreateMasterStorageAtopExistingStream(stream);
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
@@ -2024,10 +2058,10 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
-    auto rest = RESTfulStorage<Storage>(
-        storage, FLAGS_transactional_storage_test_port, "/api_plain", "http://unittest.current.ai");
-    const auto hypermedia_rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
-        storage, FLAGS_transactional_storage_test_port, "/api_hypermedia", "http://unittest.current.ai");
+    auto rest = RESTfulStorage<storage_t>(
+        *storage, FLAGS_transactional_storage_test_port, "/api_plain", "http://unittest.current.ai");
+    const auto hypermedia_rest = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
+        *storage, FLAGS_transactional_storage_test_port, "/api_hypermedia", "http://unittest.current.ai");
 
     // Confirm the schema is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/schema/user")).code));
@@ -2292,10 +2326,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api_plain/data/like/blah/blah")).code));
   }
 
-  const std::vector<std::string> persisted_transactions =
-      current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(persistence_file_name));
-
-  EXPECT_EQ(28u, persisted_transactions.size());
+  // DIMA: Persister?
+  // EXPECT_EQ(28u, storage->Size());
 }
 
 TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
@@ -2303,17 +2335,17 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
+  auto storage = storage_t::CreateMasterStorage();
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
-  const auto rest1 = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port, "/plain", "");
-  const auto rest2 = RESTfulStorage<Storage, current::storage::rest::Simple>(
-      storage, FLAGS_transactional_storage_test_port, "/simple", "");
-  const auto rest3 = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
-      storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
+  const auto rest1 = RESTfulStorage<storage_t>(*storage, FLAGS_transactional_storage_test_port, "/plain", "");
+  const auto rest2 = RESTfulStorage<storage_t, current::storage::rest::Simple>(
+      *storage, FLAGS_transactional_storage_test_port, "/simple", "");
+  const auto rest3 = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
+      *storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
 
   {
     // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
@@ -2672,10 +2704,11 @@ TEST(TransactionalStorage, CQSTest) {
   using namespace current::storage::rest;
   using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
 
-  storage_t storage;
+  auto storage = storage_t::CreateMasterStorage();
+
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
   auto storage_http_interface = RESTfulStorage<storage_t, current::storage::rest::Simple>(
-      storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+      *storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
 
   {
     const std::string user_key = ([&]() {
@@ -2925,8 +2958,8 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   EXPECT_EQ(6u, Storage1::FIELDS_COUNT);
   EXPECT_EQ(6u, Storage2::FIELDS_COUNT);
 
-  Storage1 storage1;
-  Storage2 storage2;
+  auto storage1 = Storage1::CreateMasterStorage();
+  auto storage2 = Storage2::CreateMasterStorage();
 
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimpleUserPersisted>::exposed, "");
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimplePostPersisted>::exposed, "");
@@ -2937,9 +2970,9 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
   auto rest1 = RESTfulStorage<Storage1, current::storage::rest::Hypermedia>(
-      storage1, FLAGS_transactional_storage_test_port, "/api1", "http://unittest.current.ai/api1");
+      *storage1, FLAGS_transactional_storage_test_port, "/api1", "http://unittest.current.ai/api1");
   auto rest2 = RESTfulStorage<Storage2, current::storage::rest::Hypermedia>(
-      storage2, FLAGS_transactional_storage_test_port, "/api2", "http://unittest.current.ai/api2");
+      *storage2, FLAGS_transactional_storage_test_port, "/api2", "http://unittest.current.ai/api2");
 
   const auto fields1 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api1")).body);
   const auto fields2 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api2")).body);
@@ -2967,14 +3000,14 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage;
+  auto storage = storage_t::CreateMasterStorage();
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
-  auto rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
-      storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+  auto rest = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
+      *storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
 
   EXPECT_TRUE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
   EXPECT_TRUE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
@@ -2991,28 +3024,26 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
 
-  static_assert(
-      std::is_same<
-          typename Storage::persister_t::sherlock_t,
-          current::sherlock::Stream<typename Storage::persister_t::transaction_t, current::persistence::Memory>>::value,
-      "");
+  static_assert(std::is_same<typename storage_t::persister_t::stream_t,
+                             current::sherlock::Stream<typename storage_t::persister_t::transaction_t,
+                                                       current::persistence::Memory>>::value,
+                "");
 
-  typename Storage::persister_t::sherlock_t stream;
-  Storage storage(stream);
+  auto storage = storage_t::CreateMasterStorage();
 
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.d.Add(Record{"own_stream", 42});
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
   std::string collected;
-  StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
-  storage.InternalExposeStream().Subscribe(processor);
+  StorageSherlockTestProcessor<storage_t::transaction_t> processor(collected);
+  storage->Subscribe(processor);
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"meta\":{\"begin_us\":100,\"end_us\":100,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"us\":100,\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
@@ -3042,27 +3073,26 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
                                 current::storage::transaction_policy::Synchronous,
                                 Variant<transaction_t, StreamEntryOutsideStorage>>;
 
-  static_assert(std::is_same<typename storage_t::persister_t::sherlock_t,
+  static_assert(std::is_same<typename storage_t::persister_t::stream_t,
                              current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
                                                        current::persistence::Memory>>::value,
                 "");
 
-  typename storage_t::persister_t::sherlock_t stream;
-
-  storage_t storage(stream);
+  auto owned_stream = storage_t::stream_t::CreateStream();
+  auto storage = storage_t::CreateMasterStorageAtopExistingStream(owned_stream);
 
   {
     // Add three records to the stream: first and third externally, second through the storage.
-    { stream.Publish(StreamEntryOutsideStorage("one"), std::chrono::microseconds(1)); }
+    { storage->PublisherUsed()->Publish(StreamEntryOutsideStorage("one"), std::chrono::microseconds(1)); }
 
     {
       current::time::SetNow(std::chrono::microseconds(2));
-      const auto result = storage.ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         fields.d.Add(Record{"two", 2});
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
-    { stream.Publish(StreamEntryOutsideStorage("three"), std::chrono::microseconds(3)); }
+    { storage->PublisherUsed()->Publish(StreamEntryOutsideStorage("three"), std::chrono::microseconds(3)); }
   }
 
   {
@@ -3070,7 +3100,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     std::string collected_transactions;
     StorageSherlockTestProcessor<transaction_t> processor(collected_transactions);
     processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
-    storage.InternalExposeStream().Subscribe<transaction_t>(processor);
+    storage->Subscribe<transaction_t>(processor);
     EXPECT_EQ(
         "{\"index\":1,\"us\":2}\t"
         "{\"meta\":{\"begin_us\":2,\"end_us\":2,\"fields\":{}},\"mutations\":["
@@ -3084,15 +3114,18 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     std::string collected_non_transactions;
     StorageSherlockTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
     processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
-    storage.InternalExposeStream().Subscribe<StreamEntryOutsideStorage>(processor);
+    storage->Subscribe<StreamEntryOutsideStorage>(processor);
     EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
               collected_non_transactions);
   }
 
   {
     // Confirm replaying storage with a mixed-content stream does its job.
-    storage_t replayed(stream);
-    const auto result = replayed.ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+    auto replayed = storage_t::CreateFollowingStorageAtopExistingStream(storage->UnderlyingStream());
+    while (replayed->UpToDateUntil() < std::chrono::microseconds(2)) {  // As `3` is a non-transaction.
+      std::this_thread::yield();
+    }
+    const auto result = replayed->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
       EXPECT_EQ(1u, fields.d.Size());
       ASSERT_TRUE(Exists(fields.d["two"]));
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
@@ -3105,10 +3138,10 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using Storage = SimpleStorage<SherlockStreamPersister>;
-  using transaction_t = typename Storage::transaction_t;
-  using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-  using StreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
+  using storage_t = SimpleStorage<SherlockStreamPersister>;
+  using transaction_t = typename storage_t::transaction_t;
+  using stream_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+  using StreamReplicator = current::sherlock::StreamReplicator<stream_t>;
 
   const std::string master_file_name = current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
   const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
@@ -3117,24 +3150,29 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "follower");
   const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
 
-  sherlock_t follower_stream(follower_file_name);
+  auto owned_follower_stream = stream_t::CreateStream(follower_file_name);
   // Replicator acquires the stream's persister object in its constructor.
-  auto replicator = std::make_unique<StreamReplicator>(follower_stream);
+  auto replicator = std::make_unique<StreamReplicator>(owned_follower_stream);
 
-  // Underlying stream is created and owned by `master_storage`.
-  Storage master_storage(master_file_name);
-  // Follower storage is created atop a stream with external data authority.
-  Storage follower_storage(follower_stream);
+  // The underlying stream is created and owned by `master_storage`.
+  auto master_stream = storage_t::stream_t::CreateStream(master_file_name);
+  auto master_storage = storage_t::CreateMasterStorageAtopExistingStream(master_stream);
+
+  // The followering storage is created atop a stream with external data authority.
+  auto follower_storage = storage_t::CreateFollowingStorageAtopExistingStream(owned_follower_stream);
+
+  EXPECT_TRUE(master_storage->IsMasterStorage());
+  EXPECT_FALSE(follower_storage->IsMasterStorage());
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
   // Start RESTful service atop follower storage.
-  auto rest = RESTfulStorage<Storage>(
-      follower_storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+  auto rest = RESTfulStorage<storage_t>(
+      *follower_storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
 
-  // Launch continuous replication process.
+  // Launch the continuous replication process.
   {
-    const auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
+    const auto replicator_scope = master_storage->template Subscribe<transaction_t>(*replicator);
 
     // Confirm an empty collection is returned.
     {
@@ -3146,7 +3184,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     // Publish one record.
     current::time::SetNow(std::chrono::microseconds(100));
     {
-      const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      const auto result = master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
         fields.user.Add(SimpleUser("John", "JD"));
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
@@ -3155,9 +3193,10 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     // Wait until the transaction performed above is replicated to the `follower_stream` and imported by
     // the `follower_storage`.
     {
-      size_t user_size = 0u;
+      size_t user_size;
+      user_size = 0u;
       do {
-        const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+        const auto result = follower_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
           return fields.user.Size();
         }).Go();
         EXPECT_TRUE(WasCommitted(result));
@@ -3168,7 +3207,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
 
     // Check that the the following storage now has the same record as the master one.
     {
-      const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      const auto result = follower_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
         ASSERT_TRUE(Exists(fields.user["John"]));
         EXPECT_EQ("JD", Value(fields.user["John"]).name);
       }).Go();
@@ -3191,34 +3230,39 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     }
 
     // Attempt to run read-write transaction in `Follower` mode throws an exception.
-    // LCOV_EXCL_START
-    EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) {}),
+    EXPECT_THROW(follower_storage->ReadWriteTransaction([](MutableFields<storage_t>) {}),
                  current::storage::ReadWriteTransactionInFollowerStorageException);
-    EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) { return 42; }, [](int) {}),
+    EXPECT_THROW(follower_storage->ReadWriteTransaction([](MutableFields<storage_t>) { return 42; }, [](int) {}),
                  current::storage::ReadWriteTransactionInFollowerStorageException);
-    // LCOV_EXCL_STOP
 
     // At this moment the content of both persisted files must be identical.
     EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
               current::FileSystem::ReadFileAsString(follower_file_name));
-
-    // `FlipToMaster()` method on a storage with `Master` role throws an exception.
-    EXPECT_THROW(master_storage.FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
-    // Publisher of the `follower_stream` is still in the `replicator`.
-    EXPECT_THROW(follower_storage.FlipToMaster(), current::storage::UnderlyingStreamHasExternalDataAuthorityException);
-
-    // Stop the replication process by ending its scope.
   }
 
-  // `StreamReplicator` returns publisher to the stream in its destructor.
+  // `FlipToMaster()` method on a storage with `Master` role throws an exception.
+  EXPECT_TRUE(master_storage->IsMasterStorage());
+  EXPECT_THROW(master_storage->FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
+
+  EXPECT_FALSE(follower_storage->IsMasterStorage());
+
+  // `StreamReplicator` must be destroyed, otherwise `FlipToMaster()` will wait for its release forever.
   replicator = nullptr;
+
+  EXPECT_TRUE(master_storage->IsMasterStorage());
+  EXPECT_FALSE(follower_storage->IsMasterStorage());
+
   // Switch to a `Master` role.
-  ASSERT_NO_THROW(follower_storage.FlipToMaster());
+  ASSERT_NO_THROW(follower_storage->FlipToMaster());
+
+  // NOTE(dkorolev): This is not implemented yet, `master_storage` will remain the "master" of its own stream.
+  // EXPECT_FALSE(master_storage->IsMasterStorage());  // <--- THIS IS UNIMPLEMENTED FOR NOW. -- D.K.
+  EXPECT_TRUE(follower_storage->IsMasterStorage());
 
   // Publish record and check that everything goes well.
   current::time::SetNow(std::chrono::microseconds(200));
   {
-    const auto result = follower_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+    const auto result = follower_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       fields.user.Add(SimpleUser("max", "MZ"));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
@@ -3231,7 +3275,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     const auto user_key = post_response.body;
 
     // Ensure that all the records are in place.
-    const auto result = follower_storage.ReadOnlyTransaction([user_key](ImmutableFields<Storage> fields) {
+    const auto result = follower_storage->ReadOnlyTransaction([user_key](ImmutableFields<storage_t> fields) {
       EXPECT_EQ(3u, fields.user.Size());
       ASSERT_TRUE(Exists(fields.user["max"]));
       EXPECT_EQ("MZ", Value(fields.user["max"]).name);

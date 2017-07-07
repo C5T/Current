@@ -22,39 +22,95 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "scope_owned.h"
+#include "owned_borrowed.h"
 #include "waitable_atomic.h"
 
 #include <thread>
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-// Test using `ScopeOwnedByMe<>` as a `shared_ptr<>`.
-TEST(ScopeOwned, ScopeOwnedByMe) {
-  ScopeOwnedByMe<int> x(0);
-  EXPECT_EQ(0, *x);
-  ++*x;
-  EXPECT_EQ(1, *x);
-  EXPECT_TRUE(static_cast<bool>(x));
+// Test using `current::Owned<>` as a `shared_ptr<>`.
+TEST(Borrowable, Owned) {
+  current::Owned<int> x1(current::ConstructOwned<int>(), 0);
+  EXPECT_EQ(0u, x1.NumberOfActiveBorrowers());
+  EXPECT_EQ(0u, x1.TotalBorrowersSpawnedThroughoutLifetime());
+  EXPECT_TRUE(static_cast<bool>(x1));
+  EXPECT_EQ(0, *x1);
+  ++*x1;
+  EXPECT_EQ(1, *x1);
+  EXPECT_TRUE(static_cast<bool>(x1));
+  EXPECT_EQ(0u, x1.NumberOfActiveBorrowers());
+  EXPECT_EQ(0u, x1.TotalBorrowersSpawnedThroughoutLifetime());
+
+  current::Owned<int> x2 = std::move(x1);
+  EXPECT_EQ(0u, x2.NumberOfActiveBorrowers());
+  EXPECT_EQ(0u, x2.TotalBorrowersSpawnedThroughoutLifetime());
+  EXPECT_TRUE(static_cast<bool>(x2));
+  EXPECT_FALSE(x1.IsValid());
+  EXPECT_EQ(1, *x2);
+
+  current::Owned<int> x3(current::ConstructOwned<int>(), 42);
+  EXPECT_EQ(0u, x3.NumberOfActiveBorrowers());
+  EXPECT_EQ(0u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+  EXPECT_TRUE(static_cast<bool>(x3));
+  EXPECT_EQ(42, *x3);
+
+  x3 = std::move(x2);
+  EXPECT_EQ(0u, x3.NumberOfActiveBorrowers());
+  EXPECT_EQ(0u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+  EXPECT_TRUE(static_cast<bool>(x3));
+  EXPECT_FALSE(static_cast<bool>(x2));
+  EXPECT_EQ(1, *x3);
+
+  {
+    current::Borrowed<int> y1(x3);
+    EXPECT_EQ(1u, x3.NumberOfActiveBorrowers());
+    EXPECT_EQ(1u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+    EXPECT_TRUE(static_cast<bool>(y1));
+    current::Borrowed<int> y1b(std::move(y1));
+    EXPECT_FALSE(static_cast<bool>(y1));
+    EXPECT_TRUE(static_cast<bool>(y1b));
+    EXPECT_EQ(1u, x3.NumberOfActiveBorrowers());
+    EXPECT_EQ(1u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+    y1 = std::move(y1b);
+    EXPECT_TRUE(static_cast<bool>(y1));
+    EXPECT_FALSE(static_cast<bool>(y1b));
+    EXPECT_EQ(1u, x3.NumberOfActiveBorrowers());
+    EXPECT_EQ(1u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+  }
+  EXPECT_EQ(0u, x3.NumberOfActiveBorrowers());
+  EXPECT_EQ(1u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+
+  current::Borrowed<int> y2(x3);
+  EXPECT_EQ(1u, x3.NumberOfActiveBorrowers());
+  EXPECT_EQ(2u, x3.TotalBorrowersSpawnedThroughoutLifetime());
+
+  x2 = std::move(x3);
+  EXPECT_EQ(1u, x2.NumberOfActiveBorrowers());
+  EXPECT_EQ(2u, x2.TotalBorrowersSpawnedThroughoutLifetime());
+  EXPECT_TRUE(static_cast<bool>(x2));
+  EXPECT_FALSE(static_cast<bool>(x3));
+  EXPECT_EQ(1, *x2);
 
   // The following two lines should not compile.
-  // ScopeOwnedByMe<int> y;
-  // ScopeOwnedByMe<int> y(const_cast<const ScopeOwnedByMe<int>&>(x));
+  // Last checked June 2017. -- D.K.
+  // current::Owned<int> y1;
+  // current::Owned<int> y2(const_cast<const current::Owned<int>&>(x));
 }
 
-// Test using `ScopeOwnedByMe<>` via an exclusive mutex-guarded accessor.
-TEST(ScopeOwned, ExclusiveUseOfOwnedByMe) {
-  ScopeOwnedByMe<int> x(0);
+// Test using `current::Owned<>` via an exclusive mutex-guarded accessor.
+TEST(Borrowable, ExclusiveUseOfOwned) {
+  current::Owned<int> x(current::ConstructOwned<int>(), 0);
   x.ExclusiveUse([](int value) { EXPECT_EQ(0, value); });
   x.ExclusiveUse([](int& value) { ++value; });
   x.ExclusiveUse([](int value) { EXPECT_EQ(1, value); });
   EXPECT_EQ(1, *x);  // Confirm the lambdas have been executed synchronously.
 }
 
-// Test `ScopeOwnedByMe<>` can be move-constructed.
-TEST(ScopeOwned, MoveConstructScopeOwnedByMe) {
-  ScopeOwnedByMe<int> y([]() {
-    ScopeOwnedByMe<int> x(0);
+// Test `current::Owned<>` can be move-constructed.
+TEST(Borrowable, MoveOwned) {
+  current::Owned<int> y([]() {
+    current::Owned<int> x(current::ConstructOwned<int>(), 0);
     EXPECT_EQ(0, *x);
     ++*x;
     EXPECT_EQ(1, *x);
@@ -65,51 +121,51 @@ TEST(ScopeOwned, MoveConstructScopeOwnedByMe) {
   EXPECT_EQ(2, *y);
 }
 
-// Test `ScopeOwnedBySomeoneElse<>` is ref-counted within the master `ScopeOwnedByMe<>`.
-TEST(ScopeOwned, ScopeOwnedBySomeoneElse) {
+// Test `current::BorrowedWithCallback<>` is ref-counted within the master `current::Owned<>`.
+TEST(Borrowable, BorrowedWithCallback) {
   std::string log;
 
-  ScopeOwnedByMe<int> x(0);
-  EXPECT_EQ(0u, x.NumberOfActiveFollowers());
-  EXPECT_EQ(0u, x.TotalFollowersSpawnedThroughoutLifetime());
+  current::Owned<int> x(current::ConstructOwned<int>(), 0);
+  EXPECT_EQ(0u, x.NumberOfActiveBorrowers());
+  EXPECT_EQ(0u, x.TotalBorrowersSpawnedThroughoutLifetime());
 
   {
-    ScopeOwnedBySomeoneElse<int> y(x, [&log]() { log += "-y\n"; });
-    ScopeOwnedBySomeoneElse<int> z(x, [&log]() { log += "-z\n"; });
-    EXPECT_EQ(2u, x.NumberOfActiveFollowers());
-    EXPECT_EQ(2u, x.TotalFollowersSpawnedThroughoutLifetime());
-    EXPECT_EQ(2u, y.NumberOfActiveFollowers());
-    EXPECT_EQ(2u, y.TotalFollowersSpawnedThroughoutLifetime());
-    EXPECT_EQ(2u, z.NumberOfActiveFollowers());
-    EXPECT_EQ(2u, z.TotalFollowersSpawnedThroughoutLifetime());
+    current::BorrowedWithCallback<int> y(x, [&log]() { log += "-y\n"; });
+    current::BorrowedWithCallback<int> z(x, [&log]() { log += "-z\n"; });
+    EXPECT_EQ(2u, x.NumberOfActiveBorrowers());
+    EXPECT_EQ(2u, x.TotalBorrowersSpawnedThroughoutLifetime());
+    EXPECT_EQ(2u, y.NumberOfActiveBorrowers());
+    EXPECT_EQ(2u, y.TotalBorrowersSpawnedThroughoutLifetime());
+    EXPECT_EQ(2u, z.NumberOfActiveBorrowers());
+    EXPECT_EQ(2u, z.TotalBorrowersSpawnedThroughoutLifetime());
   }
-  EXPECT_EQ(0u, x.NumberOfActiveFollowers());
-  EXPECT_EQ(2u, x.TotalFollowersSpawnedThroughoutLifetime());
+  EXPECT_EQ(0u, x.NumberOfActiveBorrowers());
+  EXPECT_EQ(2u, x.TotalBorrowersSpawnedThroughoutLifetime());
 
   {
-    ScopeOwnedBySomeoneElse<int> p(x, [&log]() { log += "-p\n"; });
-    ScopeOwnedBySomeoneElse<int> q(x, [&log]() { log += "-q\n"; });
-    EXPECT_EQ(2u, x.NumberOfActiveFollowers());
-    EXPECT_EQ(4u, x.TotalFollowersSpawnedThroughoutLifetime());
-    EXPECT_EQ(2u, p.NumberOfActiveFollowers());
-    EXPECT_EQ(4u, p.TotalFollowersSpawnedThroughoutLifetime());
-    EXPECT_EQ(2u, q.NumberOfActiveFollowers());
-    EXPECT_EQ(4u, q.TotalFollowersSpawnedThroughoutLifetime());
+    current::BorrowedWithCallback<int> p(x, [&log]() { log += "-p\n"; });
+    current::BorrowedWithCallback<int> q(x, [&log]() { log += "-q\n"; });
+    EXPECT_EQ(2u, x.NumberOfActiveBorrowers());
+    EXPECT_EQ(4u, x.TotalBorrowersSpawnedThroughoutLifetime());
+    EXPECT_EQ(2u, p.NumberOfActiveBorrowers());
+    EXPECT_EQ(4u, p.TotalBorrowersSpawnedThroughoutLifetime());
+    EXPECT_EQ(2u, q.NumberOfActiveBorrowers());
+    EXPECT_EQ(4u, q.TotalBorrowersSpawnedThroughoutLifetime());
   }
-  EXPECT_EQ(0u, x.NumberOfActiveFollowers());
-  EXPECT_EQ(4u, x.TotalFollowersSpawnedThroughoutLifetime());
+  EXPECT_EQ(0u, x.NumberOfActiveBorrowers());
+  EXPECT_EQ(4u, x.TotalBorrowersSpawnedThroughoutLifetime());
 
-  EXPECT_EQ("", log) << "No lambdas should be called in this test, as `ScopeOwnedBySomeoneElse<>` instances go "
-                        "out of their respective scopes before the top-level `ScopeOwnedByMe<>` instance does.";
+  EXPECT_EQ("", log) << "No lambdas should be called in this test, as `current::BorrowedWithCallback<>` instances go "
+                        "out of their respective scopes before the top-level `current::Owned<>` instance does.";
 }
 
 // Test the actual scope-ownership logic.
-// Create a `ScopeOwnedByMe<>` and use its object from a different thread via `ScopeOwnedBySomeoneElse<>`.
+// Create a `current::Owned<>` and use its object from a different thread via `current::BorrowedWithCallback<>`.
 // Have the supplementary thread outlive the main one, and confirm the test waits for the supplementary thread
 // to complete its job.
-TEST(ScopeOwned, ScopeOwnedBySomeoneElseOutlivingTheOwner) {
+TEST(Borrowable, BorrowedWithCallbackOutlivingTheOwner) {
   // Declare the variable to work with, and a reference wrapper for it, outside the scope of the test.
-  // This way the resulting, final value of this variable can be tested as the `ScopeOwned*` part is all done.
+  // This way the resulting, final value of this variable can be tested as the `Borrowable*` part is all done.
   int value = 0;
   struct Container {
     int& ref;
@@ -120,38 +176,40 @@ TEST(ScopeOwned, ScopeOwnedBySomeoneElseOutlivingTheOwner) {
   std::unique_ptr<std::thread> thread;
   std::string log;
   {
-    ScopeOwnedByMe<Container> x(container);
+    current::Owned<Container> x(current::ConstructOwned<Container>(), container);
 
     std::atomic_bool terminating(false);
+    // The `unique_ptr` ugliness is to have the pre-initialized `current::BorrowedWithCallback` movable.
     thread = std::make_unique<std::thread>(
-        [&log, &terminating](ScopeOwnedBySomeoneElse<Container> y) {
+        [&log, &terminating](std::unique_ptr<current::BorrowedWithCallback<Container>> y0) {
+          current::BorrowedWithCallback<Container>& y = *y0.get();
           EXPECT_TRUE(static_cast<bool>(y));
           // Keep incrementing until external termination request.
           while (!terminating) {
-            y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
+            y.ExclusiveUse([](Container& container) { ++container.ref; });
           }
           EXPECT_FALSE(static_cast<bool>(y));
           // And do another one thousand increments just because we can.
           for (int i = 0; i < 1000; ++i) {
-            y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
+            y.ExclusiveUse([](Container& container) { ++container.ref; });
           }
         },
-        ScopeOwnedBySomeoneElse<Container>(x,
-                                           [&log, &terminating]() {
-                                             terminating = true;
-                                             log += "Terminating.\n";
-                                           }));
+        std::make_unique<current::BorrowedWithCallback<Container>>(x,
+                                                                   [&log, &terminating]() {
+                                                                     terminating = true;
+                                                                     log += "Terminating.\n";
+                                                                   }));
 
-    EXPECT_EQ(1u, x.NumberOfActiveFollowers());
-    EXPECT_EQ(1u, x.TotalFollowersSpawnedThroughoutLifetime());
+    EXPECT_EQ(1u, x.NumberOfActiveBorrowers());
+    EXPECT_EQ(1u, x.TotalBorrowersSpawnedThroughoutLifetime());
 
     int extracted_value;
     do {
       x.ExclusiveUse([&extracted_value](const Container& container) { extracted_value = container.ref; });
     } while (extracted_value < 10000);
 
-    EXPECT_EQ(1u, x.NumberOfActiveFollowers());
-    EXPECT_EQ(1u, x.TotalFollowersSpawnedThroughoutLifetime());
+    EXPECT_EQ(1u, x.NumberOfActiveBorrowers());
+    EXPECT_EQ(1u, x.TotalBorrowersSpawnedThroughoutLifetime());
   }
 
   EXPECT_EQ("Terminating.\n", log) << "The client thread must have been signaled to shut down.";
@@ -161,8 +219,8 @@ TEST(ScopeOwned, ScopeOwnedBySomeoneElseOutlivingTheOwner) {
 }
 
 // Same as the above test, but do not use an external termination primitive,
-// but rely on polling the availability of `ScopeOwnedBySomeoneElse<>` itseld.
-TEST(ScopeOwned, UseInternalIsDestructingGetter) {
+// but rely on polling the availability of `current::BorrowedWithCallback<>` itseld.
+TEST(Borrowable, UseInternalIsDestructingGetter) {
   int value = 0;
   struct Container {
     int& ref;
@@ -172,17 +230,17 @@ TEST(ScopeOwned, UseInternalIsDestructingGetter) {
 
   std::unique_ptr<std::thread> thread;
   {
-    ScopeOwnedByMe<Container> x(container);
-    thread = std::make_unique<std::thread>([](ScopeOwnedBySomeoneElse<Container> y) {
+    current::Owned<Container> x(current::ConstructOwned<Container>(), container);
+    thread = std::make_unique<std::thread>([](current::Borrowed<Container> y) {
       // Keep incrementing until external termination request.
-      while (!y.IsDestructing()) {
-        y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
+      while (y) {
+        y.ExclusiveUse([](Container& container) { ++container.ref; });
       }
       // And do another one thousand increments just because we can.
       for (int i = 0; i < 1000; ++i) {
-        y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
+        y.ExclusiveUse([](Container& container) { ++container.ref; });
       }
-    }, ScopeOwnedBySomeoneElse<Container>(x, []() {}));
+    }, current::Borrowed<Container>(x));
 
     int extracted_value;
     do {
@@ -257,7 +315,7 @@ TEST(WaitableAtomic, Smoke) {
 
 // Both threads should have had enough time to increment their counters at least by a bit.
 // Technically, the EXPECT-s below make the test flaky, but the range is generous enough.
-#if !defined(CURRENT_COVERAGE_REPORT_MODE) && !defined(CURRENT_CI)
+#if !defined(CURRENT_CI) && !defined(CURRENT_COVERAGE_REPORT_MODE)
   EXPECT_GT(copy_of_object.x, 10u);
   EXPECT_LT(copy_of_object.x, 100u);
   EXPECT_GT(copy_of_object.y, 10u);
