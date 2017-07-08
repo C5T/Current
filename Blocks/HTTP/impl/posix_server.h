@@ -355,7 +355,6 @@ class HTTPServerPOSIX final {
                                                                URLPathArgs& output_url_args) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // Just `return` is safe. Uninitialized `output_handler` would be interpreted as "no handler found".
     // LCOV_EXCL_START
     if (path.empty()) {
       std::cerr << "HTTP: path is empty.\n";
