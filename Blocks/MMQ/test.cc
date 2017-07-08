@@ -297,10 +297,11 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
   EXPECT_EQ("[1] = one", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1", current::strings::Join(c.messages_by_timestamps_, ", "));
 
-  // Publish "two", "three", and "four". The first one to get published is "three", but, as it's published
-  // into the future, it won't get processed until "four" is. Note the index of "two" is `3`, not `2`.
+  // Publish "two", "three", and "four", in the "wrong" order, to test the `P` part of `MMPQ` does its job.
   mmpq.Publish("three", std::chrono::microseconds(3));
   mmpq.Publish("two", std::chrono::microseconds(2));
+
+  // Push head to `2`, ensuring "one" and "two" (but not "three") are processed.
   mmpq.UpdateHead(std::chrono::microseconds(2));
   while (c.processed_messages_ != 2) {
     std::this_thread::yield();
@@ -308,7 +309,7 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
   EXPECT_EQ("[1] = one, [3] = two", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1, two @ 2", current::strings::Join(c.messages_by_timestamps_, ", "));
 
-  // Finally, publish "four". As it's past "three", the consumer will get both "three" and "four".
+  // Publish "four" and push head to `4` to process "three" and "four".
   mmpq.Publish("four", std::chrono::microseconds(4));
   mmpq.UpdateHead(std::chrono::microseconds(4));
   while (c.processed_messages_ != 4) {
