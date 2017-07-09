@@ -422,9 +422,13 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   t.join();
 }
 
+#ifdef CURRENT_APPLE
 // This test sometimes fails on Apple on Travis. -- D.K.
-#ifndef CURRENT_APPLE
-TEST(PosixHTTPServerTest, ChunkedSmoke) {
+TEST(PosixHTTPServerTest, DISABLED_ChunkedSmoke)
+#else
+TEST(PosixHTTPServerTest, ChunkedSmoke)
+#endif
+{
   const auto EchoServerThreadEntry = [](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
@@ -471,7 +475,6 @@ TEST(PosixHTTPServerTest, ChunkedSmoke) {
     }
   }
 }
-#endif  // CURRENT_APPLE
 
 // `CURRENT_HTTP_DATA_JOURNAL_ENABLED` will be `#define`-d if `CURRENT_BRICKS_DEBUG_HTTP`
 // was `#define`-d _the first time_ `impl/server.h` was included.

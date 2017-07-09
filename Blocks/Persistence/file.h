@@ -395,7 +395,7 @@ class FilePersister {
   template <typename ITERATOR>
   class IterableRangeImpl {
    public:
-    IterableRangeImpl(current::Borrowed<FilePersisterImpl> file_persister_impl,
+    IterableRangeImpl(Borrowed<FilePersisterImpl> file_persister_impl,
                       uint64_t begin,
                       uint64_t end,
                       std::streampos begin_offset)
@@ -449,7 +449,7 @@ class FilePersister {
     }
 
     iterator.last_entry_us = iterator.head = timestamp;
-    const auto current = idxts_t(iterator.next_index, iterator.last_entry_us);
+    const auto idxts = idxts_t(iterator.next_index, iterator.last_entry_us);
     CURRENT_ASSERT(file_persister_impl_->record_offset_.size() == iterator.next_index);
     CURRENT_ASSERT(file_persister_impl_->record_timestamp_.size() == iterator.next_index);
     file_persister_impl_->record_offset_.push_back(file_persister_impl_->file_appender_.tellp());
@@ -457,14 +457,14 @@ class FilePersister {
 
     // Explicit `ConstructAsNecessary` is essential, otherwise the `Variant`'s case
     // would be serialized in an unwrapped way when passed directly
-    file_persister_impl_->file_appender_ << JSON(current) << '\t'
+    file_persister_impl_->file_appender_ << JSON(idxts) << '\t'
                                          << JSON(ConstructAsNecessary<ENTRY, decay<E>>::DoIt(std::forward<E>(entry)))
                                          << std::endl;
     ++iterator.next_index;
     file_persister_impl_->head_offset_ = 0;
     file_persister_impl_->end_.store(iterator);
 
-    return current;
+    return idxts;
   }
 
   template <current::locks::MutexLockStatus MLS, typename TIMESTAMP>

@@ -757,7 +757,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
-// NOTE(@dkorolev): On my Ubuntu 16.04, when run as:
+// NOTE(dkorolev): On my Ubuntu 16.04, when run as:
 // $ ./.current/test --gtest_filter=Karl.ChangeDependenciesInClaire --gtest_repeat=-1
 // this test consistently fails on iteration 253, when calling `::getaddrinfo()` for `localhost`.
 // Changing `localhost` into `127.0.0.1` fails to create a socket (`::socket()` returns -1).

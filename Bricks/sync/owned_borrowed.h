@@ -73,7 +73,7 @@ namespace impl {
 
 // Helper to prohibit copying `Owned`.
 struct ConstructOwned {};
-struct ConstuctBorrowable {};
+struct ConstructBorrowable {};
 struct ConstructBorrowableObjectViaMoveConstructor {};
 
 struct ConstructUniqueContainerViaMoveConstructor {};
@@ -174,7 +174,7 @@ class WeakBorrowed {
   // `WeakBorrowed<T>` is meant to be initialized by `Owned<T>` | `BorrowedWithCallback<T>` | `Borrowed<T>` only.
   WeakBorrowed(impl::ConstructOwned, instance_t& actual_instance) : p_actual_instance_(&actual_instance), key_(0u) {}
 
-  WeakBorrowed(impl::ConstuctBorrowable, const WeakBorrowed& rhs, std::function<void()> destruction_callback) {
+  WeakBorrowed(impl::ConstructBorrowable, const WeakBorrowed& rhs, std::function<void()> destruction_callback) {
     std::lock_guard<std::mutex> lock(rhs.p_actual_instance_->mutex_);
     p_actual_instance_ = rhs.p_actual_instance_;
     key_ = p_actual_instance_->RegisterBorrowerFromLockedSection(destruction_callback);
@@ -216,7 +216,6 @@ class WeakBorrowed {
   operator bool() const noexcept { return IsValid(); }
 
   // Smart-pointer-style accessors.
-  // NOT THREAD-SAFE, POTENTIALLY ALLOWS NON-EXCLUSIVE USE TO THE UNDERLYING OBJECT.
   // THREAD-SAFE. NEVER THROWS.
   T& operator*() { return p_actual_instance_->instance_; }
   const T& operator*() const { return p_actual_instance_->instance_; }
@@ -225,7 +224,7 @@ class WeakBorrowed {
 
   // Exclusive accessors.
   // THREAD-SAFE WITH RESPECT TO MAKING SURE UNDERLYING OBJECT IS ACCESSED EXCLUSIVELY BY THE PASSED IN FUNCTOR.
-  // THREAD-SAFE. NEVER THROWS.
+  // NEVER THROWS.
   void ExclusiveUse(std::function<void(T&)> f) {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     f(operator*());
@@ -326,7 +325,7 @@ class Owned final : private impl::UniqueInstanceContainer<T>, public WeakBorrowe
   Owned() : impl_t(), base_t(impl::ConstructOwned(), *impl_t::movable_instance_) {}
 
 #ifndef CURRENT_OWNED_BORROWED_EXPLICIT_ONLY_CONSTRUCTION
-  // For the end users for Current, we allow "manual" `Owned` construction via `ARGS...`.
+  // For the end users of Current, we allow "manual" `Owned` construction via `ARGS...`.
   // (It's really for "backwards compatibility" reasons, we could revisit this. -- D.K.)
   // Within Current, `MakeOwned<T>(...)` or `Owned<T>(ConstructOwned<T>(), ...)` are used, and thus
   // the "liberal" constructor is unnecessary.
@@ -371,7 +370,7 @@ class BorrowedWithCallback final : public WeakBorrowed<T> {
 
  public:
   BorrowedWithCallback(const WeakBorrowed<T>& rhs, std::function<void()> destruction_callback)
-      : base_t(impl::ConstuctBorrowable(), rhs, destruction_callback) {}
+      : base_t(impl::ConstructBorrowable(), rhs, destruction_callback) {}
 
   BorrowedWithCallback(WeakBorrowed<T>&& rhs, std::function<void()> destruction_callback)
       : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), destruction_callback) {}
@@ -399,7 +398,7 @@ class Borrowed final : public WeakBorrowed<T> {
   using base_t = WeakBorrowed<T>;
 
  public:
-  Borrowed(const Borrowed& rhs) : base_t(impl::ConstuctBorrowable(), rhs, []() {}) {}
+  Borrowed(const Borrowed& rhs) : base_t(impl::ConstructBorrowable(), rhs, []() {}) {}
 
   Borrowed(Borrowed&& rhs) : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
 
@@ -408,7 +407,7 @@ class Borrowed final : public WeakBorrowed<T> {
     return *this;
   }
 
-  Borrowed(const WeakBorrowed<T>& rhs) : base_t(impl::ConstuctBorrowable(), rhs, []() {}) {}
+  Borrowed(const WeakBorrowed<T>& rhs) : base_t(impl::ConstructBorrowable(), rhs, []() {}) {}
 
   Borrowed(WeakBorrowed<T>&& rhs)
       : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
@@ -439,7 +438,7 @@ class BorrowedOfGuaranteedLifetime final : public WeakBorrowed<T> {
 
  public:
   explicit BorrowedOfGuaranteedLifetime(const WeakBorrowed<T>& rhs)
-      : base_t(impl::ConstuctBorrowable(), rhs, BorrowedOfGuaranteedLifetimeInvariantErrorCallback) {}
+      : base_t(impl::ConstructBorrowable(), rhs, BorrowedOfGuaranteedLifetimeInvariantErrorCallback) {}
 
   BorrowedOfGuaranteedLifetime(WeakBorrowed<T>&& rhs)
       : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(),

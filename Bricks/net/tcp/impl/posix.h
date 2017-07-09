@@ -517,13 +517,13 @@ inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv =
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
   const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &result);
-  addrinfo_t safe_result(result);
   if (!result) {
     CURRENT_THROW(SocketResolveAddressException(host_and_service));
   } else if (retval) {
     freeaddrinfo(result);
-    CURRENT_THROW(SocketResolveAddressException(host_and_service + gai_strerror(retval)));
+    CURRENT_THROW(SocketResolveAddressException(host_and_service + ' ' + gai_strerror(retval)));
   }
+  addrinfo_t safe_result(result);
   return safe_result;
 }
 

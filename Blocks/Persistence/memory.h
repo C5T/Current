@@ -28,7 +28,7 @@ SOFTWARE.
 // and accesses this "deque" by indexes from under a mutex when iterating over the entries.
 // Iterators never outlive the persister.
 
-// NOTE(dkorolev): I've took the liberty to use a dedicated `std::mutex` in `MemoryPersister`.
+// NOTE(dkorolev): I took the liberty to use a dedicated `std::mutex` in `MemoryPersister`.
 // Rationale: While it's possible to optimize mutex usage for thread-safety, I've concluded
 // that's what `FilePersister` does. The `MemoryPersister` one is just for safe unit-testing;
 // its primary goal is to help find issues unrelated to the persister itself. Thus,
