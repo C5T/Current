@@ -119,6 +119,19 @@ class IteratorOverFileOfPersistedEntries {
   idxts_t next_;
 };
 
+template <typename DESIRED, typename ACTUAL>
+struct ConstructAsNecessary {
+  template <typename T>
+  static DESIRED DoIt(T&& x) {
+    return DESIRED(std::forward<T>(x));
+  }
+};
+
+template <typename T>
+struct ConstructAsNecessary<T, T> {
+  static const T& DoIt(const T& x) { return x; }
+};
+
 // The implementation of a persister based exclusively on appending to and reading one text flie.
 template <typename ENTRY>
 class FilePersister {
@@ -442,8 +455,11 @@ class FilePersister {
     file_persister_impl_->record_offset_.push_back(file_persister_impl_->file_appender_.tellp());
     file_persister_impl_->record_timestamp_.push_back(timestamp);
 
-    // The explicit `ENTRY(...)` is essential, otherwise the `Variant`'s case would be published unwrapped!
-    file_persister_impl_->file_appender_ << JSON(current) << '\t' << JSON(ENTRY(std::forward<E>(entry))) << std::endl;
+    // Explicit `ConstructAsNecessary` is essential, otherwise the `Variant`'s case
+    // would be serialized in an unwrapped way when passed directly
+    file_persister_impl_->file_appender_ << JSON(current) << '\t'
+                                         << JSON(ConstructAsNecessary<ENTRY, decay<E>>::DoIt(std::forward<E>(entry)))
+                                         << std::endl;
     ++iterator.next_index;
     file_persister_impl_->head_offset_ = 0;
     file_persister_impl_->end_.store(iterator);

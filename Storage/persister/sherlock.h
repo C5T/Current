@@ -149,8 +149,9 @@ class SherlockStreamPersisterImpl final {
   const WeakBorrowed<stream_t>& Stream() const { return stream_; }
   WeakBorrowed<stream_t>& Stream() { return stream_; }
 
-  // TODO(dkorolev): Implement the custom publisher that allows publishing anything but `transaction_t`-s.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   Borrowed<typename stream_t::publisher_t> PublisherUsed() {
+    locks::SmartMutexLockGuard<MLS> lock(master_follower_change_mutex_);
     CURRENT_ASSERT(Exists(publisher_used_));
     return Value(publisher_used_);
   }
