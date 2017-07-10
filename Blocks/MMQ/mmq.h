@@ -176,13 +176,13 @@ class MMQImpl {
   // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW, typename TIMESTAMP>
   ENABLE_IF<DROP && time::IsTimestamp<TIMESTAMP>::value, std::pair<bool, size_t>> CircularBufferAllocate(
-      TIMESTAMP&& user_timestamp) {
+      const TIMESTAMP user_timestamp) {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
     if (circular_buffer_[head_].status == Entry::FREE) {
       // Regular case.
-      const auto timestamp = current::time::GetTimestampFromLockedSection(std::forward<TIMESTAMP>(user_timestamp));
+      const auto timestamp = current::time::TimestampAsMicroseconds(user_timestamp);
       if (!(timestamp > last_idx_ts_.us)) {
         CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
       }
@@ -201,7 +201,7 @@ class MMQImpl {
 
   // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW, typename TIMESTAMP, class = ENABLE_IF<time::IsTimestamp<TIMESTAMP>::value>>
-  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(TIMESTAMP&& user_timestamp) {
+  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(const TIMESTAMP user_timestamp) {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
@@ -209,7 +209,7 @@ class MMQImpl {
     if (destructing_) {
       return std::make_pair(false, 0u);  // LCOV_EXCL_LINE
     }
-    const auto timestamp = current::time::GetTimestampFromLockedSection(std::forward<TIMESTAMP>(user_timestamp));
+    const auto timestamp = current::time::TimestampAsMicroseconds(user_timestamp);
     if (!(timestamp > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
     }

@@ -73,9 +73,9 @@ class MMPQImpl {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock,
             class E,
             typename TIMESTAMP>
-  idxts_t PublisherPublishImpl(E&& entry, TIMESTAMP&& timestamp) {
+  idxts_t PublisherPublishImpl(E&& entry, const TIMESTAMP timestamp) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto us = current::time::GetTimestampFromLockedSection(std::forward<TIMESTAMP>(timestamp));
+    const auto us = current::time::TimestampAsMicroseconds(timestamp);
     ++last_idx_ts_.index;
     // Does not update `last_idx_ts_.us` at all. `UpdateHead()` must be called.
     // This is to ensure the regular `Publish`, coming through the interface defined in `Blocks/SS/pubsub.h`,
@@ -88,9 +88,9 @@ class MMPQImpl {
   // NOTE: `UpdateHead` must be called for the entries to be processed, since otherwise, as entries can be published
   // at non-increasing timestamps order, they must be held in the queue.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename TIMESTAMP>
-  void PublisherUpdateHeadImpl(TIMESTAMP&& timestamp) {
+  void PublisherUpdateHeadImpl(const TIMESTAMP timestamp) {
     locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto us = current::time::GetTimestampFromLockedSection(std::forward<TIMESTAMP>(timestamp));
+    const auto us = current::time::TimestampAsMicroseconds(timestamp);
     if (!(us > last_idx_ts_.us)) {
       CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), us));
     }

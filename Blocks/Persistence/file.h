@@ -436,11 +436,11 @@ class FilePersister {
 
   // `TIMESTAMP` can be `std::chrono::microseconds` or `current::time::DefaultTimeArgument`.
   template <current::locks::MutexLockStatus MLS, typename E, typename TIMESTAMP>
-  idxts_t PersisterPublishImpl(E&& entry, TIMESTAMP&& provided_timestamp) {
+  idxts_t PersisterPublishImpl(E&& entry, const TIMESTAMP provided_timestamp) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->publish_mutex_ref_);
 
     end_t iterator = file_persister_impl_->end_.load();
-    const auto timestamp = current::time::GetTimestampFromLockedSection(std::forward<TIMESTAMP>(provided_timestamp));
+    const auto timestamp = current::time::TimestampAsMicroseconds(provided_timestamp);
     if (!(timestamp > iterator.head)) {
 #ifdef CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
       std::cerr << "timestamp: " << timestamp.count() << ", iterator.head: " << iterator.head.count() << std::endl;
@@ -468,11 +468,11 @@ class FilePersister {
   }
 
   template <current::locks::MutexLockStatus MLS, typename TIMESTAMP>
-  void PersisterUpdateHeadImpl(TIMESTAMP&& provided_timestamp) {
+  void PersisterUpdateHeadImpl(const TIMESTAMP provided_timestamp) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->publish_mutex_ref_);
 
     end_t iterator = file_persister_impl_->end_.load();
-    const auto timestamp = current::time::GetTimestampFromLockedSection(std::forward<TIMESTAMP>(provided_timestamp));
+    const auto timestamp = current::time::TimestampAsMicroseconds(provided_timestamp);
     if (!(timestamp > iterator.head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), timestamp));
     }
