@@ -680,7 +680,11 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
 #endif  // CURRENT_HTTP_DATA_JOURNAL_ENABLED
 
 #ifndef CURRENT_APPLE  // This test is flaky on OS X.
-TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
+TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer)
+#else
+TEST(PosixHTTPServerTest, DISABLED_InvalidHEXAsChunkSizeDoesNotKillServer)
+#endif
+{
   std::atomic_bool wrong_chunk_size_exception_thrown(false);
   std::thread t([&wrong_chunk_size_exception_thrown](Socket s) {
     try {
@@ -709,7 +713,6 @@ TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
   // Confirm the server did throw an exception attempting to accept the connection.
   ASSERT_TRUE(wrong_chunk_size_exception_thrown);
 }
-#endif  // !defined(CURRENT_APPLE)
 
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
 TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
