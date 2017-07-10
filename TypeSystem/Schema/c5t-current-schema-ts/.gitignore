@@ -1,0 +1,20 @@
+# OS-specific.
+.DS_Store
+
+# IDE-specific.
+/.vscode/
+
+# Node-specific.
+/node_modules/
+npm-debug.log
+
+# Build output.
+/build/
+
+# Test harness output.
+/coverage/
+/.nyc_output/
+/test/smoke_test_struct_interface.ts
+/test/smoke_test_struct_serialized.json
+
+# ----------------

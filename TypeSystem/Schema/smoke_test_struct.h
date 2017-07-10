@@ -5,40 +5,40 @@ namespace SMOKE_TEST_STRUCT_NAMESPACE {
 // clang-format off
 
 CURRENT_STRUCT(Primitives) {
-  CURRENT_FIELD(a, uint8_t);
+  CURRENT_FIELD(a, uint8_t, (static_cast<uint8_t>(1) << 7));
   CURRENT_FIELD_DESCRIPTION(a, "It's the \"order\" of fields that matters.");
-  CURRENT_FIELD(b, uint16_t);
-  CURRENT_FIELD(c, uint32_t);
-  CURRENT_FIELD(d, uint64_t);
-  CURRENT_FIELD(e, int8_t);
-  CURRENT_FIELD(f, int16_t);
-  CURRENT_FIELD(g, int32_t);
-  CURRENT_FIELD(h, int64_t);
-  CURRENT_FIELD(i, char);
-  CURRENT_FIELD(j, std::string);
-  CURRENT_FIELD(k, float);
-  CURRENT_FIELD(l, double);
-  CURRENT_FIELD(m, bool);
+  CURRENT_FIELD(b, uint16_t, (static_cast<uint16_t>(1) << 15));
+  CURRENT_FIELD(c, uint32_t, (static_cast<uint32_t>(1) << 31));
+  CURRENT_FIELD(d, uint64_t, (static_cast<uint64_t>(1) << 63));
+  CURRENT_FIELD(e, int8_t, (static_cast<int8_t>(1) << 6));
+  CURRENT_FIELD(f, int16_t, (static_cast<int16_t>(1) << 14));
+  CURRENT_FIELD(g, int32_t, (static_cast<int32_t>(1) << 30));
+  CURRENT_FIELD(h, int64_t, (static_cast<int64_t>(1) << 62));
+  CURRENT_FIELD(i, char, 'A');
+  CURRENT_FIELD(j, std::string, "ABC");
+  CURRENT_FIELD(k, float, (static_cast<float>(3.141590)));
+  CURRENT_FIELD(l, double, (static_cast<double>(0.314159e-10)));
+  CURRENT_FIELD(m, bool, true);
   CURRENT_FIELD_DESCRIPTION(m, "Multiline\ndescriptions\ncan be used.");
-  CURRENT_FIELD(n, std::chrono::microseconds);
-  CURRENT_FIELD(o, std::chrono::milliseconds);
+  CURRENT_FIELD(n, std::chrono::microseconds, std::chrono::microseconds(1499684174969000LL));
+  CURRENT_FIELD(o, std::chrono::milliseconds, std::chrono::milliseconds(1499684174969LL));
   CURRENT_FIELD_DESCRIPTION(b, "Field descriptions can be set in any order.");
 };
 
 CURRENT_ENUM(E, uint16_t) { SOME, DUMMY, VALUES };
 
 CURRENT_STRUCT(A) {
-  CURRENT_FIELD(a, int32_t);
+  CURRENT_FIELD(a, int32_t, (static_cast<int32_t>(1) << 30));
 };
 
 CURRENT_STRUCT(B, A) {
-  CURRENT_FIELD(b, int32_t);
+  CURRENT_FIELD(b, int32_t, (static_cast<int32_t>(1) << 30));
 };
 
 CURRENT_STRUCT(B2, A) {};  // Should still have field `a` from the base class `A` in it.
 
 CURRENT_STRUCT(X) {
-  CURRENT_FIELD(x, int32_t);
+  CURRENT_FIELD(x, int32_t, (static_cast<int32_t>(1) << 30));
 };
 
 CURRENT_STRUCT(Y) {
@@ -59,7 +59,7 @@ CURRENT_STRUCT(C) {
 };
 
 CURRENT_STRUCT_T(Templated) {
-  CURRENT_FIELD(foo, int32_t);
+  CURRENT_FIELD(foo, int32_t, (static_cast<int32_t>(1) << 30));
   CURRENT_FIELD(bar, T);
 };
 
