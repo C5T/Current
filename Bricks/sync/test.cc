@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main.h"
 
 // Test using `current::Owned<>` as a `shared_ptr<>`.
-TEST(Borrowable, Owned) {
+TEST(OwnedBorrowed, Owned) {
   current::Owned<int> x1(current::ConstructOwned<int>(), 0);
   EXPECT_EQ(0u, x1.NumberOfActiveBorrowers());
   EXPECT_EQ(0u, x1.TotalBorrowersSpawnedThroughoutLifetime());
@@ -99,7 +99,7 @@ TEST(Borrowable, Owned) {
 }
 
 // Test using `current::Owned<>` via an exclusive mutex-guarded accessor.
-TEST(Borrowable, ExclusiveUseOfOwned) {
+TEST(OwnedBorrowed, ExclusiveUseOfOwned) {
   current::Owned<int> x(current::ConstructOwned<int>(), 0);
   x.ExclusiveUse([](int value) { EXPECT_EQ(0, value); });
   x.ExclusiveUse([](int& value) { ++value; });
@@ -108,7 +108,7 @@ TEST(Borrowable, ExclusiveUseOfOwned) {
 }
 
 // Test `current::Owned<>` can be move-constructed.
-TEST(Borrowable, MoveOwned) {
+TEST(OwnedBorrowed, MoveOwned) {
   current::Owned<int> y([]() {
     current::Owned<int> x(current::ConstructOwned<int>(), 0);
     EXPECT_EQ(0, *x);
@@ -122,7 +122,7 @@ TEST(Borrowable, MoveOwned) {
 }
 
 // Test `current::BorrowedWithCallback<>` is ref-counted within the master `current::Owned<>`.
-TEST(Borrowable, BorrowedWithCallback) {
+TEST(OwnedBorrowed, BorrowedWithCallback) {
   std::string log;
 
   current::Owned<int> x(current::ConstructOwned<int>(), 0);
@@ -163,9 +163,9 @@ TEST(Borrowable, BorrowedWithCallback) {
 // Create a `current::Owned<>` and use its object from a different thread via `current::BorrowedWithCallback<>`.
 // Have the supplementary thread outlive the main one, and confirm the test waits for the supplementary thread
 // to complete its job.
-TEST(Borrowable, BorrowedWithCallbackOutlivingTheOwner) {
+TEST(OwnedBorrowed, BorrowedWithCallbackOutlivingTheOwner) {
   // Declare the variable to work with, and a reference wrapper for it, outside the scope of the test.
-  // This way the resulting, final value of this variable can be tested as the `Borrowable*` part is all done.
+  // This way the resulting, final value of this variable can be tested as the `Owned/Borrowed` part is done.
   int value = 0;
   struct Container {
     int& ref;
@@ -219,8 +219,8 @@ TEST(Borrowable, BorrowedWithCallbackOutlivingTheOwner) {
 }
 
 // Same as the above test, but do not use an external termination primitive,
-// but rely on polling the availability of `current::BorrowedWithCallback<>` itseld.
-TEST(Borrowable, UseInternalIsDestructingGetter) {
+// but rely on polling the availability of `current::BorrowedWithCallback<>` itself.
+TEST(OwnedBorrowed, UseInternalIsDestructingGetter) {
   int value = 0;
   struct Container {
     int& ref;

@@ -74,7 +74,7 @@ namespace impl {
 // Helper to prohibit copying `Owned`.
 struct ConstructOwned {};
 struct ConstructBorrowable {};
-struct ConstructBorrowableObjectViaMoveConstructor {};
+struct ConstructBorrowedObjectViaMoveConstructor {};
 
 struct ConstructUniqueContainerViaMoveConstructor {};
 
@@ -180,13 +180,13 @@ class WeakBorrowed {
     key_ = p_actual_instance_->RegisterBorrowerFromLockedSection(destruction_callback);
   }
 
-  WeakBorrowed(impl::ConstructBorrowableObjectViaMoveConstructor,
+  WeakBorrowed(impl::ConstructBorrowedObjectViaMoveConstructor,
                WeakBorrowed&& rhs,
                std::function<void()> destruction_callback) {
     MoveFrom(std::move(rhs), destruction_callback);
   }
 
-  void InitializedMovedOwned(instance_t& actual_instance) {
+  void InitializeMovedOwned(instance_t& actual_instance) {
     p_actual_instance_ = &actual_instance;
     key_ = 0u;
   }
@@ -266,10 +266,10 @@ class WeakBorrowed {
   void InternalUnRegister() {
     if (key_) {
       CURRENT_ASSERT(p_actual_instance_);
-      // `*this` is a valid (non - std::move()-d - away) `BorrowedWithCallback`.
-      // As it is being terminated, it should unregister its callback, so that:
-      // 1) If the object is still alive, to have this callback not be called upon it being destructed, and/or
-      // 2) If the object is now destructing, to indicate this borrower has released it, to decrement
+      // `*this` is a valid (non - std::move()-d - away) borrowed object. As it is being terminated,
+      // it should unregister its callback, so that:
+      // 1) When the object is still alive, to have this callback not be called upon it being destructed, and/or
+      // 2) When the object is destructing, to indicate this borrower has released it, to decrement
       //    the active borrowers counter, and trigger a condition variable `*p_actual_instance_` is waiting on
       //    if this counter has reached zero with this unregistration.
       p_actual_instance_->UnRegisterBorrower(key_);
@@ -347,7 +347,7 @@ class Owned final : private impl::UniqueInstanceContainer<T>, public WeakBorrowe
 
   Owned& operator=(Owned&& rhs) {
     impl_t::operator=(std::move(rhs));
-    base_t::InitializedMovedOwned(*impl_t::movable_instance_);
+    base_t::InitializeMovedOwned(*impl_t::movable_instance_);
     rhs.p_actual_instance_ = nullptr;
     return *this;
   }
@@ -360,7 +360,7 @@ class Owned final : private impl::UniqueInstanceContainer<T>, public WeakBorrowe
 // 1) `const WeakBorrowed<T>&`, and
 // 2) a required callback, which will be called once the scope of the `Owned<T>` will be terminating.
 // Obviously, an instance of `BorrowedWithCallback` can't be moved natively, as the
-// destruction callback it uses must point to the respective owner object, not to the "old" one.
+// destruction callback it uses may well have captured `this` of the used-to-be owner, which is now non-existent.
 template <typename T>
 class BorrowedWithCallback final : public WeakBorrowed<T> {
  private:
@@ -373,7 +373,7 @@ class BorrowedWithCallback final : public WeakBorrowed<T> {
       : base_t(impl::ConstructBorrowable(), rhs, destruction_callback) {}
 
   BorrowedWithCallback(WeakBorrowed<T>&& rhs, std::function<void()> destruction_callback)
-      : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), destruction_callback) {}
+      : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), destruction_callback) {}
 
   void operator=(std::nullptr_t) { base_t::InternalUnRegister(); }
 
@@ -400,7 +400,7 @@ class Borrowed final : public WeakBorrowed<T> {
  public:
   Borrowed(const Borrowed& rhs) : base_t(impl::ConstructBorrowable(), rhs, []() {}) {}
 
-  Borrowed(Borrowed&& rhs) : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
+  Borrowed(Borrowed&& rhs) : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
 
   Borrowed& operator=(Borrowed&& rhs) {
     base_t::MoveFrom(std::move(rhs), []() {});
@@ -410,7 +410,7 @@ class Borrowed final : public WeakBorrowed<T> {
   Borrowed(const WeakBorrowed<T>& rhs) : base_t(impl::ConstructBorrowable(), rhs, []() {}) {}
 
   Borrowed(WeakBorrowed<T>&& rhs)
-      : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
+      : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
 
   void operator=(std::nullptr_t) { base_t::InternalUnRegister(); }
 
@@ -441,14 +441,14 @@ class BorrowedOfGuaranteedLifetime final : public WeakBorrowed<T> {
       : base_t(impl::ConstructBorrowable(), rhs, BorrowedOfGuaranteedLifetimeInvariantErrorCallback) {}
 
   BorrowedOfGuaranteedLifetime(WeakBorrowed<T>&& rhs)
-      : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(),
+      : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(),
                std::move(rhs),
                BorrowedOfGuaranteedLifetimeInvariantErrorCallback) {}
 
   void operator=(std::nullptr_t) { base_t::InternalUnRegister(); }
 
   BorrowedOfGuaranteedLifetime(BorrowedOfGuaranteedLifetime&& rhs)
-      : base_t(impl::ConstructBorrowableObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
+      : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
 
   BorrowedOfGuaranteedLifetime& operator=(BorrowedOfGuaranteedLifetime&& rhs) {
     base_t::MoveFrom(std::move(rhs), BorrowedOfGuaranteedLifetimeInvariantErrorCallback);

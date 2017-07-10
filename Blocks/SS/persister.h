@@ -60,14 +60,14 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock,
             typename E,
             class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
-  IndexAndTimestamp Publish(E&& e, current::time::DefaultTimeArgument = current::time::DefaultTimeArgument()) {
+  idxts_t Publish(E&& e, current::time::DefaultTimeArgument = current::time::DefaultTimeArgument()) {
     return IMPL::template PersisterPublishImpl<MLS>(std::forward<E>(e), current::time::DefaultTimeArgument());
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock,
             typename E,
             class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
-  IndexAndTimestamp Publish(E&& e, std::chrono::microseconds us) {
+  idxts_t Publish(E&& e, std::chrono::microseconds us) {
     return IMPL::template PersisterPublishImpl<MLS>(std::forward<E>(e), us);
   }
 

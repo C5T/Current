@@ -207,7 +207,7 @@ class Stream final {
     }
   }
 
-  // `BorrowPublisher()`: The called can count on the fact that if the call succeeded,
+  // `BorrowPublisher()`: The caller can count on the fact that if the call succeeded,
   // the returned borrowed publisher will be valid until voluntarily released.
   // CAN THROW `PublisherNotAvailableException`.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
@@ -314,7 +314,6 @@ class Stream final {
       } else {
         // The constructor has not completed successfully. The thread was not started, and `impl_` is garbage.
         if (done_callback_) {
-          // TODO(dkorolev): Fix this ownership issue.
           done_callback_();
         }
       }
@@ -436,8 +435,8 @@ class Stream final {
       return;
     }
 
-    // First, ensure we're not in the destruction mode, and atomically claim we should not be
-    // without destructing this HTTP subscription, assuming we do follow up with creating one.
+    // First and foremost, save outselves the trouble of starting the subscriber
+    // if the stream is already being destructed.
     const Borrowed<impl_t> borrowed_impl(impl_);
     if (!borrowed_impl) {
       r("", HTTPResponseCode.ServiceUnavailable);

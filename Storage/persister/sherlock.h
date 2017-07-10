@@ -134,7 +134,7 @@ class SherlockStreamPersisterImpl final {
       std::swap(transaction.meta, journal.transaction_meta);
       Value(publisher_used_)
           ->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(transaction), timestamp);
-      PushTimestampToFromLockedSection(timestamp);
+      SetLastAppliedTimestampFromLockedSection(timestamp);
     }
     journal.Clear();
   }
@@ -193,7 +193,7 @@ class SherlockStreamPersisterImpl final {
     for (const auto& mutation : transaction.mutations) {
       fields_update_f_(mutation);
     }
-    PushTimestampToFromLockedSection(timestamp);
+    SetLastAppliedTimestampFromLockedSection(timestamp);
   }
 
  private:
@@ -208,7 +208,7 @@ class SherlockStreamPersisterImpl final {
   // Important: The publishing mutex of the respective stream must be unlocked!
   void TerminateStreamSubscriptionFromLockedSection() { subscriber_scope_ = nullptr; }
 
-  void PushTimestampToFromLockedSection(std::chrono::microseconds timestamp) {
+  void SetLastAppliedTimestampFromLockedSection(std::chrono::microseconds timestamp) {
     CURRENT_ASSERT(timestamp > last_applied_timestamp_);
     last_applied_timestamp_ = timestamp;
   }
@@ -217,7 +217,7 @@ class SherlockStreamPersisterImpl final {
   fields_update_function_t fields_update_f_;
 
   std::mutex& stream_publishing_mutex_ref_;                            // == `stream_->Impl()->publishing_mutex`.
-  Borrowed<stream_t> stream_;                                          // TODO(dkorolev): Rename to just `stream_`.
+  Borrowed<stream_t> stream_;
   Optional<Borrowed<typename stream_t::publisher_t>> publisher_used_;  // Set iff the storage is the master storage.
 
   mutable std::mutex master_follower_change_mutex_;

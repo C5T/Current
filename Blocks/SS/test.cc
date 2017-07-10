@@ -80,22 +80,22 @@ struct DemoEntryPublisherImpl {
   size_t index = 0u;
   std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
 
-  template <current::locks::MutexLockStatus, typename US>
-  idxts_t PublisherPublishImpl(const DispatchDemoEntry& e, const US) {
+  template <current::locks::MutexLockStatus, typename TIMESTAMP>
+  idxts_t PublisherPublishImpl(const DispatchDemoEntry& e, const TIMESTAMP) {
     ++index;
     values.push_back(e);
     return idxts_t(index, current::time::Now());
   }
 
-  template <current::locks::MutexLockStatus, typename US>
-  idxts_t PublisherPublishImpl(DispatchDemoEntry&& e, const US) {
+  template <current::locks::MutexLockStatus, typename TIMESTAMP>
+  idxts_t PublisherPublishImpl(DispatchDemoEntry&& e, const TIMESTAMP) {
     ++index;
     values.push_back(std::move(e));
     return idxts_t(index, current::time::Now());
   }
 
-  template <current::locks::MutexLockStatus, typename US>
-  void PublisherUpdateHeadImpl(const US) const {}
+  template <current::locks::MutexLockStatus, typename TIMESTAMP>
+  void PublisherUpdateHeadImpl(const TIMESTAMP) const {}
 };
 
 }  // namespace stream_system_test
