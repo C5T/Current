@@ -313,7 +313,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           // They assume the declaration order is respected, and any dependencies have already been listed.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.cpp_name.count(p.type_id) != 0u) {
+            if (globals.cpp_name.count(p.type_id)) {
               oss_ << globals.cpp_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -683,7 +683,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
           // They assume the declaration order is respected, and any dependencies have already been listed.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.fsharp_name.count(p.type_id) != 0u) {
+            if (globals.fsharp_name.count(p.type_id)) {
               oss_ << globals.fsharp_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -820,7 +820,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
           // `operator()(...)`-s of this block print the type name, without the expansion.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.markdown_name.count(p.type_id) != 0u) {
+            if (globals.markdown_name.count(p.type_id)) {
               oss_ << globals.markdown_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -964,7 +964,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
           // `operator()(...)`-s of this block fills in `this->result_` with the type, not expanding on it.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.cpp_name.count(p.type_id) != 0u) {
+            if (globals.cpp_name.count(p.type_id)) {
               variant_clean_type_names::primitive result;
               result.type = globals.cpp_name.at(p.type_id);
               result.text = globals.markdown_name.at(p.type_id);
@@ -979,7 +979,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
           void operator()(const ReflectedType_Enum& e) const {
             const auto& globals = PrimitiveTypesList();
 
-            if (globals.cpp_name.count(e.underlying_type) != 0u) {
+            if (globals.cpp_name.count(e.underlying_type)) {
               variant_clean_type_names::key result;
               result.name = e.name;
               result.type = globals.cpp_name.at(e.underlying_type);
@@ -1180,7 +1180,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
           // They assume the declaration order is respected, and any dependencies have already been listed.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.typescript_name.count(p.type_id) != 0u) {
+            if (globals.typescript_name.count(p.type_id)) {
               oss_ << globals.typescript_name.at(p.type_id) + "_IO";
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -1194,7 +1194,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
           }
           void operator()(const ReflectedType_Map& m) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.typescript_name.count(m.key_type) != 0u) {
+            if (globals.typescript_name.count(m.key_type)) {
               oss_ << "C5TCurrent.PrimitiveMap_IO(" << self_.TypeName(m.value_type) << ')';
             } else {
               oss_ << "C5TCurrent.NonPrimitiveMap_IO(" << self_.TypeName(m.key_type) << ", "
@@ -1203,7 +1203,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
           }
           void operator()(const ReflectedType_UnorderedMap& m) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.typescript_name.count(m.key_type) != 0u) {
+            if (globals.typescript_name.count(m.key_type)) {
               oss_ << "C5TCurrent.PrimitiveUnorderedMap_IO(" << self_.TypeName(m.value_type) << ')';
             } else {
               oss_ << "C5TCurrent.NonPrimitiveUnorderedMap_IO(" << self_.TypeName(m.key_type) << ", "
