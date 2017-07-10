@@ -281,7 +281,7 @@ class Stream final {
     void operator=(SubscriberThreadInstance&&) = delete;
 
    public:
-    SubscriberThreadInstance(current::Borrowed<impl_t> impl,
+    SubscriberThreadInstance(Borrowed<impl_t> impl,
                              F& subscriber,
                              uint64_t begin_idx,
                              std::function<void()> done_callback)
@@ -397,7 +397,7 @@ class Stream final {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
-    SubscriberScope(current::Borrowed<impl_t> impl,
+    SubscriberScope(Borrowed<impl_t> impl,
                     F& subscriber,
                     uint64_t begin_idx,
                     std::function<void()> done_callback)

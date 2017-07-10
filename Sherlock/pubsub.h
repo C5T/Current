@@ -229,7 +229,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   using impl_t = StreamImpl<E, PERSISTENCE_LAYER>;
 
   PubSubHTTPEndpointImpl(const std::string& subscription_id,
-                         current::Borrowed<impl_t> data,
+                         Borrowed<impl_t> data,
                          Request r,
                          ParsedHTTPRequestParams params)
       : impl_(std::move(data), [this]() { time_to_terminate_ = true; }),

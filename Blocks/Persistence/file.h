@@ -120,7 +120,7 @@ class IteratorOverFileOfPersistedEntries {
 };
 
 template <typename DESIRED, typename ACTUAL>
-struct ConstructAsNecessary {
+struct MakeSureTheRightTypeIsSerialized {
   template <typename T>
   static DESIRED DoIt(T&& x) {
     return DESIRED(std::forward<T>(x));
@@ -128,7 +128,7 @@ struct ConstructAsNecessary {
 };
 
 template <typename T>
-struct ConstructAsNecessary<T, T> {
+struct MakeSureTheRightTypeIsSerialized<T, T> {
   static const T& DoIt(const T& x) { return x; }
 };
 
@@ -456,11 +456,11 @@ class FilePersister {
     file_persister_impl_->record_offset_.push_back(file_persister_impl_->file_appender_.tellp());
     file_persister_impl_->record_timestamp_.push_back(timestamp);
 
-    // Explicit `ConstructAsNecessary` is essential, otherwise the `Variant`'s case
+    // Explicit `MakeSureTheRightTypeIsSerialized` is essential, otherwise the `Variant`'s case
     // would be serialized in an unwrapped way when passed directly.
     file_persister_impl_->file_appender_ << JSON(idxts) << '\t'
-                                         << JSON(ConstructAsNecessary<ENTRY, decay<E>>::DoIt(std::forward<E>(entry)))
-                                         << std::endl;
+                                         << JSON(MakeSureTheRightTypeIsSerialized<ENTRY, decay<E>>::DoIt(
+                                                std::forward<E>(entry))) << std::endl;
     ++iterator.next_index;
     file_persister_impl_->head_offset_ = 0;
     file_persister_impl_->end_.store(iterator);
