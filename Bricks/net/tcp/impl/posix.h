@@ -520,11 +520,10 @@ inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv =
   if (!result) {
     CURRENT_THROW(SocketResolveAddressException(host_and_service));
   } else if (retval) {
-    freeaddrinfo(result);
-    CURRENT_THROW(SocketResolveAddressException(host_and_service + ' ' + gai_strerror(retval)));
+    ::freeaddrinfo(result);
+    CURRENT_THROW(SocketResolveAddressException(host_and_service + ' ' + ::gai_strerror(retval)));
   }
-  addrinfo_t safe_result(result);
-  return safe_result;
+  return addrinfo_t(result);
 }
 
 inline std::string ResolveIPFromHostname(const std::string& hostname) {

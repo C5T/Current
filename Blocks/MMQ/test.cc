@@ -360,7 +360,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   EXPECT_EQ("[1] = three, [2] = seven", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("three @ 3, seven @ 7", current::strings::Join(c.messages_by_timestamps_, ", "));
 
-  // Can't publish anything prior to "seven", as HEAD is already at `7`.
+  // Can't update head to anything prior and including `7`, as it is already at `7`.
   ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(5)), current::ss::InconsistentTimestampException);
   ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(7)), current::ss::InconsistentTimestampException);
 
@@ -403,7 +403,6 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
             current::strings::Join(c.messages_by_timestamps_, ", "));
 
   // Finally, publish "joker", in the "present" which is way ahead in time compared to the third one left, the "jack".
-  // This publish into "present" would force the consumer to process both the outstanding "jack" and the "joker" itself.
   mmpq.Publish("joker", std::chrono::microseconds(1000));
   mmpq.UpdateHead(std::chrono::microseconds(1000));
   while (c.processed_messages_ != 7) {

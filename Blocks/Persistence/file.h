@@ -317,9 +317,10 @@ class FilePersister {
       return result;
     }
 
-    void operator++() {
+    Iterator& operator++() {
       // By convention, iterating over data, being an immutable operation, does not throw.
       ++i_;
+      return *this;
     }
     bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
@@ -456,7 +457,7 @@ class FilePersister {
     file_persister_impl_->record_timestamp_.push_back(timestamp);
 
     // Explicit `ConstructAsNecessary` is essential, otherwise the `Variant`'s case
-    // would be serialized in an unwrapped way when passed directly
+    // would be serialized in an unwrapped way when passed directly.
     file_persister_impl_->file_appender_ << JSON(idxts) << '\t'
                                          << JSON(ConstructAsNecessary<ENTRY, decay<E>>::DoIt(std::forward<E>(entry)))
                                          << std::endl;
@@ -492,7 +493,7 @@ class FilePersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  bool PersisterEmptyImpl() const noexcept {
+  bool PersisterEmptyImpl() const {
     return !file_persister_impl_->end_.load().next_index;
   }
 

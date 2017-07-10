@@ -179,13 +179,13 @@ class MemoryPersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  bool PersisterEmptyImpl() const noexcept {
+  bool PersisterEmptyImpl() const {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     return container_->entries_.empty();
   }
 
   template <current::locks::MutexLockStatus MLS>
-  uint64_t PersisterSizeImpl() const noexcept {
+  uint64_t PersisterSizeImpl() const {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     return static_cast<uint64_t>(container_->entries_.size());
   }
@@ -202,7 +202,7 @@ class MemoryPersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  head_optidxts_t PersisterHeadAndLastPublishedIndexAndTimestampImpl() const noexcept {
+  head_optidxts_t PersisterHeadAndLastPublishedIndexAndTimestampImpl() const {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     if (!container_->entries_.empty()) {
       CURRENT_ASSERT(container_->head_ >= container_->entries_.back().first);
@@ -213,7 +213,7 @@ class MemoryPersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  std::chrono::microseconds PersisterCurrentHeadImpl() const noexcept {
+  std::chrono::microseconds PersisterCurrentHeadImpl() const {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     return container_->head_;
   }
@@ -284,7 +284,7 @@ class MemoryPersister {
     const auto index_range = PersisterIndexRangeByTimestampRangeImpl<MLS>(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
       return PersisterIterateImpl<MLS, IM>(index_range.first, index_range.second);
-    } else {  // No entries_ found in the given range.
+    } else {  // No entries found in the given range.
       return IterableRange<IM>(container_, 0, 0);
     }
   }

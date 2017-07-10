@@ -755,10 +755,9 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     EXPECT_NO_THROW(*impl.Iterate(0, 1).begin());
     EXPECT_NO_THROW(*impl.Iterate(1, 2).begin());
     EXPECT_NO_THROW(*impl.Iterate().begin());
-    // DIMA DIMA DIMA
-    // EXPECT_NO_THROW(*(++(impl.Iterate().begin())));
+    EXPECT_NO_THROW(*(++impl.Iterate().begin()));
 
-    // swap the first two entries to provoke the InconsistentIndexException exceptions.
+    // Swap the first two entries to provoke the `InconsistentIndexException` exceptions.
     std::swap(lines[0], lines[1]);
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
@@ -766,8 +765,7 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     EXPECT_THROW(*impl.Iterate(0, 1).begin(), current::ss::InconsistentIndexException);
     EXPECT_THROW(*impl.Iterate(1, 2).begin(), current::ss::InconsistentIndexException);
     EXPECT_THROW(*impl.Iterate().begin(), current::ss::InconsistentIndexException);
-    // DIMA DIMA DIMA
-    // EXPECT_THROW(*(++impl.Iterate().begin()), current::ss::InconsistentIndexException);
+    EXPECT_THROW(*(++impl.Iterate().begin()), current::ss::InconsistentIndexException);
     EXPECT_NO_THROW(
         (*impl.Iterate<current::locks::MutexLockStatus::NeedToLock, current::ss::IterationMode::Unsafe>(0, 1).begin()));
     EXPECT_NO_THROW(

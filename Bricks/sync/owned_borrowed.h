@@ -212,8 +212,8 @@ class WeakBorrowed {
   // The only way to invalidate the object is to move away from it.
   // The only way to mark it for destruction is for the `Owned` object to get out of scope.
   // THREAD-SAFE. NEVER THROWS.
-  bool IsValid() const noexcept { return p_actual_instance_ && !p_actual_instance_->destructing_; }
-  operator bool() const noexcept { return IsValid(); }
+  bool IsValid() const { return p_actual_instance_ && !p_actual_instance_->destructing_; }
+  operator bool() const { return IsValid(); }
 
   // Smart-pointer-style accessors.
   // THREAD-SAFE. NEVER THROWS.
@@ -247,7 +247,7 @@ class WeakBorrowed {
   // Return the number of registered borrower users besides the master one.
   // For unit-testing purposes mostly, but may end up useful. -- D.K.
   // THREAD-SAFE. NEVER THROWS.
-  size_t NumberOfActiveBorrowers() const noexcept {
+  size_t NumberOfActiveBorrowers() const {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     return p_actual_instance_->borrowers_.size();
   }
@@ -255,7 +255,7 @@ class WeakBorrowed {
   // Return the total number of registered borrower users registered, with some possibly already out of scope.
   // For unit-testing purposes mostly, but may end up useful. -- D.K.
   // THREAD-SAFE. NEVER THROWS.
-  size_t TotalBorrowersSpawnedThroughoutLifetime() const noexcept {
+  size_t TotalBorrowersSpawnedThroughoutLifetime() const {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     return p_actual_instance_->total_borrowers_spawned_throughout_lifetime_;
   }
