@@ -788,8 +788,7 @@ TEST(PersistenceLayer, FileSafeVsUnsafeIterators) {
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
     // Check that "safe" iterators throw the MalformedEntryException while "unsafe" ones don't.
-    // DIMA DIMA DIMA
-    // EXPECT_THROW(*(++(impl.Iterate().begin())), current::persistence::MalformedEntryException);
+    EXPECT_THROW(*(++(impl.Iterate().begin())), current::persistence::MalformedEntryException);
     EXPECT_THROW(*impl.Iterate(1, 2).begin(), current::persistence::MalformedEntryException);
     EXPECT_NO_THROW(
         (*impl.Iterate<current::locks::MutexLockStatus::NeedToLock, current::ss::IterationMode::Unsafe>(1, 2).begin()));
