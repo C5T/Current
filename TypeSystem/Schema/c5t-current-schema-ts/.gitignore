@@ -16,5 +16,3 @@ npm-debug.log
 /.nyc_output/
 /test/smoke_test_struct_interface.ts
 /test/smoke_test_struct_serialized.json
-
-# ----------------
