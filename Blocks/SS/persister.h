@@ -34,6 +34,8 @@ SOFTWARE.
 namespace current {
 namespace ss {
 
+enum class IterationMode : bool { Safe = true, Unsafe = false };
+
 struct GenericPersister {};
 
 template <typename ENTRY>
@@ -95,18 +97,25 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
                                                            std::chrono::microseconds till) const {
     return IMPL::IndexRangeByTimestampRange(from, till);
   }
-  using IterableRange = typename IMPL::IterableRange;
+
+  template <IterationMode IM>
+  using IterableRange = typename IMPL::template IterableRange<IM>;
 
   // NOTE: `IMPL::Iterate()` may throw.
-  IterableRange Iterate(uint64_t begin, uint64_t end) const { return IMPL::Iterate(begin, end); }
-  IterableRange Iterate(uint64_t begin) const { return IMPL::Iterate(begin, static_cast<uint64_t>(-1)); }
-  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
-    return IMPL::Iterate(from, till);
+  template <IterationMode IM = IterationMode::Safe>
+  IterableRange<IM> Iterate(uint64_t begin, uint64_t end) const { return IMPL::template Iterate<IM>(begin, end); }
+  template <IterationMode IM = IterationMode::Safe>
+  IterableRange<IM> Iterate(uint64_t begin) const { return IMPL::template Iterate<IM>(begin, static_cast<uint64_t>(-1)); }
+  template <IterationMode IM = IterationMode::Safe>
+  IterableRange<IM> Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return IMPL::template Iterate<IM>(from, till);
   }
-  IterableRange Iterate(std::chrono::microseconds from) const {
-    return IMPL::Iterate(from, std::chrono::microseconds(-1));
+  template <IterationMode IM = IterationMode::Safe>
+  IterableRange<IM> Iterate(std::chrono::microseconds from) const {
+    return IMPL::template Iterate<IM>(from, std::chrono::microseconds(-1));
   }
-  IterableRange Iterate() const { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
+  template <IterationMode IM = IterationMode::Safe>
+  IterableRange<IM> Iterate() const { return IMPL::template Iterate<IM>(0, static_cast<uint64_t>(-1)); }
 };
 
 // For `static_assert`-s.
