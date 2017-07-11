@@ -226,8 +226,8 @@ using namespace enable_strptime_on_windows;
 inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int line) {
   fprintf(stderr, "Current assertion failed:\n\t%s\n\t%s : %d\n", text, file, line);
 #ifdef CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
-  volatile int* fffuuuuu = nullptr;
-  *fffuuuuu = 42;
+  volatile int* you_shalt_segfault = nullptr;
+  *you_shalt_segfault = 42;
 #endif  // CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
 }
 
