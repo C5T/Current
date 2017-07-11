@@ -871,7 +871,7 @@ TEST(TransactionalStorage, SmokeTest) {
   {
     current::Owned<storage_t> replayed = storage_t::CreateFollowingStorage(persistence_file_name);
 
-    while (replayed->LastApliedTimestamp() < std::chrono::microseconds(3000000)) {
+    while (replayed->LastAppliedTimestamp() < std::chrono::microseconds(3000000)) {
       std::this_thread::yield();
     }
 
@@ -1767,7 +1767,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
             current::FileSystem::ReadFileAsString(replicated_stream_file_name));
 
   // Wait until the we can see the mutation made in the last transaction.
-  while (replicated_storage->LastApliedTimestamp() < std::chrono::microseconds(200)) {
+  while (replicated_storage->LastAppliedTimestamp() < std::chrono::microseconds(200)) {
     std::this_thread::yield();
   }
 
@@ -3122,7 +3122,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   {
     // Confirm replaying storage with a mixed-content stream does its job.
     auto replayed = storage_t::CreateFollowingStorageAtopExistingStream(storage->UnderlyingStream());
-    while (replayed->LastApliedTimestamp() < std::chrono::microseconds(2)) {  // As `3` is a non-transaction.
+    while (replayed->LastAppliedTimestamp() < std::chrono::microseconds(2)) {  // As `3` is a non-transaction.
       std::this_thread::yield();
     }
     const auto result = replayed->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {

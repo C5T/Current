@@ -261,7 +261,7 @@ class StorageImpl {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  std::chrono::microseconds LastApliedTimestamp() const {
+  std::chrono::microseconds LastAppliedTimestamp() const {
     return persister_.template LastAppliedTimestampPersister<MLS>();
   }
 
