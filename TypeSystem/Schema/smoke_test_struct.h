@@ -9,11 +9,13 @@ CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD_DESCRIPTION(a, "It's the \"order\" of fields that matters.");
   CURRENT_FIELD(b, uint16_t, (static_cast<uint16_t>(1) << 15));
   CURRENT_FIELD(c, uint32_t, (static_cast<uint32_t>(1) << 31));
-  CURRENT_FIELD(d, uint64_t, (static_cast<uint64_t>(1) << 63));
+  // uint64_t default value less than 53 bits to fit into JavaScript double: http://2ality.com/2012/04/number-encoding.html
+  CURRENT_FIELD(d, uint64_t, (static_cast<uint64_t>(1) << 52));
   CURRENT_FIELD(e, int8_t, (static_cast<int8_t>(1) << 6));
   CURRENT_FIELD(f, int16_t, (static_cast<int16_t>(1) << 14));
   CURRENT_FIELD(g, int32_t, (static_cast<int32_t>(1) << 30));
-  CURRENT_FIELD(h, int64_t, (static_cast<int64_t>(1) << 62));
+  // int64_t default value less than 53 bits to fit into JavaScript double: http://2ality.com/2012/04/number-encoding.html
+  CURRENT_FIELD(h, int64_t, (static_cast<int64_t>(1) << 52));
   CURRENT_FIELD(i, char, 'A');
   CURRENT_FIELD(j, std::string, "ABC");
   CURRENT_FIELD(k, float, (static_cast<float>(3.141590)));
