@@ -27,7 +27,7 @@ SOFTWARE.
 // Philosophy:
 // * The scope in which the object has been created is the master owner of this object; others are borrowers.
 // * Upon leaving the master scope, the synchronization primitive waits until all its borrowers terminate.
-// * Borrowers are under no obligation to terminate sooner or later, but they get signaled to wrap up.
+// * Borrowers are under no obligation to terminate sooner or later, although a callback may be used.
 //
 // Implementation:
 //
@@ -35,10 +35,10 @@ SOFTWARE.
 //   Creates `master`, which will live only within its creation scope.
 //   The basic usage of `master` is `master->MemberFunctionOfT(...)`, much like with C++'s `shared_ptr<T>`.
 //
-// * Borrowed<T> borrower(master);  // Or `Borrowed<T> another_borrower(borrower);`.
+// * Borrowed<T> borrower(master);  // Or `Borrowed<T> borrower(another_another_borrower);`.
 //   Initializes `borrower`, which can be used same way as `master`.
 //   Casting it to `bool` (or just checking for `if (!borrower) { ... }`) would result in `false`
-//   if and only if the master scope (the scope of the `Owned<T>` is being terminated, and is currently
+//   if and only if the master scope (the scope of `Owned<T>`) is being terminated, and is currently
 //   awaiting until all the borrowers are done.
 //
 // * BorrowedWithCallback<T> borrower(master, [&signal]() { signal.SignalTermination(); });
@@ -73,7 +73,7 @@ namespace impl {
 
 // Helper to prohibit copying `Owned`.
 struct ConstructOwned {};
-struct ConstructBorrowable {};
+struct ConstructBorrowed {};
 struct ConstructBorrowedObjectViaMoveConstructor {};
 
 struct ConstructUniqueContainerViaMoveConstructor {};
@@ -164,7 +164,8 @@ class BorrowedWithCallback;
 template <typename T>
 class BorrowedOfGuaranteedLifetime;
 
-// `WeakBorrowed<T>` is the base class for `Owned<T>`, `Borrowed<T>`, and `BorrowedWithCallback<T>`.
+// `WeakBorrowed<T>` is the base class for `Owned<T>`, `Borrowed<T>`, and `BorrowedWithCallback<T>`,
+// so it is used if the code doesn't depend on the details of original object ownership.
 template <typename T>
 class WeakBorrowed {
  private:
@@ -174,7 +175,7 @@ class WeakBorrowed {
   // `WeakBorrowed<T>` is meant to be initialized by `Owned<T>` | `BorrowedWithCallback<T>` | `Borrowed<T>` only.
   WeakBorrowed(impl::ConstructOwned, instance_t& actual_instance) : p_actual_instance_(&actual_instance), key_(0u) {}
 
-  WeakBorrowed(impl::ConstructBorrowable, const WeakBorrowed& rhs, std::function<void()> destruction_callback) {
+  WeakBorrowed(impl::ConstructBorrowed, const WeakBorrowed& rhs, std::function<void()> destruction_callback) {
     std::lock_guard<std::mutex> lock(rhs.p_actual_instance_->mutex_);
     p_actual_instance_ = rhs.p_actual_instance_;
     key_ = p_actual_instance_->RegisterBorrowerFromLockedSection(destruction_callback);
@@ -370,7 +371,7 @@ class BorrowedWithCallback final : public WeakBorrowed<T> {
 
  public:
   BorrowedWithCallback(const WeakBorrowed<T>& rhs, std::function<void()> destruction_callback)
-      : base_t(impl::ConstructBorrowable(), rhs, destruction_callback) {}
+      : base_t(impl::ConstructBorrowed(), rhs, destruction_callback) {}
 
   BorrowedWithCallback(WeakBorrowed<T>&& rhs, std::function<void()> destruction_callback)
       : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), destruction_callback) {}
@@ -398,7 +399,7 @@ class Borrowed final : public WeakBorrowed<T> {
   using base_t = WeakBorrowed<T>;
 
  public:
-  Borrowed(const Borrowed& rhs) : base_t(impl::ConstructBorrowable(), rhs, []() {}) {}
+  Borrowed(const Borrowed& rhs) : base_t(impl::ConstructBorrowed(), rhs, []() {}) {}
 
   Borrowed(Borrowed&& rhs) : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
 
@@ -407,7 +408,7 @@ class Borrowed final : public WeakBorrowed<T> {
     return *this;
   }
 
-  Borrowed(const WeakBorrowed<T>& rhs) : base_t(impl::ConstructBorrowable(), rhs, []() {}) {}
+  Borrowed(const WeakBorrowed<T>& rhs) : base_t(impl::ConstructBorrowed(), rhs, []() {}) {}
 
   Borrowed(WeakBorrowed<T>&& rhs)
       : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(), std::move(rhs), []() {}) {}
@@ -438,7 +439,7 @@ class BorrowedOfGuaranteedLifetime final : public WeakBorrowed<T> {
 
  public:
   explicit BorrowedOfGuaranteedLifetime(const WeakBorrowed<T>& rhs)
-      : base_t(impl::ConstructBorrowable(), rhs, BorrowedOfGuaranteedLifetimeInvariantErrorCallback) {}
+      : base_t(impl::ConstructBorrowed(), rhs, BorrowedOfGuaranteedLifetimeInvariantErrorCallback) {}
 
   BorrowedOfGuaranteedLifetime(WeakBorrowed<T>&& rhs)
       : base_t(impl::ConstructBorrowedObjectViaMoveConstructor(),

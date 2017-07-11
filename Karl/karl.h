@@ -109,7 +109,7 @@ class KarlNginxManager {
     // To spawn Nginx `server` at startup even if the storage is empty.
     static bool first_run = true;
     if (has_nginx_config_file_) {
-      const std::chrono::microseconds current_stream_head = storage_->UpToDateUntil();
+      const std::chrono::microseconds current_stream_head = storage_->LastApliedTimestamp();
       if (first_run || current_stream_head != last_reflected_stream_head_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
         server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));

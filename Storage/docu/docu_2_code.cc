@@ -269,7 +269,7 @@ const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persiste
   {
     Owned<ExampleStorage> replayed = ExampleStorage::CreateFollowingStorage(persistence_file_name);
     // Wait until the following storage catches up.
-    while (replayed->UpToDateUntil() < std::chrono::microseconds(1200)) {
+    while (replayed->LastApliedTimestamp() < std::chrono::microseconds(1200)) {
       std::this_thread::yield();
     }
     // Perform the actual test.

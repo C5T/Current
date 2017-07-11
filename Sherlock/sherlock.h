@@ -435,7 +435,7 @@ class Stream final {
       return;
     }
 
-    // First and foremost, save outselves the trouble of starting the subscriber
+    // First and foremost, save ourselves the trouble of starting the subscriber
     // if the stream is already being destructed.
     const Borrowed<impl_t> borrowed_impl(impl_);
     if (!borrowed_impl) {

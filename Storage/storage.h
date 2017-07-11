@@ -261,8 +261,8 @@ class StorageImpl {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  std::chrono::microseconds UpToDateUntil() const {
-    return persister_.template UpToDateUntilPersister<MLS>();
+  std::chrono::microseconds LastApliedTimestamp() const {
+    return persister_.template LastAppliedTimestampPersister<MLS>();
   }
 
   // Used for applying updates by dispatching corresponding events.

@@ -113,7 +113,7 @@ class SherlockStreamPersisterImpl final {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  std::chrono::microseconds UpToDateUntilPersister() const {
+  std::chrono::microseconds LastAppliedTimestampPersister() const {
     locks::SmartMutexLockGuard<MLS> master_follower_change_lock(master_follower_change_mutex_);
     return last_applied_timestamp_;
   }
@@ -216,7 +216,7 @@ class SherlockStreamPersisterImpl final {
  private:
   fields_update_function_t fields_update_f_;
 
-  std::mutex& stream_publishing_mutex_ref_;                            // == `stream_->Impl()->publishing_mutex`.
+  std::mutex& stream_publishing_mutex_ref_;  // == `stream_->Impl()->publishing_mutex`.
   Borrowed<stream_t> stream_;
   Optional<Borrowed<typename stream_t::publisher_t>> publisher_used_;  // Set iff the storage is the master storage.
 
