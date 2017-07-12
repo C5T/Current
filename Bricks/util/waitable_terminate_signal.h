@@ -52,11 +52,11 @@ class WaitableTerminateSignal {
 
   // To be called by external users that the thread using this `WaitableTerminateSignal` could wait upon.
   // Thread-safe.
-  void NotifyOfExternalWaitableEvent() noexcept { condition_variable_.notify_all(); }
+  void NotifyOfExternalWaitableEvent() { condition_variable_.notify_all(); }
 
   // Waits until the provided method returns `true`, or until `SignalExternalTermination()` has been called.
   template <typename F>
-  bool WaitUntil(std::unique_lock<std::mutex>& lock, F&& external_condition) noexcept {
+  bool WaitUntil(std::unique_lock<std::mutex>& lock, F&& external_condition) {
     bool wait_done;
     const auto stop_condition = [this, &external_condition, &wait_done]() {
       wait_done = stop_signal_ || external_condition();
@@ -84,12 +84,11 @@ class WaitableTerminateSignalBulkNotifier {
   // THREAD-SAFE.
   class Scope {
    public:
-    Scope(WaitableTerminateSignalBulkNotifier& bulk, WaitableTerminateSignal& signal) noexcept : bulk_(bulk),
-                                                                                                 notifier_(signal) {
+    Scope(WaitableTerminateSignalBulkNotifier& bulk, WaitableTerminateSignal& signal) : bulk_(bulk), notifier_(signal) {
       bulk_.RegisterPendingNotifier(notifier_);
     }
-    Scope(WaitableTerminateSignalBulkNotifier* bulk, WaitableTerminateSignal& signal) noexcept : bulk_(*bulk),
-                                                                                                 notifier_(signal) {
+    Scope(WaitableTerminateSignalBulkNotifier* bulk, WaitableTerminateSignal& signal)
+        : bulk_(*bulk), notifier_(signal) {
       bulk_.RegisterPendingNotifier(notifier_);
     }
     ~Scope() { bulk_.UnRegisterPendingNotifier(notifier_); }

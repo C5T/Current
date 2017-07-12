@@ -250,7 +250,7 @@ struct ReflectorImpl {
     std::type_index type_index = std::type_index(typeid(void));
     void operator=(const std::type_index new_value) { type_index = new_value; }
   };
-  std::unordered_map<TypeID, DefaultConstructibleTypeIndex, CurrentHashFunction<TypeID>> type_index_by_type_id_;
+  std::unordered_map<TypeID, DefaultConstructibleTypeIndex, GenericHashFunction<TypeID>> type_index_by_type_id_;
   TypeReflector type_reflector_;
 
   void FixIncompleteTypeIDs(const TypeID incomplete_id, const TypeID real_id) {

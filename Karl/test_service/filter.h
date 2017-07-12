@@ -42,10 +42,10 @@ class ServiceFilter final {
  public:
   ServiceFilter(uint16_t port, const std::string& service_annotated, const current::karl::Locator& karl)
       : source_annotated_numbers_stream_(service_annotated + "/annotated"),
-        stream_primes_(current::sherlock::Stream<Number>()),
-        stream_composites_(current::sherlock::Stream<Number>()),
-        http_scope_(HTTP(port).Register("/primes", stream_primes_) +
-                    HTTP(port).Register("/composites", stream_composites_)),
+        stream_primes_(current::sherlock::Stream<Number>::CreateStream()),
+        stream_composites_(current::sherlock::Stream<Number>::CreateStream()),
+        http_scope_(HTTP(port).Register("/primes", *stream_primes_) +
+                    HTTP(port).Register("/composites", *stream_composites_)),
         http_stream_subscriber_(source_annotated_numbers_stream_,
                                 [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {
@@ -66,12 +66,12 @@ class ServiceFilter final {
   void OnNumber(Number&& value) {
     const Number number(std::move(value));
     CURRENT_ASSERT(Exists(number.is_prime));
-    (Value(number.is_prime) ? stream_primes_ : stream_composites_).Publish(std::move(number));
+    (Value(number.is_prime) ? stream_primes_ : stream_composites_)->Publisher()->Publish(std::move(number));
   }
 
   const std::string source_annotated_numbers_stream_;
-  current::sherlock::Stream<Number> stream_primes_;
-  current::sherlock::Stream<Number> stream_composites_;
+  current::Owned<current::sherlock::Stream<Number>> stream_primes_;
+  current::Owned<current::sherlock::Stream<Number>> stream_composites_;
   const HTTPRoutesScope http_scope_;
   HTTPStreamSubscriber<Number> http_stream_subscriber_;
   current::karl::Claire claire_;

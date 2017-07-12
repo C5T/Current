@@ -61,15 +61,19 @@ class HTTPStreamSubscriber {
 
  private:
   void Thread() {
+    const std::string url = remote_stream_url_ + "?i=" + current::ToString(index_);
+    try {
+      HTTP(ChunkedGET(url,
+                      [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
+                      [this](const std::string& chunk_body) { OnChunk(chunk_body); },
+                      [this]() {}));
+    } catch (current::net::NetworkException& e) {
+      std::cerr << e.DetailedDescription() << std::endl;
+      CURRENT_ASSERT(false);
+    }
+    // NOTE(dkorolev): The code above was all in the `while (!destructing_)` loop. But it's unnecessary for the test!
     while (!destructing_) {
-      const std::string url = remote_stream_url_ + "?i=" + current::ToString(index_);
-      try {
-        HTTP(ChunkedGET(url,
-                        [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
-                        [this](const std::string& chunk_body) { OnChunk(chunk_body); },
-                        [this]() {}));
-      } catch (current::net::NetworkException&) {
-      }
+      std::this_thread::yield();
     }
   }
 

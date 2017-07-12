@@ -41,13 +41,11 @@ TEST(TypeTest, Sherlock) {
 
   using stream_t = current::sherlock::Stream<stream_variant_t>;
 
-  const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
-
-  stream_t stream;
+  auto stream = stream_t::CreateStream();
 
 #include "include/sherlock.cc"
 
-  EXPECT_EQ(entries_count, stream.Persister().Size());
+  EXPECT_EQ(entries_count, stream->Data()->Size());
 }
 
 #endif  // CURRENT_COVERAGE_REPORT_MODE

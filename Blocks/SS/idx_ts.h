@@ -28,6 +28,10 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#ifdef CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
+#include <iostream>
+#endif  // CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
+
 #include <chrono>
 
 #include "exceptions.h"
@@ -76,7 +80,14 @@ CURRENT_STRUCT(HeadAndOptionalIndexAndTimestamp) {
   CURRENT_CONSTRUCTOR(HeadAndOptionalIndexAndTimestamp)(
       std::chrono::microseconds head, uint64_t index, std::chrono::microseconds us)
       : head(head), idxts(IndexAndTimestamp(index, us)) {
+#ifndef CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
     CURRENT_ASSERT(head >= us);
+#else
+    if (!(head >= us)) {
+      std::cerr << "head: " << head.count() << ", us: " << us.count() << std::endl;
+      CURRENT_ASSERT(head >= us);
+    }
+#endif  // CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
   }
 };
 

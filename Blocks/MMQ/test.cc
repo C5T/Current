@@ -66,6 +66,8 @@ TEST(InMemoryMQ, SmokeTest) {
   {
     Consumer c;
     MMQ<std::string, Consumer> mmq(c);
+    static_assert(current::ss::IsPublisher<decltype(mmq)>::value, "");
+    static_assert(current::ss::IsEntryPublisher<decltype(mmq), std::string>::value, "");
     mmq.Publish("one");
     mmq.Publish("two");
     mmq.Publish("three");
@@ -79,9 +81,12 @@ TEST(InMemoryMQ, SmokeTest) {
   {
     Consumer c;
     MMPQ<std::string, Consumer> mmpq(c);
+    static_assert(current::ss::IsPublisher<decltype(mmpq)>::value, "");
+    static_assert(current::ss::IsEntryPublisher<decltype(mmpq), std::string>::value, "");
     mmpq.Publish("one");
     mmpq.Publish("two");
     mmpq.Publish("three");
+    mmpq.UpdateHead();
     while (c.processed_messages_ != 3) {
       std::this_thread::yield();
     }
@@ -125,6 +130,8 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
 
   // Queue with 10 at most messages in the buffer.
   MMQ<std::string, SuspendableConsumer, 10, true> mmq(c);
+  static_assert(current::ss::IsPublisher<decltype(mmq)>::value, "");
+  static_assert(current::ss::IsEntryPublisher<decltype(mmq), std::string>::value, "");
 
   // Suspend the consumer temporarily while the first 25 messages are published.
   c.suspend_processing_ = true;
@@ -176,6 +183,8 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
 
   // Queue with 10 events in the buffer. Don't drop events on overflow.
   MMQ<std::string, SuspendableConsumer, 10, false> mmq(c);
+  static_assert(current::ss::IsPublisher<decltype(mmq)>::value, "");
+  static_assert(current::ss::IsEntryPublisher<decltype(mmq), std::string>::value, "");
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {
@@ -229,6 +238,8 @@ TEST(InMemoryMQ, TimeShouldNotGoBack) {
   {
     Consumer c;
     MMQ<std::string, Consumer> mmq(c);
+    static_assert(current::ss::IsPublisher<decltype(mmq)>::value, "");
+    static_assert(current::ss::IsEntryPublisher<decltype(mmq), std::string>::value, "");
     mmq.Publish("one", std::chrono::microseconds(1));
     mmq.Publish("three", std::chrono::microseconds(3));
     ASSERT_THROW(mmq.Publish("two", std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
@@ -241,9 +252,12 @@ TEST(InMemoryMQ, TimeShouldNotGoBack) {
   {
     Consumer c;
     MMPQ<std::string, Consumer> mmpq(c);
+    static_assert(current::ss::IsPublisher<decltype(mmpq)>::value, "");
+    static_assert(current::ss::IsEntryPublisher<decltype(mmpq), std::string>::value, "");
     mmpq.Publish("one", std::chrono::microseconds(1));
     mmpq.Publish("three", std::chrono::microseconds(3));
-    ASSERT_THROW(mmpq.Publish("two", std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
+    mmpq.UpdateHead(std::chrono::microseconds(3));
+    ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(2)), current::ss::InconsistentTimestampException);
     while (c.processed_messages_ != 2) {
       std::this_thread::yield();
     }
@@ -271,27 +285,33 @@ TEST(InMemoryMQ, MMPQAllowsTimeExplicitlyGoingBack) {
 
   Consumer c;
   MMPQ<std::string, Consumer> mmpq(c);
+  static_assert(current::ss::IsPublisher<decltype(mmpq)>::value, "");
+  static_assert(current::ss::IsEntryPublisher<decltype(mmpq), std::string>::value, "");
 
   // Publish "one". It gets to the consumer immediately.
   mmpq.Publish("one", std::chrono::microseconds(1));
+  mmpq.UpdateHead(std::chrono::microseconds(1));
   while (c.processed_messages_ != 1) {
     std::this_thread::yield();
   }
   EXPECT_EQ("[1] = one", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1", current::strings::Join(c.messages_by_timestamps_, ", "));
 
-  // Publish "two", "three", and "four". The first one to get published is "three", but, as it's published
-  // into the future, it won't get processed until "four" is. Note the index of "two" is `3`, not `2`.
-  mmpq.PublishIntoTheFuture("three", std::chrono::microseconds(3));
+  // Publish "two", "three", and "four", in the "wrong" order, to test the `P` part of `MMPQ` does its job.
+  mmpq.Publish("three", std::chrono::microseconds(3));
   mmpq.Publish("two", std::chrono::microseconds(2));
+
+  // Push head to `2`, ensuring "one" and "two" (but not "three") are processed.
+  mmpq.UpdateHead(std::chrono::microseconds(2));
   while (c.processed_messages_ != 2) {
     std::this_thread::yield();
   }
   EXPECT_EQ("[1] = one, [3] = two", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("one @ 1, two @ 2", current::strings::Join(c.messages_by_timestamps_, ", "));
 
-  // Finally, publish "four". As it's past "three", the consumer will get both "three" and "four".
+  // Publish "four" and push head to `4` to process "three" and "four".
   mmpq.Publish("four", std::chrono::microseconds(4));
+  mmpq.UpdateHead(std::chrono::microseconds(4));
   while (c.processed_messages_ != 4) {
     std::this_thread::yield();
   }
@@ -319,9 +339,12 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
 
   Consumer c;
   MMPQ<std::string, Consumer> mmpq(c);
+  static_assert(current::ss::IsPublisher<decltype(mmpq)>::value, "");
+  static_assert(current::ss::IsEntryPublisher<decltype(mmpq), std::string>::value, "");
 
   // Start with "three": publish and confirm it goes through.
   mmpq.Publish("three", std::chrono::microseconds(3));
+  mmpq.UpdateHead(std::chrono::microseconds(3));
   while (c.processed_messages_ != 1) {
     std::this_thread::yield();
   }
@@ -329,7 +352,7 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   EXPECT_EQ("three @ 3", current::strings::Join(c.messages_by_timestamps_, ", "));
 
   // Follow up with "seven". Without `UpdateHead()` it won't get to the consumer. With `UpdateHead()` it does.
-  mmpq.PublishIntoTheFuture("seven", std::chrono::microseconds(7));
+  mmpq.Publish("seven", std::chrono::microseconds(7));
   mmpq.UpdateHead(std::chrono::microseconds(7));
   while (c.processed_messages_ != 2) {
     std::this_thread::yield();
@@ -337,19 +360,19 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   EXPECT_EQ("[1] = three, [2] = seven", current::strings::Join(c.messages_by_indexes_, ", "));
   EXPECT_EQ("three @ 3, seven @ 7", current::strings::Join(c.messages_by_timestamps_, ", "));
 
-  // Can't publish anything prior to "seven", as HEAD is already at `7`.
-  ASSERT_THROW(mmpq.Publish("five", std::chrono::microseconds(5)), current::ss::InconsistentTimestampException);
-  ASSERT_THROW(mmpq.Publish("another seven", std::chrono::microseconds(7)),
-               current::ss::InconsistentTimestampException);
+  // Can't update head to anything prior and including `7`, as it is already at `7`.
+  ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(5)), current::ss::InconsistentTimestampException);
+  ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(7)), current::ss::InconsistentTimestampException);
 
   // Confirm `UpdateHead()` prevents publishing into the past compared to itself as well.
   // Here, as HEAD is bumped to `21`, publishing "eleven", as well as "blackjack" should correctly fail.
   mmpq.UpdateHead(std::chrono::microseconds(25));
-  ASSERT_THROW(mmpq.Publish("eleven", std::chrono::microseconds(11)), current::ss::InconsistentTimestampException);
-  ASSERT_THROW(mmpq.Publish("blackjack", std::chrono::microseconds(21)), current::ss::InconsistentTimestampException);
+  ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(11)), current::ss::InconsistentTimestampException);
+  ASSERT_THROW(mmpq.UpdateHead(std::chrono::microseconds(21)), current::ss::InconsistentTimestampException);
 
   // Publish an "ace" at 100.
   mmpq.Publish("ace", std::chrono::microseconds(100));
+  mmpq.UpdateHead(std::chrono::microseconds(100));
   while (c.processed_messages_ != 3) {
     std::this_thread::yield();
   }
@@ -357,9 +380,9 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
   EXPECT_EQ("three @ 3, seven @ 7, ace @ 100", current::strings::Join(c.messages_by_timestamps_, ", "));
 
   // Now, at `t=100`, publish three more messages at {101,102,103}, all into the future, in a mixed up order.
-  mmpq.PublishIntoTheFuture("queen", std::chrono::microseconds(102));
-  mmpq.PublishIntoTheFuture("king", std::chrono::microseconds(101));
-  mmpq.PublishIntoTheFuture("jack", std::chrono::microseconds(103));
+  mmpq.Publish("queen", std::chrono::microseconds(102));
+  mmpq.Publish("king", std::chrono::microseconds(101));
+  mmpq.Publish("jack", std::chrono::microseconds(103));
 
   // Update HEAD to capture just one of the three, to `t=101`, and confirm "king" does get to the consumer.
   mmpq.UpdateHead(std::chrono::microseconds(101));
@@ -380,8 +403,8 @@ TEST(InMemoryMQ, MMPQSupportsUpdateHead) {
             current::strings::Join(c.messages_by_timestamps_, ", "));
 
   // Finally, publish "joker", in the "present" which is way ahead in time compared to the third one left, the "jack".
-  // This publish into "present" would force the consumer to process both the outstanding "jack" and the "joker" itself.
   mmpq.Publish("joker", std::chrono::microseconds(1000));
+  mmpq.UpdateHead(std::chrono::microseconds(1000));
   while (c.processed_messages_ != 7) {
     std::this_thread::yield();
   }

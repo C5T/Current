@@ -80,29 +80,22 @@ struct DemoEntryPublisherImpl {
   size_t index = 0u;
   std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
 
-  template <current::locks::MutexLockStatus, typename US>
-  idxts_t DoPublish(const DispatchDemoEntry& e, const US) {
+  template <current::locks::MutexLockStatus, typename TIMESTAMP>
+  idxts_t PublisherPublishImpl(const DispatchDemoEntry& e, const TIMESTAMP) {
     ++index;
     values.push_back(e);
     return idxts_t(index, current::time::Now());
   }
 
-  template <current::locks::MutexLockStatus, typename US>
-  idxts_t DoPublish(DispatchDemoEntry&& e, const US) {
+  template <current::locks::MutexLockStatus, typename TIMESTAMP>
+  idxts_t PublisherPublishImpl(DispatchDemoEntry&& e, const TIMESTAMP) {
     ++index;
     values.push_back(std::move(e));
     return idxts_t(index, current::time::Now());
   }
 
-  template <current::locks::MutexLockStatus, typename US>
-  void DoUpdateHead(const US) const {}
-
-  // TODO: Decide on `Emplace`.
-  //  idxts_t DoEmplace(const std::string& text) {
-  //    ++index;
-  //    values.push_back(text);
-  //    return idxts_t(index, current::time::Now());
-  //  }
+  template <current::locks::MutexLockStatus, typename TIMESTAMP>
+  void PublisherUpdateHeadImpl(const TIMESTAMP) const {}
 };
 
 }  // namespace stream_system_test
@@ -130,13 +123,6 @@ TEST(StreamSystem, EntryPublisher) {
     EXPECT_EQ(2u, result.index);
     EXPECT_EQ(200, result.us.count());
   }
-  // TODO: Decide on `Emplace`.
-  //  {
-  //    current::time::SetNow(std::chrono::microseconds(300));
-  //    const auto result = publisher.Emplace("E3");
-  //    EXPECT_EQ(3u, result.index);
-  //    EXPECT_EQ(300, result.us.count());
-  //  }
 
   std::string all_values;
   bool first = true;
@@ -190,8 +176,6 @@ TEST(StreamSystem, PassEntryToSubscriberIfTypeMatches) {
       s = "B=" + current::ToString(b.b);
       return current::ss::EntryResponse::Done;
     }
-
-    // cTerminationResponse Terminate() const { return TerminationResponse::Wait; }
 
     std::string s;
   };

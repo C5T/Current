@@ -64,10 +64,6 @@ struct StorageRollbackExceptionWithValue<void> : StorageRollbackException {
 
 using StorageRollbackExceptionWithNoValue = StorageRollbackExceptionWithValue<void>;
 
-struct UnderlyingStreamHasExternalDataAuthorityException : StorageException {
-  using StorageException::StorageException;
-};
-
 struct StorageIsAlreadyMasterException : StorageException {
   using StorageException::StorageException;
 };

@@ -205,7 +205,7 @@ struct JSONVariantPerStyleRegisterer {
   struct StyleCurrent {
     using deserializers_map_t = std::unordered_map<reflection::TypeID,
                                                    std::unique_ptr<JSONVariantCaseAbstractBase<JSON_FORMAT>>,
-                                                   CurrentHashFunction<::current::reflection::TypeID>>;
+                                                   GenericHashFunction<::current::reflection::TypeID>>;
 
     StyleCurrent(deserializers_map_t& deserializers) {
       // Silently discard duplicate types in the input type list. They would be deserialized correctly.
@@ -275,7 +275,7 @@ class JSONVariantPerStyle<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
    private:
     using deserializers_map_t = std::unordered_map<reflection::TypeID,
                                                    std::unique_ptr<JSONVariantCaseAbstractBase<JSON_FORMAT>>,
-                                                   CurrentHashFunction<::current::reflection::TypeID>>;
+                                                   GenericHashFunction<::current::reflection::TypeID>>;
     deserializers_map_t deserializers_;
   };
 

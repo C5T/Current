@@ -422,7 +422,13 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   t.join();
 }
 
-TEST(PosixHTTPServerTest, ChunkedSmoke) {
+#ifdef CURRENT_APPLE
+// This test sometimes fails on Apple on Travis. -- D.K.
+TEST(PosixHTTPServerTest, DISABLED_ChunkedSmoke)
+#else
+TEST(PosixHTTPServerTest, ChunkedSmoke)
+#endif
+{
   const auto EchoServerThreadEntry = [](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("POST", c.HTTPRequest().Method());
@@ -673,7 +679,12 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
 }
 #endif  // CURRENT_HTTP_DATA_JOURNAL_ENABLED
 
-TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer) {
+#ifndef CURRENT_APPLE  // This test is flaky on OS X.
+TEST(PosixHTTPServerTest, InvalidHEXAsChunkSizeDoesNotKillServer)
+#else
+TEST(PosixHTTPServerTest, DISABLED_InvalidHEXAsChunkSizeDoesNotKillServer)
+#endif
+{
   std::atomic_bool wrong_chunk_size_exception_thrown(false);
   std::thread t([&wrong_chunk_size_exception_thrown](Socket s) {
     try {

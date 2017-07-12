@@ -170,9 +170,26 @@ enum class SecondsToMicrosecondsPadding : bool { Lower = false, Upper = true };
 
 struct DefaultTimeArgument {};
 
-inline std::chrono::microseconds GetTimestampFromLockedSection(DefaultTimeArgument) { return Now(); }
+inline std::chrono::microseconds TimestampAsMicroseconds(DefaultTimeArgument) { return Now(); }
+inline std::chrono::microseconds TimestampAsMicroseconds(std::chrono::microseconds us) { return us; }
 
-inline std::chrono::microseconds GetTimestampFromLockedSection(std::chrono::microseconds us) { return us; }
+template <typename>
+struct IsTimestampImpl {
+  constexpr static bool value = false;
+};
+
+template <>
+struct IsTimestampImpl<std::chrono::microseconds> {
+  constexpr static bool value = true;
+};
+
+template <>
+struct IsTimestampImpl<DefaultTimeArgument> {
+  constexpr static bool value = true;
+};
+
+template <typename T>
+using IsTimestamp = IsTimestampImpl<decay<T>>;
 
 }  // namespace current::time
 

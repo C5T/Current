@@ -22,18 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_STREAM_DATA_H
-#define CURRENT_SHERLOCK_STREAM_DATA_H
+#ifndef CURRENT_SHERLOCK_STREAM_IMPL_H
+#define CURRENT_SHERLOCK_STREAM_IMPL_H
 
 #include "../port.h"
 
 #include <map>
 #include <thread>
 
-#include "../Blocks/Persistence/persistence.h"
 #include "../Bricks/util/random.h"
-#include "../Bricks/util/sha256.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
+
+#include "../Blocks/Persistence/memory.h"
+#include "../Blocks/Persistence/file.h"
+#include "../Blocks/SS/pubsub.h"
 
 namespace current {
 namespace sherlock {
@@ -91,36 +93,66 @@ class SubscriberScope {
   std::unique_ptr<SubscriberThread> thread_;
 };
 
+// For asynchronous HTTP subscriptions to be terminatable, they are stored as `std::unique_ptr`-s,
+// which does need an abstract base.
 class AbstractSubscriberObject {
  public:
   virtual ~AbstractSubscriberObject() = default;
 };
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>
-struct StreamData {
+struct StreamImpl {
   using entry_t = ENTRY;
   using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
 
+  // Publishing-related mutex and notifier are mutable to wait on them from the subscriber thread.
+  mutable std::mutex publishing_mutex;
+  persistence_layer_t persister;
+  mutable current::WaitableTerminateSignalBulkNotifier notifier;
+
+  // The HTTP-subscription-related logic is `mutable` because subscribing to a stream is `const` by convention.
   using http_subscriptions_t =
       std::unordered_map<std::string, std::pair<SubscriberScope, std::unique_ptr<AbstractSubscriberObject>>>;
-  std::mutex publish_mutex;
-  persistence_layer_t persistence;
-  current::WaitableTerminateSignalBulkNotifier notifier;
-
-  http_subscriptions_t http_subscriptions;
-  std::mutex http_subscriptions_mutex;
+  mutable std::mutex http_subscriptions_mutex;
+  mutable http_subscriptions_t http_subscriptions;
 
   template <typename... ARGS>
-  StreamData(ARGS&&... args)
-      : persistence(publish_mutex, std::forward<ARGS>(args)...) {}
+  StreamImpl(ARGS&&... args)
+      : persister(publishing_mutex, std::forward<ARGS>(args)...) {}
+};
 
-  static std::string GenerateRandomHTTPSubscriptionID() {
-    return current::SHA256("sherlock_http_subscription_" +
-                           current::ToString(current::random::CSRandomUInt64(0ull, ~0ull)));
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>
+class StreamPublisherImpl {
+ public:
+  using data_t = StreamImpl<ENTRY, PERSISTENCE_LAYER>;
+
+  StreamPublisherImpl() = delete;
+  explicit StreamPublisherImpl(Borrowed<data_t> data) : data_(std::move(data)) {}
+
+  operator bool() const { return data_; }
+
+  template <current::locks::MutexLockStatus MLS,
+            typename E,
+            typename TIMESTAMP,
+            class = ENABLE_IF<ss::CanPublish<current::decay<E>, ENTRY>::value>>
+  idxts_t PublisherPublishImpl(E&& e, TIMESTAMP&& timestamp) {
+    const auto result =
+        data_->persister.template PersisterPublishImpl<MLS>(std::forward<E>(e), std::forward<TIMESTAMP>(timestamp));
+    data_->notifier.NotifyAllOfExternalWaitableEvent();
+    return result;
   }
+
+  template <current::locks::MutexLockStatus MLS, typename TIMESTAMP>
+  void PublisherUpdateHeadImpl(TIMESTAMP&& timestamp) {
+    data_->persister.template PersisterUpdateHeadImpl<MLS>(std::forward<TIMESTAMP>(timestamp));
+    data_->notifier.NotifyAllOfExternalWaitableEvent();
+  }
+
+ private:
+  Borrowed<data_t> data_;
 };
 
 }  // namespace sherlock
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_STREAM_DATA_H
+#endif  // CURRENT_SHERLOCK_STREAM_IMPL_H

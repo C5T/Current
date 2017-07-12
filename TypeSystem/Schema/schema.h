@@ -31,6 +31,7 @@ SOFTWARE.
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>
 
 #include "json_schema_format.h"
 
@@ -659,7 +660,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
   struct FullSchemaPrinter final {
     const std::map<TypeID, ReflectedType>& types_;
     std::ostream& os_;
-    mutable std::unordered_set<TypeID, CurrentHashFunction<TypeID>>
+    mutable std::unordered_set<TypeID, GenericHashFunction<TypeID>>
         empty_structs_;  // To not print the type of a DU case for empty structs.
 
     std::string TypeName(TypeID type_id) const {

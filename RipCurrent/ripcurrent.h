@@ -710,22 +710,25 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
       }
 
       void OnThreadUnsafeEmitted(movable_message_t&& x, std::chrono::microseconds t) override {
-        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessagePublished(); });
+        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportPublishCalled(); });
         try {
+          mmpq_.UpdateHead(t);  // Run `UpdateHead` before `Publish`, as the latter does not validate monotocinity.
           mmpq_.Publish(std::move(x), t);
+          waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessagePublished(); });
         } catch (const ss::InconsistentTimestampException& e) {
           current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.DetailedDescription());
-          waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotQuitePublished(); });
+          waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotPublished(); });
         }
       }
 
       void OnThreadUnsafeScheduled(movable_message_t&& x, std::chrono::microseconds t) override {
-        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessagePublished(); });
+        waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportPublishCalled(); });
         try {
-          mmpq_.PublishIntoTheFuture(std::move(x), t);
+          mmpq_.Publish(std::move(x), t);
+          waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessagePublished(); });
         } catch (const ss::InconsistentTimestampException& e) {
           current::Singleton<RipCurrentMockableErrorHandler>().HandleError(e.DetailedDescription());
-          waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotQuitePublished(); });
+          waitable_counters_.MutableUse([](ThreadMessageCounters& p) { p.ReportMessageNotPublished(); });
         }
       }
 
@@ -740,14 +743,17 @@ class SharedSequenceImpl<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, VIAType
      private:
       class ThreadMessageCounters {
        public:
-        void ReportMessagePublished() { ++published_; }
-        void ReportMessageNotQuitePublished() { --published_; }
-        void ReportMessageProcessed() { ++processed_; }
-        bool ProcessedEverything() const { return published_ == processed_; }
+        void ReportPublishCalled() { ++publish_called_count_; }
+        void ReportMessagePublished() { ++published_count_; }
+        void ReportMessageNotPublished() { ++not_published_count_; }
+        void ReportMessageProcessed() { ++processed_count_; }
+        bool ProcessedEverything() const { return publish_called_count_ == processed_count_ + not_published_count_; }
 
        private:
-        size_t published_ = 0u;
-        size_t processed_ = 0u;
+        size_t publish_called_count_ = 0u;
+        size_t published_count_ = 0u;
+        size_t not_published_count_ = 0u;
+        size_t processed_count_ = 0u;
       };
 
       struct SingleThreadedProcessorImpl {

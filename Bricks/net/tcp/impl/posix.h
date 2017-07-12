@@ -509,6 +509,7 @@ struct Deleter {
 using addrinfo_t = std::unique_ptr<struct addrinfo, addrinfo_t_impl::Deleter>;
 
 inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv = "") {
+  const std::string host_and_service = host + (serv.empty() ? "" : " " + serv);
   struct addrinfo* result = nullptr;
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
@@ -517,10 +518,10 @@ inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv =
   hints.ai_protocol = IPPROTO_TCP;
   const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &result);
   if (!result) {
-    CURRENT_THROW(SocketResolveAddressException(host + (serv.empty() ? "" : " " + serv)));
+    CURRENT_THROW(SocketResolveAddressException(host_and_service));
   } else if (retval) {
-    freeaddrinfo(result);
-    CURRENT_THROW(SocketResolveAddressException(host + (serv.empty() ? "" : " " + serv) + " " + gai_strerror(retval)));
+    ::freeaddrinfo(result);
+    CURRENT_THROW(SocketResolveAddressException(host_and_service + ' ' + ::gai_strerror(retval)));
   }
   return addrinfo_t(result);
 }

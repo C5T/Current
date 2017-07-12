@@ -1151,10 +1151,12 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
           struct_schema.GetSchemaInfo().Describe<Language::CPP>(false));
     }
 
-    current::sherlock::Stream<pre_evolution_transaction_t, current::persistence::File> pre_evolution_stream(
-        pre_evolution_file_name);
-    current::sherlock::Stream<post_evolution_transaction_t, current::persistence::File> post_evolution_stream(
-        post_evolution_file_name);
+    auto pre_evolution_stream =
+        current::sherlock::Stream<pre_evolution_transaction_t, current::persistence::File>::CreateStream(
+            pre_evolution_file_name);
+    auto post_evolution_stream =
+        current::sherlock::Stream<post_evolution_transaction_t, current::persistence::File>::CreateStream(
+            post_evolution_file_name);
 
     {
       using namespace current::reflection;
@@ -1194,16 +1196,17 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
     {
       using pre_storage_t = type_evolution_test::pre_evolution::Storage<SherlockInMemoryStreamPersister>;
       using post_storage_t = type_evolution_test::post_evolution::Storage<SherlockInMemoryStreamPersister>;
-      pre_storage_t pre_evolution_storage;
+
+      auto pre_evolution_storage = pre_storage_t::CreateMasterStorage();
 
       // Two transactions with two mutations in the second transaction, to test evolution through.
-      pre_evolution_storage.ReadWriteTransaction([](MutableFields<pre_storage_t> fields) {
+      pre_evolution_storage->ReadWriteTransaction([](MutableFields<pre_storage_t> fields) {
         type_evolution_test::pre_evolution::User karl;
         karl.key = "karl";
         fields.user.Add(karl);
       }).Wait();
 
-      pre_evolution_storage.ReadWriteTransaction([](MutableFields<pre_storage_t> fields) {
+      pre_evolution_storage->ReadWriteTransaction([](MutableFields<pre_storage_t> fields) {
         {
           type_evolution_test::pre_evolution::User dima;
           dima.key = "dima";
@@ -1226,16 +1229,14 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
       // from a memory-persisted storage, the storage could populate the output stream itself.
       // I decided to take the longer route to have stream persistence file creation
       // implemented explicitly, side-by-side with and without type evolution. -- D.K.
-      //
-      // TODO(dkorolev): These `Internal*()` should go away.
-      const auto& persister = pre_evolution_storage.InternalExposeStream().Persister();
-      ASSERT_EQ(persister.Size(), 2u) << "Must have exactly two transactions persisted.";
+      const auto& persister = pre_evolution_storage->UnderlyingStream()->Data();
+      ASSERT_EQ(persister->Size(), 2u) << "Must have exactly two transactions persisted.";
 
-      for (const auto& e : persister.Iterate()) {
+      for (const auto& e : persister->Iterate()) {
         const typename pre_storage_t::transaction_t& original_transaction = e.entry;
 
         // The next line would work just fine, but let's test deep copy through. -- D.K.
-        // pre_evolution_stream.Publish(original_transaction, e.idx_ts.us);
+        // pre_evolution_stream->Publisher()->Publish(original_transaction, e.idx_ts.us);
 
         // NOTE: The code below uses `ParseJSON(JSON(xxx))` constructs to "cast" C++ types between each other.
         // As structures are declared several times, their C++ types are different,
@@ -1256,7 +1257,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
                                           current::type_evolution::OriginalStorageToOriginalStorageEvolver>::
               template Go<SchemaOriginalStorage>(cast_original_transaction, cast_type_evolved_transaction);
 
-          pre_evolution_stream.Publish(
+          pre_evolution_stream->Publisher()->Publish(
               ParseJSON<typename pre_storage_t::transaction_t>(JSON(cast_type_evolved_transaction)), e.idx_ts.us);
         }
 
@@ -1274,7 +1275,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
                                           current::type_evolution::OriginalStorageToModifiedStorageEvolver>::
               template Go<SchemaModifiedStorage>(cast_original_transaction, cast_type_evolved_transaction);
 
-          post_evolution_stream.Publish(
+          post_evolution_stream->Publisher()->Publish(
               ParseJSON<typename post_storage_t::transaction_t>(JSON(cast_type_evolved_transaction)), e.idx_ts.us);
         }
       }
@@ -1303,9 +1304,9 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
     // Sanity check: confirm the replayed pre-evolution storage contains the data UPPERCASED.
     {
       using restored_pre_storage_t = type_evolution_test::pre_evolution::Storage<SherlockStreamPersister>;
-      restored_pre_storage_t replayed_pre_evolution_storage(pre_evolution_file_name);
+      auto replayed_pre_evolution_storage = restored_pre_storage_t::CreateMasterStorage(pre_evolution_file_name);
 
-      replayed_pre_evolution_storage.ReadOnlyTransaction([](ImmutableFields<restored_pre_storage_t> fields) {
+      replayed_pre_evolution_storage->ReadOnlyTransaction([](ImmutableFields<restored_pre_storage_t> fields) {
         EXPECT_EQ(3u, fields.user.Size());
         EXPECT_TRUE(Exists(fields.user["karl"]));
         EXPECT_FALSE(Exists(fields.user["bernie"]));
@@ -1324,9 +1325,9 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
     // The full end-to-end schema test: confirm type-evolved transactions s.a. "First Last" became "Last, F".
     {
       using restored_post_storage_t = type_evolution_test::post_evolution::Storage<SherlockStreamPersister>;
-      restored_post_storage_t replayed_post_evolution_storage(post_evolution_file_name);
+      auto replayed_post_evolution_storage = restored_post_storage_t::CreateMasterStorage(post_evolution_file_name);
 
-      replayed_post_evolution_storage.ReadOnlyTransaction([](ImmutableFields<restored_post_storage_t> fields) {
+      replayed_post_evolution_storage->ReadOnlyTransaction([](ImmutableFields<restored_post_storage_t> fields) {
         EXPECT_EQ(3u, fields.user.Size());
         EXPECT_TRUE(Exists(fields.user["karl"]));
         EXPECT_FALSE(Exists(fields.user["bernie"]));

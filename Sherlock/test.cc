@@ -24,6 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #define CURRENT_MOCK_TIME
+#define CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
 
 #include "sherlock.h"
 #include "replicator.h"
@@ -36,7 +37,8 @@ SOFTWARE.
 #include "../TypeSystem/variant.h"
 
 #include "../Blocks/HTTP/api.h"
-#include "../Blocks/Persistence/persistence.h"
+#include "../Blocks/Persistence/memory.h"
+#include "../Blocks/Persistence/file.h"
 
 #include "../Bricks/strings/strings.h"
 
@@ -201,18 +203,19 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
 
   using namespace sherlock_unittest;
 
-  auto foo_stream = current::sherlock::Stream<Record>();
+  auto foo_stream = current::sherlock::Stream<Record>::CreateStream();
+  auto foo_stream_publisher = foo_stream->BorrowPublisher();
   current::time::SetNow(std::chrono::microseconds(1));
-  foo_stream.Publish(1, std::chrono::microseconds(10));
-  foo_stream.Publish(2, std::chrono::microseconds(20));
-  foo_stream.Publish(3, std::chrono::microseconds(30));
+  foo_stream_publisher->Publish(Record(1), std::chrono::microseconds(10));
+  foo_stream_publisher->Publish(Record(2), std::chrono::microseconds(20));
+  foo_stream_publisher->Publish(Record(3), std::chrono::microseconds(30));
   Data d;
   {
     ASSERT_FALSE(d.subscriber_alive_);
     SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
-    foo_stream.Subscribe(p);  // With no return value collection to capture the scope, it's a blocking call.
+    foo_stream->Subscribe(p);  // With no return value collection to capture the scope, it's a blocking call.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
   }
@@ -229,13 +232,13 @@ TEST(Sherlock, SubscribeSynchronously) {
 
   using namespace sherlock_unittest;
 
-  auto bar_stream = current::sherlock::Stream<Record>();
+  auto bar_stream = current::sherlock::Stream<Record>::CreateStream();
   current::time::SetNow(std::chrono::microseconds(40));
-  bar_stream.Publish(4);
+  bar_stream->Publisher()->Publish(Record(4));
   current::time::SetNow(std::chrono::microseconds(50));
-  bar_stream.Publish(5);
+  bar_stream->Publisher()->Publish(Record(5));
   current::time::SetNow(std::chrono::microseconds(60));
-  bar_stream.Publish(6);
+  bar_stream->Publisher()->Publish(Record(6));
   Data d;
   ASSERT_FALSE(d.subscriber_alive_);
 
@@ -244,7 +247,7 @@ TEST(Sherlock, SubscribeSynchronously) {
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
     // As `.SetMax(3)` was called, blocks the thread until all three recods are processed.
-    bar_stream.Subscribe(p);
+    bar_stream->Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
   }
@@ -262,20 +265,20 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
 
   using namespace sherlock_unittest;
 
-  auto baz_stream = current::sherlock::Stream<Record>();
+  auto baz_stream = current::sherlock::Stream<Record>::CreateStream();
   std::atomic_bool wait(true);
   std::thread delayed_publish_thread([&baz_stream, &wait]() {
     while (wait) {
       std::this_thread::yield();
     }
-    baz_stream.Publish(7, std::chrono::microseconds(1));
-    baz_stream.Publish(8, std::chrono::microseconds(2));
-    baz_stream.Publish(9, std::chrono::microseconds(3));
+    baz_stream->Publisher()->Publish(Record(7), std::chrono::microseconds(1));
+    baz_stream->Publisher()->Publish(Record(8), std::chrono::microseconds(2));
+    baz_stream->Publisher()->Publish(Record(9), std::chrono::microseconds(3));
   });
   {
     Data d;
     SherlockTestProcessor p(d, true);
-    baz_stream.Subscribe(p);
+    baz_stream->Subscribe(p);
     EXPECT_EQ(0u, d.seen_);
   }
   wait = false;
@@ -284,7 +287,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     Data d;
     SherlockTestProcessor p(d, false, true);
     p.SetMax(3u);
-    baz_stream.Subscribe(p);
+    baz_stream->Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
   }
 }
@@ -294,18 +297,18 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
 
   using namespace sherlock_unittest;
 
-  auto meh_stream = current::sherlock::Stream<Record>();
+  auto meh_stream = current::sherlock::Stream<Record>::CreateStream();
   current::time::SetNow(std::chrono::microseconds(1));
-  meh_stream.Publish(10);
+  meh_stream->Publisher()->Publish(Record(10));
   current::time::SetNow(std::chrono::microseconds(2));
-  meh_stream.Publish(11);
+  meh_stream->Publisher()->Publish(Record(11));
   current::time::SetNow(std::chrono::microseconds(3));
-  meh_stream.Publish(12);
+  meh_stream->Publisher()->Publish(Record(12));
   Data d;
   SherlockTestProcessor p(d, true);
   p.SetWait();
   {
-    auto scope1 = meh_stream.Subscribe(p);
+    auto scope1 = meh_stream->Subscribe(p);
     EXPECT_TRUE(scope1);
     {
       auto scope2 = std::move(scope1);
@@ -372,14 +375,15 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream =
-      current::sherlock::Stream<RecordWithTimestamp>(current::ss::StreamNamespaceName("Sherlock", "Transaction"));
+  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>::CreateStreamWithCustomNamespaceName(
+      current::ss::StreamNamespaceName("Sherlock", "Transaction"));
+
   // Expose stream via HTTP.
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
   const auto scope =
-      HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream) +
+      HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", *exposed_stream) +
       HTTP(FLAGS_sherlock_http_test_port)
-          .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
+          .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *exposed_stream);
   const std::string base_url_with_args = Printf("http://localhost:%d/exposed_more", FLAGS_sherlock_http_test_port);
 
   {
@@ -391,7 +395,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     // Request with `?nowait` works even if stream is empty.
     const auto result = HTTP(GET(base_url + "?nowait"));
-    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ(204, static_cast<int>(result.code));
     EXPECT_EQ("", result.body);
   }
   {
@@ -514,9 +518,9 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     {
       const auto result = HTTP(GET(base_url + "?schema=blah"));
       EXPECT_EQ(404, static_cast<int>(result.code));
-      EXPECT_EQ(
-          "blah",
-          Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFound>(result.body).unsupported_format_requested));
+      EXPECT_EQ("blah",
+                Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFoundError>(result.body)
+                          .unsupported_format_requested));
     }
     {
       // The `base_url` location does not have the URL argument registered, so it's a plain "standard" 404.
@@ -540,13 +544,13 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } at timestamps 100, 200, 300 and 400 microseconds respectively.
   current::time::SetNow(std::chrono::microseconds(100));
-  exposed_stream.Publish(RecordWithTimestamp("s[0]", std::chrono::microseconds(100)));  // Emplace().
+  exposed_stream->Publisher()->Publish(RecordWithTimestamp("s[0]", std::chrono::microseconds(100)));
   current::time::SetNow(std::chrono::microseconds(200));
-  exposed_stream.Publish(RecordWithTimestamp("s[1]", std::chrono::microseconds(200)));  // Emplace().
+  exposed_stream->Publisher()->Publish(RecordWithTimestamp("s[1]", std::chrono::microseconds(200)));
   current::time::SetNow(std::chrono::microseconds(300));
-  exposed_stream.Publish(RecordWithTimestamp("s[2]", std::chrono::microseconds(300)));  // Emplace().
+  exposed_stream->Publisher()->Publish(RecordWithTimestamp("s[2]", std::chrono::microseconds(300)));
   current::time::SetNow(std::chrono::microseconds(400));
-  exposed_stream.Publish(RecordWithTimestamp("s[3]", std::chrono::microseconds(400)));  // Emplace().
+  exposed_stream->Publisher()->Publish(RecordWithTimestamp("s[3]", std::chrono::microseconds(400)));
   const auto now = std::chrono::microseconds(500);
   current::time::SetNow(now);
 
@@ -556,8 +560,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
-    const current::sherlock::StreamImpl<RecordWithTimestamp>::SubscriberScope<RecordsCollector> scope(
-        exposed_stream.Subscribe(collector));
+    const current::sherlock::Stream<RecordWithTimestamp>::SubscriberScope<RecordsCollector> scope(
+        exposed_stream->Subscribe(collector));
     while (collector.count_ < 4u) {
       std::this_thread::yield();
     }
@@ -706,16 +710,16 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
 
   using namespace sherlock_unittest;
 
-  auto exposed_stream = current::sherlock::Stream<Record>();
+  auto exposed_stream = current::sherlock::Stream<Record>::CreateStream();
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
 
-  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", *exposed_stream);
 
   std::atomic_bool keep_publishing(true);
   std::thread slow_publisher([&exposed_stream, &keep_publishing]() {
     int i = 1;
     while (keep_publishing) {
-      exposed_stream.Publish(Record(i), std::chrono::microseconds(i));
+      exposed_stream->Publisher()->Publish(Record(i), std::chrono::microseconds(i));
       ++i;
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -801,20 +805,20 @@ TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  auto persisted = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
+  auto persisted = current::sherlock::Stream<Record, current::persistence::File>::CreateStream(persistence_file_name);
 
   current::time::SetNow(std::chrono::microseconds(100));
-  persisted.Publish(1);
+  persisted->Publisher()->Publish(Record(1));
   current::time::SetNow(std::chrono::microseconds(200));
-  persisted.Publish(2);
+  persisted->Publisher()->Publish(Record(2));
   current::time::SetNow(std::chrono::microseconds(300));
-  persisted.UpdateHead();
+  persisted->Publisher()->UpdateHead();
   current::time::SetNow(std::chrono::microseconds(400));
-  persisted.Publish(3);
+  persisted->Publisher()->Publish(Record(3));
   current::time::SetNow(std::chrono::microseconds(450));
-  persisted.UpdateHead();
+  persisted->Publisher()->UpdateHead();
   current::time::SetNow(std::chrono::microseconds(500));
-  persisted.UpdateHead();
+  persisted->Publisher()->UpdateHead();
 
   // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
   while (current::FileSystem::GetFileSize(persistence_file_name) < sherlock_golden_data.size()) {
@@ -833,7 +837,7 @@ TEST(Sherlock, ParsesFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
-  auto parsed = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
+  auto parsed = current::sherlock::Stream<Record, current::persistence::File>::CreateStream(persistence_file_name);
 
   Data d;
   {
@@ -841,7 +845,7 @@ TEST(Sherlock, ParsesFromFile) {
     SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(4u);
-    parsed.Subscribe(p);  // A blocking call until the subscriber processes three entries and one head update.
+    parsed->Subscribe(p);  // A blocking call until the subscriber processes three entries and one head update.
     EXPECT_EQ(4u, d.seen_);
     EXPECT_EQ(500, d.head_.count());
     ASSERT_TRUE(d.subscriber_alive_);
@@ -857,7 +861,7 @@ TEST(Sherlock, ParsesFromFile) {
       SherlockTestProcessor p2(d2, false, true);
       ASSERT_TRUE(d2.subscriber_alive_);
       p2.SetMax(4u);
-      const auto scope = parsed.Subscribe(p2);
+      const auto scope = parsed->Subscribe(p2);
       while (static_cast<bool>(scope)) {
         std::this_thread::yield();
       }
@@ -883,7 +887,7 @@ TEST(Sherlock, ParseArbitrarilySplitChunks) {
 
   using sherlock_t = current::sherlock::Stream<Record, current::persistence::File>;
   using RemoteStreamReplicator = current::sherlock::StreamReplicator<sherlock_t>;
-  sherlock_t replicated_stream(persistence_file_name);
+  auto replicated_stream = sherlock_t::CreateStream(persistence_file_name);
 
   // Simulate subscription to sherlock stream.
   const auto scope =
@@ -895,18 +899,19 @@ TEST(Sherlock, ParseArbitrarilySplitChunks) {
                       const std::string subscription_id = "fake_subscription";
                       if (r.url.query.has("terminate")) {
                         EXPECT_EQ(r.url.query["terminate"], subscription_id);
+                        r("", HTTPResponseCode.OK);
                       } else if (r.url.query.has("i")) {
-                        const auto ind = current::FromString<uint64_t>(r.url.query["i"]);
+                        const auto index = current::FromString<uint64_t>(r.url.query["i"]);
                         auto response = r.connection.SendChunkedHTTPResponse(
                             HTTPResponseCode.OK,
                             "text/plain",
                             current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
-                        if (ind == 0u) {
+                        if (index == 0u) {
                           for (const auto& chunk : sherlock_golden_data_chunks) {
                             response.Send(chunk);
                           }
                         } else {
-                          EXPECT_EQ(3u, ind);
+                          EXPECT_EQ(3u, index);
                         }
                       } else {
                         EXPECT_EQ(1u, r.url_path_args.size());
@@ -922,11 +927,12 @@ TEST(Sherlock, ParseArbitrarilySplitChunks) {
   // Replicate data via subscription to the fake stream.
   current::sherlock::SubscribableRemoteStream<Record> remote_stream(
       Printf("http://localhost:%d/log", FLAGS_sherlock_http_test_port), "Record", "Namespace");
-  auto replicator = std::make_unique<RemoteStreamReplicator>(replicated_stream);
+
+  auto replicator = RemoteStreamReplicator(replicated_stream);
 
   {
-    const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-    while (replicated_stream.Persister().Size() < 3u) {
+    const auto subscriber_scope = remote_stream.Subscribe(replicator);
+    while (replicated_stream->Data()->Size() < 3u) {
       std::this_thread::yield();
     }
   }
@@ -971,13 +977,13 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     const size_t expected_count_;
   };
 
-  auto stream = current::sherlock::Stream<Variant<Record, AnotherRecord>>();
+  auto stream = current::sherlock::Stream<Variant<Record, AnotherRecord>>::CreateStream();
   for (int i = 1; i <= 5; ++i) {
     current::time::SetNow(std::chrono::microseconds(i));
     if (i & 1) {
-      stream.Publish(Record(i));
+      stream->Publisher()->Publish(Record(i));
     } else {
-      stream.Publish(AnotherRecord(i));
+      stream->Publisher()->Publish(AnotherRecord(i));
     }
   }
 
@@ -988,7 +994,7 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(5);
-    stream.Subscribe(c);
+    stream->Subscribe(c);
     EXPECT_EQ(
         "{\"Record\":{\"x\":1}} {\"AnotherRecord\":{\"y\":2}} {\"Record\":{\"x\":3}} "
         "{\"AnotherRecord\":{\"y\":4}} {\"Record\":{\"x\":5}}",
@@ -1002,7 +1008,7 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(3);
-    stream.Subscribe<Record>(c);
+    stream->Subscribe<Record>(c);
     EXPECT_EQ("X=1 X=3 X=5", Join(c.results_, ' '));
   }
 
@@ -1013,7 +1019,7 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(2);
-    stream.Subscribe<AnotherRecord>(c);
+    stream->Subscribe<AnotherRecord>(c);
     EXPECT_EQ("Y=2 Y=4", Join(c.results_, ' '));
   }
 }
@@ -1024,50 +1030,99 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
   using namespace sherlock_unittest;
   using Stream = current::sherlock::Stream<Record>;
 
-  struct SherlockPublisherAcquirer {
+  struct DynamicSherlockPublisherAcquirer {
     using publisher_t = typename Stream::publisher_t;
-    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
-    std::unique_ptr<publisher_t> publisher_;
+    DynamicSherlockPublisherAcquirer(current::Borrowed<publisher_t> publisher)
+        : publisher_(std::move(publisher),
+                     [this]() {
+                       requested_termination_ = true;
+                       publisher_ = nullptr;
+                     }) {}
+    bool requested_termination_ = false;
+    current::BorrowedWithCallback<publisher_t> publisher_;
   };
 
-  Stream stream;
+  auto stream = Stream::CreateStream();
   Data d;
   {
     // In this test we start the subscriber before we publish anything into the stream.
     // That's why `idxts_t last` is not determined for each particular entry and we collect and check only the
     // values of `Record`s.
     SherlockTestProcessor p(d, true);
-    auto scope = stream.Subscribe(p);
+    auto scope = stream->Subscribe(p);
     EXPECT_TRUE(static_cast<bool>(scope));
+    {
+      // Publish the first entry as usual.
+      stream->Publisher()->Publish(Record(1), std::chrono::microseconds(100));
 
-    // Publish the first entry as usual.
-    stream.Publish(1, std::chrono::microseconds(100));
+      {
+        {
+          // Transfer ownership of the stream publisher to the external object.
+          EXPECT_TRUE(stream->IsMasterStream());
+          current::BorrowedOfGuaranteedLifetime<typename Stream::publisher_t> acquired_publisher =
+              stream->BecomeFollowingStream();
+          EXPECT_FALSE(stream->IsMasterStream());
 
-    // Transfer ownership of the stream publisher to the external object.
-    SherlockPublisherAcquirer acquirer;
-    EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
-    stream.MovePublisherTo(acquirer);
-    EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
+          // Publish to the stream is not allowed since the publisher has been moved away.
+          ASSERT_THROW(stream->Publisher(), current::sherlock::PublisherNotAvailableException);
+          ASSERT_THROW(stream->BorrowPublisher(), current::sherlock::PublisherNotAvailableException);
 
-    // Publish to the stream is not allowed since the publisher has been moved.
-    ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
-                 current::sherlock::PublishToStreamWithReleasedPublisherException);
-    // Now we can publish only via `acquirer` that owns stream publisher object.
-    acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
+          // Now we can publish only via `acquired_publisher` that owns stream publisher object.
+          acquired_publisher->Publish(Record(3), std::chrono::microseconds(300));
 
-    // Can't move publisher once more since we don't own it at this moment.
-    SherlockPublisherAcquirer other_acquirer;
-    ASSERT_THROW(stream.MovePublisherTo(other_acquirer), current::sherlock::PublisherAlreadyReleasedException);
+          // NOTE: `stream->BecomeFollowingStream()` will fail here, as `acquired_publisher` is still in scope.
+          // Uncomment the next line to see the `BorrowedOfGuaranteedLifetimeInvariantErrorCallback.`.
+          // stream->BecomeFollowingStream();
+        }
 
-    // Acquire publisher back.
-    stream.AcquirePublisher(std::move(acquirer.publisher_));
-    EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
-    // Can't acquire publisher since we already have one in the stream.
-    ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
-                 current::sherlock::PublisherAlreadyOwnedException);
+        // Acquire the publisher back.
+        // Note: An attempt to do so before `acquired_publisher` is out of scope will cause a deadlock.
+        // See below for a more sophisticated test.
+        EXPECT_FALSE(stream->IsMasterStream());
+        stream->BecomeMasterStream();
+        EXPECT_TRUE(stream->IsMasterStream());
 
-    // Publish the third entry.
-    stream.Publish(4, std::chrono::microseconds(400));
+        // Master becoming master is best to not throw. It's called from the destructor of the replicator, for instance.
+        ASSERT_NO_THROW(stream->BecomeMasterStream());
+      }
+
+      {
+        struct TemporaryPublisher {
+          using publisher_t = typename Stream::publisher_t;
+          current::BorrowedWithCallback<publisher_t> publisher_;
+          bool termination_requested_ = false;
+          TemporaryPublisher(current::Borrowed<publisher_t> publisher)
+              : publisher_(publisher,
+                           [this]() {
+                             CURRENT_ASSERT(!termination_requested_);
+                             termination_requested_ = true;
+                             // Note: Comment out the next line and observe the deadlock in
+                             // `stream->BecomeMasterStream();` below.
+                             publisher_ = nullptr;
+                           }) {}
+        };
+
+        // Transfer ownership of the stream publisher to the external object.
+        EXPECT_TRUE(stream->IsMasterStream());
+        TemporaryPublisher temporary_acquired_publisher(stream->BecomeFollowingStream());
+        EXPECT_FALSE(stream->IsMasterStream());
+
+        // Publish to the stream is not allowed since the publisher has been moved away.
+        ASSERT_THROW(stream->Publisher(), current::sherlock::PublisherNotAvailableException);
+        ASSERT_THROW(stream->BorrowPublisher(), current::sherlock::PublisherNotAvailableException);
+
+        // Acquire the publisher back.
+        // This time, as `TemporaryPublisher` supports graceful shutdown, there will be no deadlock.
+        EXPECT_FALSE(stream->IsMasterStream());
+        EXPECT_FALSE(temporary_acquired_publisher.termination_requested_);
+        stream->BecomeMasterStream();
+        EXPECT_TRUE(stream->IsMasterStream());
+        EXPECT_TRUE(temporary_acquired_publisher.termination_requested_);
+      }
+
+      // Publish the third entry.
+      stream->Publisher()->Publish(Record(4), std::chrono::microseconds(400));
+    }
 
     while (d.seen_ < 3u) {
       std::this_thread::yield();
@@ -1077,26 +1132,60 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
     EXPECT_TRUE(d.subscriber_alive_);
 
     EXPECT_TRUE(static_cast<bool>(scope));
+
+    {
+      // Acquire the publisher again, but this time wait until it's requested to be returned.
+      EXPECT_TRUE(stream->IsMasterStream());
+      auto acquired_publisher = std::make_unique<DynamicSherlockPublisherAcquirer>(stream->BecomeFollowingStream());
+      EXPECT_FALSE(stream->IsMasterStream());
+
+      // Publish to the stream is not allowed since the publisher has been moved.
+      ASSERT_THROW(stream->Publisher(), current::sherlock::PublisherNotAvailableException);
+      ASSERT_THROW(stream->BorrowPublisher(), current::sherlock::PublisherNotAvailableException);
+
+      // Now we can publish only via `acquired_publisher` that owns stream publisher object.
+      Value(acquired_publisher->publisher_)->Publish(Record(103), std::chrono::microseconds(10300));
+
+      // Acquire the publisher back.
+      EXPECT_FALSE(stream->IsMasterStream());
+      ASSERT_FALSE(acquired_publisher->requested_termination_);
+      stream->BecomeMasterStream();
+      ASSERT_TRUE(acquired_publisher->requested_termination_);
+      EXPECT_TRUE(stream->IsMasterStream());
+
+      // Master becoming master is best to not throw. It's called from the destructor of the replicator, for instance.
+      ASSERT_NO_THROW(stream->BecomeMasterStream());
+    }
+
+    while (d.seen_ < 4u) {
+      std::this_thread::yield();
+    }
+    EXPECT_EQ(4u, d.seen_);
+    EXPECT_EQ("1,3,4,103", d.results_);
+    EXPECT_TRUE(d.subscriber_alive_);
+
+    EXPECT_TRUE(static_cast<bool>(scope));
   }
-  EXPECT_EQ("1,3,4,TERMINATE", d.results_);
+
+  EXPECT_EQ("1,3,4,103,TERMINATE", d.results_);
   EXPECT_FALSE(d.subscriber_alive_);
 }
 
 TEST(Sherlock, SubscribingToJustTailDoesTheJob) {
   using namespace sherlock_unittest;
 
-  auto exposed_stream = current::sherlock::Stream<Record>();
+  auto exposed_stream = current::sherlock::Stream<Record>::CreateStream();
   const std::string base_url = Printf("http://localhost:%d/tail", FLAGS_sherlock_http_test_port);
-  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/tail", exposed_stream);
+  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/tail", *exposed_stream);
 
   std::thread initial_publisher([&]() {
     for (size_t i = 0; i <= 2; ++i) {
-      exposed_stream.Publish(Record(i * 10), std::chrono::microseconds(i));
+      exposed_stream->Publisher()->Publish(Record(i * 10), std::chrono::microseconds(i));
     }
   });
 
   while (HTTP(GET(base_url + "?sizeonly")).body != "3\n") {
-    ;  // Spin lock.
+    std::this_thread::yield();
   }
 
   initial_publisher.join();
@@ -1108,7 +1197,7 @@ TEST(Sherlock, SubscribingToJustTailDoesTheJob) {
       ;  // Spin lock, begin publishing only once the HTTP subscriber has started.
     }
     for (size_t i = 3; i <= 5; ++i) {
-      exposed_stream.Publish(Record(i * 10), std::chrono::microseconds(i));
+      exposed_stream->Publisher()->Publish(Record(i * 10), std::chrono::microseconds(i));
     }
   });
 
@@ -1119,8 +1208,7 @@ TEST(Sherlock, SubscribingToJustTailDoesTheJob) {
                     static_cast<void>(value);
                     http_subscriber_started = true;
                   },
-                  [&](const std::string& chunk_body) { body += chunk_body; },
-                  []() {}));
+                  [&](const std::string& chunk_body) { body += chunk_body; }));
   follow_up_publisher.join();
 
   const auto result = ParseJSON<std::vector<Record>>(body);

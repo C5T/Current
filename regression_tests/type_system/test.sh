@@ -14,8 +14,6 @@ TEST_LIST=(
     'json_variant_stringify_and_parse_and_test'
     'sherlock_memory'
     'sherlock_file'
-    'storage_null_persister'
-    'storage_simple_persister'
     'storage_sherlock_persister'
     'storage_with_subscriber'
 )

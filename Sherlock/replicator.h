@@ -31,12 +31,12 @@ SOFTWARE.
 
 #include "exceptions.h"
 #include "sherlock.h"
-#include "stream_data.h"
+#include "stream_impl.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/SS/ss.h"
 
-#include "../Bricks/sync/scope_owned.h"
+#include "../Bricks/sync/owned_borrowed.h"
 #include "../Bricks/sync/waitable_atomic.h"
 
 #include "../TypeSystem/Reflection/types.h"
@@ -85,12 +85,12 @@ class SubscribableRemoteStream final {
     static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
 
    public:
-    RemoteSubscriberThread(ScopeOwned<RemoteStream>& remote_stream,
+    RemoteSubscriberThread(Borrowed<RemoteStream> remote_stream,
                            F& subscriber,
                            uint64_t start_idx,
                            std::function<void()> done_callback)
         : valid_(false),
-          remote_stream_(remote_stream, [this]() { TerminateSubscription(); }),
+          borrowed_remote_stream_(std::move(remote_stream), [this]() { TerminateSubscription(); }),
           done_callback_(done_callback),
           subscriber_(subscriber),
           index_(start_idx),
@@ -128,7 +128,7 @@ class SubscribableRemoteStream final {
     }
 
     void ThreadImpl() {
-      const RemoteStream& bare_stream = remote_stream_.ObjectAccessorDespitePossiblyDestructing();
+      const RemoteStream& bare_stream = *borrowed_remote_stream_;
       bool terminate_sent = false;
       while (true) {
         if (!terminate_sent && terminate_subscription_requested_) {
@@ -200,8 +200,7 @@ class SubscribableRemoteStream final {
           return true;
         } else if (!subscription_id.empty()) {
           terminate_subscription_requested_ = true;
-          const std::string terminate_url =
-              remote_stream_.ObjectAccessorDespitePossiblyDestructing().GetURLToTerminate(subscription_id);
+          const std::string terminate_url = borrowed_remote_stream_->GetURLToTerminate(subscription_id);
           try {
             HTTP(GET(terminate_url));
           } catch (current::Exception&) {
@@ -214,7 +213,7 @@ class SubscribableRemoteStream final {
 
    private:
     bool valid_;
-    ScopeOwnedBySomeoneElse<RemoteStream> remote_stream_;
+    BorrowedWithCallback<RemoteStream> borrowed_remote_stream_;
     const std::function<void()> done_callback_;
     F& subscriber_;
     uint64_t index_;
@@ -234,41 +233,37 @@ class SubscribableRemoteStream final {
    public:
     using subscriber_thread_t = RemoteSubscriberThread<F, TYPE_SUBSCRIBED_TO>;
 
-    RemoteSubscriberScope(ScopeOwned<RemoteStream>& remote_stream,
+    RemoteSubscriberScope(Borrowed<RemoteStream> remote_stream,
                           F& subscriber,
                           uint64_t start_idx,
                           std::function<void()> done_callback)
-        : base_t(
-              std::move(std::make_unique<subscriber_thread_t>(remote_stream, subscriber, start_idx, done_callback))) {}
+        : base_t(std::move(
+              std::make_unique<subscriber_thread_t>(std::move(remote_stream), subscriber, start_idx, done_callback))) {}
   };
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
-      : stream_(
-            remote_stream_url, sherlock::constants::kDefaultTopLevelName, sherlock::constants::kDefaultNamespaceName) {
-    stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
+      : stream_(MakeOwned<RemoteStream>(
+            remote_stream_url, sherlock::constants::kDefaultTopLevelName, sherlock::constants::kDefaultNamespaceName)) {
+    stream_->CheckSchema();
   }
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url,
                                     const std::string& entry_name,
                                     const std::string& namespace_name)
-      : stream_(remote_stream_url, entry_name, namespace_name) {
-    stream_.ObjectAccessorDespitePossiblyDestructing().CheckSchema();
+      : stream_(MakeOwned<RemoteStream>(remote_stream_url, entry_name, namespace_name)) {
+    stream_->CheckSchema();
   }
 
   template <typename F>
   RemoteSubscriberScope<F, entry_t> Subscribe(F& subscriber,
                                               uint64_t start_idx = 0u,
-                                              std::function<void()> done_callback = nullptr) {
+                                              std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    try {
-      return RemoteSubscriberScope<F, entry_t>(stream_, subscriber, start_idx, done_callback);
-    } catch (const current::sync::InDestructingModeException&) {
-      CURRENT_THROW(StreamInGracefulShutdownException());
-    }
+    return RemoteSubscriberScope<F, entry_t>(stream_, subscriber, start_idx, done_callback);
   }
 
  private:
-  ScopeOwnedByMe<RemoteStream> stream_;
+  Owned<RemoteStream> stream_;
 };
 
 template <typename STREAM>
@@ -279,26 +274,29 @@ struct StreamReplicatorImpl {
   using entry_t = typename stream_t::entry_t;
   using publisher_t = typename stream_t::publisher_t;
 
-  StreamReplicatorImpl(stream_t& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
-  virtual ~StreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
-
-  void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
+  StreamReplicatorImpl(Borrowed<stream_t> stream)
+      : stream_(stream), publisher_(std::move(stream_->BecomeFollowingStream())) {}
+  virtual ~StreamReplicatorImpl() {
+    publisher_ = nullptr;
+    // NOTE(dkorolev): The destructor should not automatically order the stream to re-acquire data authority.
+    // Otherwise the stream will SUDDENLY become the master one again, w/o any action from the user. Not cool.
+    // The user should be responsible for restoring the stream's data authority as an instance
+    // of `StreamReplicator` is being destructed.
+    // NOTE(dkorolev): Master flip logic also plays well here.
+  }
 
   EntryResponse operator()(entry_t&& entry, idxts_t current, idxts_t) {
-    CURRENT_ASSERT(publisher_);
-    publisher_->Publish(std::move(entry), current.us);
+    Value(publisher_)->Publish(std::move(entry), current.us);
     return EntryResponse::More;
   }
 
   EntryResponse operator()(const entry_t& entry, idxts_t current, idxts_t) {
-    CURRENT_ASSERT(publisher_);
-    publisher_->Publish(entry, current.us);
+    Value(publisher_)->Publish(entry, current.us);
     return EntryResponse::More;
   }
 
   EntryResponse operator()(std::chrono::microseconds ts) {
-    CURRENT_ASSERT(publisher_);
-    publisher_->UpdateHead(ts);
+    Value(publisher_)->UpdateHead(ts);
     return EntryResponse::More;
   }
 
@@ -306,8 +304,10 @@ struct StreamReplicatorImpl {
   TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
 
  private:
-  stream_t& stream_;
-  std::unique_ptr<publisher_t> publisher_;
+  Borrowed<stream_t> stream_;
+
+  // `Optional` to destroy the publisher before requesting the stream to reacquire data authority.
+  Optional<Borrowed<publisher_t>> publisher_;
 };
 
 template <typename STREAM>

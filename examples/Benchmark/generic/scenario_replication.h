@@ -50,7 +50,7 @@ DECLARE_uint32(entries_count);
 #endif
 
 SCENARIO(stream_replication, "Replicate the Current stream of simple string entries.") {
-  std::unique_ptr<benchmark::replication::stream_t> stream;
+  Optional<current::Owned<benchmark::replication::stream_t>> stream;  // `Optional<>` as it's initialized dynamically.
   std::unique_ptr<current::FileSystem::ScopedRmFile> tmp_db_remover;
   std::string stream_url;
   HTTPRoutesScope scope;
@@ -77,12 +77,12 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
         stream = benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count);
         entries_count = FLAGS_entries_count;
       } else {
-        stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_db);
-        entries_count = stream->Persister().Size();
+        stream = benchmark::replication::stream_t::CreateStream(FLAGS_db);
+        entries_count = Value(stream)->Data()->Size();
       }
       stream_url = current::strings::Printf("127.0.0.1:%u/", FLAGS_local_port);
-      scope +=
-          HTTP(FLAGS_local_port).Register("/", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
+      scope += HTTP(FLAGS_local_port)
+                   .Register("/", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream));
     } else {
       stream_url = FLAGS_remote_url;
       const auto size_response = HTTP(GET(stream_url + "?sizeonly"));
@@ -102,15 +102,15 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
 
   template <typename STREAM, typename... ARGS>
   void Replicate(ARGS && ... args) {
-    STREAM replicated_stream(std::forward<ARGS>(args)...);
+    auto replicated_stream = STREAM::CreateStream(std::forward<ARGS>(args)...);
     current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(stream_url);
-    auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
+    current::sherlock::StreamReplicator<STREAM> replicator(replicated_stream);
     {
-      const auto subscriber_scope = remote_stream.Subscribe(*replicator);
-      while (replicated_stream.Persister().Size() < entries_count) {
+      const auto subscriber_scope = remote_stream.Subscribe(replicator);
+      while (replicated_stream->Data()->Size() < entries_count) {
         std::this_thread::yield();
       }
-      CURRENT_ASSERT(replicated_stream.Persister().Size() == entries_count);
+      CURRENT_ASSERT(replicated_stream->Data()->Size() == entries_count);
     }
   }
 

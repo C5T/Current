@@ -41,7 +41,7 @@ namespace current {
 namespace mmq {
 
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
-class MMPQ {
+class MMPQImpl {
   static_assert(current::ss::IsEntrySubscriber<CONSUMER, MESSAGE>::value, "");
 
  public:
@@ -49,15 +49,15 @@ class MMPQ {
   using message_t = MESSAGE;
 
   // Consumer's `operator()` will be called from a dedicated thread, which is spawned and owned
-  // by the instance of MMPQ. See "Blocks/SS/ss.h" and its test for possible callee signatures.
+  // by the instance of MMPQImpl. See "Blocks/SS/ss.h" and its test for possible callee signatures.
   using consumer_t = CONSUMER;
 
-  MMPQ(consumer_t& consumer) : consumer_(consumer), consumer_thread_(&MMPQ::ConsumerThread, this) {
+  MMPQImpl(consumer_t& consumer) : consumer_(consumer), consumer_thread_(&MMPQImpl::ConsumerThread, this) {
     consumer_thread_created_ = true;
   }
 
   // The destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
-  ~MMPQ() {
+  ~MMPQImpl() {
     if (consumer_thread_created_) {
       CURRENT_ASSERT(consumer_thread_.joinable());
       {
@@ -70,83 +70,39 @@ class MMPQ {
   }
 
   // Adds a message to the buffer. Supports both copy and move semantics. THREAD SAFE.
-
-  // NOTE(dkorolev): `std::enable_if_t<std::is_same<message_t, current::decay<T>>::value, idxts_t>` can't convert
-  // `const char*` into an `std::string`, which is essential, as, unlike MMQ, MMPQ is not an `ss::EntryPublisher<>`.
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t Publish(T&& message) {
-    return DoPublish<MLS>(std::move(message), current::time::DefaultTimeArgument());
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock,
+            class E,
+            typename TIMESTAMP>
+  idxts_t PublisherPublishImpl(E&& entry, const TIMESTAMP timestamp) {
+    locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    const auto us = current::time::TimestampAsMicroseconds(timestamp);
+    ++last_idx_ts_.index;
+    // Does not update `last_idx_ts_.us` at all. `UpdateHead()` must be called.
+    // This is to ensure the regular `Publish`, coming through the interface defined in `Blocks/SS/pubsub.h`,
+    // can publish into the future and utilize the full power of MMPQ.
+    queue_.emplace(std::forward<E>(entry), idxts_t(last_idx_ts_.index, us));
+    condition_variable_.notify_all();
+    return last_idx_ts_;
   }
 
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t Publish(T&& message, const std::chrono::microseconds us) {
-    return DoPublish<MLS>(std::move(message), us);
-  }
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t PublishIntoTheFuture(T&& message) {
-    return DoPublishIntoTheFuture<MLS>(std::move(message), current::time::DefaultTimeArgument());
-  }
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T>
-  idxts_t PublishIntoTheFuture(T&& message, std::chrono::microseconds us) {
-    return DoPublishIntoTheFuture<MLS>(std::move(message), us);
-  }
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  void UpdateHead(const std::chrono::microseconds us) {
-    DoUpdateHead<MLS>(us);
-  }
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  void UpdateHead() {
-    DoUpdateHead<MLS>(current::time::DefaultTimeArgument());
+  // NOTE: `UpdateHead` must be called for the entries to be processed, since otherwise, as entries can be published
+  // at non-increasing timestamps order, they must be held in the queue.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename TIMESTAMP>
+  void PublisherUpdateHeadImpl(const TIMESTAMP timestamp) {
+    locks::SmartMutexLockGuard<MLS> lock(mutex_);
+    const auto us = current::time::TimestampAsMicroseconds(timestamp);
+    if (!(us > last_idx_ts_.us)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), us));
+    }
+    last_idx_ts_.us = us;
+    condition_variable_.notify_all();
   }
 
  private:
-  MMPQ(const MMPQ&) = delete;
-  MMPQ(MMPQ&&) = delete;
-  void operator=(const MMPQ&) = delete;
-  void operator=(MMPQ&&) = delete;
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T, typename US>
-  idxts_t DoPublish(T&& message, const US us) {
-    locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
-    if (!(timestamp > last_idx_ts_.us)) {
-      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
-    }
-    ++last_idx_ts_.index;
-    last_idx_ts_.us = timestamp;
-    queue_.emplace(std::move(message), last_idx_ts_);
-    condition_variable_.notify_all();
-    return last_idx_ts_;
-  }
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, class T, typename US>
-  idxts_t DoPublishIntoTheFuture(T&& message, const US us) {
-    locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
-    if (!(timestamp > last_idx_ts_.us)) {
-      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
-    }
-    ++last_idx_ts_.index;
-    // Don't update the timestamp.
-    queue_.emplace(std::move(message), idxts_t(last_idx_ts_.index, timestamp));
-    condition_variable_.notify_all();
-    return last_idx_ts_;
-  }
-
-  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename US>
-  void DoUpdateHead(const US us) {
-    locks::SmartMutexLockGuard<MLS> lock(mutex_);
-    const auto timestamp = current::time::GetTimestampFromLockedSection(us);
-    if (!(timestamp > last_idx_ts_.us)) {
-      CURRENT_THROW(ss::InconsistentTimestampException(last_idx_ts_.us + std::chrono::microseconds(1), timestamp));
-    }
-    last_idx_ts_.us = timestamp;
-    condition_variable_.notify_all();
-  }
+  MMPQImpl(const MMPQImpl&) = delete;
+  MMPQImpl(MMPQImpl&&) = delete;
+  void operator=(const MMPQImpl&) = delete;
+  void operator=(MMPQImpl&&) = delete;
 
   void ConsumerThread() {
     while (true) {
@@ -195,6 +151,9 @@ class MMPQ {
   // The thread in which the consuming process is running.
   std::thread consumer_thread_;
 };
+
+template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
+using MMPQ = ss::EntryPublisher<MMPQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
 
 }  // namespace mmq
 }  // namespace current

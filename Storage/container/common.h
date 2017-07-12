@@ -32,7 +32,7 @@ namespace storage {
 namespace container {
 
 template <typename KEY, typename VALUE>
-using Unordered = std::unordered_map<KEY, VALUE, CurrentHashFunction<KEY>>;
+using Unordered = std::unordered_map<KEY, VALUE, GenericHashFunction<KEY>>;
 
 template <typename KEY, typename VALUE>
 using Ordered = std::map<KEY, VALUE, CurrentComparator<KEY>>;

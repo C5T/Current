@@ -45,7 +45,7 @@ TEST(TypeTest, Storage) {
 
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");
 
-  storage_t storage("data");
+  auto storage = storage_t::CreateMasterStorage("data");
 
 #include "include/storage.cc"
 
@@ -59,19 +59,15 @@ TEST(TypeTest, Storage) {
       return current::ss::EntryResponse::Done;
     }
 
-    current::ss::EntryResponse operator()(std::chrono::microseconds) const {
-      return current::ss::EntryResponse::More;
-    }
+    current::ss::EntryResponse operator()(std::chrono::microseconds) const { return current::ss::EntryResponse::More; }
 
-    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
-      return current::ss::EntryResponse::More;
-    }
+    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() { return current::ss::EntryResponse::More; }
 
     current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Wait; }
   };
 
   current::ss::StreamSubscriber<Subscriber, transaction_t> subscriber;
-  storage.InternalExposeStream().Subscribe(subscriber);
+  storage->Subscribe(subscriber);
 
   EXPECT_EQ(static_cast<size_t>(storage_t::FIELDS_COUNT), subscriber.number_of_mutations);
 }

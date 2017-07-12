@@ -258,12 +258,13 @@ class WaitableAtomicImpl {
     using data_t = DATA;
     enum { IS_INTRUSIVE = true };
 
-    explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr) : destructor_ptr_(destructor_ptr) {
+    explicit IntrusiveImpl(CustomWaitableAtomicDestructor* destructor_ptr = nullptr)
+        : destructing_(false), destructor_ptr_(destructor_ptr) {
       RefCounterTryIncrease();
     }
 
     explicit IntrusiveImpl(const data_t& data, CustomWaitableAtomicDestructor* destructor_ptr = nullptr)
-        : BasicImpl(data), destructor_ptr_(destructor_ptr) {
+        : BasicImpl(data), destructing_(false), destructor_ptr_(destructor_ptr) {
       RefCounterTryIncrease();
     }
 
@@ -329,7 +330,7 @@ class WaitableAtomicImpl {
     }
 
    protected:
-    bool destructing_ = false;
+    std::atomic_bool destructing_;
     size_t ref_count_ = 0;
     std::condition_variable cv_;
     CustomWaitableAtomicDestructor* destructor_ptr_ = nullptr;

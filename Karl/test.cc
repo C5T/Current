@@ -24,6 +24,7 @@ SOFTWARE.
 
 #define CURRENT_MOCK_TIME
 #define EXTRA_KARL_LOGGING  // Make sure the schema dump part compiles. -- D.K.
+#define CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
 
 #include "current_build.h"
 
@@ -50,12 +51,15 @@ DEFINE_uint16(karl_generator_test_port, PickPortForUnitTest(), "Local test port 
 DEFINE_uint16(karl_is_prime_test_port, PickPortForUnitTest(), "Local test port for the `is_prime` service.");
 DEFINE_uint16(karl_annotator_test_port, PickPortForUnitTest(), "Local test port for the `annotator` service.");
 DEFINE_uint16(karl_filter_test_port, PickPortForUnitTest(), "Local test port for the `filter` service.");
+#ifndef CURRENT_CI
 DEFINE_uint16(karl_nginx_port,
               PickPortForUnitTest(),
               "Local port for Nginx to listen for proxying requests to Claires.");
+
 DEFINE_string(karl_nginx_config_file,
               "",
               "If set, run tests with Nginx assuming this file is included in the main Nginx config.");
+#endif  // CURRENT_CI
 
 #ifndef CURRENT_WINDOWS
 DEFINE_string(karl_test_stream_persistence_file, ".current/stream", "Local file to store Karl's keepalives.");
@@ -85,9 +89,10 @@ static current::karl::KarlParameters UnittestKarlParameters() {
 TEST(Karl, SmokeGenerator) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
@@ -125,9 +130,10 @@ TEST(Karl, SmokeGenerator) {
 TEST(Karl, SmokeIsPrime) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
   EXPECT_EQ("YES\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=2", FLAGS_karl_is_prime_test_port))).body);
@@ -165,9 +171,10 @@ TEST(Karl, SmokeIsPrime) {
 TEST(Karl, SmokeAnnotator) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
@@ -216,9 +223,10 @@ TEST(Karl, SmokeAnnotator) {
 TEST(Karl, SmokeFilter) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
@@ -272,9 +280,10 @@ TEST(Karl, SmokeFilter) {
 TEST(Karl, Deregister) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
   // No services registered.
@@ -342,6 +351,7 @@ TEST(Karl, Deregister) {
   }
 }
 
+#ifndef CURRENT_CI
 TEST(Karl, DeregisterWithNginx) {
   // Run the test only if `karl_nginx_config_file` flag is set.
   if (FLAGS_karl_nginx_config_file.empty()) {
@@ -350,10 +360,11 @@ TEST(Karl, DeregisterWithNginx) {
 
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
 
-  unittest_karl_t karl(UnittestKarlParameters().SetNginxParameters(
+  unittest_karl_t karl(params.SetNginxParameters(
       current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file)));
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
@@ -481,13 +492,15 @@ TEST(Karl, DeregisterWithNginx) {
     }
   }
 }
+#endif  // CURRENT_CI
 
 TEST(Karl, DisconnectedByTimout) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
   current::karl::ClaireStatus claire;
@@ -503,7 +516,7 @@ TEST(Karl, DisconnectedByTimout) {
       std::this_thread::yield();
     }
     const auto result =
-        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
+        karl.BorrowStorage()->ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
           ASSERT_TRUE(Exists(fields.claires[claire.codename]));
           EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
                     Value(fields.claires[claire.codename]).registered_state);
@@ -514,17 +527,16 @@ TEST(Karl, DisconnectedByTimout) {
   current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
   bool is_timeouted_persisted = false;
   while (!is_timeouted_persisted) {
-    is_timeouted_persisted =
-        Value(karl.InternalExposeStorage()
-                  .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
-                    EXPECT_TRUE(Exists(fields.claires[claire.codename]));
-                    return Value(fields.claires[claire.codename]).registered_state ==
-                           current::karl::ClaireRegisteredState::DisconnectedByTimeout;
-                  })
-                  .Go());
+    is_timeouted_persisted = Value(
+        karl.BorrowStorage()->ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+          EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+          return Value(fields.claires[claire.codename]).registered_state ==
+                 current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+        }).Go());
   }
 }
 
+#ifndef CURRENT_CI
 TEST(Karl, DisconnectedByTimoutWithNginx) {
   // Run the test only if `karl_nginx_config_file` flag is set.
   if (FLAGS_karl_nginx_config_file.empty()) {
@@ -533,10 +545,11 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
 
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
 
-  const unittest_karl_t karl(UnittestKarlParameters().SetNginxParameters(
+  const unittest_karl_t karl(params.SetNginxParameters(
       current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file)));
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
@@ -558,7 +571,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
       std::this_thread::yield();
     }
     const auto result =
-        karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
+        karl.BorrowStorage()->ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
           ASSERT_TRUE(Exists(fields.claires[claire.codename]));
           EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
                     Value(fields.claires[claire.codename]).registered_state);
@@ -586,14 +599,12 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
   bool is_timeouted_persisted = false;
   while (!is_timeouted_persisted) {
-    is_timeouted_persisted =
-        Value(karl.InternalExposeStorage()
-                  .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
-                    EXPECT_TRUE(Exists(fields.claires[claire.codename]));
-                    return Value(fields.claires[claire.codename]).registered_state ==
-                           current::karl::ClaireRegisteredState::DisconnectedByTimeout;
-                  })
-                  .Go());
+    is_timeouted_persisted = Value(
+        karl.BorrowStorage()->ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+          EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+          return Value(fields.claires[claire.codename]).registered_state ==
+                 current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+        }).Go());
   }
 
   // This is a bit flaky.
@@ -611,22 +622,24 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
     }
   }
 }
+#endif  // CURRENT_CI
 
 TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   current::time::ResetToZero();
 
   // Start primary `Karl`.
-  const auto primary_stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto primary_storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t primary_karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto primary_stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto primary_storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t primary_karl(params);
   const current::karl::Locator primary_karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
   // Start secondary `Karl`.
   current::karl::KarlParameters secondary_karl_params;
   secondary_karl_params.keepalives_port = PickPortForUnitTest();
   secondary_karl_params.fleet_view_port = PickPortForUnitTest();
-  secondary_karl_params.stream_persistence_file = FLAGS_karl_test_stream_persistence_file + "_secondary";
-  secondary_karl_params.storage_persistence_file = FLAGS_karl_test_storage_persistence_file + "_secondary";
+  secondary_karl_params.stream_persistence_file = params.stream_persistence_file + "_secondary";
+  secondary_karl_params.storage_persistence_file = params.storage_persistence_file + "_secondary";
   const auto secondary_stream_file_remover =
       current::FileSystem::ScopedRmFile(secondary_karl_params.stream_persistence_file);
   const auto secondary_storage_file_remover =
@@ -711,8 +724,8 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
     bool is_timeouted_persisted = false;
     while (!is_timeouted_persisted) {
       is_timeouted_persisted =
-          Value(primary_karl.InternalExposeStorage()
-                    .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+          Value(primary_karl.BorrowStorage()
+                    ->ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
                       EXPECT_TRUE(Exists(fields.claires[generator.ClaireCodename()]));
                       return Value(fields.claires[generator.ClaireCodename()]).registered_state ==
                              current::karl::ClaireRegisteredState::DisconnectedByTimeout;
@@ -723,7 +736,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
 
   // Make `generator` report to the `primary_karl`.
   {
-    generator.Claire().SetKarlLocator(primary_karl_locator);
+    generator.Claire().SetKarlLocator(primary_karl_locator, current::karl::ForceSendKeepaliveWaitRequest::Wait);
     EXPECT_EQ(primary_karl_locator.address_port_route, generator.Claire().GetKarlLocator().address_port_route);
   }
 
@@ -744,12 +757,18 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
+// NOTE(dkorolev): On my Ubuntu 16.04, when run as:
+// $ ./.current/test --gtest_filter=Karl.ChangeDependenciesInClaire --gtest_repeat=-1
+// this test consistently fails on iteration 253, when calling `::getaddrinfo()` for `localhost`.
+// Changing `localhost` into `127.0.0.1` fails to create a socket (`::socket()` returns -1).
+// While there's a nonzero chance we're leaking sockets here, I'm postponing the investigation for now. -- D.K.
 TEST(Karl, ChangeDependenciesInClaire) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const uint16_t claire_port = PickPortForUnitTest();
   current::karl::Claire claire(karl_locator, "unittest", claire_port, {"http://127.0.0.1:12345"});
@@ -783,12 +802,12 @@ TEST(Karl, ChangeDependenciesInClaire) {
   // Register with no custom status filler and wait for the confirmation from Karl.
   claire_to_depend_on.Register(nullptr, true);
 
-  // Modify `claire`'s dependency list and notify Karl.
+  // Modify `claire`'s dependencies list and notify Karl.
   const int last_update_ts = 2000;
   current::time::SetNow(std::chrono::microseconds(last_update_ts), std::chrono::microseconds(last_update_ts + 100));
   const std::string dependency_url = Printf("http://127.0.0.1:%d", claire_to_depend_on_port);
   claire.SetDependencies({dependency_url});
-  claire.ForceSendKeepalive();
+  claire.ForceSendKeepalive(current::karl::ForceSendKeepaliveWaitRequest::Wait);
 
   // Wait for Karl to receive `claire`'s latest keepalive.
   {
@@ -853,7 +872,7 @@ TEST(Karl, ClaireNotifiesUserObject) {
   // Switch Claire's Karl locator by calling the member function.
   {
     const std::string karl_url = "http://host2:10001/";
-    claire.SetKarlLocator(current::karl::Locator(karl_url));
+    claire.SetKarlLocator(current::karl::Locator(karl_url), current::karl::ForceSendKeepaliveWaitRequest::Wait);
     EXPECT_EQ(karl_url, claire.GetKarlLocator().address_port_route);
   }
 
@@ -864,9 +883,10 @@ TEST(Karl, ClaireNotifiesUserObject) {
 TEST(Karl, ModifiedClaireBoilerplateStatus) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(UnittestKarlParameters());
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
   const uint16_t claire_port = PickPortForUnitTest();
   current::karl::Claire claire(karl_locator, "unittest", claire_port);
@@ -909,17 +929,21 @@ TEST(Karl, EndToEndTest) {
     std::cerr << "IsPrime    :: localhost:" << FLAGS_karl_is_prime_test_port << "/is_prime?x=42\n";
     std::cerr << "Annotator  :: localhost:" << FLAGS_karl_annotator_test_port << "/annotated\n";
     std::cerr << "Filter     :: localhost:" << FLAGS_karl_filter_test_port << "/primes\n";
+#ifndef CURRENT_CI
     if (!FLAGS_karl_nginx_config_file.empty()) {
       std::cerr << "Nginx view :: localhost:" << FLAGS_karl_nginx_port << '\n';
     }
+#endif  // CURRENT_CI
   }
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
   auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+#ifndef CURRENT_CI
   if (!FLAGS_karl_nginx_config_file.empty()) {
     params.SetNginxParameters(current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file));
   }
+#endif  // CURRENT_CI
   params.svg_name = "Karl's Unit Test";
   params.github_repo_url = "https://github.com/dkorolev/Current";
   const unittest_karl_t karl(params);
@@ -973,12 +997,15 @@ TEST(Karl, EndToEndTest) {
 TEST(Karl, KarlNotifiesUserObject) {
   current::time::ResetToZero();
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
 
   struct KarlNotifiable
       : current::karl::IKarlNotifiable<Variant<current::karl::default_user_status::status, karl_unittest::is_prime>> {
     std::vector<std::string> events;
+    std::atomic_size_t events_count;
+    KarlNotifiable() : events_count(0u) {}
     void OnKeepalive(std::chrono::microseconds,
                      const current::karl::ClaireServiceKey&,
                      const std::string& codename,
@@ -990,22 +1017,25 @@ TEST(Karl, KarlNotifiesUserObject) {
       } else {
         events.push_back("PrimeKeepalive: " + codename);
       }
+      ++events_count;
     }
     void OnDeregistered(std::chrono::microseconds,
                         const std::string& codename,
                         const ImmutableOptional<current::karl::ClaireInfo>&) override {
       events.push_back("Deregistered: " + codename);
+      ++events_count;
     }
     void OnTimedOut(std::chrono::microseconds,
                     const std::string& codename,
                     const ImmutableOptional<current::karl::ClaireInfo>&) override {
       events.push_back("TimedOut: " + codename);
+      ++events_count;
     }
   };
 
   KarlNotifiable karl_notifications_receiver;
 
-  const unittest_karl_t karl(UnittestKarlParameters(), karl_notifications_receiver);
+  const unittest_karl_t karl(params, karl_notifications_receiver);
 
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
 
@@ -1017,10 +1047,18 @@ TEST(Karl, KarlNotifiesUserObject) {
     const karl_unittest::ServiceGenerator generator(
         FLAGS_karl_generator_test_port, std::chrono::microseconds(1000000), karl_locator);
     expected.push_back("Keepalive: " + generator.ClaireCodename());
+    while (karl_notifications_receiver.events_count != expected.size()) {
+      std::this_thread::yield();
+    }
+
     EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
     const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
     expected.push_back("PrimeKeepalive: " + is_prime.ClaireCodename());
+    while (karl_notifications_receiver.events_count != expected.size()) {
+      std::this_thread::yield();
+    }
+
     EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
     {
@@ -1029,6 +1067,10 @@ TEST(Karl, KarlNotifiesUserObject) {
                                                       Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
                                                       karl_locator);
       expected.push_back("Keepalive: " + annotator.ClaireCodename());
+      while (karl_notifications_receiver.events_count != expected.size()) {
+        std::this_thread::yield();
+      }
+
       EXPECT_EQ(current::strings::Join(expected, ", "),
                 current::strings::Join(karl_notifications_receiver.events, ", "));
 
@@ -1054,7 +1096,7 @@ TEST(Karl, KarlNotifiesUserObject) {
     expected.push_back("Deregistered: " + is_prime.ClaireCodename());
     expected.push_back("Deregistered: " + generator.ClaireCodename());
   }
-  while (karl_notifications_receiver.events.size() != expected.size()) {
+  while (karl_notifications_receiver.events_count != expected.size()) {
     std::this_thread::yield();
   }
   EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
@@ -1085,13 +1127,12 @@ TEST(Karl, KarlNotifiesUserObject) {
     EXPECT_EQ(current::strings::Join(expected, ", "), current::strings::Join(karl_notifications_receiver.events, ", "));
 
     current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000), std::chrono::microseconds(101 * 1000 * 1000));
-    while (Value(karl.InternalExposeStorage()
-                     .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
-                       EXPECT_TRUE(Exists(fields.claires[claire.codename]));
-                       return Value(fields.claires[claire.codename]).registered_state ==
-                              current::karl::ClaireRegisteredState::DisconnectedByTimeout;
-                     })
-                     .Go())) {
+    while (Value(
+        karl.BorrowStorage()->ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+          EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+          return Value(fields.claires[claire.codename]).registered_state ==
+                 current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+        }).Go())) {
       std::this_thread::yield();
     }
 
@@ -1137,12 +1178,13 @@ TEST(Karl, CustomStorage) {
   using custom_karl_t =
       current::karl::GenericKarl<custom_storage_t, current::karl::default_user_status::status, karl_unittest::is_prime>;
 
-  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
-  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  custom_storage_t storage(FLAGS_karl_test_storage_persistence_file);
+  const auto params = UnittestKarlParameters();
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(params.stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
+  auto storage = custom_storage_t::CreateMasterStorage(params.storage_persistence_file);
 
   {
-    const auto result = storage.ReadWriteTransaction([](MutableFields<custom_storage_t> fields) {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<custom_storage_t> fields) {
       fields.custom_field.Add(CustomField(42, "UnitTest"));
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
@@ -1150,13 +1192,13 @@ TEST(Karl, CustomStorage) {
 
   std::string generator_codename;
   {
-    const custom_karl_t karl(storage, UnittestKarlParameters());
+    const custom_karl_t karl(storage, params);
     const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
     const karl_unittest::ServiceGenerator generator(
         FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
     generator_codename = generator.ClaireCodename();
 
-    const auto result = karl.InternalExposeStorage().ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+    const auto result = karl.BorrowStorage()->ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
       ASSERT_TRUE(Exists(fields.claires[generator_codename]));
       EXPECT_EQ(current::karl::ClaireRegisteredState::Active,
                 Value(fields.claires[generator_codename]).registered_state);
@@ -1165,7 +1207,7 @@ TEST(Karl, CustomStorage) {
   }
 
   {
-    const auto result = storage.ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
+    const auto result = storage->ReadOnlyTransaction([&](ImmutableFields<custom_storage_t> fields) {
       // `generator` has deregistered itself on destruction.
       ASSERT_TRUE(Exists(fields.claires[generator_codename]));
       EXPECT_EQ(current::karl::ClaireRegisteredState::Deregistered,

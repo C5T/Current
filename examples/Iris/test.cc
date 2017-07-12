@@ -57,47 +57,43 @@ DEFINE_bool(run, false, "Set to true to run indefinitely.");
 // Flower ID, global and auto-increasing, for test purposes.
 TEST(Iris, Demo) {
   using TestDB = LabeledFlowersDB<SherlockInMemoryStreamPersister>;
-  TestDB db;
+  auto db = TestDB::CreateMasterStorage();
 
   size_t number_of_flowers = 0u;
   std::map<size_t, std::string> dimension_names;
 
   auto http_scope =
       HTTP(FLAGS_iris_port)
-          .Register("/import",
-                    [&db, &number_of_flowers, &dimension_names](Request request) {
-                      EXPECT_EQ("POST", request.method);
-                      const std::string body = request.body;
-                      db.ReadWriteTransaction(
-                             [body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
-                               // Skip the first line with labels.
-                               bool first_line = true;
-                               for (auto flower_definition_line : Split<ByLines>(body)) {
-                                 std::vector<std::string> flower_definition_fields =
-                                     Split(flower_definition_line, '\t');
-                                 CURRENT_ASSERT(flower_definition_fields.size() == 5u);
-                                 if (first_line && flower_definition_fields.back() == "Label") {
-                                   // For this example, just overwrite the labels on each `/import`.
-                                   dimension_names.clear();
-                                   for (size_t i = 0; i < flower_definition_fields.size() - 1; ++i) {
-                                     dimension_names[i] = flower_definition_fields[i];
-                                   }
-                                   continue;
-                                 }
-                                 first_line = false;
-                                 fields.flowers.Add(
-                                     LabeledFlower(++number_of_flowers,
-                                                   current::FromString<double>(flower_definition_fields[0]),
-                                                   current::FromString<double>(flower_definition_fields[1]),
-                                                   current::FromString<double>(flower_definition_fields[2]),
-                                                   current::FromString<double>(flower_definition_fields[3]),
-                                                   flower_definition_fields[4]));
-                               }
-                               return Printf("Successfully imported %d flowers.\n",
-                                             static_cast<int>(number_of_flowers));
-                             },
-                             std::move(request)).Wait();
-                    });
+          .Register(
+              "/import",
+              [&db, &number_of_flowers, &dimension_names](Request request) {
+                EXPECT_EQ("POST", request.method);
+                const std::string body = request.body;
+                db->ReadWriteTransaction([body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
+                  // Skip the first line with labels.
+                  bool first_line = true;
+                  for (auto flower_definition_line : Split<ByLines>(body)) {
+                    std::vector<std::string> flower_definition_fields = Split(flower_definition_line, '\t');
+                    CURRENT_ASSERT(flower_definition_fields.size() == 5u);
+                    if (first_line && flower_definition_fields.back() == "Label") {
+                      // For this example, just overwrite the labels on each `/import`.
+                      dimension_names.clear();
+                      for (size_t i = 0; i < flower_definition_fields.size() - 1; ++i) {
+                        dimension_names[i] = flower_definition_fields[i];
+                      }
+                      continue;
+                    }
+                    first_line = false;
+                    fields.flowers.Add(LabeledFlower(++number_of_flowers,
+                                                     current::FromString<double>(flower_definition_fields[0]),
+                                                     current::FromString<double>(flower_definition_fields[1]),
+                                                     current::FromString<double>(flower_definition_fields[2]),
+                                                     current::FromString<double>(flower_definition_fields[3]),
+                                                     flower_definition_fields[4]));
+                  }
+                  return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
+                }, std::move(request)).Wait();
+              });
 
   // The input file is in the `golden` directory for it to be successfully picked up by
   // `scripts/full-test.sh`.
