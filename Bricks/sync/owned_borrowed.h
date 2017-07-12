@@ -35,7 +35,7 @@ SOFTWARE.
 //   Creates `master`, which will live only within its creation scope.
 //   The basic usage of `master` is `master->MemberFunctionOfT(...)`, much like with C++'s `shared_ptr<T>`.
 //
-// * Borrowed<T> borrower(master);  // Or `Borrowed<T> borrower(another_another_borrower);`.
+// * Borrowed<T> borrower(master);  // Or `Borrowed<T> borrower(another_borrower);`.
 //   Initializes `borrower`, which can be used same way as `master`.
 //   Casting it to `bool` (or just checking for `if (!borrower) { ... }`) would result in `false`
 //   if and only if the master scope (the scope of `Owned<T>`) is being terminated, and is currently
