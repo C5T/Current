@@ -8,8 +8,7 @@ FAILURES=""
 
 for i in $(find . -name test.cc | sort -g) ; do
   DIR=$(dirname $i)
-  echo -e -n "\n\033[0m\033[1mDir\033[0m: \033[36m"
-  echo $DIR
+  echo -e "\n\033[0m\033[1mDir\033[0m: \033[36m${DIR}\033[0m"
   cd $DIR
   if ! make -s test ; then
     FAILURES="$FAILURES\n- $DIR"
