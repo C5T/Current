@@ -132,7 +132,9 @@ matrix:
 
     - script:
       - make typesystem_schema_typescript_tests
-      compiler: "# Job: make typesystem_schema_typescript_tests #"
+      compiler: "# TypeScript"
+      env:
+      - TEST_SCHEMA_COMPILATION=1
       os: linux
 
 notifications:
