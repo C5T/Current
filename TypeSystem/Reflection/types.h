@@ -88,7 +88,7 @@ constexpr uint64_t TYPEID_UNORDERED_MAP_TYPE = TYPEID_TYPE_RANGE * TYPEID_UNORDE
 CURRENT_ENUM(TypeID, uint64_t){
   NotYetReadyButYouGuysHangInThere = 0u,
   CurrentStruct = 1u,
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

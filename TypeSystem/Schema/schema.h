@@ -3,6 +3,7 @@ The MIT License (MIT)
 
 Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
           (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2017 Ivan Babak <babak.john@gmail.com> https://github.com/sompylasar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +43,8 @@ SOFTWARE.
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/util/sha256.h"
 
+#include "../../Bricks/exception.h"
+
 namespace current {
 namespace reflection {
 
@@ -64,11 +67,13 @@ struct PrimitiveTypesListImpl final {
   std::map<TypeID, std::string> cpp_name;
   std::map<TypeID, std::string> fsharp_name;
   std::map<TypeID, std::string> markdown_name;
+  std::map<TypeID, std::string> typescript_name;
   PrimitiveTypesListImpl() {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type, fs_type, md_type) \
-  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;                        \
-  fsharp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = fs_type;                       \
-  markdown_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = md_type;
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;                                  \
+  fsharp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = fs_type;                                 \
+  markdown_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = md_type;                               \
+  typescript_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = typescript_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
   }
@@ -91,6 +96,7 @@ enum class Language : int {
   FSharp,              // F#.
   Markdown,            // [GitHub] Markdown.
   JSON,                // A compact JSON we use to describe schema to third parties.
+  TypeScript,          // TypeScript.
   end
 };
 
@@ -308,7 +314,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           // They assume the declaration order is respected, and any dependencies have already been listed.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.cpp_name.count(p.type_id) != 0u) {
+            if (globals.cpp_name.count(p.type_id)) {
               oss_ << globals.cpp_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -678,7 +684,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
           // They assume the declaration order is respected, and any dependencies have already been listed.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.fsharp_name.count(p.type_id) != 0u) {
+            if (globals.fsharp_name.count(p.type_id)) {
               oss_ << globals.fsharp_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -815,7 +821,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
           // `operator()(...)`-s of this block print the type name, without the expansion.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.markdown_name.count(p.type_id) != 0u) {
+            if (globals.markdown_name.count(p.type_id)) {
               oss_ << globals.markdown_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
@@ -867,8 +873,6 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
                       const Optional<NamespaceToExpose>&)
         : types_(types), os_(os) {}
 
-    // `operator()`-s of this block print complete declarations of F# types.
-    // The types that require complete declarations in F# are records and discriminated unions.
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum&) const {}
     void operator()(const ReflectedType_Vector&) const {}
@@ -961,7 +965,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
           // `operator()(...)`-s of this block fills in `this->result_` with the type, not expanding on it.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
-            if (globals.cpp_name.count(p.type_id) != 0u) {
+            if (globals.cpp_name.count(p.type_id)) {
               variant_clean_type_names::primitive result;
               result.type = globals.cpp_name.at(p.type_id);
               result.text = globals.markdown_name.at(p.type_id);
@@ -976,7 +980,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
           void operator()(const ReflectedType_Enum& e) const {
             const auto& globals = PrimitiveTypesList();
 
-            if (globals.cpp_name.count(e.underlying_type) != 0u) {
+            if (globals.cpp_name.count(e.underlying_type)) {
               variant_clean_type_names::key result;
               result.name = e.name;
               result.type = globals.cpp_name.at(e.underlying_type);
@@ -1115,6 +1119,216 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     // Must return an empty string to make sure the JSON dumped from the destructor at the end is valid.
     return "";
+  }
+  // LCOV_EXCL_STOP
+};
+
+struct LanguageTypeScriptReservedWordException : Exception {
+  using Exception::Exception;
+};
+
+template <>
+struct LanguageSyntaxImpl<Language::TypeScript> final {
+  static std::string Header(const std::string& unique_hash) {
+    return (
+      std::string("// Autogenerated TypeScript and io-ts types for C5T/Current JSON.\n") +
+      "// peerDependencies: io-ts@0.5.1 c5t-current-schema-ts@0.1.0\n" +
+      "// hash: " + unique_hash + "\n"
+      "import * as iots from 'io-ts';\n" +
+      "import * as C5TCurrent from 'c5t-current-schema-ts';\n" +
+      "\n"
+    );
+  }
+
+  static std::string Footer(const std::string&) { return ""; }
+
+  static void AssertValidTypeScriptIdentifier(const std::string& name) {
+    // https://github.com/Microsoft/TypeScript/blob/2a6aacd0ef614a38b08ef712adc377c13648f373/doc/spec.md#2.2.1
+    static std::set<std::string> typescript_reserved_words{
+      // TypeScript keywords that are reserved and cannot be used as an Identifier:
+      "break", "case", " catch", "class", "const", "continue", "debugger", "default", "delete", "do",
+      "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import", "in",
+      "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true", "try", "typeof",
+      "var", "void", "while", "with",
+      // TypeScript keywords that cannot be used as identifiers in strict mode code, but are otherwise not restricted:
+      "implements", "interface", "let", "package", "private", "protected", "public", "static", "yield",
+      // TypeScript keywords cannot be used as user defined type names, but are otherwise not restricted:
+      "any", "boolean", "number", "string", "symbol",
+      // Imported symbols:
+      "iots", "C5TCurrent"
+    };
+    if (typescript_reserved_words.count(name)) {
+      CURRENT_THROW(LanguageTypeScriptReservedWordException(name));
+    }
+  }
+
+  struct FullSchemaPrinter final {
+    const std::map<TypeID, ReflectedType>& types_;
+    std::ostream& os_;
+
+    std::string TypeName(TypeID type_id) const {
+      const auto cit = types_.find(type_id);
+      if (cit == types_.end()) {
+        return "UNKNOWN_TYPE_" + current::ToString(type_id);  // LCOV_EXCL_LINE
+      } else {
+        struct TypeScriptTypeNamePrinter final {
+          const FullSchemaPrinter& self_;
+          std::ostringstream& oss_;
+
+          TypeScriptTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss) : self_(self), oss_(oss) {}
+
+          // `operator()(...)`-s of this block print TypeScript type name only, without the expansion.
+          // They assume the declaration order is respected, and any dependencies have already been listed.
+          void operator()(const ReflectedType_Primitive& p) const {
+            const auto& globals = PrimitiveTypesList();
+            if (globals.typescript_name.count(p.type_id)) {
+              oss_ << globals.typescript_name.at(p.type_id) + "_IO";
+            } else {
+              oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
+            }
+          }
+          void operator()(const ReflectedType_Enum& e) const {
+            oss_ << "C5TCurrent.Enum_IO('" << e.name << "')";
+          }
+          void operator()(const ReflectedType_Vector& v) const {
+            oss_ << "C5TCurrent.Vector_IO(" << self_.TypeName(v.element_type) << ")";
+          }
+          void operator()(const ReflectedType_Map& m) const {
+            const auto& globals = PrimitiveTypesList();
+            if (globals.typescript_name.count(m.key_type)) {
+              oss_ << "C5TCurrent.PrimitiveMap_IO(" << self_.TypeName(m.value_type) << ')';
+            } else {
+              oss_ << "C5TCurrent.NonPrimitiveMap_IO(" << self_.TypeName(m.key_type) << ", "
+                   << self_.TypeName(m.value_type) << ')';
+            }
+          }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            const auto& globals = PrimitiveTypesList();
+            if (globals.typescript_name.count(m.key_type)) {
+              oss_ << "C5TCurrent.PrimitiveUnorderedMap_IO(" << self_.TypeName(m.value_type) << ')';
+            } else {
+              oss_ << "C5TCurrent.NonPrimitiveUnorderedMap_IO(" << self_.TypeName(m.key_type) << ", "
+                   << self_.TypeName(m.value_type) << ')';
+            }
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            oss_ << "C5TCurrent.Set_IO(" << self_.TypeName(s.value_type) << ')';
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            oss_ << "C5TCurrent.UnorderedSet_IO(" << self_.TypeName(s.value_type) << ')';
+          }
+          void operator()(const ReflectedType_Pair& p) const {
+            oss_ << "C5TCurrent.Pair_IO(" << self_.TypeName(p.first_type) << ", "
+                 << self_.TypeName(p.second_type) << ')';
+          }
+          void operator()(const ReflectedType_Optional& o) const {
+            oss_ << "C5TCurrent.Optional_IO(" << self_.TypeName(o.optional_type) << ')';
+          }
+          void operator()(const ReflectedType_Variant& v) const {
+            oss_ << v.name << "_IO";
+          }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << s.CanonicalName() << "_IO";
+          }
+        };
+
+        std::ostringstream oss;
+        cit->second.Call(TypeScriptTypeNamePrinter(*this, oss));
+        return oss.str();
+      }
+    }
+
+    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types,
+                      std::ostream& os,
+                      const std::string&,
+                      const Optional<NamespaceToExpose>&)
+        : types_(types), os_(os) {
+      // NOTE(sompylasar): Namespaces are not supported, types exported from a module can be imported as a namespace.
+    }
+
+    // `operator()`-s of this block print complete declarations of TypeScript types.
+    // The types that require complete declarations in TypeScript are enums, variants, and and structs.
+    void operator()(const ReflectedType_Primitive&) const {}
+    void operator()(const ReflectedType_Enum& e) const {
+      AssertValidTypeScriptIdentifier(e.name);
+      os_ << "\nexport const " << e.name << "_IO = " << TypeName(e.underlying_type);
+      os_ << ";\nexport type " << e.name << " = iots.TypeOf<typeof " << e.name << "_IO>;\n";
+    }
+    void operator()(const ReflectedType_Vector&) const {}
+    void operator()(const ReflectedType_Pair&) const {}
+    void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_UnorderedMap&) const {}
+    void operator()(const ReflectedType_Set&) const {}
+    void operator()(const ReflectedType_UnorderedSet&) const {}
+    void operator()(const ReflectedType_Optional&) const {}
+    void operator()(const ReflectedType_Variant& v) const {
+      AssertValidTypeScriptIdentifier(v.name);
+      os_ << "\nexport const " << v.name << "_IO = iots.union([\n";
+      std::vector<std::string> typenames;
+      for (auto cit = v.cases.begin(); cit != v.cases.end(); ++cit) {
+        const std::string name = TypeName(*cit);
+        typenames.push_back(name);
+        os_ << "  " << name << ",\n";
+      }
+      typenames.push_back("iots.null");
+      os_ << "  " << "iots.null" << ",\n";
+      os_ << "], '" << v.name << "');\nexport type " << v.name << " = iots.UnionType<[\n";
+      for (auto cit = typenames.begin(); cit != typenames.end(); ++cit) {
+        os_ << "  typeof " << (*cit) << ((cit + 1) != typenames.end() ? ",\n" : "\n");
+      }
+      os_ << "], (\n";
+      for (auto cit = typenames.begin(); cit != typenames.end(); ++cit) {
+        os_ << "  iots.TypeOf<typeof " << (*cit) << ">" << ((cit + 1) != typenames.end() ? " |\n" : "\n");
+      }
+      os_ << ")>;\n";
+    }
+
+    void ListStructFieldsForTypeScript(std::ostringstream& os, const ReflectedType_Struct& s) const {
+      bool first_field = true;
+      for (const auto& f : s.fields) {
+        if (Exists(f.description)) {
+          if (!first_field) {
+            os << '\n';
+          }
+          AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
+        }
+        os << "  " << f.name << ": " << TypeName(f.type_id) << ",\n";
+        first_field = false;
+      }
+    }
+    void operator()(const ReflectedType_Struct& s) const {
+      const std::string name = s.CanonicalName();
+      AssertValidTypeScriptIdentifier(name);
+      std::ostringstream os;
+      ListStructFieldsForTypeScript(os, s);
+      const std::string fields = os.str();
+      os_ << "\nexport const " << name << "_IO = ";
+      if (fields.empty()) {
+        if (s.super_id != TypeID::CurrentStruct) {
+          os_ << "iots.intersection([ " << TypeName(s.super_id) << " ], '" << name << "')";
+        } else {
+          os_ << "iots.interface({}, '" << name << "')";
+        }
+      } else {
+        if (s.super_id != TypeID::CurrentStruct) {
+          os_ << "iots.intersection([ " << TypeName(s.super_id) << ", ";
+        }
+        os_ << "iots.interface({\n";
+        os_ << fields;
+        if (s.super_id != TypeID::CurrentStruct) {
+          os_ << "}) ], '" << name << "')";
+        } else {
+          os_ << "}, '" << name << "')";
+        }
+      }
+      os_ << ";\nexport type " << name << " = iots.TypeOf<typeof " << name << "_IO>;\n";
+    }
+  };  // struct LanguageSyntax<Language::TypeScript>::FullSchemaPrinter
+
+  // LCOV_EXCL_START
+  static std::string ErrorMessageWithTypeId(TypeID type_id, FullSchemaPrinter&) {
+    // TODO(sompylasar): Make a nicer TypeScript compilation failure directive.
+    return "#error \"Unknown struct with `type_id` = " + current::ToString(type_id) + "\"\n";
   }
   // LCOV_EXCL_STOP
 };
@@ -1318,6 +1532,8 @@ struct ToStringImpl<reflection::Language, false, true> final {
         return "md";
       case reflection::Language::JSON:
         return "json";
+      case reflection::Language::TypeScript:
+        return "ts";
       default:
         return "language_code_" + ToString(static_cast<int>(language));
     }
