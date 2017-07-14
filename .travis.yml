@@ -1,5 +1,13 @@
 language: cpp
 
+install:
+  # Ensure modern `node` and `npm` versions, otherwise Travis gives us `node v0.10.36` with `npm 1.4.28`.
+  # http://austinpray.com/ops/2015/09/20/change-travis-node-version.html
+  # https://stackoverflow.com/a/34384262/1346510
+  - export TRAVIS_NODE_VERSION="4"
+  - rm -rf ~/.nvm && git clone https://github.com/creationix/nvm.git ~/.nvm && (cd ~/.nvm && git checkout `git describe --abbrev=0 --tags`) && source ~/.nvm/nvm.sh && nvm install $TRAVIS_NODE_VERSION
+  - if [[ `npm -v` != 3* ]]; then npm i -g npm@3; fi
+
 matrix:
   include:
     - script: make individual_tests
