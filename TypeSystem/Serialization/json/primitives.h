@@ -57,18 +57,18 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
 };
 }  // namespace curent::serialization::json
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, ignore_h, ignore_fs, ignore_md)          \
-  template <class JSON_FORMAT>                                                                                 \
-  struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, cpp_type> {                                         \
-    static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, copy_free<cpp_type> value) { \
-      json_stringifier = value;                                                                                \
-    }                                                                                                          \
-  };                                                                                                           \
-  namespace json {                                                                                             \
-  template <>                                                                                                  \
-  struct IsJSONSerializable<cpp_type> {                                                                        \
-    constexpr static bool value = true;                                                                        \
-  };                                                                                                           \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+  template <class JSON_FORMAT>                                                                                  \
+  struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, cpp_type> {                                          \
+    static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, copy_free<cpp_type> value) {  \
+      json_stringifier = value;                                                                                 \
+    }                                                                                                           \
+  };                                                                                                            \
+  namespace json {                                                                                              \
+  template <>                                                                                                   \
+  struct IsJSONSerializable<cpp_type> {                                                                         \
+    constexpr static bool value = true;                                                                         \
+  };                                                                                                            \
   }
 #include "../../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

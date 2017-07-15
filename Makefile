@@ -14,6 +14,9 @@ storage_perftest:
 typesystem_compilation_test:
 	(cd regression_tests/type_system ; ./test.sh 10 50)
 
+typesystem_schema_typescript_tests:
+	(cd TypeSystem/Schema ; ./test-c5t-current-schema-ts.sh)
+
 check:
 	./scripts/check-headers.sh
 

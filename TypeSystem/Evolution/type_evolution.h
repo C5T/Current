@@ -60,13 +60,13 @@ template <typename FROM_NAMESPACE, typename FROM_TYPE, typename EVOLVER = Natura
 struct Evolve;
 
 // Identity evolvers for primitive types.
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type) \
-  template <typename FROM_NAMESPACE, typename EVOLVER>                                         \
-  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLVER> {                                           \
-    template <typename>                                                                        \
-    static void Go(current::copy_free<cpp_type> from, cpp_type& into) {                        \
-      into = from;                                                                             \
-    }                                                                                          \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+  template <typename FROM_NAMESPACE, typename EVOLVER>                                                          \
+  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLVER> {                                                            \
+    template <typename>                                                                                         \
+    static void Go(current::copy_free<cpp_type> from, cpp_type& into) {                                         \
+      into = from;                                                                                              \
+    }                                                                                                           \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
