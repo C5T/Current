@@ -31,7 +31,7 @@ SOFTWARE.
 #include <chrono>
 
 #include "../../api.h"
-#include "../../../../Bricks/dflags/dflags.h"
+#include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(docu_net_server_port_05, PickPortForUnitTest(), "");

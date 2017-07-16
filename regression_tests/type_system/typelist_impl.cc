@@ -24,7 +24,7 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../Bricks/template/typelist.h"
+#include "../../bricks/template/typelist.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

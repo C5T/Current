@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "gen.h"
 
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/dflags/dflags.h"
 
 DEFINE_size_t(rows, 10u, "Number of rows.");
 DEFINE_size_t(cols, 10u, "Number of cols.");

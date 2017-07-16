@@ -30,7 +30,7 @@ SOFTWARE.
 #include <iostream>
 
 #include "../TypeSystem/struct.h"
-#include "../Bricks/template/typelist.h"
+#include "../bricks/template/typelist.h"
 
 namespace current {
 namespace ripcurrent {

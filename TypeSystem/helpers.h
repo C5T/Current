@@ -55,7 +55,7 @@ SOFTWARE.
 #include "types.h"
 #include "typename.h"
 
-#include "../Bricks/template/decay.h"
+#include "../bricks/template/decay.h"
 
 namespace current {
 

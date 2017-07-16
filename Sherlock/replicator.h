@@ -36,8 +36,8 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/SS/ss.h"
 
-#include "../Bricks/sync/owned_borrowed.h"
-#include "../Bricks/sync/waitable_atomic.h"
+#include "../bricks/sync/owned_borrowed.h"
+#include "../bricks/sync/waitable_atomic.h"
 
 #include "../TypeSystem/Reflection/types.h"
 

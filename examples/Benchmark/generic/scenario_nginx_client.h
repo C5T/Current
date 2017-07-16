@@ -27,8 +27,8 @@ SOFTWARE.
 
 #include "benchmark.h"
 
-#include "../../../Bricks/dflags/dflags.h"
-#include "../../../Bricks/strings/escape.h"
+#include "../../../bricks/dflags/dflags.h"
+#include "../../../bricks/strings/escape.h"
 
 #include "../../../Blocks/HTTP/api.h"
 

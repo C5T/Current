@@ -62,8 +62,8 @@ SOFTWARE.
 #include "../Storage/storage.h"
 #include "../Storage/persister/sherlock.h"
 
-#include "../Bricks/net/http/impl/server.h"
-#include "../Bricks/util/base64.h"
+#include "../bricks/net/http/impl/server.h"
+#include "../bricks/util/base64.h"
 
 #include "../Blocks/HTTP/api.h"
 

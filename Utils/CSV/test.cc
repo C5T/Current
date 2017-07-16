@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "csv.h"
 
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../TypeSystem/Serialization/json.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 

@@ -39,7 +39,7 @@ SOFTWARE.
 
 #include "../../Blocks/HTTP/api.h"
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 
 #include "../../3rdparty/gtest/gtest.h"
 

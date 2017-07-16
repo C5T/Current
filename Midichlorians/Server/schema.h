@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "../MidichloriansDataDictionary.h"
 
-#include "../../Bricks/template/typelist.h"
+#include "../../bricks/template/typelist.h"
 #include "../../Blocks/HTTP/request.h"
 #include "../../TypeSystem/struct.h"
 

@@ -26,8 +26,8 @@ SOFTWARE.
 #define BLOCKS_HTTP_DOCU_SERVER_02_TEST_CC
 
 #include "../../api.h"
-#include "../../../../Bricks/strings/printf.h"
-#include "../../../../Bricks/dflags/dflags.h"
+#include "../../../../bricks/strings/printf.h"
+#include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(docu_net_server_port_02, PickPortForUnitTest(), "");

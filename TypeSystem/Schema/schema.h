@@ -39,11 +39,11 @@ SOFTWARE.
 #include "../Reflection/reflection.h"
 #include "../Serialization/json.h"
 
-#include "../../Bricks/strings/strings.h"
-#include "../../Bricks/util/singleton.h"
-#include "../../Bricks/util/sha256.h"
+#include "../../bricks/strings/strings.h"
+#include "../../bricks/util/singleton.h"
+#include "../../bricks/util/sha256.h"
 
-#include "../../Bricks/exception.h"
+#include "../../bricks/exception.h"
 
 namespace current {
 namespace reflection {

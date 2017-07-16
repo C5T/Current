@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "config.h"
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 

@@ -37,7 +37,7 @@
 #include <string>
 
 #include "../../../port.h"
-#include "../../../Bricks/util/singleton.h"
+#include "../../../bricks/util/singleton.h"
 #include "../../../TypeSystem/Serialization/json.h"
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H

@@ -35,10 +35,10 @@ SOFTWARE.
 
 #include "../TypeSystem/struct.h"
 
-#include "../Bricks/time/chrono.h"
+#include "../bricks/time/chrono.h"
 
-#include "../Bricks/template/typelist.h"
-#include "../Bricks/template/variadic_indexes.h"
+#include "../bricks/template/typelist.h"
+#include "../bricks/template/variadic_indexes.h"
 
 namespace current {
 namespace storage {

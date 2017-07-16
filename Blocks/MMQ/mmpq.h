@@ -35,7 +35,7 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
-#include "../../Bricks/time/chrono.h"
+#include "../../bricks/time/chrono.h"
 
 namespace current {
 namespace mmq {

@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include "../../Bricks/net/http/headers/headers.h"
+#include "../../bricks/net/http/headers/headers.h"
 
 class ChunkByChunkHTTPResponseReceiver {
  public:

@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "reflection.h"
 
-#include "../../Bricks/strings/strings.h"
+#include "../../bricks/strings/strings.h"
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace reflection_test {

@@ -27,9 +27,9 @@ SOFTWARE.
 
 #include "compacttsv.h"
 
-#include "../Bricks/dflags/dflags.h"
-#include "../Bricks/file/file.h"
-#include "../Bricks/strings/join.h"
+#include "../bricks/dflags/dflags.h"
+#include "../bricks/file/file.h"
+#include "../bricks/strings/join.h"
 
 DEFINE_string(input, "", "Input file to parse.");
 

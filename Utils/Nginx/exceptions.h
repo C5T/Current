@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../Bricks/exception.h"
-#include "../../Bricks/strings/util.h"
+#include "../../bricks/exception.h"
+#include "../../bricks/strings/util.h"
 
 #ifndef CURRENT_UTILS_NGINX_EXCEPTIONS_H
 #define CURRENT_UTILS_NGINX_EXCEPTIONS_H

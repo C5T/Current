@@ -38,7 +38,7 @@ SOFTWARE.
 
 #include "../../Sherlock/sherlock.h"
 
-#include "../../Bricks/time/chrono.h"
+#include "../../bricks/time/chrono.h"
 
 namespace karl_unittest {
 

@@ -40,9 +40,9 @@ SOFTWARE.
 #include "../struct.h"
 #include "../timestamp.h"
 
-#include "../../Bricks/template/call_all_constructors.h"
-#include "../../Bricks/util/comparators.h"
-#include "../../Bricks/util/singleton.h"
+#include "../../bricks/template/call_all_constructors.h"
+#include "../../bricks/util/comparators.h"
+#include "../../bricks/util/singleton.h"
 
 namespace current {
 namespace reflection {

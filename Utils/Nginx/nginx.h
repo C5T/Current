@@ -30,11 +30,11 @@ SOFTWARE.
 
 #include "config.h"
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/util/random.h"
-#include "../../Bricks/util/sha256.h"
-#include "../../Bricks/util/singleton.h"
+#include "../../bricks/dflags/dflags.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/util/random.h"
+#include "../../bricks/util/sha256.h"
+#include "../../bricks/util/singleton.h"
 
 #include "../../Blocks/HTTP/api.h"
 

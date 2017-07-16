@@ -39,7 +39,7 @@ SOFTWARE.
 
 #include "variant.h"
 
-#include "../Bricks/time/chrono.h"
+#include "../bricks/time/chrono.h"
 
 namespace current {
 

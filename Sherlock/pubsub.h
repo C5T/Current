@@ -37,8 +37,8 @@ SOFTWARE.
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/HTTP/api.h"
 
-#include "../Bricks/sync/owned_borrowed.h"
-#include "../Bricks/time/chrono.h"
+#include "../bricks/sync/owned_borrowed.h"
+#include "../bricks/time/chrono.h"
 
 // HTTP publish-subscribe configuration.
 //

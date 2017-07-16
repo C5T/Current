@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "response.h"
 
-#include "../../Bricks/util/base64.h"
+#include "../../bricks/util/base64.h"
 
 namespace current {
 namespace http {

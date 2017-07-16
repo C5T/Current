@@ -61,10 +61,10 @@ SOFTWARE.
 #include "../TypeSystem/Serialization/json.h"
 #include "../TypeSystem/optional.h"
 
-#include "../Bricks/exception.h"
-#include "../Bricks/strings/strings.h"
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/sync/waitable_atomic.h"
+#include "../bricks/exception.h"
+#include "../bricks/strings/strings.h"
+#include "../bricks/time/chrono.h"
+#include "../bricks/sync/waitable_atomic.h"
 
 namespace current {
 namespace storage {

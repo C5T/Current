@@ -36,10 +36,10 @@ SOFTWARE.
 
 #include "../../Blocks/HTTP/api.h"
 
-#include "../../Bricks/graph/gnuplot.h"
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/graph/gnuplot.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/dflags/dflags.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 

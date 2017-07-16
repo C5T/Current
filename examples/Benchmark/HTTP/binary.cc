@@ -23,7 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "../../../current.h"
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #include "server.h"
 

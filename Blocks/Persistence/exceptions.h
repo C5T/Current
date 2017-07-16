@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../GracefulShutdown/exceptions.h"
 
-#include "../../Bricks/strings/printf.h"
+#include "../../bricks/strings/printf.h"
 
 namespace current {
 namespace persistence {

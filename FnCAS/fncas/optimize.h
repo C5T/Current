@@ -39,7 +39,7 @@ SOFTWARE.
 #include "node.h"
 #include "jit.h"
 
-#include "../../Bricks/template/decay.h"
+#include "../../bricks/template/decay.h"
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
 #include "../../TypeSystem/helpers.h"

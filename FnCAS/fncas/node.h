@@ -39,8 +39,8 @@
 #include "base.h"
 #include "exceptions.h"
 
-#include "../../Bricks/exception.h"
-#include "../../Bricks/util/singleton.h"
+#include "../../bricks/exception.h"
+#include "../../bricks/util/singleton.h"
 
 namespace fncas {
 // Non-standard functions useful in data science.

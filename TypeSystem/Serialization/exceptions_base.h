@@ -26,7 +26,7 @@ SOFTWARE.
 #define TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_BASE_H
 
 #include "../exceptions.h"
-#include "../../Bricks/strings/strings.h"
+#include "../../bricks/strings/strings.h"
 
 namespace current {
 namespace serialization {

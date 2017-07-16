@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #include "../../../Sherlock/sherlock.h"
 #include "../../../Sherlock/replicator.h"

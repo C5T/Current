@@ -1,1 +1,1 @@
-../Bricks/Makefile
+../bricks/Makefile

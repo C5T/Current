@@ -32,8 +32,8 @@ SOFTWARE.
 #include <chrono>
 #include <thread>
 
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/strings/join.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/strings/join.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

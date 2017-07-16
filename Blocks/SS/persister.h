@@ -33,8 +33,8 @@ SOFTWARE.
 #include "idx_ts.h"
 #include "types.h"
 
-#include "../../Bricks/sync/locks.h"
-#include "../../Bricks/time/chrono.h"
+#include "../../bricks/sync/locks.h"
+#include "../../bricks/time/chrono.h"
 
 namespace current {
 namespace ss {

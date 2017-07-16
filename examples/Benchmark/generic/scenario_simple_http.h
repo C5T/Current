@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../../../Blocks/HTTP/api.h"
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_uint16(simple_http_local_port, 9700, "Local port range for `current_http_server` to use.");

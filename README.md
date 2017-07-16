@@ -21,7 +21,7 @@ An extensible event collecting HTTP server.
 #### [Blocks](https://github.com/C5T/Current/blob/master/Blocks/README.md)
 HTTP server and client, efficient in-memory message queue, persistence layer, streaming API interface.
 
-#### [Bricks](https://github.com/C5T/Current/blob/master/Bricks/README.md)
+#### [Bricks](https://github.com/C5T/Current/blob/master/bricks/README.md)
 JSON and binary serialization, string manipulation library, command line flags library, and other core pieces.
 
 #### [Storage](https://github.com/C5T/Current/blob/master/Storage/REST-API.md)

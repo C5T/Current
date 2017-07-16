@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "../../Karl/test_service/is_prime.h"
 #include "../../Karl/karl.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 
 DEFINE_uint16(nginx_port, 7590, "Port for Nginx to serve proxied queries to Claires.");
 DEFINE_string(nginx_config, "", "If set, Karl updates this config with the proxy routes to Claires.");

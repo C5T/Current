@@ -39,9 +39,9 @@ SOFTWARE.
 
 #include "../Sherlock/sherlock.h"
 
-#include "../Bricks/strings/printf.h"
+#include "../bricks/strings/printf.h"
 
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/dflags/dflags.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 

@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "schema_karl.h"
 
-#include "../Bricks/dot/graphviz.h"
+#include "../bricks/dot/graphviz.h"
 
 namespace current {
 namespace karl {

@@ -38,7 +38,7 @@ SOFTWARE.
 
 #include "../TypeSystem/Schema/schema.h"
 #include "../Blocks/HTTP/api.h"
-#include "../Bricks/template/call_if.h"
+#include "../bricks/template/call_if.h"
 
 namespace current {
 namespace storage {

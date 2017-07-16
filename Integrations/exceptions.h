@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef INTEGRATIONS_EXCEPTIONS_H
 #define INTEGRATIONS_EXCEPTIONS_H
 
-#include "../Bricks/exception.h"
+#include "../bricks/exception.h"
 
 namespace current {
 namespace integrations {

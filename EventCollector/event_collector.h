@@ -32,7 +32,7 @@ SOFTWARE.
 #include <thread>
 
 #include "../Blocks/HTTP/api.h"
-#include "../Bricks/time/chrono.h"
+#include "../bricks/time/chrono.h"
 
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/Serialization/json.h"

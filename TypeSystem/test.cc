@@ -33,8 +33,8 @@ SOFTWARE.
 #include "variant.h"
 #include "timestamp.h"
 
-#include "../Bricks/strings/strings.h"
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/strings/strings.h"
+#include "../bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #include "Reflection/test.cc"

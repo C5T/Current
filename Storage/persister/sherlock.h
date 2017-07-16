@@ -32,7 +32,7 @@ SOFTWARE.
 #include "../transaction.h"
 #include "../../Sherlock/sherlock.h"
 
-#include "../../Bricks/sync/locks.h"
+#include "../../bricks/sync/locks.h"
 
 namespace current {
 namespace storage {

@@ -28,10 +28,10 @@ SOFTWARE.
 
 #include "../../TypeSystem/Serialization/json.h"
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/strings/split.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/strings/split.h"
 
 DEFINE_bool(header, false, "Set to treat the first row of the data as the header, and extract field names from it.");
 DEFINE_string(separator, "\t", "The characters to use as separators in the input TSV/CSV file.");

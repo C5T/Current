@@ -32,8 +32,8 @@ SOFTWARE.
 #include <string>
 #include <typeindex>
 
-#include "../Bricks/template/enable_if.h"
-#include "../Bricks/util/singleton.h"
+#include "../bricks/template/enable_if.h"
+#include "../bricks/util/singleton.h"
 
 namespace current {
 namespace reflection {

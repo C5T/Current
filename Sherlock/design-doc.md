@@ -145,7 +145,7 @@ TBD: A way to notify that the order key has updated without new entries being ad
 
 ## Background
 
-The reader of this design doc is expected to be familiar with `Current`, most notably, the TypeSystem part of it (`"TypeSystem/"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Blocks/MMQ"`) and WaitableAtomic (`"Bricks/sync/waitable_atomic.h"`).
+The reader of this design doc is expected to be familiar with `Current`, most notably, the TypeSystem part of it (`"TypeSystem/"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Blocks/MMQ"`) and WaitableAtomic (`"bricks/sync/waitable_atomic.h"`).
 
 ## Naming
 

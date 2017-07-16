@@ -34,9 +34,9 @@ SOFTWARE.
 #include "../../variant.h"
 #include "../../Reflection/reflection.h"
 
-#include "../../../Bricks/template/call_all_constructors.h"
-#include "../../../Bricks/template/enable_if.h"
-#include "../../../Bricks/template/mapreduce.h"
+#include "../../../bricks/template/call_all_constructors.h"
+#include "../../../bricks/template/enable_if.h"
+#include "../../../bricks/template/mapreduce.h"
 
 // JSON format for `Variant` objects:
 // * Contains TypeID.

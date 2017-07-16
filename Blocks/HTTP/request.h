@@ -30,9 +30,9 @@ SOFTWARE.
 
 #include "../URL/url.h"
 
-#include "../../Bricks/net/http/http.h"
-#include "../../Bricks/time/chrono.h"
-#include "../../Bricks/template/decay.h"
+#include "../../bricks/net/http/http.h"
+#include "../../bricks/time/chrono.h"
+#include "../../bricks/template/decay.h"
 
 namespace current {
 namespace http {

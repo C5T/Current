@@ -39,9 +39,9 @@ SOFTWARE.
 
 #include "../Blocks/URL/url.h"
 
-#include "../Bricks/time/chrono.h"
+#include "../bricks/time/chrono.h"
 
-#include "../Bricks/net/http/impl/server.h"  // current::net::constants
+#include "../bricks/net/http/impl/server.h"  // current::net::constants
 
 namespace current {
 namespace karl {

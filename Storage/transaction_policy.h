@@ -29,7 +29,7 @@ SOFTWARE.
 #include "exceptions.h"
 #include "transaction_result.h"
 
-#include "../Bricks/util/future.h"
+#include "../bricks/util/future.h"
 
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/Persistence/exceptions.h"

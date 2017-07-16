@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "types.h"
 
-#include "../Bricks/template/decay.h"
+#include "../bricks/template/decay.h"
 
 namespace current {
 namespace reflection {

@@ -31,7 +31,7 @@
 #include "../../../Blocks/HTTP/api.h"
 #include "../../../Sherlock/replicator.h"
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_string(remote_url, "", "Remote url to subscribe to.");

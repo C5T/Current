@@ -28,8 +28,8 @@ SOFTWARE.
 #include "../../port.h"
 
 #include "../../TypeSystem/variant.h"
-#include "../../Bricks/time/chrono.h"
-#include "../../Bricks/sync/locks.h"
+#include "../../bricks/time/chrono.h"
+#include "../../bricks/sync/locks.h"
 
 namespace current {
 namespace ss {

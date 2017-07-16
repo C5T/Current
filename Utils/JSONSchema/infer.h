@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Serialization/json.h"
 
-#include "../../Bricks/file/file.h"
+#include "../../bricks/file/file.h"
 
 namespace current {
 namespace utils {

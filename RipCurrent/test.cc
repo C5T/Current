@@ -30,10 +30,10 @@ SOFTWARE.
 
 #include "ripcurrent.h"
 
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/dflags/dflags.h"
 
-#include "../Bricks/strings/join.h"
-#include "../Bricks/strings/split.h"
+#include "../bricks/strings/join.h"
+#include "../bricks/strings/split.h"
 
 #include "../Blocks/HTTP/api.h"
 

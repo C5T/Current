@@ -30,8 +30,8 @@ SOFTWARE.
 #include <map>
 #include <thread>
 
-#include "../Bricks/util/random.h"
-#include "../Bricks/util/waitable_terminate_signal.h"
+#include "../bricks/util/random.h"
+#include "../bricks/util/waitable_terminate_signal.h"
 
 #include "../Blocks/Persistence/memory.h"
 #include "../Blocks/Persistence/file.h"

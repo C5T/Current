@@ -40,8 +40,8 @@ SOFTWARE.
 #include "helpers.h"
 #include "variant.h"
 
-#include "../Bricks/template/decay.h"
-#include "../Bricks/template/variadic_indexes.h"
+#include "../bricks/template/decay.h"
+#include "../bricks/template/variadic_indexes.h"
 
 namespace crnt {
 namespace r {

@@ -30,8 +30,8 @@ SOFTWARE.
 #include <fstream>
 
 #include "../../TypeSystem/struct.h"
-#include "../../Bricks/strings/strings.h"
-#include "../../Bricks/exception.h"
+#include "../../bricks/strings/strings.h"
+#include "../../bricks/exception.h"
 
 namespace current {
 

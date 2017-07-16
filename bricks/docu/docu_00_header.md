@@ -2,7 +2,7 @@
 
 HTTP server and client, JSON and binary serialization, visualization and other core pieces to be reused across [`Current`](https://github.com/C5T/) projects.
 
-![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/holy_bricks.jpg)
+![](https://raw.githubusercontent.com/C5T/Current/master/bricks/holy_bricks.jpg)
 
 <sub>Image credit: [Bender from Futurama](http://en.wikipedia.org/wiki/Bender_(Futurama)). Found via Bing image search.</sub>
 

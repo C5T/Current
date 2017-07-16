@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_EXCEPTIONS_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_EXCEPTIONS_H
 
-#include "../../Bricks/exception.h"
+#include "../../bricks/exception.h"
 
 namespace current {
 namespace reflection {

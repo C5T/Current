@@ -39,12 +39,12 @@ SOFTWARE.
 
 #include "../../../TypeSystem/optional.h"
 
-#include "../../../Bricks/net/exceptions.h"
-#include "../../../Bricks/net/http/http.h"
-#include "../../../Bricks/strings/printf.h"
-#include "../../../Bricks/sync/owned_borrowed.h"
-#include "../../../Bricks/time/chrono.h"
-#include "../../../Bricks/util/accumulative_scoped_deleter.h"
+#include "../../../bricks/net/exceptions.h"
+#include "../../../bricks/net/http/http.h"
+#include "../../../bricks/strings/printf.h"
+#include "../../../bricks/sync/owned_borrowed.h"
+#include "../../../bricks/time/chrono.h"
+#include "../../../bricks/util/accumulative_scoped_deleter.h"
 
 namespace current {
 namespace http {

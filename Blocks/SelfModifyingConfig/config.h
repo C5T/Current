@@ -44,8 +44,8 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/Serialization/json.h"
 
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/time/chrono.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/time/chrono.h"
 
 namespace current {
 

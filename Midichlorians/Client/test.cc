@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include <mutex>
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #ifdef CURRENT_APPLE
@@ -46,8 +46,8 @@ SOFTWARE.
 
 #include "../../Blocks/HTTP/api.h"
 
-#include "../../Bricks/strings/join.h"
-#include "../../Bricks/template/rtti_dynamic_call.h"
+#include "../../bricks/strings/join.h"
+#include "../../bricks/template/rtti_dynamic_call.h"
 
 DEFINE_int32(midichlorians_client_test_http_port, PickPortForUnitTest(), "Port to spawn server on.");
 DEFINE_string(midichlorians_client_test_http_route, "/log", "HTTP route of the server.");

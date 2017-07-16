@@ -22,7 +22,7 @@
  SOFTWARE.
  *******************************************************************************/
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 #include "../../../Sherlock/replicator.h"
 
 #include "entry.h"

@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "infer.h"
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/file/file.h"
+#include "../../bricks/dflags/dflags.h"
+#include "../../bricks/file/file.h"
 
 DEFINE_string(input, "input_data.json", "The name of the input file containing the JSON to parse.");
 

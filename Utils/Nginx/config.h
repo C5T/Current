@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../../Bricks/strings/util.h"
+#include "../../bricks/strings/util.h"
 #include "../../TypeSystem/struct.h"
 
 namespace current {

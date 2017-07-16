@@ -41,12 +41,12 @@ SOFTWARE.
 #include "../../TypeSystem/Reflection/reflection.h"
 #include "../../TypeSystem/Serialization/json.h"
 
-#include "../../Bricks/exception.h"
+#include "../../bricks/exception.h"
 
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/strings/split.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/strings/split.h"
 
-#include "../../Bricks/file/file.h"
+#include "../../bricks/file/file.h"
 
 namespace current {
 namespace url {

@@ -33,9 +33,9 @@ SOFTWARE.
 
 #include "event_collector.h"
 
-#include "../Bricks/strings/printf.h"
+#include "../bricks/strings/printf.h"
 
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(event_collector_test_port, PickPortForUnitTest(), "Local port to run the test.");

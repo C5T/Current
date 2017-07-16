@@ -25,7 +25,7 @@ SOFTWARE.
 #include "current_build.h"
 
 #include "../../Blocks/HTTP/api.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../Karl/test_service/is_prime.h"
 
 DEFINE_uint16(port, 42002, "The port to spawn ServiceIsPrime on.");

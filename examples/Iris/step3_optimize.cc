@@ -27,9 +27,9 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
-#include "../../Bricks/graph/gnuplot.h"
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/graph/gnuplot.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../FnCAS/fncas.h"
 
 #include "data/dataset.h"

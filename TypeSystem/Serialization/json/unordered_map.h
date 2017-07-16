@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "json.h"
 
-#include "../../../Bricks/template/enable_if.h"
+#include "../../../bricks/template/enable_if.h"
 
 namespace current {
 namespace serialization {

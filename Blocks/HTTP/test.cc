@@ -41,12 +41,12 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/strings/join.h"
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/util/singleton.h"
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/exception.h"
+#include "../../bricks/dflags/dflags.h"
+#include "../../bricks/strings/join.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/util/singleton.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/exception.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 

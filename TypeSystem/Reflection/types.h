@@ -38,10 +38,10 @@ SOFTWARE.
 #include "../optional.h"
 #include "../variant.h"
 
-#include "../../Bricks/strings/util.h"
-#include "../../Bricks/template/enable_if.h"
-#include "../../Bricks/util/crc32.h"
-#include "../../Bricks/util/rol.h"
+#include "../../bricks/strings/util.h"
+#include "../../bricks/template/enable_if.h"
+#include "../../bricks/util/crc32.h"
+#include "../../bricks/util/rol.h"
 
 namespace current {
 namespace reflection {

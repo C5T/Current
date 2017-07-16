@@ -40,8 +40,8 @@ SOFTWARE.
 #include "types.h"
 #include "favicon.h"
 
-#include "../../Bricks/util/singleton.h"
-#include "../../Bricks/template/weed.h"
+#include "../../bricks/util/singleton.h"
+#include "../../bricks/template/weed.h"
 
 #if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 #include "impl/posix_client.h"

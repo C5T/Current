@@ -29,11 +29,11 @@ SOFTWARE.
 
 #include "benchmark.h"
 
-#include "../../../Bricks/util/random.h"
+#include "../../../bricks/util/random.h"
 #include "../../../Storage/storage.h"
 #include "../../../Storage/persister/sherlock.h"
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_uint32(storage_initial_size, 10000, "The number of records initially in the storage.");

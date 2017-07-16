@@ -32,7 +32,7 @@ SOFTWARE.
 #include "schema_claire.h"
 #include "constants.h"
 
-#include "../Bricks/strings/util.h"
+#include "../bricks/strings/util.h"
 
 namespace current {
 namespace karl {

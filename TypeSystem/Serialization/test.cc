@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../Reflection/reflection.h"
 #include "../Schema/schema.h"
 
-#include "../../Bricks/file/file.h"
+#include "../../bricks/file/file.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

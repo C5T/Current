@@ -40,10 +40,10 @@ SOFTWARE.
 #include "../Blocks/Persistence/memory.h"
 #include "../Blocks/Persistence/file.h"
 
-#include "../Bricks/strings/strings.h"
+#include "../bricks/strings/strings.h"
 
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/time/chrono.h"
+#include "../bricks/dflags/dflags.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 

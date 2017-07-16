@@ -63,12 +63,12 @@ SOFTWARE.
 
 #include "../Blocks/MMQ/mmpq.h"
 
-#include "../Bricks/strings/join.h"
-#include "../Bricks/sync/waitable_atomic.h"
-#include "../Bricks/template/rtti_dynamic_call.h"
-#include "../Bricks/template/typelist.h"
-#include "../Bricks/util/lazy_instantiation.h"
-#include "../Bricks/util/singleton.h"
+#include "../bricks/strings/join.h"
+#include "../bricks/sync/waitable_atomic.h"
+#include "../bricks/template/rtti_dynamic_call.h"
+#include "../bricks/template/typelist.h"
+#include "../bricks/util/lazy_instantiation.h"
+#include "../bricks/util/singleton.h"
 
 namespace current {
 namespace ripcurrent {

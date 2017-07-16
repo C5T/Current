@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "benchmark.h"
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_string(json, "gen", "JSON action to take in the performance test, gen/parse/both.");

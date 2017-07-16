@@ -32,7 +32,7 @@ SOFTWARE.
 #include <string>
 #include <unordered_map>
 
-#include "../../../Bricks/util/singleton.h"
+#include "../../../bricks/util/singleton.h"
 
 struct Scenario {
   virtual ~Scenario() = default;

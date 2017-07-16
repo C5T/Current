@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../../Reflection/types.h"
 
-#include "../../../Bricks/strings/util.h"
+#include "../../../bricks/strings/util.h"
 
 namespace current {
 namespace serialization {

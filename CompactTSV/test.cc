@@ -28,9 +28,9 @@ SOFTWARE.
 #include "compacttsv.h"
 #include "gen.h"
 
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/strings/util.h"
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/time/chrono.h"
+#include "../bricks/strings/util.h"
+#include "../bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_size_t(rows, 10u, "Number of rows.");

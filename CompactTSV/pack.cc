@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "compacttsv.h"
 
-#include "../Bricks/strings/split.h"
+#include "../bricks/strings/split.h"
 
 int main() {
   std::string row_as_string;

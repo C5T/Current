@@ -32,8 +32,8 @@ SOFTWARE.
 
 #include "base.h"
 
-#include "../../Bricks/time/chrono.h"
-#include "../../Bricks/util/singleton.h"
+#include "../../bricks/time/chrono.h"
+#include "../../bricks/util/singleton.h"
 
 namespace fncas {
 namespace impl {

@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "ios_notifications_sender.h"
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 
 DEFINE_string(app_id, "", "The `app_id` for OneSignal integration.");
 DEFINE_uint16(port,

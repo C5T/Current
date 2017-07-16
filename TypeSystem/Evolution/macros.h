@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include "../../Bricks/template/decay.h"
+#include "../../bricks/template/decay.h"
 
 // This header file defines the macros to shorten:
 // 1) Boilerplate type evolvers (which are dumped as part of the Current schema output format), and

@@ -47,11 +47,11 @@ SOFTWARE.
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/SS/signature.h"
 
-#include "../Bricks/sync/locks.h"
-#include "../Bricks/sync/owned_borrowed.h"
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/util/sha256.h"
-#include "../Bricks/util/waitable_terminate_signal.h"
+#include "../bricks/sync/locks.h"
+#include "../bricks/sync/owned_borrowed.h"
+#include "../bricks/time/chrono.h"
+#include "../bricks/util/sha256.h"
+#include "../bricks/util/waitable_terminate_signal.h"
 
 // Sherlock is the overlord of streamed data storage and processing in Current.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records ("entries").

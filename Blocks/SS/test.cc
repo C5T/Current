@@ -33,8 +33,8 @@ SOFTWARE.
 #include <string>
 
 #include "../../TypeSystem/Serialization/json.h"
-#include "../../Bricks/time/chrono.h"
-#include "../../Bricks/strings/join.h"
+#include "../../bricks/time/chrono.h"
+#include "../../bricks/strings/join.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

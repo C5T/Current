@@ -46,9 +46,9 @@ SOFTWARE.
 #include "../SS/persister.h"
 #include "../SS/signature.h"
 
-#include "../../Bricks/sync/locks.h"
-#include "../../Bricks/sync/owned_borrowed.h"
-#include "../../Bricks/time/chrono.h"
+#include "../../bricks/sync/locks.h"
+#include "../../bricks/sync/owned_borrowed.h"
+#include "../../bricks/time/chrono.h"
 
 namespace current {
 namespace persistence {

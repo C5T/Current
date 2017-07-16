@@ -38,5 +38,5 @@ SOFTWARE.
 
 #endif  // !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"

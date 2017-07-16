@@ -2,7 +2,7 @@
 
 HTTP server and client, JSON and binary serialization, visualization and other core pieces to be reused across [`Current`](https://github.com/C5T/) projects.
 
-![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/holy_bricks.jpg)
+![](https://raw.githubusercontent.com/C5T/Current/master/bricks/holy_bricks.jpg)
 
 <sub>Image credit: [Bender from Futurama](http://en.wikipedia.org/wiki/Bender_(Futurama)). Found via Bing image search.</sub>
 
@@ -24,7 +24,7 @@ HTTP server and client, JSON and binary serialization, visualization and other c
 # Documentation
 ## Visualization Library
 
-Bricks has C++ bindings for [`gnuplot`](http://www.gnuplot.info/), [`#include "Bricks/graph/gnuplot.h"`](https://github.com/Current/C5T/blob/master/Bricks/graph/gnuplot.h) to use it.
+Bricks has C++ bindings for [`gnuplot`](http://www.gnuplot.info/), [`#include "bricks/graph/gnuplot.h"`](https://github.com/Current/C5T/blob/master/bricks/graph/gnuplot.h) to use it.
 
 External [`gnuplot`](http://www.gnuplot.info/) binary is invoked. The requirement is that it should be installed in the system and accessible in the `$PATH`.
 ```cpp
@@ -48,7 +48,7 @@ const std::string result = GNUPlot()
   .ImageSize(image_dim)
   .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/graph/golden/love-Linux.png)
+![](https://raw.githubusercontent.com/C5T/Current/master/bricks/graph/golden/love-Linux.png)
 ```cpp
 // Where visualization meets science.
 using namespace current::gnuplot;
@@ -75,7 +75,7 @@ const std::string result = GNUPlot()
   .ImageSize(image_dim)
   .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/graph/golden/science-Linux.png)
+![](https://raw.githubusercontent.com/C5T/Current/master/bricks/graph/golden/science-Linux.png)
 ```cpp
 #include "../../strings/printf.h"
 
@@ -100,7 +100,7 @@ const std::string result = GNUPlot()
   .ImageSize(image_dim)
   .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/graph/golden/labels-Linux.png)
+![](https://raw.githubusercontent.com/C5T/Current/master/bricks/graph/golden/labels-Linux.png)
 ## Functional Template Library
 
 Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `current::metaprogramming`.
@@ -452,7 +452,7 @@ struct call_foo_bar_by_rvalue_reference {
 ```
 ## Command Line Parsing: `dflags`
 
-Bricks has [`dflags`](https://github.com/C5T/Current/blob/master/Bricks/dflags/dflags.h): a C++ library to parse command-line flags.
+Bricks has [`dflags`](https://github.com/C5T/Current/blob/master/bricks/dflags/dflags.h): a C++ library to parse command-line flags.
 
 ```cpp
 DEFINE_int32(answer, 42, "Human-readable flag description.");
@@ -480,7 +480,7 @@ Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new, upd
 
 Passing `--help` will cause `ParseDFlags()` to print all registered flags with their descriptions and `exit(0)`.
 
-[`dflags`](https://github.com/KnowSheet/Bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
+[`dflags`](https://github.com/KnowSheet/bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
 ## Extras
 
 [`Bricks`](https://github.com/C5T/Current/) contains several other useful bits, including cross-platform file system wrapper, string manipulation functions, in-memory message queue and system clock utilities.

@@ -47,9 +47,9 @@ SOFTWARE.
 
 #include "../Blocks/HTTP/api.h"
 
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/sync/locks.h"
-#include "../Bricks/util/random.h"
+#include "../bricks/time/chrono.h"
+#include "../bricks/sync/locks.h"
+#include "../bricks/util/random.h"
 
 namespace current {
 namespace karl {

@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "benchmark.h"
 
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_double(golden_qps, 1000, "Golden QPS for the `golden_1kqps` scenario to use.");

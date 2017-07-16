@@ -26,8 +26,8 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 
-#include "../../Bricks/template/mapreduce.h"
-#include "../../Bricks/template/typelist.h"
+#include "../../bricks/template/mapreduce.h"
+#include "../../bricks/template/typelist.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

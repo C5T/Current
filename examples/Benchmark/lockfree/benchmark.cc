@@ -22,8 +22,8 @@
  SOFTWARE.
  *******************************************************************************/
 
-#include "../../../Bricks/dflags/dflags.h"
-#include "../../../Bricks/time/chrono.h"
+#include "../../../bricks/dflags/dflags.h"
+#include "../../../bricks/time/chrono.h"
 
 DEFINE_uint32(threads, 24, "The number of threads to iterate from.");
 DEFINE_uint32(iterations, 1000, "Call the Now() functions from each thread this many times.");

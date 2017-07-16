@@ -23,7 +23,7 @@
  *******************************************************************************/
 
 #include "../../../Blocks/HTTP/api.h"
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 #include "../../../Sherlock/sherlock.h"
 
 #include "generate_stream.h"

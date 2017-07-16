@@ -26,7 +26,7 @@
 #ifndef FNCAS_FNCAS_EXCEPTIONS_H
 #define FNCAS_FNCAS_EXCEPTIONS_H
 
-#include "../../Bricks/exception.h"
+#include "../../bricks/exception.h"
 
 namespace fncas {
 namespace exceptions {

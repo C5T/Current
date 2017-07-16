@@ -33,9 +33,9 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 
-#include "../../Bricks/net/exceptions.h"
-#include "../../Bricks/net/http/http.h"
-#include "../../Bricks/strings/is_string_type.h"
+#include "../../bricks/net/exceptions.h"
+#include "../../bricks/net/http/http.h"
+#include "../../bricks/strings/is_string_type.h"
 
 namespace current {
 namespace http {

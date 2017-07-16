@@ -26,8 +26,8 @@ SOFTWARE.
 
 #include "infer.h"
 
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_bool(regenerate_golden_inferred_schemas, false, "Set to 'true' to re-generate golden inferred schema files.");

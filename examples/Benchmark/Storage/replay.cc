@@ -2,8 +2,8 @@
 
 #include "schema.h"
 
-#include "../../../Bricks/dflags/dflags.h"
-#include "../../../Bricks/graph/gnuplot.h"
+#include "../../../bricks/dflags/dflags.h"
+#include "../../../bricks/graph/gnuplot.h"
 
 DEFINE_string(file, ".current/log.json", "Storage persistence file in Sherlock format to use.");
 DEFINE_uint32(gen, 0u, "Set to nonzero to generate this number of entries, overwriting the test data.");

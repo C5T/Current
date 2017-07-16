@@ -101,9 +101,9 @@ y:0.183947}
 
 #include "api.h"
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/time/chrono.h"
+#include "../../bricks/dflags/dflags.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/time/chrono.h"
 
 using current::time::Now;
 using current::strings::Printf;

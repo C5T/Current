@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef BLOCKS_GRACEFULSHUTDOWN_EXCEPTIONS_H
 #define BLOCKS_GRACEFULSHUTDOWN_EXCEPTIONS_H
 
-#include "../../Bricks/exception.h"
+#include "../../bricks/exception.h"
 
 namespace current {
 

@@ -27,7 +27,7 @@ SOFTWARE.
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
-#include "../../Bricks/file/file.h"
+#include "../../bricks/file/file.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

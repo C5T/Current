@@ -45,8 +45,8 @@ SOFTWARE.
 #include <thread>
 
 #include "../Blocks/HTTP/api.h"
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/util/singleton.h"
+#include "../bricks/time/chrono.h"
+#include "../bricks/util/singleton.h"
 
 #ifdef CURRENT_MOCK_TIME
 #error "No `CURRENT_PROFILER` in `CURRENT_MOCK_TIME` please."

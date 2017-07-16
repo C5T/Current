@@ -27,7 +27,7 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main.h"
 
 #include "ot.h"
-#include "../../Bricks/file/file.h"
+#include "../../bricks/file/file.h"
 
 TEST(OperationalTransformation, Golden) {
   EXPECT_EQ(current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath("golden", "data.txt")),

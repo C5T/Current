@@ -32,9 +32,9 @@ SOFTWARE.
 #include "../base.h"
 
 #include "../../TypeSystem/optional.h"
-#include "../../Bricks/util/comparators.h"  // For `GenericHashFunction`.
-#include "../../Bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
-#include "../../Bricks/util/singleton.h"
+#include "../../bricks/util/comparators.h"  // For `GenericHashFunction`.
+#include "../../bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
+#include "../../bricks/util/singleton.h"
 
 namespace current {
 namespace storage {

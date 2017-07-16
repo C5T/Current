@@ -35,8 +35,8 @@ SOFTWARE.
 #include "../../optional.h"
 #include "../../helpers.h"
 
-#include "../../../Bricks/strings/chunk.h"
-#include "../../../Bricks/template/pod.h"  // `current::copy_free`.
+#include "../../../bricks/strings/chunk.h"
+#include "../../../bricks/template/pod.h"  // `current::copy_free`.
 
 namespace current {
 namespace serialization {

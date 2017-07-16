@@ -30,8 +30,8 @@ SOFTWARE.
 #ifndef EXAMPLES_OPTIMIZE_MAIN_H
 #define EXAMPLES_OPTIMIZE_MAIN_H
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/util/random.h"
+#include "../../bricks/dflags/dflags.h"
+#include "../../bricks/util/random.h"
 #include "../../TypeSystem/Serialization/json.h"
 #include "../../FnCAS/fncas/base.h"  // typename `fncas::double_t`.
 

@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_NET_HTTP_CONSTANTS_H
 #define BRICKS_NET_HTTP_CONSTANTS_H
 
-#include "../../../Bricks/strings/strings.h"
+#include "../../../bricks/strings/strings.h"
 
 // HTTP constants to parse the header and extract method, URL, headers and body.
 

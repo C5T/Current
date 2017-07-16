@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "conversion_tracking.h"
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 
 #ifdef ADWORDS_PARAM
 #error "`ADWORDS_PARAM` should not be defined."

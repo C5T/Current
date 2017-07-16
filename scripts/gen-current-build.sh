@@ -59,7 +59,7 @@ cat >$1 << EOF
 
 #include "$SCRIPT_DIR/../TypeSystem/struct.h"
 #include "$SCRIPT_DIR/../TypeSystem/optional.h"
-#include "$SCRIPT_DIR/../Bricks/strings/split.h"
+#include "$SCRIPT_DIR/../bricks/strings/split.h"
 
 namespace current {
 namespace build {

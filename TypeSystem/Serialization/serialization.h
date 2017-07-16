@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../../Bricks/template/decay.h"
+#include "../../bricks/template/decay.h"
 
 namespace current {
 namespace serialization {

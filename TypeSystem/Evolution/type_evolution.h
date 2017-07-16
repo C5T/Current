@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../variant.h"
 #include "../optional.h"
 
-#include "../../Bricks/template/pod.h"
+#include "../../bricks/template/pod.h"
 
 #define CURRENT_NAMESPACE(ns)                                   \
   struct CURRENT_NAMESPACE_HELPER_##ns {                        \

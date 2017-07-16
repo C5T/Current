@@ -29,9 +29,9 @@ SOFTWARE.
 
 #include "port.h"
 
-#include "Bricks/dflags/dflags.h"
-#include "Bricks/time/chrono.h"
-#include "Bricks/util/random.h"
+#include "bricks/dflags/dflags.h"
+#include "bricks/time/chrono.h"
+#include "bricks/util/random.h"
 
 #include "Sherlock/sherlock.h"
 

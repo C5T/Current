@@ -26,7 +26,7 @@ SOFTWARE.
 #include "current_build.h"
 
 #include "../../karl.h"
-#include "../../../Bricks/dflags/dflags.h"
+#include "../../../bricks/dflags/dflags.h"
 
 DEFINE_uint16(karl_keepalives_port, 30001, "Local test port for the `Karl` keepalive listener.");
 DEFINE_uint16(karl_fleet_view_port, 30999, "Local test port for the `Karl` fleet view listener.");

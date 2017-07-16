@@ -40,8 +40,8 @@
 
 #include <dlfcn.h>
 
-#include "../../Bricks/strings/printf.h"
-#include "../../Bricks/file/file.h"
+#include "../../bricks/strings/printf.h"
+#include "../../bricks/file/file.h"
 
 #include "base.h"
 #include "node.h"

@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "url.h"
 
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/dflags/dflags.h"
 #include "../../TypeSystem/struct.h"
 #include "../../TypeSystem/optional.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"

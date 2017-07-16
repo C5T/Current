@@ -44,10 +44,10 @@ SOFTWARE.
 #include "../SS/persister.h"
 #include "../SS/signature.h"
 
-#include "../../Bricks/sync/locks.h"
-#include "../../Bricks/sync/owned_borrowed.h"
-#include "../../Bricks/time/chrono.h"
-#include "../../Bricks/util/atomic_that_works.h"
+#include "../../bricks/sync/locks.h"
+#include "../../bricks/sync/owned_borrowed.h"
+#include "../../bricks/time/chrono.h"
+#include "../../bricks/util/atomic_that_works.h"
 #include "../../TypeSystem/Schema/schema.h"
 #include "../../TypeSystem/Serialization/json.h"
 

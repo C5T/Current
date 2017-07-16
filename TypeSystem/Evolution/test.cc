@@ -44,8 +44,8 @@ SOFTWARE.
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
+#include "../../bricks/file/file.h"
+#include "../../bricks/dflags/dflags.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 

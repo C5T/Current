@@ -46,8 +46,8 @@ SOFTWARE.
 
 #include "../Blocks/HTTP/api.h"
 
-#include "../Bricks/file/file.h"
-#include "../Bricks/dflags/dflags.h"
+#include "../bricks/file/file.h"
+#include "../bricks/dflags/dflags.h"
 
 #include "../Sherlock/replicator.h"
 

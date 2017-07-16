@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "../../../port.h"
 
-#include "../../../Bricks/sync/waitable_atomic.h"
+#include "../../../bricks/sync/waitable_atomic.h"
 
 #if defined(CURRENT_APPLE)
 

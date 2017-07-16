@@ -33,11 +33,11 @@ SOFTWARE.
 #include <map>
 #include <string>
 
-#include "../../Bricks/net/exceptions.h"
-#include "../../Bricks/net/http/http.h"
-#include "../../Bricks/net/http/impl/server.h"  // net::constants
-#include "../../Bricks/strings/is_string_type.h"
-#include "../../Bricks/template/decay.h"
+#include "../../bricks/net/exceptions.h"
+#include "../../bricks/net/http/http.h"
+#include "../../bricks/net/http/impl/server.h"  // net::constants
+#include "../../bricks/strings/is_string_type.h"
+#include "../../bricks/template/decay.h"
 
 namespace current {
 namespace http {

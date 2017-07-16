@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_CONTAINER_COMMON_H
 #define CURRENT_STORAGE_CONTAINER_COMMON_H
 
-#include "../../Bricks/util/comparators.h"
+#include "../../bricks/util/comparators.h"
 
 namespace current {
 namespace storage {

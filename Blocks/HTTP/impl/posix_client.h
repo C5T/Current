@@ -36,8 +36,8 @@ SOFTWARE.
 
 #include "../../URL/url.h"
 
-#include "../../../Bricks/net/http/http.h"
-#include "../../../Bricks/file/file.h"
+#include "../../../bricks/net/http/http.h"
+#include "../../../bricks/file/file.h"
 
 namespace current {
 namespace http {
