@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "../base.h"
 
-#include "../../TypeSystem/optional.h"
+#include "../../typesystem/optional.h"
 #include "../../bricks/util/comparators.h"  // For `GenericHashFunction`.
 #include "../../bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
 #include "../../bricks/util/singleton.h"

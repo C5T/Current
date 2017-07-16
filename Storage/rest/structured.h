@@ -33,7 +33,7 @@ SOFTWARE.
 #include "../api_types.h"
 #include "../storage.h"
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
 
 namespace current {

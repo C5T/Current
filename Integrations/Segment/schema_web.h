@@ -30,8 +30,8 @@ SOFTWARE.
 #ifndef INTEGRATIONS_SEGMENT_SCHEMA_WEB_H
 #define INTEGRATIONS_SEGMENT_SCHEMA_WEB_H
 
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/optional.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/optional.h"
 
 namespace current {
 namespace integrations {

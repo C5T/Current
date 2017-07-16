@@ -27,7 +27,7 @@ SOFTWARE.
 #include "../../bricks/file/file.h"
 #include "../../bricks/template/rtti_dynamic_call.h"
 #include "../../bricks/template/typelist.h"
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

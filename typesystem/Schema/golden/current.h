@@ -4,7 +4,7 @@
 
 #include <chrono>
 
-#include "../../../TypeSystem/struct.h"
-#include "../../../TypeSystem/optional.h"
-#include "../../../TypeSystem/variant.h"
-#include "../../../TypeSystem/Evolution/type_evolution.h"
+#include "../../../typesystem/struct.h"
+#include "../../../typesystem/optional.h"
+#include "../../../typesystem/variant.h"
+#include "../../../typesystem/Evolution/type_evolution.h"

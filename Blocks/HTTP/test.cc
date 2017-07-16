@@ -39,7 +39,7 @@ SOFTWARE.
 
 #include "../URL/url.h"
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 #include "../../bricks/dflags/dflags.h"
 #include "../../bricks/strings/join.h"

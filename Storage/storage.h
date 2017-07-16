@@ -57,9 +57,9 @@ SOFTWARE.
 
 #include "persister/sherlock.h"
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/Serialization/json.h"
-#include "../TypeSystem/optional.h"
+#include "../typesystem/struct.h"
+#include "../typesystem/Serialization/json.h"
+#include "../typesystem/optional.h"
 
 #include "../bricks/exception.h"
 #include "../bricks/strings/strings.h"

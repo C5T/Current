@@ -25,8 +25,8 @@ SOFTWARE.
 #include "url.h"
 
 #include "../../bricks/dflags/dflags.h"
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/optional.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/optional.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 using namespace current::url;

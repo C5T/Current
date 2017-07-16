@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef IRIS_H
 #define IRIS_H
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../Storage/storage.h"
 
 CURRENT_STRUCT(LabeledFlower) {

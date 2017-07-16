@@ -30,7 +30,7 @@ SOFTWARE.
 // * http://support.sas.com/documentation/cdl/en/graphref/65389/HTML/default/images/gtdshapa.png
 // * http://www.math.uah.edu/stat/data/Fisher.html
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 

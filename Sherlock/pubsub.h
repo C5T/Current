@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "stream_impl.h"
 
-#include "../TypeSystem/timestamp.h"
+#include "../typesystem/timestamp.h"
 
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/HTTP/api.h"

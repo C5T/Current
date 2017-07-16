@@ -28,7 +28,7 @@ SOFTWARE.
 #include "../port.h"
 #include <chrono>
 
-#include "../TypeSystem/struct.h"
+#include "../typesystem/struct.h"
 
 namespace current {
 namespace storage {

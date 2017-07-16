@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include <iostream>
 
-#include "../TypeSystem/struct.h"
+#include "../typesystem/struct.h"
 #include "../bricks/template/typelist.h"
 
 namespace current {

@@ -25,7 +25,7 @@ SOFTWARE.
 // Step 3: Train the classification model to caterogize Fisher's Irises data into their respective classes.
 // NOTE(dkorolev): To look at model optimization code only, diff `step3_optimize.cc` against `step3_render.cc`.
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
 #include "../../bricks/graph/gnuplot.h"
 #include "../../bricks/file/file.h"

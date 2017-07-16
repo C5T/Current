@@ -33,8 +33,8 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/variant.h"
+#include "../typesystem/struct.h"
+#include "../typesystem/variant.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/memory.h"

@@ -26,8 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_TYPES_H
 #define CURRENT_STORAGE_REST_TYPES_H
 
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/optional.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/optional.h"
 #include "../../Blocks/HTTP/response.h"
 
 namespace current {

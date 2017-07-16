@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include "../../URL/url.h"
 
-#include "../../../TypeSystem/optional.h"
+#include "../../../typesystem/optional.h"
 
 #include "../../../bricks/net/exceptions.h"
 #include "../../../bricks/net/http/http.h"

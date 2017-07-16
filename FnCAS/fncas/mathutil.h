@@ -36,8 +36,8 @@
 #include <numeric>
 #include <vector>
 
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/Serialization/json.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/Serialization/json.h"
 
 namespace fncas {
 

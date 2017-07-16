@@ -24,7 +24,7 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

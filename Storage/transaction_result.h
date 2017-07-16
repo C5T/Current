@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_TRANSACTION_RESULT_H
 #define CURRENT_STORAGE_TRANSACTION_RESULT_H
 
-#include "../TypeSystem/optional_result.h"
+#include "../typesystem/optional_result.h"
 
 namespace current {
 namespace storage {

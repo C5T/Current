@@ -25,8 +25,8 @@
 #ifndef BLOCKS_SS_SIGNATURE_H
 #define BLOCKS_SS_SIGNATURE_H
 
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/Schema/schema.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/Schema/schema.h"
 
 namespace current {
 namespace ss {

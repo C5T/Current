@@ -27,9 +27,9 @@ SOFTWARE.
 
 #include "../../../port.h"
 
-#include "../../../TypeSystem/struct.h"
-#include "../../../TypeSystem/variant.h"
-#include "../../../TypeSystem/Serialization/json.h"
+#include "../../../typesystem/struct.h"
+#include "../../../typesystem/variant.h"
+#include "../../../typesystem/Serialization/json.h"
 
 #include "benchmark.h"
 

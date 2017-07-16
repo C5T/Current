@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef EVENT_STORE_H
 #define EVENT_STORE_H
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 

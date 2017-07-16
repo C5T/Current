@@ -41,8 +41,8 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/Serialization/json.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/Serialization/json.h"
 
 #include "../../bricks/file/file.h"
 #include "../../bricks/time/chrono.h"

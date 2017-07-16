@@ -39,7 +39,7 @@ SOFTWARE.
 #include "../bricks/sync/owned_borrowed.h"
 #include "../bricks/sync/waitable_atomic.h"
 
-#include "../TypeSystem/Reflection/types.h"
+#include "../typesystem/Reflection/types.h"
 
 namespace current {
 namespace sherlock {

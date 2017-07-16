@@ -70,7 +70,7 @@ SOFTWARE.
 #include "../Utils/Nginx/nginx.h"
 
 #ifdef EXTRA_KARL_LOGGING
-#include "../TypeSystem/Schema/schema.h"
+#include "../typesystem/Schema/schema.h"
 #endif
 
 namespace current {

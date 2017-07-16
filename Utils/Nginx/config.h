@@ -30,7 +30,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../../bricks/strings/util.h"
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 namespace current {
 namespace nginx {

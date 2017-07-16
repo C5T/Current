@@ -27,9 +27,9 @@ SOFTWARE.
 
 #include "../../port.h"
 #include "../../bricks/exception.h"
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/Reflection/reflection.h"
-#include "../../TypeSystem/Schema/schema.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/Reflection/reflection.h"
+#include "../../typesystem/Schema/schema.h"
 
 namespace current {
 namespace url {

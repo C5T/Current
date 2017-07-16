@@ -32,7 +32,7 @@ SOFTWARE.
 #include <deque>
 #include <string>
 
-#include "../../TypeSystem/Serialization/json.h"
+#include "../../typesystem/Serialization/json.h"
 #include "../../bricks/time/chrono.h"
 #include "../../bricks/strings/join.h"
 

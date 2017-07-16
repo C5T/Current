@@ -38,8 +38,8 @@ SOFTWARE.
 #include "stream_impl.h"
 #include "pubsub.h"
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/Schema/schema.h"
+#include "../typesystem/struct.h"
+#include "../typesystem/Schema/schema.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/memory.h"

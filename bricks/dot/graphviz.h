@@ -37,8 +37,8 @@ SOFTWARE.
 #include "../file/file.h"
 #include "../strings/printf.h"
 
-#include "../../TypeSystem/optional.h"
-#include "../../TypeSystem/helpers.h"
+#include "../../typesystem/optional.h"
+#include "../../typesystem/helpers.h"
 
 namespace current {
 namespace graphviz {

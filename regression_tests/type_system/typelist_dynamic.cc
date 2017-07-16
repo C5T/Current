@@ -24,7 +24,7 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 #include "../../bricks/template/mapreduce.h"
 #include "../../bricks/template/typelist.h"

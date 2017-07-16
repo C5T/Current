@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include <fstream>
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../bricks/strings/strings.h"
 #include "../../bricks/exception.h"
 

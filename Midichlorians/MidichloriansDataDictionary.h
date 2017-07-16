@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include <chrono>
 
-#include "../TypeSystem/struct.h"
+#include "../typesystem/struct.h"
 
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 #import <Foundation/Foundation.h>

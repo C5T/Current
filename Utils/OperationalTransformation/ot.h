@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include "../../TypeSystem/Serialization/json.h"
+#include "../../typesystem/Serialization/json.h"
 
 #include <deque>
 #include <codecvt>

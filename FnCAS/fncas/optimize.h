@@ -40,9 +40,9 @@ SOFTWARE.
 #include "jit.h"
 
 #include "../../bricks/template/decay.h"
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/optional.h"
-#include "../../TypeSystem/helpers.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/optional.h"
+#include "../../typesystem/helpers.h"
 
 namespace fncas {
 namespace optimize {

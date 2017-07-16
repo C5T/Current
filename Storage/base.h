@@ -33,7 +33,7 @@ SOFTWARE.
 #include "semantics.h"
 #include "transaction.h"
 
-#include "../TypeSystem/struct.h"
+#include "../typesystem/struct.h"
 
 #include "../bricks/time/chrono.h"
 

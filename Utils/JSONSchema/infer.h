@@ -31,9 +31,9 @@ SOFTWARE.
 #ifndef CURRENT_UTILS_JSONSCHEMA_INFER_H
 #define CURRENT_UTILS_JSONSCHEMA_INFER_H
 
-#include "../../TypeSystem/struct.h"
-#include "../../TypeSystem/Schema/schema.h"
-#include "../../TypeSystem/Serialization/json.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/Schema/schema.h"
+#include "../../typesystem/Serialization/json.h"
 
 #include "../../bricks/file/file.h"
 

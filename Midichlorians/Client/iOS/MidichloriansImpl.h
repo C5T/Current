@@ -38,7 +38,7 @@
 
 #include "../../../port.h"
 #include "../../../bricks/util/singleton.h"
-#include "../../../TypeSystem/Serialization/json.h"
+#include "../../../typesystem/Serialization/json.h"
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."

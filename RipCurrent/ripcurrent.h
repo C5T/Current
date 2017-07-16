@@ -58,8 +58,8 @@ SOFTWARE.
 #include <tuple>
 #include <vector>
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/remove_parentheses.h"
+#include "../typesystem/struct.h"
+#include "../typesystem/remove_parentheses.h"
 
 #include "../Blocks/MMQ/mmpq.h"
 

@@ -103,7 +103,7 @@ The **natural evolution** is designed to eliminate the need in writing redundant
 * A `CURRENT_STRUCT` evolving into a `CURRENT_STRUCT`, where the destination struct contains all the fields the source one does.
 * A `Variant<...>` or `CURRENT_VARIANT` evolving into a `Variant<...>` or `CURRENT_VARIANT`, where all possible cases of source variant contains are legal cases of the destination variant.
 * An `Optional<T>`, which naturally proxies the evolution down the chain to evolve `T`.
-* A C++ type supported in the [Current TypeSystem](https://github.com/C5T/Current/blob/master/TypeSystem/README.md), where "identity evolution" rules are applied.
+* A C++ type supported in the [Current TypeSystem](https://github.com/C5T/Current/blob/master/typesystem/README.md), where "identity evolution" rules are applied.
 
 The natural evolver is global with respect to custom evolution logic defined under a specific name via the `CURRENT_TYPE_EVOLVER` macro.
 

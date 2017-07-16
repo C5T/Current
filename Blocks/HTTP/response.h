@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "request.h"
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 #include "../../bricks/net/exceptions.h"
 #include "../../bricks/net/http/http.h"

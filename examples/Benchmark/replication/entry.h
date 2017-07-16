@@ -25,7 +25,7 @@
 #ifndef BENCHMARK_REPLICATION_ENTRY_H
 #define BENCHMARK_REPLICATION_ENTRY_H
 
-#include "../../../TypeSystem/struct.h"
+#include "../../../typesystem/struct.h"
 
 namespace benchmark {
 namespace replication {

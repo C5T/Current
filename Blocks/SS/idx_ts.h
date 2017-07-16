@@ -36,8 +36,8 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../../TypeSystem/optional.h"
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/optional.h"
+#include "../../typesystem/struct.h"
 
 namespace current {
 namespace ss {

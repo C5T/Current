@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../../bricks/template/typelist.h"
 #include "../../Blocks/HTTP/request.h"
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 namespace current {
 namespace midichlorians {

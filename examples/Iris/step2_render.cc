@@ -25,7 +25,7 @@ SOFTWARE.
 // Step 2: A small tool to visualize Fisher's Iris data same way Wikipedia did, but in clickable format.
 // NOTE(dkorolev): In order to stay self-contained, further steps largely copy-paste the code of this tool.
 
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
 #include "../../bricks/graph/gnuplot.h"
 #include "../../bricks/file/file.h"

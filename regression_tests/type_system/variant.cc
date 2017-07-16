@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
 #include "../../bricks/file/file.h"
-#include "../../TypeSystem/struct.h"
+#include "../../typesystem/struct.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 

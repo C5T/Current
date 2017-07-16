@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include "../../TypeSystem/variant.h"
+#include "../../typesystem/variant.h"
 #include "../../bricks/time/chrono.h"
 #include "../../bricks/sync/locks.h"
 
