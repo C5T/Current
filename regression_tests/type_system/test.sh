@@ -14,7 +14,7 @@ TEST_LIST=(
     'json_variant_stringify_and_parse_and_test'
     'stream_memory'
     'stream_file'
-    'storage_stream_persister'
+    'storage_with_stream_persister'
     'storage_with_subscriber'
 )
 
