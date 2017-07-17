@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "current_build.h"
 
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 #include "../../bricks/dflags/dflags.h"
 #include "../../karl/test_service/is_prime.h"
 

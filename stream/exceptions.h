@@ -26,7 +26,7 @@ SOFTWARE.
 #define CURRENT_STREAM_EXCEPTIONS_H
 
 #include "../bricks/exception.h"
-#include "../blocks/GracefulShutdown/exceptions.h"
+#include "../blocks/graceful_shutdown/exceptions.h"
 
 namespace current {
 namespace stream {

@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../types.h"
 #include "../request.h"
 
-#include "../../URL/url.h"
+#include "../../url/url.h"
 
 #include "../../../typesystem/optional.h"
 

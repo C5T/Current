@@ -32,7 +32,7 @@ SOFTWARE.
 #include "memory.h"
 #include "file.h"
 
-#include "../SS/ss.h"
+#include "../ss/ss.h"
 
 #include "../../bricks/dflags/dflags.h"
 #include "../../bricks/file/file.h"

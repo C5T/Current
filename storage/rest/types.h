@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "../../typesystem/struct.h"
 #include "../../typesystem/optional.h"
-#include "../../blocks/HTTP/response.h"
+#include "../../blocks/http/response.h"
 
 namespace current {
 namespace storage {

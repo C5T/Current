@@ -28,7 +28,7 @@ SOFTWARE.
 #include "storage.h"
 #include "container/sfinae.h"
 
-#include "../blocks/HTTP/api.h"
+#include "../blocks/http/api.h"
 
 namespace current {
 namespace storage {

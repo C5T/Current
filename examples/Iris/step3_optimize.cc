@@ -26,7 +26,7 @@ SOFTWARE.
 // NOTE(dkorolev): To look at model optimization code only, diff `step3_optimize.cc` against `step3_render.cc`.
 
 #include "../../typesystem/struct.h"
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 #include "../../bricks/graph/gnuplot.h"
 #include "../../bricks/file/file.h"
 #include "../../bricks/dflags/dflags.h"

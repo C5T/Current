@@ -33,7 +33,7 @@ SOFTWARE.
 #include <thread>
 #include <set>
 
-#include "../SS/ss.h"
+#include "../ss/ss.h"
 
 #include "../../bricks/time/chrono.h"
 
@@ -49,7 +49,7 @@ class MMPQImpl {
   using message_t = MESSAGE;
 
   // Consumer's `operator()` will be called from a dedicated thread, which is spawned and owned
-  // by the instance of MMPQImpl. See "blocks/SS/ss.h" and its test for possible callee signatures.
+  // by the instance of MMPQImpl. See "blocks/ss/ss.h" and its test for possible callee signatures.
   using consumer_t = CONSUMER;
 
   MMPQImpl(consumer_t& consumer) : consumer_(consumer), consumer_thread_(&MMPQImpl::ConsumerThread, this) {
@@ -78,7 +78,7 @@ class MMPQImpl {
     const auto us = current::time::TimestampAsMicroseconds(timestamp);
     ++last_idx_ts_.index;
     // Does not update `last_idx_ts_.us` at all. `UpdateHead()` must be called.
-    // This is to ensure the regular `Publish`, coming through the interface defined in `Blocks/SS/pubsub.h`,
+    // This is to ensure the regular `Publish`, coming through the interface defined in `Blocks/ss/pubsub.h`,
     // can publish into the future and utilize the full power of MMPQ.
     queue_.emplace(std::forward<E>(entry), idxts_t(last_idx_ts_.index, us));
     condition_variable_.notify_all();

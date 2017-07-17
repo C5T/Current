@@ -29,7 +29,7 @@ SOFTWARE.
 // MMQ is an efficient in-memory FIFO buffer.
 // One of the objectives of MMQ is to minimize the time for which the thread publishing the message is blocked.
 //
-// Messages can be published into a MMQ via standard `Publish()` interface defined in `Blocks/SS/ss.h`.
+// Messages can be published into a MMQ via standard `Publish()` interface defined in `Blocks/ss/ss.h`.
 // The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
 //
 // The buffer size, i.e. the number of the messages MMQ can hold, is defined by the constructor argument
@@ -53,7 +53,7 @@ SOFTWARE.
 #include <thread>
 #include <vector>
 
-#include "../SS/ss.h"
+#include "../ss/ss.h"
 
 #include "../../bricks/time/chrono.h"
 
@@ -69,7 +69,7 @@ class MMQImpl {
   using message_t = MESSAGE;
 
   // Consumer's `operator()` will be called from a dedicated thread, which is spawned and owned
-  // by the instance of MMQImpl. See "blocks/SS/ss.h" and its test for possible callee signatures.
+  // by the instance of MMQImpl. See "blocks/ss/ss.h" and its test for possible callee signatures.
   using consumer_t = CONSUMER;
 
   MMQImpl(consumer_t& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)

@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 
 #include "../../typesystem/struct.h"
 #include "../../typesystem/serialization/json.h"

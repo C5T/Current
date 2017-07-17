@@ -36,9 +36,9 @@ SOFTWARE.
 #include "../typesystem/struct.h"
 #include "../typesystem/variant.h"
 
-#include "../blocks/HTTP/api.h"
-#include "../blocks/Persistence/memory.h"
-#include "../blocks/Persistence/file.h"
+#include "../blocks/http/api.h"
+#include "../blocks/persistence/memory.h"
+#include "../blocks/persistence/file.h"
 
 #include "../bricks/strings/strings.h"
 

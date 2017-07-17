@@ -43,8 +43,8 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../SS/persister.h"
-#include "../SS/signature.h"
+#include "../ss/persister.h"
+#include "../ss/signature.h"
 
 #include "../../bricks/sync/locks.h"
 #include "../../bricks/sync/owned_borrowed.h"

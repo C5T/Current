@@ -34,7 +34,7 @@ SOFTWARE.
 
 #include "schema.h"
 
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 
 #include "../../stream/stream.h"
 

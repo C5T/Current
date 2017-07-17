@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../../storage/storage.h"
 #include "../../storage/persister/stream.h"
 
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 
 #include "../../bricks/graph/gnuplot.h"
 #include "../../bricks/strings/printf.h"

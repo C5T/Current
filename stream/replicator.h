@@ -33,8 +33,8 @@ SOFTWARE.
 #include "stream.h"
 #include "stream_impl.h"
 
-#include "../blocks/HTTP/api.h"
-#include "../blocks/SS/ss.h"
+#include "../blocks/http/api.h"
+#include "../blocks/ss/ss.h"
 
 #include "../bricks/sync/owned_borrowed.h"
 #include "../bricks/sync/waitable_atomic.h"

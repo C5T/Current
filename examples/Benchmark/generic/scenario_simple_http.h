@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "benchmark.h"
 
-#include "../../../blocks/HTTP/api.h"
+#include "../../../blocks/http/api.h"
 
 #include "../../../bricks/dflags/dflags.h"
 

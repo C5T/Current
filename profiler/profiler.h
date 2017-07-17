@@ -44,7 +44,7 @@ SOFTWARE.
 
 #include <thread>
 
-#include "../blocks/HTTP/api.h"
+#include "../blocks/http/api.h"
 #include "../bricks/time/chrono.h"
 #include "../bricks/util/singleton.h"
 

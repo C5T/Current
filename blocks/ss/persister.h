@@ -25,7 +25,7 @@ SOFTWARE.
 
 // NOTE: `Persister` is the underlying synchronous storage component.
 // It is effectively an STL container that is stored on disk.
-// It is NOT the publish-subscribe-friendly publisher. See `Blocks/SS/pubsub.h` and `class Stream` for those.
+// It is NOT the publish-subscribe-friendly publisher. See `Blocks/ss/pubsub.h` and `class Stream` for those.
 
 #ifndef BLOCKS_SS_PERSISTER_H
 #define BLOCKS_SS_PERSISTER_H

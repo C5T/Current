@@ -22,7 +22,7 @@
  SOFTWARE.
  *******************************************************************************/
 
-#include "../../../blocks/HTTP/api.h"
+#include "../../../blocks/http/api.h"
 #include "../../../bricks/dflags/dflags.h"
 #include "../../../stream/stream.h"
 

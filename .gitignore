@@ -8,7 +8,7 @@ current_build.h
 current_build.h.*
 
 # The now-redundant README-s, which `make` from within some mid-level dirs will generate.
-Blocks/HTTP/README.md
+Blocks/http/README.md
 Storage/README.md
 
 # Usual C++ stuff.

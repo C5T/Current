@@ -45,7 +45,7 @@ SOFTWARE.
 #include "exceptions.h"
 #include "respond_with_schema.h"
 
-#include "../blocks/HTTP/api.h"
+#include "../blocks/http/api.h"
 
 #include "../bricks/time/chrono.h"
 #include "../bricks/sync/locks.h"

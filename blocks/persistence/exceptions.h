@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <chrono>
 
-#include "../GracefulShutdown/exceptions.h"
+#include "../graceful_shutdown/exceptions.h"
 
 #include "../../bricks/strings/printf.h"
 

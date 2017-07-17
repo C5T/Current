@@ -37,7 +37,7 @@ SOFTWARE.
 #include "../typesystem/optional.h"
 #include "../typesystem/variant.h"
 
-#include "../blocks/URL/url.h"
+#include "../blocks/url/url.h"
 
 #include "../bricks/time/chrono.h"
 

@@ -41,11 +41,11 @@ SOFTWARE.
 #include "../typesystem/struct.h"
 #include "../typesystem/schema/schema.h"
 
-#include "../blocks/HTTP/api.h"
-#include "../blocks/Persistence/memory.h"
-#include "../blocks/Persistence/file.h"
-#include "../blocks/SS/ss.h"
-#include "../blocks/SS/signature.h"
+#include "../blocks/http/api.h"
+#include "../blocks/persistence/memory.h"
+#include "../blocks/persistence/file.h"
+#include "../blocks/ss/ss.h"
+#include "../blocks/ss/signature.h"
 
 #include "../bricks/sync/locks.h"
 #include "../bricks/sync/owned_borrowed.h"

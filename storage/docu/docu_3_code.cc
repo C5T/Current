@@ -37,7 +37,7 @@ SOFTWARE.
 #include "../rest/hypermedia.h"
 #include "../persister/stream.h"
 
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 
 #include "../../bricks/dflags/dflags.h"
 

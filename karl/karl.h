@@ -65,7 +65,7 @@ SOFTWARE.
 #include "../bricks/net/http/impl/server.h"
 #include "../bricks/util/base64.h"
 
-#include "../blocks/HTTP/api.h"
+#include "../blocks/http/api.h"
 
 #include "../utils/nginx/nginx.h"
 

@@ -36,7 +36,7 @@ SOFTWARE.
 #include "../../bricks/util/sha256.h"
 #include "../../bricks/util/singleton.h"
 
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 
 #ifdef CURRENT_USER_NGINX_FLAG
 DECLARE_string(nginx);

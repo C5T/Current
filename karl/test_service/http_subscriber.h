@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef KARL_TEST_SERVICE_HTTP_SUBSCRIBER_H
 #define KARL_TEST_SERVICE_HTTP_SUBSCRIBER_H
 
-#include "../../blocks/HTTP/api.h"
-#include "../../blocks/SS/idx_ts.h"
+#include "../../blocks/http/api.h"
+#include "../../blocks/ss/idx_ts.h"
 
 template <typename ENTRY>
 class HTTPStreamSubscriber {

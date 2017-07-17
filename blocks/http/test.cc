@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include "api.h"
 
-#include "../URL/url.h"
+#include "../url/url.h"
 
 #include "../../typesystem/struct.h"
 

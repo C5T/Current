@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../storage.h"
 
 #include "../../typesystem/struct.h"
-#include "../../blocks/HTTP/api.h"
+#include "../../blocks/http/api.h"
 
 namespace current {
 namespace storage {

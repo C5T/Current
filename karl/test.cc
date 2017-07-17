@@ -35,7 +35,7 @@ SOFTWARE.
 #include "test_service/annotator.h"
 #include "test_service/filter.h"
 
-#include "../blocks/HTTP/api.h"
+#include "../blocks/http/api.h"
 
 #include "../stream/stream.h"
 

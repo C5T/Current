@@ -28,7 +28,7 @@ SOFTWARE.
 #include <vector>
 #include <string>
 
-#include "../URL/url.h"
+#include "../url/url.h"
 
 #include "../../bricks/net/http/http.h"
 #include "../../bricks/time/chrono.h"

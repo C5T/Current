@@ -33,9 +33,9 @@ SOFTWARE.
 #include "../bricks/util/random.h"
 #include "../bricks/util/waitable_terminate_signal.h"
 
-#include "../blocks/Persistence/memory.h"
-#include "../blocks/Persistence/file.h"
-#include "../blocks/SS/pubsub.h"
+#include "../blocks/persistence/memory.h"
+#include "../blocks/persistence/file.h"
+#include "../blocks/ss/pubsub.h"
 
 namespace current {
 namespace stream {

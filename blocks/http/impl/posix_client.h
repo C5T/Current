@@ -34,7 +34,7 @@ SOFTWARE.
 #include <string>
 #include <set>
 
-#include "../../URL/url.h"
+#include "../../url/url.h"
 
 #include "../../../bricks/net/http/http.h"
 #include "../../../bricks/file/file.h"
