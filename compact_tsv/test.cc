@@ -25,7 +25,7 @@ SOFTWARE.
 // TODO(batman): Test all exceptions.
 // TODO(batman): Test '\0'-s within input strings.
 
-#include "compacttsv.h"
+#include "compact_tsv.h"
 #include "gen.h"
 
 #include "../bricks/time/chrono.h"

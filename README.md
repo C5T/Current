@@ -12,7 +12,7 @@ Structured, append-only, immutable data persistence layer with publish-subscribe
 #### [FnCAS](https://github.com/C5T/Current/blob/master/fncas/README.md)
 An efficient convex optimization engine.
 
-#### [CompactTSV](https://github.com/C5T/Current/blob/master/compacttsv/)
+#### [CompactTSV](https://github.com/C5T/Current/blob/master/compact_tsv/)
 Low-level compact persistence layer with 1+ GB/s throughput.
 
 #### [EventCollector](https://github.com/C5T/Current/blob/master/event_collector/README.md)

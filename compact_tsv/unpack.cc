@@ -25,7 +25,7 @@ SOFTWARE.
 #include <iostream>
 #include <string>
 
-#include "compacttsv.h"
+#include "compact_tsv.h"
 
 #include "../bricks/dflags/dflags.h"
 #include "../bricks/file/file.h"

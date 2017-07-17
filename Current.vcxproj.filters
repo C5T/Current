@@ -792,7 +792,7 @@
     <ClInclude Include="Bricks\waitable_atomic\waitable_atomic.h">
       <Filter>Header Files\Bricks\waitable_atomic</Filter>
     </ClInclude>
-    <ClInclude Include="CompactTSV\compacttsv.h">
+    <ClInclude Include="CompactTSV\compact_tsv.h">
       <Filter>Header Files\CompactTSV</Filter>
     </ClInclude>
     <ClInclude Include="CompactTSV\gen.h">

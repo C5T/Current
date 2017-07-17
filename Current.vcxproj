@@ -306,7 +306,7 @@
     <ClInclude Include="Bricks\util\singleton.h" />
     <ClInclude Include="Bricks\util\waitable_terminate_signal.h" />
     <ClInclude Include="Bricks\waitable_atomic\waitable_atomic.h" />
-    <ClInclude Include="CompactTSV\compacttsv.h" />
+    <ClInclude Include="CompactTSV\compact_tsv.h" />
     <ClInclude Include="CompactTSV\gen.h" />
     <ClInclude Include="CompactTSV\port.h" />
     <ClInclude Include="EventCollector\event_collector.h" />
