@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include "main.h"
 
-#include "../../FnCAS/fncas/fncas.h"
+#include "../../fncas/fncas/fncas.h"
 
 DEFINE_string(matrix, "", "If set, the JSON representation of the game matrix.");
 DEFINE_size_t(dim, 4, "The dimension of square matrix A for the matrix game.");

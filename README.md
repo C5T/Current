@@ -9,7 +9,7 @@ The language to define continuous data pipelines.
 #### [Sherlock](https://github.com/C5T/Current/blob/master/Sherlock/README.md)
 Structured, append-only, immutable data persistence layer with publish-subscribe.
 
-#### [FnCAS](https://github.com/C5T/Current/blob/master/FnCAS/README.md)
+#### [FnCAS](https://github.com/C5T/Current/blob/master/fncas/README.md)
 An efficient convex optimization engine.
 
 #### [CompactTSV](https://github.com/C5T/Current/blob/master/compacttsv/)

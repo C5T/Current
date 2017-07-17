@@ -33,7 +33,7 @@ SOFTWARE.
 #include "../../bricks/dflags/dflags.h"
 #include "../../bricks/util/random.h"
 #include "../../typesystem/Serialization/json.h"
-#include "../../FnCAS/fncas/base.h"  // typename `fncas::double_t`.
+#include "../../fncas/fncas/base.h"  // typename `fncas::double_t`.
 
 DECLARE_string(matrix);
 DECLARE_size_t(dim);
