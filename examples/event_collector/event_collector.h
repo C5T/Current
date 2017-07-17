@@ -31,11 +31,11 @@ SOFTWARE.
 #include <string>
 #include <thread>
 
-#include "../blocks/HTTP/api.h"
-#include "../bricks/time/chrono.h"
+#include "../../blocks/HTTP/api.h"
+#include "../../bricks/time/chrono.h"
 
-#include "../typesystem/struct.h"
-#include "../typesystem/Serialization/json.h"
+#include "../../typesystem/struct.h"
+#include "../../typesystem/Serialization/json.h"
 
 // Initial version of `LogEntry` structure.
 CURRENT_STRUCT(LogEntry) {
