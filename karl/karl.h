@@ -67,7 +67,7 @@ SOFTWARE.
 
 #include "../blocks/HTTP/api.h"
 
-#include "../utils/Nginx/nginx.h"
+#include "../utils/nginx/nginx.h"
 
 #ifdef EXTRA_KARL_LOGGING
 #include "../typesystem/Schema/schema.h"

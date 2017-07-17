@@ -4,4 +4,4 @@
 
 (cd data &&
  rm -f dataset.description dataset.json dataset.h &&
- ../../../utils/JSONSchema/analyze_tsv.sh dataset.tsv) && echo OK
+ ../../../utils/json_schema/analyze_tsv.sh dataset.tsv) && echo OK

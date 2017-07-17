@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "../../../blocks/HTTP/api.h"
 
-#include "../../../utils/Nginx/nginx.h"
+#include "../../../utils/nginx/nginx.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 DEFINE_string(nginx_client_config_file_prefix,
