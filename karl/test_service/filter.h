@@ -34,7 +34,7 @@ SOFTWARE.
 
 #include "../../blocks/HTTP/api.h"
 
-#include "../../Sherlock/sherlock.h"
+#include "../../stream/sherlock.h"
 
 namespace karl_unittest {
 

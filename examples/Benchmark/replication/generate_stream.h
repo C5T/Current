@@ -22,7 +22,7 @@
  SOFTWARE.
  *******************************************************************************/
 
-#include "../../../Sherlock/sherlock.h"
+#include "../../../stream/sherlock.h"
 
 #include "entry.h"
 

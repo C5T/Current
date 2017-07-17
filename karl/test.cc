@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include "../blocks/HTTP/api.h"
 
-#include "../Sherlock/sherlock.h"
+#include "../stream/sherlock.h"
 
 #include "../bricks/strings/printf.h"
 

@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../base.h"
 #include "../exceptions.h"
 #include "../transaction.h"
-#include "../../Sherlock/sherlock.h"
+#include "../../stream/sherlock.h"
 
 #include "../../bricks/sync/locks.h"
 

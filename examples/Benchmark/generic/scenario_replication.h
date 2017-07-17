@@ -29,7 +29,7 @@
 
 #include "../replication/generate_stream.h"
 #include "../../../blocks/HTTP/api.h"
-#include "../../../Sherlock/replicator.h"
+#include "../../../stream/replicator.h"
 
 #include "../../../bricks/dflags/dflags.h"
 

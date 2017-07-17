@@ -49,7 +49,7 @@ SOFTWARE.
 #include "../bricks/file/file.h"
 #include "../bricks/dflags/dflags.h"
 
-#include "../Sherlock/replicator.h"
+#include "../stream/replicator.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 

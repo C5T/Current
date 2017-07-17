@@ -23,7 +23,7 @@
  *******************************************************************************/
 
 #include "../../../bricks/dflags/dflags.h"
-#include "../../../Sherlock/replicator.h"
+#include "../../../stream/replicator.h"
 
 #include "entry.h"
 

@@ -24,7 +24,7 @@
 
 #include "../../../blocks/HTTP/api.h"
 #include "../../../bricks/dflags/dflags.h"
-#include "../../../Sherlock/sherlock.h"
+#include "../../../stream/sherlock.h"
 
 #include "generate_stream.h"
 

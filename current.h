@@ -33,7 +33,7 @@ SOFTWARE.
 #include "bricks/time/chrono.h"
 #include "bricks/util/random.h"
 
-#include "Sherlock/sherlock.h"
+#include "stream/sherlock.h"
 
 #include "typesystem/struct.h"
 #include "typesystem/Schema/schema.h"

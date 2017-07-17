@@ -6,7 +6,7 @@ The type system used in Current framework.
 #### [RipCurrent](https://github.com/C5T/Current/blob/master/ripcurrent/README.md)
 The language to define continuous data pipelines.
 
-#### [Sherlock](https://github.com/C5T/Current/blob/master/Sherlock/README.md)
+#### [Sherlock](https://github.com/C5T/Current/blob/master/stream/README.md)
 Structured, append-only, immutable data persistence layer with publish-subscribe.
 
 #### [FnCAS](https://github.com/C5T/Current/blob/master/fncas/README.md)

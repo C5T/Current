@@ -24,7 +24,7 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../Sherlock/sherlock.h"
+#include "../../stream/sherlock.h"
 
 #include "../../bricks/file/file.h"
 
