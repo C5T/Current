@@ -74,7 +74,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
       if (FLAGS_db.empty()) {
         const auto filename = current::FileSystem::GenTmpFileName();
         tmp_db_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
-        stream = benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count);
+        benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count, stream);
         entries_count = FLAGS_entries_count;
       } else {
         stream = benchmark::replication::stream_t::CreateStream(FLAGS_db);
