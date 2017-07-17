@@ -24,8 +24,8 @@ SOFTWARE.
 *******************************************************************************/
 
 #ifndef __cplusplus
-// If you get this error building an Objective-C project, #include neither this file nor "MidichloriansImpl.h".
-// Use "Midichlorians.h" instead.
+// If you get this error building an Objective-C project, #include neither this file nor "midichlorians_impl.h".
+// Use "midichlorians.h" instead.
 // It wraps the inner, platform-independent, event tracking code, and allows the client code to stay `.m`.
 #error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
@@ -47,14 +47,14 @@ SOFTWARE.
 namespace current {
 namespace midichlorians {
 
-// `MidichloriansBaseEvent` is the universal base class for all analytics events, mobile and web.
+// `midichloriansBaseEvent` is the universal base class for all analytics events, mobile and web.
 // `customer_id` is used to separate events from different customers, when they are collected by a single
 // server, and could be ignored in case of single-customer environment.
 // TODO(dk+mz): make `customer_id` a mandatory parameter in initialization?
 // `user_ms` is the event timestamp on user device, measured in milliseconds since epoch.
 // `client_id` is the unique identifier of the user. It could be set by corresponding `identify` methods or
 // generated automatically.
-CURRENT_STRUCT(MidichloriansBaseEvent) {
+CURRENT_STRUCT(midichloriansBaseEvent) {
   CURRENT_FIELD(customer_id, std::string);
   CURRENT_FIELD(user_ms, std::chrono::milliseconds);
   CURRENT_FIELD(client_id, std::string);
@@ -62,14 +62,14 @@ CURRENT_STRUCT(MidichloriansBaseEvent) {
 
 namespace ios {
 
-CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent) { CURRENT_FIELD(device_id, std::string); };
+CURRENT_STRUCT(iOSBaseEvent, midichloriansBaseEvent) { CURRENT_FIELD(device_id, std::string); };
 
 // iOS event denoting the very first application launch.
-// Emitted once during Midichlorians initialization.
+// Emitted once during midichlorians initialization.
 CURRENT_STRUCT(iOSFirstLaunchEvent, iOSBaseEvent){};
 
 // iOS event with the detailed application information.
-// Emitted once during Midichlorians initialization.
+// Emitted once during midichlorians initialization.
 CURRENT_STRUCT(iOSAppLaunchEvent, iOSBaseEvent) {
   CURRENT_FIELD(binary_version, std::string);
   CURRENT_FIELD(cf_version, std::string);
@@ -85,7 +85,7 @@ CURRENT_STRUCT(iOSAppLaunchEvent, iOSBaseEvent) {
 };
 
 // iOS event with the detailed device information.
-// Emitted once during Midichlorians initialization.
+// Emitted once during midichlorians initialization.
 CURRENT_STRUCT(iOSDeviceInfo, iOSBaseEvent) {
   CURRENT_FIELD(info, (std::map<std::string, std::string>));
   CURRENT_DEFAULT_CONSTRUCTOR(iOSDeviceInfo) {}
@@ -152,7 +152,7 @@ namespace web {
 // TODO(mzhirovich): sync up with @sompylasar on the proper structure of web events.
 // TODO(dkorolev): add sample nginx config + link to it in the comments.
 
-CURRENT_STRUCT(WebBaseEvent, MidichloriansBaseEvent) {
+CURRENT_STRUCT(WebBaseEvent, midichloriansBaseEvent) {
   CURRENT_FIELD(ip, std::string);
   CURRENT_FIELD(user_agent, std::string);
   CURRENT_FIELD(referer_host, std::string);

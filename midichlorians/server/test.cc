@@ -33,8 +33,8 @@ SOFTWARE.
 #define CURRENT_MOCK_TIME  // `SetNow()`.
 
 #if defined(CURRENT_APPLE) && !defined(CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H)
-#include "../Client/iOS/Midichlorians.mm"
-#include "../Client/iOS/MidichloriansImpl.mm"
+#include "../client/ios/midichlorians.mm"
+#include "../client/ios/midichlorians_impl.mm"
 #endif
 
 #include "server.h"
@@ -186,14 +186,14 @@ class GenericConsumer {
 
 }  // namespace midichlorians_server_test
 
-// TODO(mzhurovich): add separate event tests after Midichlorians clients refactoring.
+// TODO(mzhurovich): add separate event tests after midichlorians clients refactoring.
 
-TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
+TEST(midichloriansServer, iOSEventsFromCPPSmokeTest) {
   using namespace midichlorians_server_test;
 
   current::time::ResetToZero();
   GenericConsumer consumer;
-  MidichloriansHTTPServer<GenericConsumer> server(
+  midichloriansHTTPServer<GenericConsumer> server(
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
   const std::string server_url = Printf("http://localhost:%d/log", FLAGS_midichlorians_server_test_port);
 
@@ -245,7 +245,7 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
 }
 
 #ifdef CURRENT_APPLE
-TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
+TEST(midichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   current::time::ResetToZero();
 
   using namespace midichlorians_server_test;
@@ -253,25 +253,25 @@ TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
 
   current::time::ResetToZero();
   GenericConsumer consumer;
-  MidichloriansHTTPServer<GenericConsumer> server(
+  midichloriansHTTPServer<GenericConsumer> server(
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
 
   NSDictionary* launchOptions = [NSDictionary new];
-  [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", FLAGS_midichlorians_server_test_port]
+  [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", FLAGS_midichlorians_server_test_port]
       withLaunchOptions:launchOptions];
 
   current::time::SetNow(std::chrono::microseconds(1000));
-  [Midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
+  [midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
 
   current::time::SetNow(std::chrono::microseconds(2000));
-  [Midichlorians identify:@"unit_test"];
+  [midichlorians identify:@"unit_test"];
 
   current::time::SetNow(std::chrono::microseconds(5000));
   NSDictionary* eventParams = @{ @"s" : @"str", @"b" : @true, @"x" : @1 };
-  [Midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
+  [midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
 
   current::time::SetNow(std::chrono::microseconds(15000));
-  [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
+  [midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
   while (consumer.EventsAndErrorsTotalCount() < 5u) {
     std::this_thread::yield();
@@ -315,7 +315,7 @@ POST MockPOSTRequest(const std::string& base_url,
   return r;
 }
 
-TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
+TEST(midichloriansServer, WebEventsFromCPPSmokeTest) {
   current::time::ResetToZero();
 
   using namespace midichlorians_server_test;
@@ -325,7 +325,7 @@ TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
 
   current::time::ResetToZero();
   GenericConsumer consumer;
-  MidichloriansHTTPServer<GenericConsumer> server(
+  midichloriansHTTPServer<GenericConsumer> server(
       FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
   const std::string server_url = Printf("http://localhost:%d/log", FLAGS_midichlorians_server_test_port);
 

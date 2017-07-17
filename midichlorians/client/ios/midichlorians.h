@@ -28,7 +28,7 @@ SOFTWARE.
 
 // In-house events tracking. Objective-C wrapper class. All methods are static class methods.
 
-@interface Midichlorians : NSObject
+@interface midichlorians : NSObject
 
 // Initialization, to be called from application:{didFinishLaunchingWithOptions|willFinishLaunchingWithOptions}.
 + (void)setup:(NSString *)serverUrl withLaunchOptions:(NSDictionary *)options;

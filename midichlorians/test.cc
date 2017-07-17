@@ -24,5 +24,5 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "Client/test.cc"
-#include "Server/test.cc"
+#include "client/test.cc"
+#include "server/test.cc"

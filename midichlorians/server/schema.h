@@ -26,7 +26,7 @@ SOFTWARE.
 #ifndef CURRENT_MIDICHLORIANS_SERVER_SCHEMA_H
 #define CURRENT_MIDICHLORIANS_SERVER_SCHEMA_H
 
-#include "../MidichloriansDataDictionary.h"
+#include "../midichlorians_data_dictionary.h"
 
 #include "../../bricks/template/typelist.h"
 #include "../../blocks/http/request.h"

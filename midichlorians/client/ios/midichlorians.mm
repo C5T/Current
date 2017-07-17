@@ -19,25 +19,25 @@
  SOFTWARE.
  *******************************************************************************/
 
-#import "Midichlorians.h"
-#import "MidichloriansImpl.h"
+#import "midichlorians.h"
+#import "midichlorians_impl.h"
 
-@implementation Midichlorians
+@implementation midichlorians
 
 + (void)setup:(NSString*)serverUrl withLaunchOptions:(NSDictionary*)options {
-    [MidichloriansImpl setup:serverUrl withLaunchOptions:options];
+    [midichlorians_impl setup:serverUrl withLaunchOptions:options];
 }
 
 + (void)identify:(NSString *)identifier {
-    [MidichloriansImpl identify:identifier];
-    [MidichloriansImpl emit:iOSIdentifyEvent()];
+    [midichlorians_impl identify:identifier];
+    [midichlorians_impl emit:iOSIdentifyEvent()];
 }
 
 + (void)focusEvent:(BOOL)hasFocus source:(NSString *)source {
     if (!source) {
           CURRENT_NSLOG(@"Malformed `trackEvent` call with empty `event` argument.");
     } else {
-          [MidichloriansImpl emit:iOSFocusEvent(static_cast<bool>(hasFocus), [source UTF8String])];
+          [midichlorians_impl emit:iOSFocusEvent(static_cast<bool>(hasFocus), [source UTF8String])];
     }
 }
 
@@ -54,7 +54,7 @@
         CURRENT_NSLOG(@"Malformed `trackEvent` call with empty `properties` argument.");
         return;
     }
-    [MidichloriansImpl emit:iOSGenericEvent(event, eventSource, eventProperties)];
+    [midichlorians_impl emit:iOSGenericEvent(event, eventSource, eventProperties)];
 }
 
 @end

@@ -38,9 +38,9 @@ namespace midichlorians {
 namespace server {
 
 template <class LOG_ENTRY_CONSUMER>
-class MidichloriansHTTPServer {
+class midichloriansHTTPServer {
  public:
-  MidichloriansHTTPServer(int http_port,
+  midichloriansHTTPServer(int http_port,
                           LOG_ENTRY_CONSUMER& log_entry_consumer,
                           std::chrono::microseconds tick_interval_us,
                           const std::string& route = "/log",
@@ -53,10 +53,10 @@ class MidichloriansHTTPServer {
         send_ticks_(tick_interval_us_.count() > 0),
         last_event_t_(0u),
         events_pushed_(0u),
-        timer_thread_(&MidichloriansHTTPServer::TimerThreadFunction, this),
+        timer_thread_(&midichloriansHTTPServer::TimerThreadFunction, this),
         routes_(HTTP(http_port_).Register(route_, [this](Request r) { ProcessRequest(std::move(r)); })) {}
 
-  ~MidichloriansHTTPServer() {
+  ~midichloriansHTTPServer() {
     send_ticks_ = false;
     timer_thread_.join();
   }

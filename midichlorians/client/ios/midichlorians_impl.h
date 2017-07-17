@@ -26,7 +26,7 @@
 
 #ifndef __cplusplus
 // If you get this error building an Objective-C project, #include neither this file
-// nor "MidichloriansDataDictionary.h". Use "Midichlorians.h" instead.
+// nor "midichlorians_data_dictionary.h". Use "midichlorians.h" instead.
 // It wraps the inner, platform-independent, event tracking code, and allows client code to stay `.m`.
 #error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
@@ -41,13 +41,13 @@
 #include "../../../typesystem/serialization/json.h"
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
-#error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."
+#error "The 'midichlorians_data_dictionary.h' file should not be included prior to 'midichlorians_impl.h'."
 #endif  // CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 
 #ifndef CURRENT_MAKE_CHECK_MODE
 
 #define COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
-#include "../../MidichloriansDataDictionary.h"
+#include "../../midichlorians_data_dictionary.h"
 
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
@@ -62,7 +62,7 @@ using current::midichlorians::ios::iOSGenericEvent;
 using current::midichlorians::ios::ios_events_t;
 
 // Define the iOS interface, being comfortably within a C++ header file included exclusively from an `.mm` one.
-@interface MidichloriansImpl : NSObject
+@interface midichlorians_impl : NSObject
 
 // To be called in application:didFinishLaunchingWithOptions:
 // or in application:willFinishLaunchingWithOptions:
@@ -79,7 +79,7 @@ using current::midichlorians::ios::ios_events_t;
 #else
 
 // In `CURRENT_MAKE_CHECK_MODE` mode, still compile the data dictionary header.
-#include "../../MidichloriansDataDictionary.h"
+#include "../../midichlorians_data_dictionary.h"
 
 #endif  // CURRENT_MAKE_CHECK_MODE
 

@@ -40,8 +40,8 @@ SOFTWARE.
 #define CURRENT_MOCK_TIME  // `SetNow()`.
 
 #ifndef CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H
-#include "iOS/Midichlorians.mm"
-#include "iOS/MidichloriansImpl.mm"
+#include "ios/midichlorians.mm"
+#include "ios/midichlorians_impl.mm"
 #endif  // CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H
 
 #include "../../blocks/http/api.h"
@@ -117,28 +117,28 @@ class Server {
   HTTPRoutesScope routes_;
 };
 
-TEST(MidichloriansClient, iOSSmokeTest) {
+TEST(midichloriansClient, iOSSmokeTest) {
   Server server(FLAGS_midichlorians_client_test_http_port, FLAGS_midichlorians_client_test_http_route);
 
   current::time::ResetToZero();
   NSDictionary* launchOptions = [NSDictionary new];
-  [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d%s",
+  [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d%s",
                                                   FLAGS_midichlorians_client_test_http_port,
                                                   FLAGS_midichlorians_client_test_http_route.c_str()]
       withLaunchOptions:launchOptions];
 
   current::time::SetNow(std::chrono::microseconds(1000));
-  [Midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
+  [midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
 
   current::time::SetNow(std::chrono::microseconds(2000));
-  [Midichlorians identify:@"unit_test"];
+  [midichlorians identify:@"unit_test"];
 
   current::time::SetNow(std::chrono::microseconds(5000));
   NSDictionary* eventParams = @{ @"s" : @"str", @"b" : @true, @"x" : @1 };
-  [Midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
+  [midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
 
   current::time::SetNow(std::chrono::microseconds(15000));
-  [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
+  [midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
   while (server.MessagesProcessed() < 5u) {
     std::this_thread::yield();

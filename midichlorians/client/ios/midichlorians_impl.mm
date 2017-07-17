@@ -24,7 +24,7 @@
  SOFTWARE.
  *******************************************************************************/
 
-#import "MidichloriansImpl.h"
+#import "midichlorians_impl.h"
 
 #include <string>
 #include <map>
@@ -90,7 +90,7 @@ namespace impl {
     
     // Returns the <unique device id, true if it's the very-first app launch> tuple.
     static std::pair<std::string, bool> InstallationId() {
-        const auto key = @"MidichloriansInstallationId";
+        const auto key = @"midichloriansInstallationId";
         bool firstLaunch = false;
         NSUserDefaults *userDataBase = [NSUserDefaults standardUserDefaults];
         NSString *installationId = [userDataBase objectForKey:key];
@@ -236,7 +236,7 @@ namespace impl {
 }  // namespace midichlorians
 }  // namespace current
 
-@implementation MidichloriansImpl
+@implementation midichlorians_impl
 
 using namespace current::midichlorians::ios::impl;
 
@@ -252,10 +252,10 @@ using namespace current::midichlorians::ios::impl;
     // App bundle modification time can be interpreted as "app update time".
     
     if (installationId.second) {
-        [MidichloriansImpl emit:iOSFirstLaunchEvent()];
+        [midichlorians_impl emit:iOSFirstLaunchEvent()];
     }
     
-    [MidichloriansImpl
+    [midichlorians_impl
      emit:iOSAppLaunchEvent(
                             ToStdString([[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"] UTF8String]),
                             PathTimestampMillis([NSSearchPathForDirectoriesInDomains(
@@ -321,7 +321,7 @@ using namespace current::midichlorians::ios::impl;
     }
     
     if (!info.empty()) {
-        [MidichloriansImpl emit:iOSDeviceInfo(std::move(info))];
+        [midichlorians_impl emit:iOSDeviceInfo(std::move(info))];
     }
 #else
     static_cast<void>(options);
