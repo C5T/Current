@@ -24,7 +24,7 @@ HTTP server and client, efficient in-memory message queue, persistence layer, st
 #### [Bricks](https://github.com/C5T/Current/blob/master/bricks/README.md)
 JSON and binary serialization, string manipulation library, command line flags library, and other core pieces.
 
-#### [Storage](https://github.com/C5T/Current/blob/master/Storage/REST-API.md)
+#### [Storage](https://github.com/C5T/Current/blob/master/storage/REST-API.md)
 Storage layer with super easy to use in-memory data views and Sherlock-based persistence.
 
 #### [Type Evolution](https://github.com/C5T/Current/blob/master/typesystem/Evolution.md)

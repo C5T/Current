@@ -30,8 +30,8 @@ SOFTWARE.
 #include "benchmark.h"
 
 #include "../../../bricks/util/random.h"
-#include "../../../Storage/storage.h"
-#include "../../../Storage/persister/sherlock.h"
+#include "../../../storage/storage.h"
+#include "../../../storage/persister/sherlock.h"
 
 #include "../../../bricks/dflags/dflags.h"
 

@@ -39,6 +39,6 @@ SOFTWARE.
 #include "typesystem/Schema/schema.h"
 #include "typesystem/Evolution/type_evolution.h"
 
-#include "Storage/storage.h"
+#include "storage/storage.h"
 
 #endif  // CURRENT_H

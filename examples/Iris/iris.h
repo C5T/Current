@@ -26,7 +26,7 @@ SOFTWARE.
 #define IRIS_H
 
 #include "../../typesystem/struct.h"
-#include "../../Storage/storage.h"
+#include "../../storage/storage.h"
 
 CURRENT_STRUCT(LabeledFlower) {
   CURRENT_FIELD(key, uint64_t);

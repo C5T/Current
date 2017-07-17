@@ -31,8 +31,8 @@ SOFTWARE.
 // * http://www.math.uah.edu/stat/data/Fisher.html
 
 #include "../../typesystem/struct.h"
-#include "../../Storage/storage.h"
-#include "../../Storage/persister/sherlock.h"
+#include "../../storage/storage.h"
+#include "../../storage/persister/sherlock.h"
 
 #include "../../blocks/HTTP/api.h"
 

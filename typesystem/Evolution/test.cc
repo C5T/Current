@@ -41,8 +41,8 @@ SOFTWARE.
 #include "../Serialization/json.h"
 #include "../Schema/schema.h"
 
-#include "../../Storage/storage.h"
-#include "../../Storage/persister/sherlock.h"
+#include "../../storage/storage.h"
+#include "../../storage/persister/sherlock.h"
 
 #include "../../bricks/file/file.h"
 #include "../../bricks/dflags/dflags.h"

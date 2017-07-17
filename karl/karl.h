@@ -59,8 +59,8 @@ SOFTWARE.
 #include "render.h"
 #include "respond_with_schema.h"
 
-#include "../Storage/storage.h"
-#include "../Storage/persister/sherlock.h"
+#include "../storage/storage.h"
+#include "../storage/persister/sherlock.h"
 
 #include "../bricks/net/http/impl/server.h"
 #include "../bricks/util/base64.h"

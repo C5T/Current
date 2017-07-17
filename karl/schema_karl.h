@@ -30,7 +30,7 @@ SOFTWARE.
 #include "schema_claire.h"
 #include "locator.h"
 
-#include "../Storage/storage.h"
+#include "../storage/storage.h"
 
 namespace current {
 namespace karl {

@@ -24,8 +24,8 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../Storage/storage.h"
-#include "../../Storage/persister/sherlock.h"
+#include "../../storage/storage.h"
+#include "../../storage/persister/sherlock.h"
 
 #include "../../bricks/file/file.h"
 
