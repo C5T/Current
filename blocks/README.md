@@ -118,6 +118,6 @@ const auto scope = HTTP(port).Register("/chunked", [](Request r) {
 EXPECT_EQ(".....\n", HTTP(GET("http://test.tailproduce.org/chunked")).body);
  
 // NOTE: For most legitimate practical usecases of returning unlimited
-// amounts of data, consider Sherlock's stream data replication mechanisms.
+// amounts of data, consider Stream's stream data replication mechanisms.
 ```
 HTTP server also has support for several other features, check out the [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/blocks/HTTP/test.cc) unit test.

@@ -24,7 +24,7 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../stream/sherlock.h"
+#include "../../stream/stream.h"
 
 #include "../../bricks/file/file.h"
 
@@ -32,18 +32,18 @@ SOFTWARE.
 
 namespace type_test {
 
-#include "include/sherlock.h"
+#include "include/stream.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, Sherlock) {
+TEST(TypeTest, Stream) {
   using namespace type_test;
 
-  using stream_t = current::sherlock::Stream<stream_variant_t>;
+  using stream_t = current::stream::Stream<stream_variant_t>;
 
   auto stream = stream_t::CreateStream();
 
-#include "include/sherlock.cc"
+#include "include/stream.cc"
 
   EXPECT_EQ(entries_count, stream->Data()->Size());
 }

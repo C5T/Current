@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "sherlock.h"
+#include "stream.h"
 
 #include "../blocks/HTTP/api.h"
 
@@ -46,7 +46,7 @@ struct VizPoint {
 typedef VizPoint<double> DoublePoint;
 typedef VizPoint<std::string> StringPoint;
 
-// TODO(dkorolev): This class should be moved into `sherlock.h`.
+// TODO(dkorolev): This class should be moved into `stream.h`.
 template <typename T>
 class ServeJSONOverHTTP {
  public:
@@ -205,7 +205,7 @@ struct Layout {
 using layout::Layout;
 
 int main() {
-  using current::sherlock::Stream;
+  using current::stream::Stream;
   auto time_series = Stream<DoublePoint>();
   auto pic_series = Stream<StringPoint>();
 

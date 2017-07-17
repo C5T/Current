@@ -55,7 +55,7 @@ SOFTWARE.
 #include "container/one_to_one.h"
 #include "container/one_to_many.h"
 
-#include "persister/sherlock.h"
+#include "persister/stream.h"
 
 #include "../typesystem/struct.h"
 #include "../typesystem/Serialization/json.h"
@@ -328,7 +328,7 @@ class StorageImpl {
   // Note: This method must be called from the stream-publishing-mutex-unlocked section,
   // as terminating the transactions-replaying stream subscription thread from the following storage
   // neeeds to lock that mutex from the destructor when de-registering its stream subscriber.
-  // TODO(dkorolev): Revisit the Sherlock-related logic here. Flip Sherlock first!
+  // TODO(dkorolev): Revisit the Stream-related logic here. Flip Stream first!
   void FlipToMaster() {
     // TODO(dkorolev): Lock the mutex.
     // TODO(dkorolev): Start from the stream.

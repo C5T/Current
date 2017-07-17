@@ -12,9 +12,9 @@ TEST_LIST=(
     'json_variant_stringify'
     'json_variant_stringify_and_parse'
     'json_variant_stringify_and_parse_and_test'
-    'sherlock_memory'
-    'sherlock_file'
-    'storage_sherlock_persister'
+    'stream_memory'
+    'stream_file'
+    'storage_stream_persister'
     'storage_with_subscriber'
 )
 

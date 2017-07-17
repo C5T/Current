@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include "../blocks/HTTP/api.h"
 
-#include "../stream/sherlock.h"
+#include "../stream/stream.h"
 
 #include "../bricks/strings/printf.h"
 
@@ -920,7 +920,7 @@ TEST(Karl, EndToEndTest) {
 
   if (FLAGS_karl_run_test_forever) {
     // Instructions:
-    // * Generator, Annotator, Filter: Exposed as Sherlock streams; curl `?size`, `?i=$INDEX&n=$COUNT`.
+    // * Generator, Annotator, Filter: Exposed as Stream streams; curl `?size`, `?i=$INDEX&n=$COUNT`.
     // * IsPrime: Exposing a single endpoint; curl `?x=42` or `?x=43` to test.
     // * Karl: Displaying status; curl ``.
     // TODO(dkorolev): Have Karl expose the DOT/SVG, over the desired period of time. And test it.
@@ -1174,7 +1174,7 @@ TEST(Karl, CustomStorage) {
   using namespace karl_unittest;
   current::time::ResetToZero();
 
-  using custom_storage_t = CustomKarlStorage<SherlockStreamPersister>;
+  using custom_storage_t = CustomKarlStorage<StreamStreamPersister>;
   using custom_karl_t =
       current::karl::GenericKarl<custom_storage_t, current::karl::default_user_status::status, karl_unittest::is_prime>;
 

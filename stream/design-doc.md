@@ -1,6 +1,6 @@
-# Sherlock Design Doc
+# Stream Design Doc
 
-**Sherlock** is a persistent strongly typed publish-subscribe-friendly message queue.
+**Stream** is a persistent strongly typed publish-subscribe-friendly message queue.
 
 ## Terminology
 
@@ -119,7 +119,7 @@ Implementation details:
 
 From data integrity standpoint, each stream is assigned an **authority**: a binary, running, usually on a dedicated machine, that is responsible for reporting the current up-to-date status of the stream.
 
-Sherlock uses master-slave replication. Replication logic is to indefinitely listen to the entries from the index that is the first one not yet published into the local copy of the stream.
+Stream uses master-slave replication. Replication logic is to indefinitely listen to the entries from the index that is the first one not yet published into the local copy of the stream.
 
 (`TODO(dkorolev): Say a few words about our failover philosophy.`)
 
@@ -130,7 +130,7 @@ Data from streams can be replicated. Replication can be thought of as a simple u
 
 (`TODO(dkorolev): Security and authentication.`)
 
-The recommended usecase of Sherlock is to replicate each data stream locally before working with it. This ensures that between re-runs of the binary, only the newly added entries are read by the master transferred over the network
+The recommended usecase of Stream is to replicate each data stream locally before working with it. This ensures that between re-runs of the binary, only the newly added entries are read by the master transferred over the network
 
 ## HEAD Pointer
 

@@ -22,7 +22,7 @@
  SOFTWARE.
  *******************************************************************************/
 
-#include "../../../stream/sherlock.h"
+#include "../../../stream/stream.h"
 
 #include "entry.h"
 
@@ -32,7 +32,7 @@
 namespace benchmark {
 namespace replication {
 
-using stream_t = current::sherlock::Stream<Entry, current::persistence::File>;
+using stream_t = current::stream::Stream<Entry, current::persistence::File>;
 
 inline current::Owned<stream_t> GenerateStream(const std::string& output_file,
                                                uint32_t entry_length,

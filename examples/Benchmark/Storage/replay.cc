@@ -5,7 +5,7 @@
 #include "../../../bricks/dflags/dflags.h"
 #include "../../../bricks/graph/gnuplot.h"
 
-DEFINE_string(file, ".current/log.json", "Storage persistence file in Sherlock format to use.");
+DEFINE_string(file, ".current/log.json", "Storage persistence file in Stream format to use.");
 DEFINE_uint32(gen, 0u, "Set to nonzero to generate this number of entries, overwriting the test data.");
 DEFINE_int16(sleep_ms,
              10,
@@ -87,7 +87,7 @@ inline void PerformReplayBenchmark(const std::string& file,
                                    std::chrono::milliseconds spin_lock_sleep,
                                    uint16_t subscribers_count,
                                    Report& report) {
-  using stream_t = typename storage_t::persister_t::sherlock_t;
+  using stream_t = typename storage_t::persister_t::stream_t;
   using transaction_t = typename stream_t::entry_t;
   using subscriber_t = current::ss::StreamSubscriber<RawLogSubscriberImpl<transaction_t>, transaction_t>;
 
@@ -100,7 +100,7 @@ inline void PerformReplayBenchmark(const std::string& file,
     stream_t stream(file);
     const auto stream_initialized = current::time::Now();
     std::vector<subscriber_t> subscribers(subscribers_count);
-    std::vector<current::sherlock::SubscriberScope> sub_scopes;
+    std::vector<current::stream::SubscriberScope> sub_scopes;
     if (subscribers_count) {
       for (size_t i = 0u; i < subscribers_count; ++i) {
         sub_scopes.emplace_back(std::move(stream.Subscribe(subscribers[i])));
@@ -134,7 +134,7 @@ inline void PerformReplayBenchmark(const std::string& file,
     const uint64_t stream_size = stream.Persister().Size();
     const auto stream_initialized = current::time::Now();
     std::vector<subscriber_t> subscribers(subscribers_count);
-    std::vector<current::sherlock::SubscriberScope> sub_scopes;
+    std::vector<current::stream::SubscriberScope> sub_scopes;
     if (subscribers_count) {
       for (size_t i = 0u; i < subscribers_count; ++i) {
         sub_scopes.emplace_back(std::move(stream.Subscribe(subscribers[i])));

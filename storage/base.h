@@ -214,7 +214,7 @@ struct FieldsBase : BASE {
   }
 };
 
-// Default custom persister parameter, to enable binding Storage to a custom Sherlock.
+// Default custom persister parameter, to enable binding Storage to a custom Stream.
 namespace persister {
 struct NoCustomPersisterParam {};
 }  // namespace current::storage::persister

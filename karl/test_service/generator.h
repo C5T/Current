@@ -36,7 +36,7 @@ SOFTWARE.
 
 #include "../../blocks/HTTP/api.h"
 
-#include "../../stream/sherlock.h"
+#include "../../stream/stream.h"
 
 #include "../../bricks/time/chrono.h"
 
@@ -46,7 +46,7 @@ class ServiceGenerator final {
  public:
   ServiceGenerator(uint16_t port, std::chrono::microseconds sleep_between_numbers, const current::karl::Locator& karl)
       : current_value_(0),
-        stream_(current::sherlock::Stream<Number>::CreateStream()),
+        stream_(current::stream::Stream<Number>::CreateStream()),
         http_scope_(HTTP(port).Register("/numbers", *stream_)),
         sleep_between_numbers_(sleep_between_numbers),
         destructing_(false),
@@ -98,7 +98,7 @@ class ServiceGenerator final {
 
  private:
   std::atomic_int current_value_;
-  current::Owned<current::sherlock::Stream<Number>> stream_;
+  current::Owned<current::stream::Stream<Number>> stream_;
   const HTTPRoutesScope http_scope_;
   const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;

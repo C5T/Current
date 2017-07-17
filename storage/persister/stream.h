@@ -23,14 +23,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_PERSISTER_SHERLOCK_H
-#define CURRENT_STORAGE_PERSISTER_SHERLOCK_H
+#ifndef CURRENT_STORAGE_PERSISTER_STREAM_H
+#define CURRENT_STORAGE_PERSISTER_STREAM_H
 
 #include "common.h"
 #include "../base.h"
 #include "../exceptions.h"
 #include "../transaction.h"
-#include "../../stream/sherlock.h"
+#include "../../stream/stream.h"
 
 #include "../../bricks/sync/locks.h"
 
@@ -39,24 +39,24 @@ namespace storage {
 namespace persister {
 
 template <typename MUTATIONS_VARIANT, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
-class SherlockStreamPersisterImpl final {
+class StreamStreamPersisterImpl final {
  public:
   using variant_t = MUTATIONS_VARIANT;
   using transaction_t = Transaction<variant_t>;
-  using sherlock_entry_t = typename std::conditional<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value,
+  using stream_entry_t = typename std::conditional<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value,
                                                      transaction_t,
                                                      STREAM_RECORD_TYPE>::type;
-  using stream_t = sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>;
+  using stream_t = stream::Stream<stream_entry_t, UNDERLYING_PERSISTER>;
   using fields_update_function_t = std::function<void(const variant_t&)>;
 
-  struct SherlockSubscriberImpl {
+  struct StreamSubscriberImpl {
     using EntryResponse = current::ss::EntryResponse;
     using TerminationResponse = current::ss::TerminationResponse;
     using replay_function_t = std::function<void(const transaction_t&, std::chrono::microseconds)>;
     replay_function_t replay_f_;
     uint64_t next_replay_index_ = 0u;
 
-    SherlockSubscriberImpl(replay_function_t f) : replay_f_(f) {}
+    StreamSubscriberImpl(replay_function_t f) : replay_f_(f) {}
 
     EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
       replay_f_(transaction, current.us);
@@ -69,17 +69,17 @@ class SherlockStreamPersisterImpl final {
     EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
     TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
   };
-  using SherlockSubscriber = current::ss::StreamSubscriber<SherlockSubscriberImpl, transaction_t>;
+  using StreamSubscriber = current::ss::StreamSubscriber<StreamSubscriberImpl, transaction_t>;
 
   struct Master {};
   struct Following {};
 
-  SherlockStreamPersisterImpl(Master, fields_update_function_t f, Borrowed<stream_t> stream)
+  StreamStreamPersisterImpl(Master, fields_update_function_t f, Borrowed<stream_t> stream)
       : fields_update_f_(f),
         stream_publishing_mutex_ref_(stream->Impl()->publishing_mutex),
         stream_(std::move(stream)),
         publisher_used_(stream_->BecomeFollowingStream()) {
-    subscriber_instance_ = std::make_unique<SherlockSubscriber>(
+    subscriber_instance_ = std::make_unique<StreamSubscriber>(
         [this](const transaction_t& transaction, std::chrono::microseconds timestamp) {
           std::lock_guard<std::mutex> lock(stream_publishing_mutex_ref_);
           ApplyMutationsFromLockedSectionOrConstructor(transaction, timestamp);
@@ -88,11 +88,11 @@ class SherlockStreamPersisterImpl final {
     SyncReplayStreamFromLockedSectionOrConstructor(0u);
   }
 
-  SherlockStreamPersisterImpl(Following, fields_update_function_t f, Borrowed<stream_t> stream)
+  StreamStreamPersisterImpl(Following, fields_update_function_t f, Borrowed<stream_t> stream)
       : fields_update_f_(f),
         stream_publishing_mutex_ref_(stream->Impl()->publishing_mutex),
         stream_(std::move(stream)) {
-    subscriber_instance_ = std::make_unique<SherlockSubscriber>(
+    subscriber_instance_ = std::make_unique<StreamSubscriber>(
         [this](const transaction_t& transaction, std::chrono::microseconds timestamp) {
           std::lock_guard<std::mutex> lock(stream_publishing_mutex_ref_);
           ApplyMutationsFromLockedSectionOrConstructor(transaction, timestamp);
@@ -101,7 +101,7 @@ class SherlockStreamPersisterImpl final {
     SubscribeToStreamFromLockedSection();
   }
 
-  ~SherlockStreamPersisterImpl() {
+  ~StreamStreamPersisterImpl() {
     std::lock_guard<std::mutex> master_follower_change_lock(master_follower_change_mutex_);
     TerminateStreamSubscriptionFromLockedSection();
   }
@@ -221,8 +221,8 @@ class SherlockStreamPersisterImpl final {
   Optional<Borrowed<typename stream_t::publisher_t>> publisher_used_;  // Set iff the storage is the master storage.
 
   mutable std::mutex master_follower_change_mutex_;
-  std::unique_ptr<SherlockSubscriber> subscriber_instance_;
-  current::sherlock::SubscriberScope subscriber_scope_;
+  std::unique_ptr<StreamSubscriber> subscriber_instance_;
+  current::stream::SubscriberScope subscriber_scope_;
 
   std::chrono::microseconds last_applied_timestamp_ = std::chrono::microseconds(-1);  // Replayed or from the master.
 
@@ -230,17 +230,17 @@ class SherlockStreamPersisterImpl final {
 };
 
 template <typename TYPELIST, typename STREAM_RECORD_TYPE = NoCustomPersisterParam>
-using SherlockInMemoryStreamPersister =
-    SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory, STREAM_RECORD_TYPE>;
+using StreamInMemoryStreamPersister =
+    StreamStreamPersisterImpl<TYPELIST, current::persistence::Memory, STREAM_RECORD_TYPE>;
 
 template <typename TYPELIST, typename STREAM_RECORD_TYPE = NoCustomPersisterParam>
-using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::File, STREAM_RECORD_TYPE>;
+using StreamStreamPersister = StreamStreamPersisterImpl<TYPELIST, current::persistence::File, STREAM_RECORD_TYPE>;
 
 }  // namespace persister
 }  // namespace storage
 }  // namespace current
 
-using current::storage::persister::SherlockInMemoryStreamPersister;
-using current::storage::persister::SherlockStreamPersister;
+using current::storage::persister::StreamInMemoryStreamPersister;
+using current::storage::persister::StreamStreamPersister;
 
-#endif  // CURRENT_STORAGE_PERSISTER_SHERLOCK_H
+#endif  // CURRENT_STORAGE_PERSISTER_STREAM_H

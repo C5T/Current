@@ -38,7 +38,7 @@ SOFTWARE.
 
 #include "storage.h"
 #include "api.h"
-#include "persister/sherlock.h"
+#include "persister/stream.h"
 
 #include "rest/plain.h"
 #include "rest/simple.h"
@@ -131,7 +131,7 @@ TEST(TransactionalStorage, SmokeTest) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockStreamPersister>;
+  using storage_t = TestStorage<StreamStreamPersister>;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
@@ -951,7 +951,7 @@ TEST(TransactionalStorage, FieldAccessors) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   EXPECT_EQ(13u, storage_t::FIELDS_COUNT);
   auto storage = storage_t::CreateMasterStorage();
@@ -1076,7 +1076,7 @@ TEST(TransactionalStorage, Exceptions) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
 
@@ -1187,7 +1187,7 @@ TEST(TransactionalStorage, TransactionMetaFields) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
   const auto& data = storage->UnderlyingStream()->Data();
@@ -1272,7 +1272,7 @@ TEST(TransactionalStorage, LastModifiedInDictionaryContainer) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
   const auto& data = storage->UnderlyingStream()->Data();
@@ -1369,7 +1369,7 @@ TEST(TransactionalStorage, LastModifiedInMatrixContainers) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   current::Owned<storage_t> storage = storage_t::CreateMasterStorage();
   const auto& data = storage->UnderlyingStream()->Data();
@@ -1604,7 +1604,7 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockStreamPersister>;
+  using storage_t = TestStorage<StreamStreamPersister>;
   using stream_t = typename storage_t::stream_t;
 
   const std::string storage_file_name =
@@ -1666,7 +1666,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockStreamPersister>;
+  using storage_t = TestStorage<StreamStreamPersister>;
 
   // Create master storage.
   const std::string golden_storage_file_name =
@@ -1733,12 +1733,12 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data2");
   const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(replicated_stream_file_name);
   using transaction_t = typename storage_t::transaction_t;
-  using stream_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-  using replicator_t = current::sherlock::StreamReplicator<stream_t>;
+  using stream_t = current::stream::Stream<transaction_t, current::persistence::File>;
+  using replicator_t = current::stream::StreamReplicator<stream_t>;
   auto owned_replicated_stream(stream_t::CreateStream(replicated_stream_file_name));
 
   // Replicate data via subscription to master storage raw log.
-  current::sherlock::SubscribableRemoteStream<transaction_t> remote_stream(
+  current::stream::SubscribableRemoteStream<transaction_t> remote_stream(
       Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
   EXPECT_TRUE(owned_replicated_stream->IsMasterStream());
   auto replicator = std::make_unique<replicator_t>(owned_replicated_stream);
@@ -1783,18 +1783,18 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
 namespace transactional_storage_test {
 
-template <typename SHERLOCK_ENTRY>
-class StorageSherlockTestProcessorImpl {
+template <typename STREAM_ENTRY>
+class StorageStreamTestProcessorImpl {
  public:
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
 
-  StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
+  StorageStreamTestProcessorImpl(std::string& output) : output_(output) {}
 
   void SetAllowTerminate() { allow_terminate_ = true; }
   void SetAllowTerminateOnOnMoreEntriesOfRightType() { allow_terminate_on_no_more_entries_of_right_type_ = true; }
 
-  EntryResponse operator()(const SHERLOCK_ENTRY& entry, idxts_t current, idxts_t last) const {
+  EntryResponse operator()(const STREAM_ENTRY& entry, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(entry) + '\n';
     if (current.index != last.index) {
       return EntryResponse::More;
@@ -1829,7 +1829,7 @@ class StorageSherlockTestProcessorImpl {
 };
 
 template <typename E>
-using StorageSherlockTestProcessor = current::ss::StreamSubscriber<StorageSherlockTestProcessorImpl<E>, E>;
+using StorageStreamTestProcessor = current::ss::StreamSubscriber<StorageStreamTestProcessorImpl<E>, E>;
 
 }  // namespace transactional_storage_test
 
@@ -1837,7 +1837,7 @@ TEST(TransactionalStorage, WorkWithUnderlyingStream) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   auto storage = storage_t::CreateMasterStorage();
 
@@ -1859,7 +1859,7 @@ TEST(TransactionalStorage, WorkWithUnderlyingStream) {
   }
 
   std::string collected;
-  StorageSherlockTestProcessor<storage_t::transaction_t> processor(collected);
+  StorageStreamTestProcessor<storage_t::transaction_t> processor(collected);
   storage->Subscribe(processor);
   EXPECT_EQ(
       "{\"index\":0,\"us\":101}\t{\"meta\":{\"begin_us\":100,\"end_us\":101,\"fields\":{}},\"mutations\":[{"
@@ -1875,7 +1875,7 @@ TEST(TransactionalStorage, GracefulShutdown) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   auto storage = storage_t::CreateMasterStorage();
   storage->GracefulShutdown();
@@ -1971,7 +1971,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using storage_t = SimpleStorage<SherlockStreamPersister>;
+  using storage_t = SimpleStorage<StreamStreamPersister>;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
@@ -2335,7 +2335,7 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = SimpleStorage<StreamInMemoryStreamPersister>;
 
   auto storage = storage_t::CreateMasterStorage();
 
@@ -2702,7 +2702,7 @@ TEST(TransactionalStorage, CQSTest) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = SimpleStorage<StreamInMemoryStreamPersister>;
 
   auto storage = storage_t::CreateMasterStorage();
 
@@ -2952,8 +2952,8 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
 
-  using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
-  using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
+  using Storage1 = SimpleStorage<StreamInMemoryStreamPersister>;
+  using Storage2 = PartiallyExposedStorage<StreamInMemoryStreamPersister>;
 
   EXPECT_EQ(6u, Storage1::FIELDS_COUNT);
   EXPECT_EQ(6u, Storage2::FIELDS_COUNT);
@@ -3000,7 +3000,7 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
 
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
-  using storage_t = SimpleStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = SimpleStorage<StreamInMemoryStreamPersister>;
 
   auto storage = storage_t::CreateMasterStorage();
 
@@ -3020,14 +3020,14 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/foo")).code));
 }
 
-TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
+TEST(TransactionalStorage, UseExternallyProvidedStreamStream) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
   static_assert(std::is_same<typename storage_t::persister_t::stream_t,
-                             current::sherlock::Stream<typename storage_t::persister_t::transaction_t,
+                             current::stream::Stream<typename storage_t::persister_t::transaction_t,
                                                        current::persistence::Memory>>::value,
                 "");
 
@@ -3042,7 +3042,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   }
 
   std::string collected;
-  StorageSherlockTestProcessor<storage_t::transaction_t> processor(collected);
+  StorageStreamTestProcessor<storage_t::transaction_t> processor(collected);
   storage->Subscribe(processor);
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"meta\":{\"begin_us\":100,\"end_us\":100,\"fields\":{}},\"mutations\":[{"
@@ -3060,21 +3060,21 @@ CURRENT_STRUCT(StreamEntryOutsideStorage) {
 
 }  // namespace transactional_storage_test
 
-TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
+TEST(TransactionalStorage, UseExternallyProvidedStreamStreamOfBroaderType) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using pre_storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using pre_storage_t = TestStorage<StreamInMemoryStreamPersister>;
   using transaction_t = typename pre_storage_t::transaction_t;
 
   static_assert(std::is_same<transaction_t, typename pre_storage_t::persister_t::transaction_t>::value, "");
 
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister,
+  using storage_t = TestStorage<StreamInMemoryStreamPersister,
                                 current::storage::transaction_policy::Synchronous,
                                 Variant<transaction_t, StreamEntryOutsideStorage>>;
 
   static_assert(std::is_same<typename storage_t::persister_t::stream_t,
-                             current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
+                             current::stream::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
                                                        current::persistence::Memory>>::value,
                 "");
 
@@ -3098,7 +3098,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   {
     // Subscribe to and collect transactions.
     std::string collected_transactions;
-    StorageSherlockTestProcessor<transaction_t> processor(collected_transactions);
+    StorageStreamTestProcessor<transaction_t> processor(collected_transactions);
     processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
     storage->Subscribe<transaction_t>(processor);
     EXPECT_EQ(
@@ -3112,7 +3112,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   {
     // Subscribe to and collect non-transactions.
     std::string collected_non_transactions;
-    StorageSherlockTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
+    StorageStreamTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
     processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
     storage->Subscribe<StreamEntryOutsideStorage>(processor);
     EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
@@ -3138,10 +3138,10 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   current::time::ResetToZero();
 
   using namespace transactional_storage_test;
-  using storage_t = SimpleStorage<SherlockStreamPersister>;
+  using storage_t = SimpleStorage<StreamStreamPersister>;
   using transaction_t = typename storage_t::transaction_t;
-  using stream_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
-  using StreamReplicator = current::sherlock::StreamReplicator<stream_t>;
+  using stream_t = current::stream::Stream<transaction_t, current::persistence::File>;
+  using StreamReplicator = current::stream::StreamReplicator<stream_t>;
 
   const std::string master_file_name = current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
   const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);

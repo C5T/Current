@@ -22,15 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_REPLICATOR_H
-#define CURRENT_SHERLOCK_REPLICATOR_H
+#ifndef CURRENT_STREAM_REPLICATOR_H
+#define CURRENT_STREAM_REPLICATOR_H
 
 #include <functional>
 #include <string>
 #include <thread>
 
 #include "exceptions.h"
-#include "sherlock.h"
+#include "stream.h"
 #include "stream_impl.h"
 
 #include "../blocks/HTTP/api.h"
@@ -42,7 +42,7 @@ SOFTWARE.
 #include "../typesystem/Reflection/types.h"
 
 namespace current {
-namespace sherlock {
+namespace stream {
 
 template <typename STREAM_ENTRY>
 class SubscribableRemoteStream final {
@@ -60,7 +60,7 @@ class SubscribableRemoteStream final {
     void CheckSchema() const {
       const auto response = HTTP(GET(url_ + "/schema.simple"));
       if (response.code == HTTPResponseCode.OK) {
-        const auto remote_schema = ParseJSON<SubscribableSherlockSchema>(response.body);
+        const auto remote_schema = ParseJSON<SubscribableStreamSchema>(response.body);
         if (remote_schema != schema_) {
           CURRENT_THROW(RemoteStreamInvalidSchemaException());
         }
@@ -77,11 +77,11 @@ class SubscribableRemoteStream final {
 
    private:
     const std::string url_;
-    const SubscribableSherlockSchema schema_;
+    const SubscribableStreamSchema schema_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
-  class RemoteSubscriberThread final : public current::sherlock::SubscriberScope::SubscriberThread {
+  class RemoteSubscriberThread final : public current::stream::SubscriberScope::SubscriberThread {
     static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
 
    public:
@@ -225,10 +225,10 @@ class SubscribableRemoteStream final {
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO>
-  class RemoteSubscriberScope final : public current::sherlock::SubscriberScope {
+  class RemoteSubscriberScope final : public current::stream::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    using base_t = current::sherlock::SubscriberScope;
+    using base_t = current::stream::SubscriberScope;
 
    public:
     using subscriber_thread_t = RemoteSubscriberThread<F, TYPE_SUBSCRIBED_TO>;
@@ -243,7 +243,7 @@ class SubscribableRemoteStream final {
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
       : stream_(MakeOwned<RemoteStream>(
-            remote_stream_url, sherlock::constants::kDefaultTopLevelName, sherlock::constants::kDefaultNamespaceName)) {
+            remote_stream_url, stream::constants::kDefaultTopLevelName, stream::constants::kDefaultNamespaceName)) {
     stream_->CheckSchema();
   }
 
@@ -313,7 +313,7 @@ struct StreamReplicatorImpl {
 template <typename STREAM>
 using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
 
-}  // namespace sherlock
+}  // namespace stream
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_REPLICATOR_H
+#endif  // CURRENT_STREAM_REPLICATOR_H

@@ -43,7 +43,7 @@ DEFINE_int32(event_store_test_port, PickPortForUnitTest(), "Local port to run th
 TEST(EventStore, SmokeWithInMemoryEventStore) {
   current::time::ResetToZero();
 
-  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
+  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, StreamInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
   event_store_t event_store(FLAGS_event_store_test_port, "");
@@ -89,7 +89,7 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
       current::FileSystem::JoinPath(FLAGS_event_store_test_tmpdir, ".current_testdb");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockStreamPersister>;
+  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, StreamStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
   {
@@ -145,7 +145,7 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
 TEST(EventStore, SmokeWithHTTP) {
   current::time::ResetToZero();
 
-  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
+  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, StreamInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
   event_store_t event_store(FLAGS_event_store_test_port, "");

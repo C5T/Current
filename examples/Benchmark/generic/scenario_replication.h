@@ -103,8 +103,8 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
   template <typename STREAM, typename... ARGS>
   void Replicate(ARGS && ... args) {
     auto replicated_stream = STREAM::CreateStream(std::forward<ARGS>(args)...);
-    current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(stream_url);
-    current::sherlock::StreamReplicator<STREAM> replicator(replicated_stream);
+    current::stream::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(stream_url);
+    current::stream::StreamReplicator<STREAM> replicator(replicated_stream);
     {
       const auto subscriber_scope = remote_stream.Subscribe(replicator);
       while (replicated_stream->Data()->Size() < entries_count) {
@@ -120,7 +120,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
       const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(filename);
       Replicate<benchmark::replication::stream_t>(filename);
     } else {
-      Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
+      Replicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
     }
   }
 };

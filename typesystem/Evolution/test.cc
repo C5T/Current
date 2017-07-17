@@ -42,7 +42,7 @@ SOFTWARE.
 #include "../Schema/schema.h"
 
 #include "../../storage/storage.h"
-#include "../../storage/persister/sherlock.h"
+#include "../../storage/persister/stream.h"
 
 #include "../../bricks/file/file.h"
 #include "../../bricks/dflags/dflags.h"
@@ -1152,10 +1152,10 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
     }
 
     auto pre_evolution_stream =
-        current::sherlock::Stream<pre_evolution_transaction_t, current::persistence::File>::CreateStream(
+        current::stream::Stream<pre_evolution_transaction_t, current::persistence::File>::CreateStream(
             pre_evolution_file_name);
     auto post_evolution_stream =
-        current::sherlock::Stream<post_evolution_transaction_t, current::persistence::File>::CreateStream(
+        current::stream::Stream<post_evolution_transaction_t, current::persistence::File>::CreateStream(
             post_evolution_file_name);
 
     {
@@ -1194,8 +1194,8 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
 
     // Fill in the original storage with some data.
     {
-      using pre_storage_t = type_evolution_test::pre_evolution::Storage<SherlockInMemoryStreamPersister>;
-      using post_storage_t = type_evolution_test::post_evolution::Storage<SherlockInMemoryStreamPersister>;
+      using pre_storage_t = type_evolution_test::pre_evolution::Storage<StreamInMemoryStreamPersister>;
+      using post_storage_t = type_evolution_test::post_evolution::Storage<StreamInMemoryStreamPersister>;
 
       auto pre_evolution_storage = pre_storage_t::CreateMasterStorage();
 
@@ -1303,7 +1303,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
 
     // Sanity check: confirm the replayed pre-evolution storage contains the data UPPERCASED.
     {
-      using restored_pre_storage_t = type_evolution_test::pre_evolution::Storage<SherlockStreamPersister>;
+      using restored_pre_storage_t = type_evolution_test::pre_evolution::Storage<StreamStreamPersister>;
       auto replayed_pre_evolution_storage = restored_pre_storage_t::CreateMasterStorage(pre_evolution_file_name);
 
       replayed_pre_evolution_storage->ReadOnlyTransaction([](ImmutableFields<restored_pre_storage_t> fields) {
@@ -1324,7 +1324,7 @@ TEST(TypeEvolutionTest, StorageTransactionsEvolution) {
 
     // The full end-to-end schema test: confirm type-evolved transactions s.a. "First Last" became "Last, F".
     {
-      using restored_post_storage_t = type_evolution_test::post_evolution::Storage<SherlockStreamPersister>;
+      using restored_post_storage_t = type_evolution_test::post_evolution::Storage<StreamStreamPersister>;
       auto replayed_post_evolution_storage = restored_post_storage_t::CreateMasterStorage(post_evolution_file_name);
 
       replayed_post_evolution_storage->ReadOnlyTransaction([](ImmutableFields<restored_post_storage_t> fields) {

@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_PUBSUB_H
-#define CURRENT_SHERLOCK_PUBSUB_H
+#ifndef CURRENT_STREAM_PUBSUB_H
+#define CURRENT_STREAM_PUBSUB_H
 
 #include "../port.h"
 
@@ -63,7 +63,7 @@ SOFTWARE.
 //
 // 1.2. The beginning of the range, index-based.
 //
-//      `i`    : The index of the first record to return. Indexes of records in Sherlock are 0-based.
+//      `i`    : The index of the first record to return. Indexes of records in Stream are 0-based.
 //
 //      `tail` : Return the records beginning from the index, which is exactly `tail` records until the end.
 //
@@ -71,7 +71,7 @@ SOFTWARE.
 //               Use `&nowait` to remove the `-f` part of the logic.
 //
 //               The `tail` condition is tricky, as new data records may be added between the request was sent
-//               and this request being fulfilled. Sherlock provides the guarantee that if the stream contains
+//               and this request being fulfilled. Stream provides the guarantee that if the stream contains
 //               at least `tail` records at the time the request is being fulfilled, the first `tail` records
 //               returned would be the ones already available, so no waiting would happen.
 //
@@ -95,14 +95,14 @@ SOFTWARE.
 //
 // 3. Termination conditions.
 //
-//    By default, unless the end of the range has been specified, Sherlock's publish-subscribe
+//    By default, unless the end of the range has been specified, Stream's publish-subscribe
 //    behaves as a `tail -f` call: it will return the records indefinitely, waiting for the new ones to
 //    arrive.
 //
 //    There are several ways to request an early termination of the stream of data:
 //
 //    `nowait`            : If set, never wait for new entries, return immediately upon reaching the end.
-//                          Effectively, `nowait` to Sherlock is what the absence of `-f` does to `tail`.
+//                          Effectively, `nowait` to Stream is what the absence of `-f` does to `tail`.
 //
 //    `stop_after_bytes`  : If set, stop streaming as soon as total JTML response size exceeds certain size.
 //                          This flag is used for backup purposes.
@@ -118,7 +118,7 @@ SOFTWARE.
 // TODO(dkorolev): Mention head updates now as we're here?
 
 namespace current {
-namespace sherlock {
+namespace stream {
 
 struct ParsedHTTPRequestParams {
   // If set, return current stream size.
@@ -240,8 +240,8 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
             HTTPResponseCode.OK,
             current::net::constants::kDefaultJSONContentType,
             current::net::http::Headers({
-                {kSherlockHeaderCurrentSubscriptionId, subscription_id},
-                {kSherlockHeaderCurrentStreamSize, current::ToString(impl_->persister.Size())},
+                {kStreamHeaderCurrentSubscriptionId, subscription_id},
+                {kStreamHeaderCurrentStreamSize, current::ToString(impl_->persister.Size())},
             }))) {
     if (params_.recent.count() > 0) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
@@ -404,7 +404,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
 template <typename E, template <typename> class PERSISTENCE_LAYER, class J = JSONFormat::Current>
 using PubSubHTTPEndpoint = current::ss::StreamSubscriber<PubSubHTTPEndpointImpl<E, PERSISTENCE_LAYER, J>, E>;
 
-}  // namespace sherlock
+}  // namespace stream
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_PUBSUB_H
+#endif  // CURRENT_STREAM_PUBSUB_H

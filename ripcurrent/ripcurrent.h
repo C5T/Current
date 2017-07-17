@@ -35,7 +35,7 @@ SOFTWARE.
 //
 // HI-PRI:
 // TOOD(dkorolev): Add `RipCurrent/builtin` for our standard flow blocks library.
-//                 Some `ParseFileByLines<T>()`, `SherlockSubscriber<T>()`, `Dump<T>()`, `CountDistinct<T>()` would be
+//                 Some `ParseFileByLines<T>()`, `StreamSubscriber<T>()`, `Dump<T>()`, `CountDistinct<T>()` would be
 //                 prime candidates.
 //
 // LO-PRI:

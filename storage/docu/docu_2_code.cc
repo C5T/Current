@@ -31,7 +31,7 @@ SOFTWARE.
 #include "../../port.h"
 
 #include "../storage.h"
-#include "../persister/sherlock.h"
+#include "../persister/stream.h"
 
 #include "../../bricks/file/file.h"
 #include "../../bricks/dflags/dflags.h"
@@ -77,7 +77,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 using namespace storage_docu;
 using current::Owned;
   
-  using ExampleStorage = ExampleStorageDefinition<SherlockInMemoryStreamPersister>;
+  using ExampleStorage = ExampleStorageDefinition<StreamInMemoryStreamPersister>;
 
 {
   Owned<ExampleStorage> storage = ExampleStorage::CreateMasterStorage();
@@ -144,7 +144,7 @@ TEST(StorageDocumentation, BasicUsage) {
 
 using namespace storage_docu;
 using current::storage::TransactionMetaFields;
-using ExampleStorage = ExampleStorageDefinition<SherlockStreamPersister>;
+using ExampleStorage = ExampleStorageDefinition<StreamStreamPersister>;
 using current::Owned;
   
   const std::string persistence_file_name =

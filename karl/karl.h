@@ -26,7 +26,7 @@ SOFTWARE.
 //
 // Karl's storage model contains of the following pieces:
 //
-// 1) The Sherlock `Stream` of all keepalives received. Persisted on disk, not stored in memory.
+// 1) The Stream `Stream` of all keepalives received. Persisted on disk, not stored in memory.
 //    Each "visualize production" request (be it JSON or SVG response) replays that stream over the desired
 //    period of time. Most commonly it's the past five minutes.
 //
@@ -60,7 +60,7 @@ SOFTWARE.
 #include "respond_with_schema.h"
 
 #include "../storage/storage.h"
-#include "../storage/persister/sherlock.h"
+#include "../storage/persister/stream.h"
 
 #include "../bricks/net/http/impl/server.h"
 #include "../bricks/util/base64.h"
@@ -162,7 +162,7 @@ struct KarlStorage {
 
 template <>
 struct KarlStorage<UseOwnStorage> {
-  using storage_t = ServiceStorage<SherlockStreamPersister>;
+  using storage_t = ServiceStorage<StreamStreamPersister>;
   using stream_t = typename storage_t::stream_t;
   Owned<storage_t> storage_;
 
@@ -217,7 +217,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
   using karl_status_t = GenericKarlStatus<runtime_status_variant_t>;
   using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
-  using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
+  using stream_t = stream::Stream<persisted_keepalive_t, current::persistence::File>;
   using storage_t = typename KarlStorage<STORAGE_TYPE>::storage_t;
   using karl_notifiable_t = IKarlNotifiable<runtime_status_variant_t>;
   using fleet_view_renderer_t = IKarlFleetViewRenderer<runtime_status_variant_t>;

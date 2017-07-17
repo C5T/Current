@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
 #include "../../storage/storage.h"
-#include "../../storage/persister/sherlock.h"
+#include "../../storage/persister/stream.h"
 
 #include "../../bricks/file/file.h"
 
@@ -40,7 +40,7 @@ namespace type_test {
 TEST(TypeTest, Storage) {
   using namespace type_test;
 
-  using storage_t = Storage<SherlockStreamPersister>;
+  using storage_t = Storage<StreamStreamPersister>;
   using transaction_t = typename storage_t::transaction_t;
 
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile("data");

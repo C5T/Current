@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "../../typesystem/struct.h"
 #include "../../storage/storage.h"
-#include "../../storage/persister/sherlock.h"
+#include "../../storage/persister/stream.h"
 
 #include "../../blocks/HTTP/api.h"
 
@@ -56,7 +56,7 @@ DEFINE_bool(run, false, "Set to true to run indefinitely.");
 
 // Flower ID, global and auto-increasing, for test purposes.
 TEST(Iris, Demo) {
-  using TestDB = LabeledFlowersDB<SherlockInMemoryStreamPersister>;
+  using TestDB = LabeledFlowersDB<StreamInMemoryStreamPersister>;
   auto db = TestDB::CreateMasterStorage();
 
   size_t number_of_flowers = 0u;

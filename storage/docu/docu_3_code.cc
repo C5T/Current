@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../rest/plain.h"
 #include "../rest/simple.h"
 #include "../rest/hypermedia.h"
-#include "../persister/sherlock.h"
+#include "../persister/stream.h"
 
 #include "../../blocks/HTTP/api.h"
 
@@ -90,7 +90,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   
 using namespace current::storage::rest;
 using namespace storage_docu;
-  using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
+  using TestStorage = StorageOfClients<StreamInMemoryStreamPersister>;
   auto storage = TestStorage::CreateMasterStorage();
   
   const auto rest1 =
@@ -450,7 +450,7 @@ TEST(StorageDocumentation, IfUnmodifiedSince) {
   
 using namespace current::storage::rest;
 using namespace storage_docu;
-  using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
+  using TestStorage = StorageOfClients<StreamInMemoryStreamPersister>;
   auto storage = TestStorage::CreateMasterStorage();
   
   const auto basic_rest = RESTfulStorage<TestStorage>(
@@ -756,7 +756,7 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
   
 using namespace current::storage::rest;
 using namespace storage_docu;
-  using TestStorage = StorageOfClients<SherlockStreamPersister>;
+  using TestStorage = StorageOfClients<StreamStreamPersister>;
   
   const std::string client_storage_file_name =
       current::FileSystem::JoinPath(FLAGS_client_storage_test_tmpdir, "client_with_meta");

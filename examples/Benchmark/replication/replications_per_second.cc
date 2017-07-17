@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "../../../bricks/dflags/dflags.h"
 
-#include "../../../stream/sherlock.h"
+#include "../../../stream/stream.h"
 #include "../../../stream/replicator.h"
 
 DEFINE_uint32(n, 100, "The length of the desired chain of subscribers. 255 seems to be the limit on Linux. -- D.K.");
@@ -41,24 +41,24 @@ CURRENT_STRUCT(Event) {
   CURRENT_CONSTRUCTOR(Event)(int32_t x = 0) : x(x) {}
 };
 
-void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::persistence::Memory>>& output, int) {
-  output = std::make_unique<current::sherlock::Stream<Event, current::persistence::Memory>>(
-      current::ss::StreamNamespaceName("Sherlock", "Event"));
+void InitializeStream(std::unique_ptr<current::stream::Stream<Event, current::persistence::Memory>>& output, int) {
+  output = std::make_unique<current::stream::Stream<Event, current::persistence::Memory>>(
+      current::ss::StreamNamespaceName("Stream", "Event"));
 }
 
-void InitializeStream(std::unique_ptr<current::sherlock::Stream<Event, current::persistence::File>>& output,
+void InitializeStream(std::unique_ptr<current::stream::Stream<Event, current::persistence::File>>& output,
                       int index) {
   static int global_index = 0;  // Must have unique filenames otherwise Linux could crash. -- D.K.
   const std::string fn = current::FileSystem::JoinPath(
       FLAGS_tmpdir, "log-" + current::ToString(index) + '-' + current::ToString(++global_index));
   current::FileSystem::RmFile(fn, current::FileSystem::RmFileParameters::Silent);
-  output = std::make_unique<current::sherlock::Stream<Event, current::persistence::File>>(
-      current::ss::StreamNamespaceName("Sherlock", "Event"), fn);
+  output = std::make_unique<current::stream::Stream<Event, current::persistence::File>>(
+      current::ss::StreamNamespaceName("Stream", "Event"), fn);
 }
 
 template <template <typename> class PERSISTER>
 double RunIteration() {
-  using stream_t = current::sherlock::Stream<Event, PERSISTER>;
+  using stream_t = current::stream::Stream<Event, PERSISTER>;
 
   // N streams.
   std::vector<std::unique_ptr<stream_t>> streams(FLAGS_n);
@@ -74,20 +74,20 @@ double RunIteration() {
   }
 
   // N remote subscribers, although the last one is unused.
-  std::vector<std::unique_ptr<current::sherlock::SubscribableRemoteStream<Event>>> remote_subscribers(FLAGS_n);
+  std::vector<std::unique_ptr<current::stream::SubscribableRemoteStream<Event>>> remote_subscribers(FLAGS_n);
   for (uint32_t i = 0; i < FLAGS_n; ++i) {
-    remote_subscribers[i] = std::make_unique<current::sherlock::SubscribableRemoteStream<Event>>(
-        Printf("http://localhost:%d/stream", static_cast<uint16_t>(FLAGS_base_port + i)), "Event", "Sherlock");
+    remote_subscribers[i] = std::make_unique<current::stream::SubscribableRemoteStream<Event>>(
+        Printf("http://localhost:%d/stream", static_cast<uint16_t>(FLAGS_base_port + i)), "Event", "Stream");
   }
 
   // (N - 1) replicators, where index zero, "replicate into the source", is left uninitialized.
-  std::vector<std::unique_ptr<current::sherlock::StreamReplicator<stream_t>>> replicators(FLAGS_n);
+  std::vector<std::unique_ptr<current::stream::StreamReplicator<stream_t>>> replicators(FLAGS_n);
   for (uint32_t i = 1; i < FLAGS_n; ++i) {
-    replicators[i] = std::make_unique<current::sherlock::StreamReplicator<stream_t>>(*streams[i]);
+    replicators[i] = std::make_unique<current::stream::StreamReplicator<stream_t>>(*streams[i]);
   }
 
   // Start the chain of replications.
-  std::vector<current::sherlock::SubscriberScope> subscriber_scopes(FLAGS_n);
+  std::vector<current::stream::SubscriberScope> subscriber_scopes(FLAGS_n);
   for (uint32_t i = 1; i < FLAGS_n; ++i) {
     subscriber_scopes[i] = remote_subscribers[i - 1]->Subscribe(*replicators[i]);
   }

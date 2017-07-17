@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_STREAM_IMPL_H
-#define CURRENT_SHERLOCK_STREAM_IMPL_H
+#ifndef CURRENT_STREAM_STREAM_IMPL_H
+#define CURRENT_STREAM_STREAM_IMPL_H
 
 #include "../port.h"
 
@@ -38,10 +38,10 @@ SOFTWARE.
 #include "../blocks/SS/pubsub.h"
 
 namespace current {
-namespace sherlock {
+namespace stream {
 
-constexpr static const char* kSherlockHeaderCurrentStreamSize = "X-Current-Stream-Size";
-constexpr static const char* kSherlockHeaderCurrentSubscriptionId = "X-Current-Stream-Subscription-Id";
+constexpr static const char* kStreamHeaderCurrentStreamSize = "X-Current-Stream-Size";
+constexpr static const char* kStreamHeaderCurrentSubscriptionId = "X-Current-Stream-Subscription-Id";
 
 // A generic top-level `SubscriberScope` to unite any implementations, to allow `std::move()`-ing them into one.
 // Features:
@@ -152,7 +152,7 @@ class StreamPublisherImpl {
   Borrowed<data_t> data_;
 };
 
-}  // namespace sherlock
+}  // namespace stream
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_STREAM_IMPL_H
+#endif  // CURRENT_STREAM_STREAM_IMPL_H

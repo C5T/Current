@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "../../../bricks/util/random.h"
 #include "../../../storage/storage.h"
-#include "../../../storage/persister/sherlock.h"
+#include "../../../storage/persister/stream.h"
 
 #include "../../../bricks/dflags/dflags.h"
 
@@ -74,7 +74,7 @@ struct NonSerializablePairOfTwoSizeT {
 };
 
 SCENARIO(storage, "Storage transactions test.") {
-  using storage_t = KeyValueDB<SherlockInMemoryStreamPersister>;
+  using storage_t = KeyValueDB<StreamInMemoryStreamPersister>;
   current::Owned<storage_t> db;
   size_t actual_size_uint32;
   size_t actual_size_string;

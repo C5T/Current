@@ -333,11 +333,11 @@
     <ClInclude Include="Midichlorians\Dev\Beta\iOS\MidichloriansImpl.h" />
     <ClInclude Include="Profiler\profiler.h" />
     <ClInclude Include="RipCurrent\ripcurrent.h" />
-    <ClInclude Include="Sherlock\exceptions.h" />
-    <ClInclude Include="Sherlock\port.h" />
-    <ClInclude Include="Sherlock\pubsub.h" />
-    <ClInclude Include="Sherlock\sherlock.h" />
-    <ClInclude Include="Sherlock\stream_data.h" />
+    <ClInclude Include="Stream\exceptions.h" />
+    <ClInclude Include="Stream\port.h" />
+    <ClInclude Include="Stream\pubsub.h" />
+    <ClInclude Include="Stream\stream.h" />
+    <ClInclude Include="Stream\stream_data.h" />
     <ClInclude Include="Storage\api.h" />
     <ClInclude Include="Storage\api_types.h" />
     <ClInclude Include="Storage\base.h" />
@@ -361,7 +361,7 @@
     <ClInclude Include="Storage\container\sfinae.h" />
     <ClInclude Include="Storage\container\vector.h" />
     <ClInclude Include="Storage\persister\file.h" />
-    <ClInclude Include="Storage\persister\sherlock.h" />
+    <ClInclude Include="Storage\persister\stream.h" />
     <ClInclude Include="TypeSystem\base.h" />
     <ClInclude Include="TypeSystem\enum.h" />
     <ClInclude Include="TypeSystem\exceptions.h" />

@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../typesystem/struct.h"
 #include "../../storage/storage.h"
-#include "../../storage/persister/sherlock.h"
+#include "../../storage/persister/stream.h"
 
 #include "../../blocks/HTTP/api.h"
 
@@ -46,7 +46,7 @@ struct EventStore final {
       CURRENT_STORAGE_TYPE<DB_PERSISTER, current::storage::transaction_policy::Synchronous, stream_type_t>;
   using full_stream_t = typename event_store_storage_t::stream_t;
 
-  using nonstorage_stream_t = current::sherlock::Stream<EXTRA_TYPE, current::persistence::Memory>;
+  using nonstorage_stream_t = current::stream::Stream<EXTRA_TYPE, current::persistence::Memory>;
 
   struct ReadonlyStreamFollower {
     using emitter_t = std::function<void(const EXTRA_TYPE&, idxts_t)>;

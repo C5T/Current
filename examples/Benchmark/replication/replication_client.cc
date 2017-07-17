@@ -44,8 +44,8 @@ template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
   STREAM replicated_stream(std::forward<ARGS>(args)...);
   std::cerr << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
-  current::sherlock::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
-  auto replicator = std::make_unique<current::sherlock::StreamReplicator<STREAM>>(replicated_stream);
+  current::stream::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
+  auto replicator = std::make_unique<current::stream::StreamReplicator<STREAM>>(replicated_stream);
   std::cerr << "\b\b\bOK" << std::endl;
 
   const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
@@ -109,9 +109,9 @@ int main(int argc, char** argv) {
       temp_file_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
     }
     std::cerr << "Replicating to " << filename << std::endl;
-    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::File>>(filename);
+    Replicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::File>>(filename);
   } else if (FLAGS_replicated_stream_persister == "memory") {
-    Replicate<current::sherlock::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
+    Replicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
   } else {
     std::cout << "--replicated_stream_persister should be `file` or `memory`." << std::endl;
     return -1;

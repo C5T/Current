@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "../../blocks/HTTP/api.h"
 
-#include "../../stream/sherlock.h"
+#include "../../stream/stream.h"
 
 namespace karl_unittest {
 
@@ -44,7 +44,7 @@ class ServiceAnnotator final {
                    const current::karl::Locator& karl)
       : source_numbers_stream_(service_generator + "/numbers"),
         is_prime_logic_endpoint_(service_is_prime + "/is_prime"),
-        stream_(current::sherlock::Stream<Number>::CreateStream()),
+        stream_(current::stream::Stream<Number>::CreateStream()),
         http_scope_(HTTP(port).Register("/annotated", *stream_)),
         destructing_(false),
         http_stream_subscriber_(source_numbers_stream_, [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
@@ -71,7 +71,7 @@ class ServiceAnnotator final {
 
   const std::string source_numbers_stream_;
   const std::string is_prime_logic_endpoint_;
-  current::Owned<current::sherlock::Stream<Number>> stream_;
+  current::Owned<current::stream::Stream<Number>> stream_;
   const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   HTTPStreamSubscriber<Number> http_stream_subscriber_;

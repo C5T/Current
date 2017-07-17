@@ -22,40 +22,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_EXCEPTIONS_H
-#define CURRENT_SHERLOCK_EXCEPTIONS_H
+#ifndef CURRENT_STREAM_EXCEPTIONS_H
+#define CURRENT_STREAM_EXCEPTIONS_H
 
 #include "../bricks/exception.h"
 #include "../blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
-namespace sherlock {
+namespace stream {
 
-struct SherlockException : current::Exception {
+struct StreamException : current::Exception {
   using current::Exception::Exception;
 };
 
-struct PublisherNotAvailableException : SherlockException {
-  using SherlockException::SherlockException;
+struct PublisherNotAvailableException : StreamException {
+  using StreamException::StreamException;
 };
 
-struct AttemptedToPublishToStreamWithReleasedPublisherException : SherlockException {
-  using SherlockException::SherlockException;
+struct AttemptedToPublishToStreamWithReleasedPublisherException : StreamException {
+  using StreamException::StreamException;
 };
 
-struct RemoteStreamDoesNotRespondException : SherlockException {
-  using SherlockException::SherlockException;
+struct RemoteStreamDoesNotRespondException : StreamException {
+  using StreamException::StreamException;
 };
 
-struct RemoteStreamInvalidSchemaException : SherlockException {
-  using SherlockException::SherlockException;
+struct RemoteStreamInvalidSchemaException : StreamException {
+  using StreamException::StreamException;
 };
 
-struct StreamTerminatedBySubscriber : SherlockException {
-  using SherlockException::SherlockException;
+struct StreamTerminatedBySubscriber : StreamException {
+  using StreamException::StreamException;
 };
 
-}  // namespace sherlock
+}  // namespace stream
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_EXCEPTIONS_H
+#endif  // CURRENT_STREAM_EXCEPTIONS_H

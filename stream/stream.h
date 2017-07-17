@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_SHERLOCK_H
-#define CURRENT_SHERLOCK_SHERLOCK_H
+#ifndef CURRENT_STREAM_STREAM_H
+#define CURRENT_STREAM_STREAM_H
 
 #include "../port.h"
 
@@ -53,24 +53,24 @@ SOFTWARE.
 #include "../bricks/util/sha256.h"
 #include "../bricks/util/waitable_terminate_signal.h"
 
-// Sherlock is the overlord of streamed data storage and processing in Current.
-// Sherlock's streams are persistent, immutable, append-only typed sequences of records ("entries").
+// Stream is the overlord of streamed data storage and processing in Current.
+// Stream's streams are persistent, immutable, append-only typed sequences of records ("entries").
 // Each record is annotated with its 0-based index and its epoch microsecond timestamp.
 // Within the stream, timestamps are strictly increasing.
 //
-// An in-memory stream can be constructed as `auto my_stream = sherlock::Stream<ENTRY>::CreateStream();`.
+// An in-memory stream can be constructed as `auto my_stream = stream::Stream<ENTRY>::CreateStream();`.
 //
 // To create a persisted one, pass in the type of persister and its construction parameters, such as:
-// `auto my_stream = sherlock::Stream<ENTRY, current::persistence::File>::CreateStream("data.json");`.
+// `auto my_stream = stream::Stream<ENTRY, current::persistence::File>::CreateStream("data.json");`.
 //
-// Sherlock streams can be published into and subscribed to.
+// Stream streams can be published into and subscribed to.
 //
 // Publishing is done via `my_stream.Publisher()->Publish(ENTRY{...});`.
 // At a given point in time, there can only be one master ("owned") publisher of the stream, as well as
 // any number of "borrowed" publishers, forked off the master one.
 //
 // Subscription is done via `auto scope = my_stream.Subscribe(my_subscriber);`, where `my_subscriber`
-// is an instance of the class doing the subscription. Sherlock runs each subscriber in a dedicated thread.
+// is an instance of the class doing the subscription. Stream runs each subscriber in a dedicated thread.
 //
 // Stack ownership of `my_subscriber` is respected, and `SubscriberScope` is returned for the user to store.
 // As the returned `scope` object leaves the scope, the subscriber is sent a signal to terminate,
@@ -79,39 +79,39 @@ SOFTWARE.
 // The `my_subscriber` object should be an instance of `StreamSubscriber<IMPL, ENTRY>`,
 
 namespace current {
-namespace sherlock {
+namespace stream {
 
 namespace constants {
 
-constexpr const char* kDefaultNamespaceName = "SherlockSchema";
+constexpr const char* kDefaultNamespaceName = "StreamSchema";
 constexpr const char* kDefaultTopLevelName = "TopLevelTransaction";
 
 }  // namespace constants
 
-CURRENT_STRUCT(SherlockSchema) {
+CURRENT_STRUCT(StreamSchema) {
   CURRENT_FIELD(language, (std::map<std::string, std::string>));
   CURRENT_FIELD(type_name, std::string);
   CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
   CURRENT_FIELD(type_schema, reflection::SchemaInfo);
 };
 
-CURRENT_STRUCT(SubscribableSherlockSchema) {
+CURRENT_STRUCT(SubscribableStreamSchema) {
   CURRENT_FIELD(type_id, current::reflection::TypeID, current::reflection::TypeID::UninitializedType);
   CURRENT_FIELD(entry_name, std::string);
   CURRENT_FIELD(namespace_name, std::string);
 
-  CURRENT_DEFAULT_CONSTRUCTOR(SubscribableSherlockSchema) {}
-  CURRENT_CONSTRUCTOR(SubscribableSherlockSchema)(
+  CURRENT_DEFAULT_CONSTRUCTOR(SubscribableStreamSchema) {}
+  CURRENT_CONSTRUCTOR(SubscribableStreamSchema)(
       current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
       : type_id(type_id), entry_name(entry_name), namespace_name(namespace_name) {}
 
-  bool operator==(const SubscribableSherlockSchema& rhs) const {
+  bool operator==(const SubscribableStreamSchema& rhs) const {
     return type_id == rhs.type_id && namespace_name == rhs.namespace_name && entry_name == rhs.entry_name;
   }
-  bool operator!=(const SubscribableSherlockSchema& rhs) const { return !operator==(rhs); }
+  bool operator!=(const SubscribableStreamSchema& rhs) const { return !operator==(rhs); }
 };
 
-CURRENT_STRUCT(SherlockSchemaFormatNotFoundError) {
+CURRENT_STRUCT(StreamSchemaFormatNotFoundError) {
   CURRENT_FIELD(error, std::string, "Unsupported schema format requested.");
   CURRENT_FIELD(unsupported_format_requested, Optional<std::string>);
 };
@@ -134,7 +134,7 @@ class Stream final {
   const ss::StreamNamespaceName schema_namespace_name_ =
       ss::StreamNamespaceName(constants::kDefaultNamespaceName, constants::kDefaultTopLevelName);
 
-  const SherlockSchema schema_as_object_;
+  const StreamSchema schema_as_object_;
 
   const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
                                                      HTTPResponseCode.OK,
@@ -264,7 +264,7 @@ class Stream final {
   // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
 
   template <typename TYPE_SUBSCRIBED_TO, typename F>
-  class SubscriberThreadInstance final : public current::sherlock::SubscriberScope::SubscriberThread {
+  class SubscriberThreadInstance final : public current::stream::SubscriberScope::SubscriberThread {
    private:
     bool this_is_valid_;
     std::function<void()> done_callback_;
@@ -389,10 +389,10 @@ class Stream final {
 
   // Expose the means to control the scope of the subscriber.
   template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  class SubscriberScope final : public current::sherlock::SubscriberScope {
+  class SubscriberScope final : public current::stream::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    using base_t = current::sherlock::SubscriberScope;
+    using base_t = current::stream::SubscriberScope;
 
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
@@ -423,11 +423,11 @@ class Stream final {
 
   // Generates a random HTTP subscription.
   static std::string GenerateRandomHTTPSubscriptionID() {
-    return current::SHA256("sherlock_http_subscription_" +
+    return current::SHA256("stream_http_subscription_" +
                            current::ToString(current::random::CSRandomUInt64(0ull, ~0ull)));
   }
 
-  // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
+  // Stream handler for serving stream data via HTTP (see `pubsub.h` for details).
   template <class J>
   void ServeDataViaHTTP(Request r) const {
     if (r.method != "GET" && r.method != "HEAD") {
@@ -478,7 +478,7 @@ class Stream final {
       r(body,
         HTTPResponseCode.OK,
         current::net::constants::kDefaultContentType,
-        current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, size_str}}));
+        current::net::http::Headers({{kStreamHeaderCurrentStreamSize, size_str}}));
       return;
     }
 
@@ -488,14 +488,14 @@ class Stream final {
       if (schema_format.empty()) {
         r(schema_as_http_response_);
       } else if (schema_format == "simple") {
-        r(SubscribableSherlockSchema(
+        r(SubscribableStreamSchema(
             schema_as_object_.type_id, schema_namespace_name_.entry_name, schema_namespace_name_.namespace_name));
       } else {
         const auto cit = schema_as_object_.language.find(schema_format);
         if (cit != schema_as_object_.language.end()) {
           r(cit->second);
         } else {
-          SherlockSchemaFormatNotFoundError four_oh_four;
+          StreamSchemaFormatNotFoundError four_oh_four;
           four_oh_four.unsupported_format_requested = schema_format;
           r(four_oh_four, HTTPResponseCode.NotFound);
         }
@@ -538,7 +538,7 @@ class Stream final {
       auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
           subscription_id, borrowed_impl, std::move(r), std::move(request_params));
 
-      current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+      current::stream::SubscriberScope http_chunked_subscriber_scope =
           Subscribe(*http_chunked_subscriber,
                     begin_idx,
                     [this, borrowed_impl, subscription_id]() {
@@ -586,9 +586,9 @@ class Stream final {
 
  private:
   struct FillPerLanguageSchema {
-    SherlockSchema& schema_ref;
+    StreamSchema& schema_ref;
     const ss::StreamNamespaceName& namespace_name;
-    explicit FillPerLanguageSchema(SherlockSchema& schema, const ss::StreamNamespaceName& namespace_name)
+    explicit FillPerLanguageSchema(StreamSchema& schema, const ss::StreamNamespaceName& namespace_name)
         : schema_ref(schema), namespace_name(namespace_name) {}
     template <current::reflection::Language language>
     void PerLanguage() {
@@ -598,8 +598,8 @@ class Stream final {
     }
   };
 
-  static SherlockSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
-    SherlockSchema schema;
+  static StreamSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
+    StreamSchema schema;
 
     schema.type_name = current::reflection::CurrentTypeName<entry_t>();
     schema.type_id =
@@ -624,7 +624,7 @@ class Stream final {
   Stream& operator=(Stream&& rhs) = delete;
 };
 
-}  // namespace sherlock
+}  // namespace stream
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_SHERLOCK_H
+#endif  // CURRENT_STREAM_STREAM_H
