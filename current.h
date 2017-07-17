@@ -36,8 +36,8 @@ SOFTWARE.
 #include "stream/stream.h"
 
 #include "typesystem/struct.h"
-#include "typesystem/Schema/schema.h"
-#include "typesystem/Evolution/type_evolution.h"
+#include "typesystem/schema/schema.h"
+#include "typesystem/evolution/type_evolution.h"
 
 #include "storage/storage.h"
 

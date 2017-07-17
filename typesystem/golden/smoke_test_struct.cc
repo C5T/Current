@@ -1,1 +1,1 @@
-../Schema/golden/smoke_test_struct.cc
+../schema/golden/smoke_test_struct.cc

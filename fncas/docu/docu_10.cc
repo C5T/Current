@@ -26,7 +26,7 @@ SOFTWARE.
 #define FNCAS_DOCU_CODE_01_CC
 
 #include "../fncas/fncas.h"
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/serialization/json.h"
 #include "../../3rdparty/gtest/gtest-main.h"
 
 // clang-format off

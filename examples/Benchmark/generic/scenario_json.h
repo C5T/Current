@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../../../typesystem/struct.h"
 #include "../../../typesystem/variant.h"
-#include "../../../typesystem/Serialization/json.h"
+#include "../../../typesystem/serialization/json.h"
 
 #include "benchmark.h"
 

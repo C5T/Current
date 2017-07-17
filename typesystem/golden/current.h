@@ -1,1 +1,1 @@
-../Schema/golden/current.h
+../schema/golden/current.h

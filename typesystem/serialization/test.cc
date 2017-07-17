@@ -32,8 +32,8 @@ SOFTWARE.
 
 #include "../struct.h"
 
-#include "../Reflection/reflection.h"
-#include "../Schema/schema.h"
+#include "../reflection/reflection.h"
+#include "../schema/schema.h"
 
 #include "../../bricks/file/file.h"
 

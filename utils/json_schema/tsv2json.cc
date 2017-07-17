@@ -26,7 +26,7 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/serialization/json.h"
 
 #include "../../bricks/dflags/dflags.h"
 

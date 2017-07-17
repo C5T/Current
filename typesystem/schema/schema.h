@@ -36,8 +36,8 @@ SOFTWARE.
 
 #include "json_schema_format.h"
 
-#include "../Reflection/reflection.h"
-#include "../Serialization/json.h"
+#include "../reflection/reflection.h"
+#include "../serialization/json.h"
 
 #include "../../bricks/strings/strings.h"
 #include "../../bricks/util/singleton.h"

@@ -39,7 +39,7 @@ SOFTWARE.
 #include "pubsub.h"
 
 #include "../typesystem/struct.h"
-#include "../typesystem/Schema/schema.h"
+#include "../typesystem/schema/schema.h"
 
 #include "../blocks/HTTP/api.h"
 #include "../blocks/Persistence/memory.h"

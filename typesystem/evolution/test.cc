@@ -38,8 +38,8 @@ SOFTWARE.
 #include "../struct.h"
 #include "../variant.h"
 
-#include "../Serialization/json.h"
-#include "../Schema/schema.h"
+#include "../serialization/json.h"
+#include "../schema/schema.h"
 
 #include "../../storage/storage.h"
 #include "../../storage/persister/stream.h"

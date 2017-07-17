@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "json.h"
 
-#include "../../Reflection/reflection.h"
+#include "../../reflection/reflection.h"
 
 #include "../../../bricks/template/enable_if.h"
 

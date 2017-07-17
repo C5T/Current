@@ -25,7 +25,7 @@ SOFTWARE.
 
 #ifndef CURRENT_COVERAGE_REPORT_MODE
 
-#include "../../typesystem/Schema/schema.h"
+#include "../../typesystem/schema/schema.h"
 
 #include "../../bricks/file/file.h"
 

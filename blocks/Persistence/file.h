@@ -48,8 +48,8 @@ SOFTWARE.
 #include "../../bricks/sync/owned_borrowed.h"
 #include "../../bricks/time/chrono.h"
 #include "../../bricks/util/atomic_that_works.h"
-#include "../../typesystem/Schema/schema.h"
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/schema/schema.h"
+#include "../../typesystem/serialization/json.h"
 
 namespace current {
 namespace persistence {

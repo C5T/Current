@@ -37,7 +37,7 @@
 #include <vector>
 
 #include "../../typesystem/struct.h"
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/serialization/json.h"
 
 namespace fncas {
 

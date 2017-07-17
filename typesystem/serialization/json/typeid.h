@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "primitives.h"
 
-#include "../../Reflection/types.h"
+#include "../../reflection/types.h"
 
 #include "../../../bricks/strings/util.h"
 

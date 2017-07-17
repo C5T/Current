@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../port.h"
 
 #include "../blocks/HTTP/api.h"
-#include "../typesystem/Schema/schema.h"
+#include "../typesystem/schema/schema.h"
 
 namespace current {
 namespace karl {

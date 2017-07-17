@@ -32,7 +32,7 @@ SOFTWARE.
 #include "typeid.h"
 
 #include "../../variant.h"
-#include "../../Reflection/reflection.h"
+#include "../../reflection/reflection.h"
 
 #include "../../../bricks/template/call_all_constructors.h"
 #include "../../../bricks/template/enable_if.h"

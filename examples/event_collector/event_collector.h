@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../../bricks/time/chrono.h"
 
 #include "../../typesystem/struct.h"
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/serialization/json.h"
 
 // Initial version of `LogEntry` structure.
 CURRENT_STRUCT(LogEntry) {

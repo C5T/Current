@@ -1,1 +1,1 @@
-../Schema/golden/schema.h
+../schema/golden/schema.h

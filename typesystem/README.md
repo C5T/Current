@@ -94,7 +94,7 @@ Along with `CURRENT_STRUCT`, Current type system supports `CURRENT_STRUCT_T`: ef
 
 ### Field Descriptions
 
-When a `CURRENT_STRUCT` defined a `CURRENT_FIELD(foo, ...);`, it may also define `CURRENT_FIELD_DESCRIPTION(foo, "This is the story of foo.");` Like fields, field descriptions can be reflected upon. Field descriptions can also be exported in various formats, most notably C++ itself (as the definition of the C++ struct), and [Markdown](https://github.com/C5T/Current/blob/master/typesystem/Schema/golden/smoke_test_struct.md).
+When a `CURRENT_STRUCT` defined a `CURRENT_FIELD(foo, ...);`, it may also define `CURRENT_FIELD_DESCRIPTION(foo, "This is the story of foo.");` Like fields, field descriptions can be reflected upon. Field descriptions can also be exported in various formats, most notably C++ itself (as the definition of the C++ struct), and [Markdown](https://github.com/C5T/Current/blob/master/typesystem/schema/golden/smoke_test_struct.md).
 
 ## `Optional`
 

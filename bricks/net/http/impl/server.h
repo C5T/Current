@@ -45,7 +45,7 @@ SOFTWARE.
 #include "../../../template/enable_if.h"
 
 #include "../../../../typesystem/struct.h"
-#include "../../../../typesystem/Serialization/json.h"
+#include "../../../../typesystem/serialization/json.h"
 
 #include "../../../strings/util.h"
 #include "../../../strings/split.h"

@@ -58,7 +58,7 @@ SOFTWARE.
 #include "persister/stream.h"
 
 #include "../typesystem/struct.h"
-#include "../typesystem/Serialization/json.h"
+#include "../typesystem/serialization/json.h"
 #include "../typesystem/optional.h"
 
 #include "../bricks/exception.h"

@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "schema.h"
 
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/serialization/json.h"
 
 #include "../../blocks/HTTP/api.h"
 #include "../../bricks/strings/strings.h"

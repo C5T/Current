@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "schema.h"
 
-#include "../Evolution/type_evolution.h"
+#include "../evolution/type_evolution.h"
 
 #include "../../bricks/dflags/dflags.h"
 #include "../../bricks/strings/strings.h"
@@ -256,7 +256,7 @@ TEST(Schema, SelfContainingStruct) {
       schema.Describe<Language::CPP>(false));
 }
 
-#include "../Serialization/json.h"
+#include "../serialization/json.h"
 
 #define SMOKE_TEST_STRUCT_NAMESPACE smoke_test_struct_namespace
 #include "smoke_test_struct.h"

@@ -28,7 +28,7 @@ SOFTWARE.
 #define CURRENT_TYPE_SYSTEM_SCHEMA_JSON_SCHEMA_FORMAT_CC
 
 #include "../struct.h"
-#include "../Reflection/types.h"  // TypeID.
+#include "../reflection/types.h"  // TypeID.
 
 namespace current {
 namespace reflection {

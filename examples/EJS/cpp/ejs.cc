@@ -29,7 +29,7 @@ SOFTWARE.
 #include "../../../bricks/dflags/dflags.h"
 #include "../../../blocks/HTTP/api.h"
 #include "../../../typesystem/struct.h"
-#include "../../../typesystem/Serialization/json.h"
+#include "../../../typesystem/serialization/json.h"
 
 DEFINE_uint16(ejs_server_port, 3000, "The local port to spawn the current server on.");
 DEFINE_uint16(ejs_renderer_port, 3001, "The local port on which the EJS rendered is expected to be up.");

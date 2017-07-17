@@ -36,7 +36,7 @@ SOFTWARE.
 #include "rest/types.h"
 #include "rest/plain.h"
 
-#include "../typesystem/Schema/schema.h"
+#include "../typesystem/schema/schema.h"
 #include "../blocks/HTTP/api.h"
 #include "../bricks/template/call_if.h"
 

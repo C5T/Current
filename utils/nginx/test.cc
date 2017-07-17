@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "nginx.h"
 
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/serialization/json.h"
 
 #include "../../bricks/dflags/dflags.h"
 #include "../../bricks/file/file.h"

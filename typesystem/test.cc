@@ -37,10 +37,10 @@ SOFTWARE.
 #include "../bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-#include "Reflection/test.cc"
-#include "Serialization/test.cc"
-#include "Schema/test.cc"
-#include "Evolution/test.cc"
+#include "reflection/test.cc"
+#include "serialization/test.cc"
+#include "schema/test.cc"
+#include "evolution/test.cc"
 
 namespace struct_definition_test {
 

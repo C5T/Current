@@ -28,8 +28,8 @@ SOFTWARE.
 #include "../../port.h"
 #include "../../bricks/exception.h"
 #include "../../typesystem/struct.h"
-#include "../../typesystem/Reflection/reflection.h"
-#include "../../typesystem/Schema/schema.h"
+#include "../../typesystem/reflection/reflection.h"
+#include "../../typesystem/schema/schema.h"
 
 namespace current {
 namespace url {

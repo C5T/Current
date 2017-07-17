@@ -32,8 +32,8 @@ SOFTWARE.
 #define CURRENT_UTILS_JSONSCHEMA_INFER_H
 
 #include "../../typesystem/struct.h"
-#include "../../typesystem/Schema/schema.h"
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/schema/schema.h"
+#include "../../typesystem/serialization/json.h"
 
 #include "../../bricks/file/file.h"
 

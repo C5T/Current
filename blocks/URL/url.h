@@ -38,8 +38,8 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../../typesystem/Reflection/reflection.h"
-#include "../../typesystem/Serialization/json.h"
+#include "../../typesystem/reflection/reflection.h"
+#include "../../typesystem/serialization/json.h"
 
 #include "../../bricks/exception.h"
 

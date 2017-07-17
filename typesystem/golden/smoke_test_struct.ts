@@ -1,1 +1,1 @@
-../Schema/golden/smoke_test_struct.ts
+../schema/golden/smoke_test_struct.ts
