@@ -44,7 +44,7 @@ SOFTWARE.
 #include "rest/simple.h"
 #include "rest/hypermedia.h"
 
-#include "../Blocks/HTTP/api.h"
+#include "../blocks/HTTP/api.h"
 
 #include "../bricks/file/file.h"
 #include "../bricks/dflags/dflags.h"

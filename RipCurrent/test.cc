@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../bricks/strings/join.h"
 #include "../bricks/strings/split.h"
 
-#include "../Blocks/HTTP/api.h"
+#include "../blocks/HTTP/api.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 

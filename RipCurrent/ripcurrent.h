@@ -61,7 +61,7 @@ SOFTWARE.
 #include "../typesystem/struct.h"
 #include "../typesystem/remove_parentheses.h"
 
-#include "../Blocks/MMQ/mmpq.h"
+#include "../blocks/MMQ/mmpq.h"
 
 #include "../bricks/strings/join.h"
 #include "../bricks/sync/waitable_atomic.h"

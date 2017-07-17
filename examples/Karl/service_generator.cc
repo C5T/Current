@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "current_build.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 #include "../../bricks/dflags/dflags.h"
 #include "../../Karl/test_service/generator.h"
 

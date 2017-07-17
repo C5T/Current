@@ -33,9 +33,9 @@ SOFTWARE.
 #include "../bricks/util/random.h"
 #include "../bricks/util/waitable_terminate_signal.h"
 
-#include "../Blocks/Persistence/memory.h"
-#include "../Blocks/Persistence/file.h"
-#include "../Blocks/SS/pubsub.h"
+#include "../blocks/Persistence/memory.h"
+#include "../blocks/Persistence/file.h"
+#include "../blocks/SS/pubsub.h"
 
 namespace current {
 namespace sherlock {

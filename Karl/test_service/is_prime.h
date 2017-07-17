@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "../claire.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 
 namespace karl_unittest {
 

@@ -34,8 +34,8 @@ SOFTWARE.
 
 #include "../typesystem/timestamp.h"
 
-#include "../Blocks/SS/ss.h"
-#include "../Blocks/HTTP/api.h"
+#include "../blocks/SS/ss.h"
+#include "../blocks/HTTP/api.h"
 
 #include "../bricks/sync/owned_borrowed.h"
 #include "../bricks/time/chrono.h"

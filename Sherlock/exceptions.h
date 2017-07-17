@@ -26,7 +26,7 @@ SOFTWARE.
 #define CURRENT_SHERLOCK_EXCEPTIONS_H
 
 #include "../bricks/exception.h"
-#include "../Blocks/GracefulShutdown/exceptions.h"
+#include "../blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
 namespace sherlock {

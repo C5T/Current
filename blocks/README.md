@@ -1,6 +1,6 @@
 ## REST API Toolkit
 
-The [`#include "Blocks/HTTP/api.h"`](https://github.com/C5T/Current/blob/master/Blocks/HTTP/api.h) header enables to run the code snippets below.
+The [`#include "blocks/HTTP/api.h"`](https://github.com/C5T/Current/blob/master/blocks/HTTP/api.h) header enables to run the code snippets below.
 
 ### HTTP Client
 
@@ -23,7 +23,7 @@ EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), "BODY", "text/plain
 EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), SimpleType()).body);
 
 ```
-HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/Blocks/HTTP/test.cc) for more details.
+HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/blocks/HTTP/test.cc) for more details.
 ### HTTP Server
 ```cpp
 // Simple "OK" endpoint.
@@ -120,4 +120,4 @@ EXPECT_EQ(".....\n", HTTP(GET("http://test.tailproduce.org/chunked")).body);
 // NOTE: For most legitimate practical usecases of returning unlimited
 // amounts of data, consider Sherlock's stream data replication mechanisms.
 ```
-HTTP server also has support for several other features, check out the [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/Blocks/HTTP/test.cc) unit test.
+HTTP server also has support for several other features, check out the [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/blocks/HTTP/test.cc) unit test.

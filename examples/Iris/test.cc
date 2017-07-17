@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 
 #include "../../bricks/graph/gnuplot.h"
 #include "../../bricks/strings/printf.h"

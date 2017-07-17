@@ -49,7 +49,7 @@ class MMPQImpl {
   using message_t = MESSAGE;
 
   // Consumer's `operator()` will be called from a dedicated thread, which is spawned and owned
-  // by the instance of MMPQImpl. See "Blocks/SS/ss.h" and its test for possible callee signatures.
+  // by the instance of MMPQImpl. See "blocks/SS/ss.h" and its test for possible callee signatures.
   using consumer_t = CONSUMER;
 
   MMPQImpl(consumer_t& consumer) : consumer_(consumer), consumer_thread_(&MMPQImpl::ConsumerThread, this) {

@@ -37,7 +37,7 @@ SOFTWARE.
 #include "rest/plain.h"
 
 #include "../typesystem/Schema/schema.h"
-#include "../Blocks/HTTP/api.h"
+#include "../blocks/HTTP/api.h"
 #include "../bricks/template/call_if.h"
 
 namespace current {

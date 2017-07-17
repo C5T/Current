@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../../typesystem/Serialization/json.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 #include "../../bricks/strings/strings.h"
 #include "../../bricks/time/chrono.h"
 

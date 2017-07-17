@@ -44,7 +44,7 @@ SOFTWARE.
 #include "iOS/MidichloriansImpl.mm"
 #endif  // CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 
 #include "../../bricks/strings/join.h"
 #include "../../bricks/template/rtti_dynamic_call.h"

@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "../Blocks/HTTP/api.h"
+#include "../blocks/HTTP/api.h"
 #include "../typesystem/Schema/schema.h"
 
 namespace current {

@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../api_types.h"
 #include "../storage.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 #include "../../typesystem/Schema/schema.h"
 
 namespace current {

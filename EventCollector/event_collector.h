@@ -31,7 +31,7 @@ SOFTWARE.
 #include <string>
 #include <thread>
 
-#include "../Blocks/HTTP/api.h"
+#include "../blocks/HTTP/api.h"
 #include "../bricks/time/chrono.h"
 
 #include "../typesystem/struct.h"

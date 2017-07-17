@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../../../bricks/dflags/dflags.h"
 #include "../../../bricks/strings/escape.h"
 
-#include "../../../Blocks/HTTP/api.h"
+#include "../../../blocks/HTTP/api.h"
 
 #include "../../../Utils/Nginx/nginx.h"
 

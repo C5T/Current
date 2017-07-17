@@ -32,7 +32,7 @@ SOFTWARE.
 #include "../claire.h"
 #include "../locator.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 
 #include "../../Sherlock/sherlock.h"
 

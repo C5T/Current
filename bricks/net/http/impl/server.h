@@ -50,7 +50,7 @@ SOFTWARE.
 #include "../../../strings/util.h"
 #include "../../../strings/split.h"
 
-#include "../../../../Blocks/URL/url.h"
+#include "../../../../blocks/URL/url.h"
 
 #ifndef CURRENT_BRICKS_DEBUG_HTTP
 

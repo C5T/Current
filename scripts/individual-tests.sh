@@ -6,7 +6,7 @@ set -u -e
 
 FAILURES=""
 
-# A space-separated list of relative paths to exclude from the test run. Example: "./Blocks/HTTP ./Blocks/MMQ".
+# A space-separated list of relative paths to exclude from the test run. Example: "./blocks/HTTP ./blocks/MMQ".
 EXCLUDE=("")
 
 for i in $(find . -name test.cc | sort -g) ; do

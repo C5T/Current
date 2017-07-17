@@ -33,8 +33,8 @@ SOFTWARE.
 #include "sherlock.h"
 #include "stream_impl.h"
 
-#include "../Blocks/HTTP/api.h"
-#include "../Blocks/SS/ss.h"
+#include "../blocks/HTTP/api.h"
+#include "../blocks/SS/ss.h"
 
 #include "../bricks/sync/owned_borrowed.h"
 #include "../bricks/sync/waitable_atomic.h"

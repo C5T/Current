@@ -27,7 +27,7 @@ SOFTWARE.
 #include <iostream>
 
 #include "../../../bricks/dflags/dflags.h"
-#include "../../../Blocks/HTTP/api.h"
+#include "../../../blocks/HTTP/api.h"
 #include "../../../typesystem/struct.h"
 #include "../../../typesystem/Serialization/json.h"
 

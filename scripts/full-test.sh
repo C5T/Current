@@ -15,7 +15,7 @@ if [ $(uname) = "Darwin" ] ; then
   LDFLAGS+=" -framework Foundation"
 fi
 
-# Magic to have `make test` work from `Current/`, `Current/bricks/`, `Current/Blocks/`, etc.
+# Magic to have `make test` work from `Current/`, `Current/bricks/`, `Current/blocks/`, etc.
 PRE_CURRENT_SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
 CURRENT_SCRIPTS_DIR="$("$PRE_CURRENT_SCRIPTS_DIR/fullpath.sh" "$PRE_CURRENT_SCRIPTS_DIR")"
 RUN_DIR_FULL_PATH="$("$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD")"

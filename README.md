@@ -18,7 +18,7 @@ Low-level compact persistence layer with 1+ GB/s throughput.
 #### [EventCollector](https://github.com/C5T/Current/blob/master/EventCollector/README.md)
 An extensible event collecting HTTP server.
 
-#### [Blocks](https://github.com/C5T/Current/blob/master/Blocks/README.md)
+#### [Blocks](https://github.com/C5T/Current/blob/master/blocks/README.md)
 HTTP server and client, efficient in-memory message queue, persistence layer, streaming API interface.
 
 #### [Bricks](https://github.com/C5T/Current/blob/master/bricks/README.md)

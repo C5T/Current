@@ -37,7 +37,7 @@ SOFTWARE.
 #include "../rest/hypermedia.h"
 #include "../persister/sherlock.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 
 #include "../../bricks/dflags/dflags.h"
 

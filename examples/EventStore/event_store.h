@@ -29,7 +29,7 @@ SOFTWARE.
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 
 // Assumptions class `EventStore` makes:
 // * The storage has a field called `events`, type `Dictionary<EVENT_TYPE>`.

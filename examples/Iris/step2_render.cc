@@ -26,7 +26,7 @@ SOFTWARE.
 // NOTE(dkorolev): In order to stay self-contained, further steps largely copy-paste the code of this tool.
 
 #include "../../typesystem/struct.h"
-#include "../../Blocks/HTTP/api.h"
+#include "../../blocks/HTTP/api.h"
 #include "../../bricks/graph/gnuplot.h"
 #include "../../bricks/file/file.h"
 #include "../../bricks/dflags/dflags.h"

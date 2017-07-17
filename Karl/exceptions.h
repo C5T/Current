@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_KARL_EXCEPTIONS_H
 #define CURRENT_KARL_EXCEPTIONS_H
 
-#include "../Blocks/GracefulShutdown/exceptions.h"
+#include "../blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
 namespace karl {

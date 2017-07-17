@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_EXCEPTIONS_H
 #define CURRENT_STORAGE_EXCEPTIONS_H
 
-#include "../Blocks/GracefulShutdown/exceptions.h"
+#include "../blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
 namespace storage {

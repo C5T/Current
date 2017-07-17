@@ -1,0 +1,1 @@
+HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/blocks/HTTP/test.cc) for more details.
