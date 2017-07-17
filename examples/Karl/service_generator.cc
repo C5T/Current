@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "../../blocks/HTTP/api.h"
 #include "../../bricks/dflags/dflags.h"
-#include "../../Karl/test_service/generator.h"
+#include "../../karl/test_service/generator.h"
 
 DEFINE_uint16(port, 42001, "The port to spawn ServiceGenerator on.");
 DEFINE_double(nps, 10.0, "The `numbers per second` to generate.");

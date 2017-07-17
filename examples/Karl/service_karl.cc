@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "current_build.h"
 
-#include "../../Karl/test_service/is_prime.h"
-#include "../../Karl/karl.h"
+#include "../../karl/test_service/is_prime.h"
+#include "../../karl/karl.h"
 #include "../../bricks/dflags/dflags.h"
 
 DEFINE_uint16(nginx_port, 7590, "Port for Nginx to serve proxied queries to Claires.");

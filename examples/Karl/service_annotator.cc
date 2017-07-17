@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "../../blocks/HTTP/api.h"
 #include "../../bricks/dflags/dflags.h"
-#include "../../Karl/test_service/annotator.h"
+#include "../../karl/test_service/annotator.h"
 
 DEFINE_uint16(port, 42003, "The port to spawn ServiceAnnotator on.");
 DEFINE_string(generator, "http://localhost:42001", "The route to `ServiceGenerator`.");
