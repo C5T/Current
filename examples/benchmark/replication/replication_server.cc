@@ -39,7 +39,7 @@ DEFINE_bool(do_not_remove_autogen_data, false, "Set to not remove the data file.
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  std::unique_ptr<benchmark::replication::stream_t> stream;
+  Optional<current::Owned<benchmark::replication::stream_t>> stream;
   std::unique_ptr<current::FileSystem::ScopedRmFile> temp_file_remover;
   if (FLAGS_stream_data_filename.empty()) {
     const auto filename = current::FileSystem::GenTmpFileName();
@@ -48,14 +48,15 @@ int main(int argc, char** argv) {
     if (!FLAGS_do_not_remove_autogen_data) {
       temp_file_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
     }
-    stream = benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count);
+    benchmark::replication::GenerateStream(filename, FLAGS_entry_length, FLAGS_entries_count, stream);
   } else {
     const auto filename = current::FileSystem::GenTmpFileName();
-    stream = std::make_unique<benchmark::replication::stream_t>(FLAGS_stream_data_filename);
+    stream = benchmark::replication::stream_t::CreateStream(FLAGS_stream_data_filename);
   }
   std::cout << "Spawning the server on port " << FLAGS_port << std::endl;
   const auto scope =
-      HTTP(FLAGS_port).Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
+      HTTP(FLAGS_port)
+          .Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream));
   std::cout << "The server is up on http://localhost:" << FLAGS_port << FLAGS_route << std::endl;
   HTTP(FLAGS_port).Join();
   return 0;

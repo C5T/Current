@@ -41,18 +41,19 @@ CURRENT_STRUCT(Event) {
   CURRENT_CONSTRUCTOR(Event)(int32_t x = 0) : x(x) {}
 };
 
-void InitializeStream(std::unique_ptr<current::stream::Stream<Event, current::persistence::Memory>>& output, int) {
-  output = std::make_unique<current::stream::Stream<Event, current::persistence::Memory>>(
+void InitializeStream(Optional<current::Owned<current::stream::Stream<Event, current::persistence::Memory>>>& output,
+                      int) {
+  output = current::stream::Stream<Event, current::persistence::Memory>::CreateStreamWithCustomNamespaceName(
       current::ss::StreamNamespaceName("Stream", "Event"));
 }
 
-void InitializeStream(std::unique_ptr<current::stream::Stream<Event, current::persistence::File>>& output,
+void InitializeStream(Optional<current::Owned<current::stream::Stream<Event, current::persistence::File>>>& output,
                       int index) {
   static int global_index = 0;  // Must have unique filenames otherwise Linux could crash. -- D.K.
   const std::string fn = current::FileSystem::JoinPath(
       FLAGS_tmpdir, "log-" + current::ToString(index) + '-' + current::ToString(++global_index));
   current::FileSystem::RmFile(fn, current::FileSystem::RmFileParameters::Silent);
-  output = std::make_unique<current::stream::Stream<Event, current::persistence::File>>(
+  output = current::stream::Stream<Event, current::persistence::File>::CreateStreamWithCustomNamespaceName(
       current::ss::StreamNamespaceName("Stream", "Event"), fn);
 }
 
@@ -61,7 +62,7 @@ double RunIteration() {
   using stream_t = current::stream::Stream<Event, PERSISTER>;
 
   // N streams.
-  std::vector<std::unique_ptr<stream_t>> streams(FLAGS_n);
+  std::vector<Optional<current::Owned<stream_t>>> streams(FLAGS_n);
   for (uint32_t i = 0; i < FLAGS_n; ++i) {
     InitializeStream(streams[i], i);
   }
@@ -69,8 +70,8 @@ double RunIteration() {
   // Their HTTP routes.
   HTTPRoutesScope http_routes_scope;
   for (uint32_t i = 0; i < FLAGS_n; ++i) {
-    http_routes_scope +=
-        HTTP(FLAGS_base_port + static_cast<uint16_t>(i)).Register("/stream", URLPathArgs::CountMask::Any, *streams[i]);
+    http_routes_scope += HTTP(FLAGS_base_port + static_cast<uint16_t>(i))
+                             .Register("/stream", URLPathArgs::CountMask::Any, *Value(streams[i]));
   }
 
   // N remote subscribers, although the last one is unused.
@@ -83,7 +84,7 @@ double RunIteration() {
   // (N - 1) replicators, where index zero, "replicate into the source", is left uninitialized.
   std::vector<std::unique_ptr<current::stream::StreamReplicator<stream_t>>> replicators(FLAGS_n);
   for (uint32_t i = 1; i < FLAGS_n; ++i) {
-    replicators[i] = std::make_unique<current::stream::StreamReplicator<stream_t>>(*streams[i]);
+    replicators[i] = std::make_unique<current::stream::StreamReplicator<stream_t>>(Value(streams[i]));
   }
 
   // Start the chain of replications.
@@ -95,9 +96,9 @@ double RunIteration() {
   // Publish M events and watch them propagate.
   const auto begin = current::time::Now();
   for (uint32_t x = 1; x <= FLAGS_m; ++x) {
-    streams[0]->Publish(Event(x));
+    Value(streams[0])->Publisher()->Publish(Event(x));
   }
-  while (streams.back()->Persister().Size() != FLAGS_m) {
+  while (Value(streams.back())->Data()->Size() != FLAGS_m) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 

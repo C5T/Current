@@ -19,9 +19,9 @@ DEFINE_string(png, ".current/result.png", "The name of the file to write the ben
 
 inline void GenerateTestData(const std::string& file, uint32_t size) {
   current::FileSystem::RmFile(file, current::FileSystem::RmFileParameters::Silent);
-  storage_t storage(file);
+  auto storage = storage_t::CreateMasterStorage(file);
   for (uint32_t i = 0u; i < size; ++i) {
-    storage.ReadWriteTransaction([i](MutableFields<storage_t> fields) {
+    storage->ReadWriteTransaction([i](MutableFields<storage_t> fields) {
       Entry entry(static_cast<EntryID>(i), current::SHA256(current::ToString(i)));
       fields.entries.Add(entry);
     }).Go();
@@ -52,9 +52,7 @@ struct RawLogSubscriberImpl {
     return EntryResponse::More;
   }
 
-  EntryResponse operator()(std::chrono::microseconds) const {
-    return EntryResponse::More;
-  }
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
   TerminationResponse Terminate() {
     terminating_ = true;
@@ -97,22 +95,21 @@ inline void PerformReplayBenchmark(const std::string& file,
   {
     std::cout << "=== Owning storage ===" << std::endl;
     const auto begin = current::time::Now();
-    stream_t stream(file);
+    auto stream = stream_t::CreateStream(file);
     const auto stream_initialized = current::time::Now();
     std::vector<subscriber_t> subscribers(subscribers_count);
     std::vector<current::stream::SubscriberScope> sub_scopes;
     if (subscribers_count) {
       for (size_t i = 0u; i < subscribers_count; ++i) {
-        sub_scopes.emplace_back(std::move(stream.Subscribe(subscribers[i])));
+        sub_scopes.emplace_back(stream->Subscribe(subscribers[i]));
       }
     }
     const auto subscribers_created = current::time::Now();
-    storage_t storage(stream);
+    auto storage = storage_t::CreateMasterStorageAtopExistingStream(stream);
     const auto end = current::time::Now();
     std::cout << "* Stream initialization: " << (stream_initialized - begin).count() / 1000 << " ms\n";
     if (subscribers_count) {
-      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000
-                << " ms\n";
+      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000 << " ms\n";
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
     report.owning_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
@@ -128,33 +125,30 @@ inline void PerformReplayBenchmark(const std::string& file,
   {
     std::cout << "=== Non-owning storage ===" << std::endl;
     const auto begin = current::time::Now();
-    stream_t stream(file);
-    PublisherAcquirer acquirer;
-    stream.MovePublisherTo(acquirer);
-    const uint64_t stream_size = stream.Persister().Size();
+    auto stream = stream_t::CreateStream(file);
+    auto acquired_publisher = stream->BecomeFollowingStream();
+    const uint64_t stream_size = stream->Data()->Size();
     const auto stream_initialized = current::time::Now();
     std::vector<subscriber_t> subscribers(subscribers_count);
     std::vector<current::stream::SubscriberScope> sub_scopes;
     if (subscribers_count) {
       for (size_t i = 0u; i < subscribers_count; ++i) {
-        sub_scopes.emplace_back(std::move(stream.Subscribe(subscribers[i])));
+        sub_scopes.emplace_back(stream->Subscribe(subscribers[i]));
       }
     }
     const auto subscribers_created = current::time::Now();
     uint64_t storage_size = 0u;
-    storage_t storage(stream);
+    auto storage = storage_t::CreateFollowingStorageAtopExistingStream(stream);
     // Spin lock checking the number of imported entries.
     while (storage_size < stream_size) {
-      storage.ReadOnlyTransaction([&storage_size](ImmutableFields<storage_t> fields) {
-        storage_size = fields.entries.Size();
-      }).Go();
+      storage->ReadOnlyTransaction(
+                   [&storage_size](ImmutableFields<storage_t> fields) { storage_size = fields.entries.Size(); }).Go();
       std::this_thread::sleep_for(spin_lock_sleep);
     }
     const auto end = current::time::Now();
     std::cout << "* Stream initialization: " << (stream_initialized - begin).count() / 1000 << " ms\n";
     if (subscribers_count) {
-      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000
-                << " ms\n";
+      std::cout << "* Spawning subscribers: " << (subscribers_created - stream_initialized).count() / 1000 << " ms\n";
     }
     std::cout << "* Storage replay: " << (end - subscribers_created).count() / 1000 << " ms" << std::endl;
     report.following_storage_replay_ms.push_back((end - subscribers_created).count() / 1000);
@@ -162,11 +156,11 @@ inline void PerformReplayBenchmark(const std::string& file,
     // Bare persister iteration.
     {
       std::vector<std::thread> threads(subscribers_count);
-      const auto& persister = stream.Persister();
+      const auto& persister = stream->Data();
       const auto begin = current::time::Now();
       for (auto& t : threads) {
         t = std::thread([&]() {
-          for (const auto& e : persister.Iterate(0, stream_size)) {
+          for (const auto& e : persister->Iterate(0, stream_size)) {
             CURRENT_ASSERT(e.entry.mutations.size() == 1u);
           }
         });
@@ -192,7 +186,7 @@ inline void PerformReplayBenchmark(const std::string& file,
               ++lines;
             }
           }
-          CURRENT_ASSERT(lines == stream_size);
+          CURRENT_ASSERT(lines == stream_size + 1);
         });
       }
       for (auto& t : threads) {
@@ -213,12 +207,19 @@ inline void PerformReplayBenchmark(const std::string& file,
             std::ifstream fi(FLAGS_file.c_str());
             std::string line;
             std::vector<std::string> pieces;
+            bool first = true;
             while (std::getline(fi, line)) {
-              pieces = current::strings::Split(line, '\t');
-              CURRENT_ASSERT(pieces.size() == 2u);
-              CURRENT_ASSERT(ParseJSON<idxts_t>(pieces[0]).us.count() > 0);
-              CURRENT_ASSERT(ParseJSON<transaction_t>(pieces[1]).mutations.size() == 1u);
-              ++lines;
+              if (first) {
+                // Skip the first line with stream signature.
+                CURRENT_ASSERT(line[0] == '#');
+                first = false;
+              } else {
+                pieces = current::strings::Split(line, '\t');
+                CURRENT_ASSERT(pieces.size() == 2u);
+                CURRENT_ASSERT(ParseJSON<idxts_t>(pieces[0]).us.count() > 0);
+                CURRENT_ASSERT(ParseJSON<transaction_t>(pieces[1]).mutations.size() == 1u);
+                ++lines;
+              }
             }
           }
           CURRENT_ASSERT(lines == stream_size);

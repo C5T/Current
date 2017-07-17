@@ -108,7 +108,7 @@ struct UserNicknamesReadModel {
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  auto stream = current::stream::Stream<Event, current::persistence::File>(
+  auto stream = current::stream::Stream<Event, current::persistence::File>::CreateStream(
       FileSystem::JoinPath(FLAGS_db_dir, FLAGS_db_filename));
 
   // Example command lines to get started.
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
                 });
 
   // Subscribe.
-  HTTP(FLAGS_db_demo_port).Register("/data", stream);
+  HTTP(FLAGS_db_demo_port).Register("/data", *stream);
 
   // Publish.
   HTTP(FLAGS_db_demo_port)
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
                     try {
                       auto event = ParseJSON<Event>(r.body);
                       SetMicroTimestamp(event, time::Now());
-                      stream.Publish(std::move(event));
+                      stream->Publisher()->Publish(std::move(event));
                       r("", HTTPResponseCode.NoContent);
                     } catch (const Exception& e) {
                       r(Error(e.DetailedDescription()), HTTPResponseCode.BadRequest);
@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
 
   // Read model.
   current::ss::StreamSubscriber<UserNicknamesReadModel, Event> read_model(FLAGS_db_demo_port);
-  const auto subscriber_scope = stream.Subscribe(read_model);
+  const auto subscriber_scope = stream->Subscribe(read_model);
 
   // Run forever.
   HTTP(FLAGS_db_demo_port).Join();

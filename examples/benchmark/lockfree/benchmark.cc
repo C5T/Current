@@ -64,14 +64,17 @@ std::chrono::microseconds Run() {
   };
 
   std::vector<std::unique_ptr<Thread>> threads(FLAGS_threads);
-  auto start = std::chrono::system_clock::now();
+  const auto start = 
+    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
   for (auto& thread : threads) {
     thread = std::make_unique<Thread>(FLAGS_iterations);
   }
   for (auto& thread : threads) {
     thread->Join();
   }
-  return (std::chrono::system_clock::now() - start) / FLAGS_threads;
+  const auto end = 
+    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
+  return (end - start) / FLAGS_threads;
 }
 
 int main(int argc, char** argv) {
