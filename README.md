@@ -15,7 +15,7 @@ An efficient convex optimization engine.
 #### [CompactTSV](https://github.com/C5T/Current/blob/master/compacttsv/)
 Low-level compact persistence layer with 1+ GB/s throughput.
 
-#### [EventCollector](https://github.com/C5T/Current/blob/master/EventCollector/README.md)
+#### [EventCollector](https://github.com/C5T/Current/blob/master/event_collector/README.md)
 An extensible event collecting HTTP server.
 
 #### [Blocks](https://github.com/C5T/Current/blob/master/blocks/README.md)
