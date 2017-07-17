@@ -16,7 +16,7 @@ This tool also comes with a binary to dump the contents of the pad throughout th
 ```
 # Prerequisites:
 git clone https://github.com/C5T/Current
-cd Current/Utils/OperationalTransformation
+cd Current/utils/OperationalTransformation
 NDEBUG=1 make
 ```
 
