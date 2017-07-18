@@ -1,1 +1,0 @@
-../Schema/golden/current.h

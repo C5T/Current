@@ -29,16 +29,16 @@ SOFTWARE.
 
 #include "port.h"
 
-#include "Bricks/dflags/dflags.h"
-#include "Bricks/time/chrono.h"
-#include "Bricks/util/random.h"
+#include "bricks/dflags/dflags.h"
+#include "bricks/time/chrono.h"
+#include "bricks/util/random.h"
 
-#include "Sherlock/sherlock.h"
+#include "stream/stream.h"
 
-#include "TypeSystem/struct.h"
-#include "TypeSystem/Schema/schema.h"
-#include "TypeSystem/Evolution/type_evolution.h"
+#include "typesystem/struct.h"
+#include "typesystem/schema/schema.h"
+#include "typesystem/evolution/type_evolution.h"
 
-#include "Storage/storage.h"
+#include "storage/storage.h"
 
 #endif  // CURRENT_H

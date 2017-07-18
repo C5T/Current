@@ -57,9 +57,9 @@ cat >$1 << EOF
 #include <vector>
 #include <string>
 
-#include "$SCRIPT_DIR/../TypeSystem/struct.h"
-#include "$SCRIPT_DIR/../TypeSystem/optional.h"
-#include "$SCRIPT_DIR/../Bricks/strings/split.h"
+#include "$SCRIPT_DIR/../typesystem/struct.h"
+#include "$SCRIPT_DIR/../typesystem/optional.h"
+#include "$SCRIPT_DIR/../bricks/strings/split.h"
 
 namespace current {
 namespace build {

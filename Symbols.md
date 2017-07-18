@@ -134,7 +134,7 @@ current::LazyInstantiationStrategy
 
 current::StrictFuture
 
-SherlockStreamPersister
+StreamStreamPersister
 ```
 
 ### Metaprogramming

@@ -17,11 +17,11 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFC}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Midichlorians">
+    <Filter Include="Header Files\midichlorians">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Midichlorians\Dev">
+    <Filter Include="Header Files\midichlorians\Dev">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFA}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
@@ -217,11 +217,11 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB32}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Midichlorians\Dev\Beta">
+    <Filter Include="Header Files\midichlorians\Dev\Beta">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB33}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Midichlorians\Dev\Beta\iOS">
+    <Filter Include="Header Files\midichlorians\Dev\Beta\ios">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB34}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
@@ -233,7 +233,7 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB36}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Sherlock">
+    <Filter Include="Header Files\Stream">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB37}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
@@ -792,7 +792,7 @@
     <ClInclude Include="Bricks\waitable_atomic\waitable_atomic.h">
       <Filter>Header Files\Bricks\waitable_atomic</Filter>
     </ClInclude>
-    <ClInclude Include="CompactTSV\compacttsv.h">
+    <ClInclude Include="CompactTSV\compact_tsv.h">
       <Filter>Header Files\CompactTSV</Filter>
     </ClInclude>
     <ClInclude Include="CompactTSV\gen.h">
@@ -858,14 +858,14 @@
     <ClInclude Include="FnCAS\fncas\optimize.h">
       <Filter>Header Files\FnCAS\fncas</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Dev\Beta\MidichloriansDataDictionary.h">
-      <Filter>Header Files\Midichlorians\Dev\Beta</Filter>
+    <ClInclude Include="midichlorians\Dev\Beta\midichlorians_data_dictionary.h">
+      <Filter>Header Files\midichlorians\Dev\Beta</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Dev\Beta\iOS\Midichlorians.h">
-      <Filter>Header Files\Midichlorians\Dev\Beta\iOS</Filter>
+    <ClInclude Include="midichlorians\Dev\Beta\ios\midichlorians.h">
+      <Filter>Header Files\midichlorians\Dev\Beta\ios</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Dev\Beta\iOS\MidichloriansImpl.h">
-      <Filter>Header Files\Midichlorians\Dev\Beta\iOS</Filter>
+    <ClInclude Include="midichlorians\Dev\Beta\ios\midichlorians_impl.h">
+      <Filter>Header Files\midichlorians\Dev\Beta\ios</Filter>
     </ClInclude>
     <ClInclude Include="Profiler\profiler.h">
       <Filter>Header Files\Profiler</Filter>
@@ -873,14 +873,14 @@
     <ClInclude Include="RipCurrent\ripcurrent.h">
       <Filter>Header Files\RipCurrent</Filter>
     </ClInclude>
-    <ClInclude Include="Sherlock\port.h">
-      <Filter>Header Files\Sherlock</Filter>
+    <ClInclude Include="Stream\port.h">
+      <Filter>Header Files\Stream</Filter>
     </ClInclude>
-    <ClInclude Include="Sherlock\pubsub.h">
-      <Filter>Header Files\Sherlock</Filter>
+    <ClInclude Include="Stream\pubsub.h">
+      <Filter>Header Files\Stream</Filter>
     </ClInclude>
-    <ClInclude Include="Sherlock\sherlock.h">
-      <Filter>Header Files\Sherlock</Filter>
+    <ClInclude Include="Stream\stream.h">
+      <Filter>Header Files\Stream</Filter>
     </ClInclude>
     <ClInclude Include="Storage\exceptions.h">
       <Filter>Header Files\Storage</Filter>
@@ -909,7 +909,7 @@
     <ClInclude Include="Storage\persister\file.h">
       <Filter>Header Files\Storage\persister</Filter>
     </ClInclude>
-    <ClInclude Include="Storage\persister\sherlock.h">
+    <ClInclude Include="Storage\persister\stream.h">
       <Filter>Header Files\Storage\persister</Filter>
     </ClInclude>
     <ClInclude Include="TypeSystem\base.h">
@@ -1011,31 +1011,31 @@
     <ClInclude Include="Bricks\util\base64.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\dummy.h">
+    <ClInclude Include="midichlorians\dummy.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\MidichloriansDataDictionary.h">
+    <ClInclude Include="midichlorians\midichlorians_data_dictionary.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Server\schema.h">
+    <ClInclude Include="midichlorians\Server\schema.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Server\server.h">
+    <ClInclude Include="midichlorians\Server\server.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Client\iOS\MidichloriansImpl.h">
+    <ClInclude Include="midichlorians\Client\ios\midichlorians_impl.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Client\iOS\Midichlorians.h">
+    <ClInclude Include="midichlorians\Client\ios\midichlorians.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Midichlorians\Client\dummy.h">
+    <ClInclude Include="midichlorians\Client\dummy.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Sherlock\exceptions.h">
+    <ClInclude Include="Stream\exceptions.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="Sherlock\stream_data.h">
+    <ClInclude Include="Stream\stream_data.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="Storage\container\matrix.h">
