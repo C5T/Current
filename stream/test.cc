@@ -353,6 +353,7 @@ struct RecordsCollectorImpl {
       : count_(0u), rows_(rows), entries_(entries) {}
 
   EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
+	printf("Entry %s idxts %s\n", JSON(entry).c_str(), JSON(current).c_str());
     rows_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
     entries_.push_back(JSON(entry));
     ++count_;

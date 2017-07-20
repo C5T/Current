@@ -158,6 +158,8 @@ struct ParsedHTTPRequestParams {
   bool entries_only = false;
   // If set, wrap the entries into a large JSON array. Mostly to please JSON-beautifying browser extensions.
   bool array = false;
+  // If set, use "safe" iteration to check the entries before sending.
+  bool checked = false;
 };
 
 inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
@@ -218,6 +220,9 @@ inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
   if (r.url.query.has("array")) {
     result.array = true;
     result.entries_only = true;  // Obviously, `array` implies `entries_only`.
+  }
+  if (r.url.query.has("checked")) {
+    result.checked = true;
   }
 
   return result;
@@ -320,6 +325,65 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         }
         // Respect `no_wait`.
         if (current.index == last.index && params_.no_wait) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      return ss::EntryResponse::More;
+    }();
+    if (result == ss::EntryResponse::Done && params_.array) {
+      if (!output_started_) {
+        http_response_("[]\n");
+      } else {
+        http_response_("]\n");
+      }
+    }
+    return result;
+  }
+
+  ss::EntryResponse operator()(const std::string& entry_json, uint64_t current_index, uint64_t last_index) {
+    const ss::EntryResponse result = [&, this]() {
+      if (time_to_terminate_) {
+        return ss::EntryResponse::Done;
+      }
+      // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
+      if (!serving_) {
+        if (current_index >= params_.i &&                                           // Respect `i`.
+            (params_.tail == 0u || (last_index - current_index) < params_.tail)) {  // Respect `tail`.
+          serving_ = true;
+        }
+        // Reached the end, didn't started serving and should not wait.
+        if (!serving_ && current_index == last_index && params_.no_wait) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      if (serving_) {
+        current_response_size_ += entry_json.length() + 1; // `\n`
+        try {
+          if (params_.array) {
+            if (!output_started_) {
+              http_response_("[\n");
+              output_started_ = true;
+            } else {
+              http_response_(",\n");
+            }
+          }
+          http_response_(entry_json + '\n');
+        } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
+          return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
+        }
+        // Respect `stop_after_bytes`.
+        if (params_.stop_after_bytes && current_response_size_ >= params_.stop_after_bytes) {
+          return ss::EntryResponse::Done;
+        }
+        // Respect `n`.
+        if (n_) {
+          --n_;
+          if (!n_) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        // Respect `no_wait`.
+        if (current_index == last_index && params_.no_wait) {
           return ss::EntryResponse::Done;
         }
       }
