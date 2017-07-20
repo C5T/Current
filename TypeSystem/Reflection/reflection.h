@@ -344,6 +344,12 @@ struct ReflectorImpl {
 inline ReflectorImpl& Reflector() { return ReflectorImpl::Reflector(); }
 
 }  // namespace reflection
+
+template <typename T>
+reflection::TypeID CurrentTypeID() {
+  return Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<T>()).type_id;
+}
+
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H

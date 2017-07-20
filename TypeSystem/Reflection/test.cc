@@ -509,4 +509,37 @@ TEST(Reflection, BaseTypeMatters) {
                                 Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
 }
 
+namespace reflection_test {
+
+CURRENT_FORWARD_DECLARE_STRUCT(One);
+CURRENT_FORWARD_DECLARE_STRUCT(Two);
+
+CURRENT_STRUCT(One) {
+  CURRENT_FIELD(two, std::vector<Two>);  // TODO(dkorolev): This should work with `Optional<>` too, right?
+};
+
+CURRENT_STRUCT(Two) {
+  CURRENT_FIELD(one, std::vector<One>);  // TODO(dkorolev): This should work with `Optional<>` too, right?
+};
+
+}  // namespace reflection_test
+
+TEST(Reflection, OrderDoesNotMatter) {
+  using namespace reflection_test;
+  auto const one = current::CurrentTypeID<One>();
+  auto const two = current::CurrentTypeID<Two>();
+  EXPECT_EQ(9203422267087438521ull, static_cast<uint64_t>(one));
+  EXPECT_EQ(9206172995395178226ull, static_cast<uint64_t>(two));
+  // `Reflector` is thread local, so starting another thread is the easiest way to ensure a stateless run.
+  // Also note that the order of computations of TypeIDs is flipped in the two threads.
+  std::thread([one, two]() {
+    EXPECT_EQ(static_cast<uint64_t>(one), static_cast<uint64_t>(current::CurrentTypeID<One>()));
+    EXPECT_EQ(static_cast<uint64_t>(two), static_cast<uint64_t>(current::CurrentTypeID<Two>()));
+  }).join();
+  std::thread([one, two]() {
+    EXPECT_EQ(static_cast<uint64_t>(two), static_cast<uint64_t>(current::CurrentTypeID<Two>()));
+    EXPECT_EQ(static_cast<uint64_t>(one), static_cast<uint64_t>(current::CurrentTypeID<One>()));
+  }).join();
+}
+
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
