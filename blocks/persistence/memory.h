@@ -244,13 +244,32 @@ class MemoryPersister {
     return result;
   }
 
-  template <ss::IterationMode IM>
-  using IterableRange = typename std::conditional<IM == ss::IterationMode::Safe,
-                                                  IterableRangeImpl<Iterator>,
-                                                  IterableRangeImpl<IteratorUnsafe>>::type;
+  using IterableRange = IterableRangeImpl<Iterator>;
+  using IterableRangeUnsafe = IterableRangeImpl<IteratorUnsafe>;
 
-  template <current::locks::MutexLockStatus MLS, ss::IterationMode IM>
-  IterableRange<IM> PersisterIterateImpl(uint64_t begin, uint64_t end) const {
+  template <current::locks::MutexLockStatus MLS>
+  IterableRange PersisterIterate(uint64_t begin, uint64_t end) const {
+    return PersisterIterateImpl<MLS, IterableRange>(begin, end);
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  IterableRangeUnsafe PersisterIterateUnsafe(uint64_t begin, uint64_t end) const {
+    return PersisterIterateImpl<MLS, IterableRangeUnsafe>(begin, end);
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  IterableRange PersisterIterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return PersisterIterateImpl<MLS, IterableRange>(from, till);
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  IterableRangeUnsafe PersisterIterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return PersisterIterateImpl<MLS, IterableRangeUnsafe>(from, till);
+  }
+
+ private:
+  template <current::locks::MutexLockStatus MLS, typename ITERABLE>
+  ITERABLE PersisterIterateImpl(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
       current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
       return static_cast<uint64_t>(container_->entries_.size());
@@ -264,7 +283,7 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin == end) {
-      return IterableRange<IM>(container_, 0, 0);
+      return ITERABLE(container_, 0, 0);
     }
     if (begin >= size) {
       CURRENT_THROW(InvalidIterableRangeException());
@@ -273,19 +292,19 @@ class MemoryPersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
 
-    return IterableRange<IM>(container_, begin, end);
+    return ITERABLE(container_, begin, end);
   }
 
-  template <current::locks::MutexLockStatus MLS, ss::IterationMode IM>
-  IterableRange<IM> PersisterIterateImpl(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  template <current::locks::MutexLockStatus MLS, typename ITERABLE>
+  ITERABLE PersisterIterateImpl(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = PersisterIndexRangeByTimestampRangeImpl<MLS>(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return PersisterIterateImpl<MLS, IM>(index_range.first, index_range.second);
+      return PersisterIterateImpl<MLS, ITERABLE>(index_range.first, index_range.second);
     } else {  // No entries found in the given range.
-      return IterableRange<IM>(container_, 0, 0);
+      return ITERABLE(container_, 0, 0);
     }
   }
 
