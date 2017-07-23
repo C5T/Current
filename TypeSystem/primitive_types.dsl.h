@@ -32,6 +32,8 @@ SOFTWARE.
 
 #ifdef CURRENT_DECLARE_PRIMITIVE_TYPE  // To pass `make check`.
 
+// clang-format off
+
 CURRENT_DECLARE_PRIMITIVE_TYPE(11, bool, Bool, "bool", "`true` or `false`", "C5TCurrent.Bool")
 
 CURRENT_DECLARE_PRIMITIVE_TYPE(21, uint8_t, UInt8, "byte", "Integer (8-bit unsigned)", "C5TCurrent.UInt8")
@@ -54,5 +56,7 @@ CURRENT_DECLARE_PRIMITIVE_TYPE(
     61, std::chrono::microseconds, Microseconds, "int64  // microseconds.", "Time (microseconds since epoch)", "C5TCurrent.Microseconds")
 CURRENT_DECLARE_PRIMITIVE_TYPE(
     62, std::chrono::milliseconds, Milliseconds, "int64  // milliseconds.", "Time (milliseconds since epoch)", "C5TCurrent.Milliseconds")
+
+// clang-format on
 
 #endif
