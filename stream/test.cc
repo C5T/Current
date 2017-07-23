@@ -138,6 +138,36 @@ struct StreamTestProcessorImpl {
     }
   }
 
+  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, uint64_t last_index) {
+    while (wait_) {
+      std::this_thread::yield();
+    }
+    if (!data_.results_.empty()) {
+      data_.results_ += ",";
+    }
+    const auto tab_pos = entry_json.find('\t');
+    CURRENT_ASSERT(tab_pos != std::string::npos);
+    const auto entry = ParseJSON<Record>(entry_json.c_str() + tab_pos + 1);
+    const auto idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    CURRENT_ASSERT(current_index == idxts.index);
+    if (with_idx_ts_) {
+      data_.results_ += Printf("[%llu:%llu,%llu] %i",
+                               static_cast<unsigned long long>(current_index),
+                               static_cast<unsigned long long>(idxts.us.count()),
+                               static_cast<unsigned long long>(last_index),
+                               entry.x);
+    } else {
+      data_.results_ += current::ToString(entry.x);
+    }
+    data_.head_ = idxts.us;
+    ++data_.seen_;
+    if (data_.seen_ < max_to_process_) {
+      return EntryResponse::More;
+    } else {
+      return EntryResponse::Done;
+    }
+  }
+
   EntryResponse operator()(std::chrono::microseconds ts) {
     while (wait_) {
       std::this_thread::yield();
@@ -210,21 +240,34 @@ TEST(Stream, SubscribeAndProcessThreeEntries) {
   foo_stream_publisher->Publish(Record(2), std::chrono::microseconds(20));
   foo_stream_publisher->Publish(Record(3), std::chrono::microseconds(30));
   Data d;
+  Data d_unsafe;
   {
     ASSERT_FALSE(d.subscriber_alive_);
+    ASSERT_FALSE(d_unsafe.subscriber_alive_);
     StreamTestProcessor p(d, false, true);
+    StreamTestProcessor p_unsafe(d_unsafe, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
+    ASSERT_TRUE(d_unsafe.subscriber_alive_);
     p.SetMax(3u);
+    p_unsafe.SetMax(3u);
     foo_stream->Subscribe(p);  // With no return value collection to capture the scope, it's a blocking call.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
+    foo_stream->SubscribeUnsafe(p_unsafe);
+    EXPECT_EQ(3u, d_unsafe.seen_);
+    ASSERT_TRUE(d_unsafe.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
+  ASSERT_FALSE(d_unsafe.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << Join(expected_values, ',') << " != " << d.results_;
+  const std::vector<std::string> expected_values_unsafe{"[0:10,2] 1", "[1:20,2] 2", "[2:30,2] 3"};
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values_unsafe, StreamTestProcessor::kTerminateStr))
+      << Join(expected_values_unsafe, ',') << " != " << d_unsafe.results_;
 }
 
 TEST(Stream, SubscribeSynchronously) {
@@ -239,25 +282,37 @@ TEST(Stream, SubscribeSynchronously) {
   bar_stream->Publisher()->Publish(Record(5));
   current::time::SetNow(std::chrono::microseconds(60));
   bar_stream->Publisher()->Publish(Record(6));
-  Data d;
+  Data d, d_unsafe;
   ASSERT_FALSE(d.subscriber_alive_);
+  ASSERT_FALSE(d_unsafe.subscriber_alive_);
 
   {
     StreamTestProcessor p(d, false, true);
+    StreamTestProcessor p_unsafe(d_unsafe, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
+    ASSERT_TRUE(d_unsafe.subscriber_alive_);
     p.SetMax(3u);
+    p_unsafe.SetMax(3u);
     // As `.SetMax(3)` was called, blocks the thread until all three recods are processed.
     bar_stream->Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
+    bar_stream->SubscribeUnsafe(p_unsafe);
+    EXPECT_EQ(3u, d_unsafe.seen_);
+    ASSERT_TRUE(d_unsafe.subscriber_alive_);
   }
 
   EXPECT_FALSE(d.subscriber_alive_);
+  EXPECT_FALSE(d_unsafe.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << Join(expected_values, ',') << " != " << d.results_;
+  const std::vector<std::string> expected_values_unsafe{"[0:40,2] 4", "[1:50,2] 5", "[2:60,2] 6"};
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values_unsafe, StreamTestProcessor::kTerminateStr))
+      << Join(expected_values_unsafe, ',') << " != " << d_unsafe.results_;
 }
 
 TEST(Stream, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
@@ -276,19 +331,26 @@ TEST(Stream, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     baz_stream->Publisher()->Publish(Record(9), std::chrono::microseconds(3));
   });
   {
-    Data d;
+    Data d, d_unsafe;
     StreamTestProcessor p(d, true);
+    StreamTestProcessor p_unsafe(d_unsafe, true);
     baz_stream->Subscribe(p);
     EXPECT_EQ(0u, d.seen_);
+    baz_stream->SubscribeUnsafe(p_unsafe);
+    EXPECT_EQ(0u, d_unsafe.seen_);
   }
   wait = false;
   delayed_publish_thread.join();
   {
-    Data d;
+    Data d, d_unsafe;
     StreamTestProcessor p(d, false, true);
+    StreamTestProcessor p_unsafe(d_unsafe, false, true);
     p.SetMax(3u);
+    p_unsafe.SetMax(3u);
     baz_stream->Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
+    baz_stream->SubscribeUnsafe(p_unsafe);
+    EXPECT_EQ(3u, d_unsafe.seen_);
   }
 }
 
@@ -304,40 +366,58 @@ TEST(Stream, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   meh_stream->Publisher()->Publish(Record(11));
   current::time::SetNow(std::chrono::microseconds(3));
   meh_stream->Publisher()->Publish(Record(12));
-  Data d;
+  Data d, d_unsafe;
   StreamTestProcessor p(d, true);
+  StreamTestProcessor p_unsafe(d_unsafe, true);
   p.SetWait();
+  p_unsafe.SetWait();
   {
     auto scope1 = meh_stream->Subscribe(p);
+    auto scope1_unsafe = meh_stream->SubscribeUnsafe(p_unsafe);
     EXPECT_TRUE(scope1);
+    EXPECT_TRUE(scope1_unsafe);
     {
       auto scope2 = std::move(scope1);
+      auto scope2_unsafe = std::move(scope1_unsafe);
       EXPECT_TRUE(scope2);
+      EXPECT_TRUE(scope2_unsafe);
       EXPECT_FALSE(scope1);
+      EXPECT_FALSE(scope1_unsafe);
       {
-        current::stream::SubscriberScope scope3;
+        current::stream::SubscriberScope scope3, scope3_unsafe;
         EXPECT_FALSE(scope3);
+        EXPECT_FALSE(scope3_unsafe);
         EXPECT_TRUE(scope2);
+        EXPECT_TRUE(scope2_unsafe);
         {
           scope3 = std::move(scope2);
+          scope3_unsafe = std::move(scope2_unsafe);
           EXPECT_TRUE(scope3);
+          EXPECT_TRUE(scope3_unsafe);
           EXPECT_FALSE(scope2);
+          EXPECT_FALSE(scope2_unsafe);
           p.SetMax(3u);
+          p_unsafe.SetMax(3u);
           EXPECT_EQ(0u, d.seen_);
+          EXPECT_EQ(0u, d_unsafe.seen_);
           p.SetWait(false);
-          while (d.seen_ < 3u) {
+          p_unsafe.SetWait(false);
+          while (d.seen_ < 3u || d_unsafe.seen_ < 3u) {
             std::this_thread::yield();
           }
-          while (scope3) {
+          while (scope3 || scope3_unsafe) {
             std::this_thread::yield();
           }
         }
         EXPECT_FALSE(scope3);
+        EXPECT_FALSE(scope3_unsafe);
       }
     }
   }
   EXPECT_EQ(3u, d.seen_);
   EXPECT_EQ("10,11,12", d.results_);
+  EXPECT_EQ(3u, d_unsafe.seen_);
+  EXPECT_EQ("10,11,12", d_unsafe.results_);
 }
 
 namespace stream_unittest {
@@ -353,7 +433,6 @@ struct RecordsCollectorImpl {
       : count_(0u), rows_(rows), entries_(entries) {}
 
   EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
-	printf("Entry %s idxts %s\n", JSON(entry).c_str(), JSON(current).c_str());
     rows_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
     entries_.push_back(JSON(entry));
     ++count_;
@@ -395,9 +474,12 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
   }
   {
     // Request with `?nowait` works even if stream is empty.
-    const auto result = HTTP(GET(base_url + "?nowait"));
+    const auto result = HTTP(GET(base_url + "?nowait&checked"));
     EXPECT_EQ(204, static_cast<int>(result.code));
     EXPECT_EQ("", result.body);
+    const auto result_unsafe = HTTP(GET(base_url + "?nowait"));
+    EXPECT_EQ(204, static_cast<int>(result_unsafe.code));
+    EXPECT_EQ("", result_unsafe.body);
   }
   {
     // `?sizeonly` returns "0" since the stream is empty.
@@ -519,9 +601,9 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
     {
       const auto result = HTTP(GET(base_url + "?schema=blah"));
       EXPECT_EQ(404, static_cast<int>(result.code));
-      EXPECT_EQ("blah",
-                Value(ParseJSON<current::stream::StreamSchemaFormatNotFoundError>(result.body)
-                          .unsupported_format_requested));
+      EXPECT_EQ(
+          "blah",
+          Value(ParseJSON<current::stream::StreamSchemaFormatNotFoundError>(result.body).unsupported_format_requested));
     }
     {
       // The `base_url` location does not have the URL argument registered, so it's a plain "standard" 404.
@@ -583,121 +665,170 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
   }
 
   // Test `n`.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?n=1&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?n=1")).body);
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?n=2&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?n=2")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4")).body);
   // Test `n` + `nowait`.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=100&nowait&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=100&nowait")).body);
 
   // Test `since` + `nowait`.
   // All entries since the timestamp of the last entry.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&nowait")).body);
   // All entries since the moment 1 us later than the second entry timestamp.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?since=201&nowait&checked")).body);
   EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?since=201&nowait")).body);
   // All entries since the timestamp of the second entry.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=200&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=200&nowait")).body);
   // All entries since the timestamp in the future.
+  EXPECT_EQ("", HTTP(GET(base_url + "?since=5000&nowait&checked")).body);
   EXPECT_EQ("", HTTP(GET(base_url + "?since=5000&nowait")).body);
 
   // Test `since` + `n`.
   // One entry since the timestamp of the last entry.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&n=1&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&n=1")).body);
   // Two entries since the timestamp of the first entry.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?since=100&n=2&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?since=100&n=2")).body);
 
   // Test `recent` + `nowait`.
   // All entries since (now - 400 us).
+  EXPECT_EQ(
+      s[3],
+      HTTP(GET(base_url + "?nowait&checked&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
   EXPECT_EQ(s[3],
             HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
   // All entries since (now - 300 us).
+  EXPECT_EQ(
+      s[2] + s[3],
+      HTTP(GET(base_url + "?nowait&checked&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
   EXPECT_EQ(s[2] + s[3],
             HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
   // All entries since (now - 100 us).
+  EXPECT_EQ(
+      s[0] + s[1] + s[2] + s[3],
+      HTTP(GET(base_url + "?nowait&checked&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
             HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
   // Large `recent` value => all entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?nowait&checked&recent=10000")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?nowait&recent=10000")).body);
 
   // Test `recent` + `n`.
   // Two entries since (now - 101 us).
+  EXPECT_EQ(
+      s[1] + s[2],
+      HTTP(GET(base_url + "?n=2&checked&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
   EXPECT_EQ(s[1] + s[2],
             HTTP(GET(base_url + "?n=2&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
   // Three entries with large `recent` value.
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&checked&recent=10000")).body);
   EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&recent=10000")).body);
 
   // Test `i` + `nowait`
   // All entries from `index = 3`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?i=3&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?i=3&nowait")).body);
   // All entries from `index = 1`.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?i=1&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?i=1&nowait")).body);
 
   // Test `i` + `n`
   // One entry from `index = 0`.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?i=0&n=1&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?i=0&n=1")).body);
   // Two entry from `index = 2`.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?i=2&n=2&checked")).body);
   EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?i=2&n=2")).body);
 
   // Test `tail` + `nowait`
   // Last three entries.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=3&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=3&nowait")).body);
   // Large `tail` value => all entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=50&nowait&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=50&nowait")).body);
 
   // Test `tail` + `n`
   // One entry starting from the 4th from the end.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?tail=4&n=1&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?tail=4&n=1")).body);
   // Two entries starting from the 3rd from the end.
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?tail=3&n=2&checked")).body);
   EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?tail=3&n=2")).body);
 
   // Test `tail` + `i` + `nowait`.
   // More strict constraint by `tail`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=1&i=0&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=1&i=0&nowait")).body);
   // More strict constraint by `i`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=4&i=3&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=4&i=3&nowait")).body);
   // Nonexistent `i`.
+  EXPECT_EQ("", HTTP(GET(base_url + "?tail=4&i=10&nowait&checked")).body);
   EXPECT_EQ("", HTTP(GET(base_url + "?tail=4&i=10&nowait")).body);
 
   // Test `tail` + `i` + `n`.
   // More strict constraint by `tail`.
+  EXPECT_EQ(s[2], HTTP(GET(base_url + "?tail=2&i=0&n=1&checked")).body);
   EXPECT_EQ(s[2], HTTP(GET(base_url + "?tail=2&i=0&n=1")).body);
   // More strict constraint by `i`.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1&checked")).body);
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1")).body);
 
-  // Test `period`.
+  // Test `period`. Works only in `checked` mode.
   // Start from the first entry with the `period` less than 100.
-  EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99")).body);
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99&checked")).body);
   // Start 1 us later than the first entry with the `period` less than 200.
-  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199")).body);
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199&checked")).body);
   // Start 1 us later than the first entry with the `period` equal to 200.
-  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait")).body);
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait&checked")).body);
   // Start 1 us later than the first entry with the `period` equal to 200 and limit to one entry.
-  EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1")).body);
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1&checked")).body);
   // Start from the third entry from the end with the `period` less than 100.
-  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99")).body);
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99&checked")).body);
 
   // Test `?stop_after_bytes=...`'
   // Request exactly the size of the first entry.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=42&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=42")).body);
   // Request slightly more max bytes than the size of the first entry.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=50&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=50")).body);
   // Request exactly the size of the first two entries.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=84&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=84")).body);
   // Request with the capacity large enough to hold all the entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait")).body);
 
   // Test the `array` mode.
   {
     {
-      const std::string body = HTTP(GET(base_url + "?n=1&array")).body;
+      const std::string body = HTTP(GET(base_url + "?n=1&array&checked")).body;
       EXPECT_EQ("[\n" + e[0] + "\n]\n", body);
       EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+      const std::string body_unsafe = HTTP(GET(base_url + "?n=1&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "\n]\n", body_unsafe);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]));
     }
     {
-      const std::string body = HTTP(GET(base_url + "?n=2&array")).body;
+      const std::string body = HTTP(GET(base_url + "?n=2&array&checked")).body;
       EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body);
       EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
       EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]));
+      const std::string body_unsafe = HTTP(GET(base_url + "?n=2&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body_unsafe);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]));
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[1]));
     }
   }
 
@@ -782,11 +913,11 @@ const std::string golden_signature() {
 }
 
 const std::string stream_golden_data = golden_signature() +
-                                         "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
-                                         "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
-                                         "#head 00000000000000000300\n"
-                                         "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
-                                         "#head 00000000000000000500\n";
+                                       "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+                                       "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+                                       "#head 00000000000000000300\n"
+                                       "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
+                                       "#head 00000000000000000500\n";
 
 // clang-format off
 const std::string stream_golden_data_chunks[] = {
@@ -841,43 +972,71 @@ TEST(Stream, ParsesFromFile) {
   auto parsed = current::stream::Stream<Record, current::persistence::File>::CreateStream(persistence_file_name);
 
   Data d;
+  Data d_unsafe;
   {
     ASSERT_FALSE(d.subscriber_alive_);
+    ASSERT_FALSE(d_unsafe.subscriber_alive_);
     StreamTestProcessor p(d, false, true);
+    StreamTestProcessor p_unsafe(d_unsafe, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
+    ASSERT_TRUE(d_unsafe.subscriber_alive_);
     p.SetMax(4u);
+    p_unsafe.SetMax(4u);
     parsed->Subscribe(p);  // A blocking call until the subscriber processes three entries and one head update.
+    parsed->SubscribeUnsafe(p_unsafe);
     EXPECT_EQ(4u, d.seen_);
     EXPECT_EQ(500, d.head_.count());
     ASSERT_TRUE(d.subscriber_alive_);
+    EXPECT_EQ(4u, d_unsafe.seen_);
+    EXPECT_EQ(500, d_unsafe.head_.count());
+    ASSERT_TRUE(d_unsafe.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
+  ASSERT_FALSE(d_unsafe.subscriber_alive_);
 
   {
     // Try scope-based subscription of a limited-range subscriber, and confirm
     // casting the scope of this subscription to `bool` eventially become `false`.
     Data d2;
+    Data d2_unsafe;
     {
       ASSERT_FALSE(d2.subscriber_alive_);
+      ASSERT_FALSE(d2_unsafe.subscriber_alive_);
       StreamTestProcessor p2(d2, false, true);
+      StreamTestProcessor p2_unsafe(d2_unsafe, false, true);
       ASSERT_TRUE(d2.subscriber_alive_);
+      ASSERT_TRUE(d2_unsafe.subscriber_alive_);
       p2.SetMax(4u);
+      p2_unsafe.SetMax(4u);
       const auto scope = parsed->Subscribe(p2);
       while (static_cast<bool>(scope)) {
         std::this_thread::yield();
       }
       EXPECT_FALSE(static_cast<bool>(scope));
+      const auto scope_unsafe = parsed->SubscribeUnsafe(p2_unsafe);
+      while (static_cast<bool>(scope_unsafe)) {
+        std::this_thread::yield();
+      }
+      EXPECT_FALSE(static_cast<bool>(scope_unsafe));
       EXPECT_EQ(4u, d2.seen_);
       EXPECT_EQ(500, d2.head_.count());
       EXPECT_TRUE(d2.subscriber_alive_);
+      EXPECT_EQ(4u, d2_unsafe.seen_);
+      EXPECT_EQ(500, d2_unsafe.head_.count());
+      EXPECT_TRUE(d2_unsafe.subscriber_alive_);
     }
     EXPECT_FALSE(d2.subscriber_alive_);
+    EXPECT_FALSE(d2_unsafe.subscriber_alive_);
   }
 
   const std::vector<std::string> expected_values{"[0:100,2:400] 1", "[1:200,2:400] 2", "[2:400,2:400] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << d.results_;
+  const std::vector<std::string> expected_values_unsafe{"[0:100,2] 1", "[1:200,2] 2", "[2:400,2] 3"};
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values_unsafe, StreamTestProcessor::kTerminateStr))
+      << d_unsafe.results_;
 }
 
 TEST(Stream, ParseArbitrarilySplitChunks) {
@@ -968,6 +1127,13 @@ TEST(Stream, SubscribeWithFilterByType) {
       return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
     }
 
+    EntryResponse operator()(const std::string& record_json, uint64_t, uint64_t) {
+      const auto tab_pos = record_json.find('\t');
+      CURRENT_ASSERT(tab_pos != std::string::npos);
+      results_.push_back(record_json.c_str() + tab_pos + 1);
+      return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
+    }
+
     EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
     TerminationResponse Terminate() const { return TerminationResponse::Wait; }
@@ -995,11 +1161,20 @@ TEST(Stream, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(5);
+    Collector c_unsafe(5);
     stream->Subscribe(c);
+    stream->SubscribeUnsafe(c_unsafe);
     EXPECT_EQ(
         "{\"Record\":{\"x\":1}} {\"AnotherRecord\":{\"y\":2}} {\"Record\":{\"x\":3}} "
         "{\"AnotherRecord\":{\"y\":4}} {\"Record\":{\"x\":5}}",
         Join(c.results_, ' '));
+    EXPECT_EQ(
+        "{\"Record\":{\"x\":1},\"\":\"T9209980947553411947\"} "
+        "{\"AnotherRecord\":{\"y\":2},\"\":\"T9201000647893547023\"} "
+        "{\"Record\":{\"x\":3},\"\":\"T9209980947553411947\"} "
+        "{\"AnotherRecord\":{\"y\":4},\"\":\"T9201000647893547023\"} "
+        "{\"Record\":{\"x\":5},\"\":\"T9209980947553411947\"}",
+        Join(c_unsafe.results_, ' '));
   }
 
   {

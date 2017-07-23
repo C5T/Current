@@ -389,7 +389,7 @@ class Stream final {
 
   template <typename F>
   class SubscriberThreadUnsafeInstance final : public current::stream::SubscriberScope::SubscriberThread {
-  private:
+   private:
     bool this_is_valid_;
     std::function<void()> done_callback_;
     current::WaitableTerminateSignal terminate_signal_;
@@ -397,35 +397,35 @@ class Stream final {
     F& subscriber_;
     const uint64_t begin_idx_;
     std::thread thread_;
-    
+
     SubscriberThreadUnsafeInstance() = delete;
     SubscriberThreadUnsafeInstance(const SubscriberThreadUnsafeInstance&) = delete;
     SubscriberThreadUnsafeInstance(SubscriberThreadUnsafeInstance&&) = delete;
     void operator=(const SubscriberThreadUnsafeInstance&) = delete;
     void operator=(SubscriberThreadUnsafeInstance&&) = delete;
-    
-  public:
+
+   public:
     SubscriberThreadUnsafeInstance(Borrowed<impl_t> impl,
-                             F& subscriber,
-                             uint64_t begin_idx,
-                             std::function<void()> done_callback)
-    : this_is_valid_(false),
-    done_callback_(done_callback),
-    terminate_signal_(),
-    impl_(std::move(impl),
-          [this]() {
-            // NOTE(dkorolev): I'm uncertain whether this lock is necessary here. Keeping it for safety now.
-            std::lock_guard<std::mutex> lock(impl_->publishing_mutex);
-            terminate_signal_.SignalExternalTermination();
-          }),
-    subscriber_(subscriber),
-    begin_idx_(begin_idx),
-    thread_(&SubscriberThreadUnsafeInstance::Thread, this) {
+                                   F& subscriber,
+                                   uint64_t begin_idx,
+                                   std::function<void()> done_callback)
+        : this_is_valid_(false),
+          done_callback_(done_callback),
+          terminate_signal_(),
+          impl_(std::move(impl),
+                [this]() {
+                  // NOTE(dkorolev): I'm uncertain whether this lock is necessary here. Keeping it for safety now.
+                  std::lock_guard<std::mutex> lock(impl_->publishing_mutex);
+                  terminate_signal_.SignalExternalTermination();
+                }),
+          subscriber_(subscriber),
+          begin_idx_(begin_idx),
+          thread_(&SubscriberThreadUnsafeInstance::Thread, this) {
       // Must guard against the constructor of `BorrowedWithCallback<impl_t> impl_` throwing.
       // NOTE(dkorolev): This is obsolete now, but keeping the logic for now, to keep it safe. -- D.K.
       this_is_valid_ = true;
     }
-    
+
     ~SubscriberThreadUnsafeInstance() {
       if (this_is_valid_) {
         // The constructor has completed successfully. The thread has started, and `impl_` is valid.
@@ -442,7 +442,7 @@ class Stream final {
         }
       }
     }
-    
+
     void Thread() {
       // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
       // strictly within the scope of existence of `impl_t` contained in `impl_`.
@@ -454,7 +454,7 @@ class Stream final {
         done_callback_();
       }
     }
-    
+
     void ThreadImpl(const impl_t& bare_impl, uint64_t begin_idx) {
       auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
@@ -478,7 +478,8 @@ class Stream final {
                   return;
                 }
               }
-              if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp().index) == ss::EntryResponse::Done) {
+              if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp().index) ==
+                  ss::EntryResponse::Done) {
                 return;
               }
             }
@@ -492,14 +493,14 @@ class Stream final {
           std::unique_lock<std::mutex> lock(bare_impl.publishing_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_impl.notifier, terminate_signal_);
           terminate_signal_.WaitUntil(
-                                      lock,
-                                      [this, &bare_impl, &index, &begin_idx, &head]() {
-                                        return terminate_signal_ ||
-                                        bare_impl.persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
-                                        (index > begin_idx &&
-                                         bare_impl.persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
-                                         head);
-                                      });
+              lock,
+              [this, &bare_impl, &index, &begin_idx, &head]() {
+                return terminate_signal_ ||
+                       bare_impl.persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                       (index > begin_idx &&
+                        bare_impl.persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
+                            head);
+              });
         }
       }
     }
@@ -515,10 +516,7 @@ class Stream final {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
-    SubscriberScope(Borrowed<impl_t> impl,
-                    F& subscriber,
-                    uint64_t begin_idx,
-                    std::function<void()> done_callback)
+    SubscriberScope(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
         : base_t(
               std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
     }
@@ -544,15 +542,12 @@ class Stream final {
    private:
     using base_t = current::stream::SubscriberScope;
 
-  public:
+   public:
     using subscriber_thread_t = SubscriberThreadUnsafeInstance<F>;
 
-    SubscriberScopeUnsafe(Borrowed<impl_t> impl,
-                          F& subscriber,
-                          uint64_t begin_idx,
-                          std::function<void()> done_callback)
-    : base_t(
-             std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
+    SubscriberScopeUnsafe(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
+        : base_t(
+              std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
     }
 
     SubscriberScopeUnsafe(SubscriberScopeUnsafe&&) = default;
@@ -562,14 +557,14 @@ class Stream final {
     SubscriberScopeUnsafe(const SubscriberScopeUnsafe&) = delete;
     SubscriberScopeUnsafe& operator=(const SubscriberScopeUnsafe&) = delete;
   };
-  
+
   template <typename F>
   SubscriberScopeUnsafe<F> SubscribeUnsafe(F& subscriber,
                                            uint64_t begin_idx = 0u,
                                            std::function<void()> done_callback = nullptr) const {
     return SubscriberScopeUnsafe<F>(impl_, subscriber, begin_idx, done_callback);
   }
-  
+
   // Generates a random HTTP subscription.
   static std::string GenerateRandomHTTPSubscriptionID() {
     return current::SHA256("stream_http_subscription_" +
@@ -685,15 +680,15 @@ class Stream final {
       const std::string subscription_id = GenerateRandomHTTPSubscriptionID();
 
       auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
-                                                                                                         subscription_id, borrowed_impl, std::move(r), std::move(request_params));
+          subscription_id, borrowed_impl, std::move(r), std::move(request_params));
       const auto done_callback = [this, borrowed_impl, subscription_id]() {
         // Note: Called from a locked section of `borrowed_impl->http_subscriptions_mutex`.
         borrowed_impl->http_subscriptions[subscription_id].second = nullptr;
       };
       current::stream::SubscriberScope http_chunked_subscriber_scope =
-        request_params.checked
-			? (current::stream::SubscriberScope)Subscribe(*http_chunked_subscriber, begin_idx, done_callback)
-			: (current::stream::SubscriberScope)SubscribeUnsafe(*http_chunked_subscriber, begin_idx, done_callback);
+          request_params.checked
+              ? (current::stream::SubscriberScope)Subscribe(*http_chunked_subscriber, begin_idx, done_callback)
+              : (current::stream::SubscriberScope)SubscribeUnsafe(*http_chunked_subscriber, begin_idx, done_callback);
 
       {
         std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);

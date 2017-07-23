@@ -358,12 +358,12 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       }
       if (serving_) {
         const std::string response_data = [this, &entry_json]() {
-            if (!params_.entries_only) {
-              return entry_json;
-            } else {
-              const auto tab_pos = entry_json.find('\t');
-              return tab_pos != std::string::npos ? entry_json.substr(tab_pos + 1) : entry_json;
-            }
+          if (!params_.entries_only) {
+            return entry_json;
+          } else {
+            const auto tab_pos = entry_json.find('\t');
+            return tab_pos != std::string::npos ? entry_json.substr(tab_pos + 1) : entry_json;
+          }
         }() + '\n';
         current_response_size_ += response_data.length();
         try {
