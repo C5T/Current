@@ -138,7 +138,7 @@ struct StreamTestProcessorImpl {
     }
   }
 
-  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, uint64_t last_index) {
+  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
     while (wait_) {
       std::this_thread::yield();
     }
@@ -151,10 +151,11 @@ struct StreamTestProcessorImpl {
     const auto idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
     CURRENT_ASSERT(current_index == idxts.index);
     if (with_idx_ts_) {
-      data_.results_ += Printf("[%llu:%llu,%llu] %i",
+      data_.results_ += Printf("[%llu:%llu,%llu:%llu] %i",
                                static_cast<unsigned long long>(current_index),
                                static_cast<unsigned long long>(idxts.us.count()),
-                               static_cast<unsigned long long>(last_index),
+                               static_cast<unsigned long long>(last.index),
+                               static_cast<unsigned long long>(last.us.count()),
                                entry.x);
     } else {
       data_.results_ += current::ToString(entry.x);
@@ -261,13 +262,12 @@ TEST(Stream, SubscribeAndProcessThreeEntries) {
   ASSERT_FALSE(d_unsafe.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
+  const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
-      << Join(expected_values, ',') << " != " << d.results_;
-  const std::vector<std::string> expected_values_unsafe{"[0:10,2] 1", "[1:20,2] 2", "[2:30,2] 3"};
-  EXPECT_TRUE(
-      CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values_unsafe, StreamTestProcessor::kTerminateStr))
-      << Join(expected_values_unsafe, ',') << " != " << d_unsafe.results_;
+      << joined_expected_values << " != " << d.results_;
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unsafe.results_;
 }
 
 TEST(Stream, SubscribeSynchronously) {
@@ -306,13 +306,12 @@ TEST(Stream, SubscribeSynchronously) {
   EXPECT_FALSE(d_unsafe.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
+  const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
-      << Join(expected_values, ',') << " != " << d.results_;
-  const std::vector<std::string> expected_values_unsafe{"[0:40,2] 4", "[1:50,2] 5", "[2:60,2] 6"};
-  EXPECT_TRUE(
-      CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values_unsafe, StreamTestProcessor::kTerminateStr))
-      << Join(expected_values_unsafe, ',') << " != " << d_unsafe.results_;
+      << joined_expected_values << " != " << d.results_;
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unsafe.results_;
 }
 
 TEST(Stream, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
@@ -1030,13 +1029,12 @@ TEST(Stream, ParsesFromFile) {
   }
 
   const std::vector<std::string> expected_values{"[0:100,2:400] 1", "[1:200,2:400] 2", "[2:400,2:400] 3"};
+  const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
-      << d.results_;
-  const std::vector<std::string> expected_values_unsafe{"[0:100,2] 1", "[1:200,2] 2", "[2:400,2] 3"};
-  EXPECT_TRUE(
-      CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values_unsafe, StreamTestProcessor::kTerminateStr))
-      << d_unsafe.results_;
+      << joined_expected_values << " != " << d.results_;
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unsafe.results_;
 }
 
 TEST(Stream, ParseArbitrarilySplitChunks) {
@@ -1127,7 +1125,7 @@ TEST(Stream, SubscribeWithFilterByType) {
       return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
     }
 
-    EntryResponse operator()(const std::string& record_json, uint64_t, uint64_t) {
+    EntryResponse operator()(const std::string& record_json, uint64_t, idxts_t) {
       const auto tab_pos = record_json.find('\t');
       CURRENT_ASSERT(tab_pos != std::string::npos);
       results_.push_back(record_json.c_str() + tab_pos + 1);

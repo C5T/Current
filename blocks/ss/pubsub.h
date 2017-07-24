@@ -126,8 +126,8 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
   virtual ~EntrySubscriber() {}
 
   EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) { return IMPL::operator()(e, current, last); }
-  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, uint64_t last_index) {
-    return IMPL::operator()(entry_json, current_index, last_index);
+  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
+    return IMPL::operator()(entry_json, current_index, last);
   }
   EntryResponse operator()(ENTRY&& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(std::move(e), current, last);

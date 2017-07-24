@@ -340,7 +340,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     return result;
   }
 
-  ss::EntryResponse operator()(const std::string& entry_json, uint64_t current_index, uint64_t last_index) {
+  ss::EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
     const ss::EntryResponse result = [&, this]() {
       if (time_to_terminate_) {
         return ss::EntryResponse::Done;
@@ -348,11 +348,11 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
       if (!serving_) {
         if (current_index >= params_.i &&                                           // Respect `i`.
-            (params_.tail == 0u || (last_index - current_index) < params_.tail)) {  // Respect `tail`.
+            (params_.tail == 0u || (last.index - current_index) < params_.tail)) {  // Respect `tail`.
           serving_ = true;
         }
         // Reached the end, didn't started serving and should not wait.
-        if (!serving_ && current_index == last_index && params_.no_wait) {
+        if (!serving_ && current_index == last.index && params_.no_wait) {
           return ss::EntryResponse::Done;
         }
       }
@@ -391,7 +391,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
           }
         }
         // Respect `no_wait`.
-        if (current_index == last_index && params_.no_wait) {
+        if (current_index == last.index && params_.no_wait) {
           return ss::EntryResponse::Done;
         }
       }

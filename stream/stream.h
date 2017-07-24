@@ -478,7 +478,7 @@ class Stream final {
                   return;
                 }
               }
-              if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp().index) ==
+              if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp()) ==
                   ss::EntryResponse::Done) {
                 return;
               }
