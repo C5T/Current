@@ -345,10 +345,18 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       if (time_to_terminate_) {
         return ss::EntryResponse::Done;
       }
-      // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
+      auto current_us = std::chrono::microseconds(0);
+      // Obtain current timestamp only when it's necessary by parsing the `entry_json`.
+      const auto GetCurrentUs = [this, &current_us, &entry_json]() -> std::chrono::microseconds {
+        if (!current_us.count()) {
+          current_us = ParseJSON<idxts_t>(entry_json.substr(0, entry_json.find('\t'))).us;
+        }
+        return current_us;
+      };
       if (!serving_) {
-        if (current_index >= params_.i &&                                           // Respect `i`.
-            (params_.tail == 0u || (last.index - current_index) < params_.tail)) {  // Respect `tail`.
+        if (current_index >= params_.i &&                                            // Respect `i`.
+            (params_.tail == 0u || (last.index - current_index) < params_.tail) &&   // Respect `tail`.
+            (from_timestamp_.count() == 0u || GetCurrentUs() >= from_timestamp_)) {  // Respect `since` and `recent`.
           serving_ = true;
         }
         // Reached the end, didn't started serving and should not wait.
@@ -357,6 +365,14 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         }
       }
       if (serving_) {
+        // If `period` is set, set the maximum possible timestamp.
+        if (params_.period.count() && to_timestamp_.count() == 0u) {
+          to_timestamp_ = GetCurrentUs() + params_.period;
+        }
+        // Stop serving if the limit on timestamp is exceeded.
+        if (to_timestamp_.count() && GetCurrentUs() > to_timestamp_) {
+          return ss::EntryResponse::Done;
+        }
         const std::string response_data = [this, &entry_json]() {
           if (!params_.entries_only) {
             return entry_json;

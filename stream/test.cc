@@ -783,17 +783,22 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1&checked")).body);
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1")).body);
 
-  // Test `period`. Works only in `checked` mode.
+  // Test `period`.
   // Start from the first entry with the `period` less than 100.
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99&checked")).body);
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99")).body);
   // Start 1 us later than the first entry with the `period` less than 200.
   EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199&checked")).body);
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199")).body);
   // Start 1 us later than the first entry with the `period` equal to 200.
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait&checked")).body);
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait")).body);
   // Start 1 us later than the first entry with the `period` equal to 200 and limit to one entry.
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1&checked")).body);
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1")).body);
   // Start from the third entry from the end with the `period` less than 100.
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99&checked")).body);
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99")).body);
 
   // Test `?stop_after_bytes=...`'
   // Request exactly the size of the first entry.
