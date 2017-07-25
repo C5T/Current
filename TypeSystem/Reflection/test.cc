@@ -200,6 +200,24 @@ TEST(Reflection, SelfContainingStruct) {
   EXPECT_EQ(9346069068459958554ull, static_cast<uint64_t>(self_c.fields[1].type_id));
 }
 
+TEST(Reflection, SelfContainingStructIntrospection) {
+  using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
+  using current::reflection::ReflectedType_Struct;
+  using current::reflection::ReflectedType_Vector;
+
+  const auto& va = Value<ReflectedType_Vector>(Reflector().ReflectType<std::vector<SelfContainingA>>());
+  const auto& a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
+
+  EXPECT_EQ(static_cast<uint64_t>(a.type_id), static_cast<uint64_t>(CurrentTypeID<SelfContainingA>()));
+  EXPECT_EQ(static_cast<uint64_t>(va.type_id), static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingA>>()));
+
+  EXPECT_EQ(1u, a.fields.size());
+  EXPECT_EQ(static_cast<uint64_t>(va.type_id), static_cast<uint64_t>(a.fields[0].type_id));
+
+  EXPECT_EQ(static_cast<uint64_t>(a.type_id), static_cast<uint64_t>(va.element_type));
+}
+
 TEST(Reflection, TemplatedStruct) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;
