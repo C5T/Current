@@ -95,6 +95,7 @@ struct StructFieldsTraverser {
 struct DefaultConstructibleTypeIndex {
   std::type_index type_index = std::type_index(typeid(void));
   void operator=(const std::type_index new_value) { type_index = new_value; }
+  bool operator<(DefaultConstructibleTypeIndex rhs) const { return type_index < rhs.type_index; }
   bool operator==(DefaultConstructibleTypeIndex rhs) const { return type_index == rhs.type_index; }
 };
 
@@ -217,6 +218,26 @@ struct TopLevelTypeTraverser {
   std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
     return CurrentTypeID<T_TOP_LEVEL, TemplateInnerType<T>>();
   }
+
+ public:
+  // For debugging purposes only. -- D.K.
+  // TODO(dkorolev): Remove this.
+  std::vector<std::type_index> types_list_;
+  std::map<std::type_index, size_t> types_map_;
+  template <typename T>
+  void MarkTypeAsBeingConsidered() {
+    const std::type_index type_index = std::type_index(typeid(T));
+    size_t& index_placeholder = types_map_[type_index];
+    if (!index_placeholder) {
+      types_list_.push_back(type_index);
+      index_placeholder = types_list_.size();
+    }
+    if (std::is_same<T, T_TOP_LEVEL>::value) {
+      CURRENT_ASSERT(index_placeholder == 1u);
+    } else {
+      CURRENT_ASSERT(index_placeholder > 1u);
+    }
+  }
 };
 
 template <typename T_TOP_LEVEL, typename T_CURRENT>
@@ -225,6 +246,8 @@ struct RecursiveTypeTraverser {
   TypeID resulting_type_id = TypeID::UninitializedType;
 
   TypeID ComputeTypeID() {
+    top.template MarkTypeAsBeingConsidered<T_CURRENT>();
+
     if (resulting_type_id == TypeID::UninitializedType) {
       const uint64_t hash = current::CRC32(CurrentTypeName<T_CURRENT>());
       resulting_type_id = static_cast<TypeID>(TYPEID_CYCLIC_DEPENDENCY_TYPE + hash % TYPEID_TYPE_RANGE);
