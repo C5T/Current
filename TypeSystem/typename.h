@@ -30,6 +30,7 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <chrono>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -42,7 +43,6 @@ SOFTWARE.
 #include "enum.h"
 
 #include "../Bricks/template/decay.h"
-#include "../Bricks/time/chrono.h"
 
 namespace current {
 namespace reflection {
