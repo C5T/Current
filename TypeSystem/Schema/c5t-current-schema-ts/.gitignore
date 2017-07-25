@@ -9,7 +9,7 @@
 npm-debug.log
 
 # Build output.
-/build/
+/lib/
 
 # Test harness output.
 /coverage/
