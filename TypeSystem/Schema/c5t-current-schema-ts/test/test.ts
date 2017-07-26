@@ -77,7 +77,7 @@ describe('c5t-current-schema-ts', () => {
       'Invalid value undefined supplied to : FullTest/v2: C5TCurrent.Vector<Primitives>',
       'Invalid value undefined supplied to : FullTest/p: C5TCurrent.Pair<C5TCurrent.String, Primitives>',
       'Invalid value undefined supplied to : FullTest/o: C5TCurrent.Optional<Primitives>',
-      'Invalid value undefined supplied to : FullTest/q: Variant_B_A_B_B2_C_Empty_E',
+      'Invalid value undefined supplied to : FullTest/q: C5TCurrentVariant_T9228482442669086788',
       'Invalid value undefined supplied to : FullTest/w1: Templated_T9209980946934124423',
       'Invalid value undefined supplied to : FullTest/w2: Templated_T9227782344077896555',
       'Invalid value undefined supplied to : FullTest/w3: Templated_T9209626390174323094',

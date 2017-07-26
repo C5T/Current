@@ -1228,7 +1228,20 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
             oss_ << "C5TCurrentOptional_" << GetEscapedTypeNameForIdentifier(o.optional_type);
           }
           void operator()(const ReflectedType_Variant& v) const {
-            oss_ << v.name;
+            // Prevent too long type name: use the variant name only if it's not generated from the underlying type names.
+            // See `current::reflection::impl::VariantFullNamePrinter`.
+            const std::string prefix = "Variant_B_";
+            const std::string suffix = "_E";
+            const bool is_variant_type_name_generated = (
+              v.name.compare(0, prefix.size(), prefix) == 0 &&
+              v.name.size() >= suffix.size() &&
+              v.name.compare(v.name.size() - suffix.size(), std::string::npos, suffix) == 0
+            );
+            const std::string variant_type_name = (is_variant_type_name_generated
+              ? std::string("C5TCurrentVariant_T") + current::ToString(v.type_id)
+              : v.name
+            );
+            oss_ << variant_type_name;
           }
           void operator()(const ReflectedType_Struct& s) const {
             oss_ << s.CanonicalName();
@@ -1315,16 +1328,18 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       WriteRuntimeTypeDeclarationWithTypeIdName(o.type_id, std::string("C5TCurrent.Optional_IO(") + TypeName(o.optional_type) + "_IO)");
     }
     void operator()(const ReflectedType_Variant& v) const {
-      AssertValidTypeScriptIdentifier(v.name);
+      const std::string variant_type_name = TypeName(v.type_id);
+
+      AssertValidTypeScriptIdentifier(variant_type_name);
 
       std::vector<std::string> runtime_type_names;
       for (auto cit = v.cases.begin(); cit != v.cases.end(); ++cit) {
-        const std::string name = TypeName(*cit);
+        const std::string case_type_name = TypeName(*cit);
 
-        const std::string unique_case_type_name = v.name + "_VariantCase_" + name;
+        const std::string unique_case_type_name = variant_type_name + "_VariantCase_" + case_type_name;
         const std::string unique_case_runtime_type_name = unique_case_type_name + "_IO";
         os_ << "\nexport const " << unique_case_runtime_type_name << " = iots.interface({ ";
-        os_ << "\"" << name << "\"" << ": " << name << "_IO, ";
+        os_ << "\"" << case_type_name << "\"" << ": " << case_type_name << "_IO, ";
 
         // Accomodate every variation of JSON-serialized Variants: missing (undefined), present in empty-string key, present in dollar key.
         const std::string type_id_runtime_type_impl_expression = std::string("iots.union([ iots.undefined, iots.literal(\"T") + current::ToString(*cit) + "\") ])";
@@ -1336,11 +1351,11 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       }
       runtime_type_names.push_back("iots.null");
 
-      os_ << "\nexport const " << v.name << "_IO = iots.union([\n";
+      os_ << "\nexport const " << variant_type_name << "_IO = iots.union([\n";
       for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
         os_ << "  " << (*cit) << ",\n";
       }
-      os_ << "], '" << v.name << "');\nexport type " << v.name << " = iots.UnionType<[\n";
+      os_ << "], '" << variant_type_name << "');\nexport type " << variant_type_name << " = iots.UnionType<[\n";
       for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
         os_ << "  typeof " << (*cit) << ((cit + 1) != runtime_type_names.end() ? ",\n" : "\n");
       }

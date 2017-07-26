@@ -101,76 +101,76 @@ export type MyFreakingVariant = iots.UnionType<[
   iots.TypeOf<typeof iots.null>
 )>;
 
-export const Variant_B_A_X_Y_E_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
-export type Variant_B_A_X_Y_E_VariantCase_A = iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_A_IO>;
+export const C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
+export type C5TCurrentVariant_T9227782347108675041_VariantCase_A = iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO>;
 
-export const Variant_B_A_X_Y_E_VariantCase_X_IO = iots.interface({ "X": X_IO, "": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), "$": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), });
-export type Variant_B_A_X_Y_E_VariantCase_X = iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_X_IO>;
+export const C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO = iots.interface({ "X": X_IO, "": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), "$": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), });
+export type C5TCurrentVariant_T9227782347108675041_VariantCase_X = iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO>;
 
-export const Variant_B_A_X_Y_E_VariantCase_Y_IO = iots.interface({ "Y": Y_IO, "": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), "$": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), });
-export type Variant_B_A_X_Y_E_VariantCase_Y = iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_Y_IO>;
+export const C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO = iots.interface({ "Y": Y_IO, "": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), "$": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), });
+export type C5TCurrentVariant_T9227782347108675041_VariantCase_Y = iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO>;
 
-export const Variant_B_A_X_Y_E_IO = iots.union([
-  Variant_B_A_X_Y_E_VariantCase_A_IO,
-  Variant_B_A_X_Y_E_VariantCase_X_IO,
-  Variant_B_A_X_Y_E_VariantCase_Y_IO,
+export const C5TCurrentVariant_T9227782347108675041_IO = iots.union([
+  C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO,
+  C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO,
+  C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO,
   iots.null,
-], 'Variant_B_A_X_Y_E');
-export type Variant_B_A_X_Y_E = iots.UnionType<[
-  typeof Variant_B_A_X_Y_E_VariantCase_A_IO,
-  typeof Variant_B_A_X_Y_E_VariantCase_X_IO,
-  typeof Variant_B_A_X_Y_E_VariantCase_Y_IO,
+], 'C5TCurrentVariant_T9227782347108675041');
+export type C5TCurrentVariant_T9227782347108675041 = iots.UnionType<[
+  typeof C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO,
+  typeof C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO,
+  typeof C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO,
   typeof iots.null
 ], (
-  iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_A_IO> |
-  iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_X_IO> |
-  iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_Y_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO> |
   iots.TypeOf<typeof iots.null>
 )>;
 
 export const C_IO = iots.interface({
   e: Empty_IO,
   c: MyFreakingVariant_IO,
-  d: Variant_B_A_X_Y_E_IO,
+  d: C5TCurrentVariant_T9227782347108675041_IO,
 }, 'C');
 export type C = iots.TypeOf<typeof C_IO>;
 
-export const Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
-export type Variant_B_A_B_B2_C_Empty_E_VariantCase_A = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO>;
+export const C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
+export type C5TCurrentVariant_T9228482442669086788_VariantCase_A = iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO>;
 
-export const Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO = iots.interface({ "B": B_IO, "": iots.union([ iots.undefined, iots.literal("T9200817599233955266") ]), "$": iots.union([ iots.undefined, iots.literal("T9200817599233955266") ]), });
-export type Variant_B_A_B_B2_C_Empty_E_VariantCase_B = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO>;
+export const C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO = iots.interface({ "B": B_IO, "": iots.union([ iots.undefined, iots.literal("T9200817599233955266") ]), "$": iots.union([ iots.undefined, iots.literal("T9200817599233955266") ]), });
+export type C5TCurrentVariant_T9228482442669086788_VariantCase_B = iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO>;
 
-export const Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO = iots.interface({ "B2": B2_IO, "": iots.union([ iots.undefined, iots.literal("T9209827283478105543") ]), "$": iots.union([ iots.undefined, iots.literal("T9209827283478105543") ]), });
-export type Variant_B_A_B_B2_C_Empty_E_VariantCase_B2 = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO>;
+export const C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO = iots.interface({ "B2": B2_IO, "": iots.union([ iots.undefined, iots.literal("T9209827283478105543") ]), "$": iots.union([ iots.undefined, iots.literal("T9209827283478105543") ]), });
+export type C5TCurrentVariant_T9228482442669086788_VariantCase_B2 = iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO>;
 
-export const Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO = iots.interface({ "C": C_IO, "": iots.union([ iots.undefined, iots.literal("T9202971611369570493") ]), "$": iots.union([ iots.undefined, iots.literal("T9202971611369570493") ]), });
-export type Variant_B_A_B_B2_C_Empty_E_VariantCase_C = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO>;
+export const C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO = iots.interface({ "C": C_IO, "": iots.union([ iots.undefined, iots.literal("T9202971611369570493") ]), "$": iots.union([ iots.undefined, iots.literal("T9202971611369570493") ]), });
+export type C5TCurrentVariant_T9228482442669086788_VariantCase_C = iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO>;
 
-export const Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO = iots.interface({ "Empty": Empty_IO, "": iots.union([ iots.undefined, iots.literal("T9200000002835747520") ]), "$": iots.union([ iots.undefined, iots.literal("T9200000002835747520") ]), });
-export type Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO>;
+export const C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO = iots.interface({ "Empty": Empty_IO, "": iots.union([ iots.undefined, iots.literal("T9200000002835747520") ]), "$": iots.union([ iots.undefined, iots.literal("T9200000002835747520") ]), });
+export type C5TCurrentVariant_T9228482442669086788_VariantCase_Empty = iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO>;
 
-export const Variant_B_A_B_B2_C_Empty_E_IO = iots.union([
-  Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO,
-  Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO,
-  Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO,
-  Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO,
-  Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO,
+export const C5TCurrentVariant_T9228482442669086788_IO = iots.union([
+  C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO,
+  C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO,
+  C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO,
+  C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO,
+  C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO,
   iots.null,
-], 'Variant_B_A_B_B2_C_Empty_E');
-export type Variant_B_A_B_B2_C_Empty_E = iots.UnionType<[
-  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO,
-  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO,
-  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO,
-  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO,
-  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO,
+], 'C5TCurrentVariant_T9228482442669086788');
+export type C5TCurrentVariant_T9228482442669086788 = iots.UnionType<[
+  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO,
+  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO,
+  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO,
+  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO,
+  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO,
   typeof iots.null
 ], (
-  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO> |
-  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO> |
-  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO> |
-  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO> |
-  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO> |
+  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO> |
   iots.TypeOf<typeof iots.null>
 )>;
 
@@ -272,7 +272,7 @@ export const FullTest_IO = iots.interface({
   o: C5TCurrentOptional_Primitives_IO,
 
   // Field | descriptions | FTW !
-  q: Variant_B_A_B_B2_C_Empty_E_IO,
+  q: C5TCurrentVariant_T9228482442669086788_IO,
   w1: Templated_T9209980946934124423_IO,
   w2: Templated_T9227782344077896555_IO,
   w3: Templated_T9209626390174323094_IO,
