@@ -200,6 +200,20 @@ TEST(Reflection, SelfContainingStruct) {
   EXPECT_EQ(9346069068459958554ull, static_cast<uint64_t>(self_c.fields[1].type_id));
 }
 
+TEST(Reflection, InternalWrongOrderReflectionException) {
+  using namespace reflection_test;
+
+  std::thread([]() {
+    try {
+      current::reflection::CurrentTypeID<Foo, Bar>();
+      ASSERT_TRUE(false);
+    } catch (const current::reflection::InternalWrongOrderReflectionException& e) {
+      EXPECT_EQ("For some reason, when reflecting on `Foo`, type `Bar` is being considered first.",
+                e.OriginalDescription());
+    }
+  }).join();
+}
+
 TEST(Reflection, SelfContainingStructIntrospection) {
   using namespace reflection_test;
   using current::reflection::CurrentTypeID;

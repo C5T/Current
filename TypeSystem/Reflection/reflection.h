@@ -232,10 +232,11 @@ struct TopLevelTypeTraverser {
       types_list_.push_back(type_index);
       index_placeholder = types_list_.size();
     }
-    if (std::is_same<T, T_TOP_LEVEL>::value) {
-      CURRENT_ASSERT(index_placeholder == 1u);
-    } else {
-      CURRENT_ASSERT(index_placeholder > 1u);
+    // Type `T` must be the first one considered for the top-level type `T_TOP_LEVEL`.
+    if (std::is_same<T, T_TOP_LEVEL>::value == (index_placeholder > 1u)) {
+      CURRENT_THROW(InternalWrongOrderReflectionException(std::string("For some reason, when reflecting on `") +
+                                                          CurrentTypeName<T_TOP_LEVEL>() + "`, type `" +
+                                                          CurrentTypeName<T>() + "` is being considered first."));
     }
   }
 };

@@ -31,6 +31,9 @@ namespace current {
 namespace reflection {
 
 struct UnknownTypeIDException : Exception {};  // LCOV_EXCL_LINE
+struct InternalWrongOrderReflectionException : Exception {
+  using Exception::Exception;
+};
 
 }  // namespace reflection
 }  // namespace current
