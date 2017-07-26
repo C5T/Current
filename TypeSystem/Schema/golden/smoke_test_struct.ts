@@ -33,6 +33,18 @@ export const Primitives_IO = iots.interface({
 }, 'Primitives');
 export type Primitives = iots.TypeOf<typeof Primitives_IO>;
 
+export const C5TCurrentVector_C5TCurrentString_IO = C5TCurrent.Vector_IO(C5TCurrent.String_IO);
+export type C5TCurrentVector_C5TCurrentString = iots.TypeOf<typeof C5TCurrentVector_C5TCurrentString_IO>;
+
+export const C5TCurrentVector_Primitives_IO = C5TCurrent.Vector_IO(Primitives_IO);
+export type C5TCurrentVector_Primitives = iots.TypeOf<typeof C5TCurrentVector_Primitives_IO>;
+
+export const C5TCurrentPair_C5TCurrentString_Primitives_IO = C5TCurrent.Pair_IO(C5TCurrent.String_IO, Primitives_IO);
+export type C5TCurrentPair_C5TCurrentString_Primitives = iots.TypeOf<typeof C5TCurrentPair_C5TCurrentString_Primitives_IO>;
+
+export const C5TCurrentOptional_Primitives_IO = C5TCurrent.Optional_IO(Primitives_IO);
+export type C5TCurrentOptional_Primitives = iots.TypeOf<typeof C5TCurrentOptional_Primitives_IO>;
+
 export const A_IO = iots.interface({
   a: C5TCurrent.Int32_IO,
 }, 'A');
@@ -54,47 +66,65 @@ export const X_IO = iots.interface({
 }, 'X');
 export type X = iots.TypeOf<typeof X_IO>;
 
-export const E_IO = C5TCurrent.UInt16_IO;
+export const E_IO = C5TCurrent.Enum_IO('E');
 export type E = iots.TypeOf<typeof E_IO>;
 
 export const Y_IO = iots.interface({
-  e: C5TCurrent.Enum_IO('E'),
+  e: E_IO,
 }, 'Y');
 export type Y = iots.TypeOf<typeof Y_IO>;
 
+export const MyFreakingVariant_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
+export type MyFreakingVariant_VariantCase_A = iots.TypeOf<typeof MyFreakingVariant_VariantCase_A_IO>;
+
+export const MyFreakingVariant_VariantCase_X_IO = iots.interface({ "X": X_IO, "": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), "$": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), });
+export type MyFreakingVariant_VariantCase_X = iots.TypeOf<typeof MyFreakingVariant_VariantCase_X_IO>;
+
+export const MyFreakingVariant_VariantCase_Y_IO = iots.interface({ "Y": Y_IO, "": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), "$": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), });
+export type MyFreakingVariant_VariantCase_Y = iots.TypeOf<typeof MyFreakingVariant_VariantCase_Y_IO>;
+
 export const MyFreakingVariant_IO = iots.union([
-  A_IO,
-  X_IO,
-  Y_IO,
+  MyFreakingVariant_VariantCase_A_IO,
+  MyFreakingVariant_VariantCase_X_IO,
+  MyFreakingVariant_VariantCase_Y_IO,
   iots.null,
 ], 'MyFreakingVariant');
 export type MyFreakingVariant = iots.UnionType<[
-  typeof A_IO,
-  typeof X_IO,
-  typeof Y_IO,
+  typeof MyFreakingVariant_VariantCase_A_IO,
+  typeof MyFreakingVariant_VariantCase_X_IO,
+  typeof MyFreakingVariant_VariantCase_Y_IO,
   typeof iots.null
 ], (
-  iots.TypeOf<typeof A_IO> |
-  iots.TypeOf<typeof X_IO> |
-  iots.TypeOf<typeof Y_IO> |
+  iots.TypeOf<typeof MyFreakingVariant_VariantCase_A_IO> |
+  iots.TypeOf<typeof MyFreakingVariant_VariantCase_X_IO> |
+  iots.TypeOf<typeof MyFreakingVariant_VariantCase_Y_IO> |
   iots.TypeOf<typeof iots.null>
 )>;
 
+export const Variant_B_A_X_Y_E_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
+export type Variant_B_A_X_Y_E_VariantCase_A = iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_A_IO>;
+
+export const Variant_B_A_X_Y_E_VariantCase_X_IO = iots.interface({ "X": X_IO, "": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), "$": iots.union([ iots.undefined, iots.literal("T9209980946934124423") ]), });
+export type Variant_B_A_X_Y_E_VariantCase_X = iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_X_IO>;
+
+export const Variant_B_A_X_Y_E_VariantCase_Y_IO = iots.interface({ "Y": Y_IO, "": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), "$": iots.union([ iots.undefined, iots.literal("T9208828720332602574") ]), });
+export type Variant_B_A_X_Y_E_VariantCase_Y = iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_Y_IO>;
+
 export const Variant_B_A_X_Y_E_IO = iots.union([
-  A_IO,
-  X_IO,
-  Y_IO,
+  Variant_B_A_X_Y_E_VariantCase_A_IO,
+  Variant_B_A_X_Y_E_VariantCase_X_IO,
+  Variant_B_A_X_Y_E_VariantCase_Y_IO,
   iots.null,
 ], 'Variant_B_A_X_Y_E');
 export type Variant_B_A_X_Y_E = iots.UnionType<[
-  typeof A_IO,
-  typeof X_IO,
-  typeof Y_IO,
+  typeof Variant_B_A_X_Y_E_VariantCase_A_IO,
+  typeof Variant_B_A_X_Y_E_VariantCase_X_IO,
+  typeof Variant_B_A_X_Y_E_VariantCase_Y_IO,
   typeof iots.null
 ], (
-  iots.TypeOf<typeof A_IO> |
-  iots.TypeOf<typeof X_IO> |
-  iots.TypeOf<typeof Y_IO> |
+  iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_A_IO> |
+  iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_X_IO> |
+  iots.TypeOf<typeof Variant_B_A_X_Y_E_VariantCase_Y_IO> |
   iots.TypeOf<typeof iots.null>
 )>;
 
@@ -105,27 +135,42 @@ export const C_IO = iots.interface({
 }, 'C');
 export type C = iots.TypeOf<typeof C_IO>;
 
+export const Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
+export type Variant_B_A_B_B2_C_Empty_E_VariantCase_A = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO>;
+
+export const Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO = iots.interface({ "B": B_IO, "": iots.union([ iots.undefined, iots.literal("T9200817599233955266") ]), "$": iots.union([ iots.undefined, iots.literal("T9200817599233955266") ]), });
+export type Variant_B_A_B_B2_C_Empty_E_VariantCase_B = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO>;
+
+export const Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO = iots.interface({ "B2": B2_IO, "": iots.union([ iots.undefined, iots.literal("T9209827283478105543") ]), "$": iots.union([ iots.undefined, iots.literal("T9209827283478105543") ]), });
+export type Variant_B_A_B_B2_C_Empty_E_VariantCase_B2 = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO>;
+
+export const Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO = iots.interface({ "C": C_IO, "": iots.union([ iots.undefined, iots.literal("T9202971611369570493") ]), "$": iots.union([ iots.undefined, iots.literal("T9202971611369570493") ]), });
+export type Variant_B_A_B_B2_C_Empty_E_VariantCase_C = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO>;
+
+export const Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO = iots.interface({ "Empty": Empty_IO, "": iots.union([ iots.undefined, iots.literal("T9200000002835747520") ]), "$": iots.union([ iots.undefined, iots.literal("T9200000002835747520") ]), });
+export type Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty = iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO>;
+
 export const Variant_B_A_B_B2_C_Empty_E_IO = iots.union([
-  A_IO,
-  B_IO,
-  B2_IO,
-  C_IO,
-  Empty_IO,
+  Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO,
+  Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO,
+  Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO,
+  Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO,
+  Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO,
   iots.null,
 ], 'Variant_B_A_B_B2_C_Empty_E');
 export type Variant_B_A_B_B2_C_Empty_E = iots.UnionType<[
-  typeof A_IO,
-  typeof B_IO,
-  typeof B2_IO,
-  typeof C_IO,
-  typeof Empty_IO,
+  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO,
+  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO,
+  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO,
+  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO,
+  typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO,
   typeof iots.null
 ], (
-  iots.TypeOf<typeof A_IO> |
-  iots.TypeOf<typeof B_IO> |
-  iots.TypeOf<typeof B2_IO> |
-  iots.TypeOf<typeof C_IO> |
-  iots.TypeOf<typeof Empty_IO> |
+  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO> |
+  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B_IO> |
+  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_B2_IO> |
+  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO> |
+  iots.TypeOf<typeof Variant_B_A_B_B2_C_Empty_E_VariantCase_Empty_IO> |
   iots.TypeOf<typeof iots.null>
 )>;
 
@@ -177,24 +222,54 @@ export const TemplatedInheriting_T9201673071807149456_IO = iots.intersection([ A
 }) ], 'TemplatedInheriting_T9201673071807149456');
 export type TemplatedInheriting_T9201673071807149456 = iots.TypeOf<typeof TemplatedInheriting_T9201673071807149456_IO>;
 
+export const C5TCurrentOptional_C5TCurrentString_IO = C5TCurrent.Optional_IO(C5TCurrent.String_IO);
+export type C5TCurrentOptional_C5TCurrentString = iots.TypeOf<typeof C5TCurrentOptional_C5TCurrentString_IO>;
+
+export const C5TCurrentOptional_C5TCurrentInt32_IO = C5TCurrent.Optional_IO(C5TCurrent.Int32_IO);
+export type C5TCurrentOptional_C5TCurrentInt32 = iots.TypeOf<typeof C5TCurrentOptional_C5TCurrentInt32_IO>;
+
+export const C5TCurrentOptional_C5TCurrentVector_C5TCurrentString_IO = C5TCurrent.Optional_IO(C5TCurrentVector_C5TCurrentString_IO);
+export type C5TCurrentOptional_C5TCurrentVector_C5TCurrentString = iots.TypeOf<typeof C5TCurrentOptional_C5TCurrentVector_C5TCurrentString_IO>;
+
+export const C5TCurrentVector_C5TCurrentInt32_IO = C5TCurrent.Vector_IO(C5TCurrent.Int32_IO);
+export type C5TCurrentVector_C5TCurrentInt32 = iots.TypeOf<typeof C5TCurrentVector_C5TCurrentInt32_IO>;
+
+export const C5TCurrentOptional_C5TCurrentVector_C5TCurrentInt32_IO = C5TCurrent.Optional_IO(C5TCurrentVector_C5TCurrentInt32_IO);
+export type C5TCurrentOptional_C5TCurrentVector_C5TCurrentInt32 = iots.TypeOf<typeof C5TCurrentOptional_C5TCurrentVector_C5TCurrentInt32_IO>;
+
+export const C5TCurrentVector_A_IO = C5TCurrent.Vector_IO(A_IO);
+export type C5TCurrentVector_A = iots.TypeOf<typeof C5TCurrentVector_A_IO>;
+
+export const C5TCurrentOptional_C5TCurrentVector_A_IO = C5TCurrent.Optional_IO(C5TCurrentVector_A_IO);
+export type C5TCurrentOptional_C5TCurrentVector_A = iots.TypeOf<typeof C5TCurrentOptional_C5TCurrentVector_A_IO>;
+
+export const C5TCurrentOptional_A_IO = C5TCurrent.Optional_IO(A_IO);
+export type C5TCurrentOptional_A = iots.TypeOf<typeof C5TCurrentOptional_A_IO>;
+
+export const C5TCurrentPair_C5TCurrentString_C5TCurrentOptional_A_IO = C5TCurrent.Pair_IO(C5TCurrent.String_IO, C5TCurrentOptional_A_IO);
+export type C5TCurrentPair_C5TCurrentString_C5TCurrentOptional_A = iots.TypeOf<typeof C5TCurrentPair_C5TCurrentString_C5TCurrentOptional_A_IO>;
+
+export const C5TCurrentMap_C5TCurrentString_C5TCurrentOptional_A_IO = C5TCurrent.PrimitiveMap_IO(C5TCurrentOptional_A_IO);
+export type C5TCurrentMap_C5TCurrentString_C5TCurrentOptional_A = iots.TypeOf<typeof C5TCurrentMap_C5TCurrentString_C5TCurrentOptional_A_IO>;
+
 export const TrickyEvolutionCases_IO = iots.interface({
-  o1: C5TCurrent.Optional_IO(C5TCurrent.String_IO),
-  o2: C5TCurrent.Optional_IO(C5TCurrent.Int32_IO),
-  o3: C5TCurrent.Optional_IO(C5TCurrent.Vector_IO(C5TCurrent.String_IO)),
-  o4: C5TCurrent.Optional_IO(C5TCurrent.Vector_IO(C5TCurrent.Int32_IO)),
-  o5: C5TCurrent.Optional_IO(C5TCurrent.Vector_IO(A_IO)),
-  o6: C5TCurrent.Pair_IO(C5TCurrent.String_IO, C5TCurrent.Optional_IO(A_IO)),
-  o7: C5TCurrent.PrimitiveMap_IO(C5TCurrent.Optional_IO(A_IO)),
+  o1: C5TCurrentOptional_C5TCurrentString_IO,
+  o2: C5TCurrentOptional_C5TCurrentInt32_IO,
+  o3: C5TCurrentOptional_C5TCurrentVector_C5TCurrentString_IO,
+  o4: C5TCurrentOptional_C5TCurrentVector_C5TCurrentInt32_IO,
+  o5: C5TCurrentOptional_C5TCurrentVector_A_IO,
+  o6: C5TCurrentPair_C5TCurrentString_C5TCurrentOptional_A_IO,
+  o7: C5TCurrentMap_C5TCurrentString_C5TCurrentOptional_A_IO,
 }, 'TrickyEvolutionCases');
 export type TrickyEvolutionCases = iots.TypeOf<typeof TrickyEvolutionCases_IO>;
 
 export const FullTest_IO = iots.interface({
   // A structure with a lot of primitive types.
   primitives: Primitives_IO,
-  v1: C5TCurrent.Vector_IO(C5TCurrent.String_IO),
-  v2: C5TCurrent.Vector_IO(Primitives_IO),
-  p: C5TCurrent.Pair_IO(C5TCurrent.String_IO, Primitives_IO),
-  o: C5TCurrent.Optional_IO(Primitives_IO),
+  v1: C5TCurrentVector_C5TCurrentString_IO,
+  v2: C5TCurrentVector_Primitives_IO,
+  p: C5TCurrentPair_C5TCurrentString_Primitives_IO,
+  o: C5TCurrentOptional_Primitives_IO,
 
   // Field | descriptions | FTW !
   q: Variant_B_A_B_B2_C_Empty_E_IO,

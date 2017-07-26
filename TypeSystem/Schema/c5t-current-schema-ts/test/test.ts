@@ -11,14 +11,42 @@ import * as smoke_test_struct_interface from './smoke_test_struct_interface';
 
 
 describe('c5t-current-schema-ts', () => {
-  it('validates serialized JSON via io-ts', () => {
+  it('validates the serialized JSON via io-ts', () => {
     const full_test: smoke_test_struct_interface.FullTest = JSON.parse(String(fs.readFileSync(path.resolve(__dirname, './smoke_test_struct_serialized.json'))));
     const success_validation = iots.validate(full_test, smoke_test_struct_interface.FullTest_IO);
-    assert.isTrue(isRight(success_validation));
     const success_report = PathReporter.report(success_validation);
     assert.deepEqual(success_report, [
       'No errors!',
     ]);
+    assert.isTrue(isRight(success_validation), 'isRight(success_validation)');
+  });
+
+  it('deserializes the serialized JSON via io-ts', () => {
+    const full_test: smoke_test_struct_interface.FullTest = JSON.parse(String(fs.readFileSync(path.resolve(__dirname, './smoke_test_struct_serialized.json'))));
+
+    // Pay attention to the Variant types first. -- sompylasar
+    // TODO(@sompylasar): Test more field values.
+    const variantQC = (full_test.q as iots.TypeOf<typeof smoke_test_struct_interface.Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO>).C;
+    if (variantQC) {
+      const variantQCCA = (variantQC.c as iots.TypeOf<typeof smoke_test_struct_interface.Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO>).A;
+      const variantQCDY = (variantQC.d as iots.TypeOf<typeof smoke_test_struct_interface.Variant_B_A_X_Y_E_VariantCase_Y_IO>).Y;
+      if (variantQCCA) {
+        assert.strictEqual(variantQCCA.a, (1 << 30), 'full_test.q.c.a is not (1 << 30)');
+      }
+      else {
+        assert.isOk(false, 'full_test.q.c is not Variant<A,B,B2,C,Empty> case A');
+      }
+      if (variantQCDY) {
+        // The enum E value SOME (0).
+        assert.strictEqual(variantQCDY.e, 0, 'full_test.q.d.e is not enum E value SOME (0)');
+      }
+      else {
+        assert.isOk(false, 'full_test.q.d is not Variant<A,X,Y> case Y');
+      }
+    }
+    else {
+      assert.isOk(false, 'full_test.q is not Variant<A,B,B2,C,Empty> case C');
+    }
   });
 
   it('reports error on malformed JSON via io-ts', () => {
