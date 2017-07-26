@@ -60,8 +60,8 @@ template <typename T_TOP_LEVEL, typename T_CURRENT>
 struct RecursiveTypeTraverser;
 
 // `CurrentTypeID<T, T>()` is the "user-facing" type ID of `T`, whereas for each individual `T` the values
-// of `CurrentTypeID<TOP_LEVEL, T>()` may and will be different in case of cyclical dependencies, as the order
-// of their resolution by definition depends on which part of the cycle was the stating point.
+// of `CurrentTypeID<TOP_LEVEL, T>()` may and will be different in case of cyclic dependencies, as the order
+// of their resolution by definition depends on which part of the cycle was the starting point.
 template <typename T_TOP_LEVEL, typename T_TYPE = T_TOP_LEVEL>
 reflection::TypeID CurrentTypeID() {
   return ThreadLocalSingleton<reflection::RecursiveTypeTraverser<T_TOP_LEVEL, T_TYPE>>().ComputeTypeID();
