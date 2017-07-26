@@ -180,24 +180,39 @@ TEST(Reflection, StructAndVariant) {
 
 TEST(Reflection, SelfContainingStruct) {
   using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
   using current::reflection::ReflectedType_Struct;
   using current::reflection::ReflectedType_Variant;
 
+  const auto typeid_a = static_cast<uint64_t>(CurrentTypeID<SelfContainingA>());
+  const auto typeid_va = static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingA>>());
+  const auto typeid_b = static_cast<uint64_t>(CurrentTypeID<SelfContainingB>());
+  const auto typeid_vb = static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingB>>());
+  const auto typeid_c = static_cast<uint64_t>(CurrentTypeID<SelfContainingC>());
+  const auto typeid_msc = static_cast<uint64_t>(CurrentTypeID<std::map<std::string, SelfContainingC>>());
+
+  EXPECT_EQ(9203459442620113853ull, typeid_a);
+  EXPECT_EQ(9316106052119012411ull, typeid_va);
+  EXPECT_EQ(9205833655400624647ull, typeid_b);
+  EXPECT_EQ(9316451506340571627ull, typeid_vb);
+  EXPECT_EQ(9208493534322203273ull, typeid_c);
+  EXPECT_EQ(9346663043140503218ull, typeid_msc);
+
   const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
   EXPECT_EQ(1u, self_a.fields.size());
-  EXPECT_EQ(9203459442620113853ull, static_cast<uint64_t>(self_a.type_id));
-  EXPECT_EQ(9313023732497190404ull, static_cast<uint64_t>(self_a.fields[0].type_id));
+  EXPECT_EQ(typeid_a, static_cast<uint64_t>(self_a.type_id));
+  EXPECT_EQ(typeid_va, static_cast<uint64_t>(self_a.fields[0].type_id));
 
   const ReflectedType_Struct& self_b = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingB>());
   EXPECT_EQ(1u, self_b.fields.size());
-  EXPECT_EQ(9205833655400624647ull, static_cast<uint64_t>(self_b.type_id));
-  EXPECT_EQ(9313023716253336532ull, static_cast<uint64_t>(self_b.fields[0].type_id));
+  EXPECT_EQ(typeid_b, static_cast<uint64_t>(self_b.type_id));
+  EXPECT_EQ(typeid_vb, static_cast<uint64_t>(self_b.fields[0].type_id));
 
   const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
   EXPECT_EQ(2u, self_c.fields.size());
-  EXPECT_EQ(9208493534322203273ull, static_cast<uint64_t>(self_c.type_id));
-  EXPECT_EQ(9316451506340571627ull, static_cast<uint64_t>(self_c.fields[0].type_id));
-  EXPECT_EQ(9346069068459958554ull, static_cast<uint64_t>(self_c.fields[1].type_id));
+  EXPECT_EQ(typeid_c, static_cast<uint64_t>(self_c.type_id));
+  EXPECT_EQ(typeid_vb, static_cast<uint64_t>(self_c.fields[0].type_id));
+  EXPECT_EQ(typeid_msc, static_cast<uint64_t>(self_c.fields[1].type_id));
 }
 
 TEST(Reflection, InternalWrongOrderReflectionException) {
@@ -214,6 +229,17 @@ TEST(Reflection, InternalWrongOrderReflectionException) {
   }).join();
 }
 
+TEST(Reflection, UnknownTypeIDException) {
+  std::thread([]() {
+    try {
+      current::reflection::Reflector().ReflectedTypeByTypeID(static_cast<current::reflection::TypeID>(987654321));
+      ASSERT_TRUE(false);
+    } catch (const current::reflection::UnknownTypeIDException& e) {
+      EXPECT_EQ("987654321", e.OriginalDescription());
+    }
+  }).join();
+}
+
 TEST(Reflection, SelfContainingStructIntrospection) {
   using namespace reflection_test;
   using current::reflection::CurrentTypeID;
@@ -223,13 +249,13 @@ TEST(Reflection, SelfContainingStructIntrospection) {
   const auto& va = Value<ReflectedType_Vector>(Reflector().ReflectType<std::vector<SelfContainingA>>());
   const auto& a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
 
-  EXPECT_EQ(static_cast<uint64_t>(a.type_id), static_cast<uint64_t>(CurrentTypeID<SelfContainingA>()));
-  EXPECT_EQ(static_cast<uint64_t>(va.type_id), static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingA>>()));
+  EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<SelfContainingA>()), static_cast<uint64_t>(a.type_id));
+  EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingA>>()), static_cast<uint64_t>(va.type_id));
+
+  EXPECT_EQ(static_cast<uint64_t>(a.type_id), static_cast<uint64_t>(va.element_type));
 
   EXPECT_EQ(1u, a.fields.size());
   EXPECT_EQ(static_cast<uint64_t>(va.type_id), static_cast<uint64_t>(a.fields[0].type_id));
-
-  EXPECT_EQ(static_cast<uint64_t>(a.type_id), static_cast<uint64_t>(va.element_type));
 }
 
 TEST(Reflection, TemplatedStruct) {

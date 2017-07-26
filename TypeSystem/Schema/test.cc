@@ -215,8 +215,7 @@ CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
 
 }  // namespace schema_test
 
-// TODO(dkorolev): We can reflect on self-referring structs, but not dump their schema just yet.
-TEST(Schema, DISABLED_SelfContainingStruct) {
+TEST(Schema, SelfContainingStruct) {
   using namespace schema_test;
   using current::reflection::StructSchema;
   using current::reflection::SchemaInfo;
