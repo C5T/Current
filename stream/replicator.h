@@ -69,7 +69,9 @@ class SubscribableRemoteStream final {
       }
     }
 
-    std::string GetURLToSubscribe(uint64_t index) const { return url_ + "?i=" + current::ToString(index); }
+    std::string GetURLToSubscribe(uint64_t index, bool checked_subscription) const {
+      return url_ + "?i=" + current::ToString(index) + (checked_subscription ? "&checked" : "");
+    }
 
     std::string GetURLToTerminate(const std::string& subscription_id) const {
       return url_ + "?terminate=" + subscription_id;
@@ -88,12 +90,14 @@ class SubscribableRemoteStream final {
     RemoteSubscriberThread(Borrowed<RemoteStream> remote_stream,
                            F& subscriber,
                            uint64_t start_idx,
+                           bool checked_subscription,
                            std::function<void()> done_callback)
         : valid_(false),
           borrowed_remote_stream_(std::move(remote_stream), [this]() { TerminateSubscription(); }),
           done_callback_(done_callback),
           subscriber_(subscriber),
           index_(start_idx),
+          checked_subscription_(checked_subscription),
           unused_idxts_(),
           terminate_subscription_requested_(false),
           thread_([this]() { Thread(); }) {
@@ -139,7 +143,7 @@ class SubscribableRemoteStream final {
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(index_),
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(index_, checked_subscription_),
                           [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                           [this](const std::string& chunk_body) { OnChunk(chunk_body); },
                           [this]() {}));
@@ -217,6 +221,7 @@ class SubscribableRemoteStream final {
     const std::function<void()> done_callback_;
     F& subscriber_;
     uint64_t index_;
+    const bool checked_subscription_;
     const idxts_t unused_idxts_;
     current::WaitableAtomic<std::string> subscription_id_;
     std::atomic_bool terminate_subscription_requested_;
@@ -236,9 +241,10 @@ class SubscribableRemoteStream final {
     RemoteSubscriberScope(Borrowed<RemoteStream> remote_stream,
                           F& subscriber,
                           uint64_t start_idx,
+                          bool checked_subscription,
                           std::function<void()> done_callback)
-        : base_t(std::move(
-              std::make_unique<subscriber_thread_t>(std::move(remote_stream), subscriber, start_idx, done_callback))) {}
+        : base_t(std::move(std::make_unique<subscriber_thread_t>(
+              std::move(remote_stream), subscriber, start_idx, checked_subscription, done_callback))) {}
   };
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
@@ -257,9 +263,10 @@ class SubscribableRemoteStream final {
   template <typename F>
   RemoteSubscriberScope<F, entry_t> Subscribe(F& subscriber,
                                               uint64_t start_idx = 0u,
+                                              bool checked_subscription = false,
                                               std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    return RemoteSubscriberScope<F, entry_t>(stream_, subscriber, start_idx, done_callback);
+    return RemoteSubscriberScope<F, entry_t>(stream_, subscriber, start_idx, checked_subscription, done_callback);
   }
 
  private:

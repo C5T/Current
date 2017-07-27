@@ -35,6 +35,7 @@ DEFINE_string(replicated_stream_data_filename,
 DEFINE_uint64(total_entries, 0, "If set, the maximum number of entries to replicate.");
 DEFINE_double(seconds, 0, "If set, the maximum number of seconds to run the benchmark for.");
 DEFINE_bool(do_not_remove_replicated_data, false, "Set to not remove the data file.");
+DEFINE_bool(use_checked_subscription, false, "Set to use checked subscription for the replication");
 
 inline std::chrono::microseconds FastNow() {
   return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
@@ -65,7 +66,7 @@ void Replicate(ARGS&&... args) {
   {
     std::cerr << "Subscribing to the stream ..." << std::flush;
     const std::chrono::milliseconds print_delay(500);
-    const auto subscriber_scope = remote_stream.Subscribe(*replicator);
+    const auto subscriber_scope = remote_stream.Subscribe(*replicator, 0, FLAGS_use_checked_subscription);
     std::cerr << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + print_delay;
     while (replicated_stream->Data()->Size() < records_to_replicate) {
