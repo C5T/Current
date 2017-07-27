@@ -261,9 +261,10 @@ class Stream final {
     return Value(owned_publisher_);
   }
 
-  // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
+  enum class SubscriptionMode : int { Safe, Unsafe };
 
-  template <typename TYPE_SUBSCRIBED_TO, typename F>
+  // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
+  template <typename TYPE_SUBSCRIBED_TO, typename F, SubscriptionMode SM>
   class SubscriberThreadInstance final : public current::stream::SubscriberScope::SubscriberThread {
    private:
     bool this_is_valid_;
@@ -331,6 +332,45 @@ class Stream final {
       }
     }
 
+    template <SubscriptionMode MODE>
+    ENABLE_IF<MODE == SubscriptionMode::Safe, current::ss::EntryResponse> PassEntriesToSubscriber(
+        const impl_t& bare_impl, uint64_t index, uint64_t size, bool& terminate_sent) {
+      for (const auto& e : bare_impl.persister.Iterate(index, size)) {
+        if (!terminate_sent && terminate_signal_) {
+          terminate_sent = true;
+          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
+                subscriber_,
+                [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
+                e.entry,
+                e.idx_ts,
+                bare_impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      return ss::EntryResponse::More;
+    }
+
+    template <SubscriptionMode MODE>
+    ENABLE_IF<MODE == SubscriptionMode::Unsafe, current::ss::EntryResponse> PassEntriesToSubscriber(
+        const impl_t& bare_impl, uint64_t index, uint64_t size, bool& terminate_sent) {
+      for (const auto& e : bare_impl.persister.IterateUnsafe(index, size)) {
+        if (!terminate_sent && terminate_signal_) {
+          terminate_sent = true;
+          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      return ss::EntryResponse::More;
+    }
+
     void ThreadImpl(const impl_t& bare_impl, uint64_t begin_idx) {
       auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
@@ -347,21 +387,8 @@ class Stream final {
         size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
         if (head_idx.head > head) {
           if (size > index) {
-            for (const auto& e : bare_impl.persister.Iterate(index, size)) {
-              if (!terminate_sent && terminate_signal_) {
-                terminate_sent = true;
-                if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
-                  return;
-                }
-              }
-              if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
-                      subscriber_,
-                      [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
-                      e.entry,
-                      e.idx_ts,
-                      bare_impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
-                return;
-              }
+            if (PassEntriesToSubscriber<SM>(bare_impl, index, size, terminate_sent) == ss::EntryResponse::Done) {
+              return;
             }
             index = size;
             head = Value(head_idx.idxts).us;
@@ -387,147 +414,33 @@ class Stream final {
     }
   };
 
-  template <typename F>
-  class SubscriberThreadUnsafeInstance final : public current::stream::SubscriberScope::SubscriberThread {
-   private:
-    bool this_is_valid_;
-    std::function<void()> done_callback_;
-    current::WaitableTerminateSignal terminate_signal_;
-    BorrowedWithCallback<impl_t> impl_;
-    F& subscriber_;
-    const uint64_t begin_idx_;
-    std::thread thread_;
-
-    SubscriberThreadUnsafeInstance() = delete;
-    SubscriberThreadUnsafeInstance(const SubscriberThreadUnsafeInstance&) = delete;
-    SubscriberThreadUnsafeInstance(SubscriberThreadUnsafeInstance&&) = delete;
-    void operator=(const SubscriberThreadUnsafeInstance&) = delete;
-    void operator=(SubscriberThreadUnsafeInstance&&) = delete;
-
-   public:
-    SubscriberThreadUnsafeInstance(Borrowed<impl_t> impl,
-                                   F& subscriber,
-                                   uint64_t begin_idx,
-                                   std::function<void()> done_callback)
-        : this_is_valid_(false),
-          done_callback_(done_callback),
-          terminate_signal_(),
-          impl_(std::move(impl),
-                [this]() {
-                  // NOTE(dkorolev): I'm uncertain whether this lock is necessary here. Keeping it for safety now.
-                  std::lock_guard<std::mutex> lock(impl_->publishing_mutex);
-                  terminate_signal_.SignalExternalTermination();
-                }),
-          subscriber_(subscriber),
-          begin_idx_(begin_idx),
-          thread_(&SubscriberThreadUnsafeInstance::Thread, this) {
-      // Must guard against the constructor of `BorrowedWithCallback<impl_t> impl_` throwing.
-      // NOTE(dkorolev): This is obsolete now, but keeping the logic for now, to keep it safe. -- D.K.
-      this_is_valid_ = true;
-    }
-
-    ~SubscriberThreadUnsafeInstance() {
-      if (this_is_valid_) {
-        // The constructor has completed successfully. The thread has started, and `impl_` is valid.
-        CURRENT_ASSERT(thread_.joinable());
-        if (!subscriber_thread_done_) {
-          std::lock_guard<std::mutex> lock(impl_->publishing_mutex);
-          terminate_signal_.SignalExternalTermination();
-        }
-        thread_.join();
-      } else {
-        // The constructor has not completed successfully. The thread was not started, and `impl_` is garbage.
-        if (done_callback_) {
-          done_callback_();
-        }
-      }
-    }
-
-    void Thread() {
-      // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
-      // strictly within the scope of existence of `impl_t` contained in `impl_`.
-      const impl_t& bare_impl = *impl_;
-      ThreadImpl(bare_impl, begin_idx_);
-      subscriber_thread_done_ = true;
-      std::lock_guard<std::mutex> lock(bare_impl.http_subscriptions_mutex);
-      if (done_callback_) {
-        done_callback_();
-      }
-    }
-
-    void ThreadImpl(const impl_t& bare_impl, uint64_t begin_idx) {
-      auto head = std::chrono::microseconds(-1);
-      uint64_t index = begin_idx;
-      uint64_t size = 0;
-      bool terminate_sent = false;
-      while (true) {
-        if (!terminate_sent && terminate_signal_) {
-          terminate_sent = true;
-          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
-            return;
-          }
-        }
-        const auto head_idx = bare_impl.persister.HeadAndLastPublishedIndexAndTimestamp();
-        size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
-        if (head_idx.head > head) {
-          if (size > index) {
-            for (const auto& e : bare_impl.persister.IterateUnsafe(index, size)) {
-              if (!terminate_sent && terminate_signal_) {
-                terminate_sent = true;
-                if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
-                  return;
-                }
-              }
-              if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp()) ==
-                  ss::EntryResponse::Done) {
-                return;
-              }
-            }
-            head = Value(head_idx.idxts).us;
-          }
-          if (size > begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
-            return;
-          }
-          head = head_idx.head;
-        } else {
-          std::unique_lock<std::mutex> lock(bare_impl.publishing_mutex);
-          current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_impl.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(
-              lock,
-              [this, &bare_impl, &index, &begin_idx, &head]() {
-                return terminate_signal_ ||
-                       bare_impl.persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
-                       (index > begin_idx &&
-                        bare_impl.persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
-                            head);
-              });
-        }
-      }
-    }
-  };
-
   // Expose the means to control the scope of the subscriber.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  class SubscriberScope final : public current::stream::SubscriberScope {
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t, SubscriptionMode SM = SubscriptionMode::Unsafe>
+  class SubscriberScopeImpl final : public current::stream::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     using base_t = current::stream::SubscriberScope;
 
    public:
-    using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
+    using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F, SM>;
 
-    SubscriberScope(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
+    SubscriberScopeImpl(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
         : base_t(
               std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
     }
 
-    SubscriberScope(SubscriberScope&&) = default;
-    SubscriberScope& operator=(SubscriberScope&&) = default;
+    SubscriberScopeImpl(SubscriberScopeImpl&&) = default;
+    SubscriberScopeImpl& operator=(SubscriberScopeImpl&&) = default;
 
-    SubscriberScope() = delete;
-    SubscriberScope(const SubscriberScope&) = delete;
-    SubscriberScope& operator=(const SubscriberScope&) = delete;
+    SubscriberScopeImpl() = delete;
+    SubscriberScopeImpl(const SubscriberScopeImpl&) = delete;
+    SubscriberScopeImpl& operator=(const SubscriberScopeImpl&) = delete;
   };
+
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
+  using SubscriberScope = SubscriberScopeImpl<F, TYPE_SUBSCRIBED_TO, SubscriptionMode::Safe>;
+  template <typename F>
+  using SubscriberScopeUnsafe = SubscriberScopeImpl<F>;
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
@@ -536,27 +449,6 @@ class Stream final {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(impl_, subscriber, begin_idx, done_callback);
   }
-
-  template <typename F>
-  class SubscriberScopeUnsafe final : public current::stream::SubscriberScope {
-   private:
-    using base_t = current::stream::SubscriberScope;
-
-   public:
-    using subscriber_thread_t = SubscriberThreadUnsafeInstance<F>;
-
-    SubscriberScopeUnsafe(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
-        : base_t(
-              std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
-    }
-
-    SubscriberScopeUnsafe(SubscriberScopeUnsafe&&) = default;
-    SubscriberScopeUnsafe& operator=(SubscriberScopeUnsafe&&) = default;
-
-    SubscriberScopeUnsafe() = delete;
-    SubscriberScopeUnsafe(const SubscriberScopeUnsafe&) = delete;
-    SubscriberScopeUnsafe& operator=(const SubscriberScopeUnsafe&) = delete;
-  };
 
   template <typename F>
   SubscriberScopeUnsafe<F> SubscribeUnsafe(F& subscriber,
