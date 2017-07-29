@@ -422,6 +422,7 @@ TEST(Stream, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
 namespace stream_unittest {
 
 // Collector class for `SubscribeToStreamViaHTTP` test.
+template <typename ENTRY>
 struct RecordsCollectorImpl {
   std::atomic_size_t count_;
   std::vector<std::string>& rows_;
@@ -431,9 +432,9 @@ struct RecordsCollectorImpl {
   RecordsCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
       : count_(0u), rows_(rows), entries_(entries) {}
 
-  EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
+  EntryResponse operator()(const ENTRY& entry, idxts_t current, idxts_t) {
     rows_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
-    entries_.push_back(JSON(entry));
+    entries_.push_back(JSON(entry) + '\n');
     ++count_;
     return EntryResponse::More;
   }
@@ -445,7 +446,34 @@ struct RecordsCollectorImpl {
   TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
 
-using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl, RecordWithTimestamp>;
+struct RecordsUnsafeCollectorImpl {
+  std::atomic_size_t count_;
+  std::vector<std::string>& rows_;
+  std::vector<std::string>& entries_;
+
+  RecordsUnsafeCollectorImpl() = delete;
+  RecordsUnsafeCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
+      : count_(0u), rows_(rows), entries_(entries) {}
+
+  EntryResponse operator()(const std::string& entry, uint64_t, idxts_t) {
+    rows_.push_back(entry + '\n');
+    const auto tab_pos = entry.find('\t');
+    entries_.push_back((tab_pos != std::string::npos ? entry.substr(tab_pos + 1) : entry) + '\n');
+    ++count_;
+    return EntryResponse::More;
+  }
+
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
+
+  static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
+
+  TerminationResponse Terminate() { return TerminationResponse::Terminate; }
+};
+
+using RecordsWithTimestampCollector =
+    current::ss::StreamSubscriber<RecordsCollectorImpl<RecordWithTimestamp>, RecordWithTimestamp>;
+using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl<Record>, Record>;
+using RecordsUnsafeCollector = current::ss::StreamSubscriber<RecordsUnsafeCollectorImpl, Record>;
 
 }  // namespace stream_unittest
 
@@ -638,11 +666,11 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
 
   std::vector<std::string> s;
   std::vector<std::string> e;
-  RecordsCollector collector(s, e);
+  RecordsWithTimestampCollector collector(s, e);
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
-    const current::stream::Stream<RecordWithTimestamp>::SubscriberScope<RecordsCollector> scope(
+    const current::stream::Stream<RecordWithTimestamp>::SubscriberScope<RecordsWithTimestampCollector> scope(
         exposed_stream->Subscribe(collector));
     while (collector.count_ < 4u) {
       std::this_thread::yield();
@@ -818,21 +846,21 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
   {
     {
       const std::string body = HTTP(GET(base_url + "?n=1&array&checked")).body;
-      EXPECT_EQ("[\n" + e[0] + "\n]\n", body);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+      EXPECT_EQ("[\n" + e[0] + "]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]) + '\n');
       const std::string body_unsafe = HTTP(GET(base_url + "?n=1&array")).body;
-      EXPECT_EQ("[\n" + e[0] + "\n]\n", body_unsafe);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]));
+      EXPECT_EQ("[\n" + e[0] + "]\n", body_unsafe);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]) + '\n');
     }
     {
       const std::string body = HTTP(GET(base_url + "?n=2&array&checked")).body;
-      EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
-      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]));
+      EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]) + '\n');
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]) + '\n');
       const std::string body_unsafe = HTTP(GET(base_url + "?n=2&array")).body;
-      EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body_unsafe);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]));
-      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[1]));
+      EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body_unsafe);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]) + '\n');
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[1]) + '\n');
     }
   }
 
@@ -1040,6 +1068,185 @@ TEST(Stream, ParsesFromFile) {
       << joined_expected_values << " != " << d.results_;
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unsafe.results_;
+}
+
+TEST(Stream, UnsafeVsSafeSubscription) {
+  using namespace stream_unittest;
+
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  const std::string signature = golden_signature();
+  std::vector<std::string> lines = {"{\"index\":0,\"us\":100}\t{\"x\":1}",
+                                    "{\"index\":1,\"us\":200}\t{\"x\":2}",
+                                    "#head 00000000000000000300",
+                                    "{\"index\":2,\"us\":400}\t{\"x\":3}",
+                                    "#head 00000000000000000500"};
+  const auto CombineFileContents = [&]() -> std::string {
+    std::string contents = signature;
+    for (const auto& line : lines) {
+      contents += line + '\n';
+    }
+    return contents;
+  };
+
+  current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+  auto exposed_stream =
+      current::stream::Stream<Record, current::persistence::File>::CreateStream(persistence_file_name);
+
+  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
+  const auto scope = HTTP(FLAGS_stream_http_test_port).Register("/exposed", *exposed_stream);
+
+  const auto CollectSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+    rows.clear();
+    entries.clear();
+    RecordsCollector collector(entries, rows);
+    const auto scope = exposed_stream->Subscribe(collector);
+    while (collector.count_ < 3u) {
+      std::this_thread::yield();
+    }
+  };
+  const auto CollectUnsafeSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+    rows.clear();
+    entries.clear();
+    RecordsUnsafeCollector collector(entries, rows);
+    const auto scope = exposed_stream->SubscribeUnsafe(collector);
+    while (collector.count_ < 3u) {
+      std::this_thread::yield();
+    }
+  };
+
+  {
+    std::vector<std::string> all_entries;
+    std::vector<std::string> all_rows;
+    const auto expected_rows =
+        "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+        "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+    const auto expected_entries =
+        "{\"x\":1}\n"
+        "{\"x\":2}\n"
+        "{\"x\":3}\n";
+
+    CollectSubscriptionResult(all_entries, all_rows);
+    EXPECT_EQ(expected_rows, Join(all_rows, ""));
+    EXPECT_EQ(expected_entries, Join(all_entries, ""));
+
+    CollectUnsafeSubscriptionResult(all_entries, all_rows);
+    EXPECT_EQ(expected_rows, Join(all_rows, ""));
+    EXPECT_EQ(expected_entries, Join(all_entries, ""));
+
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait&checked")).body);
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only&checked")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+  }
+
+  {
+    // Swap the first two entries to provoke the `InconsistentIndexException` exceptions.
+    std::swap(lines[0], lines[1]);
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+        "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+    const auto expected_entries =
+        "{\"x\":2}\n"
+        "{\"x\":1}\n"
+        "{\"x\":3}\n";
+
+    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    std::swap(lines[0], lines[1]);
+  }
+
+  {
+    // Produce wrong JSON instead of an entire entry - replace both index and value with garbage.
+    lines[1].replace(0, lines[1].length(), lines[1].length(), 'A');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+    const auto expected_entries =
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"x\":3}\n";
+
+    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", HTTP(GET(base_url + "?i=1&n=1&nowait")).body);
+    EXPECT_EQ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", HTTP(GET(base_url + "?i=1&n=1&nowait&entries_only")).body);
+    EXPECT_EQ("{\"index\":2,\"us\":400}\t{\"x\":3}\n", HTTP(GET(base_url + "?i=2&n=1&nowait")).body);
+    EXPECT_EQ("{\"x\":3}\n", HTTP(GET(base_url + "?i=2&n=1&nowait&entries_only")).body);
+  }
+
+  {
+    // Produce wrong JSON instead of the index and timestamp only and leave the entry value valid.
+    const auto tab_pos = lines[0].find('\t');
+    ASSERT_FALSE(std::string::npos == tab_pos);
+    lines[0].replace(0, tab_pos, tab_pos, 'B');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+    const auto expected_entries =
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"x\":3}\n";
+
+    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ("BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n", HTTP(GET(base_url + "?i=0&n=1&nowait")).body);
+    EXPECT_EQ("{\"x\":1}\n", HTTP(GET(base_url + "?i=0&n=1&nowait&entries_only")).body);
+  }
+
+  {
+    // Produce wrong JSON instead of the entry's value only and leave index and timestamp section valid.
+    const auto tab_pos = lines[3].find('\t');
+    ASSERT_FALSE(std::string::npos == tab_pos);
+    const auto length_to_replace = lines[3].length() - (tab_pos + 1);
+    lines[3].replace(tab_pos + 1, length_to_replace, length_to_replace, 'C');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":400}\tCCCCCCC\n";
+    const auto expected_entries =
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "CCCCCCC\n";
+
+    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ("{\"index\":2,\"us\":400}\tCCCCCCC\n", HTTP(GET(base_url + "?i=2&n=1&nowait")).body);
+    EXPECT_EQ("CCCCCCC\n", HTTP(GET(base_url + "?i=2&n=1&nowait&entries_only")).body);
+  }
 }
 
 TEST(Stream, ParseArbitrarilySplitChunks) {
