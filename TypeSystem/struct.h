@@ -431,6 +431,18 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define IS_VALID_CURRENT_STRUCT(s) \
   ::current::reflection::CurrentStructFieldsConsistency<s, ::current::reflection::FieldCounter<s>::value>::Check()
 
+#ifndef CURRENT_WINDOWS
+#define CURRENT_EXPORTED_TEMPLATED_STRUCT(original_struct_name, original_template_inner_type)        \
+  constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
+  using template_inner_t_internal = std::true_type;                                                  \
+  using template_inner_t_impl = original_template_inner_type
+#else
+// I sure hope this is how it should be. -- D.K.
+#define CURRENT_EXPORTED_TEMPLATED_STRUCT(original_struct_name, original_template_inner_type)        \
+  constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
+  using template_inner_t = original_template_inner_type
+#endif
+
 namespace current {
 namespace reflection {
 

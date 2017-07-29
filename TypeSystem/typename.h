@@ -30,49 +30,129 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <chrono>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 #include "types.h"
+#include "optional.h"
+#include "enum.h"
 
 #include "../Bricks/template/decay.h"
 
 namespace current {
 namespace reflection {
 
-template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT>
+namespace i {  // impl
+
+template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT, bool TRUE_IF_ENUM>
 struct CurrentTypeNameImpl;
 
 template <typename T>
-struct CurrentTypeNameImpl<T, true, false> {
-  static const char* GetCurrentTypeName() { return T::CURRENT_STRUCT_NAME(); }
+struct CurrentTypeNameCaller {
+  using impl_t = CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum<T>::value>;
+  static const char* CallGetCurrentTypeName() {
+    static const std::string value = impl_t::GetCurrentTypeName();
+    return value.c_str();
+  }
+};
+
+template <typename T, bool>
+struct CallRightGetCurrentStructName {
+  static const char* DoIt() { return T::CURRENT_STRUCT_NAME(); }
 };
 
 template <typename T>
-struct CurrentTypeNameImpl<T, false, true> {
-  static std::string GetCurrentTypeName() { return T::VariantName(); }
+struct CallRightGetCurrentStructName<T, true> {
+  static const char* DoIt() { return T::CURRENT_EXPORTED_STRUCT_NAME(); }
 };
 
 template <typename T>
-inline std::string CurrentTypeName() {
-  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T)>::GetCurrentTypeName();
-}
-
-// For JSON serialization and other repetitive operations, enable returning type name as a `const char*`.
-template <typename T, typename>
-struct CurrentTypeNameAsConstCharPtrImpl {
-  static const char* Value() {
-    static const std::string cached_name = CurrentTypeName<T>();
-    return cached_name.c_str();
+struct CurrentTypeNameImpl<T, true, false, false> {
+  static const char* GetCurrentTypeName() {
+    return CallRightGetCurrentStructName<T, sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME<T>::value>::DoIt();
   }
 };
 
 template <typename T>
-struct CurrentTypeNameAsConstCharPtrImpl<T, const char*> {
-  static const char* Value() { return CurrentTypeName<T>(); }
+struct CurrentTypeNameImpl<T, false, true, false> {
+  static std::string GetCurrentTypeName() { return T::VariantName(); }
 };
 
 template <typename T>
-inline const char* CurrentTypeNameAsConstCharPtr() {
-  using impl_t = CurrentTypeNameAsConstCharPtrImpl<T, decltype(CurrentTypeName<T>())>;
-  return impl_t::Value();
+struct CurrentTypeNameImpl<T, false, false, true> {
+  static std::string GetCurrentTypeName() { return reflection::EnumName<T>(); }
+};
+
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+  template <>                                                                                                   \
+  struct CurrentTypeNameImpl<cpp_type, false, false, false> {                                                   \
+    static const char* GetCurrentTypeName() { return #cpp_type; }                                               \
+  };
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+template <typename T>
+struct CurrentTypeNameImpl<std::vector<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::vector<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <typename T>
+struct CurrentTypeNameImpl<std::set<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::set<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <typename T>
+struct CurrentTypeNameImpl<std::unordered_set<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::unordered_set<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <typename TF, typename TS>
+struct CurrentTypeNameImpl<std::pair<TF, TS>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::pair<") + CurrentTypeNameCaller<TF>::CallGetCurrentTypeName() + ", " +
+           CurrentTypeNameCaller<TS>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <typename TK, typename TV>
+struct CurrentTypeNameImpl<std::map<TK, TV>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::map<") + CurrentTypeNameCaller<TK>::CallGetCurrentTypeName() + ", " +
+           CurrentTypeNameCaller<TV>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <typename TK, typename TV>
+struct CurrentTypeNameImpl<std::unordered_map<TK, TV>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::unordered_map<") + CurrentTypeNameCaller<TK>::CallGetCurrentTypeName() + ", " +
+           CurrentTypeNameCaller<TV>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <typename T>
+struct CurrentTypeNameImpl<Optional<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("Optional<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+}  // namespace current::reflection::i
+
+template <typename T>
+inline const char* CurrentTypeName() {
+  return i::CurrentTypeNameCaller<T>::CallGetCurrentTypeName();
 }
 
 namespace impl {
@@ -87,7 +167,9 @@ struct TypeListNamesAsCSV<TypeListImpl<T>> {
 
 template <typename T, typename... TS>
 struct TypeListNamesAsCSV<TypeListImpl<T, TS...>> {
-  static std::string Value() { return CurrentTypeName<T>() + '_' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value(); }
+  static std::string Value() {
+    return std::string(CurrentTypeName<T>()) + '_' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value();
+  }
 };
 
 template <typename T>

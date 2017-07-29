@@ -124,6 +124,23 @@ struct CheckIntegrityImplMethodTest {
   static constexpr bool value = HasCheckIntegrityImplMethod<ENTRY>(0);
 };
 
+// Whether an `CURRENT_EXPORTED_STRUCT_NAME()` method is defined for a type.
+template <typename ENTRY>
+constexpr bool Has_CURRENT_EXPORTED_STRUCT_NAME_Impl(char) {
+  return false;
+}
+
+template <typename ENTRY>
+constexpr auto Has_CURRENT_EXPORTED_STRUCT_NAME_Impl(int)
+    -> decltype(std::declval<const ENTRY>().CURRENT_EXPORTED_STRUCT_NAME(), bool()) {
+  return true;
+}
+
+template <typename ENTRY>
+struct Has_CURRENT_EXPORTED_STRUCT_NAME {
+  static constexpr bool value = Has_CURRENT_EXPORTED_STRUCT_NAME_Impl<ENTRY>(0);
+};
+
 }  // namespace crnt::sfinae
 }  // namespace crnt
 
@@ -136,6 +153,7 @@ namespace sfinae {
 using ::crnt::sfinae::HasExistsImplMethod;
 using ::crnt::sfinae::ValueImplMethodTest;
 using ::crnt::sfinae::HasCheckIntegrityImplMethod;
+using ::crnt::sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME;
 }  // namespace current::sfinae
 }  // namespace current
 

@@ -179,12 +179,18 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
   static void PrintCurrentStruct(std::ostream& os,
                                  const ReflectedType_Struct& s,
                                  std::function<std::string(TypeID, const std::string&)> type_name) {
-    const std::string struct_name = s.CanonicalName();
+    const std::string struct_name = s.native_name;
     os << "CURRENT_STRUCT(" << struct_name;
     if (s.super_id != TypeID::CurrentStruct) {
       os << ", " << type_name(s.super_id, "");
     }
     os << ") {\n";
+    if (Exists(s.template_id)) {
+      CURRENT_ASSERT(s.native_name.length() >= 3u);
+      CURRENT_ASSERT(s.native_name.substr(s.native_name.length() - 2u) == "_Z");
+      os << "  CURRENT_EXPORTED_TEMPLATED_STRUCT(" << s.native_name.substr(0, s.native_name.length() - 2) << ", "
+         << type_name(Value(s.template_id), "") << ");\n";
+    }
     for (const auto& f : s.fields) {
       // Type name should be put into parentheses if it contains commas. Putting all type names
       // into parentheses won't hurt, I've added the condition purely for aesthetic purposes. -- D.K.
@@ -223,7 +229,7 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
   static void PrintCurrentStruct(std::ostream& os,
                                  const ReflectedType_Struct& s,
                                  std::function<std::string(TypeID, const std::string&)> type_name) {
-    os << "struct " << s.CanonicalName();
+    os << "struct " << s.TemplateInnerTypeExpandedName();
     if (s.super_id != TypeID::CurrentStruct) {
       os << " : " << type_name(s.super_id, "::");
     }
@@ -348,9 +354,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             oss_ << "Optional<" << self_.TypeName(o.optional_type, nmspc_) << '>';
           }
           void operator()(const ReflectedType_Variant& v) const { oss_ << OptionalNamespaceName(v) << v.name; }
-          void operator()(const ReflectedType_Struct& s) const {
-            oss_ << OptionalNamespaceName(s) << s.CanonicalName();
-          }
+          void operator()(const ReflectedType_Struct& s) const { oss_ << OptionalNamespaceName(s) << s.native_name; }
         };
 
         std::ostringstream oss;
@@ -390,9 +394,17 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         os_ << "CURRENT_NAMESPACE(" << nmspc << ") {\n";
         for (const auto& input_type : types_) {
           const auto& type_substance = input_type.second;
-          if (Exists<ReflectedType_Struct>(type_substance) || Exists<ReflectedType_Variant>(type_substance) ||
-              Exists<ReflectedType_Enum>(type_substance)) {
+          // Do not expose types that are templated, as their names may collide.
+          if ((Exists<ReflectedType_Struct>(type_substance) &&
+               !Exists(Value<ReflectedType_Struct>(type_substance).template_id)) ||
+              Exists<ReflectedType_Variant>(type_substance) || Exists<ReflectedType_Enum>(type_substance)) {
             os_ << "  CURRENT_NAMESPACE_TYPE(" << TypeName(input_type.first, "::")
+                << ", current_userspace::" << TypeName(input_type.first) << ");\n";
+          } else if (Exists<ReflectedType_Struct>(type_substance) &&
+                     Exists(Value<ReflectedType_Struct>(type_substance).template_id)) {
+            const std::string type_name = TypeName(input_type.first, "::");
+            os_ << "  CURRENT_NAMESPACE_TYPE("
+                << Value<ReflectedType_Struct>(type_substance).TemplateFullNameDecorator()(type_name)
                 << ", current_userspace::" << TypeName(input_type.first) << ");\n";
           }
         }
@@ -400,6 +412,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           const NamespaceToExpose& expose = Value(namespace_to_expose_);
           os_ << "\n  // Privileged types.\n";
           for (const auto& t : expose.types) {
+            // NOTE(dkorolev): If the uses requests to expose a templated type, it's their responsibility ]
+            // to only do it for at most one instantiation per type.
             os_ << "  CURRENT_NAMESPACE_TYPE(" << t.first << ", current_userspace::" << TypeName(t.second) << ");\n";
           }
         }
@@ -420,15 +434,21 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             // Default evolver for `CURRENT_STRUCT`.
             const auto bare_struct_name = TypeName(input_type.first, "::");
             const auto namespaced_origin_struct_name = TypeName(input_type.first, "typename " + nmspc);
-            const auto namespaced_from_struct_name = TypeName(input_type.first, "typename FROM");
-            const auto namespaced_into_struct_name = TypeName(input_type.first, "typename INTO");
+            auto namespaced_from_struct_name = TypeName(input_type.first, "typename FROM");
+            auto namespaced_into_struct_name = TypeName(input_type.first, "typename INTO");
             const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
             std::vector<std::string> fields;
             for (const auto& f : s.fields) {
               fields.push_back(f.name);
             }
             os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
-            const std::string origin = namespaced_origin_struct_name;
+            std::string origin = namespaced_origin_struct_name;
+            if (Exists(s.template_id)) {
+              const auto f = s.TemplateFullNameDecorator();
+              origin = f(origin);
+              namespaced_from_struct_name = f(namespaced_from_struct_name);
+              namespaced_into_struct_name = f(namespaced_into_struct_name);
+            }
             const std::string origin_guard =
                 "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
@@ -572,8 +592,12 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             const auto& type_substance = input_type.second;
             if (Exists<ReflectedType_Struct>(type_substance)) {
               // Boilerplate evolver for `CURRENT_STRUCT`.
-              const auto bare_struct_name = TypeName(input_type.first, "::");
+              auto bare_struct_name = TypeName(input_type.first, "::");
               const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
+              if (Exists(s.template_id)) {
+                const auto f = s.TemplateFullNameDecorator();
+                bare_struct_name = f(bare_struct_name);
+              }
               std::vector<std::string> fields;
               for (const auto& f : s.fields) {
                 fields.push_back(f.name);
@@ -719,7 +743,9 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(o.optional_type)) << " option";
           }
           void operator()(const ReflectedType_Variant& v) const { oss_ << SanitizeFSharpSymbol(v.name); }
-          void operator()(const ReflectedType_Struct& s) const { oss_ << SanitizeFSharpSymbol(s.CanonicalName()); }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << SanitizeFSharpSymbol(s.TemplateInnerTypeExpandedName());
+          }
         };
 
         std::ostringstream oss;
@@ -784,7 +810,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       RecursivelyListStructFieldsForFSharp(os, s);
       const std::string fields = os.str();
       if (!fields.empty()) {
-        os_ << "\ntype " << SanitizeFSharpSymbol(s.CanonicalName()) << " = {\n" << fields << "}\n";
+        os_ << "\ntype " << SanitizeFSharpSymbol(s.TemplateInnerTypeExpandedName()) << " = {\n" << fields << "}\n";
       } else {
         empty_structs_.insert(s.type_id);
       }
@@ -858,7 +884,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
             }
             oss_ << "Algebraic " << current::strings::Join(cases, " / ") << " (a.k.a. `" << v.name << "`)";
           }
-          void operator()(const ReflectedType_Struct& s) const { oss_ << '`' << s.CanonicalName() << '`'; }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << '`' << s.TemplateInnerTypeExpandedName() << '`';
+          }
         };
 
         std::ostringstream oss;
@@ -910,9 +938,10 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       RecursivelyListStructFields(temporary_os, s);
       const std::string fields = temporary_os.str();
       // Print empty structs to Markdown, too. Their names need to be documented anyway.
-      os_ << "\n### `" << s.CanonicalName() << '`';
+      os_ << "\n### `" << s.TemplateInnerTypeExpandedName() << '`';
       if (s.super_id != TypeID::CurrentStruct) {
-        os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).CanonicalName() << '`';
+        os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).TemplateInnerTypeExpandedName()
+            << '`';
       }
       if (!fields.empty()) {
         os_ << "\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n" << fields << '\n';
@@ -1041,7 +1070,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
           void operator()(const ReflectedType_Struct& s) const {
             variant_clean_type_names::object result;
-            result.kind = s.CanonicalName();
+            result.kind = s.TemplateInnerTypeExpandedName();
             result_ = result;
           }
         };
@@ -1094,7 +1123,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     void operator()(const ReflectedType_Struct& s) const {
       JSONSchemaObject object;
-      object.object = s.CanonicalName();
+      object.object = s.TemplateInnerTypeExpandedName();
       RecursivelyListStructFieldsForJSON(object, s);
       schema_object_.push_back(std::move(object));
     }
@@ -1130,6 +1159,7 @@ struct LanguageTypeScriptReservedWordException : Exception {
 template <>
 struct LanguageSyntaxImpl<Language::TypeScript> final {
   static std::string Header(const std::string& unique_hash) {
+    // clang-format off
     return (
       std::string("// Autogenerated TypeScript and io-ts types for C5T/Current JSON.\n") +
       "// peerDependencies: io-ts@0.5.1 c5t-current-schema-ts@0.1.0\n" +
@@ -1140,11 +1170,13 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       "import * as C5TCurrent from 'c5t-current-schema-ts';\n" +
       "\n"
     );
+    // clang-format on
   }
 
   static std::string Footer(const std::string&) { return ""; }
 
   static void AssertValidTypeScriptIdentifier(const std::string& name) {
+    // clang-format off
     // https://github.com/Microsoft/TypeScript/blob/2a6aacd0ef614a38b08ef712adc377c13648f373/doc/spec.md#2.2.1
     static std::set<std::string> typescript_reserved_words{
       // TypeScript keywords that are reserved and cannot be used as an Identifier:
@@ -1159,6 +1191,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       // Imported symbols:
       "iots", "C5TCurrent"
     };
+    // clang-format on
     if (typescript_reserved_words.count(name)) {
       CURRENT_THROW(LanguageTypeScriptReservedWordException(name));
     }
@@ -1189,9 +1222,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
-          void operator()(const ReflectedType_Enum& e) const {
-            oss_ << "C5TCurrent.Enum_IO('" << e.name << "')";
-          }
+          void operator()(const ReflectedType_Enum& e) const { oss_ << "C5TCurrent.Enum_IO('" << e.name << "')"; }
           void operator()(const ReflectedType_Vector& v) const {
             oss_ << "C5TCurrent.Vector_IO(" << self_.TypeName(v.element_type) << ")";
           }
@@ -1220,18 +1251,14 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
             oss_ << "C5TCurrent.UnorderedSet_IO(" << self_.TypeName(s.value_type) << ')';
           }
           void operator()(const ReflectedType_Pair& p) const {
-            oss_ << "C5TCurrent.Pair_IO(" << self_.TypeName(p.first_type) << ", "
-                 << self_.TypeName(p.second_type) << ')';
+            oss_ << "C5TCurrent.Pair_IO(" << self_.TypeName(p.first_type) << ", " << self_.TypeName(p.second_type)
+                 << ')';
           }
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << "C5TCurrent.Optional_IO(" << self_.TypeName(o.optional_type) << ')';
           }
-          void operator()(const ReflectedType_Variant& v) const {
-            oss_ << v.name << "_IO";
-          }
-          void operator()(const ReflectedType_Struct& s) const {
-            oss_ << s.CanonicalName() << "_IO";
-          }
+          void operator()(const ReflectedType_Variant& v) const { oss_ << v.name << "_IO"; }
+          void operator()(const ReflectedType_Struct& s) const { oss_ << s.TemplateInnerTypeExpandedName() << "_IO"; }
         };
 
         std::ostringstream oss;
@@ -1273,7 +1300,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
         os_ << "  " << name << ",\n";
       }
       typenames.push_back("iots.null");
-      os_ << "  " << "iots.null" << ",\n";
+      os_ << "  iots.null,\n";
       os_ << "], '" << v.name << "');\nexport type " << v.name << " = iots.UnionType<[\n";
       for (auto cit = typenames.begin(); cit != typenames.end(); ++cit) {
         os_ << "  typeof " << (*cit) << ((cit + 1) != typenames.end() ? ",\n" : "\n");
@@ -1299,7 +1326,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       }
     }
     void operator()(const ReflectedType_Struct& s) const {
-      const std::string name = s.CanonicalName();
+      const std::string name = s.TemplateInnerTypeExpandedName();
       AssertValidTypeScriptIdentifier(name);
       std::ostringstream os;
       ListStructFieldsForTypeScript(os, s);
