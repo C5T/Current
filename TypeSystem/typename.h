@@ -47,7 +47,7 @@ SOFTWARE.
 namespace current {
 namespace reflection {
 
-namespace impl {
+namespace i {  // impl
 
 template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT, bool TRUE_IF_ENUM>
 struct CurrentTypeNameImpl;
@@ -148,11 +148,11 @@ struct CurrentTypeNameImpl<Optional<T>, false, false, false> {
   }
 };
 
-}  // namespace current::reflection::impl
+}  // namespace current::reflection::i
 
 template <typename T>
 inline const char* CurrentTypeName() {
-  return impl::CurrentTypeNameCaller<T>::CallGetCurrentTypeName();
+  return i::CurrentTypeNameCaller<T>::CallGetCurrentTypeName();
 }
 
 namespace impl {

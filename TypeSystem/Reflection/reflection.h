@@ -49,7 +49,7 @@ namespace current {
 
 namespace reflection {
 
-namespace impl {
+namespace i {  // impl
 
 template <>
 struct CurrentTypeNameImpl<reflection::TypeID, false, false, true> {
@@ -57,27 +57,27 @@ struct CurrentTypeNameImpl<reflection::TypeID, false, false, true> {
 };
 
 template <typename T_TOP_LEVEL, typename T_CURRENT>
-struct RecursiveTypeTraverser;
+struct RTT;  // RecursiveTypeTraverser;
 
-}  // namespace current::reflection::impl
+}  // namespace current::reflection::i
 
 // `CurrentTypeID<T, T>()` is the "user-facing" type ID of `T`, whereas for each individual `T` the values
 // of `CurrentTypeID<TOP_LEVEL, T>()` may and will be different in case of cyclic dependencies, as the order
 // of their resolution by definition depends on which part of the cycle was the starting point.
 template <typename T_TOP_LEVEL, typename T_TYPE = T_TOP_LEVEL>
 reflection::TypeID CurrentTypeID() {
-  return ThreadLocalSingleton<reflection::impl::RecursiveTypeTraverser<T_TOP_LEVEL, T_TYPE>>().ComputeTypeID();
+  return ThreadLocalSingleton<reflection::i::RTT<T_TOP_LEVEL, T_TYPE>>().ComputeTypeID();
 }
 
-namespace impl {
+namespace i {
 
 // Used as a `ThreadLocalSingleton`.
-// Populated by the `ThreadLocalSingleton` of `RecursiveTypeTraverser<T_TOP_LEVEL, *>`.
+// Populated by the `ThreadLocalSingleton` of `RTT<T_TOP_LEVEL, *>`.
 template <typename T_TOP_LEVEL, typename T_STRUCT>
-struct TopLevelStructFieldsTraverser {
+struct TLSFT {  // TopLevelStructFieldsTraverser
   using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-  explicit TopLevelStructFieldsTraverser(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
+  explicit TLSFT(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
 
   template <typename T, int I>
   void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -97,7 +97,7 @@ struct TopLevelStructFieldsTraverser {
 };
 
 template <typename T_TOP_LEVEL>
-struct TopLevelTypeTraverser {
+struct TLTT {  // TopLevelTypeTraverser
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
   TypeID operator()(TypeSelector<cpp_type>) { return TypeID::current_type; }
 #include "../primitive_types.dsl.h"
@@ -146,10 +146,8 @@ struct TopLevelTypeTraverser {
   }
 
   template <typename CASE>
-  struct ReflectVariantCase {
-    ReflectVariantCase(ReflectedType_Variant& destination) {
-      destination.cases.push_back(CurrentTypeID<T_TOP_LEVEL, CASE>());
-    }
+  struct RVC {  // ReflectVariantCase
+    RVC(ReflectedType_Variant& destination) { destination.cases.push_back(CurrentTypeID<T_TOP_LEVEL, CASE>()); }
   };
 
   template <typename NAME, typename... TS>
@@ -157,9 +155,7 @@ struct TopLevelTypeTraverser {
     ReflectedType_Variant result;
     // TODO(dkorolev): `CurrentTypeName` ?
     result.name = VariantImpl<NAME, TypeListImpl<TS...>>::VariantName();
-    current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
-                                                         ReflectedType_Variant,
-                                                         TypeListImpl<TS...>>(result);
+    current::metaprogramming::call_all_constructors_with<RVC, ReflectedType_Variant, TypeListImpl<TS...>>(result);
     return CalculateTypeID(result);
   }
 
@@ -169,8 +165,7 @@ struct TopLevelTypeTraverser {
     result.native_name = CurrentTypeName<T>();
     result.super_id = ReflectSuper<T>();
     result.template_id = ReflectTemplateInnerType<T>();
-    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(
-        TopLevelStructFieldsTraverser<T_TOP_LEVEL, T>(result.fields));
+    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(TLSFT<T_TOP_LEVEL, T>(result.fields));
     return CalculateTypeID(result);
   }
 
@@ -219,8 +214,8 @@ struct TopLevelTypeTraverser {
 
 // Used as a `ThreadLocalSingleton`. "Reports" to a `ThreadLocalSingleton` of the top-level type.
 template <typename T_TOP_LEVEL, typename T_CURRENT>
-struct RecursiveTypeTraverser {
-  TopLevelTypeTraverser<T_TOP_LEVEL>& top = ThreadLocalSingleton<TopLevelTypeTraverser<T_TOP_LEVEL>>();
+struct RTT {
+  TLTT<T_TOP_LEVEL>& top = ThreadLocalSingleton<TLTT<T_TOP_LEVEL>>();
   TypeID type_id = TypeID::UninitializedType;
 
   TypeID ComputeTypeID() {
@@ -241,7 +236,7 @@ struct RecursiveTypeTraverser {
 
 // `ReflectorImpl` is a thread-local singleton to generate reflected types metadata at runtime.
 template <typename T_STRUCT>
-struct ReflectorInnerStructFieldsTraverser;
+struct RISFT;  // ReflectorInnerStructFieldsTraverser;
 
 struct ReflectorImpl {
   template <typename T>
@@ -340,8 +335,8 @@ struct ReflectorImpl {
   }
 
   template <typename CASE>
-  struct ReflectVariantCase {
-    ReflectVariantCase(ReflectedType_Variant& destination) {
+  struct RVC {  // ReflectVariantCase
+    RVC(ReflectedType_Variant& destination) {
       ThreadLocalSingleton<ReflectorImpl>().ReflectType<CASE>();
       destination.cases.push_back(CurrentTypeID<CASE>());
     }
@@ -352,9 +347,7 @@ struct ReflectorImpl {
     using T_VARIANT = VariantImpl<NAME, TypeListImpl<TS...>>;
     ReflectedType_Variant result;
     result.name = T_VARIANT::VariantName();  // TODO(dkorolev): `CurrentTypeName`?
-    current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
-                                                         ReflectedType_Variant,
-                                                         TypeListImpl<TS...>>(result);
+    current::metaprogramming::call_all_constructors_with<RVC, ReflectedType_Variant, TypeListImpl<TS...>>(result);
     result.type_id = CurrentTypeID<T_VARIANT>();
     return ReflectedType(std::move(result));
   }
@@ -365,7 +358,7 @@ struct ReflectorImpl {
     s.native_name = CurrentTypeName<T>();
     s.super_id = ReflectSuper<T>();
     s.template_id = ReflectTemplateInnerType<T>();
-    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(ReflectorInnerStructFieldsTraverser<T>(s.fields));
+    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(RISFT<T>(s.fields));
     s.type_id = CurrentTypeID<T>();
     return s;
   }
@@ -399,12 +392,10 @@ struct ReflectorImpl {
 };
 
 template <typename T_STRUCT>
-struct ReflectorInnerStructFieldsTraverser {
+struct RISFT {
   using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-  explicit ReflectorInnerStructFieldsTraverser(fields_list_t& fields) : fields_(fields) {
-    CURRENT_ASSERT(fields_.empty());
-  }
+  explicit RISFT(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
 
   template <typename T, int I>
   void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -425,9 +416,9 @@ struct ReflectorInnerStructFieldsTraverser {
   fields_list_t& fields_;
 };
 
-}  // namespace current::reflection::impl
+}  // namespace current::reflection::i
 
-inline impl::ReflectorImpl& Reflector() { return ThreadLocalSingleton<impl::ReflectorImpl>(); }
+inline i::ReflectorImpl& Reflector() { return ThreadLocalSingleton<i::ReflectorImpl>(); }
 
 }  // namespace current::reflection
 }  // namespace current
