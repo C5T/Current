@@ -70,6 +70,11 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  idxts_t PublishUnsafe(const std::string& entry_json) {
+    return IMPL::template PublisherPublishUnsafeImpl<MLS>(entry_json);
+  }
+
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
   void UpdateHead() {
     IMPL::template PublisherUpdateHeadImpl<MLS>(current::time::DefaultTimeArgument());
   }

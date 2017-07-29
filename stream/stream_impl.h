@@ -142,6 +142,13 @@ class StreamPublisherImpl {
     return result;
   }
 
+  template <current::locks::MutexLockStatus MLS>
+  idxts_t PublisherPublishUnsafeImpl(const std::string& entry_json) {
+    const auto result = data_->persister.template PersisterPublishUnsafeImpl<MLS>(entry_json);
+    data_->notifier.NotifyAllOfExternalWaitableEvent();
+    return result;
+  }
+
   template <current::locks::MutexLockStatus MLS, typename TIMESTAMP>
   void PublisherUpdateHeadImpl(TIMESTAMP&& timestamp) {
     data_->persister.template PersisterUpdateHeadImpl<MLS>(std::forward<TIMESTAMP>(timestamp));

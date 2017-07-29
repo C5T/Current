@@ -119,6 +119,8 @@ CURRENT_STRUCT(StreamSchemaFormatNotFoundError) {
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
+enum class SubscriptionMode : int { Safe, Unsafe };
+
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class Stream final {
  public:
@@ -261,8 +263,6 @@ class Stream final {
     return Value(owned_publisher_);
   }
 
-  enum class SubscriptionMode : int { Safe, Unsafe };
-
   // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
   template <typename TYPE_SUBSCRIBED_TO, typename F, SubscriptionMode SM>
   class SubscriberThreadInstance final : public current::stream::SubscriberScope::SubscriberThread {
@@ -335,8 +335,9 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Safe, current::ss::EntryResponse> PassEntriesToSubscriber(
-        const impl_t& bare_impl, uint64_t index, uint64_t size) {
+    ENABLE_IF<MODE == SubscriptionMode::Safe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& bare_impl,
+                                                                                         uint64_t index,
+                                                                                         uint64_t size) {
       for (const auto& e : bare_impl.persister.Iterate(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
@@ -357,8 +358,9 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Unsafe, current::ss::EntryResponse> PassEntriesToSubscriber(
-        const impl_t& bare_impl, uint64_t index, uint64_t size) {
+    ENABLE_IF<MODE == SubscriptionMode::Unsafe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& bare_impl,
+                                                                                           uint64_t index,
+                                                                                           uint64_t size) {
       for (const auto& e : bare_impl.persister.IterateUnsafe(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
