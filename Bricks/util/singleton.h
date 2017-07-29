@@ -32,6 +32,8 @@ SOFTWARE.
 #include <cstdlib>
 #include <iostream>
 #include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
+#include <typeindex>
+#include <unordered_map>
 #endif
 
 namespace current {
@@ -93,9 +95,31 @@ class ThreadLocalSingletonImpl final {
   }
 };
 
+struct ThreadLocalSingletonContainerBase {
+  virtual ~ThreadLocalSingletonContainerBase() = default;
+};
+
+template <typename T>
+struct ThreadLocalSingletonContainer : ThreadLocalSingletonContainerBase {
+  T instance;
+};
+
+struct ThreadLocalSingletonsFactory {
+  std::unordered_map<std::type_index, std::unique_ptr<ThreadLocalSingletonContainerBase> > instances;
+
+  template <typename T>
+  T& DoGetInstance() {
+    auto& placeholder = instances[std::type_index(typeid(T))];
+    if (!placeholder) {
+      placeholder = std::make_unique<ThreadLocalSingletonContainer<T> >();
+    }
+    return dynamic_cast<ThreadLocalSingletonContainer<T>&>(*placeholder).instance;
+  }
+};
+
 template <typename T>
 inline T& ThreadLocalSingleton() {
-  return ThreadLocalSingletonImpl<T>::GetInstance();
+  return ThreadLocalSingletonImpl<ThreadLocalSingletonsFactory>::GetInstance().template DoGetInstance<T>();
 }
 #endif
 
