@@ -50,50 +50,54 @@ namespace current {
 namespace reflection {
 
 namespace impl {
+
 template <>
 struct CurrentTypeNameImpl<reflection::TypeID, false, false, true> {
   static const char* GetCurrentTypeName() { return "TypeID"; }
 };
-}  // namespace current::reflection::impl
 
 template <typename T_TOP_LEVEL, typename T_CURRENT>
 struct RecursiveTypeTraverser;
+
+}  // namespace current::reflection::impl
 
 // `CurrentTypeID<T, T>()` is the "user-facing" type ID of `T`, whereas for each individual `T` the values
 // of `CurrentTypeID<TOP_LEVEL, T>()` may and will be different in case of cyclic dependencies, as the order
 // of their resolution by definition depends on which part of the cycle was the starting point.
 template <typename T_TOP_LEVEL, typename T_TYPE = T_TOP_LEVEL>
 reflection::TypeID CurrentTypeID() {
-  return ThreadLocalSingleton<reflection::RecursiveTypeTraverser<T_TOP_LEVEL, T_TYPE>>().ComputeTypeID();
+  return ThreadLocalSingleton<reflection::impl::RecursiveTypeTraverser<T_TOP_LEVEL, T_TYPE>>().ComputeTypeID();
 }
+
+namespace impl {
 
 // Used as a `ThreadLocalSingleton`.
 // Populated by the `ThreadLocalSingleton` of `RecursiveTypeTraverser<T_TOP_LEVEL, *>`.
+template <typename T_TOP_LEVEL, typename T_STRUCT>
+struct TopLevelStructFieldsTraverser {
+  using fields_list_t = std::vector<ReflectedType_Struct_Field>;
+
+  explicit TopLevelStructFieldsTraverser(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
+
+  template <typename T, int I>
+  void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
+    const char* retrieved_description = FieldDescriptions::template Description<T_STRUCT, I>();
+    Optional<std::string> description;
+    if (retrieved_description) {
+      description = retrieved_description;
+    }
+    // If this call to `CurrentTypeID()` returns `TypeID::UninitializedType`, the forthcoming call
+    // to `CalculateTypeID` will use the field's name instead, as the cycle has to be broken.
+    // This is the intended behavior, and that's how it should be. -- D.K.
+    fields_.emplace_back(CurrentTypeID<T_TOP_LEVEL, T>(), name, description);
+  }
+
+ private:
+  fields_list_t& fields_;
+};
+
 template <typename T_TOP_LEVEL>
 struct TopLevelTypeTraverser {
-  template <typename T_STRUCT>
-  struct StructFieldsTraverser {
-    using fields_list_t = std::vector<ReflectedType_Struct_Field>;
-
-    explicit StructFieldsTraverser(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
-
-    template <typename T, int I>
-    void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
-      const char* retrieved_description = FieldDescriptions::template Description<T_STRUCT, I>();
-      Optional<std::string> description;
-      if (retrieved_description) {
-        description = retrieved_description;
-      }
-      // If this call to `CurrentTypeID()` returns `TypeID::UninitializedType`, the forthcoming call
-      // to `CalculateTypeID` will use the field's name instead, as the cycle has to be broken.
-      // This is the intended behavior, and that's how it should be. -- D.K.
-      fields_.emplace_back(CurrentTypeID<T_TOP_LEVEL, T>(), name, description);
-    }
-
-   private:
-    fields_list_t& fields_;
-  };
-
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
   TypeID operator()(TypeSelector<cpp_type>) { return TypeID::current_type; }
 #include "../primitive_types.dsl.h"
@@ -165,7 +169,8 @@ struct TopLevelTypeTraverser {
     result.native_name = CurrentTypeName<T>();
     result.super_id = ReflectSuper<T>();
     result.template_id = ReflectTemplateInnerType<T>();
-    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldsTraverser<T>(result.fields));
+    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(
+        TopLevelStructFieldsTraverser<T_TOP_LEVEL, T>(result.fields));
     return CalculateTypeID(result);
   }
 
@@ -235,34 +240,10 @@ struct RecursiveTypeTraverser {
 };
 
 // `ReflectorImpl` is a thread-local singleton to generate reflected types metadata at runtime.
+template <typename T_STRUCT>
+struct ReflectorInnerStructFieldsTraverser;
+
 struct ReflectorImpl {
-  static ReflectorImpl& ThreadLocalInstance() { return ThreadLocalSingleton<ReflectorImpl>(); }
-
-  template <typename T_STRUCT>
-  struct InnerStructFieldsTraverser {
-    using fields_list_t = std::vector<ReflectedType_Struct_Field>;
-
-    explicit InnerStructFieldsTraverser(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
-
-    template <typename T, int I>
-    void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
-      ThreadLocalInstance().ReflectType<T>();
-
-      const char* retrieved_description = FieldDescriptions::template Description<T_STRUCT, I>();
-      Optional<std::string> description;
-      if (retrieved_description) {
-        description = retrieved_description;
-      }
-      // If this call to `CurrentTypeID()` returns `TypeID::UninitializedType`, the forthcoming call
-      // to `CalculateTypeID` will use the field's name instead, as the cycle has to be broken.
-      // This is the intended behavior, and that's how it should be. -- D.K.
-      fields_.emplace_back(CurrentTypeID<T>(), name, description);
-    }
-
-   private:
-    fields_list_t& fields_;
-  };
-
   template <typename T>
   const ReflectedType& ReflectType() {
     // Fill in the internal thread-local structures for type `T` if they have not been filled yet.
@@ -361,7 +342,7 @@ struct ReflectorImpl {
   template <typename CASE>
   struct ReflectVariantCase {
     ReflectVariantCase(ReflectedType_Variant& destination) {
-      ThreadLocalInstance().ReflectType<CASE>();
+      ThreadLocalSingleton<ReflectorImpl>().ReflectType<CASE>();
       destination.cases.push_back(CurrentTypeID<CASE>());
     }
   };
@@ -384,7 +365,7 @@ struct ReflectorImpl {
     s.native_name = CurrentTypeName<T>();
     s.super_id = ReflectSuper<T>();
     s.template_id = ReflectTemplateInnerType<T>();
-    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(InnerStructFieldsTraverser<T>(s.fields));
+    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(ReflectorInnerStructFieldsTraverser<T>(s.fields));
     s.type_id = CurrentTypeID<T>();
     return s;
   }
@@ -417,9 +398,38 @@ struct ReflectorImpl {
   std::unordered_map<TypeID, Optional<ReflectedType>, CurrentHashFunction<TypeID>> map_;
 };
 
-inline ReflectorImpl& Reflector() { return ReflectorImpl::ThreadLocalInstance(); }
+template <typename T_STRUCT>
+struct ReflectorInnerStructFieldsTraverser {
+  using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-}  // namespace reflection
+  explicit ReflectorInnerStructFieldsTraverser(fields_list_t& fields) : fields_(fields) {
+    CURRENT_ASSERT(fields_.empty());
+  }
+
+  template <typename T, int I>
+  void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
+    ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>();
+
+    const char* retrieved_description = FieldDescriptions::template Description<T_STRUCT, I>();
+    Optional<std::string> description;
+    if (retrieved_description) {
+      description = retrieved_description;
+    }
+    // If this call to `CurrentTypeID()` returns `TypeID::UninitializedType`, the forthcoming call
+    // to `CalculateTypeID` will use the field's name instead, as the cycle has to be broken.
+    // This is the intended behavior, and that's how it should be. -- D.K.
+    fields_.emplace_back(CurrentTypeID<T>(), name, description);
+  }
+
+ private:
+  fields_list_t& fields_;
+};
+
+}  // namespace current::reflection::impl
+
+inline impl::ReflectorImpl& Reflector() { return ThreadLocalSingleton<impl::ReflectorImpl>(); }
+
+}  // namespace current::reflection
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
