@@ -270,6 +270,7 @@ class Stream final {
     bool this_is_valid_;
     std::function<void()> done_callback_;
     current::WaitableTerminateSignal terminate_signal_;
+    bool terminate_sent_;
     BorrowedWithCallback<impl_t> impl_;
     F& subscriber_;
     const uint64_t begin_idx_;
@@ -289,6 +290,7 @@ class Stream final {
         : this_is_valid_(false),
           done_callback_(done_callback),
           terminate_signal_(),
+          terminate_sent_(false),
           impl_(std::move(impl),
                 [this]() {
                   // NOTE(dkorolev): I'm uncertain whether this lock is necessary here. Keeping it for safety now.
@@ -334,10 +336,10 @@ class Stream final {
 
     template <SubscriptionMode MODE>
     ENABLE_IF<MODE == SubscriptionMode::Safe, current::ss::EntryResponse> PassEntriesToSubscriber(
-        const impl_t& bare_impl, uint64_t index, uint64_t size, bool& terminate_sent) {
+        const impl_t& bare_impl, uint64_t index, uint64_t size) {
       for (const auto& e : bare_impl.persister.Iterate(index, size)) {
-        if (!terminate_sent && terminate_signal_) {
-          terminate_sent = true;
+        if (!terminate_sent_ && terminate_signal_) {
+          terminate_sent_ = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return ss::EntryResponse::Done;
           }
@@ -356,10 +358,10 @@ class Stream final {
 
     template <SubscriptionMode MODE>
     ENABLE_IF<MODE == SubscriptionMode::Unsafe, current::ss::EntryResponse> PassEntriesToSubscriber(
-        const impl_t& bare_impl, uint64_t index, uint64_t size, bool& terminate_sent) {
+        const impl_t& bare_impl, uint64_t index, uint64_t size) {
       for (const auto& e : bare_impl.persister.IterateUnsafe(index, size)) {
-        if (!terminate_sent && terminate_signal_) {
-          terminate_sent = true;
+        if (!terminate_sent_ && terminate_signal_) {
+          terminate_sent_ = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return ss::EntryResponse::Done;
           }
@@ -375,10 +377,9 @@ class Stream final {
       auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
-      bool terminate_sent = false;
       while (true) {
-        if (!terminate_sent && terminate_signal_) {
-          terminate_sent = true;
+        if (!terminate_sent_ && terminate_signal_) {
+          terminate_sent_ = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
@@ -387,7 +388,7 @@ class Stream final {
         size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
         if (head_idx.head > head) {
           if (size > index) {
-            if (PassEntriesToSubscriber<SM>(bare_impl, index, size, terminate_sent) == ss::EntryResponse::Done) {
+            if (PassEntriesToSubscriber<SM>(bare_impl, index, size) == ss::EntryResponse::Done) {
               return;
             }
             index = size;
