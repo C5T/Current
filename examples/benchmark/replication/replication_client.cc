@@ -67,9 +67,11 @@ void Replicate(ARGS&&... args) {
   {
     std::cerr << "Subscribing to the stream ..." << std::flush;
     const std::chrono::milliseconds print_delay(500);
-	  const auto subscriber_scope = FLAGS_use_safe_replication
-		? (current::stream::SubscriberScope)remote_stream.Subscribe(*replicator, 0, FLAGS_use_checked_subscription)
-		: (current::stream::SubscriberScope)remote_stream.SubscribeUnsafe(*replicator, 0, FLAGS_use_checked_subscription);
+    const auto subscriber_scope =
+        FLAGS_use_safe_replication
+            ? (current::stream::SubscriberScope)remote_stream.Subscribe(*replicator, 0, FLAGS_use_checked_subscription)
+            : (current::stream::SubscriberScope)remote_stream.SubscribeUnsafe(
+                  *replicator, 0, FLAGS_use_checked_subscription);
     std::cerr << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + print_delay;
     while (replicated_stream->Data()->Size() < records_to_replicate) {
