@@ -446,6 +446,7 @@ struct RecordsCollectorImpl {
   TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
 
+template <typename ENTRY>
 struct RecordsUnsafeCollectorImpl {
   std::atomic_size_t count_;
   std::vector<std::string>& rows_;
@@ -455,11 +456,27 @@ struct RecordsUnsafeCollectorImpl {
   RecordsUnsafeCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
       : count_(0u), rows_(rows), entries_(entries) {}
 
-  EntryResponse operator()(const std::string& entry, uint64_t, idxts_t) {
-    rows_.push_back(entry + '\n');
-    const auto tab_pos = entry.find('\t');
-    entries_.push_back((tab_pos != std::string::npos ? entry.substr(tab_pos + 1) : entry) + '\n');
+  EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
+    rows_.push_back(entry_json + '\n');
+    const auto tab_pos = entry_json.find('\t');
     ++count_;
+    if (tab_pos == std::string::npos) {
+      entries_.push_back("Malformed row\n");
+      return EntryResponse::More;
+    }
+    try {
+      ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    } catch (const current::InvalidJSONException&) {
+      entries_.push_back("Malformed index and timestamp\n");
+      return EntryResponse::More;
+    }
+    try {
+      ParseJSON<ENTRY>(entry_json.substr(tab_pos + 1));
+    } catch (const current::InvalidJSONException&) {
+      entries_.push_back("Malformed entry\n");
+      return EntryResponse::More;
+    }
+    entries_.push_back(entry_json.substr(tab_pos + 1) + '\n');
     return EntryResponse::More;
   }
 
@@ -473,7 +490,7 @@ struct RecordsUnsafeCollectorImpl {
 using RecordsWithTimestampCollector =
     current::ss::StreamSubscriber<RecordsCollectorImpl<RecordWithTimestamp>, RecordWithTimestamp>;
 using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl<Record>, Record>;
-using RecordsUnsafeCollector = current::ss::StreamSubscriber<RecordsUnsafeCollectorImpl, Record>;
+using RecordsUnsafeCollector = current::ss::StreamSubscriber<RecordsUnsafeCollectorImpl<Record>, Record>;
 
 }  // namespace stream_unittest
 
@@ -1177,16 +1194,20 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
         "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
-    const auto expected_entries =
-        "{\"x\":1}\n"
-        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
-        "{\"x\":3}\n";
 
     EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
-    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "Malformed row\n"
+        "{\"x\":3}\n",
+        Join(entries, ""));
     EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
-    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"x\":3}\n",
+        HTTP(GET(base_url + "?nowait&entries_only")).body);
     EXPECT_EQ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", HTTP(GET(base_url + "?i=1&n=1&nowait")).body);
     EXPECT_EQ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", HTTP(GET(base_url + "?i=1&n=1&nowait&entries_only")).body);
     EXPECT_EQ("{\"index\":2,\"us\":400}\t{\"x\":3}\n", HTTP(GET(base_url + "?i=2&n=1&nowait")).body);
@@ -1206,16 +1227,20 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n"
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
         "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
-    const auto expected_entries =
-        "{\"x\":1}\n"
-        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
-        "{\"x\":3}\n";
 
     EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
-    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(
+        "Malformed index and timestamp\n"
+        "Malformed row\n"
+        "{\"x\":3}\n",
+        Join(entries, ""));
     EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
-    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"x\":3}\n",
+        HTTP(GET(base_url + "?nowait&entries_only")).body);
     EXPECT_EQ("BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n", HTTP(GET(base_url + "?i=0&n=1&nowait")).body);
     EXPECT_EQ("{\"x\":1}\n", HTTP(GET(base_url + "?i=0&n=1&nowait&entries_only")).body);
   }
@@ -1234,16 +1259,20 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n"
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
         "{\"index\":2,\"us\":400}\tCCCCCCC\n";
-    const auto expected_entries =
-        "{\"x\":1}\n"
-        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
-        "CCCCCCC\n";
 
     EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
-    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(
+        "Malformed index and timestamp\n"
+        "Malformed row\n"
+        "Malformed entry\n",
+        Join(entries, ""));
     EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
-    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "CCCCCCC\n",
+        HTTP(GET(base_url + "?nowait&entries_only")).body);
     EXPECT_EQ("{\"index\":2,\"us\":400}\tCCCCCCC\n", HTTP(GET(base_url + "?i=2&n=1&nowait")).body);
     EXPECT_EQ("CCCCCCC\n", HTTP(GET(base_url + "?i=2&n=1&nowait&entries_only")).body);
   }
