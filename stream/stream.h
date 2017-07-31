@@ -119,7 +119,7 @@ CURRENT_STRUCT(StreamSchemaFormatNotFoundError) {
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
-enum class SubscriptionMode : int { Safe, Unsafe };
+enum class SubscriptionMode : int { Safe = 0, Unsafe = 1 };
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class Stream final {
@@ -581,9 +581,10 @@ class Stream final {
         borrowed_impl->http_subscriptions[subscription_id].second = nullptr;
       };
       current::stream::SubscriberScope http_chunked_subscriber_scope =
-          request_params.checked
-              ? (current::stream::SubscriberScope)Subscribe(*http_chunked_subscriber, begin_idx, done_callback)
-              : (current::stream::SubscriberScope)SubscribeUnsafe(*http_chunked_subscriber, begin_idx, done_callback);
+          request_params.checked ? static_cast<current::stream::SubscriberScope>(
+                                       Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
+                                 : static_cast<current::stream::SubscriberScope>(
+                                       SubscribeUnsafe(*http_chunked_subscriber, begin_idx, done_callback));
 
       {
         std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);

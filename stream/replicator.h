@@ -157,8 +157,8 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Safe, void> PassEntriesToSubscriber(const std::vector<std::string>& lines,
-                                                                            size_t whole_entries_count) {
+    ENABLE_IF<MODE == SubscriptionMode::Safe> PassEntriesToSubscriber(const std::vector<std::string>& lines,
+                                                                      size_t whole_entries_count) {
       for (size_t i = 0; i < whole_entries_count; ++i) {
         const auto split = current::strings::Split(lines[i], '\t');
         const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
@@ -181,8 +181,8 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Unsafe, void> PassEntriesToSubscriber(const std::vector<std::string>& lines,
-                                                                              size_t whole_entries_count) {
+    ENABLE_IF<MODE == SubscriptionMode::Unsafe> PassEntriesToSubscriber(const std::vector<std::string>& lines,
+                                                                        size_t whole_entries_count) {
       for (size_t i = 0; i < whole_entries_count; ++i) {
         const auto tab_pos = lines[i].find('\t');
         if (tab_pos != std::string::npos) {
