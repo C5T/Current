@@ -215,12 +215,13 @@ TEST(Reflection, SelfContainingStruct) {
   EXPECT_EQ(typeid_msc, static_cast<uint64_t>(self_c.fields[1].type_id));
 }
 
+#ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
 TEST(Reflection, InternalWrongOrderReflectionException) {
   using namespace reflection_test;
 
   std::thread([]() {
     try {
-      current::reflection::CurrentTypeID<Foo, Bar>();
+      current::reflection::CallCurrentTypeIDWronglyForUnitTest<Foo, Bar>();
       ASSERT_TRUE(false);
     } catch (const current::reflection::InternalWrongOrderReflectionException& e) {
       EXPECT_EQ("For some reason, when reflecting on `Foo`, type `Bar` is being considered first.",
@@ -228,6 +229,7 @@ TEST(Reflection, InternalWrongOrderReflectionException) {
     }
   }).join();
 }
+#endif
 
 TEST(Reflection, UnknownTypeIDException) {
   std::thread([]() {

@@ -56,26 +56,54 @@ struct CurrentTypeNameImpl<reflection::TypeID, false, false, true> {
 };
 }  // namespace current::reflection::impl
 
-template <typename T_TOP_LEVEL, typename T_CURRENT>
-struct RecursiveTypeTraverser;
+template <typename T_TYPE>
+reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const char* top_level_type_name);
 
-// `CurrentTypeID<T, T>()` is the "user-facing" type ID of `T`, whereas for each individual `T` the values
-// of `CurrentTypeID<TOP_LEVEL, T>()` may and will be different in case of cyclic dependencies, as the order
-// of their resolution by definition depends on which part of the cycle was the starting point.
-template <typename T_TOP_LEVEL, typename T_TYPE = T_TOP_LEVEL>
+// `CurrentTypeID<T>()` is the "user-facing" type ID of `T`, whereas for each individual `T` the values
+// of correponding calls to `InternalCurrentTypeID` may and will be different in case of cyclic dependencies,
+// as the order of their resolution by definition depends on which part of the cycle was the starting point.
+template <typename T>
 reflection::TypeID CurrentTypeID() {
-  return ThreadLocalSingleton<reflection::RecursiveTypeTraverser<T_TOP_LEVEL, T_TYPE>>().ComputeTypeID();
+  return InternalCurrentTypeID<T>(typeid(T), CurrentTypeName<T>());
 }
 
-// Used as a `ThreadLocalSingleton`.
-// Populated by the `ThreadLocalSingleton` of `RecursiveTypeTraverser<T_TOP_LEVEL, *>`.
-template <typename T_TOP_LEVEL>
-struct TopLevelTypeTraverser {
+#ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
+// Unused in user code, just to cover the external safety condition LOC from the unit test. -- D.K.
+template <typename T_TOP_LEVEL, typename T_TYPE>
+reflection::TypeID CallCurrentTypeIDWronglyForUnitTest() {
+  return InternalCurrentTypeID<T_TYPE>(typeid(T_TOP_LEVEL), CurrentTypeName<T_TOP_LEVEL>());
+}
+#endif
+
+// Populated by `InternalCurrentTypeID`, used as a `ThreadLocalSingleton`.
+struct RecursiveTypeTraverser {
+  const std::type_index top_level_type_;
+  const char* top_level_type_name_;
+
+  template <typename T>
+  TypeID CurrentTypeID_() const {
+    return InternalCurrentTypeID<T>(top_level_type_, top_level_type_name_);
+  }
+
+  RecursiveTypeTraverser(std::type_index top_level_type, const char* top_level_type_name)
+      : top_level_type_(top_level_type), top_level_type_name_(top_level_type_name) {}
+
   template <typename T_STRUCT>
   struct StructFieldsTraverser {
+    const std::type_index top_level_type_;
+    const char* top_level_type_name_;
+
     using fields_list_t = std::vector<ReflectedType_Struct_Field>;
 
-    explicit StructFieldsTraverser(fields_list_t& fields) : fields_(fields) { CURRENT_ASSERT(fields_.empty()); }
+    StructFieldsTraverser(std::type_index top_level_type, const char* top_level_type_name, fields_list_t& fields)
+        : top_level_type_(top_level_type), top_level_type_name_(top_level_type_name), fields_(fields) {
+      CURRENT_ASSERT(fields_.empty());
+    }
+
+    template <typename T>
+    TypeID CurrentTypeID_() const {
+      return InternalCurrentTypeID<T>(top_level_type_, top_level_type_name_);
+    }
 
     template <typename T, int I>
     void operator()(TypeSelector<T>, const std::string& name, SimpleIndex<I>) const {
@@ -87,7 +115,7 @@ struct TopLevelTypeTraverser {
       // If this call to `CurrentTypeID()` returns `TypeID::UninitializedType`, the forthcoming call
       // to `CalculateTypeID` will use the field's name instead, as the cycle has to be broken.
       // This is the intended behavior, and that's how it should be. -- D.K.
-      fields_.emplace_back(CurrentTypeID<T_TOP_LEVEL, T>(), name, description);
+      fields_.emplace_back(CurrentTypeID_<T>(), name, description);
     }
 
    private:
@@ -101,50 +129,50 @@ struct TopLevelTypeTraverser {
 
   template <typename T>
   std::enable_if_t<std::is_enum<T>::value, TypeID> operator()(TypeSelector<T>) {
-    return ReflectedType_Enum(EnumName<T>(), CurrentTypeID<T_TOP_LEVEL, typename std::underlying_type<T>::type>())
-        .type_id;
+    return ReflectedType_Enum(EnumName<T>(), CurrentTypeID_<typename std::underlying_type<T>::type>()).type_id;
   }
 
   template <typename T>
   TypeID operator()(TypeSelector<std::vector<T>>) {
-    return CalculateTypeID(ReflectedType_Vector(CurrentTypeID<T_TOP_LEVEL, T>()));
+    return CalculateTypeID(ReflectedType_Vector(CurrentTypeID_<T>()));
   }
 
   template <typename TF, typename TS>
   TypeID operator()(TypeSelector<std::pair<TF, TS>>) {
-    return CalculateTypeID(ReflectedType_Pair(CurrentTypeID<T_TOP_LEVEL, TF>(), CurrentTypeID<T_TOP_LEVEL, TS>()));
+    return CalculateTypeID(ReflectedType_Pair(CurrentTypeID_<TF>(), CurrentTypeID_<TS>()));
   }
 
   template <typename TK, typename TV>
   TypeID operator()(TypeSelector<std::map<TK, TV>>) {
-    return CalculateTypeID(ReflectedType_Map(CurrentTypeID<T_TOP_LEVEL, TK>(), CurrentTypeID<T_TOP_LEVEL, TV>()));
+    return CalculateTypeID(ReflectedType_Map(CurrentTypeID_<TK>(), CurrentTypeID_<TV>()));
   }
 
   template <typename TK, typename TV>
   TypeID operator()(TypeSelector<std::unordered_map<TK, TV>>) {
-    return CalculateTypeID(
-        ReflectedType_UnorderedMap(CurrentTypeID<T_TOP_LEVEL, TK>(), CurrentTypeID<T_TOP_LEVEL, TV>()));
+    return CalculateTypeID(ReflectedType_UnorderedMap(CurrentTypeID_<TK>(), CurrentTypeID_<TV>()));
   }
 
   template <typename T>
   TypeID operator()(TypeSelector<std::set<T>>) {
-    return CalculateTypeID(ReflectedType_Set(CurrentTypeID<T_TOP_LEVEL, T>()));
+    return CalculateTypeID(ReflectedType_Set(CurrentTypeID_<T>()));
   }
 
   template <typename T>
   TypeID operator()(TypeSelector<std::unordered_set<T>>) {
-    return CalculateTypeID(ReflectedType_UnorderedSet(CurrentTypeID<T_TOP_LEVEL, T>()));
+    return CalculateTypeID(ReflectedType_UnorderedSet(CurrentTypeID_<T>()));
   }
 
   template <typename T>
   TypeID operator()(TypeSelector<Optional<T>>) {
-    return CalculateTypeID(ReflectedType_Optional(CurrentTypeID<T_TOP_LEVEL, T>()));
+    return CalculateTypeID(ReflectedType_Optional(CurrentTypeID_<T>()));
   }
+
+  using VariantCaseReflectingInnerType = std::pair<ReflectedType_Variant&, std::pair<std::type_index, const char*>>;
 
   template <typename CASE>
   struct ReflectVariantCase {
-    ReflectVariantCase(ReflectedType_Variant& destination) {
-      destination.cases.push_back(CurrentTypeID<T_TOP_LEVEL, CASE>());
+    ReflectVariantCase(VariantCaseReflectingInnerType& data) {
+      data.first.cases.push_back(InternalCurrentTypeID<CASE>(data.second.first, data.second.second));
     }
   };
 
@@ -153,9 +181,12 @@ struct TopLevelTypeTraverser {
     ReflectedType_Variant result;
     // TODO(dkorolev): `CurrentTypeName` ?
     result.name = VariantImpl<NAME, TypeListImpl<TS...>>::VariantName();
+
+    VariantCaseReflectingInnerType data(result, std::make_pair(top_level_type_, top_level_type_name_));
+
     current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
-                                                         ReflectedType_Variant,
-                                                         TypeListImpl<TS...>>(result);
+                                                         VariantCaseReflectingInnerType,
+                                                         TypeListImpl<TS...>>(data);
     return CalculateTypeID(result);
   }
 
@@ -165,7 +196,8 @@ struct TopLevelTypeTraverser {
     result.native_name = CurrentTypeName<T>();
     result.super_id = ReflectSuper<T>();
     result.template_id = ReflectTemplateInnerType<T>();
-    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(StructFieldsTraverser<T>(result.fields));
+    VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(
+        StructFieldsTraverser<T>(top_level_type_, top_level_type_name_, result.fields));
     return CalculateTypeID(result);
   }
 
@@ -177,7 +209,7 @@ struct TopLevelTypeTraverser {
 
   template <typename T>
   std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
-    return CurrentTypeID<T_TOP_LEVEL, SuperType<T>>();
+    return CurrentTypeID_<SuperType<T>>();
   }
 
   template <typename T>
@@ -187,12 +219,27 @@ struct TopLevelTypeTraverser {
 
   template <typename T>
   std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
-    return CurrentTypeID<T_TOP_LEVEL, TemplateInnerType<T>>();
+    return CurrentTypeID_<TemplateInnerType<T>>();
+  }
+};
+
+struct TypeTraverserState {
+  RecursiveTypeTraverser traverser_;
+  std::map<std::type_index, std::unique_ptr<TypeID>> cache_;
+
+  TypeTraverserState(std::type_index top_level_type, const char* top_level_type_name)
+      : traverser_(top_level_type, top_level_type_name) {}
+
+  template <typename T>
+  TypeID& GetTypeIdRefDefaultingToUninitializedType() {
+    std::unique_ptr<TypeID>& placeholder = cache_[typeid(T)];
+    if (!placeholder) {
+      placeholder = std::make_unique<TypeID>(TypeID::UninitializedType);
+    }
+    return *placeholder;
   }
 
- public:
-  // For debugging purposes only. -- D.K.
-  // TODO(dkorolev): Remove this.
+#ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
   std::vector<std::type_index> types_list_;
   std::map<std::type_index, size_t> types_map_;
   template <typename T>
@@ -204,35 +251,51 @@ struct TopLevelTypeTraverser {
       index_placeholder = types_list_.size();
     }
     // Type `T` must be the first one considered for the top-level type `T_TOP_LEVEL`.
-    if (std::is_same<T, T_TOP_LEVEL>::value == (index_placeholder > 1u)) {
+    if ((traverser_.top_level_type_ == typeid(T)) == (index_placeholder > 1u)) {
       CURRENT_THROW(InternalWrongOrderReflectionException(std::string("For some reason, when reflecting on `") +
-                                                          CurrentTypeName<T_TOP_LEVEL>() + "`, type `" +
+                                                          traverser_.top_level_type_name_ + "`, type `" +
                                                           CurrentTypeName<T>() + "` is being considered first."));
     }
   }
+#endif
 };
 
-// Used as a `ThreadLocalSingleton`. "Reports" to a `ThreadLocalSingleton` of the top-level type.
-template <typename T_TOP_LEVEL, typename T_CURRENT>
-struct RecursiveTypeTraverser {
-  TopLevelTypeTraverser<T_TOP_LEVEL>& top = ThreadLocalSingleton<TopLevelTypeTraverser<T_TOP_LEVEL>>();
-  TypeID type_id = TypeID::UninitializedType;
+struct TypeTraversersThreadLocalState {
+ private:
+  std::map<std::type_index, std::unique_ptr<TypeTraverserState>> map_;
 
-  TypeID ComputeTypeID() {
-    top.template MarkTypeAsBeingConsidered<T_CURRENT>();
-
-    if (type_id == TypeID::UninitializedType) {
-      const uint64_t hash = current::CRC32(CurrentTypeName<T_CURRENT>());
-      type_id = static_cast<TypeID>(TYPEID_CYCLIC_DEPENDENCY_TYPE + hash % TYPEID_TYPE_RANGE);
-
-      // Relying on the singleton to instantiate this type exactly once, so in case of a re-entrant call
-      // the original value of `type_id`, which is `TypeID::UninitializedType`, will be returned.
-      type_id = top(TypeSelector<T_CURRENT>());
+ public:
+  static TypeTraverserState& PerTypeInstance(std::type_index top_level_type, const char* top_level_type_name) {
+    std::unique_ptr<TypeTraverserState>& placeholder =
+        ThreadLocalSingleton<TypeTraversersThreadLocalState>().map_[top_level_type];
+    if (!placeholder) {
+      placeholder = std::make_unique<TypeTraverserState>(top_level_type, top_level_type_name);
     }
-
-    return type_id;
+    return *placeholder;
   }
 };
+
+template <typename T_TYPE>
+reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const char* top_level_type_name) {
+  TypeTraverserState& state = TypeTraversersThreadLocalState::PerTypeInstance(top_level_type, top_level_type_name);
+
+  auto& type_id = state.template GetTypeIdRefDefaultingToUninitializedType<T_TYPE>();
+
+#ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
+  state.template MarkTypeAsBeingConsidered<T_TYPE>();
+#endif
+
+  if (type_id == TypeID::UninitializedType) {
+    const uint64_t hash = current::CRC32(CurrentTypeName<T_TYPE>());
+    type_id = static_cast<TypeID>(TYPEID_CYCLIC_DEPENDENCY_TYPE + hash % TYPEID_TYPE_RANGE);
+
+    // Relying on the singleton to instantiate this type exactly once, so in case of a re-entrant call
+    // the original value of `type_id`, which is `TypeID::UninitializedType`, will be returned.
+    type_id = state.traverser_(TypeSelector<T_TYPE>());
+  }
+
+  return type_id;
+}
 
 // `ReflectorImpl` is a thread-local singleton to generate reflected types metadata at runtime.
 struct ReflectorImpl {
@@ -253,9 +316,6 @@ struct ReflectorImpl {
       if (retrieved_description) {
         description = retrieved_description;
       }
-      // If this call to `CurrentTypeID()` returns `TypeID::UninitializedType`, the forthcoming call
-      // to `CalculateTypeID` will use the field's name instead, as the cycle has to be broken.
-      // This is the intended behavior, and that's how it should be. -- D.K.
       fields_.emplace_back(CurrentTypeID<T>(), name, description);
     }
 
