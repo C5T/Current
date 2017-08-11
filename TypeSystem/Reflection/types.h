@@ -181,7 +181,7 @@ CURRENT_STRUCT(ReflectedType_Struct_Field) {
 
 CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
   CURRENT_FIELD(native_name, std::string);
-  CURRENT_FIELD(super_id, TypeID);
+  CURRENT_FIELD(super_id, TypeID, TypeID::UninitializedType);
   CURRENT_FIELD(template_id, Optional<TypeID>);  // For instantiated `CURRENT_STRUCT_T`-s.
   CURRENT_FIELD(fields, std::vector<ReflectedType_Struct_Field>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct) {}
