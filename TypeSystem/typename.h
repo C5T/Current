@@ -45,21 +45,35 @@ SOFTWARE.
 #include "../Bricks/template/decay.h"
 
 namespace current {
+
+template <typename NAME, typename TYPE_LIST>
+struct VariantImpl;
+
 namespace reflection {
+
+struct CurrentVariantDefaultName;
 
 namespace impl {
 
-template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT, bool TRUE_IF_ENUM>
+// `DebugDump`: ex. "Templated<std::vector<std::string>>", "std::vector<Templated<uint64_t>>". C++-level output.
+// `Z`: ex. "std::vector<std::string>", "Templated_Z". *ONLY* for legacy reasons of TypeID computation, TO BE FIXED.
+// `AsIdentifier`: ex. "Vector_Templated_T_Foo", for serialization and for schema dumps into languages such as node.js.
+enum class NameFormat : int { DebugDump = 0, Z, AsIdentifier };
+
+template <NameFormat NF, typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT, bool TRUE_IF_ENUM>
 struct CurrentTypeNameImpl;
 
-template <typename T>
+template <NameFormat NF, typename T>
 struct CurrentTypeNameCaller {
-  using impl_t = CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum<T>::value>;
+  using impl_t = CurrentTypeNameImpl<NF, T, IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum<T>::value>;
   static const char* CallGetCurrentTypeName() {
     static const std::string value = impl_t::GetCurrentTypeName();
     return value.c_str();
   }
 };
+
+template <NameFormat NF, typename T>
+struct JoinTypeNames;
 
 template <typename T, bool>
 struct CallRightGetCurrentStructName {
@@ -71,120 +85,235 @@ struct CallRightGetCurrentStructName<T, true> {
   static const char* DoIt() { return T::CURRENT_EXPORTED_STRUCT_NAME(); }
 };
 
-template <typename T>
-struct CurrentTypeNameImpl<T, true, false, false> {
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, T, true, false, false> {
   static const char* GetCurrentTypeName() {
     return CallRightGetCurrentStructName<T, sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME<T>::value>::DoIt();
   }
 };
 
-template <typename T>
-struct CurrentTypeNameImpl<T, false, true, false> {
-  static std::string GetCurrentTypeName() { return T::VariantName(); }
+template <NameFormat NF, typename T>
+struct CurrentVariantTypeNameImpl;
+
+template <NameFormat NF, typename NAME, typename... TS>
+struct CurrentVariantTypeNameImpl<NF, VariantImpl<NAME, TypeListImpl<TS...>>> {
+  static std::string DoIt() { return NAME::CustomVariantName(); }
 };
 
-template <typename T>
-struct CurrentTypeNameImpl<T, false, false, true> {
+template <typename... TS>
+struct CurrentVariantTypeNameImpl<NameFormat::Z, VariantImpl<CurrentVariantDefaultName, TypeListImpl<TS...>>> {
+  static std::string DoIt() {
+    return std::string("Variant_B_") + JoinTypeNames<NameFormat::Z, TypeListImpl<TS...>>::Join('_') + "_E";
+  }
+};
+
+template <typename... TS>
+struct CurrentVariantTypeNameImpl<NameFormat::DebugDump, VariantImpl<CurrentVariantDefaultName, TypeListImpl<TS...>>> {
+  static std::string DoIt() {
+    return std::string("Variant<") + JoinTypeNames<NameFormat::DebugDump, TypeListImpl<TS...>>::Join(", ") + '>';
+  }
+};
+
+template <typename... TS>
+struct CurrentVariantTypeNameImpl<NameFormat::AsIdentifier,
+                                  VariantImpl<CurrentVariantDefaultName, TypeListImpl<TS...>>> {
+  static std::string DoIt() {
+    return std::string("Variant_") + JoinTypeNames<NameFormat::AsIdentifier, TypeListImpl<TS...>>::Join('_');
+  }
+};
+
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, T, false, true, false> {
+  static std::string GetCurrentTypeName() { return CurrentVariantTypeNameImpl<NF, T>::DoIt(); }
+};
+
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, T, false, false, true> {
   static std::string GetCurrentTypeName() { return reflection::EnumName<T>(); }
 };
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
-  template <>                                                                                                   \
-  struct CurrentTypeNameImpl<cpp_type, false, false, false> {                                                   \
+  template <NameFormat NF>                                                                                      \
+  struct CurrentTypeNameImpl<NF, cpp_type, false, false, false> {                                               \
     static const char* GetCurrentTypeName() { return #cpp_type; }                                               \
   };
 #include "primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
-template <typename T>
-struct CurrentTypeNameImpl<std::vector<T>, false, false, false> {
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, std::vector<T>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::vector<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+    return std::string("std::vector<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, std::set<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::set<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, std::unordered_set<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::unordered_set<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <NameFormat NF, typename TF, typename TS>
+struct CurrentTypeNameImpl<NF, std::pair<TF, TS>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::pair<") + CurrentTypeNameCaller<NF, TF>::CallGetCurrentTypeName() + ", " +
+           CurrentTypeNameCaller<NF, TS>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <NameFormat NF, typename TK, typename TV>
+struct CurrentTypeNameImpl<NF, std::map<TK, TV>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::map<") + CurrentTypeNameCaller<NF, TK>::CallGetCurrentTypeName() + ", " +
+           CurrentTypeNameCaller<NF, TV>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <NameFormat NF, typename TK, typename TV>
+struct CurrentTypeNameImpl<NF, std::unordered_map<TK, TV>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::unordered_map<") + CurrentTypeNameCaller<NF, TK>::CallGetCurrentTypeName() + ", " +
+           CurrentTypeNameCaller<NF, TV>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+template <NameFormat NF, typename T>
+struct CurrentTypeNameImpl<NF, Optional<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("Optional<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() + '>';
+  }
+};
+
+// Names for `AsIdentifier` name decoration.
+template <>
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::string, false, false, false> {
+  static std::string GetCurrentTypeName() { return "String"; }
+};
+
+template <typename T>
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::vector<T>, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("Vector_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, T>::CallGetCurrentTypeName();
   }
 };
 
 template <typename T>
-struct CurrentTypeNameImpl<std::set<T>, false, false, false> {
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::set<T>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::set<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+    return std::string("Set_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, T>::CallGetCurrentTypeName();
   }
 };
 
 template <typename T>
-struct CurrentTypeNameImpl<std::unordered_set<T>, false, false, false> {
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::unordered_set<T>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::unordered_set<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+    return std::string("UnorderedSet_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, T>::CallGetCurrentTypeName();
   }
 };
 
 template <typename TF, typename TS>
-struct CurrentTypeNameImpl<std::pair<TF, TS>, false, false, false> {
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::pair<TF, TS>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::pair<") + CurrentTypeNameCaller<TF>::CallGetCurrentTypeName() + ", " +
-           CurrentTypeNameCaller<TS>::CallGetCurrentTypeName() + '>';
+    return std::string("Pair_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, TF>::CallGetCurrentTypeName() + '_' +
+           CurrentTypeNameCaller<NameFormat::AsIdentifier, TS>::CallGetCurrentTypeName();
   }
 };
 
 template <typename TK, typename TV>
-struct CurrentTypeNameImpl<std::map<TK, TV>, false, false, false> {
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::map<TK, TV>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::map<") + CurrentTypeNameCaller<TK>::CallGetCurrentTypeName() + ", " +
-           CurrentTypeNameCaller<TV>::CallGetCurrentTypeName() + '>';
+    return std::string("Map_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, TK>::CallGetCurrentTypeName() + '_' +
+           CurrentTypeNameCaller<NameFormat::AsIdentifier, TV>::CallGetCurrentTypeName();
   }
 };
 
 template <typename TK, typename TV>
-struct CurrentTypeNameImpl<std::unordered_map<TK, TV>, false, false, false> {
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::unordered_map<TK, TV>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::unordered_map<") + CurrentTypeNameCaller<TK>::CallGetCurrentTypeName() + ", " +
-           CurrentTypeNameCaller<TV>::CallGetCurrentTypeName() + '>';
+    return std::string("UnorderedMap_") +
+           CurrentTypeNameCaller<NameFormat::AsIdentifier, TK>::CallGetCurrentTypeName() + '_' +
+           CurrentTypeNameCaller<NameFormat::AsIdentifier, TV>::CallGetCurrentTypeName();
   }
 };
 
 template <typename T>
-struct CurrentTypeNameImpl<Optional<T>, false, false, false> {
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, Optional<T>, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("Optional<") + CurrentTypeNameCaller<T>::CallGetCurrentTypeName() + '>';
+    return std::string("Optional_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, T>::CallGetCurrentTypeName();
+  }
+};
+
+template <NameFormat NF, typename T, typename T_INNER>
+struct CurrentPossiblyTemplatedStructName {
+  static std::string DoIt(const char* mid, const char* end) {
+    std::string result = CallRightGetCurrentStructName<T, sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME<T>::value>::DoIt();
+    CURRENT_ASSERT(result.length() >= 3);
+    CURRENT_ASSERT(result.substr(result.length() - 2) == "_Z");
+    return result.substr(0, result.length() - 2) + mid + CurrentTypeNameCaller<NF, T_INNER>::CallGetCurrentTypeName() +
+           end;
+  }
+};
+
+template <NameFormat NF, typename T>
+struct CurrentPossiblyTemplatedStructName<NF, T, void> {
+  static std::string DoIt(const char* mid, const char* end) {
+    static_cast<void>(mid);
+    static_cast<void>(end);
+    return std::string(CallRightGetCurrentStructName<T, sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME<T>::value>::DoIt());
+  }
+};
+
+template <typename T>
+struct CurrentTypeNameImpl<NameFormat::DebugDump, T, true, false, false> {
+  static std::string GetCurrentTypeName() {
+    return CurrentPossiblyTemplatedStructName<NameFormat::DebugDump, T, reflection::TemplateInnerType<T>>::DoIt("<",
+                                                                                                                ">");
+  }
+};
+
+template <typename T>
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, T, true, false, false> {
+  static std::string GetCurrentTypeName() {
+    return CurrentPossiblyTemplatedStructName<NameFormat::AsIdentifier, T, reflection::TemplateInnerType<T>>::DoIt(
+        "_T_", "");
   }
 };
 
 }  // namespace current::reflection::impl
 
-template <typename T>
+template <typename T, impl::NameFormat NF = impl::NameFormat::DebugDump>
 inline const char* CurrentTypeName() {
-  return impl::CurrentTypeNameCaller<T>::CallGetCurrentTypeName();
+  return impl::CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName();
 }
 
 namespace impl {
 
-template <typename T>
-struct TypeListNamesAsCSV;
-
-template <typename T>
-struct TypeListNamesAsCSV<TypeListImpl<T>> {
-  static std::string Value() { return CurrentTypeName<T>(); }
-};
-
-template <typename T, typename... TS>
-struct TypeListNamesAsCSV<TypeListImpl<T, TS...>> {
-  static std::string Value() {
-    return std::string(CurrentTypeName<T>()) + '_' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value();
+template <NameFormat NF, typename T>
+struct JoinTypeNames<NF, TypeListImpl<T>> {
+  template <typename SEPARATOR>
+  static const char* Join(SEPARATOR&&) {
+    return CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName();
   }
 };
 
-template <typename T>
-struct VariantFullNamePrinter {
-  static std::string Value() { return "Variant_B_" + TypeListNamesAsCSV<T>::Value() + "_E"; }
+template <NameFormat NF, typename T, typename... TS>
+struct JoinTypeNames<NF, TypeListImpl<T, TS...>> {
+  template <typename SEPARATOR>
+  static std::string Join(SEPARATOR&& separator) {
+    return std::string(CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName()) + separator +
+           JoinTypeNames<NF, TypeListImpl<TS...>>::Join(std::forward<SEPARATOR>(separator));
+  }
 };
 
 }  // namespace current::reflection::impl
-
-struct CurrentVariantDefaultName final {
-  template <typename TYPELIST>
-  static std::string VariantNameImpl() {
-    return impl::VariantFullNamePrinter<TYPELIST>::Value();
-  }
-};
 
 }  // namespace current::reflection
 }  // namespace current

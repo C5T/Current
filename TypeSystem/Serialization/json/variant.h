@@ -70,16 +70,19 @@ class JSONVariantSerializer<json::JSONVariantStyle::Current, JSON_FORMAT> {
 
     json_stringifier_.Current().SetObject();
 
-    json_stringifier_.Current().AddMember(rapidjson::StringRef(reflection::CurrentTypeName<X>()),
-                                          std::move(serialized_object.Move()),
-                                          json_stringifier_.Allocator());
+    json_stringifier_.Current().AddMember(
+        rapidjson::StringRef(reflection::CurrentTypeName<X, reflection::impl::NameFormat::Z>()),
+        std::move(serialized_object.Move()),
+        json_stringifier_.Allocator());
 
     if (json::JSONVariantTypeIDInEmptyKey<JSON_FORMAT>::value) {
       json_stringifier_.Current().AddMember("", std::move(serialized_type_id.Move()), json_stringifier_.Allocator());
     }
     if (json::JSONVariantTypeNameInDollarKey<JSON_FORMAT>::value) {
       json_stringifier_.Current().AddMember(
-          "$", rapidjson::StringRef(reflection::CurrentTypeName<X>()), json_stringifier_.Allocator());
+          "$",
+          rapidjson::StringRef(reflection::CurrentTypeName<X, reflection::impl::NameFormat::Z>()),
+          json_stringifier_.Allocator());
     }
   }
 
@@ -106,7 +109,9 @@ class JSONVariantSerializer<json::JSONVariantStyle::NewtonsoftFSharp, JSON_FORMA
 
     json_stringifier_.Current().SetObject();
     json_stringifier_.Current().AddMember(
-        "Case", rapidjson::StringRef(reflection::CurrentTypeName<X>()), json_stringifier_.Allocator());
+        "Case",
+        rapidjson::StringRef(reflection::CurrentTypeName<X, reflection::impl::NameFormat::Z>()),
+        json_stringifier_.Allocator());
 
     if (IS_CURRENT_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
       rapidjson::Value fields_as_array;
@@ -210,7 +215,8 @@ struct JSONVariantPerStyleRegisterer {
     StyleCurrent(deserializers_map_t& deserializers) {
       // Silently discard duplicate types in the input type list. They would be deserialized correctly.
       deserializers[Value<reflection::ReflectedTypeBase>(reflection::Reflector().ReflectType<X>()).type_id] =
-          std::make_unique<JSONVariantCaseGeneric<JSON_FORMAT, X>>(reflection::CurrentTypeName<X>());
+          std::make_unique<JSONVariantCaseGeneric<JSON_FORMAT, X>>(
+              reflection::CurrentTypeName<X, reflection::impl::NameFormat::Z>());
     }
   };
 
@@ -221,7 +227,7 @@ struct JSONVariantPerStyleRegisterer {
     StyleSimple(deserializers_map_t& deserializers) {
       // Silently discard duplicate types in the input type list.
       // TODO(dkorolev): This is oh so wrong here.
-      const char* name = reflection::CurrentTypeName<X>();
+      const char* name = reflection::CurrentTypeName<X, reflection::impl::NameFormat::Z>();
       deserializers[name] = std::make_unique<JSONVariantCaseMinimalistic<X, JSON_FORMAT>>(name);
     }
   };
@@ -233,7 +239,8 @@ struct JSONVariantPerStyleRegisterer {
     StyleFSharp(deserializers_map_t& deserializers) {
       // Silently discard duplicate types in the input type list.
       // TODO(dkorolev): This is oh so wrong here.
-      deserializers[reflection::CurrentTypeName<X>()] = std::make_unique<JSONVariantCaseFSharp<X, JSON_FORMAT>>();
+      deserializers[reflection::CurrentTypeName<X, reflection::impl::NameFormat::Z>()] =
+          std::make_unique<JSONVariantCaseFSharp<X, JSON_FORMAT>>();
     }
   };
 };

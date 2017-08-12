@@ -119,7 +119,40 @@ static_assert(std::is_same<current::reflection::FieldTypeWrapper<Foo>,
 
 TEST(Reflection, CurrentTypeName) {
   using current::reflection::CurrentTypeName;
+  using current::reflection::impl::NameFormat;
   using namespace reflection_test;
+
+  // NameFormat::Z: C++ types, template names as `_Z`, variant names expanded as `_B_..._E`.
+  // Unused for the very naming, kept for legacy reasons of inner TypeID computation when the dependency is cyclic (?).
+  // TODO(dkorolev) + TODO(mzhurovich): Why don't we retire this? It would change some TypeIDs, so what?
+
+  // Primitive types.
+  EXPECT_STREQ("uint32_t", (CurrentTypeName<uint32_t, NameFormat::Z>()));
+  EXPECT_STREQ("bool", (CurrentTypeName<bool, NameFormat::Z>()));
+  EXPECT_STREQ("char", (CurrentTypeName<char, NameFormat::Z>()));
+  EXPECT_STREQ("std::string", (CurrentTypeName<std::string, NameFormat::Z>()));
+  EXPECT_STREQ("double", (CurrentTypeName<double, NameFormat::Z>()));
+
+  // Composite types.
+  EXPECT_STREQ("std::vector<std::string>", (CurrentTypeName<std::vector<std::string>, NameFormat::Z>()));
+  EXPECT_STREQ("std::set<int8_t>", (CurrentTypeName<std::set<int8_t>, NameFormat::Z>()));
+  EXPECT_STREQ("std::unordered_set<int16_t>", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::Z>()));
+  EXPECT_STREQ("std::map<int32_t, int64_t>", ((CurrentTypeName<std::map<int32_t, int64_t>, NameFormat::Z>())));
+  EXPECT_STREQ("std::unordered_map<int64_t, int32_t>",
+               ((CurrentTypeName<std::unordered_map<int64_t, int32_t>, NameFormat::Z>())));
+  EXPECT_STREQ("std::pair<char, bool>", ((CurrentTypeName<std::pair<char, bool>, NameFormat::Z>())));
+
+  // Current types.
+  EXPECT_STREQ("TypeID", (CurrentTypeName<current::reflection::TypeID, NameFormat::Z>()));
+  EXPECT_STREQ("Foo", (CurrentTypeName<Foo, NameFormat::Z>()));
+  EXPECT_STREQ("Variant_B_Foo_E", (CurrentTypeName<Variant<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Variant_B_Foo_Bar_Baz_E", ((CurrentTypeName<Variant<Foo, Bar, Baz>, NameFormat::Z>())));
+  EXPECT_STREQ("FooBarBaz", (CurrentTypeName<FooBarBaz, NameFormat::Z>()));                // A named variant.
+  EXPECT_STREQ("AnotherFooBarBaz", (CurrentTypeName<AnotherFooBarBaz, NameFormat::Z>()));  // A named variant.
+  EXPECT_STREQ("Enum", (CurrentTypeName<Enum, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<Templated<Foo>, NameFormat::Z>()));
+
+  // NameFormat::DebugDump, the default one: The "debug" output of types from within C++. This is the default format.
 
   // Primitive types.
   EXPECT_STREQ("uint32_t", CurrentTypeName<uint32_t>());
@@ -139,12 +172,44 @@ TEST(Reflection, CurrentTypeName) {
   // Current types.
   EXPECT_STREQ("TypeID", CurrentTypeName<current::reflection::TypeID>());
   EXPECT_STREQ("Foo", CurrentTypeName<Foo>());
-  EXPECT_STREQ("Variant_B_Foo_E", CurrentTypeName<Variant<Foo>>());
-  EXPECT_STREQ("Variant_B_Foo_Bar_Baz_E", (CurrentTypeName<Variant<Foo, Bar, Baz>>()));
+  EXPECT_STREQ("Variant<Foo>", CurrentTypeName<Variant<Foo>>());
+  EXPECT_STREQ("Variant<Foo, Bar, Baz>", (CurrentTypeName<Variant<Foo, Bar, Baz>>()));
   EXPECT_STREQ("FooBarBaz", CurrentTypeName<FooBarBaz>());                // A named variant.
   EXPECT_STREQ("AnotherFooBarBaz", CurrentTypeName<AnotherFooBarBaz>());  // A named variant.
   EXPECT_STREQ("Enum", CurrentTypeName<Enum>());
-  EXPECT_STREQ("Templated_Z", CurrentTypeName<Templated<Foo>>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<Templated<Foo>>());
+  EXPECT_STREQ("Templated<std::vector<Optional<Foo>>>", CurrentTypeName<Templated<std::vector<Optional<Foo>>>>());
+
+  // NameFormat::AsIdentifier: The canonical way to export the name of a type as a string which is a valid identifier.
+
+  // Primitive types.
+  EXPECT_STREQ("uint32_t", (CurrentTypeName<uint32_t, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("bool", (CurrentTypeName<bool, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("char", (CurrentTypeName<char, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("String", (CurrentTypeName<std::string, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("double", (CurrentTypeName<double, NameFormat::AsIdentifier>()));
+
+  // Composite types.
+  EXPECT_STREQ("Vector_String", (CurrentTypeName<std::vector<std::string>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Set_int8_t", (CurrentTypeName<std::set<int8_t>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("UnorderedSet_int16_t", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Map_int32_t_int64_t", ((CurrentTypeName<std::map<int32_t, int64_t>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("UnorderedMap_int64_t_int32_t",
+               ((CurrentTypeName<std::unordered_map<int64_t, int32_t>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("Pair_char_bool", ((CurrentTypeName<std::pair<char, bool>, NameFormat::AsIdentifier>())));
+
+  // Current types.
+  EXPECT_STREQ("TypeID", (CurrentTypeName<current::reflection::TypeID, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Foo", (CurrentTypeName<Foo, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Variant_Foo", (CurrentTypeName<Variant<Foo>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Variant_Foo_Bar_Baz", ((CurrentTypeName<Variant<Foo, Bar, Baz>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("FooBarBaz", (CurrentTypeName<FooBarBaz, NameFormat::AsIdentifier>()));  // A named variant.
+  EXPECT_STREQ("AnotherFooBarBaz",
+               (CurrentTypeName<AnotherFooBarBaz, NameFormat::AsIdentifier>()));  // A named variant.
+  EXPECT_STREQ("Enum", (CurrentTypeName<Enum, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<Templated<Foo>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Templated_T_Vector_Optional_Foo",
+               (CurrentTypeName<Templated<std::vector<Optional<Foo>>>, NameFormat::AsIdentifier>()));
 }
 
 TEST(Reflection, StructAndVariant) {
@@ -335,6 +400,7 @@ TEST(Reflection, TemplatedTypeIDs) {
   using namespace reflection_test;
 
   using current::reflection::CurrentTypeName;
+  using current::reflection::impl::NameFormat;
   using current::reflection::CurrentTypeID;
 
   const auto foo_typeid = static_cast<uint64_t>(CurrentTypeID<Foo>());
@@ -347,10 +413,14 @@ TEST(Reflection, TemplatedTypeIDs) {
   EXPECT_EQ(foo_typeid, static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<Templated<Foo>>>()));
 
   EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<Templated<Foo>>()));
-  EXPECT_STREQ("Templated_Z", CurrentTypeName<Templated<Foo>>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<Templated<Foo>>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<Templated<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<Templated<Foo>, NameFormat::AsIdentifier>()));
 
   EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<templated_same::Templated<Foo>>()));
-  EXPECT_STREQ("Templated_Z", CurrentTypeName<templated_same::Templated<Foo>>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_same::Templated<Foo>>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_same::Templated<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<templated_same::Templated<Foo>, NameFormat::AsIdentifier>()));
   static_assert(std::is_same<current::reflection::TemplateInnerType<templated_same::Templated<Foo>>, Foo>::value, "");
   EXPECT_EQ(
       foo_typeid,
@@ -358,16 +428,23 @@ TEST(Reflection, TemplatedTypeIDs) {
 
   EXPECT_NE(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<templated_renamed::Templated2<Foo>>()));
   EXPECT_EQ(9204032297018775049ull, static_cast<uint64_t>(CurrentTypeID<templated_renamed::Templated2<Foo>>()));
-  EXPECT_STREQ("Templated2_Z", CurrentTypeName<templated_renamed::Templated2<Foo>>());
+  EXPECT_STREQ("Templated2<Foo>", CurrentTypeName<templated_renamed::Templated2<Foo>>());
+  EXPECT_STREQ("Templated2_Z", (CurrentTypeName<templated_renamed::Templated2<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated2_T_Foo", (CurrentTypeName<templated_renamed::Templated2<Foo>, NameFormat::AsIdentifier>()));
 
   EXPECT_NE(templated_struct_typeid,
             static_cast<uint64_t>(CurrentTypeID<templated_different_field_name::Templated<Foo>>()));
   EXPECT_EQ(9201672492508788059ull,
             static_cast<uint64_t>(CurrentTypeID<templated_different_field_name::Templated<Foo>>()));
-  EXPECT_STREQ("Templated_Z", CurrentTypeName<templated_different_field_name::Templated<Foo>>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_different_field_name::Templated<Foo>>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_different_field_name::Templated<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo",
+               (CurrentTypeName<templated_different_field_name::Templated<Foo>, NameFormat::AsIdentifier>()));
 
   EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<templated_as_exported::Templated>()));
-  EXPECT_STREQ("Templated_Z", CurrentTypeName<templated_as_exported::Templated>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_as_exported::Templated>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_as_exported::Templated, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<templated_as_exported::Templated, NameFormat::AsIdentifier>()));
   static_assert(std::is_same<current::reflection::TemplateInnerType<templated_as_exported::Templated>, Foo>::value, "");
   EXPECT_EQ(
       foo_typeid,
@@ -375,7 +452,12 @@ TEST(Reflection, TemplatedTypeIDs) {
 
   EXPECT_EQ(templated_struct_typeid,
             static_cast<uint64_t>(CurrentTypeID<original_name_does_not_matter_when_exporting::BlahBlahBlah>()));
-  EXPECT_STREQ("Templated_Z", CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah>());
+  EXPECT_STREQ("Templated_Z",
+               (CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah, NameFormat::Z>()));
+  EXPECT_STREQ(
+      "Templated_T_Foo",
+      (CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah, NameFormat::AsIdentifier>()));
   static_assert(
       std::is_same<current::reflection::TemplateInnerType<original_name_does_not_matter_when_exporting::BlahBlahBlah>,
                    Foo>::value,
