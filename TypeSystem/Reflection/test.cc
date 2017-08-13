@@ -152,7 +152,7 @@ TEST(Reflection, CurrentTypeName) {
   EXPECT_STREQ("Enum", (CurrentTypeName<Enum, NameFormat::Z>()));
   EXPECT_STREQ("Templated_Z", (CurrentTypeName<Templated<Foo>, NameFormat::Z>()));
 
-  // NameFormat::DebugDump, the default one: The "debug" output of types from within C++. This is the default format.
+  // NameFormat::DebugDump, the default format: The "debug" output of types from within C++.
 
   // Primitive types.
   EXPECT_STREQ("uint32_t", CurrentTypeName<uint32_t>());
