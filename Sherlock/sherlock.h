@@ -608,7 +608,7 @@ class StreamImpl {
     SherlockSchema schema;
 
     // TODO(dkorolev): `AsIdentifier` here?
-    schema.type_name = current::reflection::CurrentTypeName<entry_t, current::reflection::impl::NameFormat::Z>();
+    schema.type_name = current::reflection::CurrentTypeName<entry_t, current::reflection::NameFormat::Z>();
     schema.type_id =
         Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<entry_t>()).type_id;
 

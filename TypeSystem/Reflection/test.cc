@@ -119,7 +119,7 @@ static_assert(std::is_same<current::reflection::FieldTypeWrapper<Foo>,
 
 TEST(Reflection, CurrentTypeName) {
   using current::reflection::CurrentTypeName;
-  using current::reflection::impl::NameFormat;
+  using current::reflection::NameFormat;
   using namespace reflection_test;
 
   // NameFormat::Z: C++ types, template names as `_Z`, variant names expanded as `_B_..._E`.
@@ -400,7 +400,7 @@ TEST(Reflection, TemplatedTypeIDs) {
   using namespace reflection_test;
 
   using current::reflection::CurrentTypeName;
-  using current::reflection::impl::NameFormat;
+  using current::reflection::NameFormat;
   using current::reflection::CurrentTypeID;
 
   const auto foo_typeid = static_cast<uint64_t>(CurrentTypeID<Foo>());

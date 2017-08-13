@@ -53,12 +53,12 @@ namespace reflection {
 
 struct CurrentVariantDefaultName;
 
-namespace impl {
-
 // `DebugDump`: ex. "Templated<std::vector<std::string>>", "std::vector<Templated<uint64_t>>". C++-level output.
 // `Z`: ex. "std::vector<std::string>", "Templated_Z". *ONLY* for legacy reasons of TypeID computation, TO BE FIXED.
-// `AsIdentifier`: ex. "Vector_Templated_T_Foo", for serialization and for schema dumps into languages such as node.js.
+// `AsIdentifier`: ex. "Vector_Templated_T_Foo", for serialization and for schema dumps into {Java,Type}Script et. al.
 enum class NameFormat : int { DebugDump = 0, Z, AsIdentifier };
+
+namespace impl {
 
 template <NameFormat NF, typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT, bool TRUE_IF_ENUM>
 struct CurrentTypeNameImpl;
@@ -289,7 +289,7 @@ struct CurrentTypeNameImpl<NameFormat::AsIdentifier, T, true, false, false> {
 
 }  // namespace current::reflection::impl
 
-template <typename T, impl::NameFormat NF = impl::NameFormat::DebugDump>
+template <typename T, NameFormat NF = NameFormat::DebugDump>
 inline const char* CurrentTypeName() {
   return impl::CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName();
 }

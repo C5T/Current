@@ -64,14 +64,14 @@ reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const c
 // as the order of their resolution by definition depends on which part of the cycle was the starting point.
 template <typename T>
 reflection::TypeID CurrentTypeID() {
-  return InternalCurrentTypeID<T>(typeid(T), CurrentTypeName<T, impl::NameFormat::Z>());
+  return InternalCurrentTypeID<T>(typeid(T), CurrentTypeName<T, NameFormat::Z>());
 }
 
 #ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
 // Unused in user code, just to cover the external safety condition LOC from the unit test. -- D.K.
 template <typename T_TOP_LEVEL, typename T_TYPE>
 reflection::TypeID CallCurrentTypeIDWronglyForUnitTest() {
-  return InternalCurrentTypeID<T_TYPE>(typeid(T_TOP_LEVEL), CurrentTypeName<T_TOP_LEVEL, impl::NameFormat::Z>());
+  return InternalCurrentTypeID<T_TYPE>(typeid(T_TOP_LEVEL), CurrentTypeName<T_TOP_LEVEL, NameFormat::Z>());
 }
 #endif
 
@@ -179,7 +179,7 @@ struct RecursiveTypeTraverser {
   template <typename NAME, typename... TS>
   TypeID operator()(TypeSelector<VariantImpl<NAME, TypeListImpl<TS...>>>) {
     ReflectedType_Variant result;
-    result.name = CurrentTypeName<VariantImpl<NAME, TypeListImpl<TS...>>, impl::NameFormat::Z>();
+    result.name = CurrentTypeName<VariantImpl<NAME, TypeListImpl<TS...>>, NameFormat::Z>();
 
     VariantCaseReflectingInnerType data(result, std::make_pair(top_level_type_, top_level_type_name_));
 
@@ -202,7 +202,7 @@ struct RecursiveTypeTraverser {
       result.templated_native_name = template_base_name;
     }
     */
-    result.native_name = CurrentTypeName<T, impl::NameFormat::Z>();
+    result.native_name = CurrentTypeName<T, NameFormat::Z>();
 
     result.super_id = ReflectSuper<T>();
     result.template_id = ReflectTemplateInnerType<T>();
@@ -296,7 +296,7 @@ reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const c
 #endif
 
   if (type_id == TypeID::UninitializedType) {
-    const uint64_t hash = current::CRC32(CurrentTypeName<T_TYPE, impl::NameFormat::Z>());
+    const uint64_t hash = current::CRC32(CurrentTypeName<T_TYPE, NameFormat::Z>());
     type_id = static_cast<TypeID>(TYPEID_CYCLIC_DEPENDENCY_TYPE + hash % TYPEID_TYPE_RANGE);
 
     // Relying on the singleton to instantiate this type exactly once, so in case of a re-entrant call
@@ -440,7 +440,7 @@ struct ReflectorImpl {
   ReflectedType operator()(TypeSelector<VariantImpl<NAME, TypeListImpl<TS...>>>) {
     using T_VARIANT = VariantImpl<NAME, TypeListImpl<TS...>>;
     ReflectedType_Variant result;
-    result.name = CurrentTypeName<T_VARIANT, impl::NameFormat::Z>();
+    result.name = CurrentTypeName<T_VARIANT, NameFormat::Z>();
     current::metaprogramming::call_all_constructors_with<ReflectVariantCase,
                                                          ReflectedType_Variant,
                                                          TypeListImpl<TS...>>(result);
@@ -461,7 +461,7 @@ struct ReflectorImpl {
       s.templated_native_name = template_base_name;
     }
     */
-    s.native_name = CurrentTypeName<T, impl::NameFormat::Z>();
+    s.native_name = CurrentTypeName<T, NameFormat::Z>();
 
     s.super_id = ReflectSuper<T>();
     s.template_id = ReflectTemplateInnerType<T>();

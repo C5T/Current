@@ -55,7 +55,7 @@ CURRENT_STRUCT(NamespaceToExpose) {
   CURRENT_CONSTRUCTOR(NamespaceToExpose)(const std::string& name = "Schema") : name(name) {}
   template <typename T>
   NamespaceToExpose& AddType(const std::string& exported_type_name) {
-    if (exported_type_name != CurrentTypeName<T, impl::NameFormat::Z>()) {
+    if (exported_type_name != CurrentTypeName<T, NameFormat::Z>()) {
       types[exported_type_name] = CurrentTypeID<T>();
     }
     return *this;
