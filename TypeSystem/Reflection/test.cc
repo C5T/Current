@@ -474,17 +474,31 @@ TEST(Reflection, TemplatedTypeIDs) {
       Value<ReflectedType_Struct>(Reflector().ReflectType<templated_as_exported::Templated>());
 
   EXPECT_EQ(a.native_name, b.native_name);
-  EXPECT_EQ(a.super_id, b.super_id);
-  ASSERT_TRUE(Exists(a.template_id));
-  ASSERT_TRUE(Exists(b.template_id));
-  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(Value(a.template_id)));
-  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(Value(b.template_id)));
+  EXPECT_FALSE(Exists(a.super_id));
+  EXPECT_FALSE(Exists(b.super_id));
+  ASSERT_TRUE(Exists(a.template_inner_id));
+  ASSERT_TRUE(Exists(b.template_inner_id));
+  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(Value(a.template_inner_id)));
+  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(Value(b.template_inner_id)));
+  ASSERT_TRUE(Exists(a.template_inner_name));
+  ASSERT_TRUE(Exists(b.template_inner_name));
+  EXPECT_EQ("Foo", Value(a.template_inner_name));
+  EXPECT_EQ("Foo", Value(b.template_inner_name));
   ASSERT_EQ(2u, a.fields.size());
   ASSERT_EQ(2u, b.fields.size());
   EXPECT_EQ(a.fields[0].name, b.fields[0].name);
   EXPECT_EQ(a.fields[1].name, b.fields[1].name);
   EXPECT_EQ(static_cast<uint64_t>(a.fields[0].type_id), static_cast<uint64_t>(b.fields[0].type_id));
   EXPECT_EQ(static_cast<uint64_t>(a.fields[1].type_id), static_cast<uint64_t>(b.fields[1].type_id));
+
+  {
+    // Test `super_id` and `super_name`.
+    const auto& dff = Value<ReflectedType_Struct>(Reflector().ReflectType<SimpleDerivedFromFoo>());
+    EXPECT_EQ("SimpleDerivedFromFoo", dff.native_name);
+    ASSERT_TRUE(Exists(dff.super_id));
+    EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<Foo>()), static_cast<uint64_t>(Value(dff.super_id)));
+    EXPECT_EQ("Foo", Value(dff.super_name));
+  }
 }
 
 namespace reflection_test {
@@ -843,12 +857,27 @@ CURRENT_STRUCT_T(RSRange) {
   CURRENT_FIELD(max, Optional<T>);
 };
 
+CURRENT_STRUCT(DerivedFromRSRange, RSRange<double>) { CURRENT_FIELD(yeah, bool, true); };
+
 }  // namespace reflection_test
 
 TEST(Reflection, TypeIDStaysTheSameForSimpleTemplatedType) {
   // This is the value that should be preserved.
   EXPECT_EQ(9206036954010691617ull,
             static_cast<uint64_t>(current::reflection::CurrentTypeID<reflection_test::RSRange<int32_t>>()));
+}
+
+TEST(Reflection, DerivingFromTemplatedStructsReflectsCorrectly) {
+  using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
+  using current::reflection::ReflectedType_Struct;
+
+  const auto& dff = Value<ReflectedType_Struct>(Reflector().ReflectType<DerivedFromRSRange>());
+  EXPECT_EQ("DerivedFromRSRange", dff.native_name);
+  ASSERT_TRUE(Exists(dff.super_id));
+  EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<RSRange<double>>()), static_cast<uint64_t>(Value(dff.super_id)));
+  EXPECT_EQ("RSRange_Z",
+            Value(dff.super_name));  // Still `Z-notation` internally. Hope we could fix it one day. -- D.K.
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

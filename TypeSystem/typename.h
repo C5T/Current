@@ -85,6 +85,12 @@ struct CallRightGetCurrentStructName<T, true> {
   static const char* DoIt() { return T::CURRENT_EXPORTED_STRUCT_NAME(); }
 };
 
+// A helper to save on extra template specializations, in hope to make compilation faster.
+template <>
+struct CallRightGetCurrentStructName<CurrentStruct, false> {
+  static const char* DoIt() { return "CurrentStruct"; }  // For the base type of non-derived `CURRENT_STRUCT`-s.
+};
+
 template <NameFormat NF, typename T>
 struct CurrentTypeNameImpl<NF, T, true, false, false> {
   static const char* GetCurrentTypeName() {
@@ -284,6 +290,17 @@ struct CurrentTypeNameImpl<NameFormat::AsIdentifier, T, true, false, false> {
     return CurrentPossiblyTemplatedStructName<NameFormat::AsIdentifier, T, reflection::TemplateInnerType<T>>::DoIt(
         "_T_", "");
   }
+};
+
+// Helpers to save on extra template specializations, in hopes to make compilation faster.
+template <NameFormat NF>
+struct CurrentTypeNameImpl<NF, void, false, false, false> {
+  static const char* GetCurrentTypeName() { return "void"; }
+};
+
+template <NameFormat NF>
+struct CurrentTypeNameImpl<NF, CurrentStruct, false, false, false> {
+  static const char* GetCurrentTypeName() { return "CurrentStruct"; }
 };
 
 }  // namespace current::reflection::impl

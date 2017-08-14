@@ -88,7 +88,6 @@ constexpr uint64_t TYPEID_CYCLIC_DEPENDENCY_TYPE = TYPEID_TYPE_RANGE * TYPEID_CY
 
 // clang-format off
 CURRENT_ENUM(TypeID, uint64_t) {
-  CurrentStruct = 1u,
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
@@ -181,8 +180,10 @@ CURRENT_STRUCT(ReflectedType_Struct_Field) {
 
 CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
   CURRENT_FIELD(native_name, std::string);
-  CURRENT_FIELD(super_id, TypeID, TypeID::UninitializedType);
-  CURRENT_FIELD(template_id, Optional<TypeID>);  // For instantiated `CURRENT_STRUCT_T`-s.
+  CURRENT_FIELD(super_id, Optional<TypeID>);
+  CURRENT_FIELD(super_name, Optional<std::string>);
+  CURRENT_FIELD(template_inner_id, Optional<TypeID>);  // For instantiated `CURRENT_STRUCT_T`-s.
+  CURRENT_FIELD(template_inner_name, Optional<std::string>);
   CURRENT_FIELD(fields, std::vector<ReflectedType_Struct_Field>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct) {}
   // The `TemplateInnerTypeExpandedName()` method serves two purposes:
@@ -190,20 +191,20 @@ CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
   //    (As `CURRENT_STRUCT_T`-s are exported as regular `CURRENT_STRUCT`-s, one per instantiation.)
   // 2) It preserves the TypeID-s the way they used to be before the refactoring of the reflector.
   std::string TemplateInnerTypeExpandedName() const {
-    if (Exists(template_id)) {
+    if (Exists(template_inner_id)) {
       CURRENT_ASSERT(native_name.length() > 2);
       CURRENT_ASSERT(native_name.substr(native_name.length() - 2) == "_Z");
-      return native_name.substr(0, native_name.length() - 2) + "_T" + current::ToString(Value(template_id));
+      return native_name.substr(0, native_name.length() - 2) + "_T" + current::ToString(Value(template_inner_id));
     } else {
       return native_name;
     }
   }
   // TemplateFullNameDecorator() returns a function that converts names ending with "_Z"
-  // into the names ending with "_T...", where `...` is the TypeID of the `template_id` of this struct.
+  // into the names ending with "_T...", where `...` is the TypeID of the `template_inner_id` of this struct.
   // Prerequisite: The struct is an instantiation of the template (or is declared so).
   std::function<std::string(const std::string&)> TemplateFullNameDecorator() const {
-    CURRENT_ASSERT(Exists(template_id));
-    const TypeID t = Value(template_id);
+    CURRENT_ASSERT(Exists(template_inner_id));
+    const TypeID t = Value(template_inner_id);
     return [t](const std::string& input) -> std::string {
       CURRENT_ASSERT(input.length() >= 3);
       CURRENT_ASSERT(input.substr(input.length() - 2) == "_Z");
@@ -230,9 +231,11 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   uint64_t hash = current::CRC32(s.TemplateInnerTypeExpandedName());
+  // The `1` is here for historical reasons, and should be kept. -- D.K.
+  const uint64_t base = Exists(s.super_id) ? static_cast<uint64_t>(Value(s.super_id)) : 1;
+  hash ^= ROL64(static_cast<TypeID>(base ^ 1), 7u);
+
   size_t i = 0u;
-  hash ^=
-      ROL64(static_cast<TypeID>(static_cast<uint64_t>(s.super_id) ^ static_cast<uint64_t>(TypeID::CurrentStruct)), 7u);
   for (const auto& f : s.fields) {
     CURRENT_ASSERT(f.type_id != TypeID::UninitializedType);
     hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);

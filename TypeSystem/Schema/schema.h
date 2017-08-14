@@ -181,15 +181,15 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
                                  std::function<std::string(TypeID, const std::string&)> type_name) {
     const std::string struct_name = s.native_name;
     os << "CURRENT_STRUCT(" << struct_name;
-    if (s.super_id != TypeID::CurrentStruct) {
-      os << ", " << type_name(s.super_id, "");
+    if (Exists(s.super_id)) {
+      os << ", " << type_name(Value(s.super_id), "");
     }
     os << ") {\n";
-    if (Exists(s.template_id)) {
+    if (Exists(s.template_inner_id)) {
       CURRENT_ASSERT(s.native_name.length() >= 3u);
       CURRENT_ASSERT(s.native_name.substr(s.native_name.length() - 2u) == "_Z");
       os << "  CURRENT_EXPORTED_TEMPLATED_STRUCT(" << s.native_name.substr(0, s.native_name.length() - 2) << ", "
-         << type_name(Value(s.template_id), "") << ");\n";
+         << type_name(Value(s.template_inner_id), "") << ");\n";
     }
     for (const auto& f : s.fields) {
       // Type name should be put into parentheses if it contains commas. Putting all type names
@@ -230,8 +230,8 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
                                  const ReflectedType_Struct& s,
                                  std::function<std::string(TypeID, const std::string&)> type_name) {
     os << "struct " << s.TemplateInnerTypeExpandedName();
-    if (s.super_id != TypeID::CurrentStruct) {
-      os << " : " << type_name(s.super_id, "::");
+    if (Exists(s.super_id)) {
+      os << " : " << type_name(Value(s.super_id), "::");
     }
     os << " {\n";
     bool first_field = true;
@@ -396,12 +396,12 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           const auto& type_substance = input_type.second;
           // Do not expose types that are templated, as their names may collide.
           if ((Exists<ReflectedType_Struct>(type_substance) &&
-               !Exists(Value<ReflectedType_Struct>(type_substance).template_id)) ||
+               !Exists(Value<ReflectedType_Struct>(type_substance).template_inner_id)) ||
               Exists<ReflectedType_Variant>(type_substance) || Exists<ReflectedType_Enum>(type_substance)) {
             os_ << "  CURRENT_NAMESPACE_TYPE(" << TypeName(input_type.first, "::")
                 << ", current_userspace::" << TypeName(input_type.first) << ");\n";
           } else if (Exists<ReflectedType_Struct>(type_substance) &&
-                     Exists(Value<ReflectedType_Struct>(type_substance).template_id)) {
+                     Exists(Value<ReflectedType_Struct>(type_substance).template_inner_id)) {
             const std::string type_name = TypeName(input_type.first, "::");
             os_ << "  CURRENT_NAMESPACE_TYPE("
                 << Value<ReflectedType_Struct>(type_substance).TemplateFullNameDecorator()(type_name)
@@ -443,7 +443,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             }
             os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
             std::string origin = namespaced_origin_struct_name;
-            if (Exists(s.template_id)) {
+            if (Exists(s.template_inner_id)) {
               const auto f = s.TemplateFullNameDecorator();
               origin = f(origin);
               namespaced_from_struct_name = f(namespaced_from_struct_name);
@@ -461,8 +461,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "      static_assert(::current::reflection::FieldCounter<" << namespaced_into_struct_name
                 << ">::value == " << fields.size() << ",\n"
                 << "                    \"Custom evolver required.\");\n";
-            if (s.super_id != TypeID::CurrentStruct) {
-              const std::string super_name = TypeName(s.super_id, "::");
+            if (Exists(s.super_id)) {
+              const std::string super_name = TypeName(Value(s.super_id), "::");
               os_ << "      CURRENT_COPY_SUPER(" << super_name << ");\n";
             }
             for (const auto& f : fields) {
@@ -594,7 +594,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               // Boilerplate evolver for `CURRENT_STRUCT`.
               auto bare_struct_name = TypeName(input_type.first, "::");
               const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
-              if (Exists(s.template_id)) {
+              if (Exists(s.template_inner_id)) {
                 const auto f = s.TemplateFullNameDecorator();
                 bare_struct_name = f(bare_struct_name);
               }
@@ -604,8 +604,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
               }
               os_ << "CURRENT_STRUCT_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
                   << bare_struct_name << ", {\n";
-              if (s.super_id != TypeID::CurrentStruct) {
-                const std::string super_name = TypeName(s.super_id, "::");
+              if (Exists(s.super_id)) {
+                const std::string super_name = TypeName(Value(s.super_id), "::");
                 os_ << "  CURRENT_COPY_SUPER(" << super_name << ");\n";
               }
               for (const auto& f : s.fields) {
@@ -790,8 +790,8 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
     // all base class fields are hoisted to the top of the record.
     void RecursivelyListStructFieldsForFSharp(std::ostringstream& os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
-        RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+      if (Exists(s.super_id)) {
+        RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
       }
       bool first_field = true;
       for (const auto& f : s.fields) {
@@ -920,9 +920,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
 
     // When dumping a derived `CURRENT_STRUCT` as a Markdown table, hoist base class fields to the top.
     void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
+      if (Exists(s.super_id)) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
-        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
       }
       for (const auto& f : s.fields) {
         temporary_os << "| `" << f.name << "` | " << TypeName(f.type_id) << " |";
@@ -939,9 +939,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       const std::string fields = temporary_os.str();
       // Print empty structs to Markdown, too. Their names need to be documented anyway.
       os_ << "\n### `" << s.TemplateInnerTypeExpandedName() << '`';
-      if (s.super_id != TypeID::CurrentStruct) {
-        os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).TemplateInnerTypeExpandedName()
-            << '`';
+      if (Exists(s.super_id)) {
+        os_ << ", extends `"
+            << Value<ReflectedType_Struct>(types_.at(Value(s.super_id))).TemplateInnerTypeExpandedName() << '`';
       }
       if (!fields.empty()) {
         os_ << "\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n" << fields << '\n';
@@ -1108,9 +1108,9 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     // When dumping fields of a derived `CURRENT_STRUCT` as a JSON, hoist base class fields to the top.
     void RecursivelyListStructFieldsForJSON(JSONSchemaObject& object, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
+      if (Exists(s.super_id)) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
-        RecursivelyListStructFieldsForJSON(object, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+        RecursivelyListStructFieldsForJSON(object, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
       }
       for (const auto& f : s.fields) {
         JSONSchemaObjectField field;
@@ -1331,18 +1331,18 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       const std::string fields = os.str();
       os_ << "\nexport const " << name << "_IO = ";
       if (fields.empty()) {
-        if (s.super_id != TypeID::CurrentStruct) {
-          os_ << "iots.intersection([ " << TypeName(s.super_id) << " ], '" << name << "')";
+        if (Exists(s.super_id)) {
+          os_ << "iots.intersection([ " << TypeName(Value(s.super_id)) << " ], '" << name << "')";
         } else {
           os_ << "iots.interface({}, '" << name << "')";
         }
       } else {
-        if (s.super_id != TypeID::CurrentStruct) {
-          os_ << "iots.intersection([ " << TypeName(s.super_id) << ", ";
+        if (Exists(s.super_id)) {
+          os_ << "iots.intersection([ " << TypeName(Value(s.super_id)) << ", ";
         }
         os_ << "iots.interface({\n";
         os_ << fields;
-        if (s.super_id != TypeID::CurrentStruct) {
+        if (Exists(s.super_id)) {
           os_ << "}) ], '" << name << "')";
         } else {
           os_ << "}, '" << name << "')";
@@ -1409,7 +1409,7 @@ CURRENT_STRUCT(SchemaInfo) {
 template <>
 struct LanguageDescribeCaller<Language::InternalFormat> final {
   static std::string CallDescribe(const SchemaInfo* instance, bool, const Optional<NamespaceToExpose>&) {
-    return JSON(*instance);
+    return JSON<JSONFormat::Minimalistic>(*instance);
   }
 };
 
@@ -1421,8 +1421,8 @@ struct StructSchema final {
       if (!schema_.types.count(s.type_id)) {
         // Fill `types[type_id]` before traversing everything else to break possible circular dependencies.
         schema_.types.emplace(s.type_id, s);
-        if (s.super_id != TypeID::CurrentStruct) {
-          Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
+        if (Exists(s.super_id)) {
+          Reflector().ReflectedTypeByTypeID(Value(s.super_id)).Call(*this);
         }
         for (const auto& f : s.fields) {
           Reflector().ReflectedTypeByTypeID(f.type_id).Call(*this);

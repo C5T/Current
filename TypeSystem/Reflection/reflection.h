@@ -192,33 +192,32 @@ struct RecursiveTypeTraverser {
   template <typename T>
   std::enable_if_t<IS_CURRENT_STRUCT(T), TypeID> operator()(TypeSelector<T>) {
     ReflectedType_Struct result;
-    /*
-    // TODO(dkorolev): Finish this part after syncing up with @mzhurovich. Backwards compatibility sucks.
-    const char* template_base_name = CurrentTemplatedStructName<T>();
-    if (!template_base_name) {
-      result.native_name = CurrentTypeNameAsIdentifier<T>();
-    } else {
-      result.native_name = template_base_name + std::string("_Z");  // TODO(dkorolev): Do we need this?
-      result.templated_native_name = template_base_name;
-    }
-    */
     result.native_name = CurrentTypeName<T, NameFormat::Z>();
 
     result.super_id = ReflectSuper<T>();
-    result.template_id = ReflectTemplateInnerType<T>();
+    if (Exists(result.super_id)) {
+      result.super_name = CurrentTypeName<typename T::super_t, NameFormat::Z>();
+    }
+
+    result.template_inner_id = ReflectTemplateInnerType<T>();
+    if (Exists(result.template_inner_id)) {
+      result.template_inner_name = CurrentTypeName<TemplateInnerType<T>, NameFormat::Z>();
+    }
+
     VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(
         StructFieldsTraverser<T>(top_level_type_, top_level_type_name_, result.fields));
+
     return CalculateTypeID(result);
   }
 
  private:
   template <typename T>
-  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
-    return TypeID::CurrentStruct;
+  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+    return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
+  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
     return CurrentTypeID_<SuperType<T>>();
   }
 
@@ -451,33 +450,32 @@ struct ReflectorImpl {
   template <typename T>
   std::enable_if_t<IS_CURRENT_STRUCT(T), ReflectedType> operator()(TypeSelector<T>) {
     ReflectedType_Struct s;
-    /*
-    // TODO(dkorolev): Finish this part after syncing up with @mzhurovich. Backwards compatibility sucks.
-    const char* template_base_name = CurrentTemplatedStructName<T>();
-    if (!template_base_name) {
-      s.native_name = CurrentTypeNameZ<T>();
-    } else {
-      s.native_name = template_base_name + std::string("_Z");
-      s.templated_native_name = template_base_name;
-    }
-    */
     s.native_name = CurrentTypeName<T, NameFormat::Z>();
 
     s.super_id = ReflectSuper<T>();
-    s.template_id = ReflectTemplateInnerType<T>();
+    if (Exists(s.super_id)) {
+      s.super_name = CurrentTypeName<typename T::super_t, NameFormat::Z>();
+    }
+
+    s.template_inner_id = ReflectTemplateInnerType<T>();
+    if (Exists(s.template_inner_id)) {
+      s.template_inner_name = CurrentTypeName<TemplateInnerType<T>, NameFormat::Z>();
+    }
+
     VisitAllFields<T, FieldTypeAndNameAndIndex>::WithoutObject(InnerStructFieldsTraverser<T>(s.fields));
     s.type_id = CurrentTypeID<T>();
+
     return s;
   }
 
  private:
   template <typename T>
-  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
-    return TypeID::CurrentStruct;
+  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+    return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, TypeID> ReflectSuper() {
+  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
     ReflectType<SuperType<T>>();
     return CurrentTypeID<SuperType<T>>();
   }
