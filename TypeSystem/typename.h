@@ -136,6 +136,10 @@ struct CurrentTypeNameImpl<NF, T, false, false, true> {
   template <NameFormat NF>                                                                                      \
   struct CurrentTypeNameImpl<NF, cpp_type, false, false, false> {                                               \
     static const char* GetCurrentTypeName() { return #cpp_type; }                                               \
+  };                                                                                                            \
+  template <>                                                                                                   \
+  struct CurrentTypeNameImpl<NameFormat::AsIdentifier, cpp_type, false, false, false> {                         \
+    static const char* GetCurrentTypeName() { return #current_type; }                                           \
   };
 #include "primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
@@ -193,11 +197,6 @@ struct CurrentTypeNameImpl<NF, Optional<T>, false, false, false> {
 };
 
 // Names for `AsIdentifier` name decoration.
-template <>
-struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::string, false, false, false> {
-  static std::string GetCurrentTypeName() { return "String"; }
-};
-
 template <typename T>
 struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::vector<T>, false, false, false> {
   static std::string GetCurrentTypeName() {

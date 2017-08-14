@@ -183,20 +183,20 @@ TEST(Reflection, CurrentTypeName) {
   // NameFormat::AsIdentifier: The canonical way to export the name of a type as a string which is a valid identifier.
 
   // Primitive types.
-  EXPECT_STREQ("uint32_t", (CurrentTypeName<uint32_t, NameFormat::AsIdentifier>()));
-  EXPECT_STREQ("bool", (CurrentTypeName<bool, NameFormat::AsIdentifier>()));
-  EXPECT_STREQ("char", (CurrentTypeName<char, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("UInt32", (CurrentTypeName<uint32_t, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Bool", (CurrentTypeName<bool, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Char", (CurrentTypeName<char, NameFormat::AsIdentifier>()));
   EXPECT_STREQ("String", (CurrentTypeName<std::string, NameFormat::AsIdentifier>()));
-  EXPECT_STREQ("double", (CurrentTypeName<double, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Double", (CurrentTypeName<double, NameFormat::AsIdentifier>()));
 
   // Composite types.
   EXPECT_STREQ("Vector_String", (CurrentTypeName<std::vector<std::string>, NameFormat::AsIdentifier>()));
-  EXPECT_STREQ("Set_int8_t", (CurrentTypeName<std::set<int8_t>, NameFormat::AsIdentifier>()));
-  EXPECT_STREQ("UnorderedSet_int16_t", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::AsIdentifier>()));
-  EXPECT_STREQ("Map_int32_t_int64_t", ((CurrentTypeName<std::map<int32_t, int64_t>, NameFormat::AsIdentifier>())));
-  EXPECT_STREQ("UnorderedMap_int64_t_int32_t",
+  EXPECT_STREQ("Set_Int8", (CurrentTypeName<std::set<int8_t>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("UnorderedSet_Int16", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Map_Int32_Int64", ((CurrentTypeName<std::map<int32_t, int64_t>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("UnorderedMap_Int64_Int32",
                ((CurrentTypeName<std::unordered_map<int64_t, int32_t>, NameFormat::AsIdentifier>())));
-  EXPECT_STREQ("Pair_char_bool", ((CurrentTypeName<std::pair<char, bool>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("Pair_Char_Bool", ((CurrentTypeName<std::pair<char, bool>, NameFormat::AsIdentifier>())));
 
   // Current types.
   EXPECT_STREQ("TypeID", (CurrentTypeName<current::reflection::TypeID, NameFormat::AsIdentifier>()));
