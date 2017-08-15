@@ -75,6 +75,8 @@ reflection::TypeID CallCurrentTypeIDWronglyForUnitTest() {
 }
 #endif
 
+// Stage one of two: `RecursiveTypeTraverser` and `TypeTraverserState` make sure
+// the internal thread-local TypeIDs are populated correctly.
 // Populated by `InternalCurrentTypeID`, used as a `ThreadLocalSingleton`.
 struct RecursiveTypeTraverser {
   const std::type_index top_level_type_;
@@ -306,6 +308,8 @@ reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const c
   return type_id;
 }
 
+// Stage two of two: `ReflectorImpl`, or just `Reflector()` reflects on types and returns
+// their info as the `ReflectedType` variant type.
 // `ReflectorImpl` is a thread-local singleton to generate reflected types metadata at runtime.
 struct ReflectorImpl {
   static ReflectorImpl& ThreadLocalInstance() { return ThreadLocalSingleton<ReflectorImpl>(); }
