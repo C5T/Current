@@ -105,13 +105,13 @@ struct ThreadLocalSingletonContainer : ThreadLocalSingletonContainerBase {
 };
 
 struct ThreadLocalSingletonsFactory {
-  std::unordered_map<std::type_index, std::unique_ptr<ThreadLocalSingletonContainerBase> > instances;
+  std::unordered_map<std::type_index, std::unique_ptr<ThreadLocalSingletonContainerBase>> instances;
 
   template <typename T>
   T& DoGetInstance() {
     auto& placeholder = instances[std::type_index(typeid(T))];
     if (!placeholder) {
-      placeholder = std::make_unique<ThreadLocalSingletonContainer<T> >();
+      placeholder = std::make_unique<ThreadLocalSingletonContainer<T>>();
     }
     return dynamic_cast<ThreadLocalSingletonContainer<T>&>(*placeholder).instance;
   }
