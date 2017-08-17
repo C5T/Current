@@ -297,9 +297,8 @@ struct URLParametersExtractor {
 
     // NOTE: `FillObject` only populates the fields present in the URL; it doesn't erase what's not in the querystring.
     template <typename T, FillObjectMode MODE = FillObjectMode::Forgiving>
-    const T& FillObject(T& object) const {
-      QueryParametersObjectFiller<T, MODE> parser{parameters_};
-      current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
+    std::enable_if_t<IS_CURRENT_STRUCT(T), const T&> FillObject(T& object) const {
+      FillObjectImpl<T, MODE>::DoIt(parameters_, object);
       return object;
     }
 
@@ -311,6 +310,22 @@ struct URLParametersExtractor {
     }
 
    private:
+    template <typename T, FillObjectMode MODE>
+    struct FillObjectImpl {
+      static void DoIt(const std::map<std::string, std::string>& parameters, T& object) {
+        using decayed_t = current::decay<T>;
+        using super_t = current::reflection::SuperType<decayed_t>;
+        FillObjectImpl<super_t, MODE>::DoIt(parameters, static_cast<super_t&>(object));
+        QueryParametersObjectFiller<T, MODE> parser{parameters};
+        current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
+      }
+    };
+
+    template <FillObjectMode MODE>
+    struct FillObjectImpl<CurrentStruct, MODE> {
+      static void DoIt(const std::map<std::string, std::string>&, CurrentStruct&) {}
+    };
+
     template <typename TOP_LEVEL_T, FillObjectMode MODE>
     struct QueryParametersObjectFiller {
       const std::map<std::string, std::string>& q;
@@ -499,6 +514,23 @@ struct URLPathArgs {
   size_t size() const { return args_.size(); }
 
   void add(const std::string& arg) { args_.push_back(arg); }
+
+  std::string ComposeURLPathFromArgs() const {
+    std::string result;
+    for (const auto& component : (*this)) {
+      result += "/" + component;
+    }
+    return (result.empty() ? "/" : result);
+  }
+
+  std::string ComposeURLPath() const {
+    const std::string path_from_args = ComposeURLPathFromArgs();
+    if (base_path.empty() || base_path == "/") {
+      return path_from_args;
+    } else {
+      return (path_from_args == "/" ? base_path : base_path + path_from_args);
+    }
+  }
 
   std::string base_path;
 

@@ -84,8 +84,18 @@ class GenericHTTPClientPOSIX final {
         CURRENT_THROW(current::net::HTTPRedirectLoopException(loop));
       }
       all_urls.insert(composed_url);
+      // The `URL` class' concern is to parse the URL string as is: if the port is missing, it becomes zero.
+      // `URL::DefaultPortForScheme` will return zero anyway if the schema is unknown.
+      // So, to make sure we don't try to connect to port zero, the defaulting logic has to be here in the HTTP client.
+      int port = parsed_url.port;
+      if (port == 0) {
+        port = URL::DefaultPortForScheme(parsed_url.scheme);
+        if (port == 0) {
+          port = 80;
+        }
+      }
       current::net::Connection connection(
-          current::net::Connection(current::net::ClientSocket(parsed_url.host, parsed_url.port)));
+          current::net::Connection(current::net::ClientSocket(parsed_url.host, port)));
       connection.BlockingWrite(
           request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() + " HTTP/1.1\r\n", true);
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n", true);

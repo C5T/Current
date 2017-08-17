@@ -57,7 +57,10 @@ class GenericOneToMany {
   using transposed_map_t = row_elements_map_t;
   using semantics_t = storage::semantics::OneToMany;
 
-  GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
+  GenericOneToMany(const std::string& field_name, MutationJournal& journal)
+      : field_name_(field_name), journal_(journal) {}
+
+  const std::string& FieldName() const { return field_name_; }
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -275,6 +278,7 @@ class GenericOneToMany {
     DoEraseWithoutTouchingLastModified(key);
   }
 
+  const std::string field_name_;
   elements_map_t map_;
   forward_map_t forward_;
   transposed_map_t transposed_;
