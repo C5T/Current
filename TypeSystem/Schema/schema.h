@@ -412,7 +412,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           const NamespaceToExpose& expose = Value(namespace_to_expose_);
           os_ << "\n  // Privileged types.\n";
           for (const auto& t : expose.types) {
-            // NOTE(dkorolev): If the uses requests to expose a templated type, it's their responsibility ]
+            // NOTE(dkorolev): If the uses requests to expose a templated type, it's their responsibility
             // to only do it for at most one instantiation per type.
             os_ << "  CURRENT_NAMESPACE_TYPE(" << t.first << ", current_userspace::" << TypeName(t.second) << ");\n";
           }
