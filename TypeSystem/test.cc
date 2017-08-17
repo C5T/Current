@@ -521,6 +521,23 @@ TEST(TypeSystemTest, Optional) {
     EXPECT_TRUE(Exists(foo));
     EXPECT_EQ(1, Value(foo));
   }
+  // POD version: Construct from `const ImmutableOptional<int>&`.
+  {
+    ImmutableOptional<int> f(200);
+    Optional<int> foo(static_cast<const ImmutableOptional<int>&>(f));
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(200, foo.ValueImpl());
+    EXPECT_EQ(200, Value(foo));
+  }
+  // POD version: Create empty, initialize by assignment from `const ImmutableOptional<int>&`.
+  {
+    ImmutableOptional<int> f(2);
+    Optional<int> foo;
+    EXPECT_FALSE(Exists(foo));
+    foo = static_cast<const ImmutableOptional<int>&>(f);
+    EXPECT_TRUE(Exists(foo));
+    EXPECT_EQ(2, Value(foo));
+  }
   // POD version: Exception.
   {
     Optional<int> foo(200);
@@ -596,6 +613,18 @@ TEST(TypeSystemTest, Optional) {
     ASSERT_TRUE(Exists(bar));
     EXPECT_EQ(42u, Value(bar).i);
   }
+  // Non-POD version: Construct from `const ImmutableOptional<Foo>&`.
+  {
+    Foo bare(42);
+    ImmutableOptional<Foo> foo(FromBarePointer(), &bare);
+    Optional<Foo> bar(static_cast<const ImmutableOptional<Foo>&>(foo));
+    ASSERT_TRUE(Exists(foo));
+    ASSERT_TRUE(Exists(bar));
+    EXPECT_EQ(42u, Value(bar).i);
+    Value(bar).i = 100u;
+    EXPECT_EQ(42u, Value(foo).i);
+    EXPECT_EQ(100u, Value(bar).i);
+  }
   // Non-POD version: Create empty, initialize by rvalue assignment.
   {
     Optional<Foo> foo(Foo(100u));
@@ -605,6 +634,20 @@ TEST(TypeSystemTest, Optional) {
     bar = std::move(foo);
     ASSERT_FALSE(Exists(foo));
     ASSERT_TRUE(Exists(bar));
+    EXPECT_EQ(100u, Value(bar).i);
+  }
+  // Non-POD version: Create empty, initialize by assignment from `const ImmutableOptional<Foo>&`.
+  {
+    Foo bare(42);
+    ImmutableOptional<Foo> foo(FromBarePointer(), &bare);
+    Optional<Foo> bar;
+    ASSERT_TRUE(Exists(foo));
+    ASSERT_FALSE(Exists(bar));
+    bar = static_cast<const ImmutableOptional<Foo>&>(foo);
+    ASSERT_TRUE(Exists(bar));
+    EXPECT_EQ(42u, Value(bar).i);
+    Value(bar).i = 100u;
+    EXPECT_EQ(42u, Value(foo).i);
     EXPECT_EQ(100u, Value(bar).i);
   }
   // Non-POD version: Exception.

@@ -229,6 +229,11 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     rhs.exists_ = false;
   }
 
+  Optional(const ImmutableOptional<T>& rhs) {
+    value_ = rhs.ValueImpl();
+    exists_ = rhs.ExistsImpl();
+  }
+
   Optional<T>& operator=(std::nullptr_t) {
     exists_ = false;
     return *this;
@@ -250,6 +255,12 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     value_ = rhs.value_;
     exists_ = rhs.exists_;
     rhs.exists_ = false;
+    return *this;
+  }
+
+  Optional<T>& operator=(const ImmutableOptional<T>& rhs) {
+    value_ = rhs.ValueImpl();
+    exists_ = rhs.ExistsImpl();
     return *this;
   }
 
@@ -314,9 +325,30 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
     optional_object_ = owned_optional_object_.get();
   }
 
+  Optional(const ImmutableOptional<T>& rhs) {
+    if (rhs.ExistsImpl()) {
+      owned_optional_object_ = std::make_unique<T>(rhs.ValueImpl());
+    } else {
+      owned_optional_object_ = nullptr;
+    }
+    optional_object_ = owned_optional_object_.get();
+  }
+
   Optional<T>& operator=(std::nullptr_t) {
     owned_optional_object_ = nullptr;
     optional_object_ = nullptr;
+    return *this;
+  }
+
+  Optional<T>& operator=(const T& object) {
+    owned_optional_object_ = std::make_unique<T>(object);
+    optional_object_ = owned_optional_object_.get();
+    return *this;
+  }
+
+  Optional<T>& operator=(T&& object) {
+    owned_optional_object_ = std::make_unique<T>(std::move(object));
+    optional_object_ = owned_optional_object_.get();
     return *this;
   }
 
@@ -353,14 +385,12 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
     return *this;
   }
 
-  Optional<T>& operator=(const T& object) {
-    owned_optional_object_ = std::make_unique<T>(object);
-    optional_object_ = owned_optional_object_.get();
-    return *this;
-  }
-
-  Optional<T>& operator=(T&& object) {
-    owned_optional_object_ = std::make_unique<T>(std::move(object));
+  Optional<T>& operator=(const ImmutableOptional<T>& rhs) {
+    if (rhs.ExistsImpl()) {
+      owned_optional_object_ = std::make_unique<T>(rhs.ValueImpl());
+    } else {
+      owned_optional_object_ = nullptr;
+    }
     optional_object_ = owned_optional_object_.get();
     return *this;
   }
