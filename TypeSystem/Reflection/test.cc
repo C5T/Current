@@ -122,7 +122,7 @@ TEST(Reflection, CurrentTypeName) {
   using current::reflection::NameFormat;
   using namespace reflection_test;
 
-  // NameFormat::Z: C++ types, template names as `_Z`, variant names expanded as `_B_..._E`.
+  // NameFormat::Z: C++ types, template class names as `_Z`, variant names expanded as `_B_..._E`.
   // Unused for the very naming, kept for legacy reasons of inner TypeID computation when the dependency is cyclic (?).
   // TODO(dkorolev) + TODO(mzhurovich): Why don't we retire this? It would change some TypeIDs, so what?
 
