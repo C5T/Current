@@ -65,18 +65,17 @@ CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>)
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
-#ifndef CURRENT_WINDOWS
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
-#else
-  typedef std::map<std::string, SelfContainingC> t_map_string_c;
-  CURRENT_FIELD(m, t_map_string_c);
-#endif
 };
 
 CURRENT_STRUCT_T(Templated) {
   CURRENT_FIELD(base, std::string);
   CURRENT_FIELD(extension, T);
 };
+
+// clang-format off
+CURRENT_ENUM(Enum, uint32_t) { Value1 = 1u, Value2 = 2u };
+// clang-format on
 
 using current::reflection::Reflector;
 
@@ -118,6 +117,101 @@ static_assert(std::is_same<current::reflection::FieldTypeWrapper<Foo>,
 
 }  // namespace reflection_test
 
+TEST(Reflection, CurrentTypeName) {
+  using current::reflection::CurrentTypeName;
+  using current::reflection::NameFormat;
+  using namespace reflection_test;
+
+  // NameFormat::Z: C++ types, template class names as `_Z`, variant names expanded as `_B_..._E`.
+  // Unused for the very naming, kept for legacy reasons of inner TypeID computation when the dependency is cyclic (?).
+  // TODO(dkorolev) + TODO(mzhurovich): Why don't we retire this? It would change some TypeIDs, so what?
+
+  // Primitive types.
+  EXPECT_STREQ("uint32_t", (CurrentTypeName<uint32_t, NameFormat::Z>()));
+  EXPECT_STREQ("bool", (CurrentTypeName<bool, NameFormat::Z>()));
+  EXPECT_STREQ("char", (CurrentTypeName<char, NameFormat::Z>()));
+  EXPECT_STREQ("std::string", (CurrentTypeName<std::string, NameFormat::Z>()));
+  EXPECT_STREQ("double", (CurrentTypeName<double, NameFormat::Z>()));
+
+  // Composite types.
+  EXPECT_STREQ("std::vector<std::string>", (CurrentTypeName<std::vector<std::string>, NameFormat::Z>()));
+  EXPECT_STREQ("std::set<int8_t>", (CurrentTypeName<std::set<int8_t>, NameFormat::Z>()));
+  EXPECT_STREQ("std::unordered_set<int16_t>", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::Z>()));
+  EXPECT_STREQ("std::map<int32_t, int64_t>", ((CurrentTypeName<std::map<int32_t, int64_t>, NameFormat::Z>())));
+  EXPECT_STREQ("std::unordered_map<int64_t, int32_t>",
+               ((CurrentTypeName<std::unordered_map<int64_t, int32_t>, NameFormat::Z>())));
+  EXPECT_STREQ("std::pair<char, bool>", ((CurrentTypeName<std::pair<char, bool>, NameFormat::Z>())));
+
+  // Current types.
+  EXPECT_STREQ("TypeID", (CurrentTypeName<current::reflection::TypeID, NameFormat::Z>()));
+  EXPECT_STREQ("Foo", (CurrentTypeName<Foo, NameFormat::Z>()));
+  EXPECT_STREQ("Variant_B_Foo_E", (CurrentTypeName<Variant<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Variant_B_Foo_Bar_Baz_E", ((CurrentTypeName<Variant<Foo, Bar, Baz>, NameFormat::Z>())));
+  EXPECT_STREQ("FooBarBaz", (CurrentTypeName<FooBarBaz, NameFormat::Z>()));                // A named variant.
+  EXPECT_STREQ("AnotherFooBarBaz", (CurrentTypeName<AnotherFooBarBaz, NameFormat::Z>()));  // A named variant.
+  EXPECT_STREQ("Enum", (CurrentTypeName<Enum, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<Templated<Foo>, NameFormat::Z>()));
+
+  // NameFormat::FullCPP, the default format: The "debug" output of types from within C++.
+
+  // Primitive types.
+  EXPECT_STREQ("uint32_t", CurrentTypeName<uint32_t>());
+  EXPECT_STREQ("bool", CurrentTypeName<bool>());
+  EXPECT_STREQ("char", CurrentTypeName<char>());
+  EXPECT_STREQ("std::string", CurrentTypeName<std::string>());
+  EXPECT_STREQ("double", CurrentTypeName<double>());
+
+  // Composite types.
+  EXPECT_STREQ("std::vector<std::string>", CurrentTypeName<std::vector<std::string>>());
+  EXPECT_STREQ("std::set<int8_t>", CurrentTypeName<std::set<int8_t>>());
+  EXPECT_STREQ("std::unordered_set<int16_t>", CurrentTypeName<std::unordered_set<int16_t>>());
+  EXPECT_STREQ("std::map<int32_t, int64_t>", (CurrentTypeName<std::map<int32_t, int64_t>>()));
+  EXPECT_STREQ("std::unordered_map<int64_t, int32_t>", (CurrentTypeName<std::unordered_map<int64_t, int32_t>>()));
+  EXPECT_STREQ("std::pair<char, bool>", (CurrentTypeName<std::pair<char, bool>>()));
+
+  // Current types.
+  EXPECT_STREQ("TypeID", CurrentTypeName<current::reflection::TypeID>());
+  EXPECT_STREQ("Foo", CurrentTypeName<Foo>());
+  EXPECT_STREQ("Variant<Foo>", CurrentTypeName<Variant<Foo>>());
+  EXPECT_STREQ("Variant<Foo, Bar, Baz>", (CurrentTypeName<Variant<Foo, Bar, Baz>>()));
+  EXPECT_STREQ("FooBarBaz", CurrentTypeName<FooBarBaz>());                // A named variant.
+  EXPECT_STREQ("AnotherFooBarBaz", CurrentTypeName<AnotherFooBarBaz>());  // A named variant.
+  EXPECT_STREQ("Enum", CurrentTypeName<Enum>());
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<Templated<Foo>>());
+  EXPECT_STREQ("Templated<std::vector<Optional<Foo>>>", CurrentTypeName<Templated<std::vector<Optional<Foo>>>>());
+
+  // NameFormat::AsIdentifier: The canonical way to export the name of a type as a string which is a valid identifier.
+
+  // Primitive types.
+  EXPECT_STREQ("UInt32", (CurrentTypeName<uint32_t, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Bool", (CurrentTypeName<bool, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Char", (CurrentTypeName<char, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("String", (CurrentTypeName<std::string, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Double", (CurrentTypeName<double, NameFormat::AsIdentifier>()));
+
+  // Composite types.
+  EXPECT_STREQ("Vector_String", (CurrentTypeName<std::vector<std::string>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Set_Int8", (CurrentTypeName<std::set<int8_t>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("UnorderedSet_Int16", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Map_Int32_Int64", ((CurrentTypeName<std::map<int32_t, int64_t>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("UnorderedMap_Int64_Int32",
+               ((CurrentTypeName<std::unordered_map<int64_t, int32_t>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("Pair_Char_Bool", ((CurrentTypeName<std::pair<char, bool>, NameFormat::AsIdentifier>())));
+
+  // Current types.
+  EXPECT_STREQ("TypeID", (CurrentTypeName<current::reflection::TypeID, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Foo", (CurrentTypeName<Foo, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Variant_Foo", (CurrentTypeName<Variant<Foo>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Variant_Foo_Bar_Baz", ((CurrentTypeName<Variant<Foo, Bar, Baz>, NameFormat::AsIdentifier>())));
+  EXPECT_STREQ("FooBarBaz", (CurrentTypeName<FooBarBaz, NameFormat::AsIdentifier>()));  // A named variant.
+  EXPECT_STREQ("AnotherFooBarBaz",
+               (CurrentTypeName<AnotherFooBarBaz, NameFormat::AsIdentifier>()));  // A named variant.
+  EXPECT_STREQ("Enum", (CurrentTypeName<Enum, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<Templated<Foo>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Templated_T_Vector_Optional_Foo",
+               (CurrentTypeName<Templated<std::vector<Optional<Foo>>>, NameFormat::AsIdentifier>()));
+}
+
 TEST(Reflection, StructAndVariant) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;
@@ -141,26 +235,100 @@ TEST(Reflection, StructAndVariant) {
   EXPECT_EQ("This is v4.", Value(bar.fields[3].description));
   EXPECT_EQ(bar.type_id, Value<ReflectedType_Struct>(Reflector().ReflectedTypeByTypeID(bar.type_id)).type_id);
 
-  const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
-  EXPECT_EQ(1u, self_a.fields.size());
-  EXPECT_EQ(9206664846159389537ull, static_cast<uint64_t>(self_a.type_id));
-  EXPECT_EQ(9318143269698080259ull, static_cast<uint64_t>(self_a.fields[0].type_id));
-  const ReflectedType_Struct& self_b = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingB>());
-  EXPECT_EQ(1u, self_b.fields.size());
-  EXPECT_EQ(9205249121542238939ull, static_cast<uint64_t>(self_b.type_id));
-  EXPECT_EQ(9318143287813964755ull, static_cast<uint64_t>(self_b.fields[0].type_id));
-  const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
-  EXPECT_EQ(2u, self_c.fields.size());
-  EXPECT_EQ(9200251873128019120ull, static_cast<uint64_t>(self_c.type_id));
-  EXPECT_EQ(9318143287813964755ull, static_cast<uint64_t>(self_c.fields[0].type_id));
-  EXPECT_EQ(9345111461746810545ull, static_cast<uint64_t>(self_c.fields[1].type_id));
-
   EXPECT_NE(
       static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
       static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<Variant<Foo, Bar, Baz>>()).type_id));
 
   EXPECT_NE(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
             static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<AnotherFooBarBaz>()).type_id));
+}
+
+TEST(Reflection, SelfContainingStruct) {
+  using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
+  using current::reflection::ReflectedType_Struct;
+  using current::reflection::ReflectedType_Variant;
+
+  const auto typeid_a = static_cast<uint64_t>(CurrentTypeID<SelfContainingA>());
+  const auto typeid_va = static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingA>>());
+  const auto typeid_b = static_cast<uint64_t>(CurrentTypeID<SelfContainingB>());
+  const auto typeid_vb = static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingB>>());
+  const auto typeid_c = static_cast<uint64_t>(CurrentTypeID<SelfContainingC>());
+  const auto typeid_msc = static_cast<uint64_t>(CurrentTypeID<std::map<std::string, SelfContainingC>>());
+
+  EXPECT_EQ(9203459442620113853ull, typeid_a);
+  EXPECT_EQ(9316106052119012411ull, typeid_va);
+  EXPECT_EQ(9205833655400624647ull, typeid_b);
+  EXPECT_EQ(9316451506340571627ull, typeid_vb);
+  EXPECT_EQ(9208493534322203273ull, typeid_c);
+  EXPECT_EQ(9346663043140503218ull, typeid_msc);
+
+  const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
+  EXPECT_EQ(1u, self_a.fields.size());
+  EXPECT_EQ(typeid_a, static_cast<uint64_t>(self_a.type_id));
+  EXPECT_EQ(typeid_va, static_cast<uint64_t>(self_a.fields[0].type_id));
+
+  const ReflectedType_Struct& self_b = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingB>());
+  EXPECT_EQ(1u, self_b.fields.size());
+  EXPECT_EQ(typeid_b, static_cast<uint64_t>(self_b.type_id));
+  EXPECT_EQ(typeid_vb, static_cast<uint64_t>(self_b.fields[0].type_id));
+
+  const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
+  EXPECT_EQ(2u, self_c.fields.size());
+  EXPECT_EQ(typeid_c, static_cast<uint64_t>(self_c.type_id));
+  EXPECT_EQ(typeid_vb, static_cast<uint64_t>(self_c.fields[0].type_id));
+  EXPECT_EQ(typeid_msc, static_cast<uint64_t>(self_c.fields[1].type_id));
+}
+
+#ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
+TEST(Reflection, InternalWrongOrderReflectionException) {
+  using namespace reflection_test;
+
+  std::thread([]() {
+    try {
+      current::reflection::CallCurrentTypeIDWronglyForUnitTest<Foo, Bar>();
+      ASSERT_TRUE(false);
+    } catch (const current::reflection::InternalWrongOrderReflectionException& e) {
+      EXPECT_EQ("For some reason, when reflecting on `Foo`, type `Bar` is being considered first.",
+                e.OriginalDescription());
+    }
+  }).join();
+}
+#endif
+
+TEST(Reflection, UnknownTypeIDException) {
+  std::thread([]() {
+    try {
+      current::reflection::Reflector().ReflectedTypeByTypeID(static_cast<current::reflection::TypeID>(987654321));
+      ASSERT_TRUE(false);
+    } catch (const current::reflection::UnknownTypeIDException& e) {
+      EXPECT_EQ("987654321", e.OriginalDescription());
+    }
+  }).join();
+}
+
+TEST(Reflection, SelfContainingStructIntrospection) {
+  using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
+  using current::reflection::ReflectedType_Struct;
+  using current::reflection::ReflectedType_Vector;
+
+  const auto& va = Value<ReflectedType_Vector>(Reflector().ReflectType<std::vector<SelfContainingA>>());
+  const auto& a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
+
+  EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<SelfContainingA>()), static_cast<uint64_t>(a.type_id));
+  EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<std::vector<SelfContainingA>>()), static_cast<uint64_t>(va.type_id));
+
+  EXPECT_EQ(static_cast<uint64_t>(a.type_id), static_cast<uint64_t>(va.element_type));
+
+  EXPECT_EQ(1u, a.fields.size());
+  EXPECT_EQ(static_cast<uint64_t>(va.type_id), static_cast<uint64_t>(a.fields[0].type_id));
+}
+
+TEST(Reflection, TemplatedStruct) {
+  using namespace reflection_test;
+  using current::reflection::ReflectedType_Struct;
+  using current::reflection::ReflectedType_Variant;
 
   {
     const auto& foo = Value<ReflectedType_Struct>(Reflector().ReflectType<Foo>());
@@ -184,6 +352,152 @@ TEST(Reflection, StructAndVariant) {
       EXPECT_EQ(9000000000000000042ull, static_cast<uint64_t>(templated_bar.fields[0].type_id));
       EXPECT_EQ(static_cast<uint64_t>(bar.type_id), static_cast<uint64_t>(templated_bar.fields[1].type_id));
     }
+  }
+}
+
+namespace reflection_test {
+
+namespace templated_same {
+CURRENT_STRUCT_T(Templated) {
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension, T);
+};
+}  // namespace templated_same
+
+namespace templated_renamed {
+CURRENT_STRUCT_T(Templated2) {  // != templated_same::Templated
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension, T);
+};
+}  // namespace templated_renamed
+
+namespace templated_different_field_name {
+CURRENT_STRUCT_T(Templated) {  // != templated_same::Templated
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension_under_different_name, T);
+};
+}  // namespace templated_different_field_name
+
+namespace templated_as_exported {
+CURRENT_STRUCT(Templated) {  // No templation, but still same as `[templated_same::]Templated`.
+  CURRENT_EXPORTED_TEMPLATED_STRUCT(Templated, Foo);
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension, Foo);
+};
+}  // namespace templated_as_exported
+
+namespace original_name_does_not_matter_when_exporting {
+CURRENT_STRUCT(BlahBlahBlah) {  // No templation, but still same as `[templated_same::]Templated`.
+  CURRENT_EXPORTED_TEMPLATED_STRUCT(Templated, Foo);
+  CURRENT_FIELD(base, std::string);
+  CURRENT_FIELD(extension, Foo);
+};
+}  // namespace original_name_does_not_matter_when_exporting
+
+}  // namespace reflection_test
+
+TEST(Reflection, TemplatedTypeIDs) {
+  using namespace reflection_test;
+
+  using current::reflection::CurrentTypeName;
+  using current::reflection::NameFormat;
+  using current::reflection::CurrentTypeID;
+
+  const auto foo_typeid = static_cast<uint64_t>(CurrentTypeID<Foo>());
+  EXPECT_EQ(9203762249085213197ull, foo_typeid);
+
+  const auto templated_struct_typeid = static_cast<uint64_t>(CurrentTypeID<Templated<Foo>>());
+  EXPECT_EQ(9204032299541411163ull, templated_struct_typeid);
+
+  static_assert(std::is_same<current::reflection::TemplateInnerType<Templated<Foo>>, Foo>::value, "");
+  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<Templated<Foo>>>()));
+
+  EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<Templated<Foo>>()));
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<Templated<Foo>>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<Templated<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<Templated<Foo>, NameFormat::AsIdentifier>()));
+
+  EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<templated_same::Templated<Foo>>()));
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_same::Templated<Foo>>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_same::Templated<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<templated_same::Templated<Foo>, NameFormat::AsIdentifier>()));
+  static_assert(std::is_same<current::reflection::TemplateInnerType<templated_same::Templated<Foo>>, Foo>::value, "");
+  EXPECT_EQ(
+      foo_typeid,
+      static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<templated_same::Templated<Foo>>>()));
+
+  EXPECT_NE(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<templated_renamed::Templated2<Foo>>()));
+  EXPECT_EQ(9204032297018775049ull, static_cast<uint64_t>(CurrentTypeID<templated_renamed::Templated2<Foo>>()));
+  EXPECT_STREQ("Templated2<Foo>", CurrentTypeName<templated_renamed::Templated2<Foo>>());
+  EXPECT_STREQ("Templated2_Z", (CurrentTypeName<templated_renamed::Templated2<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated2_T_Foo", (CurrentTypeName<templated_renamed::Templated2<Foo>, NameFormat::AsIdentifier>()));
+
+  EXPECT_NE(templated_struct_typeid,
+            static_cast<uint64_t>(CurrentTypeID<templated_different_field_name::Templated<Foo>>()));
+  EXPECT_EQ(9201672492508788059ull,
+            static_cast<uint64_t>(CurrentTypeID<templated_different_field_name::Templated<Foo>>()));
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_different_field_name::Templated<Foo>>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_different_field_name::Templated<Foo>, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo",
+               (CurrentTypeName<templated_different_field_name::Templated<Foo>, NameFormat::AsIdentifier>()));
+
+  EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<templated_as_exported::Templated>()));
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_as_exported::Templated>());
+  EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_as_exported::Templated, NameFormat::Z>()));
+  EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<templated_as_exported::Templated, NameFormat::AsIdentifier>()));
+  static_assert(std::is_same<current::reflection::TemplateInnerType<templated_as_exported::Templated>, Foo>::value, "");
+  EXPECT_EQ(
+      foo_typeid,
+      static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<templated_as_exported::Templated>>()));
+
+  EXPECT_EQ(templated_struct_typeid,
+            static_cast<uint64_t>(CurrentTypeID<original_name_does_not_matter_when_exporting::BlahBlahBlah>()));
+  EXPECT_STREQ("Templated<Foo>", CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah>());
+  EXPECT_STREQ("Templated_Z",
+               (CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah, NameFormat::Z>()));
+  EXPECT_STREQ(
+      "Templated_T_Foo",
+      (CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah, NameFormat::AsIdentifier>()));
+  static_assert(
+      std::is_same<current::reflection::TemplateInnerType<original_name_does_not_matter_when_exporting::BlahBlahBlah>,
+                   Foo>::value,
+      "");
+  EXPECT_EQ(foo_typeid,
+            static_cast<uint64_t>(CurrentTypeID<
+                current::reflection::TemplateInnerType<original_name_does_not_matter_when_exporting::BlahBlahBlah>>()));
+
+  // Now test that both the original and the exported templated structs reflect same way internally.
+  using current::reflection::ReflectedType_Struct;
+
+  const ReflectedType_Struct& a = Value<ReflectedType_Struct>(Reflector().ReflectType<Templated<Foo>>());
+  const ReflectedType_Struct& b =
+      Value<ReflectedType_Struct>(Reflector().ReflectType<templated_as_exported::Templated>());
+
+  EXPECT_EQ(a.native_name, b.native_name);
+  EXPECT_FALSE(Exists(a.super_id));
+  EXPECT_FALSE(Exists(b.super_id));
+  ASSERT_TRUE(Exists(a.template_inner_id));
+  ASSERT_TRUE(Exists(b.template_inner_id));
+  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(Value(a.template_inner_id)));
+  EXPECT_EQ(foo_typeid, static_cast<uint64_t>(Value(b.template_inner_id)));
+  ASSERT_TRUE(Exists(a.template_inner_name));
+  ASSERT_TRUE(Exists(b.template_inner_name));
+  EXPECT_EQ("Foo", Value(a.template_inner_name));
+  EXPECT_EQ("Foo", Value(b.template_inner_name));
+  ASSERT_EQ(2u, a.fields.size());
+  ASSERT_EQ(2u, b.fields.size());
+  EXPECT_EQ(a.fields[0].name, b.fields[0].name);
+  EXPECT_EQ(a.fields[1].name, b.fields[1].name);
+  EXPECT_EQ(static_cast<uint64_t>(a.fields[0].type_id), static_cast<uint64_t>(b.fields[0].type_id));
+  EXPECT_EQ(static_cast<uint64_t>(a.fields[1].type_id), static_cast<uint64_t>(b.fields[1].type_id));
+
+  {
+    // Test `super_id` and `super_name`.
+    const auto& dff = Value<ReflectedType_Struct>(Reflector().ReflectType<SimpleDerivedFromFoo>());
+    EXPECT_EQ("SimpleDerivedFromFoo", dff.native_name);
+    ASSERT_TRUE(Exists(dff.super_id));
+    EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<Foo>()), static_cast<uint64_t>(Value(dff.super_id)));
+    EXPECT_EQ("Foo", Value(dff.super_name));
   }
 }
 
@@ -251,8 +565,6 @@ TEST(Reflection, CurrentStructInternals) {
 }
 
 namespace reflection_test {
-
-CURRENT_ENUM(Enum, uint32_t){Value1 = 1u, Value2 = 2u};
 
 CURRENT_STRUCT(StructWithAllSupportedTypes) {
   // Integral.
@@ -507,6 +819,65 @@ TEST(Reflection, BaseTypeMatters) {
       9205123533591385154ull,
       static_cast<uint64_t>(Value<ReflectedTypeBase>(
                                 Reflector().ReflectType<two::IdenticalCurrentStructWithDifferentBaseType>()).type_id));
+}
+
+namespace reflection_test {
+
+CURRENT_FORWARD_DECLARE_STRUCT(One);
+CURRENT_FORWARD_DECLARE_STRUCT(Two);
+
+CURRENT_STRUCT(One) { CURRENT_FIELD(two, std::vector<Two>); };
+
+CURRENT_STRUCT(Two) { CURRENT_FIELD(one, std::vector<One>); };
+
+}  // namespace reflection_test
+
+TEST(Reflection, OrderDoesNotMatter) {
+  using namespace reflection_test;
+  auto const one = current::reflection::CurrentTypeID<One>();
+  auto const two = current::reflection::CurrentTypeID<Two>();
+  EXPECT_EQ(9201293424144532153ull, static_cast<uint64_t>(one));
+  EXPECT_EQ(9207292435550686765ull, static_cast<uint64_t>(two));
+  // `Reflector` is thread local, so starting another thread is the easiest way to ensure a stateless run.
+  // Also note that the order of computations of TypeIDs is flipped in the two threads.
+  std::thread([one, two]() {
+    EXPECT_EQ(static_cast<uint64_t>(one), static_cast<uint64_t>(current::reflection::CurrentTypeID<One>()));
+    EXPECT_EQ(static_cast<uint64_t>(two), static_cast<uint64_t>(current::reflection::CurrentTypeID<Two>()));
+  }).join();
+  std::thread([one, two]() {
+    EXPECT_EQ(static_cast<uint64_t>(two), static_cast<uint64_t>(current::reflection::CurrentTypeID<Two>()));
+    EXPECT_EQ(static_cast<uint64_t>(one), static_cast<uint64_t>(current::reflection::CurrentTypeID<One>()));
+  }).join();
+}
+
+namespace reflection_test {
+
+CURRENT_STRUCT_T(RSRange) {
+  CURRENT_FIELD(min, Optional<T>);
+  CURRENT_FIELD(max, Optional<T>);
+};
+
+CURRENT_STRUCT(DerivedFromRSRange, RSRange<double>) { CURRENT_FIELD(yeah, bool, true); };
+
+}  // namespace reflection_test
+
+TEST(Reflection, TypeIDStaysTheSameForSimpleTemplatedType) {
+  // This is the value that should be preserved.
+  EXPECT_EQ(9206036954010691617ull,
+            static_cast<uint64_t>(current::reflection::CurrentTypeID<reflection_test::RSRange<int32_t>>()));
+}
+
+TEST(Reflection, DerivingFromTemplatedStructsReflectsCorrectly) {
+  using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
+  using current::reflection::ReflectedType_Struct;
+
+  const auto& dff = Value<ReflectedType_Struct>(Reflector().ReflectType<DerivedFromRSRange>());
+  EXPECT_EQ("DerivedFromRSRange", dff.native_name);
+  ASSERT_TRUE(Exists(dff.super_id));
+  EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<RSRange<double>>()), static_cast<uint64_t>(Value(dff.super_id)));
+  EXPECT_EQ("RSRange_Z",
+            Value(dff.super_name));  // Still `Z-notation` internally. Hope we could fix it one day. -- D.K.
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
