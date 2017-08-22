@@ -107,6 +107,13 @@ export type MyFreakingVariant = iots.UnionType<[
 
 ### Type validation
 
+The `validate` function from `io-ts` returns a value of the `Either` type which can be either `Right` or `Left`.
+This `Either` type and the `isRight` function to tell `Right` from `Left` are defined in the `fp-ts` module at `fp-ts/lib/Either`, so `fp-ts` is required for the type validation.
+
+```
+npm install --save fp-ts
+```
+
 ```ts
 import * as fs from 'fs';
 import * as iots from 'io-ts';
@@ -116,9 +123,14 @@ import { PathReporter } from 'io-ts/lib/PathReporter';
 import * as generated_schema_ts from './generated_schema_ts';
 
 const generated_schema_serialized: generated_schema_ts.FullTest = JSON.parse(String(fs.readFileSync('./generated_schema_serialized.json')));
-const validation = iots.validate(generated_schema_serialized, generated_schema_ts.Primitives_IO);
+const validationResult = iots.validate(generated_schema_serialized, generated_schema_ts.Primitives_IO);
 
-isRight(validation);  // => `true` if validated successfully; `false` otherwise.
+isRight(validationResult);  // => `true` if validated successfully; `false` otherwise.
 
-const error_report = PathReporter.report(validation);  // => string[]
+const error_report = PathReporter.report(validationResult);  // => string[]
 ```
+
+
+## Contribution
+
+Please see [C5T/Current](https://github.com/C5T/Current) guidelines for contribution.

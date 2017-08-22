@@ -66,18 +66,6 @@ using object_base_t = CurrentSuper;
 
 struct BypassVariantTypeCheck {};
 
-template <typename NAME, typename TYPELIST>
-struct CurrentVariantNameHelper : CurrentVariant {
-  static std::string VariantName() { return NAME::VariantNameImpl(); }
-};
-
-template <typename TYPELIST>
-struct CurrentVariantNameHelper<reflection::CurrentVariantDefaultName, TYPELIST> : CurrentVariant {
-  static std::string VariantName() {
-    return reflection::CurrentVariantDefaultName::template VariantNameImpl<TYPELIST>();
-  }
-};
-
 namespace variant {
 
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
@@ -127,7 +115,7 @@ struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
 
 }  // namespace current::variant
 
-struct IHasUncheckedMoveFromUniquePtr {
+struct IHasUncheckedMoveFromUniquePtr : CurrentVariant {
   virtual void UncheckedMoveFromUniquePtr(std::unique_ptr<current::variant::object_base_t>) = 0;
 };
 
@@ -144,8 +132,7 @@ template <typename NAME, typename TYPE_LIST>
 struct VariantImpl;
 
 template <typename NAME, typename... TYPES>
-struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantNameHelper<NAME, TypeListImpl<TYPES...>>,
-                                                   IHasUncheckedMoveFromUniquePtr {
+struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePtr {
   using typelist_t = TypeListImpl<TYPES...>;
 
   static constexpr size_t typelist_size = typelist_t::size;
@@ -388,13 +375,13 @@ using NamedVariant = VariantImpl<NAME, TypeListImpl<TS...>>;
 
 using current::Variant;
 
-#define CURRENT_VARIANT(name, ...)                         \
-  template <int>                                           \
-  struct CURRENT_VARIANT_MACRO;                            \
-  template <>                                              \
-  struct CURRENT_VARIANT_MACRO<__COUNTER__> {              \
-    static const char* VariantNameImpl() { return #name; } \
-  };                                                       \
+#define CURRENT_VARIANT(name, ...)                           \
+  template <int>                                             \
+  struct CURRENT_VARIANT_MACRO;                              \
+  template <>                                                \
+  struct CURRENT_VARIANT_MACRO<__COUNTER__> {                \
+    static const char* CustomVariantName() { return #name; } \
+  };                                                         \
   using name = ::current::NamedVariant<CURRENT_VARIANT_MACRO<__COUNTER__ - 1>, __VA_ARGS__>;
 
 #endif  // CURRENT_TYPE_SYSTEM_VARIANT_H

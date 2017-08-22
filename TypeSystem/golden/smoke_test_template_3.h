@@ -1,0 +1,1 @@
+../Schema/golden/smoke_test_template_3.h
