@@ -230,8 +230,10 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
   }
 
   Optional(const ImmutableOptional<T>& rhs) {
-    value_ = rhs.ValueImpl();
     exists_ = rhs.ExistsImpl();
+    if (exists_) {
+      value_ = rhs.ValueImpl();
+    }
   }
 
   Optional<T>& operator=(std::nullptr_t) {
@@ -259,8 +261,10 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
   }
 
   Optional<T>& operator=(const ImmutableOptional<T>& rhs) {
-    value_ = rhs.ValueImpl();
     exists_ = rhs.ExistsImpl();
+    if (exists_) {
+      value_ = rhs.ValueImpl();
+    }
     return *this;
   }
 
