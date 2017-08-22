@@ -53,10 +53,10 @@ namespace reflection {
 
 struct CurrentVariantDefaultName;
 
-// `DebugDump`: ex. "Templated<std::vector<std::string>>", "std::vector<Templated<uint64_t>>". C++-level output.
+// `FullCPP`: ex. "Templated<std::vector<std::string>>", "std::vector<Templated<uint64_t>>". C++-level output.
 // `Z`: ex. "std::vector<std::string>", "Templated_Z". *ONLY* for legacy reasons of TypeID computation, TO BE FIXED.
 // `AsIdentifier`: ex. "Vector_Templated_T_Foo", for serialization and for schema dumps into {Java,Type}Script et. al.
-enum class NameFormat : int { DebugDump = 0, Z, AsIdentifier };
+enum class NameFormat : int { FullCPP = 0, Z, AsIdentifier };
 
 namespace impl {
 
@@ -114,9 +114,9 @@ struct CurrentVariantTypeNameImpl<NameFormat::Z, VariantImpl<CurrentVariantDefau
 };
 
 template <typename... TS>
-struct CurrentVariantTypeNameImpl<NameFormat::DebugDump, VariantImpl<CurrentVariantDefaultName, TypeListImpl<TS...>>> {
+struct CurrentVariantTypeNameImpl<NameFormat::FullCPP, VariantImpl<CurrentVariantDefaultName, TypeListImpl<TS...>>> {
   static std::string DoIt() {
-    return std::string("Variant<") + JoinTypeNames<NameFormat::DebugDump, TypeListImpl<TS...>>::Join(", ") + '>';
+    return std::string("Variant<") + JoinTypeNames<NameFormat::FullCPP, TypeListImpl<TS...>>::Join(", ") + '>';
   }
 };
 
@@ -277,10 +277,9 @@ struct CurrentPossiblyTemplatedStructName<NF, T, void> {
 };
 
 template <typename T>
-struct CurrentTypeNameImpl<NameFormat::DebugDump, T, true, false, false> {
+struct CurrentTypeNameImpl<NameFormat::FullCPP, T, true, false, false> {
   static std::string GetCurrentTypeName() {
-    return CurrentPossiblyTemplatedStructName<NameFormat::DebugDump, T, reflection::TemplateInnerType<T>>::DoIt("<",
-                                                                                                                ">");
+    return CurrentPossiblyTemplatedStructName<NameFormat::FullCPP, T, reflection::TemplateInnerType<T>>::DoIt("<", ">");
   }
 };
 
@@ -305,7 +304,7 @@ struct CurrentTypeNameImpl<NF, CurrentStruct, false, false, false> {
 
 }  // namespace current::reflection::impl
 
-template <typename T, NameFormat NF = NameFormat::DebugDump>
+template <typename T, NameFormat NF = NameFormat::FullCPP>
 inline const char* CurrentTypeName() {
   return impl::CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName();
 }
