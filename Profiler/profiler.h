@@ -82,7 +82,7 @@ struct Profiler {
           }
         };
         Trie trie;
-        std::stack<std::pair<const char*, Trie*> > stack;
+        std::stack<std::pair<const char*, Trie*>> stack;
         PerThread() {
           trie.ms_entered = Now();
           trie.entries = 1;

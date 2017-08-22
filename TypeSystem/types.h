@@ -31,8 +31,12 @@ SOFTWARE.
 #include <memory>
 #include <utility>
 
-#include "../Bricks/template/pod.h"
+#include "base.h"
+
+#include "../Bricks/template/decay.h"
 #include "../Bricks/template/enable_if.h"
+#include "../Bricks/template/pod.h"
+#include "../Bricks/template/variadic_indexes.h"
 
 namespace crnt {
 
@@ -124,19 +128,192 @@ struct CheckIntegrityImplMethodTest {
   static constexpr bool value = HasCheckIntegrityImplMethod<ENTRY>(0);
 };
 
+// Whether an `CURRENT_EXPORTED_STRUCT_NAME()` method is defined for a type.
+template <typename ENTRY>
+constexpr bool Has_CURRENT_EXPORTED_STRUCT_NAME_Impl(char) {
+  return false;
+}
+
+template <typename ENTRY>
+constexpr auto Has_CURRENT_EXPORTED_STRUCT_NAME_Impl(int)
+    -> decltype(std::declval<const ENTRY>().CURRENT_EXPORTED_STRUCT_NAME(), bool()) {
+  return true;
+}
+
+template <typename ENTRY>
+struct Has_CURRENT_EXPORTED_STRUCT_NAME {
+  static constexpr bool value = Has_CURRENT_EXPORTED_STRUCT_NAME_Impl<ENTRY>(0);
+};
+
 }  // namespace crnt::sfinae
 }  // namespace crnt
 
 namespace current {
+
 using ::crnt::CurrentSuper;
 using ::crnt::CurrentSuperDeleter;
 using ::crnt::CurrentStruct;
 using ::crnt::CurrentVariant;
+
+namespace reflection {
+
+template <typename T>
+struct SuperTypeImpl {
+  static_assert(IS_CURRENT_STRUCT(T), "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  using type = typename T::super_t;
+};
+
+template <typename T>
+using SuperType = typename SuperTypeImpl<T>::type;
+
+#ifndef CURRENT_WINDOWS
+template <typename T, typename INTERNAL>
+struct TemplateInnerTypeImplExtractor;
+
+template <typename T>
+struct TemplateInnerTypeImplExtractor<T, std::false_type> {
+  using type = void;
+};
+
+template <typename T>
+struct TemplateInnerTypeImplExtractor<T, std::true_type> {
+  using type = typename T::template_inner_t_impl;
+};
+
+template <typename T>
+struct TemplateInnerTypeImpl {
+  static_assert(IS_CURRENT_STRUCT(T),
+                "`TemplateInnerType` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  using type = typename TemplateInnerTypeImplExtractor<T, typename T::template_inner_t_internal>::type;
+};
+#else
+template <typename T>
+struct TemplateInnerTypeImpl {
+  static_assert(IS_CURRENT_STRUCT(T),
+                "`TemplateInnerType` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  using type = typename T::template_inner_t;
+};
+#endif  // CURRENT_WINDOWS
+
+template <typename T>
+using TemplateInnerType = typename TemplateInnerTypeImpl<T>::type;
+
+enum class FieldCounterPolicy { ThisStructOnly, IncludingSuperFields };
+
+template <typename T, FieldCounterPolicy POLICY = FieldCounterPolicy::ThisStructOnly>
+struct FieldCounter {
+  static_assert(IS_CURRENT_STRUCT(T),
+                "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  constexpr static size_t value =
+      (POLICY == FieldCounterPolicy::ThisStructOnly)
+          ? (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
+          : (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) +
+                FieldCounter<SuperType<T>, POLICY>::value;
+};
+
+template <FieldCounterPolicy POLICY>
+struct FieldCounter<::crnt::CurrentStruct, POLICY> {
+  constexpr static size_t value = 0u;
+};
+
+template <typename T>
+using TotalFieldCounter = FieldCounter<T, FieldCounterPolicy::IncludingSuperFields>;
+
+struct FieldDescriptions {
+  using c_string_t = const char*;
+  template <typename T, int I>
+  static constexpr c_string_t DescriptionImpl(char) {
+    return nullptr;
+  }
+  template <typename T, int I>
+  static constexpr auto DescriptionImpl(int)
+      -> decltype(T::CURRENT_REFLECTION_FIELD_DESCRIPTION(SimpleIndex<I>()), c_string_t()) {
+    return T::CURRENT_REFLECTION_FIELD_DESCRIPTION(SimpleIndex<I>());
+  }
+  template <typename T, int I>
+  static const char* Description() {
+    return DescriptionImpl<T, I>(0);
+  }
+};
+
+template <typename T, bool IS_STRUCT>
+struct IsEmptyCurrentStruct {
+  constexpr static bool value = false;
+};
+
+template <typename T>
+struct IsEmptyCurrentStruct<T, true> {
+  constexpr static bool value = (FieldCounter<T>::value == 0);
+};
+
+template <typename T, typename VISITOR_TYPE>
+struct VisitAllFields {
+  static_assert(IS_CURRENT_STRUCT(T),
+                "`VisitAllFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
+  typedef current::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
+
+  // Visit all fields without an object. Used for enumerating fields and generating signatures.
+  template <typename F>
+  static void WithoutObject(F&& f) {
+    static NUM_INDEXES all_indexes;
+    WithoutObjectImpl(std::forward<F>(f), all_indexes);
+  }
+
+  // Visit all fields with an object, const or mutable. Used for serialization.
+  // Make sure `VisitAllFields<Base, ...>(derived)` treats the passed object as `Base`.
+  // Using xvalue reference `TT&&` does not do it, as instead of type `T` passed in
+  // as a template parameter to `VisitAllFields<>`, the passed in `t` would be reflected
+  // as an object of type `TT`.
+  // So, I copy-pasted three implementations for now. -- D.K.
+  template <typename F>
+  static void WithObject(T& t, F&& f) {
+    static NUM_INDEXES all_indexes;
+    WithObjectImpl(t, std::forward<F>(f), all_indexes);
+  }
+  template <typename F>
+  static void WithObject(const T& t, F&& f) {
+    static NUM_INDEXES all_indexes;
+    WithObjectImpl(t, std::forward<F>(f), all_indexes);
+  }
+  template <typename F>
+  static void WithObject(T&& t, F&& f) {
+    static NUM_INDEXES all_indexes;
+    WithObjectImpl(t, std::forward<F>(f), all_indexes);
+  }
+
+ private:
+  template <typename F, int N, int... NS>
+  static void WithoutObjectImpl(F&& f, current::variadic_indexes::indexes<N, NS...>) {
+    static current::variadic_indexes::indexes<NS...> remaining_indexes;
+    T::CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
+    WithoutObjectImpl(std::forward<F>(f), remaining_indexes);
+  }
+
+  template <typename F>
+  static void WithoutObjectImpl(const F&, current::variadic_indexes::indexes<>) {}
+
+  template <typename TT, typename F, int N, int... NS>
+  static void WithObjectImpl(TT&& t, F&& f, current::variadic_indexes::indexes<N, NS...>) {
+    static current::variadic_indexes::indexes<NS...> remaining_indexes;
+    t.CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
+    // `WithObjectImpl()` is called only from `WithObject()`, and by this point `TT` is `T`.
+    static_assert(std::is_same<current::decay<TT>, T>::value, "");  // To be on the safe side.
+    WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), remaining_indexes);
+  }
+
+  template <typename TT, typename F>
+  static void WithObjectImpl(TT&&, const F&, crnt::vi::is<>) {}
+};
+
+}  // namespace current::reflection
+
 namespace sfinae {
 using ::crnt::sfinae::HasExistsImplMethod;
 using ::crnt::sfinae::ValueImplMethodTest;
 using ::crnt::sfinae::HasCheckIntegrityImplMethod;
+using ::crnt::sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME;
 }  // namespace current::sfinae
+
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SFINAE_H

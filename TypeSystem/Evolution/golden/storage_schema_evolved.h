@@ -66,7 +66,8 @@ CURRENT_VARIANT(Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, t92086820
 #ifndef CURRENT_SCHEMA_FOR_T9204310366938332731
 #define CURRENT_SCHEMA_FOR_T9204310366938332731
 namespace t9204310366938332731 {
-CURRENT_STRUCT(Transaction_T9221660456409416796) {
+CURRENT_STRUCT(Transaction_Z) {
+  CURRENT_EXPORTED_TEMPLATED_STRUCT(Transaction, t9221660456409416796::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E);
   CURRENT_FIELD(meta, t9206905014308449807::TransactionMeta);
   CURRENT_FIELD(mutations, std::vector<t9221660456409416796::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E>);
 };
@@ -81,13 +82,13 @@ CURRENT_NAMESPACE(SchemaModifiedStorage) {
   CURRENT_NAMESPACE_TYPE(PersistedUserDeleted, current_userspace::t9200749442651087763::PersistedUserDeleted);
   CURRENT_NAMESPACE_TYPE(Name, current_userspace::t9202335020894922996::Name);
   CURRENT_NAMESPACE_TYPE(User, current_userspace::t9202361573173033476::User);
-  CURRENT_NAMESPACE_TYPE(Transaction_T9221660456409416796, current_userspace::t9204310366938332731::Transaction_T9221660456409416796);
+  CURRENT_NAMESPACE_TYPE(Transaction_T9221660456409416796, current_userspace::t9204310366938332731::Transaction_Z);
   CURRENT_NAMESPACE_TYPE(TransactionMeta, current_userspace::t9206905014308449807::TransactionMeta);
   CURRENT_NAMESPACE_TYPE(PersistedUserUpdated, current_userspace::t9208682047004194331::PersistedUserUpdated);
   CURRENT_NAMESPACE_TYPE(Variant_B_PersistedUserUpdated_PersistedUserDeleted_E, current_userspace::t9221660456409416796::Variant_B_PersistedUserUpdated_PersistedUserDeleted_E);
 
   // Privileged types.
-  CURRENT_NAMESPACE_TYPE(Transaction, current_userspace::t9204310366938332731::Transaction_T9221660456409416796);
+  CURRENT_NAMESPACE_TYPE(Transaction, current_userspace::t9204310366938332731::Transaction_Z);
 };  // CURRENT_NAMESPACE(SchemaModifiedStorage)
 #endif  // CURRENT_NAMESPACE_SchemaModifiedStorage_DEFINED
 
@@ -144,7 +145,7 @@ struct Evolve<SchemaModifiedStorage, typename SchemaModifiedStorage::User, CURRE
 };
 #endif
 
-// Default evolution for struct `Transaction_T9221660456409416796`.
+// Default evolution for struct `Transaction_Z`.
 #ifndef DEFAULT_EVOLUTION_C1853441F0679BE46A407C6C231C39645C74828E577DB471D4F9CA7574B9B7BD  // typename SchemaModifiedStorage::Transaction_T9221660456409416796
 #define DEFAULT_EVOLUTION_C1853441F0679BE46A407C6C231C39645C74828E577DB471D4F9CA7574B9B7BD  // typename SchemaModifiedStorage::Transaction_T9221660456409416796
 template <typename CURRENT_ACTIVE_EVOLVER>

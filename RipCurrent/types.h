@@ -154,7 +154,7 @@ template <typename T>
 struct LHSTypesFromTypeListImpl;
 
 template <typename... TS>
-struct LHSTypesFromTypeListImpl<TypeListImpl<TS...> > {
+struct LHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
   using type = LHSTypes<TS...>;
 };
 
@@ -165,7 +165,7 @@ template <typename T>
 struct RHSTypesFromTypeListImpl;
 
 template <typename... TS>
-struct RHSTypesFromTypeListImpl<TypeListImpl<TS...> > {
+struct RHSTypesFromTypeListImpl<TypeListImpl<TS...>> {
   using type = RHSTypes<TS...>;
 };
 
