@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as iots from 'io-ts';
 import { isRight } from 'fp-ts/lib/Either';
 import { PathReporter } from 'io-ts/lib/PathReporter';
+import { ThrowReporter } from 'io-ts/lib/ThrowReporter';
 
 import { assert } from 'chai';
 
@@ -18,24 +19,32 @@ describe('c5t-current-schema-ts', () => {
     assert.deepEqual(success_report, [
       'No errors!',
     ]);
+    ThrowReporter.report(success_validation);
     assert.isTrue(isRight(success_validation), 'isRight(success_validation)');
-  });
 
-  it('deserializes the serialized JSON via io-ts', () => {
-    const full_test: smoke_test_struct_interface.FullTest = JSON.parse(String(fs.readFileSync(path.resolve(__dirname, './smoke_test_struct_serialized.json'))));
-
-    // Pay attention to the Variant types first. -- sompylasar
+    // Pay attention to the Variant types first. -- @sompylasar
     // TODO(@sompylasar): Test more field values.
-    const variantQC = (full_test.q as iots.TypeOf<typeof smoke_test_struct_interface.Variant_B_A_B_B2_C_Empty_E_VariantCase_C_IO>).C;
-    if (variantQC) {
-      const variantQCCA = (variantQC.c as iots.TypeOf<typeof smoke_test_struct_interface.Variant_B_A_B_B2_C_Empty_E_VariantCase_A_IO>).A;
-      const variantQCDY = (variantQC.d as iots.TypeOf<typeof smoke_test_struct_interface.Variant_B_A_X_Y_E_VariantCase_Y_IO>).Y;
+
+    assert.isTrue(iots.is(full_test.q, smoke_test_struct_interface.C5TCurrentVariant_T9228482442669086788_IO));
+
+    function handleVariantQCC(variantQCC: smoke_test_struct_interface.MyFreakingVariant) {
+      assert.isTrue(iots.is(variantQCC, smoke_test_struct_interface.MyFreakingVariant_IO));
+
+      assert.isTrue(iots.is(variantQCC, smoke_test_struct_interface.MyFreakingVariant_VariantCase_A_IO));
+      const variantQCCA = (variantQCC as smoke_test_struct_interface.MyFreakingVariant_VariantCase_A).A;
       if (variantQCCA) {
         assert.strictEqual(variantQCCA.a, (1 << 30), 'full_test.q.c.a is not (1 << 30)');
       }
       else {
         assert.isOk(false, 'full_test.q.c is not Variant<A,B,B2,C,Empty> case A');
       }
+    }
+
+    function handleVariantQCD(variantQCD: smoke_test_struct_interface.MyFreakingVariant) {
+      assert.isTrue(iots.is(variantQCD, smoke_test_struct_interface.MyFreakingVariant_IO));
+
+      assert.isTrue(iots.is(variantQCD, smoke_test_struct_interface.MyFreakingVariant_VariantCase_Y_IO));
+      const variantQCDY = (variantQCD as smoke_test_struct_interface.MyFreakingVariant_VariantCase_Y).Y;
       if (variantQCDY) {
         // The enum E value SOME (0).
         assert.strictEqual(variantQCDY.e, 0, 'full_test.q.d.e is not enum E value SOME (0)');
@@ -44,9 +53,20 @@ describe('c5t-current-schema-ts', () => {
         assert.isOk(false, 'full_test.q.d is not Variant<A,X,Y> case Y');
       }
     }
-    else {
-      assert.isOk(false, 'full_test.q is not Variant<A,B,B2,C,Empty> case C');
+
+    function handleVariantQ(variantQ: smoke_test_struct_interface.C5TCurrentVariant_T9228482442669086788) {
+      assert.isTrue(iots.is(variantQ, smoke_test_struct_interface.C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO));
+      const variantQC = (variantQ as smoke_test_struct_interface.C5TCurrentVariant_T9228482442669086788_VariantCase_C).C;
+      if (variantQC) {
+        handleVariantQCC(variantQC.c);
+        handleVariantQCD(variantQC.d);
+      }
+      else {
+        assert.isOk(false, 'full_test.q is not Variant<A,B,B2,C,Empty> case C');
+      }
     }
+
+    handleVariantQ(full_test.q);
   });
 
   it('reports error on malformed JSON via io-ts', () => {

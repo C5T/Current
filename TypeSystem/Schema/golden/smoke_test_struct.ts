@@ -89,17 +89,7 @@ export const MyFreakingVariant_IO = iots.union([
   MyFreakingVariant_VariantCase_Y_IO,
   iots.null,
 ], 'MyFreakingVariant');
-export type MyFreakingVariant = iots.UnionType<[
-  typeof MyFreakingVariant_VariantCase_A_IO,
-  typeof MyFreakingVariant_VariantCase_X_IO,
-  typeof MyFreakingVariant_VariantCase_Y_IO,
-  typeof iots.null
-], (
-  iots.TypeOf<typeof MyFreakingVariant_VariantCase_A_IO> |
-  iots.TypeOf<typeof MyFreakingVariant_VariantCase_X_IO> |
-  iots.TypeOf<typeof MyFreakingVariant_VariantCase_Y_IO> |
-  iots.TypeOf<typeof iots.null>
-)>;
+export type MyFreakingVariant = iots.TypeOf<typeof MyFreakingVariant_IO>;
 
 export const C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO = iots.interface({ "A": A_IO, "": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), "$": iots.union([ iots.undefined, iots.literal("T9206911749438269255") ]), });
 export type C5TCurrentVariant_T9227782347108675041_VariantCase_A = iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO>;
@@ -116,17 +106,7 @@ export const C5TCurrentVariant_T9227782347108675041_IO = iots.union([
   C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO,
   iots.null,
 ], 'C5TCurrentVariant_T9227782347108675041');
-export type C5TCurrentVariant_T9227782347108675041 = iots.UnionType<[
-  typeof C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO,
-  typeof C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO,
-  typeof C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO,
-  typeof iots.null
-], (
-  iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_A_IO> |
-  iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_X_IO> |
-  iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_VariantCase_Y_IO> |
-  iots.TypeOf<typeof iots.null>
-)>;
+export type C5TCurrentVariant_T9227782347108675041 = iots.TypeOf<typeof C5TCurrentVariant_T9227782347108675041_IO>;
 
 export const C_IO = iots.interface({
   e: Empty_IO,
@@ -158,21 +138,7 @@ export const C5TCurrentVariant_T9228482442669086788_IO = iots.union([
   C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO,
   iots.null,
 ], 'C5TCurrentVariant_T9228482442669086788');
-export type C5TCurrentVariant_T9228482442669086788 = iots.UnionType<[
-  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO,
-  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO,
-  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO,
-  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO,
-  typeof C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO,
-  typeof iots.null
-], (
-  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_A_IO> |
-  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B_IO> |
-  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_B2_IO> |
-  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_C_IO> |
-  iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_VariantCase_Empty_IO> |
-  iots.TypeOf<typeof iots.null>
-)>;
+export type C5TCurrentVariant_T9228482442669086788 = iots.TypeOf<typeof C5TCurrentVariant_T9228482442669086788_IO>;
 
 export const Templated_T9209980946934124423_IO = iots.interface({
   foo: C5TCurrent.Int32_IO,

@@ -1388,15 +1388,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
         os_ << "  " << (*cit) << ",\n";
       }
-      os_ << "], '" << variant_type_name << "');\nexport type " << variant_type_name << " = iots.UnionType<[\n";
-      for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
-        os_ << "  typeof " << (*cit) << ((cit + 1) != runtime_type_names.end() ? ",\n" : "\n");
-      }
-      os_ << "], (\n";
-      for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
-        os_ << "  iots.TypeOf<typeof " << (*cit) << ">" << ((cit + 1) != runtime_type_names.end() ? " |\n" : "\n");
-      }
-      os_ << ")>;\n";
+      os_ << "], '" << variant_type_name << "');\nexport type " << variant_type_name << " = iots.TypeOf<typeof " << variant_type_name << "_IO>;\n";
     }
 
     void ListStructFieldsForTypeScript(std::ostringstream& os, const ReflectedType_Struct& s) const {
