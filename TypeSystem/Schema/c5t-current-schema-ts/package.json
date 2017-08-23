@@ -7,7 +7,7 @@
   "keywords": [
     "typescript"
   ],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -43,7 +43,6 @@
     "@types/node": "^8.0.9",
     "chai": "^4.0.2",
     "check-node-version": "^2.1.0",
-    "fp-ts": "^0.4.6",
     "io-ts": "^0.6.1",
     "mocha": "^3.4.2",
     "npm-run-all": "^4.0.2",

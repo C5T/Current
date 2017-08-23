@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as iots from 'io-ts';
-import { isRight } from 'fp-ts/lib/Either';
 import { PathReporter } from 'io-ts/lib/PathReporter';
 import { ThrowReporter } from 'io-ts/lib/ThrowReporter';
 
@@ -20,7 +19,6 @@ describe('c5t-current-schema-ts', () => {
       'No errors!',
     ]);
     ThrowReporter.report(success_validation);
-    assert.isTrue(isRight(success_validation), 'isRight(success_validation)');
 
     // Pay attention to the Variant types first. -- @sompylasar
     // TODO(@sompylasar): Test more field values.
@@ -75,7 +73,11 @@ describe('c5t-current-schema-ts', () => {
         a: 'foo',
       },
     }, smoke_test_struct_interface.FullTest_IO);
-    assert.isFalse(isRight(error_validation));
+
+    assert.throws(() => {
+      ThrowReporter.report(error_validation);
+    });
+
     const error_report = PathReporter.report(error_validation);
     assert.deepEqual(error_report, [
       'Invalid value "foo" supplied to : FullTest/primitives: Primitives/a: C5TCurrent.UInt8',
