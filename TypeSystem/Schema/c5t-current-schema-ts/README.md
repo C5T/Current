@@ -86,22 +86,12 @@ export const Primitives_IO = iots.interface({
 export type Primitives = iots.TypeOf<typeof Primitives_IO>;
 
 export const MyFreakingVariant_IO = iots.union([
-  A_IO,
-  X_IO,
-  Y_IO,
+  MyFreakingVariant_VariantCase_A_IO,
+  MyFreakingVariant_VariantCase_X_IO,
+  MyFreakingVariant_VariantCase_Y_IO,
   iots.null,
 ], 'MyFreakingVariant');
-export type MyFreakingVariant = iots.UnionType<[
-  typeof A_IO,
-  typeof X_IO,
-  typeof Y_IO,
-  typeof iots.null
-], (
-  iots.TypeOf<typeof A_IO> |
-  iots.TypeOf<typeof X_IO> |
-  iots.TypeOf<typeof Y_IO> |
-  iots.TypeOf<typeof iots.null>
-)>;
+export type MyFreakingVariant = iots.TypeOf<typeof MyFreakingVariant_IO>;
 ```
 
 
