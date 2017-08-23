@@ -385,13 +385,13 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         try {
           if (params_.array) {
             if (!output_started_) {
-              http_response_("[\n");
+              http_response_("[\n", false);
               output_started_ = true;
             } else {
-              http_response_(",\n");
+              http_response_(",\n", false);
             }
           }
-          http_response_(response_data);
+          http_response_(response_data, current_index == last.index);
         } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
           return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
         }
@@ -413,11 +413,16 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       }
       return ss::EntryResponse::More;
     }();
-    if (result == ss::EntryResponse::Done && params_.array) {
-      if (!output_started_) {
-        http_response_("[]\n");
+    if (result == ss::EntryResponse::Done) {
+      if (params_.array) {
+		if (!output_started_) {
+          http_response_("[]\n");
+        } else {
+          http_response_("]\n");
+        }
       } else {
-        http_response_("]\n");
+        // flush cached response data.
+        http_response_("");
       }
     }
     return result;
