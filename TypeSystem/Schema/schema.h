@@ -1262,7 +1262,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
           }
           void operator()(const ReflectedType_Variant& v) const {
             // Prevent too long type name: use the variant name only if it's not generated from the underlying type names.
-            // See `current::reflection::impl::VariantFullNamePrinter`.
+            // Assumes `v.name` is generated via `current::reflection::impl::CurrentVariantTypeNameImpl<NameFormat::Z,`.
             const std::string prefix = "Variant_B_";
             const std::string suffix = "_E";
             const bool is_variant_type_name_generated = (
