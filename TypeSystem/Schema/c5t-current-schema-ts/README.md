@@ -15,7 +15,7 @@ npm install --save c5t-current-schema-ts io-ts
 
 NOTE: The schema files specify the recommended versions of `c5t-current-schema-ts` and `io-ts` at the top, for example:
 ```
-// peerDependencies: io-ts@0.6.1 c5t-current-schema-ts@0.2.0
+// peerDependencies: io-ts@^0.6.1 c5t-current-schema-ts@^0.2.1
 ```
 
 The generated TypeScript schema files export two items per `CURRENT_STRUCT`:
