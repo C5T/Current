@@ -278,7 +278,9 @@ TEST(Schema, SmokeTestFullStruct) {
     // TODO(sompylasar): More populated initialization of `full_test`.
     smoke_test_struct_namespace::FullTest full_test{smoke_test_struct_namespace::B2()};
     smoke_test_struct_namespace::C full_test_c{smoke_test_struct_namespace::A()};
-    full_test_c.d = Variant<smoke_test_struct_namespace::A, smoke_test_struct_namespace::X, smoke_test_struct_namespace::Y>(smoke_test_struct_namespace::Y());
+    full_test_c.d =
+        Variant<smoke_test_struct_namespace::A, smoke_test_struct_namespace::X, smoke_test_struct_namespace::Y>(
+            smoke_test_struct_namespace::Y());
     full_test.q = full_test_c;
     FileSystem::WriteStringToFile(JSON(full_test), Serialized("smoke_test_struct.json").c_str());
     // LCOV_EXCL_STOP

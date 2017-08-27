@@ -1236,20 +1236,21 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
-          void operator()(const ReflectedType_Enum& e) const {
-            oss_ << e.name;
-          }
+          void operator()(const ReflectedType_Enum& e) const { oss_ << e.name; }
           void operator()(const ReflectedType_Vector& v) const {
             oss_ << "C5TCurrentVector_" << GetEscapedTypeNameForIdentifier(v.element_type);
           }
           void operator()(const ReflectedType_Pair& p) const {
-            oss_ << "C5TCurrentPair_" << GetEscapedTypeNameForIdentifier(p.first_type) << "_" << GetEscapedTypeNameForIdentifier(p.second_type);
+            oss_ << "C5TCurrentPair_" << GetEscapedTypeNameForIdentifier(p.first_type) << "_"
+                 << GetEscapedTypeNameForIdentifier(p.second_type);
           }
           void operator()(const ReflectedType_Map& m) const {
-            oss_ << "C5TCurrentMap_" << GetEscapedTypeNameForIdentifier(m.key_type) << "_" << GetEscapedTypeNameForIdentifier(m.value_type);
+            oss_ << "C5TCurrentMap_" << GetEscapedTypeNameForIdentifier(m.key_type) << "_"
+                 << GetEscapedTypeNameForIdentifier(m.value_type);
           }
           void operator()(const ReflectedType_UnorderedMap& m) const {
-            oss_ << "C5TCurrentUnorderedMap_" << GetEscapedTypeNameForIdentifier(m.key_type) << "_" << GetEscapedTypeNameForIdentifier(m.value_type);
+            oss_ << "C5TCurrentUnorderedMap_" << GetEscapedTypeNameForIdentifier(m.key_type) << "_"
+                 << GetEscapedTypeNameForIdentifier(m.value_type);
           }
           void operator()(const ReflectedType_Set& s) const {
             oss_ << "C5TCurrentSet_" << GetEscapedTypeNameForIdentifier(s.value_type);
@@ -1261,24 +1262,20 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
             oss_ << "C5TCurrentOptional_" << GetEscapedTypeNameForIdentifier(o.optional_type);
           }
           void operator()(const ReflectedType_Variant& v) const {
-            // Prevent too long type name: use the variant name only if it's not generated from the underlying type names.
+            // Prevent too long type name: use the variant name only if it's not generated
+            // from the underlying type names.
             // Assumes `v.name` is generated via `current::reflection::impl::CurrentVariantTypeNameImpl<NameFormat::Z,`.
             const std::string prefix = "Variant_B_";
             const std::string suffix = "_E";
-            const bool is_variant_type_name_generated = (
-              v.name.compare(0, prefix.size(), prefix) == 0 &&
-              v.name.size() >= suffix.size() &&
-              v.name.compare(v.name.size() - suffix.size(), std::string::npos, suffix) == 0
-            );
-            const std::string variant_type_name = (is_variant_type_name_generated
-              ? std::string("C5TCurrentVariant_T") + current::ToString(v.type_id)
-              : v.name
-            );
+            const bool is_variant_type_name_generated =
+                (v.name.compare(0, prefix.size(), prefix) == 0 && v.name.size() >= suffix.size() &&
+                 v.name.compare(v.name.size() - suffix.size(), std::string::npos, suffix) == 0);
+            const std::string variant_type_name =
+                (is_variant_type_name_generated ? std::string("C5TCurrentVariant_T") + current::ToString(v.type_id)
+                                                : v.name);
             oss_ << variant_type_name;
           }
-          void operator()(const ReflectedType_Struct& s) const {
-            oss_ << s.TemplateInnerTypeExpandedName();
-          }
+          void operator()(const ReflectedType_Struct& s) const { oss_ << s.TemplateInnerTypeExpandedName(); }
         };
 
         std::ostringstream oss;
@@ -1319,46 +1316,43 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       WriteRuntimeTypeDeclaration(e.name, e.name + "_IO", std::string("C5TCurrent.Enum_IO('") + e.name + "')");
     }
     void operator()(const ReflectedType_Vector& v) const {
-      WriteRuntimeTypeDeclarationWithTypeIdName(v.type_id, std::string("C5TCurrent.Vector_IO(") +
-          TypeName(v.element_type) + "_IO)");
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          v.type_id, std::string("C5TCurrent.Vector_IO(") + TypeName(v.element_type) + "_IO)");
     }
     void operator()(const ReflectedType_Pair& p) const {
-      WriteRuntimeTypeDeclarationWithTypeIdName(p.type_id, std::string("C5TCurrent.Pair_IO(") +
-          TypeName(p.first_type) + "_IO, " +
-          TypeName(p.second_type) + "_IO)");
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          p.type_id,
+          std::string("C5TCurrent.Pair_IO(") + TypeName(p.first_type) + "_IO, " + TypeName(p.second_type) + "_IO)");
     }
     void operator()(const ReflectedType_Map& m) const {
       const auto& globals = PrimitiveTypesList();
-      const std::string runtime_type_impl_expression = (
-        globals.typescript_name.count(m.key_type)
-          ? (std::string("C5TCurrent.PrimitiveMap_IO(") + TypeName(m.value_type) + "_IO)")
-          : (std::string("C5TCurrent.NonPrimitiveMap_IO(") +
-              TypeName(m.key_type) + "_IO, " +
-              TypeName(m.value_type) + "_IO)"
-          )
-      );
+      const std::string runtime_type_impl_expression =
+          (globals.typescript_name.count(m.key_type)
+               ? (std::string("C5TCurrent.PrimitiveMap_IO(") + TypeName(m.value_type) + "_IO)")
+               : (std::string("C5TCurrent.NonPrimitiveMap_IO(") + TypeName(m.key_type) + "_IO, " +
+                  TypeName(m.value_type) + "_IO)"));
       WriteRuntimeTypeDeclarationWithTypeIdName(m.type_id, runtime_type_impl_expression);
     }
     void operator()(const ReflectedType_UnorderedMap& m) const {
       const auto& globals = PrimitiveTypesList();
-      const std::string runtime_type_impl_expression = (
-        globals.typescript_name.count(m.key_type)
-          ? (std::string("C5TCurrent.PrimitiveUnorderedMap_IO(") + TypeName(m.value_type) + "_IO)")
-          : (std::string("C5TCurrent.NonPrimitiveUnorderedMap_IO(") +
-              TypeName(m.key_type) + "_IO, " +
-              TypeName(m.value_type) + "_IO)"
-          )
-      );
+      const std::string runtime_type_impl_expression =
+          (globals.typescript_name.count(m.key_type)
+               ? (std::string("C5TCurrent.PrimitiveUnorderedMap_IO(") + TypeName(m.value_type) + "_IO)")
+               : (std::string("C5TCurrent.NonPrimitiveUnorderedMap_IO(") + TypeName(m.key_type) + "_IO, " +
+                  TypeName(m.value_type) + "_IO)"));
       WriteRuntimeTypeDeclarationWithTypeIdName(m.type_id, runtime_type_impl_expression);
     }
     void operator()(const ReflectedType_Set& s) const {
-      WriteRuntimeTypeDeclarationWithTypeIdName(s.type_id, std::string("C5TCurrent.Set_IO(") + TypeName(s.value_type) + "_IO)");
+      WriteRuntimeTypeDeclarationWithTypeIdName(s.type_id,
+                                                std::string("C5TCurrent.Set_IO(") + TypeName(s.value_type) + "_IO)");
     }
     void operator()(const ReflectedType_UnorderedSet& s) const {
-      WriteRuntimeTypeDeclarationWithTypeIdName(s.type_id, std::string("C5TCurrent.UnorderedSet_IO(") + TypeName(s.value_type) + "_IO)");
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          s.type_id, std::string("C5TCurrent.UnorderedSet_IO(") + TypeName(s.value_type) + "_IO)");
     }
     void operator()(const ReflectedType_Optional& o) const {
-      WriteRuntimeTypeDeclarationWithTypeIdName(o.type_id, std::string("C5TCurrent.Optional_IO(") + TypeName(o.optional_type) + "_IO)");
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          o.type_id, std::string("C5TCurrent.Optional_IO(") + TypeName(o.optional_type) + "_IO)");
     }
     void operator()(const ReflectedType_Variant& v) const {
       const std::string variant_type_name = TypeName(v.type_id);
@@ -1372,14 +1366,18 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
         const std::string unique_case_type_name = variant_type_name + "_VariantCase_" + case_type_name;
         const std::string unique_case_runtime_type_name = unique_case_type_name + "_IO";
         os_ << "\nexport const " << unique_case_runtime_type_name << " = iots.interface({ ";
-        os_ << "\"" << case_type_name << "\"" << ": " << case_type_name << "_IO, ";
+        os_ << "\"" << case_type_name << "\""
+            << ": " << case_type_name << "_IO, ";
 
-        // Accomodate every variation of JSON-serialized Variants: missing (undefined), present in empty-string key, present in dollar key.
-        const std::string type_id_runtime_type_impl_expression = std::string("iots.union([ iots.undefined, iots.literal(\"T") + current::ToString(*cit) + "\") ])";
+        // Accomodate every variation of JSON-serialized Variants: missing (undefined),
+        // present in empty-string key, present in dollar key.
+        const std::string type_id_runtime_type_impl_expression =
+            std::string("iots.union([ iots.undefined, iots.literal(\"T") + current::ToString(*cit) + "\") ])";
         os_ << "\"\": " << type_id_runtime_type_impl_expression << ", ";
         os_ << "\"$\": " << type_id_runtime_type_impl_expression << ", ";
 
-        os_ << "});\nexport type " << unique_case_type_name << " = iots.TypeOf<typeof " << unique_case_runtime_type_name << ">;\n";
+        os_ << "});\nexport type " << unique_case_type_name << " = iots.TypeOf<typeof " << unique_case_runtime_type_name
+            << ">;\n";
         runtime_type_names.push_back(unique_case_runtime_type_name);
       }
       runtime_type_names.push_back("iots.null");
@@ -1388,7 +1386,8 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
         os_ << "  " << (*cit) << ",\n";
       }
-      os_ << "], '" << variant_type_name << "');\nexport type " << variant_type_name << " = iots.TypeOf<typeof " << variant_type_name << "_IO>;\n";
+      os_ << "], '" << variant_type_name << "');\nexport type " << variant_type_name << " = iots.TypeOf<typeof "
+          << variant_type_name << "_IO>;\n";
     }
 
     void ListStructFieldsForTypeScript(std::ostringstream& os, const ReflectedType_Struct& s) const {

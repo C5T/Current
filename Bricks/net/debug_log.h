@@ -43,7 +43,7 @@ SOFTWARE.
 struct DebugLogMutex {
   std::mutex mutex;
 };
-#define CURRENT_BRICKS_NET_LOG(...)                                                         \
+#define CURRENT_BRICKS_NET_LOG(...)                                                 \
   ([=] {                                                                            \
     std::unique_lock<std::mutex> lock(::current::Singleton<DebugLogMutex>().mutex); \
     std::cout << 'T' << std::this_thread::get_id() << ' ';                          \
