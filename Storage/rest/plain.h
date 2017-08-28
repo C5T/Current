@@ -304,9 +304,7 @@ struct Plain {
 
     Response RunQuery(
         const Context&,
-        std::function<Response(ImmutableFields<STORAGE>,
-                               std::shared_ptr<CurrentStruct>,
-                               const cqs::CQSParameters&)> f,
+        std::function<Response(ImmutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const cqs::CQSParameters&)> f,
         ImmutableFields<STORAGE> fields,
         std::shared_ptr<CurrentStruct> type_erased_query,
         const cqs::CQSParameters& cqs_parameters) const {
@@ -315,9 +313,7 @@ struct Plain {
 
     Response RunCommand(
         const Context&,
-        std::function<Response(MutableFields<STORAGE>,
-                               std::shared_ptr<CurrentStruct>,
-                               const cqs::CQSParameters&)> f,
+        std::function<Response(MutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const cqs::CQSParameters&)> f,
         MutableFields<STORAGE> fields,
         std::shared_ptr<CurrentStruct> type_erased_command,
         const cqs::CQSParameters& cqs_parameters) const {

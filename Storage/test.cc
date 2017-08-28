@@ -2580,7 +2580,8 @@ CURRENT_STRUCT(CQSQuery) {
   // clang-format on
 
   template <class IMMUTABLE_FIELDS>
-  Response Query(const IMMUTABLE_FIELDS& fields, const current::storage::rest::cqs::CQSParameters& cqs_parameters) const {
+  Response Query(const IMMUTABLE_FIELDS& fields, const current::storage::rest::cqs::CQSParameters& cqs_parameters)
+      const {
     const auto OptionalBoolQueryParameterToString = [&cqs_parameters](const std::string& param_name) -> std::string {
       if (cqs_parameters.original_url.query.has(param_name)) {
         const auto value = cqs_parameters.original_url.query[param_name];
