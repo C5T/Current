@@ -391,7 +391,7 @@ void GenerateRESTfulHandler(registerer_t registerer, STORAGE& storage, const std
           PerFieldRESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(registerer, storage, restful_url_prefix));
 }
 
-}  // namespace current::storage::impl
+}  // namespace current::storage::rest::impl
 
 template <class STORAGE_IMPL, class REST_IMPL = plain::Plain>
 class RESTfulStorage {
@@ -403,9 +403,9 @@ class RESTfulStorage {
   // FIXME_DIMA <-- keep this marker for me to find it once we do move to C++14.
   using cqs_universal_parser_t = std::function<std::shared_ptr<CurrentStruct>(Request&)>;
   using cqs_query_handler_t = std::function<Response(
-      immutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
+      immutable_fields_t, std::shared_ptr<CurrentStruct> command, const cqs::CQSParameters& cqs_parameters)>;
   using cqs_command_handler_t = std::function<Response(
-      mutable_fields_t, std::shared_ptr<CurrentStruct> command, const std::string& restful_url_prefix)>;
+      mutable_fields_t, std::shared_ptr<CurrentStruct> command, const cqs::CQSParameters& cqs_parameters)>;
 
   RESTfulStorage(STORAGE_IMPL& storage,
                  uint16_t port,
@@ -470,7 +470,9 @@ class RESTfulStorage {
         [](Request& request) -> std::shared_ptr<CurrentStruct> {
           return ParseCQSRequest<QUERY_IMPL, current::url::FillObjectMode::Forgiving>(request);
         },
-        [query](immutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_query, const std::string& url)
+        [query](immutable_fields_t fields,
+                std::shared_ptr<CurrentStruct> type_erased_query,
+                const cqs::CQSParameters& cqs_parameters)
             -> Response {
               // Invoke `.template Query<>(...)`, the handler implemented as part of the `QUERY_IMPL` class.
               // The instance of `QUERY_IMPL` is passed at runtime, in a type-erased fashion, as all possible
@@ -478,7 +480,7 @@ class RESTfulStorage {
               // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
               // down to the respective `QUERY_IMPL` type from within the transaction.
               return dynamic_cast<QUERY_IMPL&>(*type_erased_query.get())
-                  .template Query<ImmutableFields<STORAGE_IMPL>>(fields, url);
+                  .template Query<ImmutableFields<STORAGE_IMPL>>(fields, cqs_parameters);
             });
   }
 
@@ -492,7 +494,9 @@ class RESTfulStorage {
         [](Request& request) -> std::shared_ptr<CurrentStruct> {
           return ParseCQSRequest<COMMAND_IMPL, current::url::FillObjectMode::Strict>(request);
         },
-        [command](mutable_fields_t fields, std::shared_ptr<CurrentStruct> type_erased_command, const std::string& url)
+        [command](mutable_fields_t fields,
+                  std::shared_ptr<CurrentStruct> type_erased_command,
+                  const cqs::CQSParameters& cqs_parameters)
             -> Response {
               fields.SetTransactionMetaField("X-Current-CQS-Command", command);
               // Invoke `.template Command<>(...)`, the handler implemented as part of the `COMMAND_IMPL` class.
@@ -501,7 +505,7 @@ class RESTfulStorage {
               // smart pointer to the base class (returned from `ParseCQSRequest(...)`), and it should be cast
               // down to the respective `COMMAND_IMPL` type from within the transaction.
               return dynamic_cast<COMMAND_IMPL&>(*type_erased_command.get())
-                  .template Command<MutableFields<STORAGE_IMPL>>(fields, url);
+                  .template Command<MutableFields<STORAGE_IMPL>>(fields, cqs_parameters);
             });
   }
 
@@ -607,16 +611,17 @@ class RESTfulStorage {
                           // Capture by reference since this lambda is run synchronously.
                           [&handler, &f_run_query, &generic_input, &type_erased_query, &context](Request request) {
                             const STORAGE_IMPL& storage = generic_input.storage;
+                            const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request.url);
                             storage.ReadOnlyTransaction(
                                         // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                                         // Capture local variables by value for safe async transactions.
-                                        [&storage, &f_run_query, handler, generic_input, type_erased_query, context](
+                                        [&storage, &f_run_query, handler, cqs_parameters, type_erased_query, context](
                                             immutable_fields_t fields) -> Response {
                                           return handler.RunQuery(context,
                                                                   f_run_query,
                                                                   fields,
                                                                   std::move(type_erased_query),
-                                                                  generic_input.restful_url_prefix);
+                                                                  cqs_parameters);
                                         },
                                         std::move(request)).Detach();
                           });
@@ -656,16 +661,17 @@ class RESTfulStorage {
                           // Capture by reference since this lambda is run synchronously.
                           [&handler, &f_run_command, &generic_input, &type_erased_command, &ctx](Request request) {
                             STORAGE_IMPL& storage = generic_input.storage;
+                            const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request.url);
                             storage.ReadWriteTransaction(
                                         // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                                         // Capture local variables by value for safe async transactions.
-                                        [&storage, &f_run_command, handler, generic_input, type_erased_command, ctx](
+                                        [&storage, &f_run_command, handler, cqs_parameters, type_erased_command, ctx](
                                             mutable_fields_t fields) -> Response {
                                           return handler.RunCommand(ctx,
                                                                     f_run_command,
                                                                     fields,
                                                                     std::move(type_erased_command),
-                                                                    generic_input.restful_url_prefix);
+                                                                    cqs_parameters);
                                         },
                                         std::move(request)).Detach();
                           });
