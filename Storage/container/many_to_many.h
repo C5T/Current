@@ -58,7 +58,10 @@ class GenericManyToMany {
   using transposed_map_t = COL_MAP<col_t, col_elements_map_t>;
   using semantics_t = storage::semantics::ManyToMany;
 
-  GenericManyToMany(MutationJournal& journal) : journal_(journal) {}
+  GenericManyToMany(const std::string& field_name, MutationJournal& journal)
+      : field_name_(field_name), journal_(journal) {}
+
+  const std::string& FieldName() const { return field_name_; }
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -237,6 +240,7 @@ class GenericManyToMany {
     DoEraseWithoutTouchingLastModified(key);
   }
 
+  const std::string field_name_;
   whole_matrix_map_t map_;
   forward_map_t forward_;
   transposed_map_t transposed_;

@@ -915,6 +915,29 @@ TEST(TransactionalStorage, SmokeTest) {
   }
 }
 
+TEST(TransactionalStorage, ExposedFieldNames) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  const auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+    EXPECT_EQ("d", fields.d.FieldName());
+    EXPECT_EQ("umany_to_umany", fields.umany_to_umany.FieldName());
+    EXPECT_EQ("omany_to_omany", fields.omany_to_omany.FieldName());
+    EXPECT_EQ("umany_to_omany", fields.umany_to_omany.FieldName());
+    EXPECT_EQ("omany_to_umany", fields.omany_to_umany.FieldName());
+    EXPECT_EQ("uone_to_uone", fields.uone_to_uone.FieldName());
+    EXPECT_EQ("oone_to_oone", fields.oone_to_oone.FieldName());
+    EXPECT_EQ("uone_to_oone", fields.uone_to_oone.FieldName());
+    EXPECT_EQ("oone_to_uone", fields.oone_to_uone.FieldName());
+    EXPECT_EQ("uone_to_umany", fields.uone_to_umany.FieldName());
+    EXPECT_EQ("oone_to_omany", fields.oone_to_omany.FieldName());
+    EXPECT_EQ("uone_to_omany", fields.uone_to_omany.FieldName());
+    EXPECT_EQ("oone_to_umany", fields.oone_to_umany.FieldName());
+  }).Go();
+  ASSERT_TRUE(WasCommitted(result));
+}
+
 namespace transactional_storage_test {
 
 struct CurrentStorageTestMagicTypesExtractor {
