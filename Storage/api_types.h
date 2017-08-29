@@ -695,6 +695,17 @@ using GenericMatrixIterator = typename GenericMatrixIteratorImplSelector<
     PARTIAL_KEY,
     typename ExtractRowOrColDimensionType<PARTIAL_KEY, FIELD>::matrix_dimension_t>::Impl;
 
+namespace cqs {
+
+struct CQSParameters {
+  CQSParameters(const std::string& restful_url_prefix, const URL& original_url)
+      : restful_url_prefix(restful_url_prefix), original_url(original_url) {}
+  const std::string& restful_url_prefix;
+  const URL& original_url;
+};
+
+}  // namespace current::storage::rest::cqs
+
 }  // namespace rest
 }  // namespace storage
 }  // namespace current
