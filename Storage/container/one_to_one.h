@@ -55,7 +55,10 @@ class GenericOneToOne {
   using transposed_map_t = COL_MAP<col_t, const T*>;
   using semantics_t = storage::semantics::OneToOne;
 
-  GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
+  GenericOneToOne(const std::string& field_name, MutationJournal& journal)
+      : field_name_(field_name), journal_(journal) {}
+
+  const std::string& FieldName() const { return field_name_; }
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -275,6 +278,7 @@ class GenericOneToOne {
     DoEraseWithoutTouchingLastModified(key);
   }
 
+  const std::string field_name_;
   elements_map_t map_;
   forward_map_t forward_;
   transposed_map_t transposed_;
