@@ -46,89 +46,42 @@ template <typename STREAM>
 struct FakeStreamReplicatorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
-  using stream_t = STREAM;
-  using entry_t = typename stream_t::entry_t;
-  using publisher_t = typename stream_t::publisher_t;
+  using entry_t = typename STREAM::entry_t;
 
-  FakeStreamReplicatorImpl(): total_entries_length_(0) {}
+  FakeStreamReplicatorImpl() : whole_data_length_(0) {}
   virtual ~FakeStreamReplicatorImpl() = default;
 
   EntryResponse operator()(entry_t&& entry, idxts_t current, idxts_t last) {
-    return (*this)(JSON(entry), current.index, last);
+    return this->operator()(JSON(entry), current.index, last);
   }
 
   EntryResponse operator()(const entry_t& entry, idxts_t current, idxts_t last) {
-    return (*this)(JSON(entry), current.index, last);
+    return this->operator()(JSON(entry), current.index, last);
   }
 
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
     fake_data_.push_back(std::count(entry_json.begin(), entry_json.end(), 'A'));
     const auto tab_pos = entry_json.find('\t');
-    total_entries_length_ += entry_json.length() - (tab_pos != std::string::npos ? tab_pos : 0) + 1;
+    whole_data_length_ += entry_json.length() - (tab_pos != std::string::npos ? tab_pos : 0);
     return EntryResponse::More;
   }
 
-  EntryResponse operator()(std::chrono::microseconds) {
-    return EntryResponse::More;
-  }
+  EntryResponse operator()(std::chrono::microseconds) { return EntryResponse::More; }
 
   EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
   TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
 
-  uint64_t Size() const {
-    return fake_data_.size();
-  }
+  uint64_t Size() const { return fake_data_.size(); }
 
-  uint64_t TotalLength() const {
-    return total_entries_length_;
-  }
-
+  uint64_t WholeDataLength() const { return whole_data_length_; }
 
  private:
   std::vector<size_t> fake_data_;
-  uint64_t total_entries_length_;
+  uint64_t whole_data_length_;
 };
 
 template <typename STREAM>
 using FakeStreamReplicator = current::ss::StreamSubscriber<FakeStreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
-
-
-template <typename ENTRY>
-struct FakePersister {
-public:
-  using entry_t = ENTRY;
-
-  void Publish(entry_t&& entry, std::chrono::microseconds) {
-    PublishUnsafe(JSON(entry));
-  }
-
-  void Publish(const entry_t& entry, std::chrono::microseconds) {
-    PublishUnsafe(JSON(entry));
-  }
-
-  void PublishUnsafe(const std::string& entry_json) {
-    fake_data_.push_back(std::count(entry_json.begin(), entry_json.end(), 'A'));
-    const auto tab_pos = entry_json.find('\t');
-    // +1 stays for '\n'
-    total_entries_length_ += entry_json.length() - (tab_pos != std::string::npos ? tab_pos : 0) + 1;
-  }
-
-  void UpdateHead(std::chrono::microseconds) {
-  }
-
-  uint64_t Size() const {
-    return fake_data_.size();
-  }
-
-  uint64_t TotalLength() const {
-    return total_entries_length_;
-  }
-
-private:
-  std::vector<size_t> fake_data_;
-  uint64_t total_entries_length_;
-
-};
 
 template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
@@ -191,6 +144,7 @@ void Replicate(ARGS&&... args) {
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration_in_seconds << '\t' << replicated_stream->Data()->Size() / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
+  std::cerr << "whole data size = " << replicated_data_size << std::endl;
 }
 
 template <typename STREAM, typename... ARGS>
@@ -229,8 +183,8 @@ void FakeReplicate() {
       const auto now = FastNow();
       if (now >= next_print_time || replicator->Size() >= records_to_replicate) {
         next_print_time = now + print_delay;
-        std::cerr << "\rReplicated " << replicator->Size() << " of " << records_to_replicate
-                  << " entries." << std::flush;
+        std::cerr << "\rReplicated " << replicator->Size() << " of " << records_to_replicate << " entries."
+                  << std::flush;
       }
       if (now >= stop_time) {
         break;
@@ -238,16 +192,17 @@ void FakeReplicate() {
     }
   }
   if (replicator->Size() > records_to_replicate) {
-    std::cerr << "\nWarning: more (" << replicator->Size() << ") entries then requested ("
-              << records_to_replicate << ") were replicated" << std::endl;
+    std::cerr << "\nWarning: more (" << replicator->Size() << ") entries then requested (" << records_to_replicate
+              << ") were replicated" << std::endl;
   }
   std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
-  uint64_t replicated_data_size = replicator->TotalLength();
+  uint64_t replicated_data_size = replicator->WholeDataLength();
 
   const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration_in_seconds << '\t' << replicator->Size() / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
+  std::cerr << "whole data size = " << replicated_data_size << std::endl;
 }
 
 int main(int argc, char** argv) {
