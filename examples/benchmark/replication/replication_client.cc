@@ -42,11 +42,11 @@ inline std::chrono::microseconds FastNow() {
   return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
 }
 
-template <typename STREAM>
+template <typename STREAM_ENTRY>
 struct FakeStreamReplicatorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
-  using entry_t = typename STREAM::entry_t;
+  using entry_t = STREAM_ENTRY;
 
   FakeStreamReplicatorImpl() : whole_data_length_(0) {}
   virtual ~FakeStreamReplicatorImpl() = default;
@@ -80,8 +80,8 @@ struct FakeStreamReplicatorImpl {
   uint64_t whole_data_length_;
 };
 
-template <typename STREAM>
-using FakeStreamReplicator = current::ss::StreamSubscriber<FakeStreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
+template <typename STREAM_ENTRY>
+using FakeStreamReplicator = current::ss::StreamSubscriber<FakeStreamReplicatorImpl<STREAM_ENTRY>, STREAM_ENTRY>;
 
 template <typename STREAM, typename... ARGS>
 void Replicate(ARGS&&... args) {
@@ -144,14 +144,12 @@ void Replicate(ARGS&&... args) {
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration_in_seconds << '\t' << replicated_stream->Data()->Size() / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
-  std::cerr << "whole data size = " << replicated_data_size << std::endl;
 }
 
-template <typename STREAM, typename... ARGS>
 void FakeReplicate() {
   std::cerr << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
   current::stream::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
-  auto replicator = std::make_unique<FakeStreamReplicator<STREAM>>();
+  auto replicator = std::make_unique<FakeStreamReplicator<benchmark::replication::Entry>>();
   std::cerr << "\b\b\bOK" << std::endl;
 
   const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
@@ -202,7 +200,6 @@ void FakeReplicate() {
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration_in_seconds << '\t' << replicator->Size() / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
-  std::cerr << "whole data size = " << replicated_data_size << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -219,7 +216,7 @@ int main(int argc, char** argv) {
   } else if (FLAGS_replicated_stream_persister == "memory") {
     Replicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
   } else if (FLAGS_replicated_stream_persister == "none") {
-    FakeReplicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
+    FakeReplicate();
   } else {
     std::cout << "--replicated_stream_persister should be `file` or `memory`." << std::endl;
     return -1;
