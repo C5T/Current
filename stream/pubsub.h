@@ -415,7 +415,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     }();
     if (result == ss::EntryResponse::Done) {
       if (params_.array) {
-		if (!output_started_) {
+        if (!output_started_) {
           http_response_("[]\n");
         } else {
           http_response_("]\n");

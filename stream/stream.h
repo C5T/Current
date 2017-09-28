@@ -624,20 +624,6 @@ class Stream final {
   // NOTE(dkorolev): Returns the pointer, because we're using `->` everywhere now. -- D.K.
   const persistence_layer_t* Data() const { return &impl_->persister; }
 
- private:
-  struct FillPerLanguageSchema {
-    StreamSchema& schema_ref;
-    const ss::StreamNamespaceName& namespace_name;
-    explicit FillPerLanguageSchema(StreamSchema& schema, const ss::StreamNamespaceName& namespace_name)
-        : schema_ref(schema), namespace_name(namespace_name) {}
-    template <current::reflection::Language language>
-    void PerLanguage() {
-      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
-          current::reflection::NamespaceToExpose(namespace_name.namespace_name)
-              .template AddType<entry_t>(namespace_name.entry_name));
-    }
-  };
-
   static StreamSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
     StreamSchema schema;
 
@@ -653,6 +639,20 @@ class Stream final {
 
     return schema;
   }
+
+ private:
+  struct FillPerLanguageSchema {
+    StreamSchema& schema_ref;
+    const ss::StreamNamespaceName& namespace_name;
+    explicit FillPerLanguageSchema(StreamSchema& schema, const ss::StreamNamespaceName& namespace_name)
+        : schema_ref(schema), namespace_name(namespace_name) {}
+    template <current::reflection::Language language>
+    void PerLanguage() {
+      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
+          current::reflection::NamespaceToExpose(namespace_name.namespace_name)
+              .template AddType<entry_t>(namespace_name.entry_name));
+    }
+  };
 
  private:
   // `Stream` instances are meant to be used as `Owned<Stream>`, created via `Stream<...>::CreateStream(...)`.
