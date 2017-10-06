@@ -62,7 +62,12 @@ T& growing_vector_access(std::vector<T>& vector, node_index_t index, V fill) {
 
 enum class NodeType : uint8_t { variable, value, operation, function };
 enum class MathOperation : uint8_t { add, subtract, multiply, divide, end };
-enum class MathFunction : uint8_t { sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp, end };
+enum class MathFunction : uint8_t {
+#define FNCAS_FUNCTION(f) f,
+#include "fncas_functions.dsl.h"
+#undef FNCAS_FUNCTION
+  end
+};
 
 enum class JIT {
   Super,          // The superclass of all `function_t<>`-s and `gradient_t<>`-s respectively.

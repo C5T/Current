@@ -55,3 +55,4 @@ CMakeLists.txt
 # Let's not even talk about it.
 node_modules
 **/node_modules
+**/package-lock.json
