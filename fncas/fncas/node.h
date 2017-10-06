@@ -55,10 +55,17 @@ using function_impl::sqr;
 using function_impl::unit_step;
 using function_impl::ramp;
 
+#define FNCAS_FUNCTION(f) inline double current_fncas_##f(double_t x) { return f(x); }
+#include "fncas_functions.dsl.h"
+#undef FNCAS_FUNCTION
+
 template <typename T>
 T apply_function(::fncas::impl::MathFunction function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(::fncas::impl::MathFunction::end)] = {
-      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, unit_step, ramp};
+#define FNCAS_FUNCTION(f) current_fncas_##f,
+#include "fncas_functions.dsl.h"
+#undef FNCAS_FUNCTION
+  };
   return function < ::fncas::impl::MathFunction::end ? evaluator[static_cast<size_t>(function)](argument)
                                                      : std::numeric_limits<T>::quiet_NaN();
 }
