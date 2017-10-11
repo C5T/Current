@@ -1,0 +1,1021 @@
+[
+  {
+    "object": "Primitives",
+    "contains": [
+      {
+        "field": "a",
+        "description": "It's the \"order\" of fields that matters.",
+        "as": {
+          "primitive": {
+            "type": "uint8_t",
+            "text": "Integer (8-bit unsigned)"
+          }
+        }
+      },
+      {
+        "field": "b",
+        "description": "Field descriptions can be set in any order.",
+        "as": {
+          "primitive": {
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
+          }
+        }
+      },
+      {
+        "field": "c",
+        "as": {
+          "primitive": {
+            "type": "uint32_t",
+            "text": "Integer (32-bit unsigned)"
+          }
+        }
+      },
+      {
+        "field": "d",
+        "as": {
+          "primitive": {
+            "type": "uint64_t",
+            "text": "Integer (64-bit unsigned)"
+          }
+        }
+      },
+      {
+        "field": "e",
+        "as": {
+          "primitive": {
+            "type": "int8_t",
+            "text": "Integer (8-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "f",
+        "as": {
+          "primitive": {
+            "type": "int16_t",
+            "text": "Integer (16-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "g",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "h",
+        "as": {
+          "primitive": {
+            "type": "int64_t",
+            "text": "Integer (64-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "i",
+        "as": {
+          "primitive": {
+            "type": "char",
+            "text": "Character"
+          }
+        }
+      },
+      {
+        "field": "j",
+        "as": {
+          "primitive": {
+            "type": "std::string",
+            "text": "String"
+          }
+        }
+      },
+      {
+        "field": "k",
+        "as": {
+          "primitive": {
+            "type": "float",
+            "text": "Number (floating point, single precision)"
+          }
+        }
+      },
+      {
+        "field": "l",
+        "as": {
+          "primitive": {
+            "type": "double",
+            "text": "Number (floating point, double precision)"
+          }
+        }
+      },
+      {
+        "field": "m",
+        "description": "Multiline\ndescriptions\ncan be used.",
+        "as": {
+          "primitive": {
+            "type": "bool",
+            "text": "`true` or `false`"
+          }
+        }
+      },
+      {
+        "field": "n",
+        "as": {
+          "primitive": {
+            "type": "std::chrono::microseconds",
+            "text": "Time (microseconds since epoch)"
+          }
+        }
+      },
+      {
+        "field": "o",
+        "as": {
+          "primitive": {
+            "type": "std::chrono::milliseconds",
+            "text": "Time (milliseconds since epoch)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "A",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "B",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "b",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "B2",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Empty",
+    "contains": []
+  },
+  {
+    "object": "X",
+    "contains": [
+      {
+        "field": "x",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Y",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "key": {
+            "name": "E",
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "A",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "X",
+    "contains": [
+      {
+        "field": "x",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Y",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "key": {
+            "name": "E",
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "A",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "X",
+    "contains": [
+      {
+        "field": "x",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Y",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "key": {
+            "name": "E",
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "C",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "object": {
+            "kind": "Empty"
+          }
+        }
+      },
+      {
+        "field": "c",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "field": "d",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "A",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "B",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "b",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "B2",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "C",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "object": {
+            "kind": "Empty"
+          }
+        }
+      },
+      {
+        "field": "c",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "field": "d",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Empty",
+    "contains": []
+  },
+  {
+    "object": "Templated_T9209980946934124423",
+    "contains": [
+      {
+        "field": "foo",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "bar",
+        "as": {
+          "object": {
+            "kind": "X"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Templated_T9227782344077896555",
+    "contains": [
+      {
+        "field": "foo",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "bar",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "TemplatedInheriting_T9200000002835747520",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "baz",
+        "as": {
+          "primitive": {
+            "type": "std::string",
+            "text": "String"
+          }
+        }
+      },
+      {
+        "field": "meh",
+        "as": {
+          "object": {
+            "kind": "Empty"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Templated_T9209626390174323094",
+    "contains": [
+      {
+        "field": "foo",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "bar",
+        "as": {
+          "object": {
+            "kind": "TemplatedInheriting_T9200000002835747520"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "TemplatedInheriting_T9209980946934124423",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "baz",
+        "as": {
+          "primitive": {
+            "type": "std::string",
+            "text": "String"
+          }
+        }
+      },
+      {
+        "field": "meh",
+        "as": {
+          "object": {
+            "kind": "X"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "TemplatedInheriting_T9227782344077896555",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "baz",
+        "as": {
+          "primitive": {
+            "type": "std::string",
+            "text": "String"
+          }
+        }
+      },
+      {
+        "field": "meh",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Templated_T9200000002835747520",
+    "contains": [
+      {
+        "field": "foo",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "bar",
+        "as": {
+          "object": {
+            "kind": "Empty"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "TemplatedInheriting_T9201673071807149456",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "baz",
+        "as": {
+          "primitive": {
+            "type": "std::string",
+            "text": "String"
+          }
+        }
+      },
+      {
+        "field": "meh",
+        "as": {
+          "object": {
+            "kind": "Templated_T9200000002835747520"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "TrickyEvolutionCases",
+    "contains": [
+      {
+        "field": "o1",
+        "as": {
+          "optional": {
+            "underlying": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o2",
+        "as": {
+          "optional": {
+            "underlying": {
+              "primitive": {
+                "type": "int32_t",
+                "text": "Integer (32-bit signed)"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o3",
+        "as": {
+          "optional": {
+            "underlying": {
+              "array": {
+                "element": {
+                  "primitive": {
+                    "type": "std::string",
+                    "text": "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o4",
+        "as": {
+          "optional": {
+            "underlying": {
+              "array": {
+                "element": {
+                  "primitive": {
+                    "type": "int32_t",
+                    "text": "Integer (32-bit signed)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o5",
+        "as": {
+          "optional": {
+            "underlying": {
+              "array": {
+                "element": {
+                  "object": {
+                    "kind": "A"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o6",
+        "as": {
+          "pair": {
+            "first": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            },
+            "second": {
+              "optional": {
+                "underlying": {
+                  "object": {
+                    "kind": "A"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o7",
+        "as": {
+          "ordered_dictionary": {
+            "from": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            },
+            "into": {
+              "optional": {
+                "underlying": {
+                  "object": {
+                    "kind": "A"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "FullTest",
+    "contains": [
+      {
+        "field": "primitives",
+        "description": "A structure with a lot of primitive types.",
+        "as": {
+          "object": {
+            "kind": "Primitives"
+          }
+        }
+      },
+      {
+        "field": "v1",
+        "as": {
+          "array": {
+            "element": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "v2",
+        "as": {
+          "array": {
+            "element": {
+              "object": {
+                "kind": "Primitives"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "p",
+        "as": {
+          "pair": {
+            "first": {
+              "primitive": {
+                "type": "std::string",
+                "text": "String"
+              }
+            },
+            "second": {
+              "object": {
+                "kind": "Primitives"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "o",
+        "as": {
+          "optional": {
+            "underlying": {
+              "object": {
+                "kind": "Primitives"
+              }
+            }
+          }
+        }
+      },
+      {
+        "field": "q",
+        "description": "Field | descriptions | FTW !",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "B"
+                }
+              },
+              {
+                "object": {
+                  "kind": "B2"
+                }
+              },
+              {
+                "object": {
+                  "kind": "C"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Empty"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "field": "w1",
+        "as": {
+          "object": {
+            "kind": "Templated_T9209980946934124423"
+          }
+        }
+      },
+      {
+        "field": "w2",
+        "as": {
+          "object": {
+            "kind": "Templated_T9227782344077896555"
+          }
+        }
+      },
+      {
+        "field": "w3",
+        "as": {
+          "object": {
+            "kind": "Templated_T9209626390174323094"
+          }
+        }
+      },
+      {
+        "field": "w4",
+        "as": {
+          "object": {
+            "kind": "TemplatedInheriting_T9209980946934124423"
+          }
+        }
+      },
+      {
+        "field": "w5",
+        "as": {
+          "object": {
+            "kind": "TemplatedInheriting_T9227782344077896555"
+          }
+        }
+      },
+      {
+        "field": "w6",
+        "as": {
+          "object": {
+            "kind": "TemplatedInheriting_T9201673071807149456"
+          }
+        }
+      },
+      {
+        "field": "tsc",
+        "as": {
+          "object": {
+            "kind": "TrickyEvolutionCases"
+          }
+        }
+      }
+    ]
+  }
+]
