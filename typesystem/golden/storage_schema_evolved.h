@@ -1,1 +1,0 @@
-../evolution/golden/storage_schema_evolved.h

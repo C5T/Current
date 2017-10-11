@@ -1,1 +1,0 @@
-../schema/golden/schema.h

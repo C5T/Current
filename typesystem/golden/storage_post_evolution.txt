@@ -1,1 +1,0 @@
-../evolution/golden/storage_post_evolution.txt
