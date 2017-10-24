@@ -368,7 +368,7 @@ TEST(HTTPAPI, RedirectToRelativeURL) {
 }
 
 TEST(HTTPAPI, RedirectToFullURL) {
-  ASSERT_FALSE(FLAGS_net_api_test_port_secondary == FLAGS_net_api_test_port);
+  ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
   // Need a live port for the redirect target because the HTTP client is following the redirect
   // and tries to connect to the redirect target, otherwise throws a `SocketConnectException`.
   const auto scope_redirect_to = HTTP(FLAGS_net_api_test_port_secondary).Register("/to", [](Request r) { r("Done."); });
@@ -1284,7 +1284,7 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbsolute) {
-  ASSERT_FALSE(FLAGS_net_api_test_port_secondary == FLAGS_net_api_test_port);
+  ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
