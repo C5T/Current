@@ -712,7 +712,7 @@ TEST(Regex, RangeBasedForLoop) {
 }
 
 TEST(Regex, NoOpNamedCapture) {
-  current::strings::NamedRegexCapturer re("^the-answer$");
+  const current::strings::NamedRegexCapturer re("^the-answer$");
   EXPECT_EQ(0u, re.TotalCaptures());
   EXPECT_EQ(0u, re.NamedCaptures());
   EXPECT_FALSE(re.Test("foo"));
@@ -720,9 +720,11 @@ TEST(Regex, NoOpNamedCapture) {
 }
 
 TEST(Regex, SimpleNamedCapture) {
-  current::strings::NamedRegexCapturer re("^answer-(?<n>\\d+)$");
+  const current::strings::NamedRegexCapturer re("^answer-(?<n>\\d+)$");
+  EXPECT_EQ("^answer-(\\d+)$", re.GetTransformedRegexBody());
   EXPECT_EQ(1u, re.TotalCaptures());
   EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
   EXPECT_FALSE(re.Test("answer-foo"));
   EXPECT_TRUE(re.Test("answer-42"));
   const auto match = re.Match("answer-42");
@@ -733,9 +735,11 @@ TEST(Regex, SimpleNamedCapture) {
 }
 
 TEST(Regex, NamedCaptureAfterAnonymousCaptures) {
-  current::strings::NamedRegexCapturer re("^(a(ns)(w(e)r))-(?<n>\\d+)$");
+  const current::strings::NamedRegexCapturer re("^(a(ns)(w(e)r))-(?<n>\\d+)$");
+  EXPECT_EQ("^(a(ns)(w(e)r))-(\\d+)$", re.GetTransformedRegexBody());
   EXPECT_EQ(5u, re.TotalCaptures());
   EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(5u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
   EXPECT_FALSE(re.Test("answer-foo"));
   EXPECT_TRUE(re.Test("answer-42"));
   const auto match = re.Match("answer-42");
@@ -746,9 +750,11 @@ TEST(Regex, NamedCaptureAfterAnonymousCaptures) {
 }
 
 TEST(Regex, NamedCaptureAfterNonCaptures) {
-  current::strings::NamedRegexCapturer re("^(?:answer)-(?<n>\\d+)$");
+  const current::strings::NamedRegexCapturer re("^(?:answer)-(?<n>\\d+)$");
+  EXPECT_EQ("^(?:answer)-(\\d+)$", re.GetTransformedRegexBody());
   EXPECT_EQ(1u, re.TotalCaptures());  // The "(?: ... )" is a non-capture.
   EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
   EXPECT_FALSE(re.Test("answer-foo"));
   EXPECT_TRUE(re.Test("answer-42"));
   const auto match = re.Match("answer-42");
@@ -759,9 +765,11 @@ TEST(Regex, NamedCaptureAfterNonCaptures) {
 }
 
 TEST(Regex, EscapedParenthesesDoNotCount) {
-  current::strings::NamedRegexCapturer re("^\\(answer\\)-(?<n>\\d+)$");
+  const current::strings::NamedRegexCapturer re("^\\(answer\\)-(?<n>\\d+)$");
+  EXPECT_EQ("^\\(answer\\)-(\\d+)$", re.GetTransformedRegexBody());
   EXPECT_EQ(1u, re.TotalCaptures());
   EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
   EXPECT_FALSE(re.Test("answer-42"));
   EXPECT_TRUE(re.Test("(answer)-42"));
   const auto match = re.Match("(answer)-42");
@@ -771,13 +779,49 @@ TEST(Regex, EscapedParenthesesDoNotCount) {
   EXPECT_EQ("", match["foo"]);
 }
 
+TEST(Regex, SubmatchesDoTheirJobForUncapturedSuperGroups) {
+  const current::strings::NamedRegexCapturer re("^(?:(?<key>[A-Z]+)(?<key_has_name>@)?\\s+::=)$");
+  EXPECT_EQ("^(?:([A-Z]+)(@)?\\s+::=)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(2u, re.TotalCaptures());
+  EXPECT_EQ(2u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("key"));
+  EXPECT_EQ(2u, re.GetTransformedRegexCaptureGroupIndexes().at("key_has_name"));
+  EXPECT_FALSE(re.Test("TEST ::= blah"));
+  EXPECT_TRUE(re.Test("TEST@ ::="));
+  const auto match = re.Match("TEST@ ::=");
+  EXPECT_TRUE(match.Has("key"));
+  EXPECT_EQ("TEST", match["key"]);
+  EXPECT_TRUE(match.Has("key_has_name"));
+  EXPECT_EQ("@", match["key_has_name"]);
+}
+
+TEST(Regex, SubmatchesDoTheirJobForUnnamedSuperGroups) {
+  const current::strings::NamedRegexCapturer re("^((?<key>[A-Z]+)(?<key_has_name>@)?\\s+::=)$");
+  EXPECT_EQ("^(([A-Z]+)(@)?\\s+::=)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(3u, re.TotalCaptures());
+  EXPECT_EQ(2u, re.NamedCaptures());
+  EXPECT_EQ(2u, re.GetTransformedRegexCaptureGroupIndexes().at("key"));
+  EXPECT_EQ(3u, re.GetTransformedRegexCaptureGroupIndexes().at("key_has_name"));
+  EXPECT_FALSE(re.Test("TEST ::= blah"));
+  EXPECT_TRUE(re.Test("TEST@ ::="));
+  const auto match = re.Match("TEST ::=");
+  EXPECT_TRUE(match.Has("key"));
+  EXPECT_EQ("TEST", match["key"]);
+  EXPECT_FALSE(match.Has("key_has_name"));
+  EXPECT_EQ("", match["key_has_name"]);
+}
+
 TEST(Regex, SimpleTokenization) {
   const std::vector<std::string> clauses({
     "(?<uppercase>[A-Z]+)",
     "(?<lowercase>[a-z]+)",
     "(?<digits>[0-9]+)",
   });
-  current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
+  const current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
+  EXPECT_EQ("([A-Z]+)|([a-z]+)|([0-9]+)", re.GetTransformedRegexBody());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("uppercase"));
+  EXPECT_EQ(2u, re.GetTransformedRegexCaptureGroupIndexes().at("lowercase"));
+  EXPECT_EQ(3u, re.GetTransformedRegexCaptureGroupIndexes().at("digits"));
   std::vector<std::string> output;
   for (const auto& token : re.Iterate("ANSWER is 42 TeSt1nG")) {
     if (token.Has("uppercase")) {

@@ -57,9 +57,9 @@ struct IterateByRegexMatches {
 class NamedRegexCapturer {
  private:
   struct Data {
-    std::string actual_re_body;  // This should be long-lived too.
     std::vector<std::string> group_names;
     std::unordered_map<std::string, size_t> group_indexes;
+    std::string transformed_re_body;  // This should be long-lived too.
     std::regex transformed_re;
 
     template <typename S>
@@ -78,8 +78,8 @@ class NamedRegexCapturer {
           group_names.push_back(name);
         }
       }
-      actual_re_body = std::regex_replace(re_body, re_capture_groups, "(");
-      transformed_re = std::regex(std::move(actual_re_body));
+      transformed_re_body = std::regex_replace(re_body, re_capture_groups, "(");
+      transformed_re = std::regex(std::move(transformed_re_body));
     }
   };
   std::shared_ptr<Data> data_;
@@ -113,7 +113,7 @@ class NamedRegexCapturer {
     size_t position() const { return match.position(); }
     template <typename S>
     bool Has(S&& s) const {
-      const auto cit = data->group_indexes.find(std::forward<S>(s));
+      const auto cit = data->group_indexes.find(s);
       if (cit != data->group_indexes.end()) {
         const size_t i = cit->second;
         if (i < match.size()) {
@@ -124,7 +124,7 @@ class NamedRegexCapturer {
     }
     template <typename S>
     std::string operator[](S&& s) const {
-      const auto cit = data->group_indexes.find(std::forward<S>(s));
+      const auto cit = data->group_indexes.find(s);
       if (cit != data->group_indexes.end()) {
         const size_t i = cit->second;
         if (i < match.size()) {
@@ -135,7 +135,7 @@ class NamedRegexCapturer {
     }
   };
 
-  MatchResult Match(const std::string& s) {
+  MatchResult Match(const std::string& s) const {
     std::smatch match;
     std::regex_match(s, match, data_->transformed_re);
     return MatchResult(data_, match);
@@ -171,9 +171,10 @@ class NamedRegexCapturer {
         size_t length() const { return match.length(); }
         size_t position() const { return match.position(); }
         std::string str() const { return match.str(); }
+        const std::smatch& smatch() const { return match; }
         template <typename S>
         bool Has(S&& s) const {
-          const auto cit = data.group_indexes.find(std::forward<S>(s));
+          const auto cit = data.group_indexes.find(s);
           if (cit != data.group_indexes.end()) {
             const size_t i = cit->second;
             if (i < match.size()) {
@@ -184,11 +185,11 @@ class NamedRegexCapturer {
         }
         template <typename S>
         std::string operator[](S&& s) const {
-          const auto cit = data.group_indexes.find(std::forward<S>(s));
+          const auto cit = data.group_indexes.find(s);
           if (cit != data.group_indexes.end()) {
             const size_t i = cit->second;
             if (i < match.size()) {
-              return match.str();
+              return match[i].str();
             }
           }
           return "";
@@ -210,6 +211,12 @@ class NamedRegexCapturer {
   // Various getters.
   size_t TotalCaptures() const { return data_->group_names.size(); }
   size_t NamedCaptures() const { return data_->group_indexes.size(); }
+  const std::string& GetTransformedRegexBody() const { return data_->transformed_re_body; }
+  const std::regex& GetTransformedRegex() const { return data_->transformed_re; }
+  const std::vector<std::string>& GetTransformedRegexCaptureGroupNames() const { return data_->group_names; }
+  const std::unordered_map<std::string,size_t>& GetTransformedRegexCaptureGroupIndexes() const {
+    return data_->group_indexes;
+  }
 };
 
 }  // namespace strings
