@@ -74,7 +74,7 @@ class NamedRegexCapturer {
         }
       }
       const std::string cleaned_re_body = std::regex_replace(re_body, re_capture_groups, "(");
-      return Data{names, indexes, std::regex(cleaned_re_body)};
+      return Data{std::move(names), std::move(indexes), std::regex(cleaned_re_body)};
     }
   };
   const Data data_;
