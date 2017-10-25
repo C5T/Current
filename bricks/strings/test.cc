@@ -694,3 +694,101 @@ TEST(IsStringType, StaticAsserts) {
   static_assert(is_string_type<const std::vector<char>&>::value, "");
   static_assert(is_string_type<std::vector<char>&&>::value, "");
 }
+
+TEST(Regex, RangeBasedForLoop) {
+  const std::regex re("[a-z]+|[A-Z]+|[0-9]+");
+  const std::string s = "abc DEF 123 G42 88H";
+  std::string matches1;
+  std::string matches2;
+  for (std::sregex_iterator cit(s.begin(), s.end(), re); cit != std::sregex_iterator(); ++cit) {
+    matches1 += ' ' + cit->str();
+  }
+  for (const auto& term : current::strings::IterateByRegexMatches(re, s)) {
+    matches2 += ' ' + term.str();
+  }
+  EXPECT_EQ("abc DEF 123 G 42 88 H", matches1.substr(1u));
+  EXPECT_EQ("abc DEF 123 G 42 88 H", matches2.substr(1u));
+  EXPECT_EQ(matches1, matches2);
+}
+
+TEST(Regex, NoOpNamedCapture) {
+  current::strings::NamedRegexCapturer re("^the-answer$");
+  EXPECT_EQ(0u, re.TotalCaptures());
+  EXPECT_EQ(0u, re.NamedCaptures());
+  EXPECT_FALSE(re.Test("foo"));
+  EXPECT_TRUE(re.Test("the-answer"));
+}
+
+TEST(Regex, SimpleNamedCapture) {
+  current::strings::NamedRegexCapturer re("^answer-(?<n>\\d+)$");
+  EXPECT_EQ(1u, re.TotalCaptures());
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_FALSE(re.Test("answer-foo"));
+  EXPECT_TRUE(re.Test("answer-42"));
+  const auto match = re.Match("answer-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, NamedCaptureAfterAnonymousCaptures) {
+  current::strings::NamedRegexCapturer re("^(a(ns)(w(e)r))-(?<n>\\d+)$");
+  EXPECT_EQ(5u, re.TotalCaptures());
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_FALSE(re.Test("answer-foo"));
+  EXPECT_TRUE(re.Test("answer-42"));
+  const auto match = re.Match("answer-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, NamedCaptureAfterNonCaptures) {
+  current::strings::NamedRegexCapturer re("^(?:answer)-(?<n>\\d+)$");
+  EXPECT_EQ(1u, re.TotalCaptures());  // The "(?: ... )" is a non-capture.
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_FALSE(re.Test("answer-foo"));
+  EXPECT_TRUE(re.Test("answer-42"));
+  const auto match = re.Match("answer-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, EscapedParenthesesDoNotCount) {
+  current::strings::NamedRegexCapturer re("^\\(answer\\)-(?<n>\\d+)$");
+  EXPECT_EQ(1u, re.TotalCaptures());
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_FALSE(re.Test("answer-42"));
+  EXPECT_TRUE(re.Test("(answer)-42"));
+  const auto match = re.Match("(answer)-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, SimpleTokenization) {
+  const std::vector<std::string> clauses({
+    "(?<uppercase>[A-Z]+)",
+    "(?<lowercase>[a-z]+)",
+    "(?<digits>[0-9]+)",
+  });
+  current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
+  std::vector<std::string> output;
+  for (const auto& token : re.Iterate("ANSWER is 42")) {
+    if (token.Has("uppercase")) {
+      output.push_back("uppercase('" + token["uppercase"] + "')");
+    } else if (token.Has("lowercase")) {
+      output.push_back("lowercase('" + token["lowercase"] + "')");
+    } else if (token.Has("digits")) {
+      output.push_back("digits('" + token["digits"] + "')");
+    } else {
+      output.push_back("error");
+    }
+  }
+  EXPECT_EQ("uppercase('ANSWER'), lowercase('is'), digits('42')", current::strings::Join(output, ", "));
+}

@@ -36,5 +36,6 @@ SOFTWARE.
 #include "rounding.h"
 #include "time.h"
 #include "escape.h"
+#include "regex.h"
 
 #endif  // BRICKS_STRINGS_STRINGS_H
