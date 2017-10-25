@@ -34,8 +34,12 @@ namespace strings {
 
 // A simple way to range-based-for-loop iterate over regex matches.
 struct IterateByRegexMatches {
+  const std::string copy_of_string_if_needed_;
   const std::sregex_iterator begin_;
   const std::sregex_iterator end_ = std::sregex_iterator();
+
+  IterateByRegexMatches(const std::regex& re, const char* s)
+      : copy_of_string_if_needed_(s), begin_(copy_of_string_if_needed_.begin(), copy_of_string_if_needed_.end(), re) {}
 
   template <typename T>
   IterateByRegexMatches(const std::regex& re, T&& s)
@@ -53,12 +57,13 @@ struct IterateByRegexMatches {
 class NamedRegexCapturer {
  private:
   struct Data {
-    const std::vector<std::string> group_names;
-    const std::unordered_map<std::string, size_t> group_indexes;
-    const std::regex transformed_re;
-    static Data Construct(const std::string& re_body) {
-      std::vector<std::string> names;
-      std::unordered_map<std::string, size_t> indexes;
+    std::string actual_re_body;  // This should be long-lived too.
+    std::vector<std::string> group_names;
+    std::unordered_map<std::string, size_t> group_indexes;
+    std::regex transformed_re;
+
+    template <typename S>
+    Data(S&& re_body) {
       // This regex requires explanation.
       // 1) Must begin with a non-escaped "(".
       // 2) Must not begin with "(?:".
@@ -68,37 +73,48 @@ class NamedRegexCapturer {
         if (!capture_group.position() || re_body[capture_group.position() - 1u] != '\\') {
           const std::string name = capture_group[2].str();
           if (!name.empty()) {
-            indexes[name] = names.size() + 1u;
+            group_indexes[name] = group_names.size() + 1u;
           }
-          names.push_back(name);
+          group_names.push_back(name);
         }
       }
-      const std::string cleaned_re_body = std::regex_replace(re_body, re_capture_groups, "(");
-      return Data{std::move(names), std::move(indexes), std::regex(cleaned_re_body)};
+      actual_re_body = std::regex_replace(re_body, re_capture_groups, "(");
+      transformed_re = std::regex(std::move(actual_re_body));
     }
   };
-  const Data data_;
+  std::shared_ptr<Data> data_;
 
  public:
+  template <typename S>
+  NamedRegexCapturer(S&& re_body) : data_(std::make_shared<Data>(std::forward<S>(re_body))) {}
+
   NamedRegexCapturer() = delete;
-  NamedRegexCapturer(const std::string& re_body) : data_(Data::Construct(re_body)) {}
+  NamedRegexCapturer(const NamedRegexCapturer&) = delete;
+  NamedRegexCapturer& operator=(const NamedRegexCapturer&) = delete;
+  NamedRegexCapturer(NamedRegexCapturer&&) = delete;
+  NamedRegexCapturer& operator=(NamedRegexCapturer&&) = delete;
 
   // A simple test.
   bool Test(const std::string& s) const {
     std::smatch unused_match;
-    return std::regex_match(s, unused_match, data_.transformed_re);
+    return std::regex_match(s, unused_match, data_->transformed_re);
   }
 
   // The real match.
   struct MatchResult {
-    const NamedRegexCapturer& self;
+    std::shared_ptr<NamedRegexCapturer::Data> data;
     const std::smatch match;
-    MatchResult(NamedRegexCapturer* self_ptr, std::smatch match) : self(*self_ptr), match(std::move(match)) {}
+
+    MatchResult() = delete;
+    MatchResult(std::shared_ptr<NamedRegexCapturer::Data> data, std::smatch match)
+        : data(std::move(data)), match(std::move(match)) {}
+
     size_t length() const { return match.length(); }
     size_t position() const { return match.position(); }
-    bool Has(const std::string& s) const {
-      const auto cit = self.data_.group_indexes.find(s);
-      if (cit != self.data_.group_indexes.end()) {
+    template <typename S>
+    bool Has(S&& s) const {
+      const auto cit = data->group_indexes.find(std::forward<S>(s));
+      if (cit != data->group_indexes.end()) {
         const size_t i = cit->second;
         if (i < match.size()) {
           return match[i].length() > 0u;
@@ -106,9 +122,10 @@ class NamedRegexCapturer {
       }
       return false;
     }
-    std::string operator[](const std::string& s) const {
-      const auto cit = self.data_.group_indexes.find(s);
-      if (cit != self.data_.group_indexes.end()) {
+    template <typename S>
+    std::string operator[](S&& s) const {
+      const auto cit = data->group_indexes.find(std::forward<S>(s));
+      if (cit != data->group_indexes.end()) {
         const size_t i = cit->second;
         if (i < match.size()) {
           return match[i].str();
@@ -120,13 +137,13 @@ class NamedRegexCapturer {
 
   MatchResult Match(const std::string& s) {
     std::smatch match;
-    std::regex_match(s, match, data_.transformed_re);
-    return MatchResult(this, match);
+    std::regex_match(s, match, data_->transformed_re);
+    return MatchResult(data_, match);
   }
 
   // Iterator.
   struct Iterable {
-    const NamedRegexCapturer& self_;
+    const std::shared_ptr<NamedRegexCapturer::Data> data_;
     const std::string owned_string_;
     const std::sregex_iterator begin_;
     const std::sregex_iterator end_ = std::sregex_iterator();
@@ -134,26 +151,30 @@ class NamedRegexCapturer {
     // NOTE(dkorolev): Just `const std::string& s` doesn't nail it here, as the string object itself should live
     // while the regex is being applied to it. The user is encouraged to `std::move()` a string into this code,
     // and passing in a plain C string would do the job just fine as well. -- D.K.
-    Iterable(const NamedRegexCapturer* self_ptr, const std::regex& re, std::string s)
-        : self_(*self_ptr), owned_string_(std::move(s)), begin_(owned_string_.begin(), owned_string_.end(), re) {}
+    Iterable(std::shared_ptr<NamedRegexCapturer::Data> data, std::string s)
+      : data_(std::move(data)),
+        owned_string_(std::move(s)),
+        begin_(owned_string_.begin(), owned_string_.end(), data_->transformed_re) {}
 
     struct Iterator {
-      const NamedRegexCapturer& self_;
+      const NamedRegexCapturer::Data& data_;
       std::sregex_iterator iterator_;
-      Iterator(const NamedRegexCapturer& self, std::sregex_iterator iterator) : self_(self), iterator_(iterator) {}
+      Iterator(const NamedRegexCapturer::Data& data, std::sregex_iterator iterator)
+          : data_(data), iterator_(iterator) {}
       void operator++() { ++iterator_; }
-      bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }  // No need to compare `self.`
+      bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }  // No need to compare `data_.`
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
       struct Accessor {
-        const NamedRegexCapturer& self;
+        const NamedRegexCapturer::Data& data;
         std::smatch match;
-        Accessor(const NamedRegexCapturer& self, std::smatch match) : self(self), match(match) {}
+        Accessor(const NamedRegexCapturer::Data& data, std::smatch match) : data(data), match(match) {}
         size_t length() const { return match.length(); }
         size_t position() const { return match.position(); }
         std::string str() const { return match.str(); }
-        bool Has(const std::string& s) const {
-          const auto cit = self.data_.group_indexes.find(s);
-          if (cit != self.data_.group_indexes.end()) {
+        template <typename S>
+        bool Has(S&& s) const {
+          const auto cit = data.group_indexes.find(std::forward<S>(s));
+          if (cit != data.group_indexes.end()) {
             const size_t i = cit->second;
             if (i < match.size()) {
               return match[i].length() > 0u;
@@ -161,9 +182,10 @@ class NamedRegexCapturer {
           }
           return false;
         }
-        std::string operator[](const std::string& s) const {
-          const auto cit = self.data_.group_indexes.find(s);
-          if (cit != self.data_.group_indexes.end()) {
+        template <typename S>
+        std::string operator[](S&& s) const {
+          const auto cit = data.group_indexes.find(std::forward<S>(s));
+          if (cit != data.group_indexes.end()) {
             const size_t i = cit->second;
             if (i < match.size()) {
               return match.str();
@@ -173,21 +195,21 @@ class NamedRegexCapturer {
         }
       };
       Accessor operator*() const {
-        return Accessor(self_, *iterator_);
+        return Accessor(data_, *iterator_);
       }
     };
-    Iterator begin() const { return Iterator(self_, begin_); }
-    Iterator end() const { return Iterator(self_, end_); }
+    Iterator begin() const { return Iterator(*data_, begin_); }
+    Iterator end() const { return Iterator(*data_, end_); }
   };
 
   // NOTE(dkorolev): Just `const std::string& s` doesn't nail it here, as the string itself should live
   // while the regex is being applied to it. Hence the workaround.
   template <typename S>
-  Iterable Iterate(S&& s) const { return Iterable(this, data_.transformed_re, std::forward<S>(s)); }
+  Iterable Iterate(S&& s) const { return Iterable(data_, std::forward<S>(s)); }
 
   // Various getters.
-  size_t TotalCaptures() const { return data_.group_names.size(); }
-  size_t NamedCaptures() const { return data_.group_indexes.size(); }
+  size_t TotalCaptures() const { return data_->group_names.size(); }
+  size_t NamedCaptures() const { return data_->group_indexes.size(); }
 };
 
 }  // namespace strings

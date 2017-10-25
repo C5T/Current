@@ -793,3 +793,22 @@ TEST(Regex, SimpleTokenization) {
   EXPECT_EQ("u('ANSWER'), l('is'), d('42'), u('T'), l('e'), u('S'), l('t'), d('1'), l('n'), u('G')",
             current::strings::Join(output, ", "));
 }
+
+TEST(Regex, MemoryOwnershipSmokeTest) {
+  const std::vector<std::string> cs({
+    "(?<foo>foo)",
+    "(?<bar>bar)",
+  });
+  std::vector<std::string> output;
+  for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate("foo bar")) {
+    if (token.Has("foo")) {
+      output.push_back("foo@" + current::ToString(token.position()));
+    } else if (token.Has("bar")) {
+      output.push_back("bar@" + current::ToString(token.position()));
+    } else {
+      output.push_back("error");
+    }
+  }
+  EXPECT_EQ("foo@0, bar@4", current::strings::Join(output, ", "));
+}
+
