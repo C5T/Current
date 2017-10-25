@@ -94,6 +94,8 @@ class NamedRegexCapturer {
     const NamedRegexCapturer& self;
     const std::smatch match;
     MatchResult(NamedRegexCapturer* self_ptr, std::smatch match) : self(*self_ptr), match(std::move(match)) {}
+    size_t length() const { return match.length(); }
+    size_t position() const { return match.position(); }
     bool Has(const std::string& s) const {
       const auto cit = self.data_.group_indexes.find(s);
       if (cit != self.data_.group_indexes.end()) {
@@ -143,33 +145,35 @@ class NamedRegexCapturer {
       bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }  // No need to compare `self.`
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
       struct Accessor {
-        const NamedRegexCapturer& self_;
-        std::sregex_iterator iterator_;
-        Accessor(const NamedRegexCapturer& self, std::sregex_iterator iterator) : self_(self), iterator_(iterator) {}
+        const NamedRegexCapturer& self;
+        std::smatch match;
+        Accessor(const NamedRegexCapturer& self, std::smatch match) : self(self), match(match) {}
+        size_t length() const { return match.length(); }
+        size_t position() const { return match.position(); }
+        std::string str() const { return match.str(); }
         bool Has(const std::string& s) const {
-          const auto cit = self_.data_.group_indexes.find(s);
-          if (cit != self_.data_.group_indexes.end()) {
+          const auto cit = self.data_.group_indexes.find(s);
+          if (cit != self.data_.group_indexes.end()) {
             const size_t i = cit->second;
-            if (i < (*iterator_).size()) {
-              return (*iterator_)[i].length() > 0u;
+            if (i < match.size()) {
+              return match[i].length() > 0u;
             }
           }
           return false;
         }
         std::string operator[](const std::string& s) const {
-          const auto cit = self_.data_.group_indexes.find(s);
-          if (cit != self_.data_.group_indexes.end()) {
+          const auto cit = self.data_.group_indexes.find(s);
+          if (cit != self.data_.group_indexes.end()) {
             const size_t i = cit->second;
-            if (i < (*iterator_).size()) {
-              return (*iterator_)[i].str();
+            if (i < match.size()) {
+              return match.str();
             }
           }
           return "";
         }
-        std::string str() const { return (*iterator_).str(); }
       };
       Accessor operator*() const {
-        return Accessor(self_, iterator_);
+        return Accessor(self_, *iterator_);
       }
     };
     Iterator begin() const { return Iterator(self_, begin_); }
