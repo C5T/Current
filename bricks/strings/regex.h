@@ -125,11 +125,15 @@ class NamedRegexCapturer {
   // Iterator.
   struct Iterable {
     const NamedRegexCapturer& self_;
+    const std::string owned_string_;
     const std::sregex_iterator begin_;
     const std::sregex_iterator end_ = std::sregex_iterator();
 
-    Iterable(const NamedRegexCapturer* self_ptr, const std::regex& re, const std::string& s)
-        : self_(*self_ptr), begin_(s.begin(), s.end(), re) {}
+    // NOTE(dkorolev): Just `const std::string& s` doesn't nail it here, as the string object itself should live
+    // while the regex is being applied to it. The user is encouraged to `std::move()` a string into this code,
+    // and passing in a plain C string would do the job just fine as well. -- D.K.
+    Iterable(const NamedRegexCapturer* self_ptr, const std::regex& re, std::string s)
+        : self_(*self_ptr), owned_string_(std::move(s)), begin_(owned_string_.begin(), owned_string_.end(), re) {}
 
     struct Iterator {
       const NamedRegexCapturer& self_;
@@ -164,13 +168,18 @@ class NamedRegexCapturer {
         }
         std::string str() const { return (*iterator_).str(); }
       };
-      Accessor operator*() const { return Accessor(self_, iterator_); }
+      Accessor operator*() const {
+        return Accessor(self_, iterator_);
+      }
     };
     Iterator begin() const { return Iterator(self_, begin_); }
     Iterator end() const { return Iterator(self_, end_); }
   };
 
-  Iterable Iterate(const std::string& s) const { return Iterable(this, data_.transformed_re, s); }
+  // NOTE(dkorolev): Just `const std::string& s` doesn't nail it here, as the string itself should live
+  // while the regex is being applied to it. Hence the workaround.
+  template <typename S>
+  Iterable Iterate(S&& s) const { return Iterable(this, data_.transformed_re, std::forward<S>(s)); }
 
   // Various getters.
   size_t TotalCaptures() const { return data_.group_names.size(); }

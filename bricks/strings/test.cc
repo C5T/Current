@@ -779,16 +779,17 @@ TEST(Regex, SimpleTokenization) {
   });
   current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
   std::vector<std::string> output;
-  for (const auto& token : re.Iterate("ANSWER is 42")) {
+  for (const auto& token : re.Iterate("ANSWER is 42 TeSt1nG")) {
     if (token.Has("uppercase")) {
-      output.push_back("uppercase('" + token["uppercase"] + "')");
+      output.push_back("u('" + token["uppercase"] + "')");
     } else if (token.Has("lowercase")) {
-      output.push_back("lowercase('" + token["lowercase"] + "')");
+      output.push_back("l('" + token["lowercase"] + "')");
     } else if (token.Has("digits")) {
-      output.push_back("digits('" + token["digits"] + "')");
+      output.push_back("d('" + token["digits"] + "')");
     } else {
       output.push_back("error");
     }
   }
-  EXPECT_EQ("uppercase('ANSWER'), lowercase('is'), digits('42')", current::strings::Join(output, ", "));
+  EXPECT_EQ("u('ANSWER'), l('is'), d('42'), u('T'), l('e'), u('S'), l('t'), d('1'), l('n'), u('G')",
+            current::strings::Join(output, ", "));
 }
