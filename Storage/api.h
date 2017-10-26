@@ -610,7 +610,7 @@ class RESTfulStorage {
                 // Capture by reference since this lambda is run synchronously.
                 [&handler, &f_run_query, &generic_input, &type_erased_query, &context](Request request) {
                   const STORAGE_IMPL& storage = generic_input.storage;
-                  const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request.url);
+                  const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request);
                   storage.ReadOnlyTransaction(
                               // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                               // Capture local variables by value for safe async transactions.
@@ -658,7 +658,7 @@ class RESTfulStorage {
                 // Capture by reference since this lambda is run synchronously.
                 [&handler, &f_run_command, &generic_input, &type_erased_command, &ctx](Request request) {
                   STORAGE_IMPL& storage = generic_input.storage;
-                  const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request.url);
+                  const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request);
                   storage.ReadWriteTransaction(
                               // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                               // Capture local variables by value for safe async transactions.
