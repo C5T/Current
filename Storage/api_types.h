@@ -698,10 +698,11 @@ using GenericMatrixIterator = typename GenericMatrixIteratorImplSelector<
 namespace cqs {
 
 struct CQSParameters {
-  CQSParameters(const std::string& restful_url_prefix, const URL& original_url)
-      : restful_url_prefix(restful_url_prefix), original_url(original_url) {}
+  CQSParameters(const std::string& restful_url_prefix, const Request& r)
+      : restful_url_prefix(restful_url_prefix), original_url(r.url), http_headers(r.headers) {}
   const std::string& restful_url_prefix;
   const URL& original_url;
+  const current::net::http::Headers& http_headers;
 };
 
 }  // namespace current::storage::rest::cqs
