@@ -79,7 +79,7 @@ class NamedRegexCapturer {
         }
       }
       transformed_re_body = std::regex_replace(re_body, re_capture_groups, "(");
-      transformed_re = std::regex(std::move(transformed_re_body));
+      transformed_re = std::regex(transformed_re_body);
     }
   };
   std::shared_ptr<Data> data_;
