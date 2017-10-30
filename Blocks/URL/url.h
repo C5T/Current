@@ -315,9 +315,7 @@ struct URLParametersExtractor {
       static void DoIt(const std::map<std::string, std::string>& parameters, T& object) {
         using decayed_t = current::decay<T>;
         using super_t = current::reflection::SuperType<decayed_t>;
-        if (!std::is_same<super_t, CurrentStruct>::value) {
-          FillObjectImpl<super_t, MODE>::DoIt(parameters, static_cast<super_t&>(object));
-        }
+        FillObjectImpl<super_t, MODE>::DoIt(parameters, static_cast<super_t&>(object));
         QueryParametersObjectFiller<T, MODE> parser{parameters};
         current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
       }
