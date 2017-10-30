@@ -66,9 +66,9 @@ class NamedRegexCapturer {
     Data(S&& re_body) {
       // This regex requires explanation.
       // 1) Must begin with a non-escaped "(".
-      // 2) Must not begin with "(?:".
+      // 2) Must not begin with "(?:" or "(?=".
       // 3) May, but does not have to be "(?<...>").
-      const std::regex re_capture_groups("\\((?!\\?:)(\\?<(\\w+)>)?");
+      const std::regex re_capture_groups("\\((?!\\?:)(?!\\?=)(\\?<(\\w+)>)?");
       for (const auto& capture_group : current::strings::IterateByRegexMatches(re_capture_groups, re_body)) {
         if (!capture_group.position() || re_body[capture_group.position() - 1u] != '\\') {
           const std::string name = capture_group[2].str();
@@ -109,6 +109,8 @@ class NamedRegexCapturer {
     MatchResult(std::shared_ptr<NamedRegexCapturer::Data> data, std::smatch match)
         : data(std::move(data)), match(std::move(match)) {}
 
+    bool empty() const { return match.empty(); }
+    size_t size() const { return match.size(); }
     size_t length() const { return match.length(); }
     size_t position() const { return match.position(); }
     template <typename S>
@@ -168,6 +170,8 @@ class NamedRegexCapturer {
         const NamedRegexCapturer::Data& data;
         std::smatch match;
         Accessor(const NamedRegexCapturer::Data& data, std::smatch match) : data(data), match(match) {}
+        bool empty() const { return match.empty(); }
+        size_t size() const { return match.size(); }
         size_t length() const { return match.length(); }
         size_t position() const { return match.position(); }
         std::string str() const { return match.str(); }
