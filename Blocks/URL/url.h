@@ -297,9 +297,8 @@ struct URLParametersExtractor {
 
     // NOTE: `FillObject` only populates the fields present in the URL; it doesn't erase what's not in the querystring.
     template <typename T, FillObjectMode MODE = FillObjectMode::Forgiving>
-    const T& FillObject(T& object) const {
-      QueryParametersObjectFiller<T, MODE> parser{parameters_};
-      current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
+    std::enable_if_t<IS_CURRENT_STRUCT(T), const T&> FillObject(T& object) const {
+      FillObjectImpl<T, MODE>::DoIt(parameters_, object);
       return object;
     }
 
@@ -311,6 +310,22 @@ struct URLParametersExtractor {
     }
 
    private:
+    template <typename T, FillObjectMode MODE>
+    struct FillObjectImpl {
+      static void DoIt(const std::map<std::string, std::string>& parameters, T& object) {
+        using decayed_t = current::decay<T>;
+        using super_t = current::reflection::SuperType<decayed_t>;
+        FillObjectImpl<super_t, MODE>::DoIt(parameters, static_cast<super_t&>(object));
+        QueryParametersObjectFiller<T, MODE> parser{parameters};
+        current::reflection::VisitAllFields<T, current::reflection::FieldNameAndMutableValue>::WithObject(object, parser);
+      }
+    };
+
+    template <FillObjectMode MODE>
+    struct FillObjectImpl<CurrentStruct, MODE> {
+      static void DoIt(const std::map<std::string, std::string>&, CurrentStruct&) {}
+    };
+
     template <typename TOP_LEVEL_T, FillObjectMode MODE>
     struct QueryParametersObjectFiller {
       const std::map<std::string, std::string>& q;
