@@ -548,10 +548,19 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             // Default evolver for this particular `Optional<T>`.
             // The global, top-level one, can only work if the underlying type does not change.
             const auto& o = Value<ReflectedType_Optional>(type_substance);
-            const auto bare_optional_type_name = TypeName(o.optional_type);
-            const auto namespaced_from_optional_type_name = TypeName(o.optional_type, "typename " + nmspc);
-            const auto namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
+            std::string bare_optional_type_name = TypeName(o.optional_type);
+            std::string namespaced_from_optional_type_name = TypeName(o.optional_type, "typename " + nmspc);
+            std::string namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
             if (TypePrefix(o.optional_type) != TYPEID_BASIC_PREFIX) {
+              if (TypePrefix(o.optional_type) == TYPEID_STRUCT_PREFIX) {
+                const auto& s = Value<ReflectedType_Struct>(types_.at(o.optional_type));
+                if (Exists(s.template_inner_id)) {
+                  const auto f = s.TemplateFullNameDecorator();
+                  bare_optional_type_name = f(bare_optional_type_name);
+                  namespaced_from_optional_type_name = f(namespaced_from_optional_type_name);
+                  namespaced_into_optional_type_name = f(namespaced_into_optional_type_name);
+                }
+              }
               const std::string origin = "Optional<" + namespaced_from_optional_type_name + '>';
               const std::string origin_guard =
                   "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
