@@ -517,8 +517,8 @@ struct URLPathArgs {
 
   std::string ComposeURLPathFromArgs() const {
     std::string result;
-    for (auto cit = args_.crbegin(); cit != args_.crend(); ++cit) {
-      result += "/" + *cit;
+    for (const auto& component : (*this)) {
+      result += "/" + component;
     }
     return (result.empty() ? "/" : result);
   }
