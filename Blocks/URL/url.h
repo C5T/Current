@@ -515,6 +515,23 @@ struct URLPathArgs {
 
   void add(const std::string& arg) { args_.push_back(arg); }
 
+  std::string ComposeURLPathFromArgs() const {
+    std::string result;
+    for (const auto& component : (*this)) {
+      result += "/" + component;
+    }
+    return (result.empty() ? "/" : result);
+  }
+
+  std::string ComposeURLPath() const {
+    const std::string path_from_args = ComposeURLPathFromArgs();
+    if (base_path.empty() || base_path == "/") {
+      return path_from_args;
+    } else {
+      return (path_from_args == "/" ? base_path : base_path + path_from_args);
+    }
+  }
+
   std::string base_path;
 
  private:

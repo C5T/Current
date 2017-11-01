@@ -171,6 +171,55 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
   EXPECT_EQ("/ (user, a, 1, blah) url_path_had_trailing_slash", run("/user/a/1/blah/"));
 }
 
+TEST(HTTPAPI, ComposeURLPathWithURLPathArgs) {
+  const auto handler = [](Request r) {
+    r(r.url.path + " (" + r.url_path_args.ComposeURLPathFromArgs() + ", " + r.url_path_args.ComposeURLPath() + ")");
+  };
+
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler) +
+                     HTTP(FLAGS_net_api_test_port)
+                         .Register("/user", URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two, handler) +
+                     HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler) +
+                     HTTP(FLAGS_net_api_test_port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
+
+  const auto run = [](const std::string& path) -> std::string {
+    return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
+  };
+
+  EXPECT_EQ("/ (/, /)", run("/"));
+  EXPECT_EQ("/ (/foo, /foo)", run("/foo"));
+  EXPECT_EQ("/ (/foo, /foo)", run("/foo/"));
+  EXPECT_EQ("/ (/foo/bar, /foo/bar)", run("/foo/bar"));
+  EXPECT_EQ("/ (/foo/bar, /foo/bar)", run("/foo/bar/"));
+  EXPECT_EQ("/ (/user, /user)", run("/user"));
+  EXPECT_EQ("/ (/user, /user)", run("/user/"));
+
+  EXPECT_EQ("/ (/, /)", run("//"));
+  EXPECT_EQ("/ (/, /)", run("///"));
+
+  EXPECT_EQ("/user (/a, /user/a)", run("/user/a"));
+  EXPECT_EQ("/user (/a, /user/a)", run("/user/a/"));
+  EXPECT_EQ("/user (/a, /user/a)", run("/user///a"));
+  EXPECT_EQ("/user (/a, /user/a)", run("/user///a///"));
+
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user/x/y"));
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user/x/y/"));
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user///x//y"));
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user///x//y//"));
+
+  EXPECT_EQ("/user/a (/0, /user/a/0)", run("/user/a/0"));
+  EXPECT_EQ("/user/a (/0, /user/a/0)", run("/user/a/0/"));
+
+  EXPECT_EQ("/user/a/1 (/, /user/a/1)", run("/user/a/1"));
+  EXPECT_EQ("/user/a/1 (/, /user/a/1)", run("/user/a/1/"));
+
+  EXPECT_EQ("/user/a (/2, /user/a/2)", run("/user/a/2"));
+  EXPECT_EQ("/user/a (/2, /user/a/2)", run("/user/a/2/"));
+
+  EXPECT_EQ("/ (/user/a/1/blah, /user/a/1/blah)", run("/user/a/1/blah"));
+  EXPECT_EQ("/ (/user/a/1/blah, /user/a/1/blah)", run("/user/a/1/blah/"));
+}
+
 TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {
   const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
 
