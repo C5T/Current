@@ -132,6 +132,8 @@ void Replicate(ARGS&&... args) {
     std::cerr << "\nWarning: more (" << replicated_stream->Data()->Size() << ") entries then requested ("
               << records_to_replicate << ") were replicated" << std::endl;
   }
+  const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
+
   std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
   // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
@@ -140,7 +142,6 @@ void Replicate(ARGS&&... args) {
     replicated_data_size += empty_entry_length + e.entry.s.length();
   }
 
-  const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration_in_seconds << '\t' << replicated_stream->Data()->Size() / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;

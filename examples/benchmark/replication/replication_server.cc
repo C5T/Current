@@ -79,13 +79,13 @@ class FakeStream final {
                   {current::stream::kStreamHeaderCurrentStreamSize, current::ToString(stream_size)},
               }))) {}
 
-    current::ss::EntryResponse operator()(const std::string& data) {
+    current::ss::EntryResponse operator()(std::string&& data) {
       const current::ss::EntryResponse result = [&, this]() {
         if (time_to_terminate_) {
           return current::ss::EntryResponse::Done;
         }
         try {
-          http_response_(data, true);
+          http_response_(std::move(data));
         } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
           return current::ss::EntryResponse::Done;         // LCOV_EXCL_LINE
         }
