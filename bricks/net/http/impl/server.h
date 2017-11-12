@@ -609,8 +609,14 @@ class GenericHTTPServerConnection final : public HTTPResponder {
                 connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), false);
                 data_cache_.resize(0);
               }
-              data_cache_.insert(data_cache_.end(), chunk_header.begin(), chunk_header.end());
-              data_cache_.insert(data_cache_.end(), data.begin(), data.end());
+              if (data.size() + chunk_header.size() > data_cache_.capacity()
+				  || (data_cache_.empty() && flush)) {
+                connection_.BlockingWrite(chunk_header.c_str(), chunk_header.size(), true);
+                connection_.BlockingWrite(data.c_str(), data.size(), false);
+              } else {
+                data_cache_.insert(data_cache_.end(), chunk_header.begin(), chunk_header.end());
+                data_cache_.insert(data_cache_.end(), data.begin(), data.end());
+              }
             }
             if (flush && !data_cache_.empty()) {
               connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), false);
