@@ -22,8 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// blah
-
 // Cross-platform portability header.
 //
 // Ensures that one and only one of CURRENT_{POSIX,APPLE,ANDROID} is defined.
