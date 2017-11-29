@@ -605,17 +605,20 @@ class GenericHTTPServerConnection final : public HTTPResponder {
           try {
             if (!data.empty()) {
               const auto chunk_header = strings::Printf("%lX", data.size()) + constants::kCRLF;
-              if (data.size() + chunk_header.size() > data_cache_.capacity() - data_cache_.size()) {
+              if (!data_cache_.empty() && data.size() + chunk_header.size() + constants::kCRLFLength > data_cache_.capacity() - data_cache_.size()) {
                 connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), false);
                 data_cache_.resize(0);
               }
-              if (data.size() + chunk_header.size() > data_cache_.capacity()
+              if (data.size() + chunk_header.size() + constants::kCRLFLength > data_cache_.capacity()
 				  || (data_cache_.empty() && flush)) {
-                connection_.BlockingWrite(chunk_header.c_str(), chunk_header.size(), true);
-                connection_.BlockingWrite(data.c_str(), data.size(), false);
+                connection_.BlockingWrite(chunk_header, true);
+                connection_.BlockingWrite(std::forward<T>(data), true);
+                connection_.BlockingWrite(constants::kCRLF, false);
               } else {
                 data_cache_.insert(data_cache_.end(), chunk_header.begin(), chunk_header.end());
                 data_cache_.insert(data_cache_.end(), data.begin(), data.end());
+                data_cache_.resize(data_cache_.size() + constants::kCRLFLength);
+                ::memcpy(&data_cache_[data_cache_.size() - constants::kCRLFLength], constants::kCRLF, constants::kCRLFLength);
               }
             }
             if (flush && !data_cache_.empty()) {
@@ -667,13 +670,13 @@ class GenericHTTPServerConnection final : public HTTPResponder {
     explicit ChunkedResponseSender(Connection& connection) : impl_(new Impl(connection)) {}
 
     template <typename T>
-    inline ChunkedResponseSender& Send(T&& data, bool flush) {
+    inline ChunkedResponseSender& Send(T&& data, bool flush = true) {
       impl_->Send(std::forward<T>(data), flush);
       return *this;
     }
 
     template <typename T1, typename T2>
-    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2, bool flush) {
+    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2, bool flush = true) {
       impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2), flush);
       return *this;
     }
