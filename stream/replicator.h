@@ -157,43 +157,37 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Safe> PassEntriesToSubscriber(const std::vector<std::string>& lines,
-                                                                      size_t whole_entries_count) {
-      for (size_t i = 0; i < whole_entries_count; ++i) {
-        const auto split = current::strings::Split(lines[i], '\t');
-        const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
-        if (Exists(tsoptidx.index)) {
-          const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-          CURRENT_ASSERT(split.size() == 2u);
-          CURRENT_ASSERT(idxts.index == index_);
-          auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-          ++index_;
-          if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
-            CURRENT_THROW(StreamTerminatedBySubscriber());
-          }
-        } else {
-          CURRENT_ASSERT(split.size() == 1u);
-          if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
-            CURRENT_THROW(StreamTerminatedBySubscriber());
-          }
+    ENABLE_IF<MODE == SubscriptionMode::Safe> PassEntryToSubscriber(const std::string& entry_json) {
+      const auto split = current::strings::Split(entry_json, '\t');
+      const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
+      if (Exists(tsoptidx.index)) {
+        const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
+        CURRENT_ASSERT(split.size() == 2u);
+        CURRENT_ASSERT(idxts.index == index_);
+        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+        ++index_;
+        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
+      } else {
+        CURRENT_ASSERT(split.size() == 1u);
+        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       }
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Unsafe> PassEntriesToSubscriber(const std::vector<std::string>& lines,
-                                                                        size_t whole_entries_count) {
-      for (size_t i = 0; i < whole_entries_count; ++i) {
-        const auto tab_pos = lines[i].find('\t');
-        if (tab_pos != std::string::npos) {
-          if (subscriber_(lines[i], index_++, unused_idxts_) == ss::EntryResponse::Done) {
-            CURRENT_THROW(StreamTerminatedBySubscriber());
-          }
-        } else {
-          const auto tsoptidx = ParseJSON<ts_optidx_t>(lines[i]);
-          if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
-            CURRENT_THROW(StreamTerminatedBySubscriber());
-          }
+    ENABLE_IF<MODE == SubscriptionMode::Unsafe> PassEntryToSubscriber(const std::string& entry_json) {
+      const auto tab_pos = entry_json.find('\t');
+      if (tab_pos != std::string::npos) {
+        if (subscriber_(entry_json, index_++, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
+      } else {
+        const auto tsoptidx = ParseJSON<ts_optidx_t>(entry_json);
+        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       }
     }
@@ -210,16 +204,30 @@ class SubscribableRemoteStream final {
       }
 
       const std::string combined_data = carried_over_data_ + chunk;
-      const auto lines = current::strings::Split<current::strings::ByLines>(combined_data);
-      size_t whole_entries_count = lines.size();
-      CURRENT_ASSERT(!combined_data.empty());
-      if (combined_data.back() != '\n' && combined_data.back() != '\r') {
-        --whole_entries_count;
-        carried_over_data_ = lines.back();
+      
+      size_t start_pos = 0;
+      for(size_t end_pos = 0, sz = combined_data.size(); end_pos < sz;) {
+        while (start_pos < sz
+               && (combined_data[start_pos] == '\n'
+                   || combined_data[start_pos] == '\r')) {
+          ++start_pos;
+        }
+        end_pos = start_pos + 1;
+        while (end_pos < sz
+               && combined_data[end_pos] != '\n'
+               && combined_data[end_pos] != '\r') {
+          ++end_pos;
+        }
+        if (end_pos < sz) {
+          PassEntryToSubscriber<SM>(combined_data.substr(start_pos, end_pos - start_pos));
+          start_pos = end_pos + 1;
+        }
+      }
+      if (start_pos < combined_data.size()) {
+        carried_over_data_ = combined_data.substr(start_pos);
       } else {
         carried_over_data_.clear();
       }
-      PassEntriesToSubscriber<SM>(lines, whole_entries_count);
     }
 
     void TerminateSubscription() {
