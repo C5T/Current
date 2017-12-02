@@ -203,28 +203,36 @@ class SubscribableRemoteStream final {
         return;
       }
 
-      const std::string combined_data = carried_over_data_ + chunk;
-      
-      size_t start_pos = 0;
-      for(size_t end_pos = 0, sz = combined_data.size(); end_pos < sz;) {
-        while (start_pos < sz
-               && (combined_data[start_pos] == '\n'
-                   || combined_data[start_pos] == '\r')) {
+      const size_t chunk_size = chunk.size();
+      size_t end_pos = 0;
+      if (!carried_over_data_.empty()) {
+        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
+          ++end_pos;
+        }
+        if (end_pos == chunk_size) {
+          carried_over_data_ += chunk;
+          return;
+        }
+        PassEntryToSubscriber<SM>(carried_over_data_ + chunk.substr(0, end_pos));
+      }
+
+      size_t start_pos = end_pos;
+      for (;;) {
+        while (start_pos < chunk_size && (chunk[start_pos] == '\n' || chunk[start_pos] == '\r')) {
           ++start_pos;
         }
         end_pos = start_pos + 1;
-        while (end_pos < sz
-               && combined_data[end_pos] != '\n'
-               && combined_data[end_pos] != '\r') {
+        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
           ++end_pos;
         }
-        if (end_pos < sz) {
-          PassEntryToSubscriber<SM>(combined_data.substr(start_pos, end_pos - start_pos));
-          start_pos = end_pos + 1;
+        if (end_pos >= chunk_size) {
+          break;
         }
+        PassEntryToSubscriber<SM>(chunk.substr(start_pos, end_pos - start_pos));
+        start_pos = end_pos + 1;
       }
-      if (start_pos < combined_data.size()) {
-        carried_over_data_ = combined_data.substr(start_pos);
+      if (start_pos < chunk_size) {
+        carried_over_data_ = chunk.substr(start_pos);
       } else {
         carried_over_data_.clear();
       }
