@@ -219,6 +219,8 @@ TEST(JoinAndSplit, Join) {
 
   EXPECT_EQ("x->y->z", Join(std::set<char>({'x', 'z', 'y'}), "->"));
   EXPECT_EQ("0.500000<0.750000<0.875000<1.000000", Join(std::multiset<double>({1, 0.5, 0.75, 0.875}), '<'));
+
+  EXPECT_EQ("one,two,three", Join(std::vector<const char*>({"one", "two", "three"}), ','));
 }
 
 TEST(JoinAndSplit, Split) {
