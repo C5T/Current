@@ -580,14 +580,14 @@ class GenericHTTPServerConnection final : public HTTPResponder {
   struct ChunkedResponseSender final {
     // `struct Impl` is the logic wrapped into an `std::unique_ptr<>` to call the destructor only once.
     struct Impl final {
-      explicit Impl(Connection& connection) : connection_(connection) {
-        data_cache_.reserve(1024 * 1024); }
+      explicit Impl(Connection& connection) : connection_(connection) { data_cache_.reserve(1024 * 1024); }
 
       ~Impl() {
         if (!can_no_longer_write_) {
           try {
-            if (!data_cache_.empty())
+            if (!data_cache_.empty()) {
               connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), true);
+            }
             connection_.BlockingWrite("0", true);
             // Should send CRLF twice.
             connection_.BlockingWrite(constants::kCRLF, true);
@@ -601,27 +601,27 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       // The actual implementation of sending HTTP chunk data.
       template <typename T>
       void SendImpl(T&& data, bool flush) {
-        if (!data.empty() || flush) {
+        if (!data.empty() || (flush && !data_cache_.empty())) {
           try {
             if (!data.empty()) {
               const auto chunk_header = strings::Printf("%lX", data.size()) + constants::kCRLF;
-              if (!data_cache_.empty() && data.size() + chunk_header.size() + constants::kCRLFLength > data_cache_.capacity() - data_cache_.size()) {
-                connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), false);
+              const auto chunk_size = data.size() + chunk_header.size() + constants::kCRLFLength;
+              if (!data_cache_.empty() && (flush || chunk_size > data_cache_.capacity() - data_cache_.size())) {
+                connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), true);
                 data_cache_.resize(0);
               }
-              if (data.size() + chunk_header.size() + constants::kCRLFLength > data_cache_.capacity()
-				  || (data_cache_.empty() && flush)) {
+              if (flush || chunk_size > data_cache_.capacity()) {
                 connection_.BlockingWrite(chunk_header, true);
                 connection_.BlockingWrite(std::forward<T>(data), true);
                 connection_.BlockingWrite(constants::kCRLF, false);
               } else {
                 data_cache_.insert(data_cache_.end(), chunk_header.begin(), chunk_header.end());
                 data_cache_.insert(data_cache_.end(), data.begin(), data.end());
-                data_cache_.resize(data_cache_.size() + constants::kCRLFLength);
-                ::memcpy(&data_cache_[data_cache_.size() - constants::kCRLFLength], constants::kCRLF, constants::kCRLFLength);
+                const auto cache_size = data_cache_.size();
+                data_cache_.resize(cache_size + constants::kCRLFLength);
+                ::memcpy(&data_cache_[cache_size], constants::kCRLF, constants::kCRLFLength);
               }
-            }
-            if (flush && !data_cache_.empty()) {
+            } else {
               connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), false);
               data_cache_.resize(0);
             }
