@@ -406,17 +406,24 @@ TEST(HTTPAPI, HandlesRespondTwiceWithString) {
 }
 
 TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
+  std::string result = "";
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_twice",
-                                   [](Request r) {
+                                   [&result](Request r) {
                                      r(Response("OK", HTTPResponseCode.OK));
-                                     r(Response("FAIL", HTTPResponseCode(762)));
+                                     try {
+                                       r(Response("FAIL", HTTPResponseCode(762)));
+                                       result = "Error, second response did not throw.";
+                                      } catch (const current::net::AttemptedToSendHTTPResponseMoreThanOnce&) {
+                                       result = "OK, second response did throw.";
+                                     }
                                    });
   const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
+  EXPECT_EQ("OK, second response did throw.", result);
 }
 
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
