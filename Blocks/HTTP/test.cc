@@ -391,6 +391,35 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
+TEST(HTTPAPI, HandlesRespondTwiceWithString) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/respond_twice",
+                                   [](Request r) {
+                                     r("OK");
+                                     r("FAIL");
+                                   });
+  const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_EQ(url, response.url);
+}
+
+TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/respond_twice",
+                                   [](Request r) {
+                                     r(Response("OK", HTTPResponseCode.OK));
+                                     // FIXME: On this line, `Request r` is invalid after `std::move(*this)` in `Request#operator()`.
+                                     r(Response("FAIL", HTTPResponseCode(762)));  // https://github.com/joho/7XX-rfc
+                                   });
+  const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_EQ(url, response.url);
+}
+
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, RedirectToRelativeURL) {
