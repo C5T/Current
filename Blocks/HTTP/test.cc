@@ -410,8 +410,7 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
                          .Register("/respond_twice",
                                    [](Request r) {
                                      r(Response("OK", HTTPResponseCode.OK));
-                                     // FIXME: On this line, `Request r` is invalid after `std::move(*this)` in `Request#operator()`.
-                                     r(Response("FAIL", HTTPResponseCode(762)));  // https://github.com/joho/7XX-rfc
+                                     r(Response("FAIL", HTTPResponseCode(762)));
                                    });
   const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
