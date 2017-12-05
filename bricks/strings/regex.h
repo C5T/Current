@@ -152,9 +152,9 @@ class NamedRegexCapturer {
     // while the regex is being applied to it. The user is encouraged to `std::move()` a string into this code,
     // and passing in a plain C string would do the job just fine as well. -- D.K.
     Iterable(std::shared_ptr<NamedRegexCapturer::Data> data, std::string s)
-      : data_(std::move(data)),
-        owned_string_(std::move(s)),
-        begin_(owned_string_.begin(), owned_string_.end(), data_->transformed_re) {}
+        : data_(std::move(data)),
+          owned_string_(std::move(s)),
+          begin_(owned_string_.begin(), owned_string_.end(), data_->transformed_re) {}
 
     struct Iterator {
       const std::shared_ptr<NamedRegexCapturer::Data> data_shared_ptr_;
@@ -198,9 +198,7 @@ class NamedRegexCapturer {
           return "";
         }
       };
-      Accessor operator*() const {
-        return Accessor(data_, *iterator_);
-      }
+      Accessor operator*() const { return Accessor(data_, *iterator_); }
     };
     Iterator begin() const { return Iterator(data_, begin_); }
     Iterator end() const { return Iterator(data_, end_); }
@@ -209,7 +207,9 @@ class NamedRegexCapturer {
   // NOTE(dkorolev): Just `const std::string& s` doesn't nail it here, as the string itself should live
   // while the regex is being applied to it. Hence the workaround.
   template <typename S>
-  Iterable Iterate(S&& s) const { return Iterable(data_, std::forward<S>(s)); }
+  Iterable Iterate(S&& s) const {
+    return Iterable(data_, std::forward<S>(s));
+  }
 
   // Various getters.
   size_t TotalCaptures() const { return data_->group_names.size(); }
@@ -217,7 +217,7 @@ class NamedRegexCapturer {
   const std::string& GetTransformedRegexBody() const { return data_->transformed_re_body; }
   const std::regex& GetTransformedRegex() const { return data_->transformed_re; }
   const std::vector<std::string>& GetTransformedRegexCaptureGroupNames() const { return data_->group_names; }
-  const std::unordered_map<std::string,size_t>& GetTransformedRegexCaptureGroupIndexes() const {
+  const std::unordered_map<std::string, size_t>& GetTransformedRegexCaptureGroupIndexes() const {
     return data_->group_indexes;
   }
 };
