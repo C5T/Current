@@ -414,7 +414,7 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
                                      try {
                                        r(Response("FAIL", HTTPResponseCode(762)));
                                        result = "Error, second response did not throw.";
-                                      } catch (const current::net::AttemptedToSendHTTPResponseMoreThanOnce&) {
+                                     } catch (const current::net::AttemptedToSendHTTPResponseMoreThanOnce&) {
                                        result = "OK, second response did throw.";
                                      }
                                    });
