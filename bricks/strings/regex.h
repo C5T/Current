@@ -62,13 +62,12 @@ class NamedRegexCapturer {
     std::string transformed_re_body;  // This should be long-lived too.
     std::regex transformed_re;
 
-    template <typename S>
-    Data(S&& re_body) {
+    Data(std::string re_body) {
       // This regex requires explanation.
       // 1) Must begin with a non-escaped "(".
-      // 2) Must not begin with "(?:".
+      // 2) Must not begin with "(?:" or "(?=".
       // 3) May, but does not have to be "(?<...>").
-      const std::regex re_capture_groups("\\((?!\\?:)(\\?<(\\w+)>)?");
+      const std::regex re_capture_groups("\\((?!\\?:)(?!\\?=)(\\?<(\\w+)>)?");
       for (const auto& capture_group : current::strings::IterateByRegexMatches(re_capture_groups, re_body)) {
         if (!capture_group.position() || re_body[capture_group.position() - 1u] != '\\') {
           const std::string name = capture_group[2].str();
@@ -85,8 +84,7 @@ class NamedRegexCapturer {
   std::shared_ptr<Data> data_;
 
  public:
-  template <typename S>
-  NamedRegexCapturer(S&& re_body) : data_(std::make_shared<Data>(std::forward<S>(re_body))) {}
+  NamedRegexCapturer(std::string re_body) : data_(std::make_shared<Data>(std::move(re_body))) {}
 
   NamedRegexCapturer() = delete;
   NamedRegexCapturer(const NamedRegexCapturer&) = delete;
@@ -109,11 +107,13 @@ class NamedRegexCapturer {
     MatchResult(std::shared_ptr<NamedRegexCapturer::Data> data, std::smatch match)
         : data(std::move(data)), match(std::move(match)) {}
 
+    bool empty() const { return match.empty(); }
+    size_t size() const { return match.size(); }
     size_t length() const { return match.length(); }
     size_t position() const { return match.position(); }
     template <typename S>
     bool Has(S&& s) const {
-      const auto cit = data->group_indexes.find(s);
+      const auto cit = data->group_indexes.find(std::forward<S>(s));
       if (cit != data->group_indexes.end()) {
         const size_t i = cit->second;
         if (i < match.size()) {
@@ -124,7 +124,7 @@ class NamedRegexCapturer {
     }
     template <typename S>
     std::string operator[](S&& s) const {
-      const auto cit = data->group_indexes.find(s);
+      const auto cit = data->group_indexes.find(std::forward<S>(s));
       if (cit != data->group_indexes.end()) {
         const size_t i = cit->second;
         if (i < match.size()) {
@@ -152,15 +152,16 @@ class NamedRegexCapturer {
     // while the regex is being applied to it. The user is encouraged to `std::move()` a string into this code,
     // and passing in a plain C string would do the job just fine as well. -- D.K.
     Iterable(std::shared_ptr<NamedRegexCapturer::Data> data, std::string s)
-      : data_(std::move(data)),
-        owned_string_(std::move(s)),
-        begin_(owned_string_.begin(), owned_string_.end(), data_->transformed_re) {}
+        : data_(std::move(data)),
+          owned_string_(std::move(s)),
+          begin_(owned_string_.begin(), owned_string_.end(), data_->transformed_re) {}
 
     struct Iterator {
+      const std::shared_ptr<NamedRegexCapturer::Data> data_shared_ptr_;
       const NamedRegexCapturer::Data& data_;
       std::sregex_iterator iterator_;
-      Iterator(const NamedRegexCapturer::Data& data, std::sregex_iterator iterator)
-          : data_(data), iterator_(iterator) {}
+      Iterator(std::shared_ptr<NamedRegexCapturer::Data> data, std::sregex_iterator iterator)
+          : data_shared_ptr_(std::move(data)), data_(*data_shared_ptr_), iterator_(iterator) {}
       void operator++() { ++iterator_; }
       bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }  // No need to compare `data_.`
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
@@ -168,6 +169,8 @@ class NamedRegexCapturer {
         const NamedRegexCapturer::Data& data;
         std::smatch match;
         Accessor(const NamedRegexCapturer::Data& data, std::smatch match) : data(data), match(match) {}
+        bool empty() const { return match.empty(); }
+        size_t size() const { return match.size(); }
         size_t length() const { return match.length(); }
         size_t position() const { return match.position(); }
         std::string str() const { return match.str(); }
@@ -185,7 +188,7 @@ class NamedRegexCapturer {
         }
         template <typename S>
         std::string operator[](S&& s) const {
-          const auto cit = data.group_indexes.find(s);
+          const auto cit = data.group_indexes.find(std::forward<S>(s));
           if (cit != data.group_indexes.end()) {
             const size_t i = cit->second;
             if (i < match.size()) {
@@ -195,18 +198,18 @@ class NamedRegexCapturer {
           return "";
         }
       };
-      Accessor operator*() const {
-        return Accessor(data_, *iterator_);
-      }
+      Accessor operator*() const { return Accessor(data_, *iterator_); }
     };
-    Iterator begin() const { return Iterator(*data_, begin_); }
-    Iterator end() const { return Iterator(*data_, end_); }
+    Iterator begin() const { return Iterator(data_, begin_); }
+    Iterator end() const { return Iterator(data_, end_); }
   };
 
   // NOTE(dkorolev): Just `const std::string& s` doesn't nail it here, as the string itself should live
   // while the regex is being applied to it. Hence the workaround.
   template <typename S>
-  Iterable Iterate(S&& s) const { return Iterable(data_, std::forward<S>(s)); }
+  Iterable Iterate(S&& s) const {
+    return Iterable(data_, std::forward<S>(s));
+  }
 
   // Various getters.
   size_t TotalCaptures() const { return data_->group_names.size(); }
@@ -214,7 +217,7 @@ class NamedRegexCapturer {
   const std::string& GetTransformedRegexBody() const { return data_->transformed_re_body; }
   const std::regex& GetTransformedRegex() const { return data_->transformed_re; }
   const std::vector<std::string>& GetTransformedRegexCaptureGroupNames() const { return data_->group_names; }
-  const std::unordered_map<std::string,size_t>& GetTransformedRegexCaptureGroupIndexes() const {
+  const std::unordered_map<std::string, size_t>& GetTransformedRegexCaptureGroupIndexes() const {
     return data_->group_indexes;
   }
 };

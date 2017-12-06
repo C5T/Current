@@ -219,6 +219,8 @@ TEST(JoinAndSplit, Join) {
 
   EXPECT_EQ("x->y->z", Join(std::set<char>({'x', 'z', 'y'}), "->"));
   EXPECT_EQ("0.500000<0.750000<0.875000<1.000000", Join(std::multiset<double>({1, 0.5, 0.75, 0.875}), '<'));
+
+  EXPECT_EQ("one,two,three", Join(std::vector<const char*>({"one", "two", "three"}), ','));
 }
 
 TEST(JoinAndSplit, Split) {
@@ -813,9 +815,7 @@ TEST(Regex, SubmatchesDoTheirJobForUnnamedSuperGroups) {
 
 TEST(Regex, SimpleTokenization) {
   const std::vector<std::string> clauses({
-    "(?<uppercase>[A-Z]+)",
-    "(?<lowercase>[a-z]+)",
-    "(?<digits>[0-9]+)",
+      "(?<uppercase>[A-Z]+)", "(?<lowercase>[a-z]+)", "(?<digits>[0-9]+)",
   });
   const current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
   EXPECT_EQ("([A-Z]+)|([a-z]+)|([0-9]+)", re.GetTransformedRegexBody());
@@ -840,8 +840,7 @@ TEST(Regex, SimpleTokenization) {
 
 TEST(Regex, MemoryOwnershipSmokeTest) {
   const std::vector<std::string> cs({
-    "(?<foo>foo)",
-    "(?<bar>bar)",
+      "(?<foo>foo)", "(?<bar>bar)",
   });
   std::vector<std::string> output;
   for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate("foo bar")) {
@@ -855,4 +854,3 @@ TEST(Regex, MemoryOwnershipSmokeTest) {
   }
   EXPECT_EQ("foo@0, bar@4", current::strings::Join(output, ", "));
 }
-
