@@ -60,9 +60,10 @@ struct FakeStreamReplicatorImpl {
   }
 
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
-    fake_data_.push_back(std::count(entry_json.begin(), entry_json.end(), 'A'));
+    fake_data_ += std::count(entry_json.begin(), entry_json.end(), 'A');
     const auto tab_pos = entry_json.find('\t');
     whole_data_length_ += entry_json.length() - (tab_pos != std::string::npos ? tab_pos : 0);
+    ++entries_replicated_;
     return EntryResponse::More;
   }
 
@@ -71,12 +72,13 @@ struct FakeStreamReplicatorImpl {
   EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
   TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
 
-  uint64_t Size() const { return fake_data_.size(); }
+  uint64_t Size() const { return entries_replicated_; }
 
   uint64_t WholeDataLength() const { return whole_data_length_; }
 
  private:
-  std::vector<size_t> fake_data_;
+  size_t fake_data_;
+  size_t entries_replicated_;
   uint64_t whole_data_length_;
 };
 

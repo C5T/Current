@@ -43,27 +43,22 @@ DEFINE_bool(do_not_remove_autogen_data, false, "Set to not remove the data file.
 
 class FakeStream final {
  public:
-  class AbstractSubscriberObject {
-   public:
-    virtual ~AbstractSubscriberObject() = default;
-  };
-
   struct FakeStreamData final {
     explicit FakeStreamData(std::string&& data) : data(std::move(data)) {}
 
     std::string data;
     mutable std::mutex data_mutex;
 
-    using http_subscriptions_t =
-        std::unordered_map<std::string,
-                           std::pair<current::stream::SubscriberScope, std::unique_ptr<AbstractSubscriberObject>>>;
+    using http_subscriptions_t = std::unordered_map<
+        std::string,
+        std::pair<current::stream::SubscriberScope, std::unique_ptr<current::stream::AbstractSubscriberObject>>>;
     mutable std::mutex http_subscriptions_mutex;
     mutable http_subscriptions_t http_subscriptions;
   };
   using impl_t = FakeStreamData;
   using entry_t = benchmark::replication::Entry;
 
-  class FakePubSubEndpoint : public AbstractSubscriberObject {
+  class FakePubSubEndpoint : public current::stream::AbstractSubscriberObject {
    public:
     FakePubSubEndpoint(const std::string& subscription_id,
                        current::Borrowed<impl_t> data,
