@@ -60,9 +60,13 @@ struct FakeStreamReplicatorImpl {
   }
 
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
-    fake_data_ += std::count(entry_json.begin(), entry_json.end(), 'A');
     const auto tab_pos = entry_json.find('\t');
-    whole_data_length_ += entry_json.length() - (tab_pos != std::string::npos ? tab_pos : 0);
+    if (tab_pos != std::string::npos) {
+      fake_data_ += std::count(entry_json.begin() + tab_pos, entry_json.end(), 'A');
+      whole_data_length_ += entry_json.length() - tab_pos;
+    } else {
+      whole_data_length_ += entry_json.length();
+    }
     ++entries_replicated_;
     return EntryResponse::More;
   }
@@ -85,74 +89,47 @@ struct FakeStreamReplicatorImpl {
 template <typename STREAM_ENTRY>
 using FakeStreamReplicator = current::ss::StreamSubscriber<FakeStreamReplicatorImpl<STREAM_ENTRY>, STREAM_ENTRY>;
 
-template <typename STREAM, typename... ARGS>
-void Replicate(ARGS&&... args) {
-  auto replicated_stream = STREAM::CreateStream(std::forward<ARGS>(args)...);
-  std::cerr << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
-  current::stream::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
-  auto replicator = std::make_unique<current::stream::StreamReplicator<STREAM>>(replicated_stream);
-  std::cerr << "\b\b\bOK" << std::endl;
+template <typename STREAM>
+std::unique_ptr<current::stream::StreamReplicator<STREAM>> CreateReplicator(current::Borrowed<STREAM> stream) {
+  return std::make_unique<current::stream::StreamReplicator<STREAM>>(stream);
+}
 
-  const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
-  if (size_response.code != HTTPResponseCode.OK) {
-    std::cerr << "Cannot obtain the remote stream size, got an error " << static_cast<uint32_t>(size_response.code)
-              << " response: " << size_response.body << std::endl;
-    return;
-  }
-  const auto stream_size = current::FromString<uint64_t>(size_response.body);
-  const uint64_t records_to_replicate = FLAGS_total_entries ? std::min(FLAGS_total_entries, stream_size) : stream_size;
+template <typename STREAM_ENTRY = benchmark::replication::Entry>
+std::unique_ptr<FakeStreamReplicator<STREAM_ENTRY>> CreateReplicator() {
+  return std::make_unique<FakeStreamReplicator<STREAM_ENTRY>>();
+}
 
-  const auto start_time = FastNow();
-  const auto stop_time =
-      std::chrono::microseconds(FLAGS_seconds ? start_time.count() + static_cast<int64_t>(1e6 * FLAGS_seconds)
-                                              : std::numeric_limits<int64_t>::max());
+template <typename STREAM_ENTRY>
+uint64_t ReplicatedEntriesCount(const FakeStreamReplicator<STREAM_ENTRY>& replicator) {
+  return replicator.Size();
+}
 
-  {
-    std::cerr << "Subscribing to the stream ..." << std::flush;
-    const std::chrono::milliseconds print_delay(500);
-    const auto subscriber_scope = FLAGS_use_safe_replication
-                                      ? static_cast<current::stream::SubscriberScope>(
-                                            remote_stream.Subscribe(*replicator, 0, FLAGS_use_checked_subscription))
-                                      : static_cast<current::stream::SubscriberScope>(remote_stream.SubscribeUnsafe(
-                                            *replicator, 0, FLAGS_use_checked_subscription));
-    std::cerr << "\b\b\bOK" << std::endl;
-    auto next_print_time = start_time + print_delay;
-    while (replicated_stream->Data()->Size() < records_to_replicate) {
-      std::this_thread::yield();
-      const auto now = FastNow();
-      if (now >= next_print_time || replicated_stream->Data()->Size() >= records_to_replicate) {
-        next_print_time = now + print_delay;
-        std::cerr << "\rReplicated " << replicated_stream->Data()->Size() << " of " << records_to_replicate
-                  << " entries." << std::flush;
-      }
-      if (now >= stop_time) {
-        break;
-      }
-    }
-  }
-  if (replicated_stream->Data()->Size() > records_to_replicate) {
-    std::cerr << "\nWarning: more (" << replicated_stream->Data()->Size() << ") entries then requested ("
-              << records_to_replicate << ") were replicated" << std::endl;
-  }
-  const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
+template <typename REPLICATOR, typename STREAM>
+uint64_t ReplicatedEntriesCount(const REPLICATOR&, const STREAM stream) {
+  return stream->Data()->Size();
+}
 
-  std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
+template <typename STREAM_ENTRY>
+uint64_t ReplicatedDataSize(const FakeStreamReplicator<STREAM_ENTRY>& replicator) {
+  return replicator.WholeDataLength();
+}
+
+template <typename REPLICATOR, typename STREAM>
+uint64_t ReplicatedDataSize(const REPLICATOR&, const STREAM stream) {
   // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
   uint64_t replicated_data_size = 0;
-  for (const auto& e : replicated_stream->Data()->Iterate()) {
+  for (const auto& e : stream->Data()->Iterate()) {
     replicated_data_size += empty_entry_length + e.entry.s.length();
   }
-
-  std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
-  std::cout << duration_in_seconds << '\t' << replicated_stream->Data()->Size() / duration_in_seconds << '\t'
-            << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
+  return replicated_data_size;
 }
 
-void FakeReplicate() {
+template <typename... ARGS>
+void Replicate(ARGS&&... args) {
   std::cerr << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
   current::stream::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
-  auto replicator = std::make_unique<FakeStreamReplicator<benchmark::replication::Entry>>();
+  auto replicator = CreateReplicator(std::forward<ARGS>(args)...);
   std::cerr << "\b\b\bOK" << std::endl;
 
   const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
@@ -179,29 +156,32 @@ void FakeReplicate() {
                                             *replicator, 0, FLAGS_use_checked_subscription));
     std::cerr << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + print_delay;
-    while (replicator->Size() < records_to_replicate) {
-      std::this_thread::yield();
+
+    for (;;) {
+      const auto entries_replicated = ReplicatedEntriesCount(*replicator, std::forward<ARGS>(args)...);
       const auto now = FastNow();
-      if (now >= next_print_time || replicator->Size() >= records_to_replicate) {
+      if (now >= next_print_time || entries_replicated >= records_to_replicate) {
         next_print_time = now + print_delay;
-        std::cerr << "\rReplicated " << replicator->Size() << " of " << records_to_replicate << " entries."
+        std::cerr << "\rReplicated " << entries_replicated << " of " << records_to_replicate << " entries."
                   << std::flush;
       }
-      if (now >= stop_time) {
+      if (now >= stop_time || entries_replicated >= records_to_replicate) {
         break;
       }
     }
   }
-  if (replicator->Size() > records_to_replicate) {
-    std::cerr << "\nWarning: more (" << replicator->Size() << ") entries then requested (" << records_to_replicate
-              << ") were replicated" << std::endl;
-  }
-  std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
-  uint64_t replicated_data_size = replicator->WholeDataLength();
 
   const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
+  const auto entries_replicated = ReplicatedEntriesCount(*replicator, std::forward<ARGS>(args)...);
+  if (entries_replicated > records_to_replicate) {
+    std::cerr << "\nWarning: more (" << entries_replicated << ") entries than requested (" << records_to_replicate
+              << ") were replicated" << std::endl;
+  }
+
+  std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
+  const uint64_t replicated_data_size = ReplicatedDataSize(*replicator, std::forward<ARGS>(args)...);
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
-  std::cout << duration_in_seconds << '\t' << replicator->Size() / duration_in_seconds << '\t'
+  std::cout << duration_in_seconds << '\t' << entries_replicated / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
 }
 
@@ -215,11 +195,15 @@ int main(int argc, char** argv) {
       temp_file_remover = std::make_unique<current::FileSystem::ScopedRmFile>(filename);
     }
     std::cerr << "Replicating to " << filename << std::endl;
-    Replicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::File>>(filename);
+    using file_stream_t = current::stream::Stream<benchmark::replication::Entry, current::persistence::File>;
+    auto stream = file_stream_t::CreateStream(filename);
+    Replicate(current::Borrowed<file_stream_t>(stream));
   } else if (FLAGS_replicated_stream_persister == "memory") {
-    Replicate<current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>>();
+    using memory_stream_t = current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>;
+    auto stream = memory_stream_t::CreateStream();
+    Replicate(current::Borrowed<memory_stream_t>(stream));
   } else if (FLAGS_replicated_stream_persister == "none") {
-    FakeReplicate();
+    Replicate();
   } else {
     std::cout << "--replicated_stream_persister should be `file` or `memory`." << std::endl;
     return -1;
