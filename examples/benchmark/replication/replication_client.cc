@@ -129,7 +129,7 @@ template <typename... ARGS>
 void Replicate(ARGS&&... args) {
   std::cerr << "Connecting to the stream at '" << FLAGS_url << "' ..." << std::flush;
   current::stream::SubscribableRemoteStream<benchmark::replication::Entry> remote_stream(FLAGS_url);
-  auto replicator = CreateReplicator(std::forward<ARGS>(args)...);
+  auto replicator = CreateReplicator(args...);
   std::cerr << "\b\b\bOK" << std::endl;
 
   const auto size_response = HTTP(GET(FLAGS_url + "?sizeonly"));
@@ -158,7 +158,7 @@ void Replicate(ARGS&&... args) {
     auto next_print_time = start_time + print_delay;
 
     for (;;) {
-      const auto entries_replicated = ReplicatedEntriesCount(*replicator, std::forward<ARGS>(args)...);
+      const auto entries_replicated = ReplicatedEntriesCount(*replicator, args...);
       const auto now = FastNow();
       if (now >= next_print_time || entries_replicated >= records_to_replicate) {
         next_print_time = now + print_delay;
@@ -172,14 +172,14 @@ void Replicate(ARGS&&... args) {
   }
 
   const auto duration_in_seconds = (FastNow() - start_time).count() * 1e-6;
-  const auto entries_replicated = ReplicatedEntriesCount(*replicator, std::forward<ARGS>(args)...);
+  const auto entries_replicated = ReplicatedEntriesCount(*replicator, args...);
   if (entries_replicated > records_to_replicate) {
     std::cerr << "\nWarning: more (" << entries_replicated << ") entries than requested (" << records_to_replicate
               << ") were replicated" << std::endl;
   }
 
   std::cerr << "\nReplication finished, calculating the stats ..." << std::flush;
-  const uint64_t replicated_data_size = ReplicatedDataSize(*replicator, std::forward<ARGS>(args)...);
+  const uint64_t replicated_data_size = ReplicatedDataSize(*replicator, args...);
   std::cerr << "\b\b\bOK\nSeconds\tEPS\tMBps" << std::endl;
   std::cout << duration_in_seconds << '\t' << entries_replicated / duration_in_seconds << '\t'
             << replicated_data_size / duration_in_seconds / 1024 / 1024 << std::endl;
