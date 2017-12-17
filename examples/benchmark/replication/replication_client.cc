@@ -62,7 +62,7 @@ struct FakeStreamReplicatorImpl {
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
     const auto tab_pos = entry_json.find('\t');
     if (tab_pos != std::string::npos) {
-      fake_data_ += std::count(entry_json.begin() + tab_pos, entry_json.end(), 'A');
+      count_of_a_letters_ += std::count(entry_json.begin() + tab_pos, entry_json.end(), 'A');
       whole_data_length_ += entry_json.length() - tab_pos;
     } else {
       whole_data_length_ += entry_json.length();
@@ -81,7 +81,7 @@ struct FakeStreamReplicatorImpl {
   uint64_t WholeDataLength() const { return whole_data_length_; }
 
  private:
-  size_t fake_data_;
+  size_t count_of_a_letters_;
   size_t entries_replicated_;
   uint64_t whole_data_length_;
 };
@@ -105,7 +105,7 @@ uint64_t ReplicatedEntriesCount(const FakeStreamReplicator<STREAM_ENTRY>& replic
 }
 
 template <typename REPLICATOR, typename STREAM>
-uint64_t ReplicatedEntriesCount(const REPLICATOR&, const STREAM stream) {
+uint64_t ReplicatedEntriesCount(const REPLICATOR&, const STREAM& stream) {
   return stream->Data()->Size();
 }
 
@@ -115,7 +115,7 @@ uint64_t ReplicatedDataSize(const FakeStreamReplicator<STREAM_ENTRY>& replicator
 }
 
 template <typename REPLICATOR, typename STREAM>
-uint64_t ReplicatedDataSize(const REPLICATOR&, const STREAM stream) {
+uint64_t ReplicatedDataSize(const REPLICATOR&, const STREAM& stream) {
   // The length of the json-serialized empty entry, including the '\n' in the end.
   const uint64_t empty_entry_length = JSON(benchmark::replication::Entry()).length() + 1;
   uint64_t replicated_data_size = 0;
@@ -158,6 +158,7 @@ void Replicate(ARGS&&... args) {
     auto next_print_time = start_time + print_delay;
 
     for (;;) {
+      std::this_thread::yield();
       const auto entries_replicated = ReplicatedEntriesCount(*replicator, args...);
       const auto now = FastNow();
       if (now >= next_print_time || entries_replicated >= records_to_replicate) {
