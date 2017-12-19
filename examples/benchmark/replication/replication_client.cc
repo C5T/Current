@@ -62,7 +62,7 @@ struct FakeStreamReplicatorImpl {
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
     const auto tab_pos = entry_json.find('\t');
     if (tab_pos != std::string::npos) {
-      count_of_a_letters_ += std::count(entry_json.begin() + tab_pos, entry_json.end(), 'A');
+      count_of_a_letters_ += std::count(entry_json.begin() + tab_pos + 1u, entry_json.end(), 'A');
       whole_data_length_ += entry_json.length() - tab_pos;
     } else {
       whole_data_length_ += entry_json.length();
@@ -90,7 +90,7 @@ template <typename STREAM_ENTRY>
 using FakeStreamReplicator = current::ss::StreamSubscriber<FakeStreamReplicatorImpl<STREAM_ENTRY>, STREAM_ENTRY>;
 
 template <typename STREAM>
-std::unique_ptr<current::stream::StreamReplicator<STREAM>> CreateReplicator(current::Borrowed<STREAM> stream) {
+std::unique_ptr<current::stream::StreamReplicator<STREAM>> CreateReplicator(current::WeakBorrowed<STREAM>& stream) {
   return std::make_unique<current::stream::StreamReplicator<STREAM>>(stream);
 }
 
@@ -197,12 +197,10 @@ int main(int argc, char** argv) {
     }
     std::cerr << "Replicating to " << filename << std::endl;
     using file_stream_t = current::stream::Stream<benchmark::replication::Entry, current::persistence::File>;
-    auto stream = file_stream_t::CreateStream(filename);
-    Replicate(current::Borrowed<file_stream_t>(stream));
+    Replicate(file_stream_t::CreateStream(filename));
   } else if (FLAGS_replicated_stream_persister == "memory") {
     using memory_stream_t = current::stream::Stream<benchmark::replication::Entry, current::persistence::Memory>;
-    auto stream = memory_stream_t::CreateStream();
-    Replicate(current::Borrowed<memory_stream_t>(stream));
+    Replicate(memory_stream_t::CreateStream());
   } else if (FLAGS_replicated_stream_persister == "none") {
     Replicate();
   } else {

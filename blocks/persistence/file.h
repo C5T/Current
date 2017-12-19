@@ -479,12 +479,9 @@ class FilePersister {
     }
     const idxts_t idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
     if (idxts.index != iterator.next_index) {
-      CURRENT_THROW(ss::InconsistentIndexException(iterator.next_index, idxts.index));
+      CURRENT_THROW(UnsafePublishBadIndexTimestampException(iterator.next_index, idxts.index));
     }
     if (!(idxts.us > iterator.head)) {
-#ifdef CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
-      std::cerr << "timestamp: " << idxts.us.count() << ", iterator.head: " << iterator.head.count() << std::endl;
-#endif  // CURRENT_BUILD_WITH_PARANOIC_RUNTIME_CHECKS
       CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), idxts.us));
     }
 

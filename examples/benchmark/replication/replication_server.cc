@@ -64,7 +64,7 @@ class FakeStream final {
                        current::Borrowed<impl_t> data,
                        uint64_t stream_size,
                        Request r)
-        : impl_(std::move(data), [this]() { time_to_terminate_ = true; }),
+        : impl_(std::move(data), [this]() { termination_requested_ = true; }),
           http_request_(std::move(r)),
           http_response_(http_request_.SendChunkedResponse(
               HTTPResponseCode.OK,
@@ -76,7 +76,7 @@ class FakeStream final {
 
     current::ss::EntryResponse operator()(std::string&& data) {
       const current::ss::EntryResponse result = [&, this]() {
-        if (time_to_terminate_) {
+        if (termination_requested_) {
           return current::ss::EntryResponse::Done;
         }
         try {
@@ -104,7 +104,7 @@ class FakeStream final {
    private:
     // The HTTP listener must register itself as a user of stream data to ensure the lifetime of stream data.
     const current::BorrowedWithCallback<impl_t> impl_;
-    std::atomic_bool time_to_terminate_{false};
+    std::atomic_bool termination_requested_{false};
 
     // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
     Request http_request_;

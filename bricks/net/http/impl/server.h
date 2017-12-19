@@ -608,7 +608,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
               const auto chunk_size = data.size() + chunk_header.size() + constants::kCRLFLength;
               if (!data_cache_.empty() && (flush || chunk_size > data_cache_.capacity() - data_cache_.size())) {
                 connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), true);
-                data_cache_.resize(0);
+                data_cache_.clear();
               }
               if (flush || chunk_size > data_cache_.capacity()) {
                 connection_.BlockingWrite(chunk_header, true);
