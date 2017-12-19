@@ -22,12 +22,18 @@ LOCAL_HEADERS_DEPS=$(shell find . -maxdepth 1 -name '*.h' -exec echo '{}' ';' | 
 LOCAL_HEADERS_LIST=$(shell find . -maxdepth 1 -name '*.h' -exec echo '"{}"' ';' | grep -v "current_build.h" | sort -g)
 
 CPLUSPLUS?=g++
-CPPFLAGS=-std=c++11 -Wall -Wno-strict-aliasing -W  # `-Wno-strict-aliasing` to suppress FnCAS warnings.
-CPPFLAGS+= -ftemplate-backtrace-limit=0  -ftemplate-depth=10000
+
+CPPFLAGS=-std=c++11 -W -Wall
+CPPFLAGS+= -Wno-strict-aliasing  # To suppress FnCAS tight struct packing warnings. -- D.K.
+CPPFLAGS+= -Wno-noexcept-type    # To suppress the "warning: mangled name will change in C++17" warnings. -- D.K.
+
+# Taking the liberty to comment this out. -- D.K.
+# CPPFLAGS+= -ftemplate-backtrace-limit=0  -ftemplate-depth=10000
+
 ifeq ($(NDEBUG),1)
   CPPFLAGS+= -O3 -DNDEBUG
 else
-  # Commented out by @dkorolev -- this flag makes compilation slower for no good reason.
+  # Commented out by @dkorolev -- this flag makes compilation slower, and is best to be enabled manually.
   # CPPFLAGS+= -g
 endif
 
