@@ -109,7 +109,8 @@ class FakeStream final {
     // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
     Request http_request_;
     // `http_response_`: the instance of the chunked response object to use.
-    current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+    current::net::HTTPServerConnection::ChunkedResponseSender<CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
+        http_response_;
 
     FakePubSubEndpoint() = delete;
     FakePubSubEndpoint(const FakePubSubEndpoint&) = delete;

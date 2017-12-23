@@ -474,7 +474,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // has already been sent, thus triggering the need to close the array at the end.
   bool output_started_ = false;
   // `http_response_`: the instance of the chunked response object to use.
-  current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+  current::net::HTTPServerConnection::ChunkedResponseSender<CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE> http_response_;
   // Current response size in bytes.
   size_t current_response_size_ = 0u;
 

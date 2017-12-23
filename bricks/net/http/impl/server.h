@@ -73,6 +73,8 @@ SOFTWARE.
 
 #endif  // CURRENT_BRICKS_DEBUG_HTTP
 
+#define CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE  1024*1024
+
 namespace current {
 namespace net {
 
@@ -577,16 +579,17 @@ class GenericHTTPServerConnection final : public HTTPResponder {
   }
 
   // The wrapper to send HTTP response in chunks.
+  template <uint64_t CACHE_SIZE>
   struct ChunkedResponseSender final {
     // `struct Impl` is the logic wrapped into an `std::unique_ptr<>` to call the destructor only once.
     struct Impl final {
-      explicit Impl(Connection& connection) : connection_(connection) { data_cache_.reserve(1024 * 1024); }
+      explicit Impl(Connection& connection) : connection_(connection) {}
 
       ~Impl() {
         if (!can_no_longer_write_) {
           try {
-            if (!data_cache_.empty()) {
-              connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), true);
+            if (cache_size_) {
+              connection_.BlockingWrite(data_cache_, cache_size_, true);
             }
             connection_.BlockingWrite("0", true);
             // Should send CRLF twice.
@@ -601,29 +604,30 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       // The actual implementation of sending HTTP chunk data.
       template <typename T>
       void SendImpl(T&& data, bool flush) {
-        if (!data.empty() || (flush && !data_cache_.empty())) {
+        if (!data.empty() || (flush && cache_size_)) {
           try {
             if (!data.empty()) {
               const auto chunk_header = strings::Printf("%lX", data.size()) + constants::kCRLF;
-              const auto chunk_size = data.size() + chunk_header.size() + constants::kCRLFLength;
-              if (!data_cache_.empty() && (flush || chunk_size > data_cache_.capacity() - data_cache_.size())) {
-                connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), true);
-                data_cache_.clear();
+              const auto chunk_size = chunk_header.size() + data.size() + constants::kCRLFLength;
+              if (cache_size_ && (flush || chunk_size > CACHE_SIZE - cache_size_)) {
+                connection_.BlockingWrite(data_cache_, cache_size_, true);
+                cache_size_ = 0;
               }
-              if (flush || chunk_size > data_cache_.capacity()) {
+              if (flush || chunk_size > cache_size_) {
                 connection_.BlockingWrite(chunk_header, true);
                 connection_.BlockingWrite(std::forward<T>(data), true);
                 connection_.BlockingWrite(constants::kCRLF, false);
               } else {
-                data_cache_.insert(data_cache_.end(), chunk_header.begin(), chunk_header.end());
-                data_cache_.insert(data_cache_.end(), data.begin(), data.end());
-                const auto cache_size = data_cache_.size();
-                data_cache_.resize(cache_size + constants::kCRLFLength);
-                ::memcpy(&data_cache_[cache_size], constants::kCRLF, constants::kCRLFLength);
+                ::memcpy(data_cache_ + cache_size_, chunk_header.c_str(), chunk_header.size());
+                cache_size_ += chunk_header.size();
+                ::memcpy(data_cache_ + cache_size_, data.data(), data.size());
+                cache_size_ += data.size();
+                ::memcpy(data_cache_ + cache_size_, constants::kCRLF, constants::kCRLFLength);
+                cache_size_ += constants::kCRLFLength;
               }
             } else {
-              connection_.BlockingWrite(&data_cache_[0], data_cache_.size(), false);
-              data_cache_.resize(0);
+              connection_.BlockingWrite(data_cache_, cache_size_, false);
+              cache_size_ = 0;
             }
           } catch (const SocketException&) {
             // For chunked HTTP responses, if the receiving end has closed the connection,
@@ -658,7 +662,8 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       Connection& connection_;
       bool can_no_longer_write_ = false;
-      std::vector<char> data_cache_;
+      char data_cache_[CACHE_SIZE];
+      uint64_t cache_size_ = 0;
 
       Impl() = delete;
       Impl(const Impl&) = delete;
@@ -696,7 +701,8 @@ class GenericHTTPServerConnection final : public HTTPResponder {
     std::unique_ptr<Impl> impl_;
   };
 
-  inline ChunkedResponseSender SendChunkedHTTPResponse(
+  template <uint64_t CACHE_SIZE = CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
+  inline ChunkedResponseSender<CACHE_SIZE> SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = constants::kDefaultJSONContentType,
       const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
@@ -708,7 +714,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
       os << "Transfer-Encoding: chunked" << constants::kCRLF << constants::kCRLF;
       connection_.BlockingWrite(os.str(), true);
-      return ChunkedResponseSender(connection_);
+      return ChunkedResponseSender<CACHE_SIZE>(connection_);
     }
   }
 
