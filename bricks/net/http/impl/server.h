@@ -26,15 +26,15 @@ SOFTWARE.
 #define BRICKS_NET_HTTP_IMPL_SERVER_H
 
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include "../codes.h"
 #include "../constants.h"
-#include "../mime_type.h"
 #include "../default_messages.h"
+#include "../mime_type.h"
 
 #include "../headers/headers.h"
 
@@ -44,11 +44,11 @@ SOFTWARE.
 
 #include "../../../template/enable_if.h"
 
-#include "../../../../typesystem/struct.h"
 #include "../../../../typesystem/serialization/json.h"
+#include "../../../../typesystem/struct.h"
 
-#include "../../../strings/util.h"
 #include "../../../strings/split.h"
+#include "../../../strings/util.h"
 
 #include "../../../../blocks/url/url.h"
 
@@ -73,7 +73,7 @@ SOFTWARE.
 
 #endif  // CURRENT_BRICKS_DEBUG_HTTP
 
-#define CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE  1024*1024
+#define CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE 1024 * 1024
 
 namespace current {
 namespace net {
@@ -530,6 +530,8 @@ class GenericHTTPRequestData : public HELPER {
 // The default implementation is exposed as HTTPRequestData.
 using HTTPRequestData = GenericHTTPRequestData<HTTPDefaultHelper>;
 
+enum class ChunkFlush : bool { NoFlush = false, Flush = true };
+
 template <class HTTP_REQUEST_DATA>
 class GenericHTTPServerConnection final : public HTTPResponder {
  public:
@@ -603,17 +605,17 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // The actual implementation of sending HTTP chunk data.
       template <typename T>
-      void SendImpl(T&& data, bool flush) {
-        if (!data.empty() || (flush && cache_size_)) {
+      void SendImpl(T&& data, ChunkFlush flush) {
+        if (!data.empty() || (flush == ChunkFlush::Flush && cache_size_)) {
           try {
             if (!data.empty()) {
               const auto chunk_header = strings::Printf("%lX", data.size()) + constants::kCRLF;
               const auto chunk_size = chunk_header.size() + data.size() + constants::kCRLFLength;
-              if (cache_size_ && (flush || chunk_size > CACHE_SIZE - cache_size_)) {
+              if (cache_size_ && (flush == ChunkFlush::Flush || chunk_size > CACHE_SIZE - cache_size_)) {
                 connection_.BlockingWrite(data_cache_, cache_size_, true);
                 cache_size_ = 0;
               }
-              if (flush || chunk_size > cache_size_) {
+              if (flush == ChunkFlush::Flush || chunk_size > cache_size_) {
                 connection_.BlockingWrite(chunk_header, true);
                 connection_.BlockingWrite(std::forward<T>(data), true);
                 connection_.BlockingWrite(constants::kCRLF, false);
@@ -643,20 +645,20 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       inline ENABLE_IF<std::is_same<typename T::value_type, char>::value ||
                        std::is_same<typename T::value_type, uint8_t>::value ||
                        std::is_same<typename T::value_type, int8_t>::value>
-      Send(T&& data, bool flush) {
+      Send(T&& data, ChunkFlush flush) {
         SendImpl(std::forward<T>(data), flush);
       }
 
       // Special case to handle std::string.
-      inline void Send(const std::string& data, bool flush) { SendImpl(data, flush); }
+      inline void Send(const std::string& data, ChunkFlush flush) { SendImpl(data, flush); }
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, bool flush) {
+      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
         SendImpl(JSON(std::forward<T>(object)) + '\n', flush);
       }
       template <class T, typename S>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name, bool flush) {
+      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name, ChunkFlush flush) {
         SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n", flush);
       }
 
@@ -675,25 +677,25 @@ class GenericHTTPServerConnection final : public HTTPResponder {
     explicit ChunkedResponseSender(Connection& connection) : impl_(new Impl(connection)) {}
 
     template <typename T>
-    inline ChunkedResponseSender& Send(T&& data, bool flush = true) {
+    inline ChunkedResponseSender& Send(T&& data, ChunkFlush flush = ChunkFlush::Flush) {
       impl_->Send(std::forward<T>(data), flush);
       return *this;
     }
 
     template <typename T1, typename T2>
-    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2, bool flush = true) {
+    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2, ChunkFlush flush = ChunkFlush::Flush) {
       impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2), flush);
       return *this;
     }
 
     template <typename T>
-    inline ChunkedResponseSender& operator()(T&& data, bool flush = true) {
+    inline ChunkedResponseSender& operator()(T&& data, ChunkFlush flush = ChunkFlush::Flush) {
       impl_->Send(std::forward<T>(data), flush);
       return *this;
     }
 
     template <typename T1, typename T2>
-    inline ChunkedResponseSender& operator()(T1&& data1, T2&& data2, bool flush = true) {
+    inline ChunkedResponseSender& operator()(T1&& data1, T2&& data2, ChunkFlush flush = ChunkFlush::Flush) {
       impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2), flush);
       return *this;
     }

@@ -34,8 +34,8 @@ SOFTWARE.
 
 #include "../typesystem/timestamp.h"
 
-#include "../blocks/ss/ss.h"
 #include "../blocks/http/api.h"
+#include "../blocks/ss/ss.h"
 
 #include "../bricks/sync/owned_borrowed.h"
 #include "../bricks/time/chrono.h"
@@ -385,13 +385,15 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         try {
           if (params_.array) {
             if (!output_started_) {
-              http_response_("[\n", false);
+              http_response_("[\n", current::net::ChunkFlush::NoFlush);
               output_started_ = true;
             } else {
-              http_response_(",\n", false);
+              http_response_(",\n", current::net::ChunkFlush::NoFlush);
             }
           }
-          http_response_(response_data, current_index == last.index);
+          http_response_(
+              response_data,
+              current_index == last.index ? current::net::ChunkFlush::Flush : current::net::ChunkFlush::NoFlush);
         } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
           return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
         }
@@ -422,7 +424,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         }
       } else {
         // flush cached response data.
-        http_response_("");
+        http_response_("", current::net::ChunkFlush::Flush);
       }
     }
     return result;
@@ -474,7 +476,8 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // has already been sent, thus triggering the need to close the array at the end.
   bool output_started_ = false;
   // `http_response_`: the instance of the chunked response object to use.
-  current::net::HTTPServerConnection::ChunkedResponseSender<CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE> http_response_;
+  current::net::HTTPServerConnection::ChunkedResponseSender<CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
+      http_response_;
   // Current response size in bytes.
   size_t current_response_size_ = 0u;
 
