@@ -325,20 +325,19 @@ class Stream final {
     void Thread() {
       // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
       // strictly within the scope of existence of `impl_t` contained in `impl_`.
-      const impl_t& bare_impl = *impl_;
-      ThreadImpl(bare_impl, begin_idx_);
+      ThreadImpl(begin_idx_);
       subscriber_thread_done_ = true;
-      std::lock_guard<std::mutex> lock(bare_impl.http_subscriptions_mutex);
+      std::lock_guard<std::mutex> lock(impl_->http_subscriptions_mutex);
       if (done_callback_) {
         done_callback_();
       }
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Safe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& bare_impl,
+    ENABLE_IF<MODE == SubscriptionMode::Safe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
                                                                                          uint64_t index,
                                                                                          uint64_t size) {
-      for (const auto& e : bare_impl.persister.Iterate(index, size)) {
+      for (const auto& e : impl.persister.Iterate(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
@@ -350,7 +349,7 @@ class Stream final {
                 [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
                 e.entry,
                 e.idx_ts,
-                bare_impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+                impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
           return ss::EntryResponse::Done;
         }
       }
@@ -358,24 +357,24 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE>
-    ENABLE_IF<MODE == SubscriptionMode::Unsafe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& bare_impl,
+    ENABLE_IF<MODE == SubscriptionMode::Unsafe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
                                                                                            uint64_t index,
                                                                                            uint64_t size) {
-      for (const auto& e : bare_impl.persister.IterateUnsafe(index, size)) {
+      for (const auto& e : impl.persister.IterateUnsafe(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return ss::EntryResponse::Done;
           }
         }
-        if (subscriber_(e, index++, bare_impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+        if (subscriber_(e, index++, impl.persister.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
           return ss::EntryResponse::Done;
         }
       }
       return ss::EntryResponse::More;
     }
 
-    void ThreadImpl(const impl_t& bare_impl, uint64_t begin_idx) {
+    void ThreadImpl(uint64_t begin_idx) {
       auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
@@ -386,11 +385,11 @@ class Stream final {
             return;
           }
         }
-        const auto head_idx = bare_impl.persister.HeadAndLastPublishedIndexAndTimestamp();
+        const auto head_idx = impl_->persister.HeadAndLastPublishedIndexAndTimestamp();
         size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
         if (head_idx.head > head) {
           if (size > index) {
-            if (PassEntriesToSubscriber<SM>(bare_impl, index, size) == ss::EntryResponse::Done) {
+            if (PassEntriesToSubscriber<SM>(*impl_, index, size) == ss::EntryResponse::Done) {
               return;
             }
             index = size;
@@ -401,17 +400,14 @@ class Stream final {
           }
           head = head_idx.head;
         } else {
-          std::unique_lock<std::mutex> lock(bare_impl.publishing_mutex);
-          current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_impl.notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(
-              lock,
-              [this, &bare_impl, &index, &begin_idx, &head]() {
-                return terminate_signal_ ||
-                       bare_impl.persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
-                       (index > begin_idx &&
-                        bare_impl.persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() >
-                            head);
-              });
+          std::unique_lock<std::mutex> lock(impl_->publishing_mutex);
+          current::WaitableTerminateSignalBulkNotifier::Scope scope(impl_->notifier, terminate_signal_);
+          terminate_signal_.WaitUntil(lock, [this, &index, &begin_idx, &head]() {
+            return terminate_signal_ ||
+                   impl_->persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                   (index > begin_idx &&
+                    impl_->persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() > head);
+          });
         }
       }
     }

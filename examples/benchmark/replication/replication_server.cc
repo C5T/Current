@@ -192,28 +192,27 @@ class FakeStream final {
     }
 
     void Thread() {
-      const impl_t& bare_impl = *impl_;
-      ThreadImpl(bare_impl);
+      ThreadImpl();
       subscriber_thread_done_ = true;
-      std::lock_guard<std::mutex> lock(bare_impl.http_subscriptions_mutex);
+      std::lock_guard<std::mutex> lock(impl_->http_subscriptions_mutex);
       if (done_callback_) {
         done_callback_();
       }
     }
 
-    void ThreadImpl(const impl_t& bare_impl) {
+    void ThreadImpl() {
       uint64_t offset = 0;
-      while (bare_impl.data[offset] == current::persistence::impl::constants::kDirectiveMarker) {
-        offset = bare_impl.data.find('\n', offset) + 1;
+      while (impl_->data[offset] == current::persistence::impl::constants::kDirectiveMarker) {
+        offset = impl_->data.find('\n', offset) + 1;
       }
-      while (offset < bare_impl.data.size()) {
+      while (offset < impl_->data.size()) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
           return;
         }
-        uint64_t size = offset < bare_impl.data.size() + FLAGS_fake_stream_chunk_size ? FLAGS_fake_stream_chunk_size
-                                                                                      : bare_impl.data.size() - offset;
-        subscriber_(bare_impl.data.substr(offset, size));
+        uint64_t size = offset < impl_->data.size() + FLAGS_fake_stream_chunk_size ? FLAGS_fake_stream_chunk_size
+                                                                                   : impl_->data.size() - offset;
+        subscriber_(impl_->data.substr(offset, size));
         offset += size;
       }
     }
