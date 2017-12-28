@@ -25,7 +25,9 @@ CPLUSPLUS?=g++
 
 CPPFLAGS=-std=c++11 -W -Wall
 CPPFLAGS+= -Wno-strict-aliasing  # To suppress FnCAS tight struct packing warnings. -- D.K.
-CPPFLAGS+= -Wno-noexcept-type    # To suppress the "warning: mangled name will change in C++17" warnings. -- D.K.
+
+# Disabled as it generates `-Wno-noexcept-type` on clang++. -- D.K.
+# CPPFLAGS+= -Wno-noexcept-type    # To suppress the "warning: mangled name will change in C++17" warnings. -- D.K.
 
 # Taking the liberty to comment this out. -- D.K.
 # CPPFLAGS+= -ftemplate-backtrace-limit=0  -ftemplate-depth=10000
