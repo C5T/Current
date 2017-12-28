@@ -100,12 +100,13 @@ class NamedRegexCapturer {
 
   // The real match.
   struct MatchResult {
+    const std::string string;
     std::shared_ptr<NamedRegexCapturer::Data> data;
-    const std::smatch match;
+    std::smatch match;
 
     MatchResult() = delete;
-    MatchResult(std::shared_ptr<NamedRegexCapturer::Data> data, std::smatch match)
-        : data(std::move(data)), match(std::move(match)) {}
+    MatchResult(std::string input_string, std::shared_ptr<NamedRegexCapturer::Data> data)
+        : string(std::move(input_string)), data(std::move(data)) {}
 
     bool empty() const { return match.empty(); }
     size_t size() const { return match.size(); }
@@ -135,10 +136,11 @@ class NamedRegexCapturer {
     }
   };
 
-  MatchResult Match(const std::string& s) const {
-    std::smatch match;
-    std::regex_match(s, match, data_->transformed_re);
-    return MatchResult(data_, match);
+  template <typename S>
+  MatchResult Match(S&& string) const {
+    MatchResult result(std::forward<S>(string), data_);
+    std::regex_match(result.string, result.match, data_->transformed_re);
+    return result;
   }
 
   // Iterator.
