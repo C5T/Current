@@ -46,7 +46,7 @@ namespace graphviz {
 static inline std::string Escape(const std::string& s) {
   std::string result;
   for (char c : s) {
-    if (c == '"') {
+    if (c == '"' || c == '\\') {
       result += '\\';
     }
     result += c;
