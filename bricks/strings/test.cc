@@ -854,3 +854,8 @@ TEST(Regex, MemoryOwnershipSmokeTest) {
   }
   EXPECT_EQ("foo@0, bar@4", current::strings::Join(output, ", "));
 }
+
+TEST(UTF8StringLength, Smoke) {
+  EXPECT_EQ(4u, current::strings::UTF8StringLength("test"));
+  EXPECT_EQ(4u, current::strings::UTF8StringLength("тест"));
+}
