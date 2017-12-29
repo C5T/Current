@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "../../../port.h"
 
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
