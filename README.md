@@ -64,9 +64,9 @@ Builds and runs the tests for each module separately:
 make individual_tests
 ```
 
-Builds and runs the tests for one of the modules (e.g. `Blocks/HTTP`):
+Builds and runs the tests for one of the modules (e.g. `blocks/http`):
 ```
-( cd Blocks/HTTP && make test )
+(cd blocks/http && make test)
 ```
 
 ### Verify the code
