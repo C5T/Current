@@ -102,7 +102,7 @@ struct HTTPResponder {
                                         HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                         const std::string& content_type = constants::kDefaultContentType,
                                         const http::Headers& extra_headers = http::Headers()) {
-    os << "http/1.1 " << static_cast<int>(code);
+    os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
     os << "Content-Type: " << content_type << constants::kCRLF;
     os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;

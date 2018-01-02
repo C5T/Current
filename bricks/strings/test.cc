@@ -219,6 +219,8 @@ TEST(JoinAndSplit, Join) {
 
   EXPECT_EQ("x->y->z", Join(std::set<char>({'x', 'z', 'y'}), "->"));
   EXPECT_EQ("0.500000<0.750000<0.875000<1.000000", Join(std::multiset<double>({1, 0.5, 0.75, 0.875}), '<'));
+
+  EXPECT_EQ("one,two,three", Join(std::vector<const char*>({"one", "two", "three"}), ','));
 }
 
 TEST(JoinAndSplit, Split) {
@@ -693,4 +695,167 @@ TEST(IsStringType, StaticAsserts) {
   static_assert(is_string_type<std::vector<char>>::value, "");
   static_assert(is_string_type<const std::vector<char>&>::value, "");
   static_assert(is_string_type<std::vector<char>&&>::value, "");
+}
+
+TEST(Regex, RangeBasedForLoop) {
+  const std::regex re("[a-z]+|[A-Z]+|[0-9]+");
+  const std::string s = "abc DEF 123 G42 88H";
+  std::string matches1;
+  std::string matches2;
+  for (std::sregex_iterator cit(s.begin(), s.end(), re); cit != std::sregex_iterator(); ++cit) {
+    matches1 += ' ' + cit->str();
+  }
+  for (const auto& term : current::strings::IterateByRegexMatches(re, s)) {
+    matches2 += ' ' + term.str();
+  }
+  EXPECT_EQ("abc DEF 123 G 42 88 H", matches1.substr(1u));
+  EXPECT_EQ("abc DEF 123 G 42 88 H", matches2.substr(1u));
+  EXPECT_EQ(matches1, matches2);
+}
+
+TEST(Regex, NoOpNamedCapture) {
+  const current::strings::NamedRegexCapturer re("^the-answer$");
+  EXPECT_EQ(0u, re.TotalCaptures());
+  EXPECT_EQ(0u, re.NamedCaptures());
+  EXPECT_FALSE(re.Test("foo"));
+  EXPECT_TRUE(re.Test("the-answer"));
+}
+
+TEST(Regex, SimpleNamedCapture) {
+  const current::strings::NamedRegexCapturer re("^answer-(?<n>\\d+)$");
+  EXPECT_EQ("^answer-(\\d+)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(1u, re.TotalCaptures());
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
+  EXPECT_FALSE(re.Test("answer-foo"));
+  EXPECT_TRUE(re.Test("answer-42"));
+  const auto match = re.Match("answer-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, NamedCaptureAfterAnonymousCaptures) {
+  const current::strings::NamedRegexCapturer re("^(a(ns)(w(e)r))-(?<n>\\d+)$");
+  EXPECT_EQ("^(a(ns)(w(e)r))-(\\d+)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(5u, re.TotalCaptures());
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(5u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
+  EXPECT_FALSE(re.Test("answer-foo"));
+  EXPECT_TRUE(re.Test("answer-42"));
+  const auto match = re.Match("answer-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, NamedCaptureAfterNonCaptures) {
+  const current::strings::NamedRegexCapturer re("^(?:answer)-(?<n>\\d+)$");
+  EXPECT_EQ("^(?:answer)-(\\d+)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(1u, re.TotalCaptures());  // The "(?: ... )" is a non-capture.
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
+  EXPECT_FALSE(re.Test("answer-foo"));
+  EXPECT_TRUE(re.Test("answer-42"));
+  const auto match = re.Match("answer-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, EscapedParenthesesDoNotCount) {
+  const current::strings::NamedRegexCapturer re("^\\(answer\\)-(?<n>\\d+)$");
+  EXPECT_EQ("^\\(answer\\)-(\\d+)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(1u, re.TotalCaptures());
+  EXPECT_EQ(1u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("n"));
+  EXPECT_FALSE(re.Test("answer-42"));
+  EXPECT_TRUE(re.Test("(answer)-42"));
+  const auto match = re.Match("(answer)-42");
+  EXPECT_TRUE(match.Has("n"));
+  EXPECT_EQ("42", match["n"]);
+  EXPECT_FALSE(match.Has("foo"));
+  EXPECT_EQ("", match["foo"]);
+}
+
+TEST(Regex, SubmatchesDoTheirJobForUncapturedSuperGroups) {
+  const current::strings::NamedRegexCapturer re("^(?:(?<key>[A-Z]+)(?<key_has_name>@)?\\s+::=)$");
+  EXPECT_EQ("^(?:([A-Z]+)(@)?\\s+::=)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(2u, re.TotalCaptures());
+  EXPECT_EQ(2u, re.NamedCaptures());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("key"));
+  EXPECT_EQ(2u, re.GetTransformedRegexCaptureGroupIndexes().at("key_has_name"));
+  EXPECT_FALSE(re.Test("TEST ::= blah"));
+  EXPECT_TRUE(re.Test("TEST@ ::="));
+  const auto match = re.Match("TEST@ ::=");
+  EXPECT_TRUE(match.Has("key"));
+  EXPECT_EQ("TEST", match["key"]);
+  EXPECT_TRUE(match.Has("key_has_name"));
+  EXPECT_EQ("@", match["key_has_name"]);
+}
+
+TEST(Regex, SubmatchesDoTheirJobForUnnamedSuperGroups) {
+  const current::strings::NamedRegexCapturer re("^((?<key>[A-Z]+)(?<key_has_name>@)?\\s+::=)$");
+  EXPECT_EQ("^(([A-Z]+)(@)?\\s+::=)$", re.GetTransformedRegexBody());
+  EXPECT_EQ(3u, re.TotalCaptures());
+  EXPECT_EQ(2u, re.NamedCaptures());
+  EXPECT_EQ(2u, re.GetTransformedRegexCaptureGroupIndexes().at("key"));
+  EXPECT_EQ(3u, re.GetTransformedRegexCaptureGroupIndexes().at("key_has_name"));
+  EXPECT_FALSE(re.Test("TEST ::= blah"));
+  EXPECT_TRUE(re.Test("TEST@ ::="));
+  const auto match = re.Match("TEST ::=");
+  EXPECT_TRUE(match.Has("key"));
+  EXPECT_EQ("TEST", match["key"]);
+  EXPECT_FALSE(match.Has("key_has_name"));
+  EXPECT_EQ("", match["key_has_name"]);
+}
+
+TEST(Regex, SimpleTokenization) {
+  const std::vector<std::string> clauses({
+      "(?<uppercase>[A-Z]+)", "(?<lowercase>[a-z]+)", "(?<digits>[0-9]+)",
+  });
+  const current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
+  EXPECT_EQ("([A-Z]+)|([a-z]+)|([0-9]+)", re.GetTransformedRegexBody());
+  EXPECT_EQ(1u, re.GetTransformedRegexCaptureGroupIndexes().at("uppercase"));
+  EXPECT_EQ(2u, re.GetTransformedRegexCaptureGroupIndexes().at("lowercase"));
+  EXPECT_EQ(3u, re.GetTransformedRegexCaptureGroupIndexes().at("digits"));
+  std::vector<std::string> output;
+  for (const auto& token : re.Iterate("ANSWER is 42 TeSt1nG")) {
+    if (token.Has("uppercase")) {
+      output.push_back("u('" + token["uppercase"] + "')");
+    } else if (token.Has("lowercase")) {
+      output.push_back("l('" + token["lowercase"] + "')");
+    } else if (token.Has("digits")) {
+      output.push_back("d('" + token["digits"] + "')");
+    } else {
+      output.push_back("error");
+    }
+  }
+  EXPECT_EQ("u('ANSWER'), l('is'), d('42'), u('T'), l('e'), u('S'), l('t'), d('1'), l('n'), u('G')",
+            current::strings::Join(output, ", "));
+}
+
+TEST(Regex, MemoryOwnershipSmokeTest) {
+  const std::vector<std::string> cs({
+      "(?<foo>foo)", "(?<bar>bar)",
+  });
+  std::vector<std::string> output;
+  for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate("foo bar")) {
+    if (token.Has("foo")) {
+      output.push_back("foo@" + current::ToString(token.position()));
+    } else if (token.Has("bar")) {
+      output.push_back("bar@" + current::ToString(token.position()));
+    } else {
+      output.push_back("error");
+    }
+  }
+  EXPECT_EQ("foo@0, bar@4", current::strings::Join(output, ", "));
+}
+
+TEST(UTF8StringLength, Smoke) {
+  EXPECT_EQ(4u, current::strings::UTF8StringLength("test"));
+  EXPECT_EQ(4u, current::strings::UTF8StringLength("тест"));
 }

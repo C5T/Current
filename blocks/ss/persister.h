@@ -116,16 +116,17 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  IterableRangeUnsafe IterateUnsafe(uint64_t begin = static_cast<uint64_t>(0), uint64_t end = static_cast<size_t>(-1)) const {
+  IterableRangeUnsafe IterateUnsafe(uint64_t begin = static_cast<uint64_t>(0),
+                                    uint64_t end = static_cast<size_t>(-1)) const {
     return IMPL::template PersisterIterateUnsafe<MLS>(begin, end);
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IterableRange Iterate(std::chrono::microseconds from,
-                            std::chrono::microseconds till = std::chrono::microseconds(-1)) const {
+                        std::chrono::microseconds till = std::chrono::microseconds(-1)) const {
     return IMPL::template PersisterIterate<MLS>(from, till);
   }
-  
+
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from,
                                     std::chrono::microseconds till = std::chrono::microseconds(-1)) const {

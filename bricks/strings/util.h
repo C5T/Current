@@ -101,13 +101,19 @@ struct ToStringImpl<std::string, false, false> {
 
 // `const char*`.
 template <>
-struct ToStringImpl<char*, false, false> {  // Decayed type in template parameters list.
+struct ToStringImpl<const char*, false, false> {
   static std::string DoIt(const char* string) { return string; }
 };
 
 // `const char[]`.
 template <int N>
-struct ToStringImpl<char[N], false, false> {  // Decayed type in template parameters list.
+struct ToStringImpl<char[N], false, false> {
+  static std::string DoIt(const char string[N]) {
+    return std::string(string, string + N - 1);  // Do not include the '\0' character.
+  }
+};
+template <int N>
+struct ToStringImpl<const char[N], false, false> {
   static std::string DoIt(const char string[N]) {
     return std::string(string, string + N - 1);  // Do not include the '\0' character.
   }
@@ -282,6 +288,18 @@ template <typename T>
 inline std::string ToUpper(const T& input) {
   return ToUpper(std::begin(input), std::end(input));
 }
+
+inline size_t UTF8StringLength(char const* s) {
+  size_t length = 0u;
+  while (*s) {
+    if ((*s++ & 0xc0) != 0x80) {
+      ++length;
+    }
+  }
+  return length;
+}
+
+inline size_t UTF8StringLength(std::string const& s) { return UTF8StringLength(s.c_str()); }
 
 }  // namespace strings
 

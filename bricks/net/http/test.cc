@@ -93,7 +93,7 @@ TEST(PosixHTTPServerTest, Smoke) {
   connection.BlockingWrite("BODY", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 10\r\n"
@@ -126,7 +126,7 @@ TEST(PosixHTTPServerTest, SmokeWithTrailingSpaces) {
   connection.BlockingWrite("BODY", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 10\r\n"
@@ -149,7 +149,7 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 6\r\n"
@@ -172,7 +172,7 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
       "Access-Control-Allow-Origin: *\r\n"
@@ -195,7 +195,7 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
       "Access-Control-Allow-Origin: *\r\n"
@@ -222,7 +222,7 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: keep-alive\r\n"
       "Access-Control-Allow-Origin: *\r\n"
@@ -259,7 +259,7 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
   connection.BlockingWrite("custom_content_type", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: custom_content_type\r\n"
       "Connection: close\r\n"
       "foo: bar\r\n"
@@ -293,7 +293,7 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseContentLength) {
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite("Ok", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 8\r\n"
@@ -320,7 +320,7 @@ TEST(PosixHTTPServerTest, SmokeWithMethodInHeader) {
   connection.BlockingWrite("YES\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 4\r\n"
@@ -347,7 +347,7 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
   connection.BlockingWrite("yes\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 4\r\n"
@@ -375,7 +375,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite(body, false);
   ExpectToReceive(
-      "http/1.1 200 OK\r\n"
+      "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
       "Content-Length: 1000006\r\n"
@@ -411,7 +411,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   }
   connection.BlockingWrite("0\r\n", false);
   ExpectToReceive(current::strings::Printf(
-                      "http/1.1 200 OK\r\n"
+                      "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
                       "Connection: close\r\n"
                       "Content-Length: %d\r\n"
@@ -463,7 +463,7 @@ TEST(PosixHTTPServerTest, ChunkedSmoke)
       connection.BlockingWrite(chunked_body, true);
       connection.BlockingWrite("0\r\n", false);
       ExpectToReceive(current::strings::Printf(
-                          "http/1.1 200 OK\r\n"
+                          "HTTP/1.1 200 OK\r\n"
                           "Content-Type: text/plain\r\n"
                           "Connection: close\r\n"
                           "Content-Length: %d\r\n"
@@ -501,7 +501,7 @@ TEST(PosixHTTPServerTest, ChunkedBoundaryCases) {
                                 "189\r\n" + std::string(393, 'c'),
                                 "318\r\n" + std::string(792, 'd')};
   const std::string expect_to_receive = current::strings::Printf(
-                                            "http/1.1 200 OK\r\n"
+                                            "HTTP/1.1 200 OK\r\n"
                                             "Content-Type: text/plain\r\n"
                                             "Connection: close\r\n"
                                             "Content-Length: %d\r\n"
@@ -739,7 +739,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   }
   connection.BlockingWrite("0\r\n", false);
   ExpectToReceive(current::strings::Printf(
-                      "http/1.1 200 OK\r\n"
+                      "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
                       "Connection: close\r\n"
                       "Content-Length: %d\r\n"

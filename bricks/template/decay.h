@@ -204,6 +204,20 @@ static_assert(is_same<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<in
                                        std::tuple<int&&>&&>>>::value,
               "");
 
+// `current::decay<>` is different from `std::decay<>`, as pointers and some `const`-ness are kept. -- D.K.
+static_assert(is_same<char*, decay<char*>>::value, "");
+static_assert(is_same<char*, decay<char*&>>::value, "");
+static_assert(is_same<char*, decay<char*&&>>::value, "");
+static_assert(is_same<const char*, decay<const char*>>::value, "");
+static_assert(is_same<const char*, decay<char const*>>::value, "");
+static_assert(is_same<char*, decay<char* const>>::value, "");
+static_assert(is_same<const char*, decay<const char*&>>::value, "");
+static_assert(is_same<const char*, decay<char const*&>>::value, "");
+static_assert(is_same<char*, decay<char* const&>>::value, "");
+static_assert(is_same<const char*, decay<const char*&&>>::value, "");
+static_assert(is_same<const char*, decay<char const*&&>>::value, "");
+static_assert(is_same<char*, decay<char* const&&>>::value, "");
+
 }  // namespace current
 
 #endif  // BRICKS_TEMPLATE_DECAY_H

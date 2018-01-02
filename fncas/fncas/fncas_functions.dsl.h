@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2017 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifdef FNCAS_FUNCTION  // To pass `make check`.
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
-#include "util.h"
-#include "rounding.h"
-#include "time.h"
-#include "escape.h"
-#include "regex.h"
+FNCAS_FUNCTION(sqr)
+FNCAS_FUNCTION(sqrt)
+FNCAS_FUNCTION(exp)
+FNCAS_FUNCTION(log)
+FNCAS_FUNCTION(sin)
+FNCAS_FUNCTION(cos)
+FNCAS_FUNCTION(tan)
+FNCAS_FUNCTION(asin)
+FNCAS_FUNCTION(acos)
+FNCAS_FUNCTION(atan)
+FNCAS_FUNCTION(unit_step)
+FNCAS_FUNCTION(ramp)
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+#endif  // FNCAS_FUNCTION

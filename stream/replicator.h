@@ -2,6 +2,8 @@
 The MIT License (MIT)
 
 Copyright (c) 2016 Grigory Nikolaenko <nikolaenko.grigory@gmail.com>
+          (c) 2017 Maxim Zhurovich <zhurovich@gmail.com>
+          (c) 2018 Dima Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -64,6 +66,15 @@ class SubscribableRemoteStream final {
         if (remote_schema != schema_) {
           CURRENT_THROW(RemoteStreamInvalidSchemaException());
         }
+      } else {
+        CURRENT_THROW(RemoteStreamDoesNotRespondException());
+      }
+    }
+
+    uint64_t GetNumberOfEntries() const {
+      const auto response = HTTP(GET(url_ + "?sizeonly"));
+      if (response.code == HTTPResponseCode.OK) {
+        return FromString<uint64_t>(response.body);
       } else {
         CURRENT_THROW(RemoteStreamDoesNotRespondException());
       }
@@ -320,6 +331,10 @@ class SubscribableRemoteStream final {
                                                  std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
     return RemoteSubscriberScopeUnsafe<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
+  }
+
+  uint64_t GetNumberOfEntries() const {
+    return stream_.ObjectAccessorDespitePossiblyDestructing().GetNumberOfEntries();
   }
 
  private:
