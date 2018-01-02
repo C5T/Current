@@ -448,6 +448,8 @@ class HTTPServerPOSIX final {
         // The `ChunkSizeNotAValidHEXValue` situation, if emerged, is already handled with a "400 BAD REQUEST" response.
       } catch (const current::net::HTTPPayloadTooLarge&) {
         // The `HTTPPayloadTooLarge` situation, if emerged, is already handled with a "413 ENTITY TOO LARGE" response.
+      } catch (const current::net::HTTPRequestBodyLengthNotProvided&) {
+        // The `HTTPRequestBodyLengthNotProvided` situation, if emerged, is already handled with "411 LENGTH REQUIRED".
       } catch (const current::net::EmptySocketException&) {  // LCOV_EXCL_LINE
         // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE

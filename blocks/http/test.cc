@@ -765,6 +765,17 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
                       "text/plain")).body);
 }
 
+TEST(HTTPAPI, PostWithEmptyBodyMustSetZeroContentLength) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/post",
+                                   [](Request r) {
+                                     ASSERT_TRUE(r.body.empty());
+                                     r("Yo!\n");
+                                   });
+  const auto response = HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ""));
+  EXPECT_EQ("Yo!\n", response.body);
+}
+
 TEST(HTTPAPI, RespondWithStringAsString) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_with_std_string",

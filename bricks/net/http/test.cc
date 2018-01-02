@@ -357,6 +357,61 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
   t.join();
 }
 
+TEST(PosixHTTPServerTest, SmokeNoBodyForPOST) {
+  bool thrown = false;
+  std::thread t([&thrown](Socket s) {
+    try {
+      HTTPServerConnection c(s.Accept());
+      ASSERT_TRUE(false);
+    } catch (const current::net::HTTPRequestBodyLengthNotProvided&) {
+      thrown = true;
+    }
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 411 Length Required\r\n"
+      "Content-Type: text/html; charset=utf-8\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 25\r\n"
+      "\r\n"
+      "<h1>LENGTH REQUIRED</h1>\n",
+      connection);
+  t.join();
+  EXPECT_TRUE(thrown);
+}
+
+TEST(PosixHTTPServerTest, SmokePOSTBodyTooLong) {
+  std::atomic_bool thrown(false);
+  std::thread t([&thrown](Socket s) {
+    try {
+      HTTPServerConnection c(s.Accept());
+      ASSERT_TRUE(false);
+    } catch (const current::net::HTTPPayloadTooLarge&) {
+      thrown = true;
+    }
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Content-Length: 987654321000\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 413 Request Entity Too Large\r\n"
+      "Content-Type: text/html; charset=utf-8\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 26\r\n"
+      "\r\n"
+      "<h1>ENTITY TOO LARGE</h1>\n",
+      connection);
+  t.join();
+  EXPECT_TRUE(thrown);
+}
+
 TEST(PosixHTTPServerTest, LargeBody) {
   std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
@@ -762,19 +817,18 @@ struct HTTPClientImplCURL {
     return s;
   }
 
-  static std::string Fetch(std::thread& server_thread, const std::string& url, const std::string& method) {
+  static std::string MakeGetRequest(std::thread& server_thread, const std::string& url) {
     const std::string result = Syscall(current::strings::Printf(
-        "curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
+        "curl -s localhost:%d%s", FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
 
-  static std::string FetchWithBody(std::thread& server_thread,
-                                   const std::string& url,
-                                   const std::string& method,
-                                   const std::string& data) {
+  static std::string MakePostRequest(std::thread& server_thread,
+                                     const std::string& url,
+                                     const std::string& data) {
     const std::string result = Syscall(current::strings::Printf(
-        "curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_net_http_test_port, url.c_str()));
+        "curl -s -d '%s' localhost:%d%s", data.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
@@ -783,15 +837,14 @@ struct HTTPClientImplCURL {
 
 class HTTPClientImplPOSIX {
  public:
-  static std::string Fetch(std::thread& server_thread, const std::string& url, const std::string& method) {
-    return Impl(server_thread, url, method);
+  static std::string MakeGetRequest(std::thread& server_thread, const std::string& url) {
+    return Impl(server_thread, url, "GET");
   }
 
-  static std::string FetchWithBody(std::thread& server_thread,
-                                   const std::string& url,
-                                   const std::string& method,
-                                   const std::string& data) {
-    return Impl(server_thread, url, method, true, data);
+  static std::string MakePostRequest(std::thread& server_thread,
+                                     const std::string& url,
+                                     const std::string& data) {
+    return Impl(server_thread, url, "POST", true, data);
   }
 
  private:
@@ -837,7 +890,7 @@ TYPED_TEST(HTTPTest, GET) {
     EXPECT_EQ("bar", c.HTTPRequest().URL().query["foo"]);
     c.SendHTTPResponse("PASSED");
   }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest?foo=bar", "GET"));
+  EXPECT_EQ("PASSED", TypeParam::MakeGetRequest(t, "/unittest?foo=bar"));
 }
 
 TYPED_TEST(HTTPTest, POST) {
@@ -849,7 +902,7 @@ TYPED_TEST(HTTPTest, POST) {
     EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
     c.SendHTTPResponse("POSTED");
   }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("POSTED", TypeParam::FetchWithBody(t, "/unittest_post", "POST", "BAZINGA"));
+  EXPECT_EQ("POSTED", TypeParam::MakePostRequest(t, "/unittest_post", "BAZINGA"));
 }
 
 TYPED_TEST(HTTPTest, NoBodyPOST) {
@@ -860,7 +913,7 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
     EXPECT_EQ(0u, c.HTTPRequest().BodyLength());
     c.SendHTTPResponse("ALMOST_POSTED");
   }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
+  EXPECT_EQ("ALMOST_POSTED", TypeParam::MakePostRequest(t, "/unittest_empty_post", ""));
 }
 
 TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
@@ -870,13 +923,13 @@ TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
     ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
     ASSERT_THROW(c.SendChunkedHTTPResponse().Send("three"), AttemptedToSendHTTPResponseMoreThanOnce);
   }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("one", TypeParam::Fetch(t, "/", "GET"));
+  EXPECT_EQ("one", TypeParam::MakeGetRequest(t, "/"));
 }
 
 TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
   std::thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::Fetch(t, "/", "GET"));
+  EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::MakeGetRequest(t, "/"));
 }
 
 TEST(HTTPCodesTest, SmokeTest) {

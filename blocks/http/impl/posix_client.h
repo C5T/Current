@@ -101,7 +101,7 @@ class GenericHTTPClientPOSIX final {
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
-      if (!request_body_contents_.empty()) {
+      if (!request_body_contents_.empty() || current::net::NeedContentLengthHeader(request_method_)) {
         // NOTE(dkorolev): The `try/catch/throw` combo here is a hack for the unit test for HTTP 413 to pass.
         // It swallows the `SocketWriteException` exception for huge payloads, as Current's HTTP server logic
         // does intentionally close the HTTP connection prematurely if `Content-Length` exceeds a reasonable limit.

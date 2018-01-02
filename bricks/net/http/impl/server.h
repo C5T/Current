@@ -31,6 +31,7 @@ SOFTWARE.
 #include <vector>
 #include <memory>
 
+#include "../body_requirement.h"
 #include "../codes.h"
 #include "../constants.h"
 #include "../mime_type.h"
@@ -435,7 +436,13 @@ class GenericHTTPRequestData : public HELPER {
               body_buffer_end_ = body_buffer_begin_ + body_length;
               return;
             } else {
-              // HTTP body length has not been set, so we're done..
+              if (NeedContentLengthHeader(method_)) {
+                HTTPResponder::SendHTTPResponse(c,
+                                                net::DefaultLengthRequiredMessage(),
+                                                HTTPResponseCode.LengthRequired,
+                                                net::constants::kDefaultHTMLContentType);
+                CURRENT_THROW(HTTPRequestBodyLengthNotProvided());
+              }
               return;
             }
           } else {

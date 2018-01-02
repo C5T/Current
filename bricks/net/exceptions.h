@@ -100,6 +100,7 @@ struct HTTPRedirectLoopException : HTTPException {
   using HTTPException::HTTPException;
 };
 struct HTTPPayloadTooLarge : HTTPException {};
+struct HTTPRequestBodyLengthNotProvided : HTTPException {};
 struct ChunkSizeNotAValidHEXValue : HTTPException {};
 
 // AttemptedToSendHTTPResponseMoreThanOnce is a user code exception; not really an HTTP one.
