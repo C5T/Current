@@ -60,6 +60,23 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<TT, TA>> {
   }
 };
 
+template <class JSON_FORMAT, typename TA>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<bool, TA>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::vector<bool, TA>& destination) {
+    if (json_parser && json_parser.Current().IsArray()) {
+      const size_t size = json_parser.Current().Size();
+      destination.resize(size);
+      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
+        bool tmp;
+        json_parser.Inner(&json_parser.Current()[i], tmp, "[", static_cast<int>(i), "]");
+        destination[i] = tmp;
+      }
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
+      CURRENT_THROW(JSONSchemaException("array", json_parser));  // LCOV_EXCL_LINE
+    }
+  }
+};
+
 namespace json {
 template <typename T, typename ALLOC>
 struct IsJSONSerializable<std::vector<T, ALLOC>> {
