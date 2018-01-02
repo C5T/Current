@@ -202,7 +202,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                           },
                                           std::move(request)).Detach();
               } catch (const TypeSystemParseJSONException& e) {
-                request(handler.ErrorBadJSON(e.DetailedDescription()));
+                request(handler.ErrorBadJSON(e.OriginalDescription()));
               }
             });
       } else if (request.method == "PUT" && is_master) {
@@ -234,7 +234,7 @@ struct PerFieldRESTfulHandlerGenerator {
                                           },
                                           std::move(request)).Detach();
               } catch (const TypeSystemParseJSONException& e) {          // LCOV_EXCL_LINE
-                request(handler.ErrorBadJSON(e.DetailedDescription()));  // LCOV_EXCL_LINE
+                request(handler.ErrorBadJSON(e.OriginalDescription()));  // LCOV_EXCL_LINE
               }
             });
       } else if (request.method == "PATCH" && is_master) {
@@ -579,10 +579,10 @@ class RESTfulStorage {
       }
       return object;
     } catch (const TypeSystemParseJSONException& e) {
-      request(cqs::CQSParseJSONException(e.DetailedDescription()), HTTPResponseCode.BadRequest);
+      request(cqs::CQSParseJSONException(e.OriginalDescription()), HTTPResponseCode.BadRequest);
       return nullptr;
     } catch (const url::URLParseObjectAsURLParameterException& e) {
-      request(cqs::CQSParseURLException(e.DetailedDescription()), HTTPResponseCode.BadRequest);
+      request(cqs::CQSParseURLException(e.OriginalDescription()), HTTPResponseCode.BadRequest);
       return nullptr;
     }
   }
