@@ -142,7 +142,7 @@ class JSONVariantCaseGeneric : public JSONVariantCaseAbstractBase<JSON_FORMAT> {
       destination.UncheckedMoveFromUniquePtr(std::move(result));
     } else if (!JSONPatchMode<JSON_FORMAT>::value) {
       // LCOV_EXCL_START
-      throw JSONSchemaException("variant case `" + std::string(key_name_) + "`", json_parser);
+      CURRENT_THROW(JSONSchemaException("variant case `" + std::string(key_name_) + "`", json_parser));
       // LCOV_EXCL_STOP
     }
   }
@@ -179,7 +179,7 @@ class JSONVariantCaseFSharp : public JSONVariantCaseAbstractBase<JSON_FORMAT> {
       } else {
         // No PATCH for F#. -- D.K.
         // LCOV_EXCL_START
-        throw JSONSchemaException("array of one element in `Fields`", json_parser);
+        CURRENT_THROW(JSONSchemaException("array of one element in `Fields`", json_parser));
         // LCOV_EXCL_STOP
       }
     } else {
@@ -189,7 +189,7 @@ class JSONVariantCaseFSharp : public JSONVariantCaseAbstractBase<JSON_FORMAT> {
       } else {
         // No PATCH for F#. -- D.K.
         // LCOV_EXCL_START
-        throw JSONSchemaException("data in `Fields`", json_parser);
+        CURRENT_THROW(JSONSchemaException("data in `Fields`", json_parser));
         // LCOV_EXCL_STOP
       }
     }
@@ -262,13 +262,13 @@ class JSONVariantPerStyle<JSONVariantStyle::Current, JSON_FORMAT, VARIANT> {
           if (cit != deserializers_.end()) {
             cit->second->Deserialize(json_parser, destination);
           } else {
-            throw JSONSchemaException("a type id listed in the type list", json_parser);
+            CURRENT_THROW(JSONSchemaException("a type id listed in the type list", json_parser));
           }
         } else {
-          throw JSONSchemaException("type id as value for an empty string", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("type id as value for an empty string", json_parser));  // LCOV_EXCL_LINE
         }
       } else if (!JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsObject())) {
-        throw JSONSchemaException("variant type as object", json_parser);  // LCOV_EXCL_LINE
+        CURRENT_THROW(JSONSchemaException("variant type as object", json_parser));  // LCOV_EXCL_LINE
       }
     };
 
@@ -306,7 +306,7 @@ class JSONVariantPerStyle<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
         for (auto cit = json_parser.Current().MemberBegin(); cit != json_parser.Current().MemberEnd(); ++cit) {
           if (!cit->name.IsString()) {
             // Should never happen, just a sanity check. -- D.K.
-            throw JSONSchemaException("key name as string", json_parser);  // LCOV_EXCL_LINE
+            CURRENT_THROW(JSONSchemaException("key name as string", json_parser));  // LCOV_EXCL_LINE
           }
           const std::string key = cit->name.GetString();
           // Skip keys "" and "$" for "backwards" compatibility with the "Current" format.
@@ -316,24 +316,24 @@ class JSONVariantPerStyle<JSONVariantStyle::Simple, JSON_FORMAT, VARIANT> {
               value = &cit->value;
             } else {
               // LCOV_EXCL_START
-              throw JSONSchemaException(std::string("no other key after `") + case_name + "`, seeing `" + key + "`",
-                                        json_parser);
+              CURRENT_THROW(JSONSchemaException(
+                  std::string("no other key after `") + case_name + "`, seeing `" + key + "`", json_parser));
               // LCOV_EXCL_STOP
             }
           }
         }
         if (!value) {
-          throw JSONSchemaException("a key-value entry with a variant type", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("a key-value entry with a variant type", json_parser));  // LCOV_EXCL_LINE
         } else {
           const auto cit = deserializers_.find(case_name);
           if (cit != deserializers_.end()) {
             cit->second->Deserialize(json_parser, destination);
           } else {
-            throw JSONSchemaException("variant case `" + case_name + "`", json_parser);
+            CURRENT_THROW(JSONSchemaException("variant case `" + case_name + "`", json_parser));
           }
         }
       } else if (!JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsObject())) {
-        throw JSONSchemaException("variant type as object", json_parser);  // LCOV_EXCL_LINE
+        CURRENT_THROW(JSONSchemaException("variant type as object", json_parser));  // LCOV_EXCL_LINE
       }
     };
 
@@ -372,13 +372,13 @@ class JSONVariantPerStyle<JSONVariantStyle::NewtonsoftFSharp, JSON_FORMAT, VARIA
           if (cit != deserializers_.end()) {
             cit->second->Deserialize(json_parser, destination);
           } else {
-            throw JSONSchemaException("one of requested values of \"Case\"", json_parser);  // LCOV_EXCL_LINE
+            CURRENT_THROW(JSONSchemaException("one of requested values of \"Case\"", json_parser));  // LCOV_EXCL_LINE
           }
         } else {
-          throw JSONSchemaException("a type name in \"Case\"", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("a type name in \"Case\"", json_parser));  // LCOV_EXCL_LINE
         }
       } else if (!JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsObject())) {
-        throw JSONSchemaException("variant type as object", json_parser);  // LCOV_EXCL_LINE
+        CURRENT_THROW(JSONSchemaException("variant type as object", json_parser));  // LCOV_EXCL_LINE
       }
     };
 
@@ -417,7 +417,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<IS_CUR
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& value) {
     if (!json_parser || json_parser.Current().IsNull()) {
       if (json::JSONVariantStyleUseNulls<JSON_FORMAT::variant_style>::value) {
-        throw JSONUninitializedVariantObjectException();
+        CURRENT_THROW(JSONUninitializedVariantObjectException());
       }
     } else {
       json::JSONVariantPerStyle<JSON_FORMAT::variant_style, JSON_FORMAT, T>::Instance().DoLoadVariant(json_parser,

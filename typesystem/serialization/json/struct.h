@@ -129,7 +129,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
       current::reflection::VisitAllFields<decayed_t, current::reflection::FieldNameAndMutableValue>::WithObject(
           destination, DeserializeSingleField(json_parser));
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsObject())) {
-      throw JSONSchemaException("object", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("object", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
