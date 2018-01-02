@@ -437,7 +437,7 @@ namespace reflection {
 template <typename T>
 struct SuperTypeImpl {
   static_assert(IS_CURRENT_STRUCT(T), "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  using type = typename T::super_t;
+  using type = typename current::decay<T>::super_t;
 };
 
 template <typename T>

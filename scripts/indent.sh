@@ -3,7 +3,8 @@
 # Indents all *.cc and *.h files in the current directory and below
 # according to .clang-format in this directory or above.
 
+CLANG_FORMAT=${1:-clang-format-3.6}
 (find . -name "*.cc" ; find . -name "*.h") \
 | grep -v "/.current/" | grep -v "/3rdparty/" \
 | grep -v "/docu_" \
-| xargs clang-format-3.6 -i
+| xargs "$CLANG_FORMAT" -i

@@ -289,6 +289,18 @@ inline std::string ToUpper(const T& input) {
   return ToUpper(std::begin(input), std::end(input));
 }
 
+inline size_t UTF8StringLength(char const* s) {
+  size_t length = 0u;
+  while (*s) {
+    if ((*s++ & 0xc0) != 0x80) {
+      ++length;
+    }
+  }
+  return length;
+}
+
+inline size_t UTF8StringLength(std::string const& s) { return UTF8StringLength(s.c_str()); }
+
 }  // namespace strings
 
 using strings::ToString;

@@ -32,6 +32,7 @@ SOFTWARE.
 #include <memory>
 #include <map>
 #include <string>
+#include <functional>
 
 #include "../../bricks/net/exceptions.h"
 #include "../../bricks/net/http/http.h"

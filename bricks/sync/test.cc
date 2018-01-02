@@ -322,10 +322,10 @@ TEST(WaitableAtomic, Smoke) {
   EXPECT_LT(copy_of_object.y, 100u);
 #else
   // Travis is slow these days. No need to make the tests red because of that. -- D.K.
-  EXPECT_GT(copy_of_object.x, 5u);
-  EXPECT_LT(copy_of_object.x, 500u);
-  EXPECT_GT(copy_of_object.y, 5u);
-  EXPECT_LT(copy_of_object.y, 500u);
+  EXPECT_GT(copy_of_object.x, 2u);
+  EXPECT_LT(copy_of_object.x, 2500u);
+  EXPECT_GT(copy_of_object.y, 2u);
+  EXPECT_LT(copy_of_object.y, 2500u);
 #endif
 
   // Confirm `[Im]MutableUse(lambda)` proxies the return value of the lambda.
