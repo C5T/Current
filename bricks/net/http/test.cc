@@ -358,7 +358,7 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
 }
 
 TEST(PosixHTTPServerTest, SmokeNoBodyForPOST) {
-  bool thrown = false;
+  std::atomic_bool thrown(false);
   std::thread t([&thrown](Socket s) {
     try {
       HTTPServerConnection c(s.Accept());
