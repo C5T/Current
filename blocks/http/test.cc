@@ -169,6 +169,13 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
 
   EXPECT_EQ("/ (user, a, 1, blah) ", run("/user/a/1/blah"));
   EXPECT_EQ("/ (user, a, 1, blah) url_path_had_trailing_slash", run("/user/a/1/blah/"));
+
+  EXPECT_EQ("bar%20baz", URL::EncodeURIComponent("bar baz"));
+  EXPECT_EQ("bar%2Fbaz", URL::EncodeURIComponent("bar/baz"));
+
+  EXPECT_EQ("/ (foo, bar baz, meh) ", run("/foo/bar%20baz/meh"));
+  EXPECT_EQ("/ (foo, bar/baz, meh) ", run("/foo/bar%2fbaz/meh"));
+  EXPECT_EQ("/ (foo, bar/baz, meh) ", run("/foo/bar%2Fbaz/meh"));
 }
 
 TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {
@@ -221,6 +228,12 @@ TEST(HTTPAPI, URLParameters) {
   EXPECT_EQ("x=42", HTTP(GET(Printf("http://localhost:%d/query?x=42", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("x=test passed",
             HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("x=test passed",
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%20passed", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("x=test/passed",
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2fpassed", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("x=test/passed",
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2Fpassed", FLAGS_net_api_test_port))).body);
 }
 
 TEST(HTTPAPI, InvalidHEXInURLParameters) {

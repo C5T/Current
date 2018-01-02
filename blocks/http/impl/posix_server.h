@@ -391,7 +391,7 @@ class HTTPServerPOSIX final {
       }
 
       const size_t arg_begin_index = remaining_path.rfind('/') + 1;
-      output_url_args.add(remaining_path.substr(arg_begin_index));
+      output_url_args.add(URL::DecodeURIComponent(remaining_path.substr(arg_begin_index)));
       remaining_path.resize(arg_begin_index);
     }
 
