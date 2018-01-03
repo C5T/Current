@@ -143,8 +143,15 @@ class StreamPublisherImpl {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t PublisherPublishUnsafeImpl(std::string&& entry_json) {
-	  const auto result = data_->persister.template PersisterPublishUnsafeImpl<MLS>(std::move(entry_json));
+  idxts_t PublisherPublishUncheckedImpl(std::string&& entry_json) {
+	  const auto result = data_->persister.template PersisterPublishUncheckedImpl<MLS>(std::move(entry_json));
+    data_->notifier.NotifyAllOfExternalWaitableEvent();
+    return result;
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  idxts_t PublisherPublishUncheckedImpl(const std::string& entry_json) {
+    const auto result = data_->persister.template PersisterPublishUncheckedImpl<MLS>(entry_json);
     data_->notifier.NotifyAllOfExternalWaitableEvent();
     return result;
   }

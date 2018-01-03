@@ -167,7 +167,7 @@ class MemoryPersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t PersisterPublishUnsafeImpl(const std::string& entry_json) {
+  idxts_t PersisterPublishUncheckedImpl(const std::string& entry_json) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     const auto head = container_->head_;
     const auto tab_pos = entry_json.find('\t');

@@ -119,7 +119,7 @@ CURRENT_STRUCT(StreamSchemaFormatNotFoundError) {
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
-enum class SubscriptionMode : bool { Safe = true, Unsafe = false };
+enum class SubscriptionMode : bool { Checked = true, Unchecked = false };
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class Stream final {
@@ -334,7 +334,7 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Safe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
+    ENABLE_IF<MODE == SubscriptionMode::Checked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
                                                                                          uint64_t index,
                                                                                          uint64_t size) {
       for (const auto& e : impl.persister.Iterate(index, size)) {
@@ -357,7 +357,7 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Unsafe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
+    ENABLE_IF<MODE == SubscriptionMode::Unchecked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
                                                                                            uint64_t index,
                                                                                            uint64_t size) {
       for (const auto& e : impl.persister.IterateUnsafe(index, size)) {
@@ -414,7 +414,7 @@ class Stream final {
   };
 
   // Expose the means to control the scope of the subscriber.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t, SubscriptionMode SM = SubscriptionMode::Unsafe>
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t, SubscriptionMode SM = SubscriptionMode::Unchecked>
   class SubscriberScopeImpl final : public current::stream::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
@@ -437,9 +437,9 @@ class Stream final {
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  using SubscriberScope = SubscriberScopeImpl<F, TYPE_SUBSCRIBED_TO, SubscriptionMode::Safe>;
+  using SubscriberScope = SubscriberScopeImpl<F, TYPE_SUBSCRIBED_TO, SubscriptionMode::Checked>;
   template <typename F>
-  using SubscriberScopeUnsafe = SubscriberScopeImpl<F>;
+  using SubscriberScopeUnchecked = SubscriberScopeImpl<F>;
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
@@ -450,10 +450,10 @@ class Stream final {
   }
 
   template <typename F>
-  SubscriberScopeUnsafe<F> SubscribeUnsafe(F& subscriber,
+  SubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
                                            uint64_t begin_idx = 0u,
                                            std::function<void()> done_callback = nullptr) const {
-    return SubscriberScopeUnsafe<F>(impl_, subscriber, begin_idx, done_callback);
+    return SubscriberScopeUnchecked<F>(impl_, subscriber, begin_idx, done_callback);
   }
 
   // Generates a random HTTP subscription.
@@ -580,7 +580,7 @@ class Stream final {
           request_params.checked ? static_cast<current::stream::SubscriberScope>(
                                        Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
                                  : static_cast<current::stream::SubscriberScope>(
-                                       SubscribeUnsafe(*http_chunked_subscriber, begin_idx, done_callback));
+                                       SubscribeUnchecked(*http_chunked_subscriber, begin_idx, done_callback));
 
       {
         std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);

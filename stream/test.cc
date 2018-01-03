@@ -241,33 +241,33 @@ TEST(Stream, SubscribeAndProcessThreeEntries) {
   foo_stream_publisher->Publish(Record(2), std::chrono::microseconds(20));
   foo_stream_publisher->Publish(Record(3), std::chrono::microseconds(30));
   Data d;
-  Data d_unsafe;
+  Data d_unchecked;
   {
     ASSERT_FALSE(d.subscriber_alive_);
-    ASSERT_FALSE(d_unsafe.subscriber_alive_);
+    ASSERT_FALSE(d_unchecked.subscriber_alive_);
     StreamTestProcessor p(d, false, true);
-    StreamTestProcessor p_unsafe(d_unsafe, false, true);
+    StreamTestProcessor p_unchecked(d_unchecked, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
-    ASSERT_TRUE(d_unsafe.subscriber_alive_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
     p.SetMax(3u);
-    p_unsafe.SetMax(3u);
+    p_unchecked.SetMax(3u);
     foo_stream->Subscribe(p);  // With no return value collection to capture the scope, it's a blocking call.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
-    foo_stream->SubscribeUnsafe(p_unsafe);
-    EXPECT_EQ(3u, d_unsafe.seen_);
-    ASSERT_TRUE(d_unsafe.subscriber_alive_);
+    foo_stream->SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(3u, d_unchecked.seen_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
-  ASSERT_FALSE(d_unsafe.subscriber_alive_);
+  ASSERT_FALSE(d_unchecked.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
   const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
-      << joined_expected_values << " != " << d_unsafe.results_;
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unchecked.results_;
 }
 
 TEST(Stream, SubscribeSynchronously) {
@@ -282,36 +282,36 @@ TEST(Stream, SubscribeSynchronously) {
   bar_stream->Publisher()->Publish(Record(5));
   current::time::SetNow(std::chrono::microseconds(60));
   bar_stream->Publisher()->Publish(Record(6));
-  Data d, d_unsafe;
+  Data d, d_unchecked;
   ASSERT_FALSE(d.subscriber_alive_);
-  ASSERT_FALSE(d_unsafe.subscriber_alive_);
+  ASSERT_FALSE(d_unchecked.subscriber_alive_);
 
   {
     StreamTestProcessor p(d, false, true);
-    StreamTestProcessor p_unsafe(d_unsafe, false, true);
+    StreamTestProcessor p_unchecked(d_unchecked, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
-    ASSERT_TRUE(d_unsafe.subscriber_alive_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
     p.SetMax(3u);
-    p_unsafe.SetMax(3u);
+    p_unchecked.SetMax(3u);
     // As `.SetMax(3)` was called, blocks the thread until all three recods are processed.
     bar_stream->Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
-    bar_stream->SubscribeUnsafe(p_unsafe);
-    EXPECT_EQ(3u, d_unsafe.seen_);
-    ASSERT_TRUE(d_unsafe.subscriber_alive_);
+    bar_stream->SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(3u, d_unchecked.seen_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
   }
 
   EXPECT_FALSE(d.subscriber_alive_);
-  EXPECT_FALSE(d_unsafe.subscriber_alive_);
+  EXPECT_FALSE(d_unchecked.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
-      << joined_expected_values << " != " << d_unsafe.results_;
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unchecked.results_;
 }
 
 TEST(Stream, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
@@ -330,26 +330,26 @@ TEST(Stream, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     baz_stream->Publisher()->Publish(Record(9), std::chrono::microseconds(3));
   });
   {
-    Data d, d_unsafe;
+    Data d, d_unchecked;
     StreamTestProcessor p(d, true);
-    StreamTestProcessor p_unsafe(d_unsafe, true);
+    StreamTestProcessor p_unchecked(d_unchecked, true);
     baz_stream->Subscribe(p);
     EXPECT_EQ(0u, d.seen_);
-    baz_stream->SubscribeUnsafe(p_unsafe);
-    EXPECT_EQ(0u, d_unsafe.seen_);
+    baz_stream->SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(0u, d_unchecked.seen_);
   }
   wait = false;
   delayed_publish_thread.join();
   {
-    Data d, d_unsafe;
+    Data d, d_unchecked;
     StreamTestProcessor p(d, false, true);
-    StreamTestProcessor p_unsafe(d_unsafe, false, true);
+    StreamTestProcessor p_unchecked(d_unchecked, false, true);
     p.SetMax(3u);
-    p_unsafe.SetMax(3u);
+    p_unchecked.SetMax(3u);
     baz_stream->Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
-    baz_stream->SubscribeUnsafe(p_unsafe);
-    EXPECT_EQ(3u, d_unsafe.seen_);
+    baz_stream->SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(3u, d_unchecked.seen_);
   }
 }
 
@@ -365,58 +365,58 @@ TEST(Stream, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   meh_stream->Publisher()->Publish(Record(11));
   current::time::SetNow(std::chrono::microseconds(3));
   meh_stream->Publisher()->Publish(Record(12));
-  Data d, d_unsafe;
+  Data d, d_unchecked;
   StreamTestProcessor p(d, true);
-  StreamTestProcessor p_unsafe(d_unsafe, true);
+  StreamTestProcessor p_unchecked(d_unchecked, true);
   p.SetWait();
-  p_unsafe.SetWait();
+  p_unchecked.SetWait();
   {
     auto scope1 = meh_stream->Subscribe(p);
-    auto scope1_unsafe = meh_stream->SubscribeUnsafe(p_unsafe);
+    auto scope1_unchecked = meh_stream->SubscribeUnchecked(p_unchecked);
     EXPECT_TRUE(scope1);
-    EXPECT_TRUE(scope1_unsafe);
+    EXPECT_TRUE(scope1_unchecked);
     {
       auto scope2 = std::move(scope1);
-      auto scope2_unsafe = std::move(scope1_unsafe);
+      auto scope2_unchecked = std::move(scope1_unchecked);
       EXPECT_TRUE(scope2);
-      EXPECT_TRUE(scope2_unsafe);
+      EXPECT_TRUE(scope2_unchecked);
       EXPECT_FALSE(scope1);
-      EXPECT_FALSE(scope1_unsafe);
+      EXPECT_FALSE(scope1_unchecked);
       {
-        current::stream::SubscriberScope scope3, scope3_unsafe;
+        current::stream::SubscriberScope scope3, scope3_unchecked;
         EXPECT_FALSE(scope3);
-        EXPECT_FALSE(scope3_unsafe);
+        EXPECT_FALSE(scope3_unchecked);
         EXPECT_TRUE(scope2);
-        EXPECT_TRUE(scope2_unsafe);
+        EXPECT_TRUE(scope2_unchecked);
         {
           scope3 = std::move(scope2);
-          scope3_unsafe = std::move(scope2_unsafe);
+          scope3_unchecked = std::move(scope2_unchecked);
           EXPECT_TRUE(scope3);
-          EXPECT_TRUE(scope3_unsafe);
+          EXPECT_TRUE(scope3_unchecked);
           EXPECT_FALSE(scope2);
-          EXPECT_FALSE(scope2_unsafe);
+          EXPECT_FALSE(scope2_unchecked);
           p.SetMax(3u);
-          p_unsafe.SetMax(3u);
+          p_unchecked.SetMax(3u);
           EXPECT_EQ(0u, d.seen_);
-          EXPECT_EQ(0u, d_unsafe.seen_);
+          EXPECT_EQ(0u, d_unchecked.seen_);
           p.SetWait(false);
-          p_unsafe.SetWait(false);
-          while (d.seen_ < 3u || d_unsafe.seen_ < 3u) {
+          p_unchecked.SetWait(false);
+          while (d.seen_ < 3u || d_unchecked.seen_ < 3u) {
             std::this_thread::yield();
           }
-          while (scope3 || scope3_unsafe) {
+          while (scope3 || scope3_unchecked) {
             std::this_thread::yield();
           }
         }
         EXPECT_FALSE(scope3);
-        EXPECT_FALSE(scope3_unsafe);
+        EXPECT_FALSE(scope3_unchecked);
       }
     }
   }
   EXPECT_EQ(3u, d.seen_);
   EXPECT_EQ("10,11,12", d.results_);
-  EXPECT_EQ(3u, d_unsafe.seen_);
-  EXPECT_EQ("10,11,12", d_unsafe.results_);
+  EXPECT_EQ(3u, d_unchecked.seen_);
+  EXPECT_EQ("10,11,12", d_unchecked.results_);
 }
 
 namespace stream_unittest {
@@ -447,13 +447,13 @@ struct RecordsCollectorImpl {
 };
 
 template <typename ENTRY>
-struct RecordsUnsafeCollectorImpl {
+struct RecordsUncheckedCollectorImpl {
   std::atomic_size_t count_;
   std::vector<std::string>& rows_;
   std::vector<std::string>& entries_;
 
-  RecordsUnsafeCollectorImpl() = delete;
-  RecordsUnsafeCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
+  RecordsUncheckedCollectorImpl() = delete;
+  RecordsUncheckedCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
       : count_(0u), rows_(rows), entries_(entries) {}
 
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
@@ -490,7 +490,7 @@ struct RecordsUnsafeCollectorImpl {
 using RecordsWithTimestampCollector =
     current::ss::StreamSubscriber<RecordsCollectorImpl<RecordWithTimestamp>, RecordWithTimestamp>;
 using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl<Record>, Record>;
-using RecordsUnsafeCollector = current::ss::StreamSubscriber<RecordsUnsafeCollectorImpl<Record>, Record>;
+using RecordsUncheckedCollector = current::ss::StreamSubscriber<RecordsUncheckedCollectorImpl<Record>, Record>;
 
 }  // namespace stream_unittest
 
@@ -521,9 +521,9 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
     const auto result = HTTP(GET(base_url + "?nowait&checked"));
     EXPECT_EQ(204, static_cast<int>(result.code));
     EXPECT_EQ("", result.body);
-    const auto result_unsafe = HTTP(GET(base_url + "?nowait"));
-    EXPECT_EQ(204, static_cast<int>(result_unsafe.code));
-    EXPECT_EQ("", result_unsafe.body);
+    const auto result_unchecked = HTTP(GET(base_url + "?nowait"));
+    EXPECT_EQ(204, static_cast<int>(result_unchecked.code));
+    EXPECT_EQ("", result_unchecked.body);
   }
   {
     // `?sizeonly` returns "0" since the stream is empty.
@@ -865,19 +865,19 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
       const std::string body = HTTP(GET(base_url + "?n=1&array&checked")).body;
       EXPECT_EQ("[\n" + e[0] + "]\n", body);
       EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]) + '\n');
-      const std::string body_unsafe = HTTP(GET(base_url + "?n=1&array")).body;
-      EXPECT_EQ("[\n" + e[0] + "]\n", body_unsafe);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]) + '\n');
+      const std::string body_unchecked = HTTP(GET(base_url + "?n=1&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "]\n", body_unchecked);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unchecked)[0]) + '\n');
     }
     {
       const std::string body = HTTP(GET(base_url + "?n=2&array&checked")).body;
       EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body);
       EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]) + '\n');
       EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]) + '\n');
-      const std::string body_unsafe = HTTP(GET(base_url + "?n=2&array")).body;
-      EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body_unsafe);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[0]) + '\n');
-      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unsafe)[1]) + '\n');
+      const std::string body_unchecked = HTTP(GET(base_url + "?n=2&array")).body;
+      EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body_unchecked);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unchecked)[0]) + '\n');
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unchecked)[1]) + '\n');
     }
   }
 
@@ -1021,61 +1021,61 @@ TEST(Stream, ParsesFromFile) {
   auto parsed = current::stream::Stream<Record, current::persistence::File>::CreateStream(persistence_file_name);
 
   Data d;
-  Data d_unsafe;
+  Data d_unchecked;
   {
     ASSERT_FALSE(d.subscriber_alive_);
-    ASSERT_FALSE(d_unsafe.subscriber_alive_);
+    ASSERT_FALSE(d_unchecked.subscriber_alive_);
     StreamTestProcessor p(d, false, true);
-    StreamTestProcessor p_unsafe(d_unsafe, false, true);
+    StreamTestProcessor p_unchecked(d_unchecked, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
-    ASSERT_TRUE(d_unsafe.subscriber_alive_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
     p.SetMax(4u);
-    p_unsafe.SetMax(4u);
+    p_unchecked.SetMax(4u);
     parsed->Subscribe(p);  // A blocking call until the subscriber processes three entries and one head update.
-    parsed->SubscribeUnsafe(p_unsafe);
+    parsed->SubscribeUnchecked(p_unchecked);
     EXPECT_EQ(4u, d.seen_);
     EXPECT_EQ(500, d.head_.count());
     ASSERT_TRUE(d.subscriber_alive_);
-    EXPECT_EQ(4u, d_unsafe.seen_);
-    EXPECT_EQ(500, d_unsafe.head_.count());
-    ASSERT_TRUE(d_unsafe.subscriber_alive_);
+    EXPECT_EQ(4u, d_unchecked.seen_);
+    EXPECT_EQ(500, d_unchecked.head_.count());
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
-  ASSERT_FALSE(d_unsafe.subscriber_alive_);
+  ASSERT_FALSE(d_unchecked.subscriber_alive_);
 
   {
     // Try scope-based subscription of a limited-range subscriber, and confirm
     // casting the scope of this subscription to `bool` eventially become `false`.
     Data d2;
-    Data d2_unsafe;
+    Data d2_unchecked;
     {
       ASSERT_FALSE(d2.subscriber_alive_);
-      ASSERT_FALSE(d2_unsafe.subscriber_alive_);
+      ASSERT_FALSE(d2_unchecked.subscriber_alive_);
       StreamTestProcessor p2(d2, false, true);
-      StreamTestProcessor p2_unsafe(d2_unsafe, false, true);
+      StreamTestProcessor p2_unchecked(d2_unchecked, false, true);
       ASSERT_TRUE(d2.subscriber_alive_);
-      ASSERT_TRUE(d2_unsafe.subscriber_alive_);
+      ASSERT_TRUE(d2_unchecked.subscriber_alive_);
       p2.SetMax(4u);
-      p2_unsafe.SetMax(4u);
+      p2_unchecked.SetMax(4u);
       const auto scope = parsed->Subscribe(p2);
       while (static_cast<bool>(scope)) {
         std::this_thread::yield();
       }
       EXPECT_FALSE(static_cast<bool>(scope));
-      const auto scope_unsafe = parsed->SubscribeUnsafe(p2_unsafe);
-      while (static_cast<bool>(scope_unsafe)) {
+      const auto scope_unchecked = parsed->SubscribeUnchecked(p2_unchecked);
+      while (static_cast<bool>(scope_unchecked)) {
         std::this_thread::yield();
       }
-      EXPECT_FALSE(static_cast<bool>(scope_unsafe));
+      EXPECT_FALSE(static_cast<bool>(scope_unchecked));
       EXPECT_EQ(4u, d2.seen_);
       EXPECT_EQ(500, d2.head_.count());
       EXPECT_TRUE(d2.subscriber_alive_);
-      EXPECT_EQ(4u, d2_unsafe.seen_);
-      EXPECT_EQ(500, d2_unsafe.head_.count());
-      EXPECT_TRUE(d2_unsafe.subscriber_alive_);
+      EXPECT_EQ(4u, d2_unchecked.seen_);
+      EXPECT_EQ(500, d2_unchecked.head_.count());
+      EXPECT_TRUE(d2_unchecked.subscriber_alive_);
     }
     EXPECT_FALSE(d2.subscriber_alive_);
-    EXPECT_FALSE(d2_unsafe.subscriber_alive_);
+    EXPECT_FALSE(d2_unchecked.subscriber_alive_);
   }
 
   const std::vector<std::string> expected_values{"[0:100,2:400] 1", "[1:200,2:400] 2", "[2:400,2:400] 3"};
@@ -1083,11 +1083,11 @@ TEST(Stream, ParsesFromFile) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unsafe.results_, expected_values, StreamTestProcessor::kTerminateStr))
-      << joined_expected_values << " != " << d_unsafe.results_;
+  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unchecked.results_;
 }
 
-TEST(Stream, UnsafeVsSafeSubscription) {
+TEST(Stream, UncheckedVsCheckedSubscription) {
   using namespace stream_unittest;
 
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "data");
@@ -1123,11 +1123,11 @@ TEST(Stream, UnsafeVsSafeSubscription) {
       std::this_thread::yield();
     }
   };
-  const auto CollectUnsafeSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+  const auto CollectUncheckedSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
     rows.clear();
     entries.clear();
-    RecordsUnsafeCollector collector(entries, rows);
-    const auto scope = exposed_stream->SubscribeUnsafe(collector);
+    RecordsUncheckedCollector collector(entries, rows);
+    const auto scope = exposed_stream->SubscribeUnchecked(collector);
     while (collector.count_ < 3u) {
       std::this_thread::yield();
     }
@@ -1149,7 +1149,7 @@ TEST(Stream, UnsafeVsSafeSubscription) {
     EXPECT_EQ(expected_rows, Join(all_rows, ""));
     EXPECT_EQ(expected_entries, Join(all_entries, ""));
 
-    CollectUnsafeSubscriptionResult(all_entries, all_rows);
+    CollectUncheckedSubscriptionResult(all_entries, all_rows);
     EXPECT_EQ(expected_rows, Join(all_rows, ""));
     EXPECT_EQ(expected_entries, Join(all_entries, ""));
 
@@ -1161,7 +1161,7 @@ TEST(Stream, UnsafeVsSafeSubscription) {
 
   {
     // Swap the first two entries, which should provoke the `InconsistentIndexException` exceptions
-    // in case of the "Safe" subscription, but for the "Unsafe" it should't.
+    // in case of the "Checked" subscription, but for the "Unchecked" it should't.
     std::swap(lines[0], lines[1]);
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
@@ -1176,7 +1176,7 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "{\"x\":1}\n"
         "{\"x\":3}\n";
 
-    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
     EXPECT_EQ(expected_entries, Join(entries, ""));
     EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
@@ -1197,7 +1197,7 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
         "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
 
-    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
     EXPECT_EQ(
         "{\"x\":1}\n"
@@ -1230,7 +1230,7 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
         "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
 
-    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
     EXPECT_EQ(
         "Malformed index and timestamp\n"
@@ -1262,7 +1262,7 @@ TEST(Stream, UnsafeVsSafeSubscription) {
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
         "{\"index\":2,\"us\":400}\tCCCCCCC\n";
 
-    EXPECT_NO_THROW(CollectUnsafeSubscriptionResult(entries, rows));
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
     EXPECT_EQ(expected_rows, Join(rows, ""));
     EXPECT_EQ(
         "Malformed index and timestamp\n"
@@ -1402,9 +1402,9 @@ TEST(Stream, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(5);
-    Collector c_unsafe(5);
+    Collector c_unchecked(5);
     stream->Subscribe(c);
-    stream->SubscribeUnsafe(c_unsafe);
+    stream->SubscribeUnchecked(c_unchecked);
     EXPECT_EQ(
         "{\"Record\":{\"x\":1}} {\"AnotherRecord\":{\"y\":2}} {\"Record\":{\"x\":3}} "
         "{\"AnotherRecord\":{\"y\":4}} {\"Record\":{\"x\":5}}",
@@ -1415,7 +1415,7 @@ TEST(Stream, SubscribeWithFilterByType) {
         "{\"Record\":{\"x\":3},\"\":\"T9209980947553411947\"} "
         "{\"AnotherRecord\":{\"y\":4},\"\":\"T9201000647893547023\"} "
         "{\"Record\":{\"x\":5},\"\":\"T9209980947553411947\"}",
-        Join(c_unsafe.results_, ' '));
+        Join(c_unchecked.results_, ' '));
   }
 
   {

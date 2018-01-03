@@ -469,7 +469,7 @@ class FilePersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t PersisterPublishUnsafeImpl(const std::string& entry_json) {
+  idxts_t PersisterPublishUncheckedImpl(const std::string& entry_json) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->publish_mutex_ref_);
 
     end_t iterator = file_persister_impl_->end_.load();

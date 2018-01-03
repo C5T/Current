@@ -152,7 +152,7 @@ void Replicate(ARGS&&... args) {
     const auto subscriber_scope = FLAGS_use_safe_replication
                                       ? static_cast<current::stream::SubscriberScope>(
                                             remote_stream.Subscribe(*replicator, 0, FLAGS_use_checked_subscription))
-                                      : static_cast<current::stream::SubscriberScope>(remote_stream.SubscribeUnsafe(
+                                      : static_cast<current::stream::SubscriberScope>(remote_stream.SubscribeUnchecked(
                                             *replicator, 0, FLAGS_use_checked_subscription));
     std::cerr << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + print_delay;

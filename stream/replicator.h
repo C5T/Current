@@ -168,7 +168,7 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Safe> PassEntryToSubscriber(const std::string& entry_json) {
+    ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& entry_json) {
       const auto split = current::strings::Split(entry_json, '\t');
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
       if (Exists(tsoptidx.index)) {
@@ -189,7 +189,7 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Unsafe> PassEntryToSubscriber(const std::string& entry_json) {
+    ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& entry_json) {
       const auto tab_pos = entry_json.find('\t');
       if (tab_pos != std::string::npos) {
         if (subscriber_(entry_json, index_++, unused_idxts_) == ss::EntryResponse::Done) {
@@ -298,9 +298,9 @@ class SubscribableRemoteStream final {
               std::move(remote_stream), subscriber, start_idx, checked_subscription, done_callback))) {}
   };
   template <typename F>
-  using RemoteSubscriberScope = RemoteSubscriberScopeImpl<F, entry_t, SubscriptionMode::Safe>;
+  using RemoteSubscriberScope = RemoteSubscriberScopeImpl<F, entry_t, SubscriptionMode::Checked>;
   template <typename F>
-  using RemoteSubscriberScopeUnsafe = RemoteSubscriberScopeImpl<F, entry_t, SubscriptionMode::Unsafe>;
+  using RemoteSubscriberScopeUnchecked = RemoteSubscriberScopeImpl<F, entry_t, SubscriptionMode::Unchecked>;
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
       : stream_(MakeOwned<RemoteStream>(
@@ -325,12 +325,12 @@ class SubscribableRemoteStream final {
   }
 
   template <typename F>
-  RemoteSubscriberScopeUnsafe<F> SubscribeUnsafe(F& subscriber,
+  RemoteSubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
                                                  uint64_t start_idx = 0u,
                                                  bool checked_subscription = false,
                                                  std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    return RemoteSubscriberScopeUnsafe<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
+    return RemoteSubscriberScopeUnchecked<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
   }
 
   uint64_t GetNumberOfEntries() const {
@@ -371,12 +371,12 @@ struct StreamReplicatorImpl {
   }
 
   EntryResponse operator()(std::string&& entry_json, uint64_t, idxts_t) {
-    Value(publisher_)->PublishUnsafe(std::move(entry_json));
+    Value(publisher_)->PublishUnchecked(std::move(entry_json));
     return EntryResponse::More;
   }
 
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
-    Value(publisher_)->PublishUnsafe(entry_json);
+    Value(publisher_)->PublishUnchecked(entry_json);
     return EntryResponse::More;
   }
 
