@@ -26,15 +26,15 @@ SOFTWARE.
 #define BRICKS_NET_HTTP_IMPL_SERVER_H
 
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include "../codes.h"
 #include "../constants.h"
-#include "../mime_type.h"
 #include "../default_messages.h"
+#include "../mime_type.h"
 
 #include "../headers/headers.h"
 
@@ -44,11 +44,11 @@ SOFTWARE.
 
 #include "../../../template/enable_if.h"
 
-#include "../../../../typesystem/struct.h"
 #include "../../../../typesystem/serialization/json.h"
+#include "../../../../typesystem/struct.h"
 
-#include "../../../strings/util.h"
 #include "../../../strings/split.h"
+#include "../../../strings/util.h"
 
 #include "../../../../blocks/url/url.h"
 
@@ -72,6 +72,8 @@ SOFTWARE.
   } while (false)
 
 #endif  // CURRENT_BRICKS_DEBUG_HTTP
+
+#define CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE 1024 * 1024
 
 namespace current {
 namespace net {
@@ -528,6 +530,8 @@ class GenericHTTPRequestData : public HELPER {
 // The default implementation is exposed as HTTPRequestData.
 using HTTPRequestData = GenericHTTPRequestData<HTTPDefaultHelper>;
 
+enum class ChunkFlush : bool { NoFlush = false, Flush = true };
+
 template <class HTTP_REQUEST_DATA>
 class GenericHTTPServerConnection final : public HTTPResponder {
  public:
@@ -577,6 +581,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
   }
 
   // The wrapper to send HTTP response in chunks.
+  template <uint64_t CACHE_SIZE>
   struct ChunkedResponseSender final {
     // `struct Impl` is the logic wrapped into an `std::unique_ptr<>` to call the destructor only once.
     struct Impl final {
@@ -585,6 +590,9 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       ~Impl() {
         if (!can_no_longer_write_) {
           try {
+            if (cache_size_) {
+              connection_.BlockingWrite(data_cache_, cache_size_, true);
+            }
             connection_.BlockingWrite("0", true);
             // Should send CRLF twice.
             connection_.BlockingWrite(constants::kCRLF, true);
@@ -597,14 +605,32 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // The actual implementation of sending HTTP chunk data.
       template <typename T>
-      void SendImpl(T&& data) {
-        if (!data.empty()) {
+      void SendImpl(T&& data, ChunkFlush flush) {
+        if (!data.empty() || (flush == ChunkFlush::Flush && cache_size_)) {
           try {
-            connection_.BlockingWrite(strings::Printf("%lX", data.size()), true);
-            connection_.BlockingWrite(constants::kCRLF, true);
-            connection_.BlockingWrite(std::forward<T>(data), true);
-            // Force every chunk to be sent out by passing `false` as the second argument.
-            connection_.BlockingWrite(constants::kCRLF, false);
+            if (!data.empty()) {
+              const auto chunk_header = strings::Printf("%lX", data.size()) + constants::kCRLF;
+              const auto chunk_size = chunk_header.size() + data.size() + constants::kCRLFLength;
+              if (cache_size_ && (flush == ChunkFlush::Flush || chunk_size > CACHE_SIZE - cache_size_)) {
+                connection_.BlockingWrite(data_cache_, cache_size_, true);
+                cache_size_ = 0;
+              }
+              if (flush == ChunkFlush::Flush || chunk_size > cache_size_) {
+                connection_.BlockingWrite(chunk_header, true);
+                connection_.BlockingWrite(std::forward<T>(data), true);
+                connection_.BlockingWrite(constants::kCRLF, false);
+              } else {
+                ::memcpy(data_cache_ + cache_size_, chunk_header.c_str(), chunk_header.size());
+                cache_size_ += chunk_header.size();
+                ::memcpy(data_cache_ + cache_size_, data.data(), data.size());
+                cache_size_ += data.size();
+                ::memcpy(data_cache_ + cache_size_, constants::kCRLF, constants::kCRLFLength);
+                cache_size_ += constants::kCRLFLength;
+              }
+            } else {
+              connection_.BlockingWrite(data_cache_, cache_size_, false);
+              cache_size_ = 0;
+            }
           } catch (const SocketException&) {
             // For chunked HTTP responses, if the receiving end has closed the connection,
             // as detected during `Send`, suppress logging about the failure to send the final "zero" chunk.
@@ -619,25 +645,27 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       inline ENABLE_IF<std::is_same<typename T::value_type, char>::value ||
                        std::is_same<typename T::value_type, uint8_t>::value ||
                        std::is_same<typename T::value_type, int8_t>::value>
-      Send(T&& data) {
-        SendImpl(std::forward<T>(data));
+      Send(T&& data, ChunkFlush flush) {
+        SendImpl(std::forward<T>(data), flush);
       }
 
       // Special case to handle std::string.
-      inline void Send(const std::string& data) { SendImpl(data); }
+      inline void Send(const std::string& data, ChunkFlush flush) { SendImpl(data, flush); }
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object) {
-        SendImpl(JSON(std::forward<T>(object)) + '\n');
+      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
+        SendImpl(JSON(std::forward<T>(object)) + '\n', flush);
       }
       template <class T, typename S>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name) {
-        SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n");
+      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name, ChunkFlush flush) {
+        SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n", flush);
       }
 
       Connection& connection_;
       bool can_no_longer_write_ = false;
+      char data_cache_[CACHE_SIZE];
+      uint64_t cache_size_ = 0;
 
       Impl() = delete;
       Impl(const Impl&) = delete;
@@ -649,33 +677,34 @@ class GenericHTTPServerConnection final : public HTTPResponder {
     explicit ChunkedResponseSender(Connection& connection) : impl_(new Impl(connection)) {}
 
     template <typename T>
-    inline ChunkedResponseSender& Send(T&& data) {
-      impl_->Send(std::forward<T>(data));
+    inline ChunkedResponseSender& Send(T&& data, ChunkFlush flush = ChunkFlush::Flush) {
+      impl_->Send(std::forward<T>(data), flush);
       return *this;
     }
 
     template <typename T1, typename T2>
-    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2) {
-      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2));
+    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2, ChunkFlush flush = ChunkFlush::Flush) {
+      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2), flush);
       return *this;
     }
 
     template <typename T>
-    inline ChunkedResponseSender& operator()(T&& data) {
-      impl_->Send(std::forward<T>(data));
+    inline ChunkedResponseSender& operator()(T&& data, ChunkFlush flush = ChunkFlush::Flush) {
+      impl_->Send(std::forward<T>(data), flush);
       return *this;
     }
 
     template <typename T1, typename T2>
-    inline ChunkedResponseSender& operator()(T1&& data1, T2&& data2) {
-      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2));
+    inline ChunkedResponseSender& operator()(T1&& data1, T2&& data2, ChunkFlush flush = ChunkFlush::Flush) {
+      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2), flush);
       return *this;
     }
 
     std::unique_ptr<Impl> impl_;
   };
 
-  inline ChunkedResponseSender SendChunkedHTTPResponse(
+  template <uint64_t CACHE_SIZE = CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
+  inline ChunkedResponseSender<CACHE_SIZE> SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = constants::kDefaultJSONContentType,
       const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
@@ -687,7 +716,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
       os << "Transfer-Encoding: chunked" << constants::kCRLF << constants::kCRLF;
       connection_.BlockingWrite(os.str(), true);
-      return ChunkedResponseSender(connection_);
+      return ChunkedResponseSender<CACHE_SIZE>(connection_);
     }
   }
 
