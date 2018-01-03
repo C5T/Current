@@ -370,6 +370,11 @@ struct StreamReplicatorImpl {
     return EntryResponse::More;
   }
 
+  EntryResponse operator()(std::string&& entry_json, uint64_t, idxts_t) {
+    Value(publisher_)->PublishUnsafe(std::move(entry_json));
+    return EntryResponse::More;
+  }
+
   EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
     Value(publisher_)->PublishUnsafe(entry_json);
     return EntryResponse::More;

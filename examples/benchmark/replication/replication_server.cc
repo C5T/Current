@@ -211,8 +211,8 @@ class FakeStream final {
           terminate_sent_ = true;
           return;
         }
-        uint64_t size = offset < impl_->data.size() + FLAGS_fake_stream_chunk_size ? FLAGS_fake_stream_chunk_size
-                                                                                   : impl_->data.size() - offset;
+        const uint64_t size = offset < impl_->data.size() + FLAGS_fake_stream_chunk_size ? FLAGS_fake_stream_chunk_size
+                                                                                         : impl_->data.size() - offset;
         subscriber_(impl_->data.substr(offset, size));
         offset += size;
       }
