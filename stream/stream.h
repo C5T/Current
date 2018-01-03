@@ -119,7 +119,7 @@ CURRENT_STRUCT(StreamSchemaFormatNotFoundError) {
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
-enum class SubscriptionMode : int { Safe = 0, Unsafe = 1 };
+enum class SubscriptionMode : bool { Safe = true, Unsafe = false };
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class Stream final {
@@ -333,7 +333,7 @@ class Stream final {
       }
     }
 
-    template <SubscriptionMode MODE>
+    template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Safe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
                                                                                          uint64_t index,
                                                                                          uint64_t size) {
@@ -356,7 +356,7 @@ class Stream final {
       return ss::EntryResponse::More;
     }
 
-    template <SubscriptionMode MODE>
+    template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Unsafe, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
                                                                                            uint64_t index,
                                                                                            uint64_t size) {
@@ -389,7 +389,7 @@ class Stream final {
         size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
         if (head_idx.head > head) {
           if (size > index) {
-            if (PassEntriesToSubscriber<SM>(*impl_, index, size) == ss::EntryResponse::Done) {
+            if (PassEntriesToSubscriber(*impl_, index, size) == ss::EntryResponse::Done) {
               return;
             }
             index = size;

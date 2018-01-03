@@ -202,7 +202,8 @@ class FakeStream final {
 
     void ThreadImpl() {
       uint64_t offset = 0;
-      while (impl_->data[offset] == current::persistence::impl::constants::kDirectiveMarker) {
+      while (offset < impl_->data.size() &&
+             impl_->data[offset] == current::persistence::impl::constants::kDirectiveMarker) {
         offset = impl_->data.find('\n', offset) + 1;
       }
       while (offset < impl_->data.size()) {
@@ -302,7 +303,6 @@ class FakeStream final {
           r(four_oh_four, HTTPResponseCode.NotFound);
         }
       }
-
     } else {
       const std::string subscription_id = benchmark::replication::stream_t::GenerateRandomHTTPSubscriptionID();
 

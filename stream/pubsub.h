@@ -349,7 +349,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       // Obtain current timestamp only when it's necessary by parsing the `entry_json`.
       const auto GetCurrentUs = [this, &current_us, &entry_json]() -> std::chrono::microseconds {
         if (!current_us.count()) {
-          current_us = ParseJSON<idxts_t>(entry_json.substr(0, entry_json.find('\t'))).us;
+          current_us = ParseJSON<ts_only_t>(entry_json.substr(0, entry_json.find('\t'))).us;
         }
         return current_us;
       };
@@ -440,7 +440,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         return ss::EntryResponse::Done;
       }
       if (!params_.array && !params_.entries_only) {
-        http_response_(JSON<J>(ts_optidx_t(us)) + '\n');
+        http_response_(JSON<J>(ts_only_t(us)) + '\n');
       }
     }
     return ss::EntryResponse::More;

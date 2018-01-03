@@ -147,8 +147,8 @@ struct StreamTestProcessorImpl {
     }
     const auto tab_pos = entry_json.find('\t');
     CURRENT_ASSERT(tab_pos != std::string::npos);
-    const auto entry = ParseJSON<Record>(entry_json.c_str() + tab_pos + 1);
     const auto idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    const auto entry = ParseJSON<Record>(entry_json.c_str() + tab_pos + 1);
     CURRENT_ASSERT(current_index == idxts.index);
     if (with_idx_ts_) {
       data_.results_ += Printf("[%llu:%llu,%llu:%llu] %i",
@@ -484,7 +484,7 @@ struct RecordsUnsafeCollectorImpl {
 
   static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
 
-  TerminationResponse Terminate() { return TerminationResponse::Terminate; }
+  static TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
 
 using RecordsWithTimestampCollector =
@@ -1160,7 +1160,8 @@ TEST(Stream, UnsafeVsSafeSubscription) {
   }
 
   {
-    // Swap the first two entries to provoke the `InconsistentIndexException` exceptions.
+    // Swap the first two entries, which should provoke the `InconsistentIndexException` exceptions
+    // in case of the "Safe" subscription, but for the "Unsafe" it should't.
     std::swap(lines[0], lines[1]);
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
@@ -1180,12 +1181,13 @@ TEST(Stream, UnsafeVsSafeSubscription) {
     EXPECT_EQ(expected_entries, Join(entries, ""));
     EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
     EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    // Restore the correct lines ordering before the next test case.
     std::swap(lines[0], lines[1]);
   }
 
   {
     // Produce wrong JSON instead of an entire entry - replace both index and value with garbage.
-    lines[1].replace(0, lines[1].length(), lines[1].length(), 'A');
+    lines[1] = std::string(lines[1].length(), 'A');
     current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
 
     std::vector<std::string> entries;

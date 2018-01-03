@@ -167,7 +167,7 @@ class SubscribableRemoteStream final {
       }
     }
 
-    template <SubscriptionMode MODE>
+    template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Safe> PassEntryToSubscriber(const std::string& entry_json) {
       const auto split = current::strings::Split(entry_json, '\t');
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
@@ -188,7 +188,7 @@ class SubscribableRemoteStream final {
       }
     }
 
-    template <SubscriptionMode MODE>
+    template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Unsafe> PassEntryToSubscriber(const std::string& entry_json) {
       const auto tab_pos = entry_json.find('\t');
       if (tab_pos != std::string::npos) {
@@ -196,7 +196,7 @@ class SubscribableRemoteStream final {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       } else {
-        const auto tsoptidx = ParseJSON<ts_optidx_t>(entry_json);
+        const auto tsoptidx = ParseJSON<ts_only_t>(entry_json);
         if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
@@ -224,7 +224,7 @@ class SubscribableRemoteStream final {
           carried_over_data_ += chunk;
           return;
         }
-        PassEntryToSubscriber<SM>(carried_over_data_ + chunk.substr(0, end_pos));
+        PassEntryToSubscriber(carried_over_data_ + chunk.substr(0, end_pos));
       }
 
       size_t start_pos = end_pos;
@@ -239,7 +239,7 @@ class SubscribableRemoteStream final {
         if (end_pos >= chunk_size) {
           break;
         }
-        PassEntryToSubscriber<SM>(chunk.substr(start_pos, end_pos - start_pos));
+        PassEntryToSubscriber(chunk.substr(start_pos, end_pos - start_pos));
         start_pos = end_pos + 1;
       }
       if (start_pos < chunk_size) {
