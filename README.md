@@ -1,4 +1,4 @@
-# Current [![CI](https://travis-ci.org/C5T/Current.svg?branch=master)](https://travis-ci.org/C5T/Current)
+# Current [![Travis](https://travis-ci.org/C5T/Current.svg?branch=master)](https://travis-ci.org/C5T/Current) [![Semaphore](https://semaphoreci.com/api/v1/dkorolev/current/branches/unstable/badge.svg)](https://semaphoreci.com/dkorolev/current)
 
 #### [TypeSystem](https://github.com/C5T/Current/blob/master/typesystem/README.md)
 The type system used in Current framework.
