@@ -461,6 +461,37 @@ class FilePersister {
     return current;
   }
 
+  template <current::locks::MutexLockStatus MLS>
+  idxts_t DoPublishUnchecked(const std::string& entry_json) {
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
+
+    end_t iterator = file_persister_impl_->end.load();
+    const auto tab_pos = entry_json.find('\t');
+    if (tab_pos == std::string::npos) {
+      CURRENT_THROW(MalformedEntryException(entry_json));
+    }
+    const idxts_t idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    if (idxts.index != iterator.next_index) {
+      CURRENT_THROW(UnsafePublishBadIndexTimestampException(iterator.next_index, idxts.index));
+    }
+    if (!(idxts.us > iterator.head)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), idxts.us));
+    }
+
+    iterator.last_entry_us = iterator.head = idxts.us;
+    CURRENT_ASSERT(file_persister_impl_->offset.size() == idxts.index);
+    CURRENT_ASSERT(file_persister_impl_->timestamp.size() == idxts.index);
+    file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
+    file_persister_impl_->timestamp.push_back(idxts.us);
+
+    file_persister_impl_->appender << entry_json << std::endl;
+    ++iterator.next_index;
+    file_persister_impl_->head_offset = 0;
+    file_persister_impl_->end.store(iterator);
+
+    return idxts;
+  }
+
   template <current::locks::MutexLockStatus MLS, typename US>
   void DoUpdateHead(const US us) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
@@ -542,13 +573,33 @@ class FilePersister {
     return result;
   }
 
-  template <ss::IterationMode IM>
-  using IterableRange = typename std::conditional<IM == ss::IterationMode::Safe,
-                                                  IterableRangeImpl<Iterator>,
-                                                  IterableRangeImpl<IteratorUnsafe>>::type;
+  using IterableRange = IterableRangeImpl<Iterator>;
+  using IterableRangeUnsafe = IterableRangeImpl<IteratorUnsafe>;
 
-  template <ss::IterationMode IM>
-  IterableRange<IM> Iterate(uint64_t begin_index, uint64_t end_index) const {
+  template <current::locks::MutexLockStatus MLS>
+  IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
+    return IterateImpl<MLS, IterableRange>(begin_index, end_index);
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  IterableRangeUnsafe IterateUnsafe(uint64_t begin_index, uint64_t end_index) const {
+    return IterateImpl<MLS, IterableRangeUnsafe>(begin_index, end_index);
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return IterateImpl<MLS, IterableRange>(from, till);
+  }
+
+  template <current::locks::MutexLockStatus MLS>
+  IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
+    return IterateImpl<MLS, IterableRangeUnsafe>(from, till);
+  }
+
+ private:
+  template <current::locks::MutexLockStatus MLS, typename ITERABLE>
+  ITERABLE IterateImpl(uint64_t begin_index, uint64_t end_index) const {
+    // OK to only lock the mutex later, as `file_persister_impl_->end_` is an `atomic`.
     const uint64_t current_size = file_persister_impl_->end.load().next_index;
     if (end_index == static_cast<uint64_t>(-1)) {
       end_index = current_size;
@@ -557,28 +608,30 @@ class FilePersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin_index == end_index) {
-      return IterableRange<IM>(
-          file_persister_impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
+      return ITERABLE(file_persister_impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
     }
     if (end_index < begin_index) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex_ref);
-    CURRENT_ASSERT(file_persister_impl_->offset.size() >=
-                   current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
-    return IterableRange<IM>(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
+
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->mutex_ref);
+
+    // ">" is OK, as this call is multithreading-friendly, and more entries could have been added during this call.
+    CURRENT_ASSERT(file_persister_impl_->offset.size() >= current_size);
+
+    return ITERABLE(file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
   }
 
-  template <ss::IterationMode IM>
-  IterableRange<IM> Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
+  template <current::locks::MutexLockStatus MLS, typename ITERABLE>
+  ITERABLE IterateImpl(std::chrono::microseconds from, std::chrono::microseconds till) const {
     if (till.count() > 0 && till < from) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     const auto index_range = IndexRangeByTimestampRange(from, till);
     if (index_range.first != static_cast<uint64_t>(-1)) {
-      return Iterate<IM>(index_range.first, index_range.second);
-    } else {  // No entries found in the given range.
-      return IterableRange<IM>(file_persister_impl_, 0, 0, 0);
+      return IterateImpl<MLS, ITERABLE>(index_range.first, index_range.second);
+    } else {  // No entries found in the requested range.
+      return ITERABLE(file_persister_impl_, 0, 0, 0);
     }
   }
 
