@@ -172,7 +172,7 @@ class MemoryPersister {
     container_->head = timestamp;
     return idxts_t(index, timestamp);
   }
-  
+
   template <current::locks::MutexLockStatus MLS>
   idxts_t DoPublishUnchecked(const std::string& entry_json) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->mutex_ref);
@@ -269,12 +269,12 @@ class MemoryPersister {
 
   using IterableRange = IterableRangeImpl<Iterator>;
   using IterableRangeUnsafe = IterableRangeImpl<IteratorUnsafe>;
-  
+
   template <current::locks::MutexLockStatus MLS>
   IterableRange Iterate(uint64_t begin, uint64_t end) const {
     return IterateImpl<MLS, IterableRange>(begin, end);
   }
-  
+
   template <current::locks::MutexLockStatus MLS>
   IterableRangeUnsafe IterateUnsafe(uint64_t begin, uint64_t end) const {
     return IterateImpl<MLS, IterableRangeUnsafe>(begin, end);
@@ -284,13 +284,13 @@ class MemoryPersister {
   IterableRange Iterate(std::chrono::microseconds from, std::chrono::microseconds till) const {
     return IterateImpl<MLS, IterableRange>(from, till);
   }
-  
+
   template <current::locks::MutexLockStatus MLS>
   IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from, std::chrono::microseconds till) const {
     return IterateImpl<MLS, IterableRangeUnsafe>(from, till);
   }
-  
-private:
+
+ private:
   template <current::locks::MutexLockStatus MLS, typename ITERABLE>
   ITERABLE IterateImpl(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {

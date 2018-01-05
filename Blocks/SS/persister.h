@@ -74,7 +74,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   IndexAndTimestamp PublishUnchecked(std::string&& entry_json) {
     return IMPL::template DoPublishUnchecked<MLS>(std::move(entry_json));
   }
-	
+
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void UpdateHead() {
     return IMPL::template DoUpdateHead<MLS>(current::time::DefaultTimeArgument());
@@ -114,16 +114,17 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  IterableRangeUnsafe IterateUnsafe(uint64_t begin = static_cast<uint64_t>(0), uint64_t end = static_cast<size_t>(-1)) const {
+  IterableRangeUnsafe IterateUnsafe(uint64_t begin = static_cast<uint64_t>(0),
+                                    uint64_t end = static_cast<size_t>(-1)) const {
     return IMPL::template IterateUnsafe<MLS>(begin, end);
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IterableRange Iterate(std::chrono::microseconds from,
-                            std::chrono::microseconds till = std::chrono::microseconds(-1)) const {
+                        std::chrono::microseconds till = std::chrono::microseconds(-1)) const {
     return IMPL::template Iterate<MLS>(from, till);
   }
-  
+
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from,
                                     std::chrono::microseconds till = std::chrono::microseconds(-1)) const {

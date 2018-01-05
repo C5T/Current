@@ -76,7 +76,7 @@ struct PersistenceFileNotWritable : InGracefulShutdownException {
 struct UnsafePublishBadIndexTimestampException : PersistenceException {
   explicit UnsafePublishBadIndexTimestampException(uint64_t expected, uint64_t found)
       : PersistenceException(current::strings::Printf(
-          "Expecting index %lld, seeing %lld.", static_cast<long long>(expected), static_cast<long long>(found))) {}
+            "Expecting index %lld, seeing %lld.", static_cast<long long>(expected), static_cast<long long>(found))) {}
 };
 
 }  // namespace peristence

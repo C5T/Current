@@ -148,12 +148,12 @@ class StreamImpl {
     idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us) {
       return PublishImpl<MLS>(std::move(entry), us);
     }
-    
+
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublishUnchecked(std::string&& entry_json) {
       return PublishUncheckedImpl<MLS>(std::move(entry_json));
     }
-    
+
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublishUnchecked(const std::string& entry_json) {
       return PublishUncheckedImpl<MLS>(entry_json);
@@ -192,7 +192,7 @@ class StreamImpl {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
         const auto result = data.persistence.template PublishUnchecked<current::locks::MutexLockStatus::AlreadyLocked>(
-                                                                                                                       std::forward<ARGS>(args)...);
+            std::forward<ARGS>(args)...);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
       } catch (const current::sync::InDestructingModeException&) {
@@ -376,7 +376,7 @@ class StreamImpl {
         done_callback_();
       }
     }
-    
+
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Checked, ss::EntryResponse> PassEntriesToSubscriber(const stream_data_t& impl,
                                                                                             uint64_t index,
@@ -389,17 +389,17 @@ class StreamImpl {
           }
         }
         if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
-                                                                                         subscriber_,
-                                                                                         [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
-                                                                                         e.entry,
-                                                                                         e.idx_ts,
-                                                                                         impl.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+                subscriber_,
+                [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
+                e.entry,
+                e.idx_ts,
+                impl.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
           return ss::EntryResponse::Done;
         }
       }
       return ss::EntryResponse::More;
     }
-    
+
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Unchecked, ss::EntryResponse> PassEntriesToSubscriber(const stream_data_t& impl,
                                                                                               uint64_t index,
@@ -473,9 +473,9 @@ class StreamImpl {
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F, SM>;
 
     SubscriberScopeImpl(ScopeOwned<stream_data_t>& data,
-                    F& subscriber,
-                    uint64_t begin_idx,
-                    std::function<void()> done_callback)
+                        F& subscriber,
+                        uint64_t begin_idx,
+                        std::function<void()> done_callback)
 
         : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {}
   };
@@ -629,9 +629,9 @@ class StreamImpl {
 
         current::sherlock::SubscriberScope http_chunked_subscriber_scope =
             request_params.checked ? static_cast<current::sherlock::SubscriberScope>(
-                                        Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
+                                         Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
                                    : static_cast<current::sherlock::SubscriberScope>(
-                                        SubscribeUnchecked(*http_chunked_subscriber, begin_idx, done_callback));
+                                         SubscribeUnchecked(*http_chunked_subscriber, begin_idx, done_callback));
         {
           std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
           // TODO(dkorolev): This condition is to be rewritten correctly.
@@ -666,18 +666,18 @@ class StreamImpl {
 
   static SherlockSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
     SherlockSchema schema;
-    
+
     // TODO(dkorolev): `AsIdentifier` here?
     schema.type_name = current::reflection::CurrentTypeName<entry_t, current::reflection::NameFormat::Z>();
     schema.type_id =
-    Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<entry_t>()).type_id;
-    
+        Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<entry_t>()).type_id;
+
     reflection::StructSchema underlying_type_schema;
     underlying_type_schema.AddType<entry_t>();
     schema.type_schema = underlying_type_schema.GetSchemaInfo();
-    
+
     current::reflection::ForEachLanguage(FillPerLanguageSchema(schema, namespace_name));
-    
+
     return schema;
   }
 

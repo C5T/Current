@@ -263,7 +263,8 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unchecked.results_;
 }
 
@@ -307,7 +308,8 @@ TEST(Sherlock, SubscribeSynchronously) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unchecked.results_;
 }
 
@@ -958,11 +960,11 @@ const std::string golden_signature() {
 }
 
 const std::string sherlock_golden_data = golden_signature() +
-                                       "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
-                                       "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
-                                       "#head 00000000000000000300\n"
-                                       "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
-                                       "#head 00000000000000000500\n";
+                                         "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+                                         "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+                                         "#head 00000000000000000300\n"
+                                         "{\"index\":2,\"us\":400}\t{\"x\":3}\n"
+                                         "#head 00000000000000000500\n";
 
 // clang-format off
 const std::string sherlock_golden_data_chunks[] = {
@@ -1079,7 +1081,8 @@ TEST(Sherlock, ParsesFromFile) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unchecked.results_;
 }
 
@@ -1118,15 +1121,16 @@ TEST(Stream, UncheckedVsCheckedSubscription) {
       std::this_thread::yield();
     }
   };
-  const auto CollectUncheckedSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
-    rows.clear();
-    entries.clear();
-    RecordsUncheckedCollector collector(entries, rows);
-    const auto scope = exposed_stream.SubscribeUnchecked(collector);
-    while (collector.count_ < 3u) {
-      std::this_thread::yield();
-    }
-  };
+  const auto CollectUncheckedSubscriptionResult =
+      [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+        rows.clear();
+        entries.clear();
+        RecordsUncheckedCollector collector(entries, rows);
+        const auto scope = exposed_stream.SubscribeUnchecked(collector);
+        while (collector.count_ < 3u) {
+          std::this_thread::yield();
+        }
+      };
 
   {
     std::vector<std::string> all_entries;

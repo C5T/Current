@@ -60,10 +60,7 @@ class FakeStream final {
 
   class FakePubSubEndpoint : public current::sherlock::AbstractSubscriberObject {
    public:
-    FakePubSubEndpoint(const std::string& subscription_id,
-                       ScopeOwned<impl_t>& data,
-                       uint64_t stream_size,
-                       Request r)
+    FakePubSubEndpoint(const std::string& subscription_id, ScopeOwned<impl_t>& data, uint64_t stream_size, Request r)
         : impl_(data, [this]() { termination_requested_ = true; }),
           http_request_(std::move(r)),
           http_response_(http_request_.SendChunkedResponse(
@@ -121,7 +118,7 @@ class FakeStream final {
 
   explicit FakeStream(const std::string& filename)
       : schema_as_object_(benchmark::replication::stream_t::StaticConstructSchemaAsObject(schema_namespace_name_)),
-        impl_(current::FileSystem::ReadFileAsString(filename)) {};
+        impl_(current::FileSystem::ReadFileAsString(filename)){};
 
   void operator()(Request r) {
     if (r.url.query.has("json")) {
@@ -214,8 +211,9 @@ class FakeStream final {
           terminate_sent_ = true;
           return;
         }
-        const uint64_t size = offset < bare_data.data.size() + FLAGS_fake_stream_chunk_size ? FLAGS_fake_stream_chunk_size
-                                                                                         : bare_data.data.size() - offset;
+        const uint64_t size = offset < bare_data.data.size() + FLAGS_fake_stream_chunk_size
+                                  ? FLAGS_fake_stream_chunk_size
+                                  : bare_data.data.size() - offset;
         subscriber_(bare_data.data.substr(offset, size));
         offset += size;
       }
@@ -245,7 +243,7 @@ class FakeStream final {
   current::sherlock::SubscriberScope Subscribe(F& subscriber, std::function<void()> done_callback) {
     return SubscriberScope<F>(impl_, subscriber, done_callback);
   }
-  
+
   // Generates a random HTTP subscription.
   static std::string GenerateRandomHTTPSubscriptionID() {
     return current::SHA256("stream_http_subscription_" +
@@ -372,8 +370,7 @@ int main(int argc, char** argv) {
       FLAGS_use_fake_stream
           ? HTTP(FLAGS_port)
                 .Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *fake_stream)
-          : HTTP(FLAGS_port)
-                .Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
+          : HTTP(FLAGS_port).Register(FLAGS_route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *stream);
   std::cout << "The server is up on http://localhost:" << FLAGS_port << FLAGS_route << std::endl;
   HTTP(FLAGS_port).Join();
   return 0;
