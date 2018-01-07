@@ -1,1 +1,1 @@
-../Schema/golden/smoke_test_template_2.h
+../schema/golden/smoke_test_template_2.h
