@@ -934,10 +934,10 @@ TEST(TransactionalStorage, SmokeTest) {
 
 TEST(TransactionalStorage, ExposedFieldNames) {
   using namespace transactional_storage_test;
-  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+  using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
-  Storage storage;
-  const auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+  auto storage = storage_t::CreateMasterStorage();
+  const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
     EXPECT_EQ("d", fields.d.FieldName());
     EXPECT_EQ("umany_to_umany", fields.umany_to_umany.FieldName());
     EXPECT_EQ("omany_to_omany", fields.omany_to_omany.FieldName());

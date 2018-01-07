@@ -497,7 +497,7 @@ struct ReflectorImpl {
 
   // The right hand side of this `unordered_map` is to make sure the underlying instance
   // has a fixed in-memory location, allowing returning it by const reference.
-  std::unordered_map<TypeID, Optional<ReflectedType>, CurrentHashFunction<TypeID>> map_;
+  std::unordered_map<TypeID, Optional<ReflectedType>, GenericHashFunction<TypeID>> map_;
 };
 
 inline ReflectorImpl& Reflector() { return ReflectorImpl::ThreadLocalInstance(); }
