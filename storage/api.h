@@ -617,7 +617,7 @@ class RESTfulStorage {
                   const STORAGE_IMPL& storage = generic_input.storage;
                   const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request);
                   storage.template ReadOnlyTransaction<current::locks::MutexLockStatus::AlreadyLocked>(
-                              // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                              // TODO(dkorolev): Revisit this as Owned/Borrowed are the organic part of Storage.
                               // Capture local variables by value for safe async transactions.
                               [&storage, &f_run_query, handler, cqs_parameters, type_erased_query, context](
                                   immutable_fields_t fields) -> Response {
@@ -666,7 +666,7 @@ class RESTfulStorage {
                   STORAGE_IMPL& storage = generic_input.storage;
                   const cqs::CQSParameters cqs_parameters(generic_input.restful_url_prefix, request);
                   storage.template ReadWriteTransaction<current::locks::MutexLockStatus::AlreadyLocked>(
-                              // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
+                              // TODO(dkorolev): Revisit this as Owned/Borrowed are the organic part of Storage.
                               // Capture local variables by value for safe async transactions.
                               [&storage, &f_run_command, handler, cqs_parameters, type_erased_command, ctx](
                                   mutable_fields_t fields) -> Response {
