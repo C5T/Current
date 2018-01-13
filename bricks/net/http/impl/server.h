@@ -615,7 +615,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
                 connection_.BlockingWrite(data_cache_, cache_size_, true);
                 cache_size_ = 0;
               }
-              if (flush == ChunkFlush::Flush || chunk_size > cache_size_) {
+              if (flush == ChunkFlush::Flush || chunk_size > CACHE_SIZE) {
                 connection_.BlockingWrite(chunk_header, true);
                 connection_.BlockingWrite(std::forward<T>(data), true);
                 connection_.BlockingWrite(constants::kCRLF, false);

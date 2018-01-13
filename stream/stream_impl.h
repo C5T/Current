@@ -143,13 +143,6 @@ class StreamPublisherImpl {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t PublisherPublishUncheckedImpl(std::string&& raw_log_line) {
-	  const auto result = data_->persister.template PersisterPublishUncheckedImpl<MLS>(std::move(raw_log_line));
-    data_->notifier.NotifyAllOfExternalWaitableEvent();
-    return result;
-  }
-
-  template <current::locks::MutexLockStatus MLS>
   idxts_t PublisherPublishUncheckedImpl(const std::string& raw_log_line) {
     const auto result = data_->persister.template PersisterPublishUncheckedImpl<MLS>(raw_log_line);
     data_->notifier.NotifyAllOfExternalWaitableEvent();
