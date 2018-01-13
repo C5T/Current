@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BENCHMARK_SCENARIO_SIMPLE_HTTP_H
-#define BENCHMARK_SCENARIO_SIMPLE_HTTP_H
+#ifndef EXAMLPES_BENCHMARK_GENERIC_SCENARIO_SIMPLE_HTTP_H
+#define EXAMLPES_BENCHMARK_GENERIC_SCENARIO_SIMPLE_HTTP_H
 
 #include "benchmark.h"
 
@@ -68,4 +68,4 @@ SCENARIO(current_http_server, "Use Current's HTTP stack for simple HTTP client-s
 
 REGISTER_SCENARIO(current_http_server);
 
-#endif  // BENCHMARK_SCENARIO_SIMPLE_HTTP_H
+#endif  // EXAMLPES_BENCHMARK_GENERIC_SCENARIO_SIMPLE_HTTP_H

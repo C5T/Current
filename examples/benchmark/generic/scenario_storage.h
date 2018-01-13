@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BENCHMARK_SCENARIO_STORAGE_H
-#define BENCHMARK_SCENARIO_STORAGE_H
+#ifndef EXAMLPES_BENCHMARK_GENERIC_SCENARIO_STORAGE_H
+#define EXAMLPES_BENCHMARK_GENERIC_SCENARIO_STORAGE_H
 
 #include "../../../port.h"
 
@@ -157,4 +157,4 @@ SCENARIO(storage, "Storage transactions test.") {
 
 REGISTER_SCENARIO(storage);
 
-#endif  // BENCHMARK_SCENARIO_STORAGE_H
+#endif  // EXAMLPES_BENCHMARK_GENERIC_SCENARIO_STORAGE_H

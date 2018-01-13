@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef EXAMPLES_BENCHMARK_HTTP_SERVER_H
+#define EXAMPLES_BENCHMARK_HTTP_SERVER_H
 
 #include "../../../current.h"
 
@@ -50,4 +50,4 @@ class BenchmarkTestServer {
   HTTPRoutesScope scope_;
 };
 
-#endif  // SERVER_H
+#endif  // EXAMPLES_BENCHMARK_HTTP_SERVER_H

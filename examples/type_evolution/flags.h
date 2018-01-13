@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef FLAGS_H
-#define FLAGS_H
+#ifndef EXAMPLES_TYPE_EVOLUTION_FLAGS_H
+#define EXAMPLES_TYPE_EVOLUTION_FLAGS_H
 
 #include "../../bricks/dflags/dflags.h"
 
@@ -41,4 +41,4 @@ DECLARE_string(schema_from_file);
 DECLARE_string(schema_into_file);
 #endif
 
-#endif  // FLAGS_H
+#endif  // EXAMPLES_TYPE_EVOLUTION_FLAGS_H
