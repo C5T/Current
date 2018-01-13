@@ -702,12 +702,12 @@ CURRENT_STRUCT(SimpleWithOptionals) {
   CURRENT_FIELD(t, Optional<std::string>);
 };
 
-CURRENT_STRUCT(Tricky) {
-  CURRENT_FIELD(s, Optional<std::string>);
+CURRENT_STRUCT(Tricky, Simple) {
+  CURRENT_FIELD(os, Optional<std::string>);
   CURRENT_FIELD(p, (std::pair<std::string, std::string>));
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(m, (std::map<std::string, std::string>));
-  CURRENT_FIELD(z, Optional<bool>);
+  CURRENT_FIELD(ob, Optional<bool>);
   CURRENT_FIELD(q, Optional<Simple>);
 };
 
@@ -813,16 +813,24 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
   {
     Tricky tricky;
 
+    // Testing `Simple` base class fields.
+    tricky.a = 0;
+    tricky.s = "bar";
+    URL("/tricky?a=42&s=foo").query.FillObject(tricky);
+    EXPECT_EQ(42, tricky.a);
+    EXPECT_EQ("foo", tricky.s);
+
+    // Testing `Tricky` class fields.
     URL("/tricky").query.FillObject(tricky);
-    EXPECT_FALSE(Exists(tricky.s));
+    EXPECT_FALSE(Exists(tricky.os));
 
-    URL("/tricky?s=foo").query.FillObject(tricky);
-    ASSERT_TRUE(Exists(tricky.s));
-    EXPECT_EQ("foo", Value(tricky.s));
+    URL("/tricky?os=foo").query.FillObject(tricky);
+    ASSERT_TRUE(Exists(tricky.os));
+    EXPECT_EQ("foo", Value(tricky.os));
 
-    URL("/tricky?s=").query.FillObject(tricky);
-    ASSERT_TRUE(Exists(tricky.s));
-    EXPECT_EQ("", Value(tricky.s));
+    URL("/tricky?os=").query.FillObject(tricky);
+    ASSERT_TRUE(Exists(tricky.os));
+    EXPECT_EQ("", Value(tricky.os));
 
     URL("/tricky?p=[\"bar\",\"baz\"]").query.FillObject(tricky);
     EXPECT_EQ("bar", tricky.p.first);
@@ -837,6 +845,11 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
     ASSERT_EQ(2u, tricky.m.size());
     EXPECT_EQ("value", tricky.m["key"]);
     EXPECT_EQ("indeed", tricky.m["works"]);
+
+    ASSERT_FALSE(Exists(tricky.ob));
+    URL("/tricky?ob").query.FillObject(tricky);
+    EXPECT_TRUE(Exists(tricky.ob));
+    EXPECT_TRUE(Value(tricky.ob));
 
     // When parsing JSON-s, the complete JSON should be valid.
     // Unlike top-level URL parametrers, a field missing inside a JSON results in an exception.

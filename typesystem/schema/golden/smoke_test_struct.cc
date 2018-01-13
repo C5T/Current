@@ -69,7 +69,7 @@ struct TemplatedInheriting_T9200000002835747520 : A {
 };
 struct Templated_T9209626390174323094 {
   int32_t foo;
-  TemplatedInheriting_T9200000002835747520 bar;
+  TemplatedInheriting_Z bar;
 };
 struct TemplatedInheriting_T9209980946934124423 : A {
   std::string baz;
@@ -85,7 +85,7 @@ struct Templated_T9200000002835747520 {
 };
 struct TemplatedInheriting_T9201673071807149456 : A {
   std::string baz;
-  Templated_T9200000002835747520 meh;
+  Templated_Z meh;
 };
 struct TrickyEvolutionCases {
   Optional<std::string> o1;
@@ -106,12 +106,12 @@ struct FullTest {
 
   // Field | descriptions | FTW !
   Variant_B_A_B_B2_C_Empty_E q;
-  Templated_T9209980946934124423 w1;
-  Templated_T9227782344077896555 w2;
-  Templated_T9209626390174323094 w3;
-  TemplatedInheriting_T9209980946934124423 w4;
-  TemplatedInheriting_T9227782344077896555 w5;
-  TemplatedInheriting_T9201673071807149456 w6;
+  Templated_Z w1;
+  Templated_Z w2;
+  Templated_Z w3;
+  TemplatedInheriting_Z w4;
+  TemplatedInheriting_Z w5;
+  TemplatedInheriting_Z w6;
   TrickyEvolutionCases tsc;
 };
 }  // namespace current_userspace
