@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BENCHMARK_H
-#define BENCHMARK_H
+#ifndef EXAMPLES_BENCHMARK_GENERIC_BENCHMARK_H
+#define EXAMPLES_BENCHMARK_GENERIC_BENCHMARK_H
 
 #include "../../../port.h"
 
@@ -73,4 +73,4 @@ struct ScenariosRegisterer {
   };                                                                                                           \
   static name##_registerer name##_registerer_static_instance;
 
-#endif  // BENCHMARK_H
+#endif  // EXAMPLES_BENCHMARK_GENERIC_BENCHMARK_H

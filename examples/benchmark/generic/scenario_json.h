@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BENCHMARK_SCENARIO_JSON_H
-#define BENCHMARK_SCENARIO_JSON_H
+#ifndef EXAMLPES_BENCHMARK_GENERIC_SCENARIO_JSON_H
+#define EXAMLPES_BENCHMARK_GENERIC_SCENARIO_JSON_H
 
 #include "../../../port.h"
 
@@ -195,4 +195,4 @@ SCENARIO(json, "JSON performance test.") {
 
 REGISTER_SCENARIO(json);
 
-#endif  // BENCHMARK_SCENARIO_JSON_H
+#endif  // EXAMLPES_BENCHMARK_GENERIC_SCENARIO_JSON_H

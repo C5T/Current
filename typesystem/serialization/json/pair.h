@@ -68,7 +68,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::pair<TF, TS>> {
       json_parser.Inner(&json_parser.Current()[static_cast<rapidjson::SizeType>(1)], destination.second);
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
                (json_parser && !(json_parser.Current().IsArray() && json_parser.Current().Size() == 2u))) {
-      throw JSONSchemaException("pair as array", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("pair as array", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -82,7 +82,7 @@ struct DeserializeImpl<json::JSONParser<JSONFormat::NewtonsoftFSharp>, std::pair
       json_parser.Inner(&json_parser.Current()["Item1"], destination.first);
       json_parser.Inner(&json_parser.Current()["Item2"], destination.second);
     } else {
-      throw JSONSchemaException("pair as an object of {Item1,Item2}", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("pair as an object of {Item1,Item2}", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };

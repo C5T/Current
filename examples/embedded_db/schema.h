@@ -24,8 +24,8 @@ SOFTWARE.
 
 // TODO(dkorolev): Refactor this example to use `CURRENT_STORAGE`, or retire it.
 
-#ifndef SCHEMA_H
-#define SCHEMA_H
+#ifndef EXAMPLES_EMBEDDED_DB_SCHEMA_H
+#define EXAMPLES_EMBEDDED_DB_SCHEMA_H
 
 #include "../../current.h"
 
@@ -87,4 +87,4 @@ CURRENT_STRUCT(Error) {
   CURRENT_CONSTRUCTOR(Error)(const std::string& error = "Internal error.") : error(error) {}
 };
 
-#endif  // SCHEMA_H
+#endif  // EXAMPLES_EMBEDDED_DB_SCHEMA_H

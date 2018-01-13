@@ -60,7 +60,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_set<T, HASH
         destination.insert(std::move(element));
       }
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
-      throw JSONSchemaException("[unordered_]set as array", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("[unordered_]set as array", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };

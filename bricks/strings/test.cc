@@ -855,6 +855,77 @@ TEST(Regex, MemoryOwnershipSmokeTest) {
   EXPECT_EQ("foo@0, bar@4", current::strings::Join(output, ", "));
 }
 
+TEST(Regex, SubstringIterationSmokeTest) {
+  const std::vector<std::string> cs({
+      "(?<foo>foo)", "(?<bar>bar)",
+  });
+  std::string const foo_bar = "foo bar";
+  {
+    std::vector<std::string> output;
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin(), foo_bar.end())) {
+      if (token.Has("foo")) {
+        output.push_back("foo@" + current::ToString(token.position()));
+      } else if (token.Has("bar")) {
+        output.push_back("bar@" + current::ToString(token.position()));
+      } else {
+        output.push_back("error");
+      }
+    }
+    EXPECT_EQ("foo@0, bar@4", current::strings::Join(output, ", "));
+  }
+  {
+    std::vector<std::string> output;
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin(), foo_bar.begin() + 3u)) {
+      if (token.Has("foo")) {
+        output.push_back("foo@" + current::ToString(token.position()));
+      } else if (token.Has("bar")) {
+        output.push_back("bar@" + current::ToString(token.position()));
+      } else {
+        output.push_back("error");
+      }
+    }
+    EXPECT_EQ("foo@0", current::strings::Join(output, ", "));
+  }
+  {
+    std::vector<std::string> output;
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 3u, foo_bar.begin() + 7u)) {
+      if (token.Has("foo")) {
+        output.push_back("foo@" + current::ToString(token.position()));
+      } else if (token.Has("bar")) {
+        output.push_back("bar@" + current::ToString(token.position()));
+      } else {
+        output.push_back("error");
+      }
+    }
+    EXPECT_EQ("bar@1", current::strings::Join(output, ", "));  // `@1` as the first character is a space.
+  }
+  {
+    std::vector<std::string> output;
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 5u, foo_bar.begin() + 7u)) {
+      if (token.Has("foo")) {
+        output.push_back("foo@" + current::ToString(token.position()));
+      } else if (token.Has("bar")) {
+        output.push_back("bar@" + current::ToString(token.position()));
+      } else {
+        output.push_back("error");
+      }
+    }
+    EXPECT_TRUE(output.empty());
+  }
+  {
+    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 0u, foo_bar.begin() + 7u);
+    EXPECT_FALSE(iterable.begin() == iterable.end());
+  }
+  {
+    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 0u, foo_bar.begin() + 2u);
+    EXPECT_TRUE(iterable.begin() == iterable.end());
+  }
+  {
+    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 5u, foo_bar.begin() + 7u);
+    EXPECT_TRUE(iterable.begin() == iterable.end());
+  }
+}
+
 TEST(UTF8StringLength, Smoke) {
   EXPECT_EQ(4u, current::strings::UTF8StringLength("test"));
   EXPECT_EQ(4u, current::strings::UTF8StringLength("тест"));

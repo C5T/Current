@@ -270,6 +270,18 @@ TEST(JSONSerialization, CPPTypes) {
   EXPECT_EQ(4u, ParseJSON<std::vector<std::vector<std::string>>>("[[],[],[],[]]").size());
   EXPECT_EQ("blah", ParseJSON<std::vector<std::vector<std::string>>>("[[],[\"\",\"blah\"],[],[]]")[1][1]);
 
+  // `std::vector<bool>` is a special case that needs a dedicated test.
+  EXPECT_EQ("[]", JSON(std::vector<bool>()));
+  EXPECT_EQ("[true,false,true]", JSON(std::vector<bool>{true, false, true}));
+  EXPECT_TRUE(ParseJSON<std::vector<bool>>("[]").empty());
+  {
+    const auto v = ParseJSON<std::vector<bool>>("[true, false, true]");
+    ASSERT_EQ(3u, v.size());
+    EXPECT_TRUE(v[0]);
+    EXPECT_FALSE(v[1]);
+    EXPECT_TRUE(v[2]);
+  }
+
   // `std::map<>` is serialized as object for string keys, and as array of pairs for other key types.
   using map_int_int_t = std::map<int, int>;
   using map_string_int_t = std::map<std::string, int>;

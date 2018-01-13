@@ -83,7 +83,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
     if (json_parser && json_parser.Current().IsUint64()) {
       destination = static_cast<T>(json_parser.Current().GetUint64());
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsUint64())) {
-      throw JSONSchemaException("unsigned integer", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("unsigned integer", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -97,7 +97,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
     if (json_parser && json_parser.Current().IsInt64()) {
       destination = static_cast<T>(json_parser.Current().GetInt64());
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsInt64())) {
-      throw JSONSchemaException("integer", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("integer", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -109,7 +109,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, float> {
     if (json_parser && json_parser.Current().IsNumber()) {
       destination = static_cast<float>(json_parser.Current().GetDouble());
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !(json_parser.Current().IsNumber()))) {
-      throw JSONSchemaException("float", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("float", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -121,7 +121,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, double> {
     if (json_parser && json_parser.Current().IsNumber()) {
       destination = json_parser.Current().GetDouble();
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsNumber())) {
-      throw JSONSchemaException("double", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("double", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -133,7 +133,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::string> {
     if (json_parser && json_parser.Current().IsString()) {
       destination.assign(json_parser.Current().GetString(), json_parser.Current().GetStringLength());
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsString())) {
-      throw JSONSchemaException("string", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("string", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -146,7 +146,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, bool> {
       destination = json_parser.Current().IsTrue();
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value ||
                (json_parser && !(json_parser.Current().IsTrue() || json_parser.Current().IsFalse()))) {
-      throw JSONSchemaException("bool", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("bool", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -158,7 +158,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::milliseconds>
     if (json_parser && json_parser.Current().IsInt64()) {
       destination = std::chrono::milliseconds(json_parser.Current().GetInt64());
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsInt64())) {
-      throw JSONSchemaException("milliseconds as integer", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("milliseconds as integer", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -170,7 +170,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::chrono::microseconds>
     if (json_parser && json_parser.Current().IsInt64()) {
       destination = std::chrono::microseconds(json_parser.Current().GetInt64());
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsInt64())) {
-      throw JSONSchemaException("microseconds as integer", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("microseconds as integer", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };

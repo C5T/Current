@@ -158,6 +158,14 @@ class NamedRegexCapturer {
           owned_string_(std::move(s)),
           begin_(owned_string_.begin(), owned_string_.end(), data_->transformed_re) {}
 
+    // A special usecase for finding the match(es) over a substring.
+    // The caller must own the string.
+    Iterable(std::shared_ptr<NamedRegexCapturer::Data> data,
+             std::string::const_iterator begin,
+             std::string::const_iterator end)
+        : data_(std::move(data)),
+          begin_(begin, end, data_->transformed_re) {}
+
     struct Iterator {
       const std::shared_ptr<NamedRegexCapturer::Data> data_shared_ptr_;
       const NamedRegexCapturer::Data& data_;
@@ -211,6 +219,10 @@ class NamedRegexCapturer {
   template <typename S>
   Iterable Iterate(S&& s) const {
     return Iterable(data_, std::forward<S>(s));
+  }
+
+  Iterable Iterate(std::string::const_iterator begin, std::string::const_iterator end) const {
+    return Iterable(data_, begin, end);
   }
 
   // Various getters.

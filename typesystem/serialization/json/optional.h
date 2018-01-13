@@ -129,7 +129,8 @@ struct DeserializeImpl<json::JSONParser<JSONFormat::NewtonsoftFSharp>, Optional<
         }
       }
       if (!ok) {
-        throw JSONSchemaException("optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`", json_parser);
+        CURRENT_THROW(JSONSchemaException("optional as `null` or `{\"Case\":\"Some\",\"Fields\":[value]}`",
+                                          json_parser));
       }
     }
   }

@@ -160,7 +160,7 @@ class HTTPServerPOSIX final {
   // The constructor starts listening on the specified port.
   // Since instances of `HTTPServerPOSIX` are created via a singleton,
   // a listening thread will only be created once per port, on the first access to that port.
-  explicit HTTPServerPOSIX(int port)
+  explicit HTTPServerPOSIX(uint16_t port)
       : terminating_(false), port_(port), thread_(&HTTPServerPOSIX::Thread, this, current::net::Socket(port)) {}
 
   // The destructor closes the socket.
@@ -391,7 +391,7 @@ class HTTPServerPOSIX final {
       }
 
       const size_t arg_begin_index = remaining_path.rfind('/') + 1;
-      output_url_args.add(remaining_path.substr(arg_begin_index));
+      output_url_args.add(URL::DecodeURIComponent(remaining_path.substr(arg_begin_index)));
       remaining_path.resize(arg_begin_index);
     }
 
@@ -448,6 +448,8 @@ class HTTPServerPOSIX final {
         // The `ChunkSizeNotAValidHEXValue` situation, if emerged, is already handled with a "400 BAD REQUEST" response.
       } catch (const current::net::HTTPPayloadTooLarge&) {
         // The `HTTPPayloadTooLarge` situation, if emerged, is already handled with a "413 ENTITY TOO LARGE" response.
+      } catch (const current::net::HTTPRequestBodyLengthNotProvided&) {
+        // The `HTTPRequestBodyLengthNotProvided` situation, if emerged, is already handled with "411 LENGTH REQUIRED".
       } catch (const current::net::EmptySocketException&) {  // LCOV_EXCL_LINE
         // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
@@ -524,7 +526,7 @@ class HTTPServerPOSIX final {
   HTTPServerPOSIX() = delete;
 
   std::atomic_bool terminating_;
-  const int port_;
+  const uint16_t port_;
   std::thread thread_;
 
   // TODO(dkorolev): Look into read-write mutexes here.

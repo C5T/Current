@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef EVENT_COLLECTOR_H
-#define EVENT_COLLECTOR_H
+#ifndef EXAMPLES_EVENT_COLLECTOR_H
+#define EXAMPLES_EVENT_COLLECTOR_H
 
 #include <functional>
 #include <map>
@@ -163,4 +163,4 @@ class EventCollectorHTTPServer {
   HTTPRoutesScope http_route_scope_;
 };
 
-#endif  // EVENT_COLLECTOR_H
+#endif  // EXAMPLES_EVENT_COLLECTOR_H
