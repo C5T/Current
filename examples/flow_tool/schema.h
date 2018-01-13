@@ -77,7 +77,7 @@ CURRENT_STRUCT(Healthz) {
   CURRENT_FIELD(up, bool, true);
   CURRENT_FIELD(uptime, std::string);
   CURRENT_FIELD(start_time_epoch_us, std::chrono::microseconds);
-  CURRENT_FIELD(init_time_us, std::chrono::microseconds);
+  CURRENT_FIELD(init_duration_us, std::chrono::microseconds);
   CURRENT_FIELD(uptime_us, std::chrono::microseconds);
 };
 

@@ -84,7 +84,7 @@ class FlowTool final {
     healthz_response.up = (ready_time_epoch_us_ != start_time_epoch_us_);
     healthz_response.uptime = current::strings::TimeIntervalAsHumanReadableString(now - start_time_epoch_us_);
     healthz_response.start_time_epoch_us = start_time_epoch_us_;
-    healthz_response.init_time_us = ready_time_epoch_us_ - start_time_epoch_us_;
+    healthz_response.init_duration_us = ready_time_epoch_us_ - start_time_epoch_us_;
     healthz_response.uptime_us = now - start_time_epoch_us_;
     r(healthz_response);
   }
