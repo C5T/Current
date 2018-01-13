@@ -1,0 +1,18 @@
+- [ ] Implement basic file system GET.
+- [ ] Implement basic file system PUT.
+- [ ] Implement basic file system DELETE.
+- [ ] Implement basic file system rename (via PATCH, I'd assume).
+- [ ] Directories should require a slash at the end, files should not.
+- [ ] File versioning, and looking at different versions.
+- [ ] The value of the blob should be a strong variant type, that can be `#define`-d externally.
+- [ ] The namespace should also come from a `#define`, to enable more than one `FlowTool` header per binary.
+- [ ] HTML output, and move the `Accept: text/html` part into `blocks/http`.
+- [ ] Add some static HTML (`base64` would do for now. -- D.K.).
+- [ ] Add a standalone tool along with the unit test.
+- [ ] Persistence and starting from a snapshot.
+- [ ] Users and authentication.
+- [ ] Auth in transaction meta fields.
+- [ ] Access permissions.
+- [ ] Custom validation (server-side).
+- [ ] Custom actions per file type (more browser-side).
+- [ ] Export into certain directory (maybe even dynamically, with a unit test using some temporary subdirectory).
