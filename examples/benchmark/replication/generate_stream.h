@@ -26,8 +26,8 @@
 
 #include "entry.h"
 
-#ifndef BENCHMARK_REPLICATION_GENERATE_STREAM_H
-#define BENCHMARK_REPLICATION_GENERATE_STREAM_H
+#ifndef EXAMPLES_BENCHMARK_REPLICATION_GENERATE_STREAM_H
+#define EXAMPLES_BENCHMARK_REPLICATION_GENERATE_STREAM_H
 
 namespace benchmark {
 namespace replication {
@@ -58,4 +58,4 @@ inline void GenerateStream(const std::string& output_file,
 }  // namespace replication
 }  // namespace benchmark
 
-#endif  // BENCHMARK_REPLICATION_GENERATE_STREAM_H
+#endif  // EXAMPLES_BENCHMARK_REPLICATION_GENERATE_STREAM_H

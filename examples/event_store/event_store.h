@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef EVENT_STORE_H
-#define EVENT_STORE_H
+#ifndef EXAMPLES_EVENT_STORE_EVENT_STORE_H
+#define EXAMPLES_EVENT_STORE_EVENT_STORE_H
 
 #include "../../typesystem/struct.h"
 #include "../../storage/storage.h"
@@ -139,4 +139,4 @@ struct EventStore final {
   }
 };
 
-#endif  // EVENT_STORE_H
+#endif  // EXAMPLES_EVENT_STORE_EVENT_STORE_H

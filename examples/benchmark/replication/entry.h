@@ -22,8 +22,8 @@
  SOFTWARE.
  *******************************************************************************/
 
-#ifndef BENCHMARK_REPLICATION_ENTRY_H
-#define BENCHMARK_REPLICATION_ENTRY_H
+#ifndef EXAMPLES_BENCHMARK_REPLICATION_ENTRY_H
+#define EXAMPLES_BENCHMARK_REPLICATION_ENTRY_H
 
 #include "../../../typesystem/struct.h"
 
@@ -40,4 +40,4 @@ CURRENT_STRUCT(Entry) {
 }  // namespace replication
 }  // namespace benchmark
 
-#endif  // BENCHMARK_REPLICATION_ENTRY_H
+#endif  // EXAMPLES_BENCHMARK_REPLICATION_ENTRY_H

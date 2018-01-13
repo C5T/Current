@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef IRIS_H
-#define IRIS_H
+#ifndef EXAMPLES_IRIS_IRIS_H
+#define EXAMPLES_IRIS_IRIS_H
 
 #include "../../typesystem/struct.h"
 #include "../../storage/storage.h"
@@ -45,4 +45,4 @@ CURRENT_STRUCT(LabeledFlower) {
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, LabeledFlower, LabeledFlowersDictionary);
 CURRENT_STORAGE(LabeledFlowersDB) { CURRENT_STORAGE_FIELD(flowers, LabeledFlowersDictionary); };
 
-#endif  // IRIS_H
+#endif  // EXAMPLES_IRIS_IRIS_H

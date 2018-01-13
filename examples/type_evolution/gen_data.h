@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef GEN_DATA_H
-#define GEN_DATA_H
+#ifndef EXAMPLES_TYPE_EVOLUTION_GEN_DATA_H
+#define EXAMPLES_TYPE_EVOLUTION_GEN_DATA_H
 
 #include "schema.h"
 
@@ -48,4 +48,4 @@ inline void GenerateData(const std::string& filename) {
     GenerateData(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_data_##realm##_file).c_str()); \
   }
 
-#endif  // GEN_DATA_H
+#endif  // EXAMPLES_TYPE_EVOLUTION_GEN_DATA_H

@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef GEN_SCHEMA_H
-#define GEN_SCHEMA_H
+#ifndef EXAMPLES_TYPE_EVOLUTION_GEN_SCHEMA_H
+#define EXAMPLES_TYPE_EVOLUTION_GEN_SCHEMA_H
 
 #include "schema.h"
 
@@ -45,4 +45,4 @@ inline void GenerateSchema(const std::string& filename, const std::string& expos
     GenerateSchema(current::FileSystem::JoinPath(FLAGS_golden_dir, FLAGS_schema_##realm##_file).c_str(), Realm); \
   }
 
-#endif  // GEN_SCHEMA_H
+#endif  // EXAMPLES_TYPE_EVOLUTION_GEN_SCHEMA_H
