@@ -55,8 +55,8 @@ CURRENT_STRUCT(NamespaceToExpose) {
   CURRENT_CONSTRUCTOR(NamespaceToExpose)(const std::string& name = "Schema") : name(name) {}
   template <typename T>
   NamespaceToExpose& AddType(const std::string& exported_type_name) {
-    if (exported_type_name != CurrentTypeName<T>()) {
-      types[exported_type_name] = Value<ReflectedTypeBase>(Reflector().ReflectType<T>()).type_id;
+    if (exported_type_name != CurrentTypeName<T, NameFormat::Z>()) {
+      types[exported_type_name] = CurrentTypeID<T>();
     }
     return *this;
   }
@@ -179,12 +179,18 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
   static void PrintCurrentStruct(std::ostream& os,
                                  const ReflectedType_Struct& s,
                                  std::function<std::string(TypeID, const std::string&)> type_name) {
-    const std::string struct_name = s.CanonicalName();
+    const std::string struct_name = s.native_name;
     os << "CURRENT_STRUCT(" << struct_name;
-    if (s.super_id != TypeID::CurrentStruct) {
-      os << ", " << type_name(s.super_id, "");
+    if (Exists(s.super_id)) {
+      os << ", " << type_name(Value(s.super_id), "");
     }
     os << ") {\n";
+    if (Exists(s.template_inner_id)) {
+      CURRENT_ASSERT(s.native_name.length() >= 3u);
+      CURRENT_ASSERT(s.native_name.substr(s.native_name.length() - 2u) == "_Z");
+      os << "  CURRENT_EXPORTED_TEMPLATED_STRUCT(" << s.native_name.substr(0, s.native_name.length() - 2) << ", "
+         << type_name(Value(s.template_inner_id), "") << ");\n";
+    }
     for (const auto& f : s.fields) {
       // Type name should be put into parentheses if it contains commas. Putting all type names
       // into parentheses won't hurt, I've added the condition purely for aesthetic purposes. -- D.K.
@@ -223,9 +229,9 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
   static void PrintCurrentStruct(std::ostream& os,
                                  const ReflectedType_Struct& s,
                                  std::function<std::string(TypeID, const std::string&)> type_name) {
-    os << "struct " << s.CanonicalName();
-    if (s.super_id != TypeID::CurrentStruct) {
-      os << " : " << type_name(s.super_id, "::");
+    os << "struct " << s.TemplateInnerTypeExpandedName();
+    if (Exists(s.super_id)) {
+      os << " : " << type_name(Value(s.super_id), "::");
     }
     os << " {\n";
     bool first_field = true;
@@ -348,9 +354,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             oss_ << "Optional<" << self_.TypeName(o.optional_type, nmspc_) << '>';
           }
           void operator()(const ReflectedType_Variant& v) const { oss_ << OptionalNamespaceName(v) << v.name; }
-          void operator()(const ReflectedType_Struct& s) const {
-            oss_ << OptionalNamespaceName(s) << s.CanonicalName();
-          }
+          void operator()(const ReflectedType_Struct& s) const { oss_ << OptionalNamespaceName(s) << s.native_name; }
         };
 
         std::ostringstream oss;
@@ -390,9 +394,17 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         os_ << "CURRENT_NAMESPACE(" << nmspc << ") {\n";
         for (const auto& input_type : types_) {
           const auto& type_substance = input_type.second;
-          if (Exists<ReflectedType_Struct>(type_substance) || Exists<ReflectedType_Variant>(type_substance) ||
-              Exists<ReflectedType_Enum>(type_substance)) {
+          // Do not expose types that are templated, as their names may collide.
+          if ((Exists<ReflectedType_Struct>(type_substance) &&
+               !Exists(Value<ReflectedType_Struct>(type_substance).template_inner_id)) ||
+              Exists<ReflectedType_Variant>(type_substance) || Exists<ReflectedType_Enum>(type_substance)) {
             os_ << "  CURRENT_NAMESPACE_TYPE(" << TypeName(input_type.first, "::")
+                << ", current_userspace::" << TypeName(input_type.first) << ");\n";
+          } else if (Exists<ReflectedType_Struct>(type_substance) &&
+                     Exists(Value<ReflectedType_Struct>(type_substance).template_inner_id)) {
+            const std::string type_name = TypeName(input_type.first, "::");
+            os_ << "  CURRENT_NAMESPACE_TYPE("
+                << Value<ReflectedType_Struct>(type_substance).TemplateFullNameDecorator()(type_name)
                 << ", current_userspace::" << TypeName(input_type.first) << ");\n";
           }
         }
@@ -400,6 +412,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           const NamespaceToExpose& expose = Value(namespace_to_expose_);
           os_ << "\n  // Privileged types.\n";
           for (const auto& t : expose.types) {
+            // NOTE(dkorolev): If the uses requests to expose a templated type, it's their responsibility
+            // to only do it for at most one instantiation per type.
             os_ << "  CURRENT_NAMESPACE_TYPE(" << t.first << ", current_userspace::" << TypeName(t.second) << ");\n";
           }
         }
@@ -420,15 +434,21 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             // Default evolver for `CURRENT_STRUCT`.
             const auto bare_struct_name = TypeName(input_type.first, "::");
             const auto namespaced_origin_struct_name = TypeName(input_type.first, "typename " + nmspc);
-            const auto namespaced_from_struct_name = TypeName(input_type.first, "typename FROM");
-            const auto namespaced_into_struct_name = TypeName(input_type.first, "typename INTO");
+            auto namespaced_from_struct_name = TypeName(input_type.first, "typename FROM");
+            auto namespaced_into_struct_name = TypeName(input_type.first, "typename INTO");
             const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
             std::vector<std::string> fields;
             for (const auto& f : s.fields) {
               fields.push_back(f.name);
             }
             os_ << "// Default evolution for struct `" << bare_struct_name << "`.\n";
-            const std::string origin = namespaced_origin_struct_name;
+            std::string origin = namespaced_origin_struct_name;
+            if (Exists(s.template_inner_id)) {
+              const auto f = s.TemplateFullNameDecorator();
+              origin = f(origin);
+              namespaced_from_struct_name = f(namespaced_from_struct_name);
+              namespaced_into_struct_name = f(namespaced_into_struct_name);
+            }
             const std::string origin_guard =
                 "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
             os_ << "#ifndef " << origin_guard << '\n' << "#define " << origin_guard << '\n'
@@ -441,8 +461,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
                 << "      static_assert(::current::reflection::FieldCounter<" << namespaced_into_struct_name
                 << ">::value == " << fields.size() << ",\n"
                 << "                    \"Custom evolver required.\");\n";
-            if (s.super_id != TypeID::CurrentStruct) {
-              const std::string super_name = TypeName(s.super_id, "::");
+            if (Exists(s.super_id)) {
+              const std::string super_name = TypeName(Value(s.super_id), "::");
               os_ << "      CURRENT_COPY_SUPER(" << super_name << ");\n";
             }
             for (const auto& f : fields) {
@@ -528,10 +548,19 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             // Default evolver for this particular `Optional<T>`.
             // The global, top-level one, can only work if the underlying type does not change.
             const auto& o = Value<ReflectedType_Optional>(type_substance);
-            const auto bare_optional_type_name = TypeName(o.optional_type);
-            const auto namespaced_from_optional_type_name = TypeName(o.optional_type, "typename " + nmspc);
-            const auto namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
+            std::string bare_optional_type_name = TypeName(o.optional_type);
+            std::string namespaced_from_optional_type_name = TypeName(o.optional_type, "typename " + nmspc);
+            std::string namespaced_into_optional_type_name = TypeName(o.optional_type, "typename INTO");
             if (TypePrefix(o.optional_type) != TYPEID_BASIC_PREFIX) {
+              if (TypePrefix(o.optional_type) == TYPEID_STRUCT_PREFIX) {
+                const auto& s = Value<ReflectedType_Struct>(types_.at(o.optional_type));
+                if (Exists(s.template_inner_id)) {
+                  const auto f = s.TemplateFullNameDecorator();
+                  bare_optional_type_name = f(bare_optional_type_name);
+                  namespaced_from_optional_type_name = f(namespaced_from_optional_type_name);
+                  namespaced_into_optional_type_name = f(namespaced_into_optional_type_name);
+                }
+              }
               const std::string origin = "Optional<" + namespaced_from_optional_type_name + '>';
               const std::string origin_guard =
                   "DEFAULT_EVOLUTION_" + current::strings::ToUpper(SHA256(origin)) + "  // " + origin;
@@ -572,16 +601,20 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             const auto& type_substance = input_type.second;
             if (Exists<ReflectedType_Struct>(type_substance)) {
               // Boilerplate evolver for `CURRENT_STRUCT`.
-              const auto bare_struct_name = TypeName(input_type.first, "::");
+              auto bare_struct_name = TypeName(input_type.first, "::");
               const ReflectedType_Struct& s = Value<ReflectedType_Struct>(type_substance);
+              if (Exists(s.template_inner_id)) {
+                const auto f = s.TemplateFullNameDecorator();
+                bare_struct_name = f(bare_struct_name);
+              }
               std::vector<std::string> fields;
               for (const auto& f : s.fields) {
                 fields.push_back(f.name);
               }
               os_ << "CURRENT_STRUCT_EVOLVER(" << USER_REPLACE_ME << "Evolver, " << src_nmspc << ", "
                   << bare_struct_name << ", {\n";
-              if (s.super_id != TypeID::CurrentStruct) {
-                const std::string super_name = TypeName(s.super_id, "::");
+              if (Exists(s.super_id)) {
+                const std::string super_name = TypeName(Value(s.super_id), "::");
                 os_ << "  CURRENT_COPY_SUPER(" << super_name << ");\n";
               }
               for (const auto& f : s.fields) {
@@ -719,7 +752,9 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(o.optional_type)) << " option";
           }
           void operator()(const ReflectedType_Variant& v) const { oss_ << SanitizeFSharpSymbol(v.name); }
-          void operator()(const ReflectedType_Struct& s) const { oss_ << SanitizeFSharpSymbol(s.CanonicalName()); }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << SanitizeFSharpSymbol(s.TemplateInnerTypeExpandedName());
+          }
         };
 
         std::ostringstream oss;
@@ -764,8 +799,8 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
     // all base class fields are hoisted to the top of the record.
     void RecursivelyListStructFieldsForFSharp(std::ostringstream& os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
-        RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+      if (Exists(s.super_id)) {
+        RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
       }
       bool first_field = true;
       for (const auto& f : s.fields) {
@@ -784,7 +819,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       RecursivelyListStructFieldsForFSharp(os, s);
       const std::string fields = os.str();
       if (!fields.empty()) {
-        os_ << "\ntype " << SanitizeFSharpSymbol(s.CanonicalName()) << " = {\n" << fields << "}\n";
+        os_ << "\ntype " << SanitizeFSharpSymbol(s.TemplateInnerTypeExpandedName()) << " = {\n" << fields << "}\n";
       } else {
         empty_structs_.insert(s.type_id);
       }
@@ -858,7 +893,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
             }
             oss_ << "Algebraic " << current::strings::Join(cases, " / ") << " (a.k.a. `" << v.name << "`)";
           }
-          void operator()(const ReflectedType_Struct& s) const { oss_ << '`' << s.CanonicalName() << '`'; }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << '`' << s.TemplateInnerTypeExpandedName() << '`';
+          }
         };
 
         std::ostringstream oss;
@@ -892,9 +929,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
 
     // When dumping a derived `CURRENT_STRUCT` as a Markdown table, hoist base class fields to the top.
     void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
+      if (Exists(s.super_id)) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
-        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
       }
       for (const auto& f : s.fields) {
         temporary_os << "| `" << f.name << "` | " << TypeName(f.type_id) << " |";
@@ -910,9 +947,10 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       RecursivelyListStructFields(temporary_os, s);
       const std::string fields = temporary_os.str();
       // Print empty structs to Markdown, too. Their names need to be documented anyway.
-      os_ << "\n### `" << s.CanonicalName() << '`';
-      if (s.super_id != TypeID::CurrentStruct) {
-        os_ << ", extends `" << Value<ReflectedType_Struct>(types_.at(s.super_id)).CanonicalName() << '`';
+      os_ << "\n### `" << s.TemplateInnerTypeExpandedName() << '`';
+      if (Exists(s.super_id)) {
+        os_ << ", extends `"
+            << Value<ReflectedType_Struct>(types_.at(Value(s.super_id))).TemplateInnerTypeExpandedName() << '`';
       }
       if (!fields.empty()) {
         os_ << "\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n" << fields << '\n';
@@ -1041,7 +1079,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
           void operator()(const ReflectedType_Struct& s) const {
             variant_clean_type_names::object result;
-            result.kind = s.CanonicalName();
+            result.kind = s.TemplateInnerTypeExpandedName();
             result_ = result;
           }
         };
@@ -1079,9 +1117,9 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     // When dumping fields of a derived `CURRENT_STRUCT` as a JSON, hoist base class fields to the top.
     void RecursivelyListStructFieldsForJSON(JSONSchemaObject& object, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
+      if (Exists(s.super_id)) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
-        RecursivelyListStructFieldsForJSON(object, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+        RecursivelyListStructFieldsForJSON(object, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
       }
       for (const auto& f : s.fields) {
         JSONSchemaObjectField field;
@@ -1094,7 +1132,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     void operator()(const ReflectedType_Struct& s) const {
       JSONSchemaObject object;
-      object.object = s.CanonicalName();
+      object.object = s.TemplateInnerTypeExpandedName();
       RecursivelyListStructFieldsForJSON(object, s);
       schema_object_.push_back(std::move(object));
     }
@@ -1130,9 +1168,10 @@ struct LanguageTypeScriptReservedWordException : Exception {
 template <>
 struct LanguageSyntaxImpl<Language::TypeScript> final {
   static std::string Header(const std::string& unique_hash) {
+    // clang-format off
     return (
       std::string("// Autogenerated TypeScript and io-ts types for C5T/Current JSON.\n") +
-      "// peerDependencies: io-ts@0.5.1 c5t-current-schema-ts@0.1.0\n" +
+      "// peerDependencies: io-ts@^0.6.1 c5t-current-schema-ts@^0.2.1\n" +
       "// hash: " + unique_hash + "\n" +
       "/* tslint:disable */\n" +
       "\n" +
@@ -1140,11 +1179,13 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       "import * as C5TCurrent from 'c5t-current-schema-ts';\n" +
       "\n"
     );
+    // clang-format on
   }
 
   static std::string Footer(const std::string&) { return ""; }
 
   static void AssertValidTypeScriptIdentifier(const std::string& name) {
+    // clang-format off
     // https://github.com/Microsoft/TypeScript/blob/2a6aacd0ef614a38b08ef712adc377c13648f373/doc/spec.md#2.2.1
     static std::set<std::string> typescript_reserved_words{
       // TypeScript keywords that are reserved and cannot be used as an Identifier:
@@ -1159,6 +1200,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       // Imported symbols:
       "iots", "C5TCurrent"
     };
+    // clang-format on
     if (typescript_reserved_words.count(name)) {
       CURRENT_THROW(LanguageTypeScriptReservedWordException(name));
     }
@@ -1179,59 +1221,70 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
 
           TypeScriptTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss) : self_(self), oss_(oss) {}
 
+          std::string GetEscapedTypeNameForIdentifier(const TypeID type_id) const {
+            std::string output;
+            for (char c : self_.TypeName(type_id)) {
+              if (std::isalpha(c) || std::isdigit(c) || c == '_' || c == '$') {
+                output += c;
+              } else if (c == '.') {
+                // skip
+              } else {
+                output += '_';
+              }
+            }
+            return output;
+          }
+
           // `operator()(...)`-s of this block print TypeScript type name only, without the expansion.
           // They assume the declaration order is respected, and any dependencies have already been listed.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
             if (globals.typescript_name.count(p.type_id)) {
-              oss_ << globals.typescript_name.at(p.type_id) + "_IO";
+              oss_ << globals.typescript_name.at(p.type_id);
             } else {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
-          void operator()(const ReflectedType_Enum& e) const {
-            oss_ << "C5TCurrent.Enum_IO('" << e.name << "')";
-          }
+          void operator()(const ReflectedType_Enum& e) const { oss_ << e.name; }
           void operator()(const ReflectedType_Vector& v) const {
-            oss_ << "C5TCurrent.Vector_IO(" << self_.TypeName(v.element_type) << ")";
-          }
-          void operator()(const ReflectedType_Map& m) const {
-            const auto& globals = PrimitiveTypesList();
-            if (globals.typescript_name.count(m.key_type)) {
-              oss_ << "C5TCurrent.PrimitiveMap_IO(" << self_.TypeName(m.value_type) << ')';
-            } else {
-              oss_ << "C5TCurrent.NonPrimitiveMap_IO(" << self_.TypeName(m.key_type) << ", "
-                   << self_.TypeName(m.value_type) << ')';
-            }
-          }
-          void operator()(const ReflectedType_UnorderedMap& m) const {
-            const auto& globals = PrimitiveTypesList();
-            if (globals.typescript_name.count(m.key_type)) {
-              oss_ << "C5TCurrent.PrimitiveUnorderedMap_IO(" << self_.TypeName(m.value_type) << ')';
-            } else {
-              oss_ << "C5TCurrent.NonPrimitiveUnorderedMap_IO(" << self_.TypeName(m.key_type) << ", "
-                   << self_.TypeName(m.value_type) << ')';
-            }
-          }
-          void operator()(const ReflectedType_Set& s) const {
-            oss_ << "C5TCurrent.Set_IO(" << self_.TypeName(s.value_type) << ')';
-          }
-          void operator()(const ReflectedType_UnorderedSet& s) const {
-            oss_ << "C5TCurrent.UnorderedSet_IO(" << self_.TypeName(s.value_type) << ')';
+            oss_ << "C5TCurrentVector_" << GetEscapedTypeNameForIdentifier(v.element_type);
           }
           void operator()(const ReflectedType_Pair& p) const {
-            oss_ << "C5TCurrent.Pair_IO(" << self_.TypeName(p.first_type) << ", "
-                 << self_.TypeName(p.second_type) << ')';
+            oss_ << "C5TCurrentPair_" << GetEscapedTypeNameForIdentifier(p.first_type) << "_"
+                 << GetEscapedTypeNameForIdentifier(p.second_type);
+          }
+          void operator()(const ReflectedType_Map& m) const {
+            oss_ << "C5TCurrentMap_" << GetEscapedTypeNameForIdentifier(m.key_type) << "_"
+                 << GetEscapedTypeNameForIdentifier(m.value_type);
+          }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            oss_ << "C5TCurrentUnorderedMap_" << GetEscapedTypeNameForIdentifier(m.key_type) << "_"
+                 << GetEscapedTypeNameForIdentifier(m.value_type);
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            oss_ << "C5TCurrentSet_" << GetEscapedTypeNameForIdentifier(s.value_type);
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            oss_ << "C5TCurrentUnorderedSet_" << GetEscapedTypeNameForIdentifier(s.value_type);
           }
           void operator()(const ReflectedType_Optional& o) const {
-            oss_ << "C5TCurrent.Optional_IO(" << self_.TypeName(o.optional_type) << ')';
+            oss_ << "C5TCurrentOptional_" << GetEscapedTypeNameForIdentifier(o.optional_type);
           }
           void operator()(const ReflectedType_Variant& v) const {
-            oss_ << v.name << "_IO";
+            // Prevent too long type name: use the variant name only if it's not generated
+            // from the underlying type names.
+            // Assumes `v.name` is generated via `current::reflection::impl::CurrentVariantTypeNameImpl<NameFormat::Z,`.
+            const std::string prefix = "Variant_B_";
+            const std::string suffix = "_E";
+            const bool is_variant_type_name_generated =
+                (v.name.compare(0, prefix.size(), prefix) == 0 && v.name.size() >= suffix.size() &&
+                 v.name.compare(v.name.size() - suffix.size(), std::string::npos, suffix) == 0);
+            const std::string variant_type_name =
+                (is_variant_type_name_generated ? std::string("C5TCurrentVariant_T") + current::ToString(v.type_id)
+                                                : v.name);
+            oss_ << variant_type_name;
           }
-          void operator()(const ReflectedType_Struct& s) const {
-            oss_ << s.CanonicalName() << "_IO";
-          }
+          void operator()(const ReflectedType_Struct& s) const { oss_ << s.TemplateInnerTypeExpandedName(); }
         };
 
         std::ostringstream oss;
@@ -1248,41 +1301,102 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       // NOTE(sompylasar): Namespaces are not supported, types exported from a module can be imported as a namespace.
     }
 
+    void WriteRuntimeTypeDeclaration(const std::string type_name,
+                                     const std::string runtime_type_name,
+                                     const std::string runtime_type_impl_expression) const {
+      AssertValidTypeScriptIdentifier(type_name);
+      AssertValidTypeScriptIdentifier(runtime_type_name);
+      os_ << "\nexport const " << runtime_type_name << " = " << runtime_type_impl_expression;
+      os_ << ";\nexport type " << type_name << " = iots.TypeOf<typeof " << runtime_type_name << ">;\n";
+    }
+
+    void WriteRuntimeTypeDeclarationWithTypeIdName(const TypeID type_id,
+                                                   const std::string runtime_type_impl_expression) const {
+      const auto type_id_name = TypeName(type_id);
+      WriteRuntimeTypeDeclaration(type_id_name, type_id_name + "_IO", runtime_type_impl_expression);
+    }
+
     // `operator()`-s of this block print complete declarations of TypeScript types.
-    // The types that require complete declarations in TypeScript are enums, variants, and and structs.
+    // The types that require complete declarations in TypeScript are all types except primitives.
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum& e) const {
       AssertValidTypeScriptIdentifier(e.name);
-      os_ << "\nexport const " << e.name << "_IO = " << TypeName(e.underlying_type);
-      os_ << ";\nexport type " << e.name << " = iots.TypeOf<typeof " << e.name << "_IO>;\n";
+      // Ignoring `e.underlying_type` for now, only `number` is supported.
+      WriteRuntimeTypeDeclaration(e.name, e.name + "_IO", std::string("C5TCurrent.Enum_IO('") + e.name + "')");
     }
-    void operator()(const ReflectedType_Vector&) const {}
-    void operator()(const ReflectedType_Pair&) const {}
-    void operator()(const ReflectedType_Map&) const {}
-    void operator()(const ReflectedType_UnorderedMap&) const {}
-    void operator()(const ReflectedType_Set&) const {}
-    void operator()(const ReflectedType_UnorderedSet&) const {}
-    void operator()(const ReflectedType_Optional&) const {}
+    void operator()(const ReflectedType_Vector& v) const {
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          v.type_id, std::string("C5TCurrent.Vector_IO(") + TypeName(v.element_type) + "_IO)");
+    }
+    void operator()(const ReflectedType_Pair& p) const {
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          p.type_id,
+          std::string("C5TCurrent.Pair_IO(") + TypeName(p.first_type) + "_IO, " + TypeName(p.second_type) + "_IO)");
+    }
+    void operator()(const ReflectedType_Map& m) const {
+      const auto& globals = PrimitiveTypesList();
+      const std::string runtime_type_impl_expression =
+          (globals.typescript_name.count(m.key_type)
+               ? (std::string("C5TCurrent.PrimitiveMap_IO(") + TypeName(m.value_type) + "_IO)")
+               : (std::string("C5TCurrent.NonPrimitiveMap_IO(") + TypeName(m.key_type) + "_IO, " +
+                  TypeName(m.value_type) + "_IO)"));
+      WriteRuntimeTypeDeclarationWithTypeIdName(m.type_id, runtime_type_impl_expression);
+    }
+    void operator()(const ReflectedType_UnorderedMap& m) const {
+      const auto& globals = PrimitiveTypesList();
+      const std::string runtime_type_impl_expression =
+          (globals.typescript_name.count(m.key_type)
+               ? (std::string("C5TCurrent.PrimitiveUnorderedMap_IO(") + TypeName(m.value_type) + "_IO)")
+               : (std::string("C5TCurrent.NonPrimitiveUnorderedMap_IO(") + TypeName(m.key_type) + "_IO, " +
+                  TypeName(m.value_type) + "_IO)"));
+      WriteRuntimeTypeDeclarationWithTypeIdName(m.type_id, runtime_type_impl_expression);
+    }
+    void operator()(const ReflectedType_Set& s) const {
+      WriteRuntimeTypeDeclarationWithTypeIdName(s.type_id,
+                                                std::string("C5TCurrent.Set_IO(") + TypeName(s.value_type) + "_IO)");
+    }
+    void operator()(const ReflectedType_UnorderedSet& s) const {
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          s.type_id, std::string("C5TCurrent.UnorderedSet_IO(") + TypeName(s.value_type) + "_IO)");
+    }
+    void operator()(const ReflectedType_Optional& o) const {
+      WriteRuntimeTypeDeclarationWithTypeIdName(
+          o.type_id, std::string("C5TCurrent.Optional_IO(") + TypeName(o.optional_type) + "_IO)");
+    }
     void operator()(const ReflectedType_Variant& v) const {
-      AssertValidTypeScriptIdentifier(v.name);
-      os_ << "\nexport const " << v.name << "_IO = iots.union([\n";
-      std::vector<std::string> typenames;
+      const std::string variant_type_name = TypeName(v.type_id);
+
+      AssertValidTypeScriptIdentifier(variant_type_name);
+
+      std::vector<std::string> runtime_type_names;
       for (auto cit = v.cases.begin(); cit != v.cases.end(); ++cit) {
-        const std::string name = TypeName(*cit);
-        typenames.push_back(name);
-        os_ << "  " << name << ",\n";
+        const std::string case_type_name = TypeName(*cit);
+
+        const std::string unique_case_type_name = variant_type_name + "_VariantCase_" + case_type_name;
+        const std::string unique_case_runtime_type_name = unique_case_type_name + "_IO";
+        os_ << "\nexport const " << unique_case_runtime_type_name << " = iots.interface({ ";
+        os_ << "\"" << case_type_name << "\""
+            << ": " << case_type_name << "_IO, ";
+
+        // Accomodate every variation of JSON-serialized Variants: missing (undefined),
+        // present in empty-string key, present in dollar key.
+        const std::string type_id_runtime_type_impl_expression =
+            std::string("iots.union([ iots.undefined, iots.literal(\"T") + current::ToString(*cit) + "\") ])";
+        os_ << "\"\": " << type_id_runtime_type_impl_expression << ", ";
+        os_ << "\"$\": " << type_id_runtime_type_impl_expression << ", ";
+
+        os_ << "});\nexport type " << unique_case_type_name << " = iots.TypeOf<typeof " << unique_case_runtime_type_name
+            << ">;\n";
+        runtime_type_names.push_back(unique_case_runtime_type_name);
       }
-      typenames.push_back("iots.null");
-      os_ << "  " << "iots.null" << ",\n";
-      os_ << "], '" << v.name << "');\nexport type " << v.name << " = iots.UnionType<[\n";
-      for (auto cit = typenames.begin(); cit != typenames.end(); ++cit) {
-        os_ << "  typeof " << (*cit) << ((cit + 1) != typenames.end() ? ",\n" : "\n");
+      runtime_type_names.push_back("iots.null");
+
+      os_ << "\nexport const " << variant_type_name << "_IO = iots.union([\n";
+      for (auto cit = runtime_type_names.begin(); cit != runtime_type_names.end(); ++cit) {
+        os_ << "  " << (*cit) << ",\n";
       }
-      os_ << "], (\n";
-      for (auto cit = typenames.begin(); cit != typenames.end(); ++cit) {
-        os_ << "  iots.TypeOf<typeof " << (*cit) << ">" << ((cit + 1) != typenames.end() ? " |\n" : "\n");
-      }
-      os_ << ")>;\n";
+      os_ << "], '" << variant_type_name << "');\nexport type " << variant_type_name << " = iots.TypeOf<typeof "
+          << variant_type_name << "_IO>;\n";
     }
 
     void ListStructFieldsForTypeScript(std::ostringstream& os, const ReflectedType_Struct& s) const {
@@ -1294,30 +1408,30 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
           }
           AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
         }
-        os << "  " << f.name << ": " << TypeName(f.type_id) << ",\n";
+        os << "  " << f.name << ": " << TypeName(f.type_id) << "_IO,\n";
         first_field = false;
       }
     }
     void operator()(const ReflectedType_Struct& s) const {
-      const std::string name = s.CanonicalName();
+      const std::string name = s.TemplateInnerTypeExpandedName();
       AssertValidTypeScriptIdentifier(name);
       std::ostringstream os;
       ListStructFieldsForTypeScript(os, s);
       const std::string fields = os.str();
       os_ << "\nexport const " << name << "_IO = ";
       if (fields.empty()) {
-        if (s.super_id != TypeID::CurrentStruct) {
-          os_ << "iots.intersection([ " << TypeName(s.super_id) << " ], '" << name << "')";
+        if (Exists(s.super_id)) {
+          os_ << "iots.intersection([ " << TypeName(Value(s.super_id)) << "_IO ], '" << name << "')";
         } else {
           os_ << "iots.interface({}, '" << name << "')";
         }
       } else {
-        if (s.super_id != TypeID::CurrentStruct) {
-          os_ << "iots.intersection([ " << TypeName(s.super_id) << ", ";
+        if (Exists(s.super_id)) {
+          os_ << "iots.intersection([ " << TypeName(Value(s.super_id)) << "_IO, ";
         }
         os_ << "iots.interface({\n";
         os_ << fields;
-        if (s.super_id != TypeID::CurrentStruct) {
+        if (Exists(s.super_id)) {
           os_ << "}) ], '" << name << "')";
         } else {
           os_ << "}, '" << name << "')";
@@ -1384,7 +1498,7 @@ CURRENT_STRUCT(SchemaInfo) {
 template <>
 struct LanguageDescribeCaller<Language::InternalFormat> final {
   static std::string CallDescribe(const SchemaInfo* instance, bool, const Optional<NamespaceToExpose>&) {
-    return JSON(*instance);
+    return JSON<JSONFormat::Minimalistic>(*instance);
   }
 };
 
@@ -1396,8 +1510,8 @@ struct StructSchema final {
       if (!schema_.types.count(s.type_id)) {
         // Fill `types[type_id]` before traversing everything else to break possible circular dependencies.
         schema_.types.emplace(s.type_id, s);
-        if (s.super_id != TypeID::CurrentStruct) {
-          Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
+        if (Exists(s.super_id)) {
+          Reflector().ReflectedTypeByTypeID(Value(s.super_id)).Call(*this);
         }
         for (const auto& f : s.fields) {
           Reflector().ReflectedTypeByTypeID(f.type_id).Call(*this);

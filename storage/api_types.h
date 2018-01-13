@@ -695,6 +695,26 @@ using GenericMatrixIterator = typename GenericMatrixIteratorImplSelector<
     PARTIAL_KEY,
     typename ExtractRowOrColDimensionType<PARTIAL_KEY, FIELD>::matrix_dimension_t>::Impl;
 
+namespace cqs {
+
+struct CQSParameters {
+  CQSParameters(const std::string& restful_url_prefix, const Request& r)
+      : restful_url_prefix(restful_url_prefix),
+        original_url(r.url),
+        original_url_path_args(r.url_path_args),
+        http_method(r.method),
+        http_headers(r.headers) {}
+  const std::string& restful_url_prefix;
+  // TODO(mzhurovich+dkorolev): Consider creating a special structure instead of passing individual
+  // Request fields.
+  const URL& original_url;
+  const current::url::URLPathArgs& original_url_path_args;
+  const std::string& http_method;
+  const current::net::http::Headers& http_headers;
+};
+
+}  // namespace current::storage::rest::cqs
+
 }  // namespace rest
 }  // namespace storage
 }  // namespace current

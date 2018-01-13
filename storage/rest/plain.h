@@ -304,20 +304,20 @@ struct Plain {
 
     Response RunQuery(
         const Context&,
-        std::function<Response(ImmutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const std::string&)> f,
+        std::function<Response(ImmutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const cqs::CQSParameters&)> f,
         ImmutableFields<STORAGE> fields,
         std::shared_ptr<CurrentStruct> type_erased_query,
-        const std::string& restful_url_prefix) const {
-      return f(fields, std::move(type_erased_query), restful_url_prefix);
+        const cqs::CQSParameters& cqs_parameters) const {
+      return f(fields, std::move(type_erased_query), cqs_parameters);
     }
 
     Response RunCommand(
         const Context&,
-        std::function<Response(MutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const std::string&)> f,
+        std::function<Response(MutableFields<STORAGE>, std::shared_ptr<CurrentStruct>, const cqs::CQSParameters&)> f,
         MutableFields<STORAGE> fields,
         std::shared_ptr<CurrentStruct> type_erased_command,
-        const std::string& restful_url_prefix) const {
-      return f(fields, std::move(type_erased_command), restful_url_prefix);
+        const cqs::CQSParameters& cqs_parameters) const {
+      return f(fields, std::move(type_erased_command), cqs_parameters);
     }
   };
 

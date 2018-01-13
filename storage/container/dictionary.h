@@ -45,7 +45,10 @@ class GenericDictionary {
   using map_t = MAP<key_t, T>;
   using semantics_t = storage::semantics::Dictionary;
 
-  GenericDictionary(MutationJournal& journal) : journal_(journal) {}
+  GenericDictionary(const std::string& field_name, MutationJournal& journal)
+      : field_name_(field_name), journal_(journal) {}
+
+  const std::string& FieldName() const { return field_name_; }
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -151,6 +154,7 @@ class GenericDictionary {
   Iterator end() const { return Iterator(map_.cend()); }
 
  private:
+  const std::string field_name_;
   map_t map_;
   std::unordered_map<key_t, std::chrono::microseconds, GenericHashFunction<key_t>> last_modified_;
   MutationJournal& journal_;
