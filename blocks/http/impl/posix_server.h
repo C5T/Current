@@ -160,7 +160,7 @@ class HTTPServerPOSIX final {
   // The constructor starts listening on the specified port.
   // Since instances of `HTTPServerPOSIX` are created via a singleton,
   // a listening thread will only be created once per port, on the first access to that port.
-  explicit HTTPServerPOSIX(int port)
+  explicit HTTPServerPOSIX(uint16_t port)
       : terminating_(false), port_(port), thread_(&HTTPServerPOSIX::Thread, this, current::net::Socket(port)) {}
 
   // The destructor closes the socket.
@@ -526,7 +526,7 @@ class HTTPServerPOSIX final {
   HTTPServerPOSIX() = delete;
 
   std::atomic_bool terminating_;
-  const int port_;
+  const uint16_t port_;
   std::thread thread_;
 
   // TODO(dkorolev): Look into read-write mutexes here.
