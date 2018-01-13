@@ -59,13 +59,13 @@ struct FakeStreamReplicatorImpl {
     return this->operator()(JSON(entry), current.index, last);
   }
 
-  EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
-    const auto tab_pos = entry_json.find('\t');
+  EntryResponse operator()(const std::string& raw_log_line, uint64_t, idxts_t) {
+    const auto tab_pos = raw_log_line.find('\t');
     if (tab_pos != std::string::npos) {
-      count_of_a_letters_ += std::count(entry_json.begin() + tab_pos + 1u, entry_json.end(), 'A');
-      whole_data_length_ += entry_json.length() - tab_pos;
+      count_of_a_letters_ += std::count(raw_log_line.begin() + tab_pos + 1u, raw_log_line.end(), 'A');
+      whole_data_length_ += raw_log_line.length() - tab_pos;
     } else {
-      whole_data_length_ += entry_json.length();
+      whole_data_length_ += raw_log_line.length();
     }
     ++entries_replicated_;
     return EntryResponse::More;

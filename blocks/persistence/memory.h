@@ -167,14 +167,14 @@ class MemoryPersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t PersisterPublishUncheckedImpl(const std::string& entry_json) {
+  idxts_t PersisterPublishUncheckedImpl(const std::string& raw_log_line) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     const auto head = container_->head_;
-    const auto tab_pos = entry_json.find('\t');
+    const auto tab_pos = raw_log_line.find('\t');
     if (tab_pos == std::string::npos) {
-      CURRENT_THROW(MalformedEntryException(entry_json));
+      CURRENT_THROW(MalformedEntryException(raw_log_line));
     }
-    const auto idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    const auto idxts = ParseJSON<idxts_t>(raw_log_line.substr(0, tab_pos));
     const auto expected_index = static_cast<uint64_t>(container_->entries_.size());
     if (idxts.index != expected_index) {
       CURRENT_THROW(ss::InconsistentIndexException(expected_index, idxts.index));
@@ -182,7 +182,7 @@ class MemoryPersister {
     if (!(idxts.us > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), idxts.us));
     }
-    container_->entries_.emplace_back(idxts.us, ParseJSON<ENTRY>(entry_json.substr(tab_pos + 1)));
+    container_->entries_.emplace_back(idxts.us, ParseJSON<ENTRY>(raw_log_line.substr(tab_pos + 1)));
     container_->head_ = idxts.us;
     CURRENT_ASSERT(container_->head_ >= container_->entries_.back().first);
     return idxts;

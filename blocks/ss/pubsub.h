@@ -70,13 +70,13 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t PublishUnchecked(std::string&& entry_json) {
-    return IMPL::template PublisherPublishUncheckedImpl<MLS>(std::move(entry_json));
+  idxts_t PublishUnchecked(std::string&& raw_log_line) {
+    return IMPL::template PublisherPublishUncheckedImpl<MLS>(std::move(raw_log_line));
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t PublishUnchecked(const std::string& entry_json) {
-    return IMPL::template PublisherPublishUncheckedImpl<MLS>(entry_json);
+  idxts_t PublishUnchecked(const std::string& raw_log_line) {
+    return IMPL::template PublisherPublishUncheckedImpl<MLS>(raw_log_line);
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
@@ -136,8 +136,8 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
   virtual ~EntrySubscriber() {}
 
   EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) { return IMPL::operator()(e, current, last); }
-  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
-    return IMPL::operator()(entry_json, current_index, last);
+  EntryResponse operator()(const std::string& raw_log_line, uint64_t current_index, idxts_t last) {
+    return IMPL::operator()(raw_log_line, current_index, last);
   }
   EntryResponse operator()(ENTRY&& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(std::move(e), current, last);

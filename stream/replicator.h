@@ -168,8 +168,8 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& entry_json) {
-      const auto split = current::strings::Split(entry_json, '\t');
+    ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
+      const auto split = current::strings::Split(raw_log_line, '\t');
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
       if (Exists(tsoptidx.index)) {
         const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
@@ -189,14 +189,14 @@ class SubscribableRemoteStream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& entry_json) {
-      const auto tab_pos = entry_json.find('\t');
+    ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
+      const auto tab_pos = raw_log_line.find('\t');
       if (tab_pos != std::string::npos) {
-        if (subscriber_(entry_json, index_++, unused_idxts_) == ss::EntryResponse::Done) {
+        if (subscriber_(raw_log_line, index_++, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       } else {
-        const auto tsoptidx = ParseJSON<ts_only_t>(entry_json);
+        const auto tsoptidx = ParseJSON<ts_only_t>(raw_log_line);
         if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
@@ -370,13 +370,13 @@ struct StreamReplicatorImpl {
     return EntryResponse::More;
   }
 
-  EntryResponse operator()(std::string&& entry_json, uint64_t, idxts_t) {
-    Value(publisher_)->PublishUnchecked(std::move(entry_json));
+  EntryResponse operator()(std::string&& raw_log_line, uint64_t, idxts_t) {
+    Value(publisher_)->PublishUnchecked(std::move(raw_log_line));
     return EntryResponse::More;
   }
 
-  EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
-    Value(publisher_)->PublishUnchecked(entry_json);
+  EntryResponse operator()(const std::string& raw_log_line, uint64_t, idxts_t) {
+    Value(publisher_)->PublishUnchecked(raw_log_line);
     return EntryResponse::More;
   }
 

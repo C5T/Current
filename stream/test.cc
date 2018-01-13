@@ -138,17 +138,17 @@ struct StreamTestProcessorImpl {
     }
   }
 
-  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
+  EntryResponse operator()(const std::string& raw_log_line, uint64_t current_index, idxts_t last) {
     while (wait_) {
       std::this_thread::yield();
     }
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
-    const auto tab_pos = entry_json.find('\t');
+    const auto tab_pos = raw_log_line.find('\t');
     CURRENT_ASSERT(tab_pos != std::string::npos);
-    const auto idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
-    const auto entry = ParseJSON<Record>(entry_json.c_str() + tab_pos + 1);
+    const auto idxts = ParseJSON<idxts_t>(raw_log_line.substr(0, tab_pos));
+    const auto entry = ParseJSON<Record>(raw_log_line.c_str() + tab_pos + 1);
     CURRENT_ASSERT(current_index == idxts.index);
     if (with_idx_ts_) {
       data_.results_ += Printf("[%llu:%llu,%llu:%llu] %i",
@@ -456,27 +456,27 @@ struct RecordsUncheckedCollectorImpl {
   RecordsUncheckedCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
       : count_(0u), rows_(rows), entries_(entries) {}
 
-  EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
-    rows_.push_back(entry_json + '\n');
-    const auto tab_pos = entry_json.find('\t');
+  EntryResponse operator()(const std::string& raw_log_line, uint64_t, idxts_t) {
+    rows_.push_back(raw_log_line + '\n');
+    const auto tab_pos = raw_log_line.find('\t');
     ++count_;
     if (tab_pos == std::string::npos) {
       entries_.push_back("Malformed row\n");
       return EntryResponse::More;
     }
     try {
-      ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+      ParseJSON<idxts_t>(raw_log_line.substr(0, tab_pos));
     } catch (const current::InvalidJSONException&) {
       entries_.push_back("Malformed index and timestamp\n");
       return EntryResponse::More;
     }
     try {
-      ParseJSON<ENTRY>(entry_json.substr(tab_pos + 1));
+      ParseJSON<ENTRY>(raw_log_line.substr(tab_pos + 1));
     } catch (const current::InvalidJSONException&) {
       entries_.push_back("Malformed entry\n");
       return EntryResponse::More;
     }
-    entries_.push_back(entry_json.substr(tab_pos + 1) + '\n');
+    entries_.push_back(raw_log_line.substr(tab_pos + 1) + '\n');
     return EntryResponse::More;
   }
 

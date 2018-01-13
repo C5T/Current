@@ -340,16 +340,16 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     return result;
   }
 
-  ss::EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
+  ss::EntryResponse operator()(const std::string& raw_log_line, uint64_t current_index, idxts_t last) {
     const ss::EntryResponse result = [&, this]() {
       if (time_to_terminate_) {
         return ss::EntryResponse::Done;
       }
       auto current_us = std::chrono::microseconds(0);
-      // Obtain current timestamp only when it's necessary by parsing the `entry_json`.
-      const auto GetCurrentUs = [this, &current_us, &entry_json]() -> std::chrono::microseconds {
+      // Obtain current timestamp only when it's necessary by parsing the `raw_log_line`.
+      const auto GetCurrentUs = [this, &current_us, &raw_log_line]() -> std::chrono::microseconds {
         if (!current_us.count()) {
-          current_us = ParseJSON<ts_only_t>(entry_json.substr(0, entry_json.find('\t'))).us;
+          current_us = ParseJSON<ts_only_t>(raw_log_line.substr(0, raw_log_line.find('\t'))).us;
         }
         return current_us;
       };
@@ -373,12 +373,12 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         if (to_timestamp_.count() && GetCurrentUs() > to_timestamp_) {
           return ss::EntryResponse::Done;
         }
-        const std::string response_data = [this, &entry_json]() {
+        const std::string response_data = [this, &raw_log_line]() {
           if (!params_.entries_only) {
-            return entry_json;
+            return raw_log_line;
           } else {
-            const auto tab_pos = entry_json.find('\t');
-            return tab_pos != std::string::npos ? entry_json.substr(tab_pos + 1) : entry_json;
+            const auto tab_pos = raw_log_line.find('\t');
+            return tab_pos != std::string::npos ? raw_log_line.substr(tab_pos + 1) : raw_log_line;
           }
         }() + '\n';
         current_response_size_ += response_data.length();
