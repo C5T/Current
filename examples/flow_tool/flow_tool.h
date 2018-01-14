@@ -77,6 +77,83 @@ class FlowTool final {
     ready_time_epoch_us_ = current::time::Now();
   }
 
+  // The filesystem traversal logic.
+  struct NodeSearchResult {
+    const db::Node* node = nullptr;
+    Optional<Response> error;
+    explicit NodeSearchResult(const db::Node* node) : node(node) { assert(node != nullptr); }
+    explicit NodeSearchResult(Response error) : error(std::move(error)) {}
+  };
+
+  // Accepts both read-only and read-write transactions.
+  template <typename FIELDS>
+  NodeSearchResult FindNodeFromWithinTransactionImpl(FIELDS&& fields, const std::vector<std::string>& path) {
+    const auto optional_root_node = fields.node[db::node_key_t::RootNode];
+    if (!Exists(optional_root_node) || !Exists<db::Dir>(Value(optional_root_node).data)) {
+      return NodeSearchResult(
+          Response(api::Error("InternalError", "The root of the internal filesystem is not a directory."),
+                   HTTPResponseCode.InternalServerError));
+    } else {
+      const db::Node* result = nullptr;
+      if (path.empty()) {
+        return NodeSearchResult(&Value(optional_root_node));
+      } else {
+        const db::Dir* ptr = &Value<db::Dir>(Value(optional_root_node).data);
+        size_t i = 0;
+        while (i < path.size() && ptr && !result) {
+          const db::Dir* next_ptr = nullptr;
+          for (const auto& e : ptr->dir) {
+            const auto optional_next_node = fields.node[e];
+            if (!Exists(optional_next_node)) {
+              return NodeSearchResult(
+                  Response(api::Error("InternalError",
+                                      "The internal filesystem contains an invalid entry at index " +
+                                          current::ToString(i) + " of path " + JSON(path) + "."),
+                           HTTPResponseCode.InternalServerError));
+            }
+            const auto& next_node = Value(optional_next_node);
+            if (next_node.name == path[i]) {
+              if (i + 1u == path.size()) {
+                result = &next_node;
+                break;
+              } else {
+                if (!Exists<db::Dir>(next_node.data)) {
+                  return NodeSearchResult(
+                      Response(api::Error("BadRequest",
+                                          "Attempted to access a file as if it is a directory, at index " +
+                                              current::ToString(i) + " of path " + JSON(path) + "."),
+                               HTTPResponseCode.BadRequest));
+                } else {
+                  next_ptr = &Value<db::Dir>(next_node.data);
+                  break;
+                }
+              }
+            }
+          }
+          ptr = next_ptr;
+          ++i;
+        }
+        if (result) {
+          return NodeSearchResult(result);
+        } else {
+          return NodeSearchResult(
+              Response(api::Error("NotFound", "The specified directory does not contain the requested file."),
+                       HTTPResponseCode.NotFound));
+        }
+      }
+    }
+  }
+
+  NodeSearchResult FindNodeFromWithinTransaction(ImmutableFields<storage_t> fields,
+                                                 const std::vector<std::string>& path) {
+    return FindNodeFromWithinTransactionImpl(fields, path);
+  }
+
+  NodeSearchResult FindNodeFromWithinTransaction(MutableFields<storage_t> fields,
+                                                 const std::vector<std::string>& path) {
+    return FindNodeFromWithinTransactionImpl(fields, path);
+  }
+
   // The health check HTTP route.
   void ServeHealthz(Request r) {
     const auto now = current::time::Now();
@@ -96,104 +173,60 @@ class FlowTool final {
       const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
       storage_
           ->ReadOnlyTransaction(
-              [path](ImmutableFields<storage_t> fields) -> Response {
-                const auto optional_root_node = fields.node[db::node_key_t::RootNode];
-                if (!Exists(optional_root_node) || !Exists<db::Dir>(Value(optional_root_node).data)) {
-                  return Response(
-                      api::Error("InternalError", "The root of the internal filesystem is not a directory."),
-                      HTTPResponseCode.InternalServerError);
-                } else {
-                  const db::Node* result = nullptr;
-                  if (path.empty()) {
-                    result = &Value(optional_root_node);
-                  } else {
-                    const db::Dir* ptr = &Value<db::Dir>(Value(optional_root_node).data);
-                    size_t i = 0;
-                    while (i < path.size() && ptr && !result) {
-                      const db::Dir* next_ptr = nullptr;
-                      for (const auto& e : ptr->dir) {
-                        const auto optional_next_node = fields.node[e];
-                        if (!Exists(optional_next_node)) {
-                          return Response(api::Error("InternalError",
-                                                     "The internal filesystem contains an invalid entry at index " +
-                                                         current::ToString(i) + " of path " + JSON(path) + "."),
-                                          HTTPResponseCode.InternalServerError);
-                        }
-                        const auto& next_node = Value(optional_next_node);
-                        if (next_node.name == path[i]) {
-                          if (i + 1u == path.size()) {
-                            result = &next_node;
-                            break;
-                          } else {
-                            if (!Exists<db::Dir>(next_node.data)) {
-                              return Response(
-                                  api::Error("BadRequest",
-                                             "Attempted to access a file as if it is a directory, at index " +
-                                                 current::ToString(i) + " of path " + JSON(path) + "."),
-                                  HTTPResponseCode.BadRequest);
-                            } else {
-                              next_ptr = &Value<db::Dir>(next_node.data);
-                              break;
-                            }
-                          }
-                        }
-                      }
-                      ptr = next_ptr;
-                      ++i;
+              [this, path](ImmutableFields<storage_t> fields) -> Response {
+                const NodeSearchResult result = FindNodeFromWithinTransaction(fields, path);
+                if (result.node) {
+                  struct ResponseGenerator {
+                    const ImmutableFields<storage_t>& fields;
+                    const std::vector<std::string>& path;
+                    ResponseGenerator(const ImmutableFields<storage_t>& fields, const std::vector<std::string>& path)
+                        : fields(fields), path(path) {}
+                    Response response;
+                    void FillProtoFields(api::FileOrDirResponse& proto_response_object) {
+                      proto_response_object.url = "smoke_test_passed://" + current::strings::Join(path, '/');
+                      proto_response_object.path = path;
                     }
-                  }
-                  if (result) {
-                    struct ResponseGenerator {
-                      const ImmutableFields<storage_t>& fields;
-                      const std::vector<std::string>& path;
-                      ResponseGenerator(const ImmutableFields<storage_t>& fields, const std::vector<std::string>& path)
-                          : fields(fields), path(path) {}
-                      Response response;
-                      void FillProtoFields(api::FileOrDirResponse& proto_response_object) {
-                        proto_response_object.url = "smoke_test_passed://" + current::strings::Join(path, '/');
-                        proto_response_object.path = path;
-                      }
-                      void operator()(const db::File& file) {
-                        api::FileResponse response_object;
-                        FillProtoFields(response_object);
-                        const auto blob = fields.blob[file.blob];
-                        if (Exists(blob)) {
-                          response_object.data = Value(blob).body;
-                          response = Response(response_object);
-                        } else {
-                          response = Response(api::Error("InternalError", "The target blob was not found."),
-                                              HTTPResponseCode.InternalServerError);
-                        }
-                      }
-                      void operator()(const db::Dir& dir) {
-                        api::DirResponse response_object;
-                        FillProtoFields(response_object);
-                        for (const auto& e : dir.dir) {
-                          const auto node = fields.node[e];
-                          if (Exists(node)) {
-                            response_object.dir.push_back(Value(node).name);
-                          } else {
-                            response = Response(
-                                api::Error("InternalError", "The target node dir refers to a non-existing node."),
-                                HTTPResponseCode.InternalServerError);
-                            return;
-                          }
-                        }
+                    void operator()(const db::File& file) {
+                      api::FileResponse response_object;
+                      FillProtoFields(response_object);
+                      const auto blob = fields.blob[file.blob];
+                      if (Exists(blob)) {
+                        response_object.data = Value(blob).body;
                         response = Response(response_object);
+                      } else {
+                        response = Response(api::Error("InternalError", "The target blob was not found."),
+                                            HTTPResponseCode.InternalServerError);
                       }
-                    };
-                    ResponseGenerator generator(fields, path);
-                    result->data.Call(generator);
-                    return std::move(generator.response);
-                  } else {
-                    return Response(
-                        api::Error("NotFound", "The specified directory does not contain the requested file."),
-                        HTTPResponseCode.NotFound);
-                  }
+                    }
+                    void operator()(const db::Dir& dir) {
+                      api::DirResponse response_object;
+                      FillProtoFields(response_object);
+                      for (const auto& e : dir.dir) {
+                        const auto node = fields.node[e];
+                        if (Exists(node)) {
+                          response_object.dir.push_back(Value(node).name);
+                        } else {
+                          response = Response(
+                              api::Error("InternalError", "The target node dir refers to a non-existing node."),
+                              HTTPResponseCode.InternalServerError);
+                          return;
+                        }
+                      }
+                      response = Response(response_object);
+                    }
+                  };
+                  ResponseGenerator generator(fields, path);
+                  result.node->data.Call(generator);
+                  return std::move(generator.response);
+                } else {
+                  assert(Exists(result.error));
+                  return Value(result.error);
                 }
               },
               std::move(r))
           .Go();
+    } else if (r.method == "PUT") {
+      r("PUT coming soon.\n", HTTPResponseCode.MethodNotAllowed);
     } else {
       r("Other methods coming soon.\n", HTTPResponseCode.MethodNotAllowed);
     }
