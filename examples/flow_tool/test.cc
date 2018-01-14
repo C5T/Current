@@ -175,27 +175,24 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
               response.body);
   }
 
-  if (false) {
-    // TODO(dkorolev): Enable this.
-    {
-      const auto response =
-          HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port), "Yo, World!\n"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      // TODO(dkorolev): Response analysis.
-      // Add the timestamp created/updated, number of versions already available, and time interval since last update?
-    }
+  {
+    const auto response =
+        HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port), "Yo, World!\n"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    // TODO(dkorolev): Response analysis.
+    // Add the timestamp created/updated, number of versions already available, and time interval since last update?
+  }
 
-    {
-      const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[\"yo.txt\"]}\n", response.body);
-    }
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[\"yo.txt\"]}\n", response.body);
+  }
 
-    {
-      const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ("{\"url\":\"smoke_test_passed://yo.txt\",\"path\":[\"yo.txt\"],\"data\":\"Yo, World!\\n\"}\n",
-                response.body);
-    }
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://yo.txt\",\"path\":[\"yo.txt\"],\"data\":\"Yo, World!\\n\"}\n",
+              response.body);
   }
 }

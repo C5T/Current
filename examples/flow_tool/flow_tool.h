@@ -226,7 +226,79 @@ class FlowTool final {
               std::move(r))
           .Go();
     } else if (r.method == "PUT") {
-      r("PUT coming soon.\n", HTTPResponseCode.MethodNotAllowed);
+      // TODO(dkorolev): Allow creating directories too.
+      // TODO(dkorolev): Overall test that no directory is overwritten with a file or vice versa.
+      const auto url_path_args = r.url_path_args;
+      const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
+      const std::string body = r.body;  // TODO(dkorolev): This `body` should be more complex.
+      if (path.empty()) {
+        r(api::Error("FilesystemError", "Attempted to overwrite the root `/` directory with a file."),
+          HTTPResponseCode.BadRequest);
+        return;
+      }
+      storage_
+          ->ReadWriteTransaction(
+              [this, path, body](MutableFields<storage_t> fields) -> Response {
+                const NodeSearchResult result_file = FindNodeFromWithinTransaction(fields, path);
+                if (result_file.node) {
+                  if (Exists<db::File>(result_file.node->data)) {
+                    const auto optional_blob = fields.blob[Value<db::File>(result_file.node->data).blob];
+                    if (!Exists(optional_blob)) {
+                      return Response(api::Error("InternalError", "The target blob was not found."),
+                                      HTTPResponseCode.InternalServerError);
+                    } else {
+                      db::Blob blob = Value(optional_blob);
+                      blob.body = body;
+                      fields.blob.Add(blob);
+                      return "Dima: OK.\n";  // TODO(dkorolev): A better message.
+                    }
+                  } else {
+                    return Response(api::Error("FilesystemError", "Attempted to overwrite directory with a file."),
+                                    HTTPResponseCode.BadRequest);
+                  }
+                } else {
+                  const std::string filename = path.back();
+                  const std::vector<std::string> dir_path(path.begin(), --path.end());
+                  const NodeSearchResult result_dir = FindNodeFromWithinTransaction(fields, dir_path);
+                  if (result_dir.node) {
+                    if (Exists<db::Dir>(result_dir.node->data)) {
+                      const auto optional_dir_node = fields.node[result_dir.node->key];
+                      if (!Exists(optional_dir_node)) {
+                        return Response(api::Error("InternalError", "The assumed directory does not exist."),
+                                        HTTPResponseCode.InternalServerError);
+                      } else {
+                        db::Node dir_node = Value(optional_dir_node);
+
+                        db::Blob file_blob;
+                        file_blob.key = db::Blob::GenerateRandomBlobKey();
+                        file_blob.body = body;
+                        fields.blob.Add(file_blob);
+
+                        db::Node file_node;
+                        file_node.key = db::Node::GenerateRandomFileKey();
+                        file_node.name = filename;
+                        file_node.data = db::File();
+                        Value<db::File>(file_node.data).blob = file_blob.key;
+                        fields.node.Add(file_node);
+
+                        Value<db::Dir>(dir_node.data).dir.push_back(file_node.key);
+                        fields.node.Add(dir_node);
+
+                        return "Dima: OK.\n";  // TODO(dkorolev): A better message.
+                      }
+                    } else {
+                      return Response(api::Error("FilesystemError", "Attempted to use a file as a directory."),
+                                      HTTPResponseCode.BadRequest);
+                    }
+                  } else {
+                    // Neither file nor dir were found.
+                    assert(Exists(result_dir.error));
+                    return Value(result_dir.error);
+                  }
+                }
+              },
+              std::move(r))
+          .Go();
     } else {
       r("Other methods coming soon.\n", HTTPResponseCode.MethodNotAllowed);
     }

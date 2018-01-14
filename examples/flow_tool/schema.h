@@ -30,6 +30,13 @@ SOFTWARE.
 
 namespace flow_tool {
 
+// TODO(dkorolev): Document the convention:
+// - 16-digit unit64 IDs.
+// - the first digit is:
+//   - `9` for blobs.
+//   - `8` for dir nodes.
+//   - `7` for file nodes.
+
 // Storage
 // =======
 
@@ -40,6 +47,10 @@ CURRENT_ENUM(blob_key_t, uint64_t){InvalidBlob = 0ull};
 CURRENT_STRUCT(Blob) {
   CURRENT_FIELD(key, blob_key_t, blob_key_t::InvalidBlob);  // The key of this blob.
   CURRENT_FIELD(body, std::string);                         // The value of this blob.
+  static blob_key_t GenerateRandomBlobKey() {
+    const auto range = static_cast<uint64_t>(1e15);
+    return static_cast<blob_key_t>(range * 9 + current::random::CSRandomUInt64(0, range));
+  }
 };
 
 // `Node` is an element of the hierarchical file system. Each node entry is a directory or a file.
@@ -54,6 +65,14 @@ CURRENT_STRUCT(Node) {
   CURRENT_FIELD(key, node_key_t, node_key_t::InvalidNode);  // The unique key of this node.
   CURRENT_FIELD(name, std::string);                         // The human-readable name of this file or dir, "" for root.
   CURRENT_FIELD(data, (Variant<Dir, File>));                // The contents of this node.
+  static node_key_t GenerateRandomDirKey() {
+    const auto range = static_cast<uint64_t>(1e15);
+    return static_cast<node_key_t>(range * 8 + current::random::CSRandomUInt64(0, range));
+  }
+  static node_key_t GenerateRandomFileKey() {
+    const auto range = static_cast<uint64_t>(1e15);
+    return static_cast<node_key_t>(range * 7 + current::random::CSRandomUInt64(0, range));
+  }
 };
 
 // The storage for the above is maintained by class `FlowTool`.
