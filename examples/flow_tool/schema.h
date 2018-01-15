@@ -90,6 +90,11 @@ CURRENT_STORAGE(FlowToolDB) {
 // HTTP API
 // ========
 
+// Convention:
+// 1) Error responses have ".error" in the root of the response JSON, a `CamelCaseErrorCode`.
+// 2) Successul responses are `JSON<JSONFormat::JavaScript>` calls of a top-level `SuccessfulResponse` variant.
+//    This format also duplicates the response type in the "$" top-level key.
+
 namespace api {
 
 CURRENT_STRUCT(Healthz) {
@@ -100,29 +105,59 @@ CURRENT_STRUCT(Healthz) {
   CURRENT_FIELD(uptime_us, std::chrono::microseconds);
 };
 
-CURRENT_STRUCT(Error) {
-  CURRENT_FIELD(code, std::string);               // Some "CamelCase" error code.
-  CURRENT_FIELD(message, Optional<std::string>);  // Optional human-readable description.
-  CURRENT_CONSTRUCTOR(Error)
-  (std::string code = "UnknownError") : code(std::move(code)) {}
-  CURRENT_CONSTRUCTOR(Error)
-  (std::string code, std::string message) : code(std::move(code)), message(std::move(message)) {}
+namespace error {
+
+CURRENT_STRUCT(ErrorBase) {
+  CURRENT_FIELD(error, std::string, "UninitializedError");  // Some "CamelCase" error code.
+  CURRENT_CONSTRUCTOR(ErrorBase)(std::string error = "UnknownError") : error(std::move(error)) {}
 };
 
-CURRENT_STRUCT(ErrorPathNotFound, Error) {
-  CURRENT_FIELD(error_component, std::string);
-  CURRENT_FIELD(full_path, std::vector<std::string>);
-  CURRENT_FIELD(index_in_full_path, uint32_t);
+CURRENT_STRUCT(Error, ErrorBase) {
+  CURRENT_FIELD(message, Optional<std::string>);  // Optional human-readable description.
+  CURRENT_CONSTRUCTOR(Error)
+  (std::string error = "UnknownError") : SUPER(std::move(error)) {}
+  CURRENT_CONSTRUCTOR(Error)
+  (std::string error, std::string message) : SUPER(std::move(error)), message(std::move(message)) {}
 };
+
+CURRENT_STRUCT(InternalFileSystemIntegrityError, ErrorBase) {
+  CURRENT_FIELD(message, Optional<std::string>);  // Optional human-readable description.
+  CURRENT_FIELD(path, std::string);
+  CURRENT_FIELD(error_component, std::string);
+  CURRENT_FIELD(error_component_zero_based_index, uint32_t);
+  CURRENT_DEFAULT_CONSTRUCTOR(InternalFileSystemIntegrityError) : SUPER("InternalFileSystemIntegrityError") {}
+};
+
+CURRENT_STRUCT(ErrorAtteptedToAccessFileAsDir, ErrorBase) {
+  CURRENT_FIELD(message, Optional<std::string>);  // Optional human-readable description.
+  CURRENT_FIELD(path, std::string);
+  CURRENT_FIELD(file_component, std::string);
+  CURRENT_FIELD(file_component_zero_based_index, uint32_t);
+  CURRENT_DEFAULT_CONSTRUCTOR(ErrorAtteptedToAccessFileAsDir) : SUPER("ErrorAtteptedToAccessFileAsDir") {}
+};
+
+CURRENT_STRUCT(ErrorPathNotFound, ErrorBase) {
+  CURRENT_FIELD(path, std::string);
+  CURRENT_FIELD(not_found_component, std::string);
+  CURRENT_FIELD(not_found_component_zero_based_index, uint32_t);
+  CURRENT_DEFAULT_CONSTRUCTOR(ErrorPathNotFound) : SUPER("ErrorPathNotFound") {}
+};
+
+}  // namespace flow_tool::api::error
+
+namespace success {
 
 CURRENT_STRUCT(FileOrDirResponse) {
   CURRENT_FIELD(url, std::string);
-  CURRENT_FIELD(path, std::vector<std::string>);
+  CURRENT_FIELD(path, std::string);
 };
 
 CURRENT_STRUCT(FileResponse, FileOrDirResponse) { CURRENT_FIELD(data, std::string); };
-
 CURRENT_STRUCT(DirResponse, FileOrDirResponse) { CURRENT_FIELD(dir, std::vector<std::string>); };
+
+}  // namespace flow_tool::api::success
+
+CURRENT_VARIANT(SuccessfulResponse, success::FileResponse, success::DirResponse);
 
 }  // namespace flow_tool::api
 

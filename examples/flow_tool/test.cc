@@ -63,8 +63,9 @@ TEST(FlowTool, RootNodeIsCreatedAutomatically) {
 
   flow_tool.ImmutableDB()
       ->ReadOnlyTransaction([](ImmutableFields<db_t> fields) {
-        EXPECT_EQ(1u, fields.node.Size());  // Must have one node created at startup: The root one.
-        EXPECT_EQ(0u, fields.blob.Size());  // Must have no blobs yet.
+        EXPECT_EQ(1u, fields.node.Size());                                      // Must have one node.
+        EXPECT_TRUE(Exists(fields.node[flow_tool::db::node_key_t::RootNode]));  // The root one.
+        EXPECT_EQ(0u, fields.blob.Size());                                      // Must have no blobs yet.
       })
       .Wait();
 }
@@ -79,7 +80,7 @@ TEST(FlowTool, GetsAnEmptyDirectory) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[]}\n", response.body);
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[]}\n", response.body);
   }
 }
 
@@ -92,7 +93,7 @@ TEST(FlowTool, Returns404OnNonExistentFile) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(404, static_cast<int>(response.code));
-    EXPECT_EQ("NotFound", ParseJSON<flow_tool::api::Error>(response.body).code);
+    EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
   }
 }
 
@@ -107,14 +108,18 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[]}\n", response.body);
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[]}\n", response.body);
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(404, static_cast<int>(response.code));
-    EXPECT_EQ("{\"code\":\"NotFound\",\"message\":\"The specified directory does not contain the requested file.\"}\n",
-              response.body);
+    EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
+    const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
+    EXPECT_EQ("ErrorPathNotFound", error.error);
+    EXPECT_EQ("/test.txt", error.path);
+    EXPECT_EQ("test.txt", error.not_found_component);
+    EXPECT_EQ(0u, error.not_found_component_zero_based_index);
   }
 
   flow_tool.MutableDB()
@@ -144,13 +149,13 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[\"test.txt\"]}\n", response.body);
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[\"test.txt\"]}\n", response.body);
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://test.txt\",\"path\":[\"test.txt\"],\"data\":\"Hello, World!\\n\"}\n",
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://test.txt\",\"path\":\"/test.txt\",\"data\":\"Hello, World!\\n\"}\n",
               response.body);
   }
 }
@@ -165,14 +170,18 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[]}\n", response.body);
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[]}\n", response.body);
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(404, static_cast<int>(response.code));
-    EXPECT_EQ("{\"code\":\"NotFound\",\"message\":\"The specified directory does not contain the requested file.\"}\n",
-              response.body);
+    EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
+    const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
+    EXPECT_EQ("ErrorPathNotFound", error.error);
+    EXPECT_EQ("/yo.txt", error.path);
+    EXPECT_EQ("yo.txt", error.not_found_component);
+    EXPECT_EQ(0u, error.not_found_component_zero_based_index);
   }
 
   {
@@ -186,13 +195,13 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":[],\"dir\":[\"yo.txt\"]}\n", response.body);
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[\"yo.txt\"]}\n", response.body);
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://yo.txt\",\"path\":[\"yo.txt\"],\"data\":\"Yo, World!\\n\"}\n",
+    EXPECT_EQ("{\"url\":\"smoke_test_passed://yo.txt\",\"path\":\"/yo.txt\",\"data\":\"Yo, World!\\n\"}\n",
               response.body);
   }
 }

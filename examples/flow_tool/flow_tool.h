@@ -90,9 +90,9 @@ class FlowTool final {
   NodeSearchResult FindNodeFromWithinTransactionImpl(FIELDS&& fields, const std::vector<std::string>& path) {
     const auto optional_root_node = fields.node[db::node_key_t::RootNode];
     if (!Exists(optional_root_node) || !Exists<db::Dir>(Value(optional_root_node).data)) {
-      return NodeSearchResult(
-          Response(api::Error("InternalError", "The root of the internal filesystem is not a directory."),
-                   HTTPResponseCode.InternalServerError));
+      return NodeSearchResult(Response(api::error::Error("InternalFileSystemIntegrityError",
+                                                         "The root of the internal filesystem is not a directory."),
+                                       HTTPResponseCode.InternalServerError));
     } else {
       const db::Node* result = nullptr;
       if (path.empty()) {
@@ -105,11 +105,12 @@ class FlowTool final {
           for (const auto& e : ptr->dir) {
             const auto optional_next_node = fields.node[e];
             if (!Exists(optional_next_node)) {
-              return NodeSearchResult(
-                  Response(api::Error("InternalError",
-                                      "The internal filesystem contains an invalid entry at index " +
-                                          current::ToString(i) + " of path " + JSON(path) + "."),
-                           HTTPResponseCode.InternalServerError));
+              api::error::InternalFileSystemIntegrityError error;
+              error.path = '/' + current::strings::Join(path, '/');
+              error.message = "The internal filesystem contains an invalid entry.";
+              error.error_component = path[i];
+              error.error_component_zero_based_index = i;
+              return NodeSearchResult(Response(error, HTTPResponseCode.InternalServerError));
             }
             const auto& next_node = Value(optional_next_node);
             if (next_node.name == path[i]) {
@@ -118,11 +119,12 @@ class FlowTool final {
                 break;
               } else {
                 if (!Exists<db::Dir>(next_node.data)) {
-                  return NodeSearchResult(
-                      Response(api::Error("BadRequest",
-                                          "Attempted to access a file as if it is a directory, at index " +
-                                              current::ToString(i) + " of path " + JSON(path) + "."),
-                               HTTPResponseCode.BadRequest));
+                  api::error::ErrorAtteptedToAccessFileAsDir error;
+                  error.path = '/' + current::strings::Join(path, '/');
+                  error.message = "The internal filesystem contains an invalid entry.";
+                  error.file_component = path[i];
+                  error.file_component_zero_based_index = i;
+                  Response(error, HTTPResponseCode.BadRequest);
                 } else {
                   next_ptr = &Value<db::Dir>(next_node.data);
                   break;
@@ -130,15 +132,21 @@ class FlowTool final {
               }
             }
           }
-          ptr = next_ptr;
-          ++i;
+          if (next_ptr) {
+            ptr = next_ptr;
+            ++i;
+          } else {
+            break;
+          }
         }
         if (result) {
           return NodeSearchResult(result);
         } else {
-          return NodeSearchResult(
-              Response(api::Error("NotFound", "The specified directory does not contain the requested file."),
-                       HTTPResponseCode.NotFound));
+          api::error::ErrorPathNotFound error;
+          error.path = '/' + current::strings::Join(path, '/');
+          error.not_found_component = path[i];
+          error.not_found_component_zero_based_index = i;
+          return NodeSearchResult(Response(error, HTTPResponseCode.NotFound));
         }
       }
     }
@@ -182,24 +190,24 @@ class FlowTool final {
                     ResponseGenerator(const ImmutableFields<storage_t>& fields, const std::vector<std::string>& path)
                         : fields(fields), path(path) {}
                     Response response;
-                    void FillProtoFields(api::FileOrDirResponse& proto_response_object) {
+                    void FillProtoFields(api::success::FileOrDirResponse& proto_response_object) {
                       proto_response_object.url = "smoke_test_passed://" + current::strings::Join(path, '/');
-                      proto_response_object.path = path;
+                      proto_response_object.path = '/' + current::strings::Join(path, '/');
                     }
                     void operator()(const db::File& file) {
-                      api::FileResponse response_object;
+                      api::success::FileResponse response_object;
                       FillProtoFields(response_object);
                       const auto blob = fields.blob[file.blob];
                       if (Exists(blob)) {
                         response_object.data = Value(blob).body;
                         response = Response(response_object);
                       } else {
-                        response = Response(api::Error("InternalError", "The target blob was not found."),
+                        response = Response(api::error::Error("InternalError", "The target blob was not found."),
                                             HTTPResponseCode.InternalServerError);
                       }
                     }
                     void operator()(const db::Dir& dir) {
-                      api::DirResponse response_object;
+                      api::success::DirResponse response_object;
                       FillProtoFields(response_object);
                       for (const auto& e : dir.dir) {
                         const auto node = fields.node[e];
@@ -207,7 +215,7 @@ class FlowTool final {
                           response_object.dir.push_back(Value(node).name);
                         } else {
                           response = Response(
-                              api::Error("InternalError", "The target node dir refers to a non-existing node."),
+                              api::error::Error("InternalError", "The target node dir refers to a non-existing node."),
                               HTTPResponseCode.InternalServerError);
                           return;
                         }
@@ -232,7 +240,7 @@ class FlowTool final {
       const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
       const std::string body = r.body;  // TODO(dkorolev): This `body` should be more complex.
       if (path.empty()) {
-        r(api::Error("FilesystemError", "Attempted to overwrite the root `/` directory with a file."),
+        r(api::error::Error("FilesystemError", "Attempted to overwrite the root `/` directory with a file."),
           HTTPResponseCode.BadRequest);
         return;
       }
@@ -244,7 +252,7 @@ class FlowTool final {
                   if (Exists<db::File>(result_file.node->data)) {
                     const auto optional_blob = fields.blob[Value<db::File>(result_file.node->data).blob];
                     if (!Exists(optional_blob)) {
-                      return Response(api::Error("InternalError", "The target blob was not found."),
+                      return Response(api::error::Error("InternalError", "The target blob was not found."),
                                       HTTPResponseCode.InternalServerError);
                     } else {
                       db::Blob blob = Value(optional_blob);
@@ -253,8 +261,9 @@ class FlowTool final {
                       return "Dima: OK.\n";  // TODO(dkorolev): A better message.
                     }
                   } else {
-                    return Response(api::Error("FilesystemError", "Attempted to overwrite directory with a file."),
-                                    HTTPResponseCode.BadRequest);
+                    return Response(
+                        api::error::Error("FilesystemError", "Attempted to overwrite directory with a file."),
+                        HTTPResponseCode.BadRequest);
                   }
                 } else {
                   const std::string filename = path.back();
@@ -264,7 +273,7 @@ class FlowTool final {
                     if (Exists<db::Dir>(result_dir.node->data)) {
                       const auto optional_dir_node = fields.node[result_dir.node->key];
                       if (!Exists(optional_dir_node)) {
-                        return Response(api::Error("InternalError", "The assumed directory does not exist."),
+                        return Response(api::error::Error("InternalError", "The assumed directory does not exist."),
                                         HTTPResponseCode.InternalServerError);
                       } else {
                         db::Node dir_node = Value(optional_dir_node);
@@ -287,7 +296,7 @@ class FlowTool final {
                         return "Dima: OK.\n";  // TODO(dkorolev): A better message.
                       }
                     } else {
-                      return Response(api::Error("FilesystemError", "Attempted to use a file as a directory."),
+                      return Response(api::error::Error("FilesystemError", "Attempted to use a file as a directory."),
                                       HTTPResponseCode.BadRequest);
                     }
                   } else {
