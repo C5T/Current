@@ -158,7 +158,8 @@ struct ParsedHTTPRequestParams {
   bool entries_only = false;
   // If set, wrap the entries into a large JSON array. Mostly to please JSON-beautifying browser extensions.
   bool array = false;
-  // If set, use "safe" iteration to check the entries before sending.
+  // If set, parse and validate each entry before sending it.
+  // If not, skip the validation (using the "unsafe" iteration) to speed up the communication.
   bool checked = false;
 };
 
