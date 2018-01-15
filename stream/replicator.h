@@ -371,12 +371,12 @@ struct StreamReplicatorImpl {
   }
 
   EntryResponse operator()(std::string&& raw_log_line, uint64_t, idxts_t) {
-    Value(publisher_)->PublishUnchecked(std::move(raw_log_line));
+    Value(publisher_)->PublishUnsafe(std::move(raw_log_line));
     return EntryResponse::More;
   }
 
   EntryResponse operator()(const std::string& raw_log_line, uint64_t, idxts_t) {
-    Value(publisher_)->PublishUnchecked(raw_log_line);
+    Value(publisher_)->PublishUnsafe(raw_log_line);
     return EntryResponse::More;
   }
 

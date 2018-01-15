@@ -70,13 +70,13 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t PublishUnchecked(std::string&& raw_log_line) {
-    return IMPL::template PublisherPublishUncheckedImpl<MLS>(std::move(raw_log_line));
+  idxts_t PublishUnsafe(std::string&& raw_log_line) {
+    return IMPL::template PublisherPublishUnsafeImpl<MLS>(std::move(raw_log_line));
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
-  idxts_t PublishUnchecked(const std::string& raw_log_line) {
-    return IMPL::template PublisherPublishUncheckedImpl<MLS>(raw_log_line);
+  idxts_t PublishUnsafe(const std::string& raw_log_line) {
+    return IMPL::template PublisherPublishUnsafeImpl<MLS>(raw_log_line);
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>

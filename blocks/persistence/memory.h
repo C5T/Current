@@ -167,7 +167,7 @@ class MemoryPersister {
   }
 
   template <current::locks::MutexLockStatus MLS>
-  idxts_t PersisterPublishUncheckedImpl(const std::string& raw_log_line) {
+  idxts_t PersisterPublishUnsafeImpl(const std::string& raw_log_line) {
     current::locks::SmartMutexLockGuard<MLS> lock(container_->memory_persister_container_mutex_);
     const auto head = container_->head_;
     const auto tab_pos = raw_log_line.find('\t');
@@ -177,7 +177,7 @@ class MemoryPersister {
     const auto idxts = ParseJSON<idxts_t>(raw_log_line.substr(0, tab_pos));
     const auto expected_index = static_cast<uint64_t>(container_->entries_.size());
     if (idxts.index != expected_index) {
-      CURRENT_THROW(ss::InconsistentIndexException(expected_index, idxts.index));
+      CURRENT_THROW(UnsafePublishBadIndexTimestampException(expected_index, idxts.index));
     }
     if (!(idxts.us > head)) {
       CURRENT_THROW(ss::InconsistentTimestampException(head + std::chrono::microseconds(1), idxts.us));
