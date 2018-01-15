@@ -623,7 +623,8 @@ class Stream final {
   static StreamSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
     StreamSchema schema;
 
-    schema.type_name = current::reflection::CurrentTypeName<entry_t>();
+    // TODO(dkorolev): `AsIdentifier` here?
+    schema.type_name = current::reflection::CurrentTypeName<entry_t, current::reflection::NameFormat::Z>();
     schema.type_id =
         Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<entry_t>()).type_id;
 

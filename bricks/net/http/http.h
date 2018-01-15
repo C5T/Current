@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include "body_requirement.h"
 #include "codes.h"
 #include "mime_type.h"
 #include "default_messages.h"

@@ -22,8 +22,8 @@
  SOFTWARE.
  *******************************************************************************/
 
-#ifndef BENCHMARK_SCENARIO_REPLICATION_H
-#define BENCHMARK_SCENARIO_REPLICATION_H
+#ifndef EXAMLPES_BENCHMARK_GENERIC_SCENARIO_REPLICATION_H
+#define EXAMLPES_BENCHMARK_GENERIC_SCENARIO_REPLICATION_H
 
 #include "benchmark.h"
 
@@ -127,4 +127,4 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
 
 REGISTER_SCENARIO(stream_replication);
 
-#endif  // BENCHMARK_SCENARIO_REPLICATION_H
+#endif  // EXAMLPES_BENCHMARK_GENERIC_SCENARIO_REPLICATION_H

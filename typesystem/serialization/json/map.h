@@ -85,7 +85,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
         destination.emplace(std::move(k), std::move(v));
       }
     } else if (!json::JSONPatchMode<J>::value || (json_parser && !json_parser.Current().IsObject())) {
-      throw JSONSchemaException("map as object", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("map as object", json_parser));  // LCOV_EXCL_LINE
     }
   }
 
@@ -97,10 +97,10 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
       for (rapidjson::Value::ValueIterator cit = json_parser.Current().Begin(); cit != json_parser.Current().End();
            ++cit) {
         if (!cit->IsArray()) {
-          throw JSONSchemaException("map entry as array", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("map entry as array", json_parser));  // LCOV_EXCL_LINE
         }
         if (cit->Size() != 2u) {
-          throw JSONSchemaException("map entry as array of two elements", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("map entry as array of two elements", json_parser));  // LCOV_EXCL_LINE
         }
         TK k;
         TV v;
@@ -109,7 +109,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
         destination.emplace(std::move(k), std::move(v));
       }
     } else if (!json::JSONPatchMode<J>::value || (json_parser && !json_parser.Current().IsArray())) {
-      throw JSONSchemaException("map as array", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("map as array", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };

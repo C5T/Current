@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SCHEMA_H
-#define SCHEMA_H
+#ifndef EXAMPLES_TYPE_EVOLUTION_SCHEMA_H
+#define EXAMPLES_TYPE_EVOLUTION_SCHEMA_H
 
 #include "../../current.h"
 
@@ -130,4 +130,4 @@ CURRENT_STRUCT(TopLevel) {
   CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 6>) : data(WithFieldsToRemove()) {}
 };
 
-#endif  // SCHEMA_H
+#endif  // EXAMPLES_TYPE_EVOLUTION_SCHEMA_H

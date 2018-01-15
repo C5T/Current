@@ -50,17 +50,17 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<std::i
         if (json_parser.Current().IsInt64()) {
           destination = static_cast<T>(json_parser.Current().GetInt64());
         } else {
-          throw JSONSchemaException("enum as unsigned integer", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("enum as unsigned integer", json_parser));  // LCOV_EXCL_LINE
         }
       } else {
         if (json_parser.Current().IsUint64()) {
           destination = static_cast<T>(json_parser.Current().GetUint64());
         } else {
-          throw JSONSchemaException("enum as signed integer", json_parser);  // LCOV_EXCL_LINE
+          CURRENT_THROW(JSONSchemaException("enum as signed integer", json_parser));  // LCOV_EXCL_LINE
         }
       }
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsNumber())) {
-      throw JSONSchemaException("number", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("number", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };

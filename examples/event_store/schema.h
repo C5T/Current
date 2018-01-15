@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SCHEMA_H
-#define SCHEMA_H
+#ifndef EXAMPLES_EVENT_STORE_SCHEMA_H
+#define EXAMPLES_EVENT_STORE_SCHEMA_H
 
 #include "../../typesystem/struct.h"
 #include "../../storage/storage.h"
@@ -46,4 +46,4 @@ CURRENT_STRUCT(EventOutsideStorage) {
   CURRENT_CONSTRUCTOR(EventOutsideStorage)(const Event& e) : message("Event added: " + e.key) {}
 };
 
-#endif  // SCHEMA_H
+#endif  // EXAMPLES_EVENT_STORE_SCHEMA_H

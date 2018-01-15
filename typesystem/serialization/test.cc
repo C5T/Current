@@ -270,6 +270,18 @@ TEST(JSONSerialization, CPPTypes) {
   EXPECT_EQ(4u, ParseJSON<std::vector<std::vector<std::string>>>("[[],[],[],[]]").size());
   EXPECT_EQ("blah", ParseJSON<std::vector<std::vector<std::string>>>("[[],[\"\",\"blah\"],[],[]]")[1][1]);
 
+  // `std::vector<bool>` is a special case that needs a dedicated test.
+  EXPECT_EQ("[]", JSON(std::vector<bool>()));
+  EXPECT_EQ("[true,false,true]", JSON(std::vector<bool>{true, false, true}));
+  EXPECT_TRUE(ParseJSON<std::vector<bool>>("[]").empty());
+  {
+    const auto v = ParseJSON<std::vector<bool>>("[true, false, true]");
+    ASSERT_EQ(3u, v.size());
+    EXPECT_TRUE(v[0]);
+    EXPECT_FALSE(v[1]);
+    EXPECT_TRUE(v[2]);
+  }
+
   // `std::map<>` is serialized as object for string keys, and as array of pairs for other key types.
   using map_int_int_t = std::map<int, int>;
   using map_string_int_t = std::map<std::string, int>;
@@ -782,7 +794,7 @@ TEST(JSONSerialization, StructSchema) {
   // This, really, is just a golden sanity check. Can keep it this way for now. -- D.K.
   // clang-format off
   EXPECT_EQ(
-      "{\"types\":[[\"T9000000000000000011\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000011\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000023\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000023\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000024\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000024\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000042\"},\"\":\"T9202934106479999325\"}],[\"T9010000002928410991\",{\"ReflectedType_Enum\":{\"type_id\":\"T9010000002928410991\",\"name\":\"Enum\",\"underlying_type\":\"T9000000000000000023\"},\"\":\"T9201951882596398273\"}],[\"T9201007113239016790\",{\"ReflectedType_Struct\":{\"type_id\":\"T9201007113239016790\",\"native_name\":\"Serializable\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"i\",\"description\":null},{\"type_id\":\"T9000000000000000042\",\"name\":\"s\",\"description\":null},{\"type_id\":\"T9000000000000000011\",\"name\":\"b\",\"description\":null},{\"type_id\":\"T9010000002928410991\",\"name\":\"e\",\"description\":null}]},\"\":\"T9206858900297712816\"}],[\"T9209412029115735895\",{\"ReflectedType_Struct\":{\"type_id\":\"T9209412029115735895\",\"native_name\":\"ComplexSerializable\",\"super_id\":\"T1\",\"template_id\":null,\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"j\",\"description\":null},{\"type_id\":\"T9000000000000000042\",\"name\":\"q\",\"description\":null},{\"type_id\":\"T9319767778871345491\",\"name\":\"v\",\"description\":null},{\"type_id\":\"T9201007113239016790\",\"name\":\"z\",\"description\":null}]},\"\":\"T9206858900297712816\"}],[\"T9319767778871345491\",{\"ReflectedType_Vector\":{\"type_id\":\"T9319767778871345491\",\"element_type\":\"T9000000000000000042\"},\"\":\"T9200962247788856851\"}]],\"order\":[\"T9319767778871345491\",\"T9010000002928410991\",\"T9201007113239016790\",\"T9209412029115735895\"]}",
+      "{\"types\":[[\"T9000000000000000011\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000011\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000023\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000023\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000024\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000024\"},\"\":\"T9202934106479999325\"}],[\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000042\"},\"\":\"T9202934106479999325\"}],[\"T9010000002928410991\",{\"ReflectedType_Enum\":{\"type_id\":\"T9010000002928410991\",\"name\":\"Enum\",\"underlying_type\":\"T9000000000000000023\"},\"\":\"T9201951882596398273\"}],[\"T9201007113239016790\",{\"ReflectedType_Struct\":{\"type_id\":\"T9201007113239016790\",\"native_name\":\"Serializable\",\"super_id\":null,\"super_name\":null,\"template_inner_id\":null,\"template_inner_name\":null,\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"i\",\"description\":null},{\"type_id\":\"T9000000000000000042\",\"name\":\"s\",\"description\":null},{\"type_id\":\"T9000000000000000011\",\"name\":\"b\",\"description\":null},{\"type_id\":\"T9010000002928410991\",\"name\":\"e\",\"description\":null}]},\"\":\"T9200457289970732094\"}],[\"T9209412029115735895\",{\"ReflectedType_Struct\":{\"type_id\":\"T9209412029115735895\",\"native_name\":\"ComplexSerializable\",\"super_id\":null,\"super_name\":null,\"template_inner_id\":null,\"template_inner_name\":null,\"fields\":[{\"type_id\":\"T9000000000000000024\",\"name\":\"j\",\"description\":null},{\"type_id\":\"T9000000000000000042\",\"name\":\"q\",\"description\":null},{\"type_id\":\"T9319767778871345491\",\"name\":\"v\",\"description\":null},{\"type_id\":\"T9201007113239016790\",\"name\":\"z\",\"description\":null}]},\"\":\"T9200457289970732094\"}],[\"T9319767778871345491\",{\"ReflectedType_Vector\":{\"type_id\":\"T9319767778871345491\",\"element_type\":\"T9000000000000000042\"},\"\":\"T9200962247788856851\"}]],\"order\":[\"T9319767778871345491\",\"T9010000002928410991\",\"T9201007113239016790\",\"T9209412029115735895\"]}",
       schema_json);
   // clang-format on
 

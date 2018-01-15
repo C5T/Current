@@ -1,4 +1,4 @@
-# Current [![CI](https://travis-ci.org/C5T/Current.svg?branch=master)](https://travis-ci.org/C5T/Current)
+# Current [![Travis](https://travis-ci.org/C5T/Current.svg?branch=master)](https://travis-ci.org/C5T/Current) [![Semaphore](https://semaphoreci.com/api/v1/dkorolev/current/branches/unstable/badge.svg)](https://semaphoreci.com/dkorolev/current)
 
 #### [TypeSystem](https://github.com/C5T/Current/blob/master/typesystem/README.md)
 The type system used in Current framework.
@@ -64,9 +64,9 @@ Builds and runs the tests for each module separately:
 make individual_tests
 ```
 
-Builds and runs the tests for one of the modules (e.g. `Blocks/HTTP`):
+Builds and runs the tests for one of the modules (e.g. `blocks/http`):
 ```
-( cd Blocks/HTTP && make test )
+(cd blocks/http && make test)
 ```
 
 ### Verify the code

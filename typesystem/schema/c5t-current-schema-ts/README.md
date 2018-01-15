@@ -15,7 +15,7 @@ npm install --save c5t-current-schema-ts io-ts
 
 NOTE: The schema files specify the recommended versions of `c5t-current-schema-ts` and `io-ts` at the top, for example:
 ```
-// peerDependencies: io-ts@0.5.1 c5t-current-schema-ts@0.1.0
+// peerDependencies: io-ts@^0.6.1 c5t-current-schema-ts@^0.2.1
 ```
 
 The generated TypeScript schema files export two items per `CURRENT_STRUCT`:
@@ -86,48 +86,44 @@ export const Primitives_IO = iots.interface({
 export type Primitives = iots.TypeOf<typeof Primitives_IO>;
 
 export const MyFreakingVariant_IO = iots.union([
-  A_IO,
-  X_IO,
-  Y_IO,
+  MyFreakingVariant_VariantCase_A_IO,
+  MyFreakingVariant_VariantCase_X_IO,
+  MyFreakingVariant_VariantCase_Y_IO,
   iots.null,
 ], 'MyFreakingVariant');
-export type MyFreakingVariant = iots.UnionType<[
-  typeof A_IO,
-  typeof X_IO,
-  typeof Y_IO,
-  typeof iots.null
-], (
-  iots.TypeOf<typeof A_IO> |
-  iots.TypeOf<typeof X_IO> |
-  iots.TypeOf<typeof Y_IO> |
-  iots.TypeOf<typeof iots.null>
-)>;
+export type MyFreakingVariant = iots.TypeOf<typeof MyFreakingVariant_IO>;
 ```
 
 
 ### Type validation
 
-The `validate` function from `io-ts` returns a value of the `Either` type which can be either `Right` or `Left`.
-This `Either` type and the `isRight` function to tell `Right` from `Left` are defined in the `fp-ts` module at `fp-ts/lib/Either`, so `fp-ts` is required for the type validation.
+The `validate` function from `io-ts` returns a value of the `Either` type which can be either `Right` that contains the validated object or `Left` that contains the error. This `Either` type and the `isRight` function to tell `Right` from `Left` are defined in the `fp-ts` module at `fp-ts/lib/Either`.
 
-```
-npm install --save fp-ts
-```
+**WARNING** Due to [the out-of-memory issues with TypeScript processing `fp-ts`](https://github.com/Microsoft/TypeScript/issues/16029), as of 2017-08-23 `fp-ts` is not recommended to be used directly. Use `io-ts/lib/PathReporter` or `io-ts/lib/ThrowReporter` with `try..catch` around it if required.
 
 ```ts
 import * as fs from 'fs';
 import * as iots from 'io-ts';
-import { isRight } from 'fp-ts/lib/Either';
 import { PathReporter } from 'io-ts/lib/PathReporter';
+import { ThrowReporter } from 'io-ts/lib/ThrowReporter';
 
 import * as generated_schema_ts from './generated_schema_ts';
 
 const generated_schema_serialized: generated_schema_ts.FullTest = JSON.parse(String(fs.readFileSync('./generated_schema_serialized.json')));
-const validationResult = iots.validate(generated_schema_serialized, generated_schema_ts.Primitives_IO);
+const validation_result = iots.validate(generated_schema_serialized, generated_schema_ts.Primitives_IO);
 
-isRight(validationResult);  // => `true` if validated successfully; `false` otherwise.
+const error_report: string[] = PathReporter.report(validation_result);
+// `PathReporter.report` on a succeeded validation returns `[ 'No errors!' ]`.
+// `PathReporter.report` on a failed validation returns an array of error messages.
 
-const error_report = PathReporter.report(validationResult);  // => string[]
+try {
+  ThrowReporter.report(validation_result);
+  // `ThrowReporter.report` on a succeeded validation is a no-op.
+  // `ThrowReporter.report` on a failed validation throws an `Error`.
+}
+catch (validation_error) {
+  //
+}
 ```
 
 

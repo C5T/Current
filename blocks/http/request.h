@@ -103,20 +103,29 @@ struct Request final {
   // Support objects with user-defined HTTP response handlers.
   template <typename T>
   inline typename std::enable_if<HasRespondViaHTTP<current::decay<T>>(0)>::type operator()(T&& that_dude_over_there) {
+    if (!unique_connection) {
+      CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
+    }
     that_dude_over_there.RespondViaHTTP(std::move(*this));
   }
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   template <typename... TS>
   void operator()(TS&&... params) {
+    if (!unique_connection) {
+      CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
+    }
     connection.SendHTTPResponse(std::forward<TS>(params)...);
   }
 
   template <uint64_t CACHE_SIZE = CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
   current::net::HTTPServerConnection::ChunkedResponseSender<CACHE_SIZE> SendChunkedResponse(
-      net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = net::constants::kDefaultJSONContentType,
-      const net::http::Headers& extra_headers = net::http::Headers::DefaultJSONHeaders()) {
+    net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+    const std::string& content_type = net::constants::kDefaultJSONContentType,
+    const net::http::Headers& extra_headers = net::http::Headers::DefaultJSONHeaders()) {
+    if (!unique_connection) {
+      CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
+    }
     return connection.SendChunkedHTTPResponse<CACHE_SIZE>(code, content_type, extra_headers);
   }
 

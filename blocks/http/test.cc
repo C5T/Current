@@ -169,6 +169,62 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
 
   EXPECT_EQ("/ (user, a, 1, blah) ", run("/user/a/1/blah"));
   EXPECT_EQ("/ (user, a, 1, blah) url_path_had_trailing_slash", run("/user/a/1/blah/"));
+
+  EXPECT_EQ("bar%20baz", URL::EncodeURIComponent("bar baz"));
+  EXPECT_EQ("bar%2Fbaz", URL::EncodeURIComponent("bar/baz"));
+
+  EXPECT_EQ("/ (foo, bar baz, meh) ", run("/foo/bar%20baz/meh"));
+  EXPECT_EQ("/ (foo, bar/baz, meh) ", run("/foo/bar%2fbaz/meh"));
+  EXPECT_EQ("/ (foo, bar/baz, meh) ", run("/foo/bar%2Fbaz/meh"));
+}
+
+TEST(HTTPAPI, ComposeURLPathWithURLPathArgs) {
+  const auto handler = [](Request r) {
+    r(r.url.path + " (" + r.url_path_args.ComposeURLPathFromArgs() + ", " + r.url_path_args.ComposeURLPath() + ")");
+  };
+
+  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler) +
+                     HTTP(FLAGS_net_api_test_port)
+                         .Register("/user", URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two, handler) +
+                     HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler) +
+                     HTTP(FLAGS_net_api_test_port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
+
+  const auto run = [](const std::string& path) -> std::string {
+    return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
+  };
+
+  EXPECT_EQ("/ (/, /)", run("/"));
+  EXPECT_EQ("/ (/foo, /foo)", run("/foo"));
+  EXPECT_EQ("/ (/foo, /foo)", run("/foo/"));
+  EXPECT_EQ("/ (/foo/bar, /foo/bar)", run("/foo/bar"));
+  EXPECT_EQ("/ (/foo/bar, /foo/bar)", run("/foo/bar/"));
+  EXPECT_EQ("/ (/user, /user)", run("/user"));
+  EXPECT_EQ("/ (/user, /user)", run("/user/"));
+
+  EXPECT_EQ("/ (/, /)", run("//"));
+  EXPECT_EQ("/ (/, /)", run("///"));
+
+  EXPECT_EQ("/user (/a, /user/a)", run("/user/a"));
+  EXPECT_EQ("/user (/a, /user/a)", run("/user/a/"));
+  EXPECT_EQ("/user (/a, /user/a)", run("/user///a"));
+  EXPECT_EQ("/user (/a, /user/a)", run("/user///a///"));
+
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user/x/y"));
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user/x/y/"));
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user///x//y"));
+  EXPECT_EQ("/user (/x/y, /user/x/y)", run("/user///x//y//"));
+
+  EXPECT_EQ("/user/a (/0, /user/a/0)", run("/user/a/0"));
+  EXPECT_EQ("/user/a (/0, /user/a/0)", run("/user/a/0/"));
+
+  EXPECT_EQ("/user/a/1 (/, /user/a/1)", run("/user/a/1"));
+  EXPECT_EQ("/user/a/1 (/, /user/a/1)", run("/user/a/1/"));
+
+  EXPECT_EQ("/user/a (/2, /user/a/2)", run("/user/a/2"));
+  EXPECT_EQ("/user/a (/2, /user/a/2)", run("/user/a/2/"));
+
+  EXPECT_EQ("/ (/user/a/1/blah, /user/a/1/blah)", run("/user/a/1/blah"));
+  EXPECT_EQ("/ (/user/a/1/blah, /user/a/1/blah)", run("/user/a/1/blah/"));
 }
 
 TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {
@@ -221,6 +277,12 @@ TEST(HTTPAPI, URLParameters) {
   EXPECT_EQ("x=42", HTTP(GET(Printf("http://localhost:%d/query?x=42", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("x=test passed",
             HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("x=test passed",
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%20passed", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("x=test/passed",
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2fpassed", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("x=test/passed",
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2Fpassed", FLAGS_net_api_test_port))).body);
 }
 
 TEST(HTTPAPI, InvalidHEXInURLParameters) {
@@ -342,6 +404,41 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
+TEST(HTTPAPI, HandlesRespondTwiceWithString) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/respond_twice",
+                                   [](Request r) {
+                                     r("OK");
+                                     r("FAIL");
+                                   });
+  const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_EQ(url, response.url);
+}
+
+TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
+  std::string result = "";
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/respond_twice",
+                                   [&result](Request r) {
+                                     r(Response("OK", HTTPResponseCode.OK));
+                                     try {
+                                       r(Response("FAIL", HTTPResponseCode(762)));
+                                       result = "Error, second response did not throw.";
+                                     } catch (const current::net::AttemptedToSendHTTPResponseMoreThanOnce&) {
+                                       result = "OK, second response did throw.";
+                                     }
+                                   });
+  const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_EQ(url, response.url);
+  EXPECT_EQ("OK, second response did throw.", result);
+}
+
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, RedirectToRelativeURL) {
@@ -360,10 +457,15 @@ TEST(HTTPAPI, RedirectToRelativeURL) {
   const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Done.", response.body);
-  EXPECT_EQ(Printf("http://localhost:%d/to", FLAGS_net_api_test_port), response.url);
+  EXPECT_EQ((
+    FLAGS_net_api_test_port == 80
+      ? "http://localhost/to"
+      : Printf("http://localhost:%d/to", FLAGS_net_api_test_port)
+  ), response.url);
 }
 
 TEST(HTTPAPI, RedirectToFullURL) {
+  ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
   // Need a live port for the redirect target because the HTTP client is following the redirect
   // and tries to connect to the redirect target, otherwise throws a `SocketConnectException`.
   const auto scope_redirect_to = HTTP(FLAGS_net_api_test_port_secondary).Register("/to", [](Request r) { r("Done."); });
@@ -382,7 +484,11 @@ TEST(HTTPAPI, RedirectToFullURL) {
   const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Done.", response.body);
-  EXPECT_EQ(Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary), response.url);
+  EXPECT_EQ((
+    FLAGS_net_api_test_port_secondary == 80
+      ? "http://localhost/to"
+      : Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary)
+  ), response.url);
 }
 
 #if 0
@@ -442,10 +548,17 @@ TEST(HTTPAPI, RedirectLoop) {
     } catch (HTTPRedirectLoopException& e) {
       thrown = true;
       std::string loop;
-      loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port) + " ";
-      loop += Printf("http://localhost:%d/p2", FLAGS_net_api_test_port) + " ";
-      loop += Printf("http://localhost:%d/p3", FLAGS_net_api_test_port) + " ";
-      loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port);
+      if (FLAGS_net_api_test_port == 80) {
+        loop += Printf("http://localhost/p1") + " ";
+        loop += Printf("http://localhost/p2") + " ";
+        loop += Printf("http://localhost/p3") + " ";
+        loop += Printf("http://localhost/p1");
+      } else {
+        loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port) + " ";
+        loop += Printf("http://localhost:%d/p2", FLAGS_net_api_test_port) + " ";
+        loop += Printf("http://localhost:%d/p3", FLAGS_net_api_test_port) + " ";
+        loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port);
+      }
       EXPECT_EQ(loop, e.OriginalDescription());
     }
     EXPECT_TRUE(thrown);
@@ -752,6 +865,17 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
                       "text/plain")).body);
 }
 
+TEST(HTTPAPI, PostWithEmptyBodyMustSetZeroContentLength) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/post",
+                                   [](Request r) {
+                                     ASSERT_TRUE(r.body.empty());
+                                     r("Yo!\n");
+                                   });
+  const auto response = HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ""));
+  EXPECT_EQ("Yo!\n", response.body);
+}
+
 TEST(HTTPAPI, RespondWithStringAsString) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_with_std_string",
@@ -1018,7 +1142,11 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
     const auto sub_dir_response =
         HTTP(GET(Printf("http://localhost:%d/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/sub_dir/", FLAGS_net_api_test_port), sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/sub_dir/"
+        : Printf("http://localhost:%d/sub_dir/", FLAGS_net_api_test_port)
+    ), sub_dir_response.url);
     ASSERT_TRUE(sub_dir_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", sub_dir_response.headers.Get("Content-Type"));
     EXPECT_EQ("<h1>HTML sub_dir index</h1>", sub_dir_response.body);
@@ -1029,7 +1157,11 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
     const auto sub_sub_dir_response =
         HTTP(GET(Printf("http://localhost:%d/sub_dir/sub_sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port), sub_sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/sub_dir/sub_sub_dir/"
+        : Printf("http://localhost:%d/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port)
+    ), sub_sub_dir_response.url);
     ASSERT_TRUE(sub_sub_dir_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", sub_sub_dir_response.headers.Get("Content-Type"));
     EXPECT_EQ("<h1>HTML sub_sub_dir index</h1>", sub_sub_dir_response.body);
@@ -1128,7 +1260,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
     const auto dir_response =
         HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port), dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/static/something/"
+        : Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port)
+    ), dir_response.url);
     EXPECT_EQ("<h1>HTML index</h1>", dir_response.body);
   }
 
@@ -1143,7 +1279,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
     const auto sub_dir_response =
         HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port), sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/static/something/sub_dir/"
+        : Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port)
+    ), sub_dir_response.url);
     EXPECT_EQ("<h1>HTML sub_dir index</h1>", sub_dir_response.body);
   }
 
@@ -1159,8 +1299,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
     const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir",
                                                       FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port),
-              sub_sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/static/something/sub_dir/sub_sub_dir/"
+        : Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port)
+    ), sub_sub_dir_response.url);
     EXPECT_EQ("<h1>HTML sub_sub_dir index</h1>", sub_sub_dir_response.body);
   }
 }
@@ -1200,7 +1343,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
     const auto dir_response =
         HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/anything/", FLAGS_net_api_test_port), dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/anything/"
+        : Printf("http://localhost:%d/anything/", FLAGS_net_api_test_port)
+    ), dir_response.url);
     EXPECT_EQ("Done.", dir_response.body);
   }
 
@@ -1215,7 +1362,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
     const auto sub_dir_response =
         HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/anything/sub_dir/", FLAGS_net_api_test_port), sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/anything/sub_dir/"
+        : Printf("http://localhost:%d/anything/sub_dir/", FLAGS_net_api_test_port)
+    ), sub_dir_response.url);
     EXPECT_EQ("Done.", sub_dir_response.body);
   }
 
@@ -1231,13 +1382,17 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
     const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir",
                                                       FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port),
-              sub_sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port == 80
+        ? "http://localhost/anything/sub_dir/sub_sub_dir/"
+        : Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port)
+    ), sub_sub_dir_response.url);
     EXPECT_EQ("Done.", sub_sub_dir_response.body);
   }
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbsolute) {
+  ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1276,7 +1431,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
     const auto dir_response =
         HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/anything/", FLAGS_net_api_test_port_secondary), dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port_secondary == 80
+        ? "http://localhost/anything/"
+        : Printf("http://localhost:%d/anything/", FLAGS_net_api_test_port_secondary)
+    ), dir_response.url);
     EXPECT_EQ("Done.", dir_response.body);
   }
 
@@ -1291,7 +1450,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
     const auto sub_dir_response =
         HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/anything/sub_dir/", FLAGS_net_api_test_port_secondary), sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port_secondary == 80
+        ? "http://localhost/anything/sub_dir/"
+        : Printf("http://localhost:%d/anything/sub_dir/", FLAGS_net_api_test_port_secondary)
+    ), sub_dir_response.url);
     EXPECT_EQ("Done.", sub_dir_response.body);
   }
 
@@ -1307,8 +1470,11 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
     const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir",
                                                       FLAGS_net_api_test_port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
-    EXPECT_EQ(Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port_secondary),
-              sub_sub_dir_response.url);
+    EXPECT_EQ((
+      FLAGS_net_api_test_port_secondary == 80
+        ? "http://localhost/anything/sub_dir/sub_sub_dir/"
+        : Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port_secondary)
+    ), sub_sub_dir_response.url);
     EXPECT_EQ("Done.", sub_sub_dir_response.body);
   }
 }
@@ -1493,12 +1659,12 @@ TEST(HTTPAPI, ResponseGeneratorForSerializableAndNonSerializableTypes) {
                 if (r.url.query.has("json")) {
                   static_assert(current::serialization::json::IsJSONSerializable<HTTPAPITestObject>::value, "");
                   r(current::http::GenerateResponseFromMaybeSerializableObject<
-                      HTTPAPITemplatedTestObject<HTTPAPITestObject> >(HTTPAPITemplatedTestObject<HTTPAPITestObject>()));
+                      HTTPAPITemplatedTestObject<HTTPAPITestObject>>(HTTPAPITemplatedTestObject<HTTPAPITestObject>()));
                 } else {
                   static_assert(!current::serialization::json::IsJSONSerializable<HTTPAPINonSerializableObject>::value,
                                 "");
                   r(current::http::GenerateResponseFromMaybeSerializableObject<
-                      HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject> >(
+                      HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject>>(
                       HTTPAPITemplatedTestObject<HTTPAPINonSerializableObject>()));
                 }
               });

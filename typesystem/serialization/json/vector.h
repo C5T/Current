@@ -33,8 +33,8 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 
-template <class JSON_FORMAT, typename T>
-struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<T>> {
+template <class JSON_FORMAT, typename T, typename TA>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<T, TA>> {
   static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::vector<T>& value) {
     json_stringifier.Current().SetArray();
     for (const auto& element : value) {
@@ -45,9 +45,22 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<T>> {
   }
 };
 
-template <class JSON_FORMAT, typename TT, typename TA>
-struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<TT, TA>> {
-  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::vector<TT, TA>& destination) {
+template <class JSON_FORMAT, typename TA>
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<bool, TA>> {
+  static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::vector<bool, TA>& value) {
+    json_stringifier.Current().SetArray();
+    for (const auto& element : value) {
+      rapidjson::Value element_to_push;
+      const bool tmp = element;
+      json_stringifier.Inner(&element_to_push, tmp);
+      json_stringifier.Current().PushBack(std::move(element_to_push.Move()), json_stringifier.Allocator());
+    }
+  }
+};
+
+template <class JSON_FORMAT, typename T, typename TA>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<T, TA>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::vector<T, TA>& destination) {
     if (json_parser && json_parser.Current().IsArray()) {
       const size_t size = json_parser.Current().Size();
       destination.resize(size);
@@ -55,7 +68,24 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<TT, TA>> {
         json_parser.Inner(&json_parser.Current()[i], destination[i], "[", static_cast<int>(i), "]");
       }
     } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
-      throw JSONSchemaException("array", json_parser);  // LCOV_EXCL_LINE
+      CURRENT_THROW(JSONSchemaException("array", json_parser));  // LCOV_EXCL_LINE
+    }
+  }
+};
+
+template <class JSON_FORMAT, typename TA>
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::vector<bool, TA>> {
+  static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, std::vector<bool, TA>& destination) {
+    if (json_parser && json_parser.Current().IsArray()) {
+      const size_t size = json_parser.Current().Size();
+      destination.resize(size);
+      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
+        bool tmp;
+        json_parser.Inner(&json_parser.Current()[i], tmp, "[", static_cast<int>(i), "]");
+        destination[i] = tmp;
+      }
+    } else if (!json::JSONPatchMode<JSON_FORMAT>::value || (json_parser && !json_parser.Current().IsArray())) {
+      CURRENT_THROW(JSONSchemaException("array", json_parser));  // LCOV_EXCL_LINE
     }
   }
 };

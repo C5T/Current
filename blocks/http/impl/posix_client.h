@@ -84,8 +84,18 @@ class GenericHTTPClientPOSIX final {
         CURRENT_THROW(current::net::HTTPRedirectLoopException(loop));
       }
       all_urls.insert(composed_url);
+      // The `URL` class' concern is to parse the URL string as is: if the port is missing, it becomes zero.
+      // `URL::DefaultPortForScheme` will return zero anyway if the schema is unknown.
+      // So, to make sure we don't try to connect to port zero, the defaulting logic has to be here in the HTTP client.
+      int port = parsed_url.port;
+      if (port == 0) {
+        port = URL::DefaultPortForScheme(parsed_url.scheme);
+        if (port == 0) {
+          port = 80;
+        }
+      }
       current::net::Connection connection(
-          current::net::Connection(current::net::ClientSocket(parsed_url.host, parsed_url.port)));
+          current::net::Connection(current::net::ClientSocket(parsed_url.host, port)));
       connection.BlockingWrite(
           request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() + " HTTP/1.1\r\n", true);
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n", true);
@@ -101,7 +111,7 @@ class GenericHTTPClientPOSIX final {
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
-      if (!request_body_contents_.empty()) {
+      if (!request_body_contents_.empty() || current::net::NeedContentLengthHeader(request_method_)) {
         // NOTE(dkorolev): The `try/catch/throw` combo here is a hack for the unit test for HTTP 413 to pass.
         // It swallows the `SocketWriteException` exception for huge payloads, as Current's HTTP server logic
         // does intentionally close the HTTP connection prematurely if `Content-Length` exceeds a reasonable limit.
