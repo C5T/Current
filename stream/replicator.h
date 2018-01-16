@@ -170,19 +170,25 @@ class SubscribableRemoteStream final {
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto split = current::strings::Split(raw_log_line, '\t');
+	  if (split.empty()) {
+		CURRENT_THROW(RemoteStreamInvalidChunkException());
+	  }
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
       if (Exists(tsoptidx.index)) {
         const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-        CURRENT_ASSERT(split.size() == 2u);
-        CURRENT_ASSERT(idxts.index == index_);
+		if (split.size() != 2u || idxts.index != index_) {
+		  CURRENT_THROW(RemoteStreamInvalidChunkException());
+		}
         auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
         ++index_;
         if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       } else {
-        CURRENT_ASSERT(split.size() == 1u);
-        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+		if (split.size() != 1u) {
+		  CURRENT_THROW(RemoteStreamInvalidChunkException());
+		}
+		if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       }
