@@ -170,25 +170,25 @@ class SubscribableRemoteStream final {
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto split = current::strings::Split(raw_log_line, '\t');
-	  if (split.empty()) {
-		CURRENT_THROW(RemoteStreamInvalidChunkException());
-	  }
+      if (split.empty()) {
+        CURRENT_THROW(RemoteStreamInvalidChunkException());
+      }
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
       if (Exists(tsoptidx.index)) {
         const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-		if (split.size() != 2u || idxts.index != index_) {
-		  CURRENT_THROW(RemoteStreamInvalidChunkException());
-		}
+        if (split.size() != 2u || idxts.index != index_) {
+          CURRENT_THROW(RemoteStreamInvalidChunkException());
+        }
         auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
         ++index_;
         if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       } else {
-		if (split.size() != 1u) {
-		  CURRENT_THROW(RemoteStreamInvalidChunkException());
-		}
-		if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+        if (split.size() != 1u) {
+          CURRENT_THROW(RemoteStreamInvalidChunkException());
+        }
+        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       }
@@ -332,9 +332,9 @@ class SubscribableRemoteStream final {
 
   template <typename F>
   RemoteSubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
-                                                 uint64_t start_idx = 0u,
-                                                 bool checked_subscription = false,
-                                                 std::function<void()> done_callback = nullptr) const {
+                                                       uint64_t start_idx = 0u,
+                                                       bool checked_subscription = false,
+                                                       std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
     return RemoteSubscriberScopeUnchecked<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
   }

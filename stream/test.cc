@@ -266,7 +266,8 @@ TEST(Stream, SubscribeAndProcessThreeEntries) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unchecked.results_;
 }
 
@@ -310,7 +311,8 @@ TEST(Stream, SubscribeSynchronously) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unchecked.results_;
 }
 
@@ -1083,7 +1085,8 @@ TEST(Stream, ParsesFromFile) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d.results_;
-  EXPECT_TRUE(CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, StreamTestProcessor::kTerminateStr))
       << joined_expected_values << " != " << d_unchecked.results_;
 }
 
@@ -1123,15 +1126,16 @@ TEST(Stream, UncheckedVsCheckedSubscription) {
       std::this_thread::yield();
     }
   };
-  const auto CollectUncheckedSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
-    rows.clear();
-    entries.clear();
-    RecordsUncheckedCollector collector(entries, rows);
-    const auto scope = exposed_stream->SubscribeUnchecked(collector);
-    while (collector.count_ < 3u) {
-      std::this_thread::yield();
-    }
-  };
+  const auto CollectUncheckedSubscriptionResult =
+      [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+        rows.clear();
+        entries.clear();
+        RecordsUncheckedCollector collector(entries, rows);
+        const auto scope = exposed_stream->SubscribeUnchecked(collector);
+        while (collector.count_ < 3u) {
+          std::this_thread::yield();
+        }
+      };
 
   {
     std::vector<std::string> all_entries;

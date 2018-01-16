@@ -335,8 +335,8 @@ class Stream final {
 
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Checked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
-                                                                                         uint64_t index,
-                                                                                         uint64_t size) {
+                                                                                            uint64_t index,
+                                                                                            uint64_t size) {
       for (const auto& e : impl.persister.Iterate(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
@@ -358,8 +358,8 @@ class Stream final {
 
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Unchecked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
-                                                                                           uint64_t index,
-                                                                                           uint64_t size) {
+                                                                                              uint64_t index,
+                                                                                              uint64_t size) {
       for (const auto& e : impl.persister.IterateUnsafe(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
@@ -402,12 +402,14 @@ class Stream final {
         } else {
           std::unique_lock<std::mutex> lock(impl_->publishing_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(impl_->notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(lock, [this, &index, &begin_idx, &head]() {
-            return terminate_signal_ ||
-                   impl_->persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
-                   (index > begin_idx &&
-                    impl_->persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() > head);
-          });
+          terminate_signal_.WaitUntil(
+              lock,
+              [this, &index, &begin_idx, &head]() {
+                return terminate_signal_ ||
+                       impl_->persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                       (index > begin_idx &&
+                        impl_->persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() > head);
+              });
         }
       }
     }
@@ -451,8 +453,8 @@ class Stream final {
 
   template <typename F>
   SubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
-                                           uint64_t begin_idx = 0u,
-                                           std::function<void()> done_callback = nullptr) const {
+                                                 uint64_t begin_idx = 0u,
+                                                 std::function<void()> done_callback = nullptr) const {
     return SubscriberScopeUnchecked<F>(impl_, subscriber, begin_idx, done_callback);
   }
 
