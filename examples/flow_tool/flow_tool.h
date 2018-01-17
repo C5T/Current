@@ -172,23 +172,33 @@ class FlowTool final {
   void ServeTree(Request r) {
     const auto url_path_args = r.url_path_args;
     const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
+    const bool trailing_slash = r.url_path_had_trailing_slash;
     if (r.method == "GET") {
       storage_
           ->ReadOnlyTransaction(
-              [this, path](ImmutableFields<storage_t> fields) -> Response {
+              [this, path, trailing_slash](ImmutableFields<storage_t> fields) -> Response {
                 const NodeSearchResult result = FindNodeFromWithinTransaction(fields, path);
                 if (result.node) {
                   struct GetFileOrDirHandler {
                     const ImmutableFields<storage_t>& fields;
                     const std::vector<std::string>& path;
-                    GetFileOrDirHandler(const ImmutableFields<storage_t>& fields, const std::vector<std::string>& path)
-                        : fields(fields), path(path) {}
+                    const bool trailing_slash;
+                    GetFileOrDirHandler(const ImmutableFields<storage_t>& fields,
+                                        const std::vector<std::string>& path,
+                                        const bool trailing_slash)
+                        : fields(fields), path(path), trailing_slash(trailing_slash) {}
                     Response response;
                     void FillProtoFields(api::success::FileOrDirResponse& proto_response_object) {
                       proto_response_object.url = "smoke_test_passed://" + current::strings::Join(path, '/');
                       proto_response_object.path = '/' + current::strings::Join(path, '/');
                     }
                     void operator()(const db::File& file) {
+                      if (trailing_slash) {
+                        response = Response(
+                            api::error::Error("TrailingSlashError", "File URLs should not have the trailing slash."),
+                            HTTPResponseCode.BadRequest);
+                        return;
+                      }
                       const auto blob = fields.blob[file.blob];
                       if (Exists(blob)) {
                         api::SuccessfulResponse response_object;
@@ -224,7 +234,7 @@ class FlowTool final {
                                           current::net::constants::kDefaultJSONContentType);
                     }
                   };
-                  GetFileOrDirHandler get_handler(fields, path);
+                  GetFileOrDirHandler get_handler(fields, path, trailing_slash);
                   result.node->data.Call(get_handler);
                   return std::move(get_handler.response);
                 } else {
@@ -250,19 +260,27 @@ class FlowTool final {
         const api::request::PutRequest& body = Value(parsed_body);
         storage_
             ->ReadWriteTransaction(
-                [this, path, body](MutableFields<storage_t> fields) -> Response {
+                [this, path, body, trailing_slash](MutableFields<storage_t> fields) -> Response {
                   struct PutFileOrDirHandler {
                     const FlowTool* self;
                     MutableFields<storage_t> fields;
                     const std::vector<std::string> path;
+                    const bool trailing_slash;
                     Response response;
 
                     PutFileOrDirHandler(const FlowTool* self,
                                         MutableFields<storage_t> fields,
-                                        const std::vector<std::string> path)
-                        : self(self), fields(fields), path(path) {}
+                                        const std::vector<std::string> path,
+                                        const bool trailing_slash)
+                        : self(self), fields(fields), path(path), trailing_slash(trailing_slash) {}
 
                     void operator()(const api::request::PutFileRequest& put_file_request) {
+                      if (trailing_slash) {
+                        response = Response(
+                            api::error::Error("TrailingSlashError", "File URLs should not have the trailing slash."),
+                            HTTPResponseCode.BadRequest);
+                        return;
+                      }
                       const NodeSearchResult full_path_node_search_result =
                           self->FindNodeFromWithinTransaction(fields, path);
                       if (full_path_node_search_result.node) {
@@ -341,7 +359,7 @@ class FlowTool final {
                     }
                     void operator()(const api::request::PutDirRequest&) { response = "Not implemented yet.\n"; }
                   };
-                  PutFileOrDirHandler put_handler(this, fields, path);
+                  PutFileOrDirHandler put_handler(this, fields, path, trailing_slash);
                   body.Call(put_handler);
                   return std::move(put_handler.response);
                 },

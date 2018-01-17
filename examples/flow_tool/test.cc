@@ -139,7 +139,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
         {
           flow_tool::db::Blob file_blob;
           file_blob.key = static_cast<flow_tool::db::blob_key_t>(201ull);
-          file_blob.body = "Hello, World!\n";
+          file_blob.body = "Hello, World!";
           fields.blob.Add(file_blob);
         }
         {
@@ -180,7 +180,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
     const auto file_response = Value<flow_tool::api::success::FileResponse>(Value(parsed_body));
     EXPECT_EQ("smoke_test_passed://test.txt", file_response.url);
     EXPECT_EQ("/test.txt", file_response.path);
-    EXPECT_EQ("Hello, World!\n", file_response.data);
+    EXPECT_EQ("Hello, World!", file_response.data);
   }
 }
 
@@ -216,7 +216,7 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
 
   {
     flow_tool::api::request::PutRequest request_body;
-    request_body.template Construct<flow_tool::api::request::PutFileRequest>("Yo, World!\n");
+    request_body.template Construct<flow_tool::api::request::PutFileRequest>("Yo, World!");
 
     const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port), request_body));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
@@ -246,6 +246,49 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
     const auto file_response = Value<flow_tool::api::success::FileResponse>(Value(parsed_body));
     EXPECT_EQ("smoke_test_passed://yo.txt", file_response.url);
     EXPECT_EQ("/yo.txt", file_response.path);
-    EXPECT_EQ("Yo, World!\n", file_response.data);
+    EXPECT_EQ("Yo, World!", file_response.data);
+  }
+}
+
+TEST(FlowTool, TrailingSlashesStrictness) {
+  current::time::ResetToZero();
+
+  using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
+
+  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+
+  {
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutFileRequest>("Nope.");
+    const auto response =
+        HTTP(PUT(Printf("http://localhost:%d/tree/nope.txt/", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(400, static_cast<int>(response.code)) << response.body;
+    EXPECT_EQ("TrailingSlashError", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
+  }
+
+  {
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutFileRequest>("Duh.");
+    const auto response =
+        HTTP(PUT(Printf("http://localhost:%d/tree/duh.txt", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/duh.txt", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::FileResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto file_response = Value<flow_tool::api::success::FileResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://duh.txt", file_response.url);
+    EXPECT_EQ("/duh.txt", file_response.path);
+    EXPECT_EQ("Duh.", file_response.data);
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/duh.txt/", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(400, static_cast<int>(response.code)) << response.body;
+    EXPECT_EQ("TrailingSlashError", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
   }
 }
