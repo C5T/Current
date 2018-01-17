@@ -105,6 +105,19 @@ CURRENT_STRUCT(Healthz) {
   CURRENT_FIELD(uptime_us, std::chrono::microseconds);
 };
 
+namespace request {
+
+CURRENT_STRUCT(PutFileRequest) {
+  CURRENT_FIELD(body, std::string);
+  CURRENT_CONSTRUCTOR(PutFileRequest)(std::string body = "") : body(std::move(body)) {}
+};
+
+CURRENT_STRUCT(PutDirRequest){};
+
+CURRENT_VARIANT(PutRequest, PutDirRequest, PutFileRequest);
+
+}  // namespace flow_tool::api
+
 namespace error {
 
 CURRENT_STRUCT(ErrorBase) {

@@ -48,7 +48,7 @@ TEST(FlowTool, Healthz) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/up", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     EXPECT_TRUE(ParseJSON<flow_tool::api::Healthz>(response.body).up);
   }
 }
@@ -79,7 +79,7 @@ TEST(FlowTool, GetsAnEmptyDirectory) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
@@ -98,7 +98,7 @@ TEST(FlowTool, Returns404OnNonExistentFile) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(404, static_cast<int>(response.code));
+    EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
   }
 }
@@ -113,7 +113,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
@@ -125,7 +125,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(404, static_cast<int>(response.code));
+    EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
     EXPECT_EQ("ErrorPathNotFound", error.error);
@@ -160,7 +160,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
@@ -173,7 +173,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::FileResponse>(Value(parsed_body))) << JSON(parsed_body);
@@ -193,7 +193,7 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
@@ -205,7 +205,7 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(404, static_cast<int>(response.code));
+    EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
     EXPECT_EQ("ErrorPathNotFound", error.error);
@@ -215,16 +215,18 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
   }
 
   {
-    const auto response =
-        HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port), "Yo, World!\n"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutFileRequest>("Yo, World!\n");
+
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     // TODO(dkorolev): Response analysis.
     // Add the timestamp created/updated, number of versions already available, and time interval since last update?
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
@@ -237,7 +239,7 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
-    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
     ASSERT_TRUE(Exists<flow_tool::api::success::FileResponse>(Value(parsed_body))) << JSON(parsed_body);

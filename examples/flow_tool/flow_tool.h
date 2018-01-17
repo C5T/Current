@@ -87,7 +87,7 @@ class FlowTool final {
 
   // Accepts both read-only and read-write transactions.
   template <typename FIELDS>
-  NodeSearchResult FindNodeFromWithinTransactionImpl(FIELDS&& fields, const std::vector<std::string>& path) {
+  static NodeSearchResult FindNodeFromWithinTransactionImpl(FIELDS&& fields, const std::vector<std::string>& path) {
     const auto optional_root_node = fields.node[db::node_key_t::RootNode];
     if (!Exists(optional_root_node) || !Exists<db::Dir>(Value(optional_root_node).data)) {
       return NodeSearchResult(Response(api::error::Error("InternalFileSystemIntegrityError",
@@ -146,13 +146,13 @@ class FlowTool final {
     }
   }
 
-  NodeSearchResult FindNodeFromWithinTransaction(ImmutableFields<storage_t> fields,
-                                                 const std::vector<std::string>& path) {
+  static NodeSearchResult FindNodeFromWithinTransaction(ImmutableFields<storage_t> fields,
+                                                        const std::vector<std::string>& path) {
     return FindNodeFromWithinTransactionImpl(fields, path);
   }
 
-  NodeSearchResult FindNodeFromWithinTransaction(MutableFields<storage_t> fields,
-                                                 const std::vector<std::string>& path) {
+  static NodeSearchResult FindNodeFromWithinTransaction(MutableFields<storage_t> fields,
+                                                        const std::vector<std::string>& path) {
     return FindNodeFromWithinTransactionImpl(fields, path);
   }
 
@@ -178,11 +178,10 @@ class FlowTool final {
               [this, path](ImmutableFields<storage_t> fields) -> Response {
                 const NodeSearchResult result = FindNodeFromWithinTransaction(fields, path);
                 if (result.node) {
-                  struct FileOrDirResponseGenerator {
+                  struct GetFileOrDirHandler {
                     const ImmutableFields<storage_t>& fields;
                     const std::vector<std::string>& path;
-                    FileOrDirResponseGenerator(const ImmutableFields<storage_t>& fields,
-                                               const std::vector<std::string>& path)
+                    GetFileOrDirHandler(const ImmutableFields<storage_t>& fields, const std::vector<std::string>& path)
                         : fields(fields), path(path) {}
                     Response response;
                     void FillProtoFields(api::success::FileOrDirResponse& proto_response_object) {
@@ -200,8 +199,9 @@ class FlowTool final {
                                             HTTPResponseCode.OK,
                                             current::net::constants::kDefaultJSONContentType);
                       } else {
-                        response = Response(api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
-                                            HTTPResponseCode.InternalServerError);
+                        response = Response(
+                            api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
+                            HTTPResponseCode.InternalServerError);
                       }
                     }
                     void operator()(const db::Dir& dir) {
@@ -213,9 +213,9 @@ class FlowTool final {
                         if (Exists(node)) {
                           dir_response_object.dir.push_back(Value(node).name);
                         } else {
-                          response = Response(
-                              api::error::Error("InternalFileSystemIntegrityError", "The target node dir refers to a non-existing node."),
-                              HTTPResponseCode.InternalServerError);
+                          response = Response(api::error::Error("InternalFileSystemIntegrityError",
+                                                                "The target node dir refers to a non-existing node."),
+                                              HTTPResponseCode.InternalServerError);
                           return;
                         }
                       }
@@ -224,9 +224,9 @@ class FlowTool final {
                                           current::net::constants::kDefaultJSONContentType);
                     }
                   };
-                  FileOrDirResponseGenerator generator(fields, path);
-                  result.node->data.Call(generator);
-                  return std::move(generator.response);
+                  GetFileOrDirHandler get_handler(fields, path);
+                  result.node->data.Call(get_handler);
+                  return std::move(get_handler.response);
                 } else {
                   assert(Exists(result.error));
                   return Value(result.error);
@@ -237,78 +237,117 @@ class FlowTool final {
     } else if (r.method == "PUT") {
       // TODO(dkorolev): Allow creating directories too.
       // TODO(dkorolev): Overall test that no directory is overwritten with a file or vice versa.
-      const auto url_path_args = r.url_path_args;
-      const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
-      const std::string body = r.body;  // TODO(dkorolev): This `body` should be more complex.
       if (path.empty()) {
-        r(api::error::Error("FilesystemError", "Attempted to overwrite the root `/` directory with a file."),
-          HTTPResponseCode.BadRequest);
+        r(api::error::Error("FilesystemError", "Attempted to overwrite the root."), HTTPResponseCode.BadRequest);
         return;
       }
-      storage_
-          ->ReadWriteTransaction(
-              [this, path, body](MutableFields<storage_t> fields) -> Response {
-                const NodeSearchResult result_file = FindNodeFromWithinTransaction(fields, path);
-                if (result_file.node) {
-                  if (Exists<db::File>(result_file.node->data)) {
-                    const auto optional_blob = fields.blob[Value<db::File>(result_file.node->data).blob];
-                    if (!Exists(optional_blob)) {
-                      return Response(api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
-                                      HTTPResponseCode.InternalServerError);
-                    } else {
-                      db::Blob blob = Value(optional_blob);
-                      blob.body = body;
-                      fields.blob.Add(blob);
-                      return "Dima: OK.\n";  // TODO(dkorolev): A better message.
-                    }
-                  } else {
-                    return Response(
-                        api::error::Error("FilesystemError", "Attempted to overwrite directory with a file."),
-                        HTTPResponseCode.BadRequest);
-                  }
-                } else {
-                  const std::string filename = path.back();
-                  const std::vector<std::string> dir_path(path.begin(), --path.end());
-                  const NodeSearchResult result_dir = FindNodeFromWithinTransaction(fields, dir_path);
-                  if (result_dir.node) {
-                    if (Exists<db::Dir>(result_dir.node->data)) {
-                      const auto optional_dir_node = fields.node[result_dir.node->key];
-                      if (!Exists(optional_dir_node)) {
-                        return Response(api::error::Error("InternalFileSystemIntegrityError", "The assumed directory does not exist."),
-                                        HTTPResponseCode.InternalServerError);
+      const auto parsed_body = TryParseJSON<api::request::PutRequest, JSONFormat::Minimalistic>(r.body);
+      if (!Exists(parsed_body)) {
+        r(api::error::Error("BadRequest",
+                            "PUT body should define the creation or the update of a file or of a directory."),
+          HTTPResponseCode.BadRequest);
+      } else {
+        const api::request::PutRequest& body = Value(parsed_body);
+        storage_
+            ->ReadWriteTransaction(
+                [this, path, body](MutableFields<storage_t> fields) -> Response {
+                  struct PutFileOrDirHandler {
+                    const FlowTool* self;
+                    MutableFields<storage_t> fields;
+                    const std::vector<std::string> path;
+                    Response response;
+
+                    PutFileOrDirHandler(const FlowTool* self,
+                                        MutableFields<storage_t> fields,
+                                        const std::vector<std::string> path)
+                        : self(self), fields(fields), path(path) {}
+
+                    void operator()(const api::request::PutFileRequest& put_file_request) {
+                      const NodeSearchResult full_path_node_search_result =
+                          self->FindNodeFromWithinTransaction(fields, path);
+                      if (full_path_node_search_result.node) {
+                        // A node is found by the full path.
+                        // Update the file if it's a file, or return an error if it's a directory.
+                        if (Exists<db::File>(full_path_node_search_result.node->data)) {
+                          const auto optional_blob =
+                              fields.blob[Value<db::File>(full_path_node_search_result.node->data).blob];
+                          if (!Exists(optional_blob)) {
+                            response = Response(
+                                api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
+                                HTTPResponseCode.InternalServerError);
+                            return;
+                          } else {
+                            db::Blob blob = Value(optional_blob);
+                            blob.body = put_file_request.body;
+                            fields.blob.Add(blob);
+                            response = "Dima: OK.\n";  // TODO(dkorolev): A better message.
+                            return;
+                          }
+                        } else {
+                          response = Response(
+                              api::error::Error("FilesystemError", "Attempted to overwrite directory with a file."),
+                              HTTPResponseCode.BadRequest);
+                          return;
+                        }
                       } else {
-                        db::Node dir_node = Value(optional_dir_node);
+                        // A node does not exist. See if the directory for it does.
+                        const std::string filename = path.back();
+                        const std::vector<std::string> dir_path(path.begin(), --path.end());
+                        const NodeSearchResult result_dir = self->FindNodeFromWithinTransaction(fields, dir_path);
+                        if (result_dir.node) {
+                          // Yes, the directory does exist. Create the file.
+                          if (Exists<db::Dir>(result_dir.node->data)) {
+                            const auto optional_dir_node = fields.node[result_dir.node->key];
+                            if (!Exists(optional_dir_node)) {
+                              response = Response(api::error::Error("InternalFileSystemIntegrityError",
+                                                                    "The assumed directory does not exist."),
+                                                  HTTPResponseCode.InternalServerError);
+                              return;
+                            } else {
+                              db::Node dir_node = Value(optional_dir_node);
 
-                        db::Blob file_blob;
-                        file_blob.key = db::Blob::GenerateRandomBlobKey();
-                        file_blob.body = body;
-                        fields.blob.Add(file_blob);
+                              db::Blob file_blob;
+                              file_blob.key = db::Blob::GenerateRandomBlobKey();
+                              file_blob.body = put_file_request.body;
+                              fields.blob.Add(file_blob);
 
-                        db::Node file_node;
-                        file_node.key = db::Node::GenerateRandomFileKey();
-                        file_node.name = filename;
-                        file_node.data = db::File();
-                        Value<db::File>(file_node.data).blob = file_blob.key;
-                        fields.node.Add(file_node);
+                              db::Node file_node;
+                              file_node.key = db::Node::GenerateRandomFileKey();
+                              file_node.name = filename;
+                              file_node.data = db::File();
+                              Value<db::File>(file_node.data).blob = file_blob.key;
+                              fields.node.Add(file_node);
 
-                        Value<db::Dir>(dir_node.data).dir.push_back(file_node.key);
-                        fields.node.Add(dir_node);
+                              Value<db::Dir>(dir_node.data).dir.push_back(file_node.key);
+                              fields.node.Add(dir_node);
 
-                        return "Dima: OK.\n";  // TODO(dkorolev): A better message.
+                              response = "Dima: OK.\n";  // TODO(dkorolev): A better message.
+                              return;
+                            }
+                          } else {
+                            response = Response(
+                                api::error::Error("FilesystemError", "Attempted to use a file as a directory."),
+                                HTTPResponseCode.BadRequest);
+                            return;
+                          }
+                        } else {
+                          // Neither file nor the directory for it was found. We don't support `mkdir -p` (yet), so it's
+                          // an error.
+                          assert(Exists(result_dir.error));
+                          response = Value(result_dir.error);
+                          return;
+                        }
                       }
-                    } else {
-                      return Response(api::error::Error("FilesystemError", "Attempted to use a file as a directory."),
-                                      HTTPResponseCode.BadRequest);
                     }
-                  } else {
-                    // Neither file nor dir were found.
-                    assert(Exists(result_dir.error));
-                    return Value(result_dir.error);
-                  }
-                }
-              },
-              std::move(r))
-          .Go();
+                    void operator()(const api::request::PutDirRequest&) { response = "Not implemented yet.\n"; }
+                  };
+                  PutFileOrDirHandler put_handler(this, fields, path);
+                  body.Call(put_handler);
+                  return std::move(put_handler.response);
+                },
+                std::move(r))
+            .Go();
+      }
     } else {
       r("Other methods coming soon.\n", HTTPResponseCode.MethodNotAllowed);
     }
