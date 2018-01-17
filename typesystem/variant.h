@@ -212,6 +212,15 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
     object_ = std::move(input);
   }
 
+#ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+  template <typename T, typename... ARGS>
+#else
+  template <typename T, typename... ARGS, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, T>::value>>
+#endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
+  T& Construct(ARGS&&... args) {
+    object_ = std::make_unique<T>(std::forward<ARGS>(args)...);
+    return *dynamic_cast<T*>(object_.get());
+  }
   operator bool() const { return object_ ? true : false; }
 
   template <typename F>

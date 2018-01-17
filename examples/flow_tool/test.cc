@@ -78,9 +78,15 @@ TEST(FlowTool, GetsAnEmptyDirectory) {
   flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[]}\n", response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://", dir_response.url);
+    EXPECT_EQ("/", dir_response.path);
+    EXPECT_EQ(0u, dir_response.dir.size());
   }
 }
 
@@ -108,7 +114,13 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[]}\n", response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://", dir_response.url);
+    EXPECT_EQ("/", dir_response.path);
+    EXPECT_EQ(0u, dir_response.dir.size());
   }
 
   {
@@ -149,14 +161,26 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[\"test.txt\"]}\n", response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://", dir_response.url);
+    EXPECT_EQ("/", dir_response.path);
+    ASSERT_EQ(1u, dir_response.dir.size());
+    EXPECT_EQ("test.txt", dir_response.dir[0]);
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://test.txt\",\"path\":\"/test.txt\",\"data\":\"Hello, World!\\n\"}\n",
-              response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::FileResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto file_response = Value<flow_tool::api::success::FileResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://test.txt", file_response.url);
+    EXPECT_EQ("/test.txt", file_response.path);
+    EXPECT_EQ("Hello, World!\n", file_response.data);
   }
 }
 
@@ -170,7 +194,13 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[]}\n", response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://", dir_response.url);
+    EXPECT_EQ("/", dir_response.path);
+    EXPECT_EQ(0u, dir_response.dir.size());
   }
 
   {
@@ -195,13 +225,25 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://\",\"path\":\"/\",\"dir\":[\"yo.txt\"]}\n", response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://", dir_response.url);
+    EXPECT_EQ("/", dir_response.path);
+    ASSERT_EQ(1u, dir_response.dir.size());
+    EXPECT_EQ("yo.txt", dir_response.dir[0]);
   }
 
   {
     const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("{\"url\":\"smoke_test_passed://yo.txt\",\"path\":\"/yo.txt\",\"data\":\"Yo, World!\\n\"}\n",
-              response.body);
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::FileResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto file_response = Value<flow_tool::api::success::FileResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://yo.txt", file_response.url);
+    EXPECT_EQ("/yo.txt", file_response.path);
+    EXPECT_EQ("Yo, World!\n", file_response.data);
   }
 }

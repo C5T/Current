@@ -62,7 +62,7 @@ class FlowTool final {
             HTTP(port).Register(url_prefix + "/healthz", [this](Request r) { ServeHealthz(std::move(r)); }) +
             HTTP(port).Register(
                 url_prefix + "/tree", URLPathArgs::CountMask::Any, [this](Request r) { ServeTree(std::move(r)); })) {
-    // Make sure to create a top-level filesystem node of the directory type when starting from scratch.
+    // Make sure to create the top-level filesystem node of the directory type if or when starting from scratch.
     storage_
         ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
           if (!fields.node.Has(db::node_key_t::RootNode)) {
@@ -94,13 +94,12 @@ class FlowTool final {
                                                          "The root of the internal filesystem is not a directory."),
                                        HTTPResponseCode.InternalServerError));
     } else {
-      const db::Node* result = nullptr;
       if (path.empty()) {
         return NodeSearchResult(&Value(optional_root_node));
       } else {
         const db::Dir* ptr = &Value<db::Dir>(Value(optional_root_node).data);
         size_t i = 0;
-        while (i < path.size() && ptr && !result) {
+        while (ptr && i < path.size()) {
           const db::Dir* next_ptr = nullptr;
           for (const auto& e : ptr->dir) {
             const auto optional_next_node = fields.node[e];
@@ -115,8 +114,8 @@ class FlowTool final {
             const auto& next_node = Value(optional_next_node);
             if (next_node.name == path[i]) {
               if (i + 1u == path.size()) {
-                result = &next_node;
-                break;
+                // Success, the path was found.
+                return NodeSearchResult(&next_node);
               } else {
                 if (!Exists<db::Dir>(next_node.data)) {
                   api::error::ErrorAtteptedToAccessFileAsDir error;
@@ -124,7 +123,7 @@ class FlowTool final {
                   error.message = "The internal filesystem contains an invalid entry.";
                   error.file_component = path[i];
                   error.file_component_zero_based_index = i;
-                  Response(error, HTTPResponseCode.BadRequest);
+                  return NodeSearchResult(Response(error, HTTPResponseCode.BadRequest));
                 } else {
                   next_ptr = &Value<db::Dir>(next_node.data);
                   break;
@@ -132,22 +131,17 @@ class FlowTool final {
               }
             }
           }
-          if (next_ptr) {
-            ptr = next_ptr;
+          ptr = next_ptr;
+          if (ptr) {
             ++i;
-          } else {
-            break;
           }
         }
-        if (result) {
-          return NodeSearchResult(result);
-        } else {
-          api::error::ErrorPathNotFound error;
-          error.path = '/' + current::strings::Join(path, '/');
-          error.not_found_component = path[i];
-          error.not_found_component_zero_based_index = i;
-          return NodeSearchResult(Response(error, HTTPResponseCode.NotFound));
-        }
+        // No success, the path could not be traversed.
+        api::error::ErrorPathNotFound error;
+        error.path = '/' + current::strings::Join(path, '/');
+        error.not_found_component = path[i];
+        error.not_found_component_zero_based_index = i;
+        return NodeSearchResult(Response(error, HTTPResponseCode.NotFound));
       }
     }
   }
@@ -176,18 +170,19 @@ class FlowTool final {
 
   // The filesystem-handling HTTP response handler.
   void ServeTree(Request r) {
+    const auto url_path_args = r.url_path_args;
+    const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
     if (r.method == "GET") {
-      const auto url_path_args = r.url_path_args;
-      const std::vector<std::string> path(url_path_args.begin(), url_path_args.end());
       storage_
           ->ReadOnlyTransaction(
               [this, path](ImmutableFields<storage_t> fields) -> Response {
                 const NodeSearchResult result = FindNodeFromWithinTransaction(fields, path);
                 if (result.node) {
-                  struct ResponseGenerator {
+                  struct FileOrDirResponseGenerator {
                     const ImmutableFields<storage_t>& fields;
                     const std::vector<std::string>& path;
-                    ResponseGenerator(const ImmutableFields<storage_t>& fields, const std::vector<std::string>& path)
+                    FileOrDirResponseGenerator(const ImmutableFields<storage_t>& fields,
+                                               const std::vector<std::string>& path)
                         : fields(fields), path(path) {}
                     Response response;
                     void FillProtoFields(api::success::FileOrDirResponse& proto_response_object) {
@@ -195,35 +190,41 @@ class FlowTool final {
                       proto_response_object.path = '/' + current::strings::Join(path, '/');
                     }
                     void operator()(const db::File& file) {
-                      api::success::FileResponse response_object;
-                      FillProtoFields(response_object);
                       const auto blob = fields.blob[file.blob];
                       if (Exists(blob)) {
-                        response_object.data = Value(blob).body;
-                        response = Response(response_object);
+                        api::SuccessfulResponse response_object;
+                        auto& file_response_object = response_object.template Construct<api::success::FileResponse>();
+                        FillProtoFields(file_response_object);
+                        file_response_object.data = Value(blob).body;
+                        response = Response(JSON<JSONFormat::JavaScript>(response_object),
+                                            HTTPResponseCode.OK,
+                                            current::net::constants::kDefaultJSONContentType);
                       } else {
-                        response = Response(api::error::Error("InternalError", "The target blob was not found."),
+                        response = Response(api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
                                             HTTPResponseCode.InternalServerError);
                       }
                     }
                     void operator()(const db::Dir& dir) {
-                      api::success::DirResponse response_object;
-                      FillProtoFields(response_object);
+                      api::SuccessfulResponse response_object;
+                      auto& dir_response_object = response_object.template Construct<api::success::DirResponse>();
+                      FillProtoFields(dir_response_object);
                       for (const auto& e : dir.dir) {
                         const auto node = fields.node[e];
                         if (Exists(node)) {
-                          response_object.dir.push_back(Value(node).name);
+                          dir_response_object.dir.push_back(Value(node).name);
                         } else {
                           response = Response(
-                              api::error::Error("InternalError", "The target node dir refers to a non-existing node."),
+                              api::error::Error("InternalFileSystemIntegrityError", "The target node dir refers to a non-existing node."),
                               HTTPResponseCode.InternalServerError);
                           return;
                         }
                       }
-                      response = Response(response_object);
+                      response = Response(JSON<JSONFormat::JavaScript>(response_object),
+                                          HTTPResponseCode.OK,
+                                          current::net::constants::kDefaultJSONContentType);
                     }
                   };
-                  ResponseGenerator generator(fields, path);
+                  FileOrDirResponseGenerator generator(fields, path);
                   result.node->data.Call(generator);
                   return std::move(generator.response);
                 } else {
@@ -252,7 +253,7 @@ class FlowTool final {
                   if (Exists<db::File>(result_file.node->data)) {
                     const auto optional_blob = fields.blob[Value<db::File>(result_file.node->data).blob];
                     if (!Exists(optional_blob)) {
-                      return Response(api::error::Error("InternalError", "The target blob was not found."),
+                      return Response(api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
                                       HTTPResponseCode.InternalServerError);
                     } else {
                       db::Blob blob = Value(optional_blob);
@@ -273,7 +274,7 @@ class FlowTool final {
                     if (Exists<db::Dir>(result_dir.node->data)) {
                       const auto optional_dir_node = fields.node[result_dir.node->key];
                       if (!Exists(optional_dir_node)) {
-                        return Response(api::error::Error("InternalError", "The assumed directory does not exist."),
+                        return Response(api::error::Error("InternalFileSystemIntegrityError", "The assumed directory does not exist."),
                                         HTTPResponseCode.InternalServerError);
                       } else {
                         db::Node dir_node = Value(optional_dir_node);
