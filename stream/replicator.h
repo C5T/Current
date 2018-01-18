@@ -160,6 +160,12 @@ class SubscribableRemoteStream final {
                           [this]() {}));
         } catch (StreamTerminatedBySubscriber&) {
           break;
+        } catch (RemoteStreamMalformedChunkException&) {
+          if (++consecutive_malformed_chunks_count_ == 3) {
+            fprintf(stderr,
+                    "Constantly receiving malformed chunks from \"%s\"\n",
+                    bare_stream.GetURLToSubscribe(index_, checked_subscription_).c_str());
+          }
         } catch (current::Exception&) {
         }
         carried_over_data_.clear();
@@ -171,13 +177,13 @@ class SubscribableRemoteStream final {
     ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto split = current::strings::Split(raw_log_line, '\t');
       if (split.empty()) {
-        CURRENT_THROW(RemoteStreamInvalidChunkException());
+        CURRENT_THROW(RemoteStreamMalformedChunkException());
       }
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
       if (Exists(tsoptidx.index)) {
         const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
         if (split.size() != 2u || idxts.index != index_) {
-          CURRENT_THROW(RemoteStreamInvalidChunkException());
+          CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
         ++index_;
@@ -186,12 +192,13 @@ class SubscribableRemoteStream final {
         }
       } else {
         if (split.size() != 1u) {
-          CURRENT_THROW(RemoteStreamInvalidChunkException());
+          CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       }
+      consecutive_malformed_chunks_count_ = 0;
     }
 
     template <SubscriptionMode MODE = SM>
@@ -284,6 +291,7 @@ class SubscribableRemoteStream final {
     std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
     std::string carried_over_data_;
+    uint32_t consecutive_malformed_chunks_count_;
   };
 
   template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
