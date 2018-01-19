@@ -184,7 +184,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   }
 }
 
-TEST(FlowTool, ReturnsAFileCreatedByPut) {
+TEST(FlowTool, CreatesAFile) {
   current::time::ResetToZero();
 
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
@@ -247,6 +247,125 @@ TEST(FlowTool, ReturnsAFileCreatedByPut) {
     EXPECT_EQ("smoke_test_passed://yo.txt", file_response.url);
     EXPECT_EQ("/yo.txt", file_response.path);
     EXPECT_EQ("Yo, World!", file_response.data);
+  }
+}
+
+TEST(FlowTool, CreatesDirectoriesAndAFile) {
+  current::time::ResetToZero();
+
+  using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
+
+  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+
+  {
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutDirRequest>();
+
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
+    EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
+    const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
+    EXPECT_EQ("foo", error.not_found_component);
+    EXPECT_EQ(0u, error.not_found_component_zero_based_index);
+  }
+
+  {
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutDirRequest>();
+
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/foo", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    // TODO(dkorolev): Response analysis.
+    // Add the timestamp created/updated, number of versions already available, and time interval since last update?
+  }
+
+  {
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutDirRequest>();
+
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    // TODO(dkorolev): Response analysis.
+    // Add the timestamp created/updated, number of versions already available, and time interval since last update?
+  }
+
+  {
+    flow_tool::api::request::PutRequest request_body;
+    request_body.template Construct<flow_tool::api::request::PutFileRequest>("All good.");
+
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar/baz.txt", FLAGS_flow_tool_test_port), request_body));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    // TODO(dkorolev): Response analysis.
+    // Add the timestamp created/updated, number of versions already available, and time interval since last update?
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://", dir_response.url);
+    EXPECT_EQ("/", dir_response.path);
+    ASSERT_EQ(1u, dir_response.dir.size());
+    EXPECT_EQ("foo", dir_response.dir[0]);
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/bar", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
+    EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
+    const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
+    EXPECT_EQ("bar", error.not_found_component);
+    EXPECT_EQ(0u, error.not_found_component_zero_based_index);
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://foo", dir_response.url);
+    EXPECT_EQ("/foo", dir_response.path);
+    ASSERT_EQ(1u, dir_response.dir.size());
+    EXPECT_EQ("bar", dir_response.dir[0]);
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/blah", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
+    EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
+    const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
+    EXPECT_EQ("blah", error.not_found_component);
+    EXPECT_EQ(1u, error.not_found_component_zero_based_index);
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/bar", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::DirResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto dir_response = Value<flow_tool::api::success::DirResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://foo/bar", dir_response.url);
+    EXPECT_EQ("/foo/bar", dir_response.path);
+    ASSERT_EQ(1u, dir_response.dir.size());
+    EXPECT_EQ("baz.txt", dir_response.dir[0]);
+  }
+
+  {
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/bar/baz.txt", FLAGS_flow_tool_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
+    const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
+    ASSERT_TRUE(Exists(parsed_body)) << response.body;
+    ASSERT_TRUE(Exists<flow_tool::api::success::FileResponse>(Value(parsed_body))) << JSON(parsed_body);
+    const auto file_response = Value<flow_tool::api::success::FileResponse>(Value(parsed_body));
+    EXPECT_EQ("smoke_test_passed://foo/bar/baz.txt", file_response.url);
+    EXPECT_EQ("/foo/bar/baz.txt", file_response.path);
+    EXPECT_EQ("All good.", file_response.data);
   }
 }
 

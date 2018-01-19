@@ -2,6 +2,7 @@
 - [ ] Implement basic file system PUT.
 - [ ] Implement basic file system DELETE.
 - [ ] Implement basic file system rename (via PATCH, I'd assume).
+- [ ] The directory listing endpoint should return metadata; at least if some entry is a file or another dir.
 - [ ] Make sure the origin header is set correctly for cross-domain browser-originated requests.
 - [ ] Only allow alphanumeric characters in file names so far.
 - [ ] Directories should require a slash at the end, files should not.

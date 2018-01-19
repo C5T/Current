@@ -349,6 +349,63 @@ class FlowTool final {
                             return;
                           }
                         } else {
+                          // Neither file nor the directory for it was found.
+                          // We don't support `mkdir -p` (yet), so it's an error.
+                          assert(Exists(result_dir.error));
+                          response = Value(result_dir.error);
+                          return;
+                        }
+                      }
+                    }
+                    void operator()(const api::request::PutDirRequest&) {
+                      const NodeSearchResult full_path_node_search_result =
+                          self->FindNodeFromWithinTransaction(fields, path);
+                      if (full_path_node_search_result.node) {
+                        // A node is found by the full path.
+                        // No-op if it's a directory, error if it's a file.
+                        if (Exists<db::Dir>(full_path_node_search_result.node->data)) {
+                          response = "Dima: OK, dir already existed.\n";  // TODO(dkorolev): A better message.
+                        } else {
+                          response = Response(
+                              api::error::Error("FilesystemError", "Attempted to a file with a directory."),
+                              HTTPResponseCode.BadRequest);
+                          return;
+                        }
+                      } else {
+                        // A node does not exist. See if the directory for it does.
+                        const std::string dir_name = path.back();
+                        const std::vector<std::string> dir_path(path.begin(), --path.end());
+                        const NodeSearchResult result_dir = self->FindNodeFromWithinTransaction(fields, dir_path);
+                        if (result_dir.node) {
+                          // Yes, the directory does exist. Create a subdirectory in it.
+                          if (Exists<db::Dir>(result_dir.node->data)) {
+                            const auto optional_dir_node = fields.node[result_dir.node->key];
+                            if (!Exists(optional_dir_node)) {
+                              response = Response(api::error::Error("InternalFileSystemIntegrityError",
+                                                                    "The assumed directory does not exist."),
+                                                  HTTPResponseCode.InternalServerError);
+                              return;
+                            } else {
+                              db::Node new_dir_node;
+                              new_dir_node.key = db::Node::GenerateRandomFileKey();
+                              new_dir_node.name = dir_name;
+                              new_dir_node.data.template Construct<db::Dir>();
+                              fields.node.Add(new_dir_node);
+
+                              db::Node top_level_dir_node = Value(optional_dir_node);
+                              Value<db::Dir>(top_level_dir_node.data).dir.push_back(new_dir_node.key);
+                              fields.node.Add(top_level_dir_node);
+
+                              response = "Dima: OK, dir created.\n";  // TODO(dkorolev): A better message.
+                              return;
+                            }
+                          } else {
+                            response = Response(
+                                api::error::Error("FilesystemError", "Attempted to use a file as a directory."),
+                                HTTPResponseCode.BadRequest);
+                            return;
+                          }
+                        } else {
                           // Neither file nor the directory for it was found. We don't support `mkdir -p` (yet), so it's
                           // an error.
                           assert(Exists(result_dir.error));
@@ -357,7 +414,6 @@ class FlowTool final {
                         }
                       }
                     }
-                    void operator()(const api::request::PutDirRequest&) { response = "Not implemented yet.\n"; }
                   };
                   PutFileOrDirHandler put_handler(this, fields, path, trailing_slash);
                   body.Call(put_handler);
