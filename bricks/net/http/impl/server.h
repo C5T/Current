@@ -167,9 +167,9 @@ struct HTTPResponder {
     SendHTTPResponseImpl(connection, string.begin(), string.end(), code, content_type, extra_headers);
   }
 
-  // Support `CURRENT_STRUCT`-s.
+  // Support `CURRENT_STRUCT`-s and `CURRENT_VARIANT`-s.
   template <class T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
+  static ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(current::decay<T>)> SendHTTPResponse(
       Connection& connection,
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
