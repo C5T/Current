@@ -1487,3 +1487,19 @@ TEST(TypeSystemTest, DISABLED_NestedVariants)
     EXPECT_EQ(3u, Value<Bar>(Value<Variant<Bar, Baz>>(v)).j);
   }
 }
+
+TEST(TypeSystemTest, InplaceVariantConstruction) {
+  using namespace struct_definition_test;
+
+  Variant<Foo, Bar> v;
+
+  v.template Construct<Foo>(101u);
+  ASSERT_TRUE(Exists<Foo>(v));
+  ASSERT_FALSE(Exists<Bar>(v));
+  EXPECT_EQ(101u, Value<Foo>(v).i);
+
+  v.template Construct<Bar>(202u);
+  ASSERT_TRUE(Exists<Bar>(v));
+  ASSERT_FALSE(Exists<Foo>(v));
+  EXPECT_EQ(202u, Value<Bar>(v).j);
+}
