@@ -1309,8 +1309,8 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
                         const auto index = current::FromString<uint64_t>(r.url.query["i"]);
                         auto response = r.connection.SendChunkedHTTPResponse(
                             HTTPResponseCode.OK,
-                            "text/plain",
-                            current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}));
+                            current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}),
+                            "text/plain");
                         if (index == 0u) {
                           for (const auto& chunk : stream_golden_data_chunks) {
                             response.Send(chunk);
