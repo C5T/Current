@@ -69,6 +69,19 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::template PersisterPublishImpl<MLS>(std::forward<E>(e), us);
   }
 
+  // Publishes the `raw_log_line` as is without parsing and validating its content.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  idxts_t PublishUnsafe(const std::string& raw_log_line,
+                        current::time::DefaultTimeArgument = current::time::DefaultTimeArgument()) {
+    return IMPL::template PersisterPublishUnsafeImpl<MLS>(raw_log_line, current::time::DefaultTimeArgument());
+  }
+
+  // Publishes the `raw_log_line` as is without parsing and validating its content.
+  template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
+  idxts_t PublishUnsafe(const std::string& raw_log_line, std::chrono::microseconds us) {
+    return IMPL::template PersisterPublishUnsafeImpl<MLS>(raw_log_line, us);
+  }
+
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void UpdateHead(current::time::DefaultTimeArgument = current::time::DefaultTimeArgument()) {
     return IMPL::template PersisterUpdateHeadImpl<MLS>(current::time::DefaultTimeArgument());
@@ -115,6 +128,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::template PersisterIterate<MLS>(begin, end);
   }
 
+  // Iterates over "raw" log lines without parsing and validating their contents.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IterableRangeUnsafe IterateUnsafe(uint64_t begin = static_cast<uint64_t>(0),
                                     uint64_t end = static_cast<size_t>(-1)) const {
@@ -127,6 +141,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
     return IMPL::template PersisterIterate<MLS>(from, till);
   }
 
+  // Iterates over "raw" log lines without parsing and validating their contents.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   IterableRangeUnsafe IterateUnsafe(std::chrono::microseconds from,
                                     std::chrono::microseconds till = std::chrono::microseconds(-1)) const {

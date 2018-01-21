@@ -55,6 +55,10 @@ struct StreamTerminatedBySubscriber : StreamException {
   using StreamException::StreamException;
 };
 
+struct RemoteStreamMalformedChunkException : StreamException {
+  using StreamException::StreamException;
+};
+
 }  // namespace stream
 }  // namespace current
 
