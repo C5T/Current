@@ -224,7 +224,7 @@ struct Headers final {
     return *this;
   }
 
-  Headers& Clear(const std::string& header) {
+  Headers& Remove(const std::string& header) {
     Header::ThrowIfHeaderIsCookie(header);
     map.erase(header);
     return *this;
