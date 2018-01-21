@@ -44,6 +44,7 @@ class FlowTool final {
   using stream_t = typename storage_t::stream_t;
 
  private:
+  const uint16_t port_;
   const std::chrono::microseconds start_time_epoch_us_;
   std::chrono::microseconds ready_time_epoch_us_;
   current::Owned<stream_t> stream_;
@@ -53,7 +54,8 @@ class FlowTool final {
  public:
   template <typename... ARGS>
   FlowTool(uint16_t port, const std::string& url_prefix, ARGS&&... args)
-      : start_time_epoch_us_(current::time::Now()),
+      : port_(port),
+        start_time_epoch_us_(current::time::Now()),
         ready_time_epoch_us_(start_time_epoch_us_),  // To indicate we're still in the `initializing` mode.
         stream_(stream_t::CreateStream(std::forward<ARGS>(args)...)),
         storage_(storage_t::CreateMasterStorageAtopExistingStream(stream_)),
@@ -76,6 +78,8 @@ class FlowTool final {
         .Go();
     ready_time_epoch_us_ = current::time::Now();
   }
+
+  void Join() { HTTP(port_).Join(); }
 
   // The filesystem traversal logic.
   struct NodeSearchResult {
@@ -205,9 +209,8 @@ class FlowTool final {
                         auto& file_response_object = response_object.template Construct<api::success::FileResponse>();
                         FillProtoFields(file_response_object);
                         file_response_object.data = Value(blob).body;
-                        response = Response(JSON<JSONFormat::JavaScript>(response_object),
-                                            HTTPResponseCode.OK,
-                                            current::net::constants::kDefaultJSONContentType);
+                        response = Response<JSONFormat::JavaScript>(
+                            response_object, HTTPResponseCode.OK, current::net::constants::kDefaultJSONContentType);
                       } else {
                         response = Response(
                             api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
@@ -229,9 +232,8 @@ class FlowTool final {
                           return;
                         }
                       }
-                      response = Response(JSON<JSONFormat::JavaScript>(response_object),
-                                          HTTPResponseCode.OK,
-                                          current::net::constants::kDefaultJSONContentType);
+                      response = Response<JSONFormat::JavaScript>(
+                          response_object, HTTPResponseCode.OK, current::net::constants::kDefaultJSONContentType);
                     }
                   };
                   GetFileOrDirHandler get_handler(fields, path, trailing_slash);
@@ -366,9 +368,9 @@ class FlowTool final {
                         if (Exists<db::Dir>(full_path_node_search_result.node->data)) {
                           response = "Dima: OK, dir already existed.\n";  // TODO(dkorolev): A better message.
                         } else {
-                          response = Response(
-                              api::error::Error("FilesystemError", "Attempted to a file with a directory."),
-                              HTTPResponseCode.BadRequest);
+                          response =
+                              Response(api::error::Error("FilesystemError", "Attempted to a file with a directory."),
+                                       HTTPResponseCode.BadRequest);
                           return;
                         }
                       } else {
