@@ -157,7 +157,7 @@ int main() {
                   LayoutItem row;
                   layout.col.push_back(row);
                   r(layout,
-                    "layout",
+                    // "layout",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
                     HTTPResponseCode.OK,
                     "application/json; charset=utf-8",
                     Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
@@ -166,7 +166,7 @@ int main() {
       .Register("/meta",
                 [](Request r) {
                   r(ExampleMeta(),
-                    "meta",
+                    // "meta",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
                     HTTPResponseCode.OK,
                     "application/json; charset=utf-8",
                     Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
