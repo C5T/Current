@@ -183,6 +183,8 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   t.join();
 }
 
+#if 0
+// The "named objects" functionality is removed by @dkorolev in January 2018.
 TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
@@ -205,6 +207,7 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
       connection);
   t.join();
 }
+#endif  // #if 0
 
 TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   std::thread t([](Socket s) {
@@ -215,7 +218,9 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
     r.Send("onetwothree");
     r.Send(std::vector<char>({'f', 'o', 'o'}));
     r.Send(HTTPTestObject());
+#if 0
     r.Send(HTTPTestObject(), "epic_chunk");
+#endif
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /chunked HTTP/1.1\r\n", true);
@@ -234,8 +239,10 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "foo\r\n"
       "2C\r\n"
       "{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n\r\n"
+#if 0
       "3B\r\n"
       "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
+#endif
       "0\r\n",
       connection);
   t.join();

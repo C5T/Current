@@ -180,8 +180,8 @@ struct HTTPResponder {
     SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
   }
 
-  // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
-  // (For backwards compatibility only, really. -- D.K.)
+#if 0
+  // JSON objects under custom names removed by @dkorolev in January 2018.
   template <class T>
   static ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
       Connection& connection,
@@ -194,6 +194,7 @@ struct HTTPResponder {
     const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
   }
+#endif  // #if 0
 };
 
 // HTTPDefaultHelper handles headers and chunked transfers.
@@ -664,10 +665,14 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
         SendImpl(JSON(std::forward<T>(object)) + '\n', flush);
       }
+
+#if 0
+      // JSON objects under custom names removed by @dkorolev in January 2018.
       template <class T, typename S>
       inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name, ChunkFlush flush) {
         SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n", flush);
       }
+#endif  // #if 0
 
       Connection& connection_;
       bool can_no_longer_write_ = false;

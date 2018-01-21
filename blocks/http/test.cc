@@ -375,7 +375,9 @@ TEST(HTTPAPI, RespondsWithObject) {
                          .Register("/responds_with_object",
                                    [](Request r) {
                                      r(HTTPAPITestObject(),
+#if 0
                                        "test_object",
+#endif
                                        HTTPResponseCode.OK,
                                        "application/json",
                                        Headers({{"foo", "bar"}}));
@@ -383,7 +385,11 @@ TEST(HTTPAPI, RespondsWithObject) {
   const string url = Printf("http://localhost:%d/responds_with_object", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
+#if 0
   EXPECT_EQ("{\"test_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n", response.body);
+#else
+  EXPECT_EQ("{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n", response.body);
+#endif
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
