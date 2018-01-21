@@ -224,6 +224,12 @@ struct Headers final {
     return *this;
   }
 
+  Headers& Clear(const std::string& header) {
+    Header::ThrowIfHeaderIsCookie(header);
+    map.erase(header);
+    return *this;
+  }
+
   bool Has(const std::string& header) const {
     Header::ThrowIfHeaderIsCookie(header);
     return map.find(header) != map.end();
