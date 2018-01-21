@@ -196,11 +196,6 @@ struct Headers final {
                   [this](const std::pair<std::string, std::string>& h) { Set(h.first, h.second); });
   }
 
-  inline static Headers DefaultJSONHeaders() {
-    return Headers(
-        {{constants::kHTTPAccessControlAllowOriginHeaderName, constants::kHTTPAccessControlAllowOriginHeaderValue}});
-  }
-
   // Can `Set()` / `Get()` / `Has()` headers.
   Headers& Set(const std::string& header, const std::string& value) {
     Header::ThrowIfHeaderIsCookie(header);
@@ -220,6 +215,22 @@ struct Headers final {
         }
         placeholder->value += value;
       }
+    }
+    return *this;
+  }
+
+  Headers& Remove(const std::string& header) {
+    Header::ThrowIfHeaderIsCookie(header);
+    const auto cit = map.find(header);
+    if (cit != map.end()) {
+      map.erase(cit);
+      headers_list_t updated_list;
+      for (const auto& e : list) {
+        if (e.first != header) {
+          updated_list.emplace_back(std::move(e));
+        }
+      }
+      list = std::move(updated_list);
     }
     return *this;
   }
@@ -254,8 +265,7 @@ struct Headers final {
   }
 
   // Can `operator[] const` headers. Returns the `Header`, with `.header` and `.value`.
-  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first
-  // seen.
+  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first seen.
   const Header& operator[](const std::string& header) const {
     Header::ThrowIfHeaderIsCookie(header);
     const auto rhs = map.find(header);
@@ -268,10 +278,8 @@ struct Headers final {
     }
   }
 
-  // Can `Header& operator[]`. Creates the header if it does not exist. Its `.header` is const, `.value`
-  // mutable.
-  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first
-  // seen.
+  // Can `Header& operator[]`. Creates the header if it does not exist. Its `.header` is const, `.value` mutable.
+  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first seen.
   Header& operator[](const std::string& header) {
     Header::ThrowIfHeaderIsCookie(header);
     std::unique_ptr<Header>& placeholder = map[header];
@@ -323,9 +331,14 @@ struct Headers final {
     }
   }
 
-  void SetAccessControlOriginHeader() {
-    Set(net::constants::kHTTPAccessControlAllowOriginHeaderName,
-        net::constants::kHTTPAccessControlAllowOriginHeaderValue);
+  Headers& SetCORSHeader() {
+    Set(constants::kCORSHeaderName, constants::kCORSHeaderValue);
+    return *this;
+  }
+
+  Headers& RemoveCORSHeader() {
+    Remove(net::constants::kCORSHeaderName);
+    return *this;
   }
 
   // An externally facing `SetCookie()`, to be used mostly while constructing the `Response`.

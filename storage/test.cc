@@ -148,7 +148,9 @@ TEST(TransactionalStorage, SmokeTest) {
     // Fill a `Dictionary` container.
     {
       const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+        EXPECT_FALSE(fields.d.Has("one"));
         fields.d.Add(Record{"one", 1});
+        EXPECT_TRUE(fields.d.Has("one"));
 
         {
           size_t count = 0u;
@@ -174,7 +176,9 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(2, Value(fields.d["two"]).rhs);
 
         fields.d.Add(Record{"three", 3});
+        EXPECT_TRUE(fields.d.Has("three"));
         fields.d.Erase("three");
+        EXPECT_FALSE(fields.d.Has("three"));
       }).Go();
 
       EXPECT_TRUE(WasCommitted(result));

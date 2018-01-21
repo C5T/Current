@@ -468,6 +468,37 @@ class FilePersister {
     return idxts;
   }
 
+  template <current::locks::MutexLockStatus MLS>
+  idxts_t PersisterPublishUnsafeImpl(const std::string& raw_log_line) {
+    current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->publish_mutex_ref_);
+
+    end_t iterator = file_persister_impl_->end_.load();
+    const auto tab_pos = raw_log_line.find('\t');
+    if (tab_pos == std::string::npos) {
+      CURRENT_THROW(MalformedEntryException(raw_log_line));
+    }
+    const idxts_t idxts = ParseJSON<idxts_t>(raw_log_line.substr(0, tab_pos));
+    if (idxts.index != iterator.next_index) {
+      CURRENT_THROW(UnsafePublishBadIndexTimestampException(iterator.next_index, idxts.index));
+    }
+    if (!(idxts.us > iterator.head)) {
+      CURRENT_THROW(ss::InconsistentTimestampException(iterator.head + std::chrono::microseconds(1), idxts.us));
+    }
+
+    iterator.last_entry_us = iterator.head = idxts.us;
+    CURRENT_ASSERT(file_persister_impl_->record_offset_.size() == idxts.index);
+    CURRENT_ASSERT(file_persister_impl_->record_timestamp_.size() == idxts.index);
+    file_persister_impl_->record_offset_.push_back(file_persister_impl_->file_appender_.tellp());
+    file_persister_impl_->record_timestamp_.push_back(idxts.us);
+
+    file_persister_impl_->file_appender_ << raw_log_line << std::endl;
+    ++iterator.next_index;
+    file_persister_impl_->head_offset_ = 0;
+    file_persister_impl_->end_.store(iterator);
+
+    return idxts;
+  }
+
   template <current::locks::MutexLockStatus MLS, typename TIMESTAMP>
   void PersisterUpdateHeadImpl(const TIMESTAMP provided_timestamp) {
     current::locks::SmartMutexLockGuard<MLS> lock(file_persister_impl_->publish_mutex_ref_);

@@ -70,6 +70,16 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  idxts_t PublishUnsafe(std::string&& raw_log_line) {
+    return IMPL::template PublisherPublishUnsafeImpl<MLS>(std::move(raw_log_line));
+  }
+
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
+  idxts_t PublishUnsafe(const std::string& raw_log_line) {
+    return IMPL::template PublisherPublishUnsafeImpl<MLS>(raw_log_line);
+  }
+
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
   void UpdateHead() {
     IMPL::template PublisherUpdateHeadImpl<MLS>(current::time::DefaultTimeArgument());
   }
@@ -126,6 +136,9 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
   virtual ~EntrySubscriber() {}
 
   EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) { return IMPL::operator()(e, current, last); }
+  EntryResponse operator()(const std::string& raw_log_line, uint64_t current_index, idxts_t last) {
+    return IMPL::operator()(raw_log_line, current_index, last);
+  }
   EntryResponse operator()(ENTRY&& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(std::move(e), current, last);
   }

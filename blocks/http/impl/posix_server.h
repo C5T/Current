@@ -129,12 +129,13 @@ struct StaticFileServer {
         // (`static` is a directory, not a file).
         // 2) Respond with the content if we're serving a file and don't have a trailing slash. Example:
         // `/static/index.html`, `/static/file.png`.
-        r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, content_type);
+        r.connection.SendHTTPResponse(content, HTTPResponseCode.OK, net::http::Headers(), content_type);
       } else if (!serves_directory && r.url_path_had_trailing_slash) {
         // Respond with HTTP 404 Not Found if we're serving a file and have a trailing slash. Example:
         // `/static/index.html/`.
         r.connection.SendHTTPResponse(current::net::DefaultNotFoundMessage(),
                                       HTTPResponseCode.NotFound,
+                                      current::net::http::Headers(),
                                       current::net::constants::kDefaultHTMLContentType);
       } else {
         // Redirect to add trailing slash to the directory URL. Example: `/static` -> `/static/`.
@@ -143,12 +144,13 @@ struct StaticFileServer {
         // See RFC1808, `Resolving Relative URLs`, `Step 6`: https://www.ietf.org/rfc/rfc1808.txt
         r.connection.SendHTTPResponse("",
                                       HTTPResponseCode.Found,
-                                      content_type,
-                                      current::net::http::Headers({{"Location", trailing_slash_redirect_url}}));
+                                      current::net::http::Headers({{"Location", trailing_slash_redirect_url}}),
+                                      content_type);
       }
     } else {
       r.connection.SendHTTPResponse(current::net::DefaultMethodNotAllowedMessage(),
                                     HTTPResponseCode.MethodNotAllowed,
+                                    current::net::http::Headers(),
                                     current::net::constants::kDefaultHTMLContentType);
     }
   }
@@ -442,6 +444,7 @@ class HTTPServerPOSIX final {
         } else {
           connection->SendHTTPResponse(current::net::DefaultNotFoundMessage(),
                                        HTTPResponseCode.NotFound,
+                                       current::net::http::Headers(),
                                        current::net::constants::kDefaultHTMLContentType);
         }
       } catch (const current::net::ChunkSizeNotAValidHEXValue&) {

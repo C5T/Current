@@ -39,16 +39,10 @@ namespace http {
 
 struct Request;
 
-template <typename T>
-constexpr static bool HasRespondViaHTTP(char) {
-  return false;
-}
-
-template <typename T>
-constexpr static auto HasRespondViaHTTP(int)
-    -> decltype(std::declval<T>().RespondViaHTTP(std::declval<struct Request>()), bool()) {
-  return true;
-}
+struct IHasDoRespondViaHTTP {
+  virtual ~IHasDoRespondViaHTTP() = default;
+  virtual void DoRespondViaHTTP(Request r) const = 0;
+};
 
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
@@ -100,32 +94,34 @@ struct Request final {
         body(http_data.Body()),
         timestamp(rhs.timestamp) {}
 
-  // Support objects with user-defined HTTP response handlers.
-  template <typename T>
-  inline typename std::enable_if<HasRespondViaHTTP<current::decay<T>>(0)>::type operator()(T&& that_dude_over_there) {
-    if (!unique_connection) {
-      CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
-    }
-    that_dude_over_there.RespondViaHTTP(std::move(*this));
-  }
-
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
-  template <typename... TS>
-  void operator()(TS&&... params) {
+  template <typename T, typename... TS>
+  ENABLE_IF<!std::is_base_of<IHasDoRespondViaHTTP, current::decay<T>>::value>
+  operator()(T&& arg, TS&&... args) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }
-    connection.SendHTTPResponse(std::forward<TS>(params)...);
+    connection.SendHTTPResponse(std::forward<T>(arg), std::forward<TS>(args)...);
   }
 
-  current::net::HTTPServerConnection::ChunkedResponseSender SendChunkedResponse(
-      net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = net::constants::kDefaultJSONContentType,
-      const net::http::Headers& extra_headers = net::http::Headers::DefaultJSONHeaders()) {
+  // Support `Response`, as well as custom objects with user-defined HTTP response handlers.
+  template <class T>
+  ENABLE_IF<std::is_base_of<IHasDoRespondViaHTTP, current::decay<T>>::value> operator()(T&& response) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }
-    return connection.SendChunkedHTTPResponse(code, content_type, extra_headers);
+    response.DoRespondViaHTTP(std::move(*this));
+  }
+
+  template <uint64_t CACHE_SIZE = CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
+  current::net::HTTPServerConnection::ChunkedResponseSender<CACHE_SIZE> SendChunkedResponse(
+      net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const net::http::Headers& headers = net::http::Headers(),
+      const std::string& content_type = net::constants::kDefaultJSONContentType) {
+    if (!unique_connection) {
+      CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
+    }
+    return connection.SendChunkedHTTPResponse<CACHE_SIZE>(code, headers, content_type);
   }
 
   Request(const Request&) = delete;

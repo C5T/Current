@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "../../../bricks/dflags/dflags.h"
 
-#include "../../../stream/stream.h"
 #include "../../../stream/replicator.h"
+#include "../../../stream/stream.h"
 
 DEFINE_uint32(n, 100, "The length of the desired chain of subscribers. 255 seems to be the limit on Linux. -- D.K.");
 DEFINE_uint32(m, 1, "The number of \"events\" (really, single-integer JSONs) to work through per replication.");

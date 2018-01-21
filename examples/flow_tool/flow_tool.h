@@ -209,8 +209,9 @@ class FlowTool final {
                         auto& file_response_object = response_object.template Construct<api::success::FileResponse>();
                         FillProtoFields(file_response_object);
                         file_response_object.data = Value(blob).body;
-                        response = Response<JSONFormat::JavaScript>(
-                            response_object, HTTPResponseCode.OK, current::net::constants::kDefaultJSONContentType);
+                        response = Response(JSON<JSONFormat::JavaScript>(response_object),
+                                            HTTPResponseCode.OK,
+                                            current::net::constants::kDefaultJSONContentType);
                       } else {
                         response = Response(
                             api::error::Error("InternalFileSystemIntegrityError", "The target blob was not found."),
@@ -232,8 +233,9 @@ class FlowTool final {
                           return;
                         }
                       }
-                      response = Response<JSONFormat::JavaScript>(
-                          response_object, HTTPResponseCode.OK, current::net::constants::kDefaultJSONContentType);
+                      response = Response(JSON<JSONFormat::JavaScript>(response_object),
+                                          HTTPResponseCode.OK,
+                                          current::net::constants::kDefaultJSONContentType);
                     }
                   };
                   GetFileOrDirHandler get_handler(fields, path, trailing_slash);
