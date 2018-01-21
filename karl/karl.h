@@ -434,6 +434,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     if (r.method != "GET" && r.method != "POST" && r.method != "DELETE") {
       r(current::net::DefaultMethodNotAllowedMessage(),
         HTTPResponseCode.MethodNotAllowed,
+        net::http::Headers(),
         net::constants::kDefaultHTMLContentType);
       return;
     }
@@ -696,6 +697,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       // TODO(dkorolev) + TODO(mzhurovich): JSON headers magic.
       r(JSON<JSONFormat::Minimalistic>(KarlUpStatus()) + '\n',
         HTTPResponseCode.OK,
+        current::net::http::Headers(),
         current::net::constants::kDefaultJSONContentType);
     }
   }
@@ -743,6 +745,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         r(JSON<JSONFormat::Minimalistic>(
               SnapshotOfKeepalive<runtime_status_variant_t>(e.idx_ts.us - current::time::Now(), e.entry.keepalive)),
           HTTPResponseCode.OK,
+          current::net::http::Headers(),
           current::net::constants::kDefaultJSONContentType);
       } else {
         auto tmp = e.entry.keepalive;
@@ -750,6 +753,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         r(JSON<JSONFormat::Minimalistic>(
               SnapshotOfKeepalive<runtime_status_variant_t>(e.idx_ts.us - current::time::Now(), tmp)),
           HTTPResponseCode.OK,
+          current::net::http::Headers(),
           current::net::constants::kDefaultJSONContentType);
       }
     } else {
