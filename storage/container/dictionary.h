@@ -53,6 +53,8 @@ class GenericDictionary {
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
 
+  bool Has(sfinae::CF<key_t> x) const { return map_.find(x) != map_.end(); }
+
   ImmutableOptional<T> operator[](sfinae::CF<key_t> key) const {
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {
