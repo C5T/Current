@@ -52,7 +52,7 @@ constexpr char kHTTPMethodOverrideHeaderKey[] = "X-HTTP-Method-Override";
 
 // By default:
 // * HTTP responses that use `struct Response` will have the CORS header set.
-//   It can be unset with `.NoCORS()`. There is also `ReinsertCORS()` to add it back.
+//   It can be unset with `.DisableCORS()`. There is also `EnableCORS()` to add it back.
 // * HTTP responses that use `Request::operator()` will not have the CORS header set.
 //   Use `Headers.{Set,Remove}CORSHeader()` to manually insert or remove it.
 constexpr char kCORSHeaderName[] = "Access-Control-Allow-Origin";

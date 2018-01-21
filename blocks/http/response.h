@@ -238,12 +238,12 @@ struct Response final : IHasDoRespondViaHTTP {
     return *this;
   }
 
-  Response& NoCORS() {
+  Response& DisableCORS() {
     cors_header = false;
     return *this;
   }
 
-  Response& ReinsertCORS() {
+  Response& EnableCORS() {
     cors_header = true;
     return *this;
   }

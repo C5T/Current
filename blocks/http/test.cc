@@ -1753,7 +1753,7 @@ TEST(HTTPAPI, JSONDoesHaveCORSHeaderByDefault) {
   }
   {
     const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json2", [](Request r) {
-      r(Response(SerializableObject()).NoCORS());
+      r(Response(SerializableObject()).DisableCORS());
     });
 
     const auto response = HTTP(GET(Printf("http://localhost:%d/json2", FLAGS_net_api_test_port)));
@@ -1763,7 +1763,7 @@ TEST(HTTPAPI, JSONDoesHaveCORSHeaderByDefault) {
   }
   {
     const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json3", [](Request r) {
-      r(Response(SerializableObject()).NoCORS() .ReinsertCORS());
+      r(Response(SerializableObject()).DisableCORS().EnableCORS());
     });
 
     const auto response = HTTP(GET(Printf("http://localhost:%d/json3", FLAGS_net_api_test_port)));
