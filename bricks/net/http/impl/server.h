@@ -101,16 +101,16 @@ struct HTTPResponder {
   static void PrepareHTTPResponseHeader(std::ostream& os,
                                         ConnectionType connection_type,
                                         HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                                        const std::string& content_type = constants::kDefaultContentType,
-                                        const http::Headers& extra_headers = http::Headers()) {
+                                        const http::Headers& headers = http::Headers(),
+                                        const std::string& content_type = constants::kDefaultContentType) {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
     os << "Content-Type: " << content_type << constants::kCRLF;
     os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;
-    for (const auto& cit : extra_headers) {
+    for (const auto& cit : headers) {
       os << cit.header << ": " << cit.value << constants::kCRLF;
     }
-    for (const auto& cit : extra_headers.cookies) {
+    for (const auto& cit : headers.cookies) {
       os << "Set-Cookie: " << cit.first << '=' << cit.second.value;
       for (const auto& cit2 : cit.second.params) {
         os << "; " << cit2.first;
@@ -128,10 +128,10 @@ struct HTTPResponder {
                                    const T& begin,
                                    const T& end,
                                    HTTPResponseCodeValue code,
-                                   const std::string& content_type,
-                                   const http::Headers& extra_headers) {
+                                   const http::Headers& headers,
+                                   const std::string& content_type) {
     std::ostringstream os;
-    PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
+    PrepareHTTPResponseHeader(os, ConnectionClose, code, headers, content_type);
     os << "Content-Length: " << (end - begin) << constants::kCRLF << constants::kCRLF;
     connection.BlockingWrite(os.str(), true);
     connection.BlockingWrite(begin, end, false);
@@ -145,26 +145,26 @@ struct HTTPResponder {
       const T& end,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = constants::kDefaultContentType,
-      const http::Headers& extra_headers = http::Headers()) {
-    SendHTTPResponseImpl(connection, begin, end, code, content_type, extra_headers);
+      const http::Headers& headers = http::Headers()) {
+    SendHTTPResponseImpl(connection, begin, end, code, headers, content_type);
   }
   template <typename T>
   static ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       Connection& connection,
       T&& container,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultContentType,
-      const http::Headers& extra_headers = http::Headers()) {
-    SendHTTPResponseImpl(connection, container.begin(), container.end(), code, content_type, extra_headers);
+      const http::Headers& headers = http::Headers(),
+      const std::string& content_type = constants::kDefaultContentType) {
+    SendHTTPResponseImpl(connection, container.begin(), container.end(), code, headers, content_type);
   }
 
   // Special case to handle std::string.
   static void SendHTTPResponse(Connection& connection,
                                const std::string& string,
                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                               const std::string& content_type = constants::kDefaultContentType,
-                               const http::Headers& extra_headers = http::Headers()) {
-    SendHTTPResponseImpl(connection, string.begin(), string.end(), code, content_type, extra_headers);
+                               const http::Headers& headers = http::Headers(),
+                               const std::string& content_type = constants::kDefaultContentType) {
+    SendHTTPResponseImpl(connection, string.begin(), string.end(), code, headers, content_type);
   }
 
   // Support `CURRENT_STRUCT`-s and `CURRENT_VARIANT`-s.
@@ -173,11 +173,11 @@ struct HTTPResponder {
       Connection& connection,
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
+      const http::Headers& headers = http::Headers(),
+      const std::string& content_type = constants::kDefaultJSONContentType) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
-    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
+    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, headers, content_type);
   }
 };
 
@@ -312,6 +312,7 @@ class GenericHTTPRequestData : public HELPER {
                 HTTPResponder::SendHTTPResponse(c,
                                                 net::DefaultInvalidHEXChunkSizeBadRequestMessage(),
                                                 HTTPResponseCode.BadRequest,
+                                                net::http::Headers(),
                                                 net::constants::kDefaultHTMLContentType);
                 CURRENT_THROW(ChunkSizeNotAValidHEXValue());
               }
@@ -387,6 +388,7 @@ class GenericHTTPRequestData : public HELPER {
                 HTTPResponder::SendHTTPResponse(c,
                                                 net::DefaultRequestEntityTooLargeMessage(),
                                                 HTTPResponseCode.RequestEntityTooLarge,
+                                                http::Headers(),
                                                 net::constants::kDefaultHTMLContentType);
                 CURRENT_THROW(HTTPPayloadTooLarge());
               }
@@ -427,6 +429,7 @@ class GenericHTTPRequestData : public HELPER {
                 HTTPResponder::SendHTTPResponse(c,
                                                 net::DefaultLengthRequiredMessage(),
                                                 HTTPResponseCode.LengthRequired,
+                                                http::Headers(),
                                                 net::constants::kDefaultHTMLContentType);
                 CURRENT_THROW(HTTPRequestBodyLengthNotProvided());
               }
@@ -545,6 +548,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
         HTTPResponder::SendHTTPResponse(connection_,
                                         DefaultInternalServerErrorMessage(),
                                         HTTPResponseCode.InternalServerError,
+                                        http::Headers(),
                                         net::constants::kDefaultHTMLContentType);
       } catch (const Exception& e) {
         // No exception should ever leave the destructor.
@@ -694,14 +698,14 @@ class GenericHTTPServerConnection final : public HTTPResponder {
   template <uint64_t CACHE_SIZE = CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
   inline ChunkedResponseSender<CACHE_SIZE> SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
+      const http::Headers& headers = http::Headers(),
+      const std::string& content_type = constants::kDefaultJSONContentType) {
     if (responded_) {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
-      PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
+      PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, headers, content_type);
       os << "Transfer-Encoding: chunked" << constants::kCRLF << constants::kCRLF;
       connection_.BlockingWrite(os.str(), true);
       return ChunkedResponseSender<CACHE_SIZE>(connection_);

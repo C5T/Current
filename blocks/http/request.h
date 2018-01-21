@@ -116,12 +116,12 @@ struct Request final {
   template <uint64_t CACHE_SIZE = CURRENT_BRICKS_HTTP_DEFAULT_CHUNK_CACHE_SIZE>
   current::net::HTTPServerConnection::ChunkedResponseSender<CACHE_SIZE> SendChunkedResponse(
       net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = net::constants::kDefaultJSONContentType,
-      const net::http::Headers& extra_headers = net::http::Headers::DefaultJSONHeaders()) {
+      const net::http::Headers& headers = net::http::Headers(),
+      const std::string& content_type = net::constants::kDefaultJSONContentType) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }
-    return connection.SendChunkedHTTPResponse<CACHE_SIZE>(code, content_type, extra_headers);
+    return connection.SendChunkedHTTPResponse<CACHE_SIZE>(code, headers, content_type);
   }
 
   Request(const Request&) = delete;

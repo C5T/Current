@@ -359,7 +359,7 @@ TEST(HTTPAPI, RespondsWithString) {
       HTTP(FLAGS_net_api_test_port)
           .Register("/responds_with_string",
                     [](Request r) {
-                      r("test_string", HTTPResponseCode.OK, "application/json", Headers({{"foo", "bar"}}));
+                      r("test_string", HTTPResponseCode.OK, Headers({{"foo", "bar"}}), "application/json");
                     });
   const string url = Printf("http://localhost:%d/responds_with_string", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
@@ -376,8 +376,8 @@ TEST(HTTPAPI, RespondsWithObject) {
                                    [](Request r) {
                                      r(HTTPAPITestObject(),
                                        HTTPResponseCode.OK,
-                                       "application/json",
-                                       Headers({{"foo", "bar"}}));
+                                       Headers({{"foo", "bar"}}),
+                                       "application/json");
                                    });
   const string url = Printf("http://localhost:%d/responds_with_object", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
@@ -446,8 +446,8 @@ TEST(HTTPAPI, RedirectToRelativeURL) {
                                    [](Request r) {
                                      r("",
                                        HTTPResponseCode.Found,
-                                       current::net::constants::kDefaultHTMLContentType,
-                                       Headers({{"Location", "/to"}}));
+                                       Headers({{"Location", "/to"}}),
+                                       current::net::constants::kDefaultHTMLContentType);
                                    }) +
                      HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
@@ -474,8 +474,8 @@ TEST(HTTPAPI, RedirectToFullURL) {
                     [](Request r) {
                       r("",
                         HTTPResponseCode.Found,
-                        current::net::constants::kDefaultHTMLContentType,
-                        Headers({{"Location", Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary)}}));
+                        Headers({{"Location", Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary)}}),
+                        current::net::constants::kDefaultHTMLContentType);
                     });
   // Redirect not allowed by default.
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
@@ -502,8 +502,8 @@ TEST(HTTPAPI, RedirectToFullURLWithoutPort) {
                                    [](Request r) {
                                      r("",
                                        HTTPResponseCode.Found,
-                                       current::net::constants::kDefaultHTMLContentType,
-                                       Headers({{"Location", "http://localhost/to"}}));
+                                       Headers({{"Location", "http://localhost/to"}}),
+                                       current::net::constants::kDefaultHTMLContentType);
                                    });
   // Redirect not allowed by default.
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
@@ -521,24 +521,24 @@ TEST(HTTPAPI, RedirectLoop) {
                                    [](Request r) {
                                      r("",
                                        HTTPResponseCode.Found,
-                                       current::net::constants::kDefaultHTMLContentType,
-                                       Headers({{"Location", "/p2"}}));
+                                       Headers({{"Location", "/p2"}}),
+                                       current::net::constants::kDefaultHTMLContentType);
                                    }) +
                      HTTP(FLAGS_net_api_test_port)
                          .Register("/p2",
                                    [](Request r) {
                                      r("",
                                        HTTPResponseCode.Found,
-                                       current::net::constants::kDefaultHTMLContentType,
-                                       Headers({{"Location", "/p3"}}));
+                                       Headers({{"Location", "/p3"}}),
+                                       current::net::constants::kDefaultHTMLContentType);
                                    }) +
                      HTTP(FLAGS_net_api_test_port)
                          .Register("/p3",
                                    [](Request r) {
                                      r("",
                                        HTTPResponseCode.Found,
-                                       current::net::constants::kDefaultHTMLContentType,
-                                       Headers({{"Location", "/p1"}}));
+                                       Headers({{"Location", "/p1"}}),
+                                       current::net::constants::kDefaultHTMLContentType);
                                    });
   {
     bool thrown = false;
@@ -581,6 +581,7 @@ TEST(HTTPAPI, FourOhFiveMethodNotAllowed) {
                                    [](Request r) {
                                      r(DefaultMethodNotAllowedMessage(),
                                        HTTPResponseCode.MethodNotAllowed,
+                                       current::net::http::Headers(),
                                        current::net::constants::kDefaultHTMLContentType);
                                    });
   const string url = Printf("http://localhost:%d/method_not_allowed", FLAGS_net_api_test_port);
@@ -705,7 +706,7 @@ TEST(HTTPAPI, ChunkedResponseWithHeaders) {
                                    [](Request r) {
                                      EXPECT_EQ("GET", r.method);
                                      auto response = r.connection.SendChunkedHTTPResponse(
-                                         HTTPResponseCode.OK, "text/plain", Headers({{"header", "yeah"}}));
+                                         HTTPResponseCode.OK, Headers({{"header", "yeah"}}), "text/plain");
                                      response.Send("A");
                                      response.Send("B");
                                      response.Send("C");
@@ -724,7 +725,7 @@ TEST(HTTPAPI, GetByChunksPrototype) {
                          .Register("/chunks",
                                    [](Request r) {
                                      auto response = r.connection.SendChunkedHTTPResponse(
-                                         HTTPResponseCode.OK, "text/plain", Headers({{"header", "oh-well"}}));
+                                         HTTPResponseCode.OK, Headers({{"header", "oh-well"}}), "text/plain");
                                      response.Send("1\n");
                                      response.Send("23\n");
                                      response.Send("456\n");
@@ -1010,7 +1011,7 @@ TEST(HTTPAPI, HeadRequest) {
                                    [](Request r) {
                                      EXPECT_EQ("HEAD", r.method);
                                      ASSERT_TRUE(r.body.empty());
-                                     r("", HTTPResponseCode.OK, "text/html", Headers({{"foo", "bar"}}));
+                                     r("", HTTPResponseCode.OK, Headers({{"foo", "bar"}}), "text/html");
                                    });
   const auto response = HTTP(HEAD(Printf("http://localhost:%d/head", FLAGS_net_api_test_port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -1708,23 +1709,67 @@ TEST(HTTPAPI, ResponseGeneratorForSerializableAndNonSerializableTypes) {
   }
 }
 
-TEST(HTTPAPI, JSONHasOriginWhenSentViaRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(SerializableObject()); });
+TEST(HTTPAPI, JSONDoesNotHaveCORSHeaderByDefaultWhenSentViaRequest) {
+  {
+    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(SerializableObject()); });
 
-  const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
-  ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
-  EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+    EXPECT_FALSE(response.headers.Has("Access-Control-Allow-Origin"));
+  }
+  {
+    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json2", [](Request r) {
+      r(SerializableObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
+    });
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json2", FLAGS_net_api_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+    ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
+    EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
+  }
+  {
+    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json3", [](Request r) {
+      r(SerializableObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader().RemoveCORSHeader());
+    });
+
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json3", FLAGS_net_api_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+    EXPECT_FALSE(response.headers.Has("Access-Control-Allow-Origin"));
+  }
 }
 
-TEST(HTTPAPI, JSONHasOriginWhenSentViaResponse) {
-  const auto scope =
-      HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(Response(SerializableObject())); });
+TEST(HTTPAPI, JSONDoesHaveCORSHeaderByDefault) {
+  {
+    const auto scope =
+        HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(Response(SerializableObject())); });
 
-  const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
-  ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
-  EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+    ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
+    EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
+  }
+  {
+    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json2", [](Request r) {
+      r(Response(SerializableObject()).NoCORS());
+    });
+
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json2", FLAGS_net_api_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+    EXPECT_FALSE(response.headers.Has("Access-Control-Allow-Origin"));
+  }
+  {
+    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json3", [](Request r) {
+      r(Response(SerializableObject()).NoCORS() .ReinsertCORS());
+    });
+
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json3", FLAGS_net_api_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
+    ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
+    EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
+  }
 }

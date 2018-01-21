@@ -50,8 +50,13 @@ constexpr char kTransferEncodingHeaderKey[] = "Transfer-Encoding";
 constexpr char kTransferEncodingChunkedValue[] = "chunked";
 constexpr char kHTTPMethodOverrideHeaderKey[] = "X-HTTP-Method-Override";
 
-constexpr char kHTTPAccessControlAllowOriginHeaderName[] = "Access-Control-Allow-Origin";
-constexpr char kHTTPAccessControlAllowOriginHeaderValue[] = "*";
+// By default:
+// * HTTP responses that use `struct Response` will have the CORS header set.
+//   It can be unset with `.NoCORS()`. There is also `ReinsertCORS()` to add it back.
+// * HTTP responses that use `Request::operator()` will not have the CORS header set.
+//   Use `Headers.{Set,Remove}CORSHeader()` to manually insert or remove it.
+constexpr char kCORSHeaderName[] = "Access-Control-Allow-Origin";
+constexpr char kCORSHeaderValue[] = "*";
 
 #ifndef CURRENT_MAX_HTTP_PAYLOAD
 constexpr size_t kMaxHTTPPayloadSizeInBytes = 1024 * 1024 * 16;
