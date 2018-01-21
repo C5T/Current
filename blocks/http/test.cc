@@ -387,8 +387,8 @@ TEST(HTTPAPI, RespondsWithObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
-struct GoodStuff {
-  void RespondViaHTTP(Request r) const {
+struct GoodStuff : IHasDoRespondViaHTTP {
+  void DoRespondViaHTTP(Request r) const override {
     r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
   }
 };
