@@ -276,6 +276,10 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.uone_to_umany.Cols().Empty());
         EXPECT_EQ(0u, fields.uone_to_umany.Rows().Size());
         EXPECT_EQ(0u, fields.uone_to_umany.Cols().Size());
+
+        EXPECT_FALSE(fields.uone_to_umany.Has(1, "one"));
+        EXPECT_FALSE(fields.uone_to_umany.Has(std::make_pair(1, "one")));
+
         fields.uone_to_umany.Add(Cell{1, "one", 1});   // Adds {1,one=1 }
         fields.uone_to_umany.Add(Cell{2, "two", 5});   // Adds {2,two=5 }
         fields.uone_to_umany.Add(Cell{2, "two", 4});   // Adds {2,two=4 }, overwrites {2,two=5}
@@ -283,6 +287,14 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.uone_to_umany.Add(Cell{2, "fiv", 10});  // Adds {2,fiv=10}, removes {1,fiv=5}
         fields.uone_to_umany.Add(Cell{3, "six", 18});  // Adds {3,six=18}
         fields.uone_to_umany.Add(Cell{1, "six", 6});   // Adds {1,six=6 }, removes {3,six=18}
+
+        EXPECT_TRUE(fields.uone_to_umany.Has(1, "one"));
+        EXPECT_TRUE(fields.uone_to_umany.Has(std::make_pair(1, "one")));
+        EXPECT_FALSE(fields.uone_to_umany.Has(1, "fiv"));  // Implicitly removed above.
+        EXPECT_FALSE(fields.uone_to_umany.Has(3, "six"));  // Implicitly removed above.
+        EXPECT_FALSE(fields.uone_to_umany.Has(std::make_pair(1, "fiv")));
+        EXPECT_FALSE(fields.uone_to_umany.Has(std::make_pair(3, "six")));
+
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_EQ(4u, fields.uone_to_umany.Size());
         EXPECT_FALSE(fields.uone_to_umany.Rows().Empty());
