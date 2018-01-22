@@ -66,6 +66,13 @@ class GenericManyToMany {
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
 
+  bool Has(sfinae::CF<key_t> key) const {
+    return map_.find(key) != map_.end();
+  }
+  bool Has(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
+    return map_.find(key_t(row, col)) != map_.end();
+  }
+
   void Add(const T& object) {
     const auto now = current::time::Now();
     const auto row = sfinae::GetRow(object);

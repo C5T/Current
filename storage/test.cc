@@ -193,7 +193,15 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.umany_to_umany.Cols().Empty());
         EXPECT_EQ(0u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(0u, fields.umany_to_umany.Cols().Size());
+        EXPECT_FALSE(fields.umany_to_umany.Has(1, "one"));
+        EXPECT_FALSE(fields.umany_to_umany.Has(std::make_pair(1, "one")));
         fields.umany_to_umany.Add(Cell{1, "one", 1});
+        EXPECT_TRUE(fields.umany_to_umany.Has(1, "one"));
+        EXPECT_TRUE(fields.umany_to_umany.Has(std::make_pair(1, "one")));
+        EXPECT_FALSE(fields.umany_to_umany.Has(101, "one"));
+        EXPECT_FALSE(fields.umany_to_umany.Has(1, "some one"));
+        EXPECT_FALSE(fields.umany_to_umany.Has(std::make_pair(101, "one")));
+        EXPECT_FALSE(fields.umany_to_umany.Has(std::make_pair(1, "some one")));
         fields.umany_to_umany.Add(Cell{2, "two", 2});
         fields.umany_to_umany.Add(Cell{2, "too", 3});
         EXPECT_FALSE(fields.umany_to_umany.Empty());
