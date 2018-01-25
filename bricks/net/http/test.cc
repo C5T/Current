@@ -183,29 +183,6 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   t.join();
 }
 
-TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/test_named_object", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(HTTPTestObject(), "epic_object");
-  }, Socket(FLAGS_net_http_test_port));
-  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /test_named_object HTTP/1.1\r\n", true);
-  connection.BlockingWrite("Host: localhost\r\n", true);
-  connection.BlockingWrite("\r\n", false);
-  ExpectToReceive(
-      "HTTP/1.1 200 OK\r\n"
-      "Content-Type: application/json; charset=utf-8\r\n"
-      "Connection: close\r\n"
-      "Access-Control-Allow-Origin: *\r\n"
-      "Content-Length: 60\r\n"
-      "\r\n"
-      "{\"epic_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
-      connection);
-  t.join();
-}
-
 TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   std::thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
@@ -215,7 +192,6 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
     r.Send("onetwothree");
     r.Send(std::vector<char>({'f', 'o', 'o'}));
     r.Send(HTTPTestObject());
-    r.Send(HTTPTestObject(), "epic_chunk");
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /chunked HTTP/1.1\r\n", true);
@@ -234,8 +210,6 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "foo\r\n"
       "2C\r\n"
       "{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n\r\n"
-      "3B\r\n"
-      "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",
       connection);
   t.join();

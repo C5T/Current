@@ -167,9 +167,9 @@ struct HTTPResponder {
     SendHTTPResponseImpl(connection, string.begin(), string.end(), code, content_type, extra_headers);
   }
 
-  // Support `CURRENT_STRUCT`-s.
+  // Support `CURRENT_STRUCT`-s and `CURRENT_VARIANT`-s.
   template <class T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
+  static ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(current::decay<T>)> SendHTTPResponse(
       Connection& connection,
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -177,21 +177,6 @@ struct HTTPResponder {
       const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
-    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
-  }
-
-  // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
-  // (For backwards compatibility only, really. -- D.K.)
-  template <class T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
-      Connection& connection,
-      T&& object,
-      const std::string& name,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultJSONContentType,
-      const http::Headers& extra_headers = http::Headers::DefaultJSONHeaders()) {
-    // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(connection, s.begin(), s.end(), code, content_type, extra_headers);
   }
 };
@@ -663,10 +648,6 @@ class GenericHTTPServerConnection final : public HTTPResponder {
       template <class T>
       inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
         SendImpl(JSON(std::forward<T>(object)) + '\n', flush);
-      }
-      template <class T, typename S>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name, ChunkFlush flush) {
-        SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n", flush);
       }
 
       Connection& connection_;

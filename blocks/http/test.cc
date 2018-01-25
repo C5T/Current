@@ -375,7 +375,6 @@ TEST(HTTPAPI, RespondsWithObject) {
                          .Register("/responds_with_object",
                                    [](Request r) {
                                      r(HTTPAPITestObject(),
-                                       "test_object",
                                        HTTPResponseCode.OK,
                                        "application/json",
                                        Headers({{"foo", "bar"}}));
@@ -383,13 +382,13 @@ TEST(HTTPAPI, RespondsWithObject) {
   const string url = Printf("http://localhost:%d/responds_with_object", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("{\"test_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n", response.body);
+  EXPECT_EQ("{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
-struct GoodStuff {
-  void RespondViaHTTP(Request r) const {
+struct GoodStuff : IHasDoRespondViaHTTP {
+  void DoRespondViaHTTP(Request r) const override {
     r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
   }
 };
@@ -927,10 +926,16 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
 }
 
 CURRENT_STRUCT(SerializableObject) {
-  CURRENT_FIELD(x, int, 42);
+  CURRENT_FIELD(x, int32_t, 42);
   CURRENT_FIELD(s, std::string, "foo");
-  std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
+  std::string AsString() const { return Printf("%d:%s", static_cast<int>(x), s.c_str()); }
 };
+
+CURRENT_STRUCT(AnotherSerializableObject) {
+  CURRENT_FIELD(z, uint32_t, 42u);
+};
+
+CURRENT_VARIANT(SerializableVariant, SerializableObject, AnotherSerializableObject);
 
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
@@ -1568,6 +1573,21 @@ TEST(HTTPAPI, ResponseSmokeTest) {
           .Register("/response9",
                     [send_response](Request r) {
                       send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
+                    }) +
+      HTTP(FLAGS_net_api_test_port)
+          .Register("/response10",
+                    [send_response](Request r) {
+                      SerializableVariant v;
+                      v.template Construct<SerializableObject>();
+                      r(v);
+                    }) +
+      HTTP(FLAGS_net_api_test_port)
+          .Register("/response11",
+                    [send_response](Request r) {
+                      // Test both a direct response (`Request::operator()`) and a response via `Respose`.
+                      SerializableVariant v;
+                      v.template Construct<SerializableObject>();
+                      send_response(v, std::move(r));
                     });
 
   const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", FLAGS_net_api_test_port)));
@@ -1605,6 +1625,14 @@ TEST(HTTPAPI, ResponseSmokeTest) {
   const auto response9 = HTTP(GET(Printf("http://localhost:%d/response9", FLAGS_net_api_test_port)));
   EXPECT_EQ(500, static_cast<int>(response9.code));
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response9.body);
+
+  const auto response10 = HTTP(GET(Printf("http://localhost:%d/response10", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response10.code));
+  EXPECT_EQ("{\"SerializableObject\":{\"x\":42,\"s\":\"foo\"},\"\":\"T9201749777787913665\"}\n", response10.body);
+
+  const auto response11 = HTTP(GET(Printf("http://localhost:%d/response11", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response11.code));
+  EXPECT_EQ("{\"SerializableObject\":{\"x\":42,\"s\":\"foo\"},\"\":\"T9201749777787913665\"}\n", response11.body);
 
   {
     Response response;

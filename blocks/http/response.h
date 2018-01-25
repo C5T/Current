@@ -72,7 +72,7 @@ struct FillResponseHelper<false> {
 };
 }  // namespace impl
 
-struct Response {
+struct Response final : IHasDoRespondViaHTTP {
   bool initialized = false;
 
   std::string body;
@@ -248,7 +248,7 @@ struct Response {
     return *this;
   }
 
-  void RespondViaHTTP(Request r) const {
+  void DoRespondViaHTTP(Request r) const override {
     if (initialized) {
       r(body, code, content_type, headers);
     }
@@ -284,8 +284,6 @@ inline Response GenerateResponseFromMaybeSerializableObject(
       T,
       current::serialization::json::IsJSONSerializable<T>::value>::DoIt(value, code);
 }
-
-static_assert(HasRespondViaHTTP<Response>(0), "");
 
 }  // namespace http
 }  // namespace current

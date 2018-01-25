@@ -69,6 +69,10 @@ TEST(HTTPHeadersTest, Smoke) {
   EXPECT_EQ("2", headers.GetOrDefault("bar", "nope"));
   EXPECT_EQ("1", headers.Get("foo"));
   EXPECT_EQ("2", headers.Get("bar"));
+
+  headers.Remove("foo");
+  EXPECT_EQ("nope", headers.GetOrDefault("foo", "nope"));
+  EXPECT_EQ("2", headers.GetOrDefault("bar", "nope"));
 }
 
 TEST(HTTPHeadersTest, Initialization) {
