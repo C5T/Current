@@ -51,7 +51,6 @@ struct FillResponseHelper<true> {
     return object;
   }
   static std::string DefaultContentType() { return net::constants::kDefaultContentType; }
-  static void SetAccessControlAllowOriginHeaderIfJSON(net::http::Headers&) {}
 };
 
 template <>
@@ -65,10 +64,6 @@ struct FillResponseHelper<false> {
     return "{\"" + object_name + "\":" + JSON(std::forward<T>(object)) + "}\n";
   }
   static std::string DefaultContentType() { return net::constants::kDefaultJSONContentType; }
-  static void SetAccessControlAllowOriginHeaderIfJSON(net::http::Headers& headers) {
-    headers.Set(net::constants::kHTTPAccessControlAllowOriginHeaderName,
-                net::constants::kHTTPAccessControlAllowOriginHeaderValue);
-  }
 };
 }  // namespace impl
 
@@ -79,6 +74,7 @@ struct Response final : IHasDoRespondViaHTTP {
   net::HTTPResponseCodeValue code;
   std::string content_type;
   net::http::Headers headers;
+  bool cors_header = true;
 
   Response() : body(""), code(HTTPResponseCode.OK), content_type(net::constants::kDefaultContentType) {}
 
@@ -125,7 +121,6 @@ struct Response final : IHasDoRespondViaHTTP {
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
-    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
@@ -134,7 +129,6 @@ struct Response final : IHasDoRespondViaHTTP {
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
-    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
@@ -144,7 +138,6 @@ struct Response final : IHasDoRespondViaHTTP {
     this->code = code;
     this->content_type = G::DefaultContentType();
     this->headers = headers;
-    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
@@ -157,7 +150,6 @@ struct Response final : IHasDoRespondViaHTTP {
     this->code = code;
     this->content_type = G::DefaultContentType();
     this->headers = headers;
-    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
@@ -170,7 +162,6 @@ struct Response final : IHasDoRespondViaHTTP {
     this->code = code;
     this->content_type = content_type;
     this->headers = headers;
-    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   template <typename T>
@@ -184,7 +175,6 @@ struct Response final : IHasDoRespondViaHTTP {
     this->code = code;
     this->content_type = content_type;
     this->headers = headers;
-    G::SetAccessControlAllowOriginHeaderIfJSON(this->headers);
   }
 
   Response& Body(const std::string& s) {
@@ -248,9 +238,25 @@ struct Response final : IHasDoRespondViaHTTP {
     return *this;
   }
 
+  Response& DisableCORS() {
+    cors_header = false;
+    return *this;
+  }
+
+  Response& EnableCORS() {
+    cors_header = true;
+    return *this;
+  }
+
   void DoRespondViaHTTP(Request r) const override {
     if (initialized) {
-      r(body, code, content_type, headers);
+      if (cors_header) {
+        auto mutable_headers = headers;
+        mutable_headers.SetCORSHeader();
+        r(body, code, mutable_headers, content_type);
+      } else {
+        r(body, code, headers, content_type);
+      }
     }
     // Else, a 500 "INTERNAL SERVER ERROR" will be returned, since `Request`
     // has not been served upon destructing at the exit from this method.

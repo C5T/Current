@@ -514,8 +514,8 @@ class Stream final {
       const std::string body = (r.method == "GET") ? size_str + '\n' : "";
       r(body,
         HTTPResponseCode.OK,
-        current::net::constants::kDefaultContentType,
-        current::net::http::Headers({{kStreamHeaderCurrentStreamSize, size_str}}));
+        current::net::http::Headers({{kStreamHeaderCurrentStreamSize, size_str}}),
+        current::net::constants::kDefaultContentType);
       return;
     }
 

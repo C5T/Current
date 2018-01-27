@@ -244,11 +244,11 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         output_started_(false),
         http_response_(http_request_.SendChunkedResponse(
             HTTPResponseCode.OK,
-            current::net::constants::kDefaultJSONContentType,
             current::net::http::Headers({
                 {kStreamHeaderCurrentSubscriptionId, subscription_id},
                 {kStreamHeaderCurrentStreamSize, current::ToString(impl_->persister.Size())},
-            }))) {
+            }),
+            current::net::constants::kDefaultJSONContentType)) {
     if (params_.recent.count() > 0) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ = r.timestamp - params_.recent;

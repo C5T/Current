@@ -159,8 +159,8 @@ int main() {
                   r(layout,
                     // "layout",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
                     HTTPResponseCode.OK,
-                    "application/json; charset=utf-8",
-                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
+                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
+                    "application/json; charset=utf-8");
                 });
   HTTP(FLAGS_port)
       .Register("/meta",
@@ -168,8 +168,8 @@ int main() {
                   r(ExampleMeta(),
                     // "meta",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
                     HTTPResponseCode.OK,
-                    "application/json; charset=utf-8",
-                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
+                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
+                    "application/json; charset=utf-8");
                 });
   HTTP(FLAGS_port)
       .Register("/data",
@@ -179,8 +179,8 @@ int main() {
                     try {
                       auto response = r.connection.SendChunkedHTTPResponse(
                           HTTPResponseCode.OK,
-                          "application/json; charset=utf-8",
-                          {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}});
+                          {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}},
+                          "application/json; charset=utf-8");
                       std::string data;
                       const double begin = static_cast<double>(Now().count());
                       const double t = atof(r.url.query["t"].c_str());

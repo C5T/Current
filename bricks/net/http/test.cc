@@ -175,6 +175,29 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
+      "Content-Length: 44\r\n"
+      "\r\n"
+      "{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n",
+      connection);
+  t.join();
+}
+
+TEST(PosixHTTPServerTest, SmokeWithObjectWithCORSHeader) {
+  std::thread t([](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("GET", c.HTTPRequest().Method());
+    EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse(HTTPTestObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /test_object HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
+      "Connection: close\r\n"
       "Access-Control-Allow-Origin: *\r\n"
       "Content-Length: 44\r\n"
       "\r\n"
@@ -189,6 +212,37 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
     EXPECT_EQ("GET", c.HTTPRequest().Method());
     EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
     auto r = c.SendChunkedHTTPResponse();
+    r.Send("onetwothree");
+    r.Send(std::vector<char>({'f', 'o', 'o'}));
+    r.Send(HTTPTestObject());
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /chunked HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
+      "Connection: keep-alive\r\n"
+      "Transfer-Encoding: chunked\r\n"
+      "\r\n"
+      "B\r\n"
+      "onetwothree\r\n"
+      "3\r\n"
+      "foo\r\n"
+      "2C\r\n"
+      "{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n\r\n"
+      "0\r\n",
+      connection);
+  t.join();
+}
+
+TEST(PosixHTTPServerTest, SmokeChunkedResponseWithCORSHeader) {
+  std::thread t([](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("GET", c.HTTPRequest().Method());
+    EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
+    auto r = c.SendChunkedHTTPResponse(HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
     r.Send("onetwothree");
     r.Send(std::vector<char>({'f', 'o', 'o'}));
     r.Send(HTTPTestObject());
@@ -222,8 +276,8 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
     EXPECT_EQ("/header", c.HTTPRequest().RawPath());
     c.SendHTTPResponse("OK",
                        HTTPResponseCode.OK,
-                       c.HTTPRequest().Body(),
-                       current::net::http::Headers({{"foo", "bar"}, {"baz", "meh"}}));
+                       current::net::http::Headers({{"foo", "bar"}, {"baz", "meh"}}),
+                       "here_is_" + c.HTTPRequest().Body());
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("POST /header HTTP/1.1\r\n", true);
@@ -234,7 +288,7 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
-      "Content-Type: custom_content_type\r\n"
+      "Content-Type: here_is_custom_content_type\r\n"
       "Connection: close\r\n"
       "foo: bar\r\n"
       "baz: meh\r\n"

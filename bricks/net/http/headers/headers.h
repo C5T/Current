@@ -196,12 +196,7 @@ struct Headers final {
                   [this](const std::pair<std::string, std::string>& h) { Set(h.first, h.second); });
   }
 
-  inline static Headers DefaultJSONHeaders() {
-    return Headers(
-        {{constants::kHTTPAccessControlAllowOriginHeaderName, constants::kHTTPAccessControlAllowOriginHeaderValue}});
-  }
-
-  // Can `Set()` / `Get()` / `Has()` headers.
+  // An instance of `Headers` can `Set()` / `Get()` / `Has()` / `Remove()` headers.
   Headers& Set(const std::string& header, const std::string& value) {
     Header::ThrowIfHeaderIsCookie(header);
     // Discard empty headers.
@@ -226,7 +221,17 @@ struct Headers final {
 
   Headers& Remove(const std::string& header) {
     Header::ThrowIfHeaderIsCookie(header);
-    map.erase(header);
+    const auto cit = map.find(header);
+    if (cit != map.end()) {
+      map.erase(cit);
+      headers_list_t updated_list;
+      for (const auto& e : list) {
+        if (e.first != header) {
+          updated_list.emplace_back(std::move(e));
+        }
+      }
+      list = std::move(updated_list);
+    }
     return *this;
   }
 
@@ -259,9 +264,9 @@ struct Headers final {
     }
   }
 
-  // Can `operator[] const` headers. Returns the `Header`, with `.header` and `.value`.
-  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first
-  // seen.
+  // An instance of `Headers` can be accessed via `operator[] const`.
+  // Returns the `Header`, with `.header` and `.value`.
+  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first seen.
   const Header& operator[](const std::string& header) const {
     Header::ThrowIfHeaderIsCookie(header);
     const auto rhs = map.find(header);
@@ -274,15 +279,14 @@ struct Headers final {
     }
   }
 
-  // Can `Header& operator[]`. Creates the header if it does not exist. Its `.header` is const, `.value`
-  // mutable.
-  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first
-  // seen.
+  // The mutable version of `Header& operator[]` is also exposed, and it creates the header if it did not exist.
+  // Returns a header with const `.header` and mutable `.value`.
+  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first seen.
   Header& operator[](const std::string& header) {
     Header::ThrowIfHeaderIsCookie(header);
     std::unique_ptr<Header>& placeholder = map[header];
     if (!placeholder) {
-      // Create new `Header` under this `header`.
+      // Create a new `Header` with the name `header` under this placeholder.
       placeholder = std::make_unique<Header>(header);
       list.emplace_back(header, placeholder.get());
     }
@@ -329,9 +333,14 @@ struct Headers final {
     }
   }
 
-  void SetAccessControlOriginHeader() {
-    Set(net::constants::kHTTPAccessControlAllowOriginHeaderName,
-        net::constants::kHTTPAccessControlAllowOriginHeaderValue);
+  Headers& SetCORSHeader() {
+    Set(constants::kCORSHeaderName, constants::kCORSHeaderValue);
+    return *this;
+  }
+
+  Headers& RemoveCORSHeader() {
+    Remove(net::constants::kCORSHeaderName);
+    return *this;
   }
 
   // An externally facing `SetCookie()`, to be used mostly while constructing the `Response`.
