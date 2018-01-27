@@ -280,7 +280,7 @@ struct Headers final {
   }
 
   // The mutable version of `Header& operator[]` is also exposed, and it creates the header if it did not exist.
-  // Returns a header with const `.header` and mutable `.value` mutable.
+  // Returns a header with const `.header` and mutable `.value`.
   // Capitalization-wise, treats various spellings of the same header as one header, retains the name first seen.
   Header& operator[](const std::string& header) {
     Header::ThrowIfHeaderIsCookie(header);
