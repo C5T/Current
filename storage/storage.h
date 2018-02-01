@@ -87,15 +87,31 @@ namespace storage {
         : us(us), key(::current::storage::sfinae::GetKey(value)) {}                                 \
     using storage_field_t = entry_name;                                                             \
   };                                                                                                \
+  CURRENT_STRUCT(entry_name##Patched) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(key, ::current::storage::sfinae::entry_key_t<entry_type>);                        \
+    CURRENT_FIELD(patch, ::current::storage::sfinae::entry_patch_object_t<entry_type>);             \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Patched) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Patched)(                                                       \
+          std::chrono::microseconds us,                                                             \
+          ::current::copy_free<::current::storage::sfinae::entry_key_t<entry_type>> key,            \
+          ::current::copy_free<::current::storage::sfinae::entry_patch_object_t<entry_type>> patch) \
+        : us(us), key(key), patch(patch) {}                                                         \
+    using storage_field_t = entry_name;                                                             \
+  };                                                                                                \
   struct entry_name {                                                                               \
-    template <typename T, typename E1, typename E2>                                                 \
-    using field_t = dictionary_type<T, E1, E2>;                                                     \
+    template <typename T, typename E1, typename E2, typename E3>                                    \
+    using field_t = dictionary_type<T, E1, E2, E3>;                                                 \
     using entry_t = entry_type;                                                                     \
     using key_t = ::current::storage::sfinae::entry_key_t<entry_type>;                              \
     using update_event_t = entry_name##Updated;                                                     \
     using delete_event_t = entry_name##Deleted;                                                     \
-    using persisted_event_1_t = entry_name##Updated;                                                \
-    using persisted_event_2_t = entry_name##Deleted;                                                \
+    using patch_event_t = std::conditional<current::HasPatch<entry_type>(),                         \
+                                           entry_name##Patched,                                     \
+                                           void>::type;                                             \
+    using persisted_event_1_t = update_event_t;                                                     \
+    using persisted_event_2_t = delete_event_t;                                                     \
+    using persisted_event_3_t = patch_event_t;                                                      \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedDictionary(entry_type, entry_name) \
@@ -104,6 +120,7 @@ namespace storage {
 #define CURRENT_STORAGE_FIELD_ENTRY_OrderedDictionary(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(OrderedDictionary, entry_type, entry_name)
 
+// NOTE(dkorolev): `Patch` is only supported in the dictionaries for now.
 #define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                                   \
   struct entry_name;                                                                                                   \
   CURRENT_STRUCT(entry_name##Updated) {                                                                                \
@@ -125,17 +142,20 @@ namespace storage {
           key(std::make_pair(::current::storage::sfinae::GetRow(value), ::current::storage::sfinae::GetCol(value))) {} \
     using storage_field_t = entry_name;                                                                                \
   };                                                                                                                   \
+  using entry_name##Patched = void;                                                                                    \
   struct entry_name {                                                                                                  \
-    template <typename T, typename E1, typename E2>                                                                    \
-    using field_t = matrix_type<T, E1, E2>;                                                                            \
+    template <typename T, typename E1, typename E2, typename E3>                                                       \
+    using field_t = matrix_type<T, E1, E2, E3>;                                                                        \
     using entry_t = entry_type;                                                                                        \
     using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                                                 \
     using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                                                 \
     using key_t = std::pair<row_t, col_t>;                                                                             \
     using update_event_t = entry_name##Updated;                                                                        \
     using delete_event_t = entry_name##Deleted;                                                                        \
-    using persisted_event_1_t = entry_name##Updated;                                                                   \
-    using persisted_event_2_t = entry_name##Deleted;                                                                   \
+    using patch_event_t = entry_name##Patched;                                                                         \
+    using persisted_event_1_t = update_event_t;                                                                        \
+    using persisted_event_2_t = delete_event_t;                                                                        \
+    using persisted_event_3_t = patch_event_t;                                                                         \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToUnorderedMany(entry_type, entry_name) \
@@ -413,15 +433,20 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
 #define CURRENT_STORAGE_FIELD(field_name, entry_name)                                                          \
   using field_container_##field_name##_t = entry_name::field_t<entry_name::entry_t,                            \
                                                                entry_name::persisted_event_1_t,                \
-                                                               entry_name::persisted_event_2_t>;               \
+                                                               entry_name::persisted_event_2_t,                \
+                                                               entry_name::persisted_event_3_t>;               \
   using entry_type_##field_name##_t = entry_name;                                                              \
   using field_type_##field_name##_t =                                                                          \
       ::current::storage::Field<INSTANTIATION_TYPE, field_container_##field_name##_t>;                         \
   constexpr static size_t FIELD_INDEX_##field_name =                                                           \
       CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE;                                    \
-  ::current::storage::FieldInfo<entry_name::persisted_event_1_t, entry_name::persisted_event_2_t> operator()(  \
+  ::current::storage::FieldInfo<entry_name::persisted_event_1_t,                                               \
+                                entry_name::persisted_event_2_t,                                               \
+                                entry_name::persisted_event_3_t> operator()(                                   \
       ::current::storage::FieldInfoByIndex<FIELD_INDEX_##field_name>) const {                                  \
-    return ::current::storage::FieldInfo<entry_name::persisted_event_1_t, entry_name::persisted_event_2_t>();  \
+    return ::current::storage::FieldInfo<entry_name::persisted_event_1_t,                                      \
+                                         entry_name::persisted_event_2_t,                                      \
+                                         entry_name::persisted_event_3_t>();                                   \
   }                                                                                                            \
   std::string operator()(::current::storage::FieldNameByIndex<FIELD_INDEX_##field_name>) const {               \
     return #field_name;                                                                                        \
@@ -473,8 +498,15 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
              ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                   \
   }                                                                                                            \
   field_type_##field_name##_t field_name{#field_name, current_storage_mutation_journal_};                      \
-  void operator()(const entry_name::persisted_event_1_t& e) { field_name(e); }                                 \
-  void operator()(const entry_name::persisted_event_2_t& e) { field_name(e); }
+  void operator()(const entry_name::persisted_event_1_t& e1) { field_name(e1); }                               \
+  void operator()(const entry_name::persisted_event_2_t& e2) { field_name(e2); }                               \
+  struct DummyPlaceholderForPatchEvent##field_name {};                                                         \
+  void operator()(                                                                                             \
+      const typename std::conditional<!std::is_same<typename entry_name::persisted_event_3_t, void>::value,    \
+                                      typename entry_name::persisted_event_3_t,                                \
+                                      DummyPlaceholderForPatchEvent##field_name>::type& e3) {                  \
+    field_name(e3);                                                                                            \
+  }
 // clang-format on
 
 template <typename STORAGE>

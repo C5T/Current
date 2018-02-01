@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include <utility>
 
+#include "../../typesystem/struct.h"
 #include "../../bricks/template/metaprogramming.h"
 
 namespace current {
@@ -243,6 +244,21 @@ template <typename ENTRY>
 void SetCol(ENTRY& entry, typename col_accessor_t<ENTRY>::cf_col_t col) {
   col_accessor_t<ENTRY>::SetCol(entry, col);
 }
+
+CURRENT_STRUCT(DummyPatchObjectForNonPatchableEntries) {};
+
+template <bool, class>
+struct patch_object_t_accessor {
+  using patch_object_t = DummyPatchObjectForNonPatchableEntries;
+};
+
+template <class ENTRY>
+struct patch_object_t_accessor<true, ENTRY> {
+  using patch_object_t = typename ENTRY::patch_object_t;
+};
+
+template <typename ENTRY>
+using entry_patch_object_t = typename patch_object_t_accessor<HasPatch<ENTRY>(), ENTRY>::patch_object_t;
 
 }  // namespace sfinae
 }  // namespace storage

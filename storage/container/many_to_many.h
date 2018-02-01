@@ -43,6 +43,7 @@ namespace container {
 template <typename T,
           typename UPDATE_EVENT,
           typename DELETE_EVENT,
+          typename PATCH_EVENT_OR_VOID,
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
 class GenericManyToMany {
@@ -255,37 +256,57 @@ class GenericManyToMany {
   MutationJournal& journal_;
 };
 
-template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using UnorderedManyToUnorderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using UnorderedManyToUnorderedMany = GenericManyToMany<T, 
+                                                       UPDATE_EVENT,
+                                                       DELETE_EVENT,
+                                                       PATCH_EVENT_OR_VOID,
+                                                       Unordered,
+                                                       Unordered>;
 
-template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using OrderedManyToOrderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using OrderedManyToOrderedMany = GenericManyToMany<T,
+                                                   UPDATE_EVENT,
+                                                   DELETE_EVENT,
+                                                   PATCH_EVENT_OR_VOID,
+                                                   Ordered,
+                                                   Ordered>;
 
-template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using UnorderedManyToOrderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Ordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using UnorderedManyToOrderedMany = GenericManyToMany<T,
+                                                     UPDATE_EVENT,
+                                                     DELETE_EVENT,
+                                                     PATCH_EVENT_OR_VOID,
+                                                     Unordered,
+                                                     Ordered>;
 
-template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using OrderedManyToUnorderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Unordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using OrderedManyToUnorderedMany = GenericManyToMany<T,
+                                                     UPDATE_EVENT,
+                                                     DELETE_EVENT,
+                                                     PATCH_EVENT_OR_VOID,
+                                                     Ordered,
+                                                     Unordered>;
 
 }  // namespace container
 
-template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedManyToUnorderedMany<T, E1, E2>> {
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::UnorderedManyToUnorderedMany<T, E1, E2, E3>> {
   static const char* HumanReadableName() { return "UnorderedManyToUnorderedMany"; }
 };
 
-template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedManyToOrderedMany<T, E1, E2>> {
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::OrderedManyToOrderedMany<T, E1, E2, E3>> {
   static const char* HumanReadableName() { return "OrderedManyToOrderedMany"; }
 };
 
-template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedManyToOrderedMany<T, E1, E2>> {
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::UnorderedManyToOrderedMany<T, E1, E2, E3>> {
   static const char* HumanReadableName() { return "UnorderedManyToOrderedMany"; }
 };
 
-template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedManyToUnorderedMany<T, E1, E2>> {
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::OrderedManyToUnorderedMany<T, E1, E2, E3>> {
   static const char* HumanReadableName() { return "OrderedManyToUnorderedMany"; }
 };
 

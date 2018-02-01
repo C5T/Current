@@ -136,10 +136,11 @@ struct FieldCounter {
 };
 
 // Helper class to get the corresponding persisted types for each of the storage fields.
-template <typename UPDATE_EVENT, typename DELETE_EVENT>
+template <typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
 struct FieldInfo {
   using update_event_t = UPDATE_EVENT;
   using delete_event_t = DELETE_EVENT;
+  using patch_event_t = PATCH_EVENT_OR_VOID;
 };
 
 // Persisted types list generator.
@@ -149,11 +150,13 @@ struct TypeListMapperImpl;
 template <typename FIELDS, int... NS>
 struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
   using result = TypeList<typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::update_event_t...,
-                          typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::delete_event_t...>;
+                          typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::delete_event_t...,
+                          typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::patch_event_t...>;
 };
 
 template <typename FIELDS, int COUNT>
-using FieldsTypeList = typename TypeListMapperImpl<FIELDS, current::variadic_indexes::generate_indexes<COUNT>>::result;
+using FieldsTypeList = current::metaprogramming::TypeListRemoveVoids<
+    typename TypeListMapperImpl<FIELDS, current::variadic_indexes::generate_indexes<COUNT>>::result>;
 
 // `MutationJournal` keeps all the changes made during one transaction, as well as the way to rollback them.
 struct MutationJournal {
