@@ -3546,12 +3546,6 @@ TEST(TransactionalStorage, PatchMutation) {
   }
 
   {
-    // Also, patch for all container types.
-    // Also, rollback of a patch.
-    // Also, where the patch type contains a variant.
-  }
-
-  {
     current::Owned<storage_t> following_storage = storage_t::CreateFollowingStorageAtopExistingStream(stream);
     EXPECT_FALSE(following_storage->IsMasterStorage());
     EXPECT_EQ(6u, following_storage->UnderlyingStream()->Data()->Size());
