@@ -95,6 +95,15 @@ namespace htmltag {
     tag& SUERW() { return *this; }                                                                     \
   }
 
+#define CURRENT_HTML_START_ONLY_TAG(tag)                                                           \
+  struct tag final {                                                                               \
+    std::ostream& os;                                                                              \
+    tag(::current::html::HTMLGeneratorScope& scope, const char*, int) : os(scope.OutputStream()) { \
+      os << "<" #tag ">";                                                                          \
+    }                                                                                              \
+    tag& SUERW() { return *this; }                                                                 \
+  }
+
 CURRENT_HTML_TAG_WITH_NO_PARAMETERS(html);
 
 CURRENT_HTML_TAG_WITH_NO_PARAMETERS(head);
@@ -108,6 +117,8 @@ CURRENT_HTML_TAG_WITH_NO_PARAMETERS(b);
 CURRENT_HTML_TAG_WITH_NO_PARAMETERS(i);
 CURRENT_HTML_TAG_WITH_NO_PARAMETERS(pre);
 CURRENT_HTML_TAG_WITH_TWO_PARAMETERS(font, color, size);
+
+CURRENT_HTML_START_ONLY_TAG(br);
 
 CURRENT_HTML_TAG_WITH_NO_PARAMETERS(h1);
 CURRENT_HTML_TAG_WITH_NO_PARAMETERS(h2);

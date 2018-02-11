@@ -67,6 +67,16 @@ TEST(HTMLTest, Smoke) {
     std::ostringstream oss;
     {
       const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(_) << "line";
+      HTML(br);
+      HTML(_) << "break";
+    }
+    EXPECT_EQ("line<br>break", oss.str());
+  }
+  {
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(a, href("https://github.com/C5T/Current"));
       HTML(_) << "Duh.";
     }
