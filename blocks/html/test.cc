@@ -94,14 +94,23 @@ TEST(HTMLTest, Smoke) {
     }
     EXPECT_EQ("<a href='https://github.com/C5T/Current'><i>This</i> <p>is</p> <b>Sparta!</b></a>", oss.str());
   }
-
-  // TODO(dkorolev): Error message on unclosed tags!
-
-  // HTML.
-  // HEAD.
-  // FONT, with a parameter.
-  // TABLE, TR, TD, with parameters.
-  // Nested.
+  {
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      {
+        HTML(table);
+        for (size_t i = 0; i < 2; ++i) {
+          HTML(tr);
+          for (size_t j = 0; j < 2; ++j) {
+            HTML(td);
+            HTML(_) << i + 1 << j + 1;
+          }
+        }
+      }
+    }
+    EXPECT_EQ("<table><tr><td>11</td><td>12</td></tr><tr><td>21</td><td>22</td></tr></table>", oss.str());
+  }
 }
 
 TEST(HTMLTest, ScopeSanityChecks) {

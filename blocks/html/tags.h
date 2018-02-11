@@ -30,7 +30,7 @@ SOFTWARE.
 // The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
 namespace htmltag {
 
-#define CURRENT_SIMPLE_HTML_TAG(tag)                                                               \
+#define CURRENT_HTML_TAG_WITH_NO_PARAMETERS(tag)                                                   \
   struct tag final {                                                                               \
     std::ostream& os;                                                                              \
     tag(::current::html::HTMLGeneratorScope& scope, const char*, int) : os(scope.OutputStream()) { \
@@ -38,68 +38,86 @@ namespace htmltag {
     }                                                                                              \
     ~tag() { os << "</" #tag ">"; }                                                                \
     tag& SUERW() { return *this; }                                                                 \
-  };
-
-CURRENT_SIMPLE_HTML_TAG(html);
-
-CURRENT_SIMPLE_HTML_TAG(head);
-CURRENT_SIMPLE_HTML_TAG(title);
-
-CURRENT_SIMPLE_HTML_TAG(body);
-
-CURRENT_SIMPLE_HTML_TAG(p);
-CURRENT_SIMPLE_HTML_TAG(b);
-CURRENT_SIMPLE_HTML_TAG(i);
-CURRENT_SIMPLE_HTML_TAG(pre);
-
-// The `a` tag, for `href=`.
-struct a final {
-  struct Params {
-    std::string value_href;
-    template <typename S>
-    Params& href(S&& s) {
-      value_href = std::forward<S>(s);
-      return *this;
-    }
-  };
-  std::ostream& os;
-  a(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params) : os(scope.OutputStream()) {
-    os << "<a href='" << params.value_href << "'>";
   }
-  ~a() { os << "</a>"; }
-  a& SUERW() { return *this; }
-};
 
-// The `font` tag, supports `color=` and `size=`, both as string parameters as "size=1" and "size=+1" are different.
-struct font final {
-  struct Params {
-    std::string value_color;
-    std::string value_size;
-    template <typename S>
-    Params& color(S&& s) {
-      value_color = std::forward<S>(s);
-      return *this;
-    }
-    template <typename S>
-    Params& size(S&& s) {
-      value_size = std::forward<S>(s);
-      return *this;
-    }
-  };
-  std::ostream& os;
-  font(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params) : os(scope.OutputStream()) {
-    os << "<font";
-    if (!params.value_color.empty()) {
-      os << " color='" << params.value_color << "'";
-    }
-    if (!params.value_size.empty()) {
-      os << " size='" << params.value_size << "'";
-    }
-    os << '>';
+#define CURRENT_HTML_TAG_WITH_ONE_PARAMETER(tag, param)                                                \
+  struct tag final {                                                                                   \
+    struct Params {                                                                                    \
+      std::string value_##param;                                                                       \
+      template <typename S>                                                                            \
+      Params& param(S&& s) {                                                                           \
+        value_##param = std::forward<S>(s);                                                            \
+        return *this;                                                                                  \
+      }                                                                                                \
+    };                                                                                                 \
+    std::ostream& os;                                                                                  \
+    tag(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params = Params()) \
+        : os(scope.OutputStream()) {                                                                   \
+      os << "<" #tag;                                                                                  \
+      if (!params.value_##param.empty()) {                                                             \
+        os << " " #param "='" << params.value_##param << "'";                                          \
+      }                                                                                                \
+      os << '>';                                                                                       \
+    }                                                                                                  \
+    ~tag() { os << "</" #tag ">"; }                                                                    \
+    tag& SUERW() { return *this; }                                                                     \
   }
-  ~font() { os << "</font>"; }
-  font& SUERW() { return *this; }
-};
+
+#define CURRENT_HTML_TAG_WITH_TWO_PARAMETERS(tag, param1, param2)                                      \
+  struct tag final {                                                                                   \
+    struct Params {                                                                                    \
+      std::string value_##param1;                                                                      \
+      template <typename S>                                                                            \
+      Params& param1(S&& s) {                                                                          \
+        value_##param1 = std::forward<S>(s);                                                           \
+        return *this;                                                                                  \
+      }                                                                                                \
+      std::string value_##param2;                                                                      \
+      template <typename S>                                                                            \
+      Params& param2(S&& s) {                                                                          \
+        value_##param2 = std::forward<S>(s);                                                           \
+        return *this;                                                                                  \
+      }                                                                                                \
+    };                                                                                                 \
+    std::ostream& os;                                                                                  \
+    tag(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params = Params()) \
+        : os(scope.OutputStream()) {                                                                   \
+      os << "<" #tag;                                                                                  \
+      if (!params.value_##param1.empty()) {                                                            \
+        os << " " #param1 "='" << params.value_##param1 << "'";                                        \
+      }                                                                                                \
+      if (!params.value_##param2.empty()) {                                                            \
+        os << " " #param2 "='" << params.value_##param2 << "'";                                        \
+      }                                                                                                \
+      os << '>';                                                                                       \
+    }                                                                                                  \
+    ~tag() { os << "</" #tag ">"; }                                                                    \
+    tag& SUERW() { return *this; }                                                                     \
+  }
+
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(html);
+
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(head);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(title);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(style);
+
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(body);
+
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(p);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(b);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(i);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(pre);
+CURRENT_HTML_TAG_WITH_TWO_PARAMETERS(font, color, size);
+
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(h1);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(h2);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(h3);
+
+CURRENT_HTML_TAG_WITH_ONE_PARAMETER(a, href);
+
+CURRENT_HTML_TAG_WITH_TWO_PARAMETERS(table, border, cellpadding);
+CURRENT_HTML_TAG_WITH_NO_PARAMETERS(tr);
+CURRENT_HTML_TAG_WITH_TWO_PARAMETERS(td, align, colspan);
 
 }  // namespace ::htmltag
 
