@@ -1,0 +1,54 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2018 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
+#include "html.h"
+
+#include "../../3rdparty/gtest/gtest-main.h"
+
+TEST(HTMLTest, Trivial) {
+  EXPECT_EQ("", ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().context.os.str());
+  HTML(UnsafeText) << "Hello, World!";
+  EXPECT_EQ("Hello, World!", ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().context.os.str());
+}
+
+TEST(HTMLTest, Smoke) {
+  // HTML.
+  // HEAD.
+  // B, I.
+  // A, with a parameter.
+  // FONT, with a parameter.
+  // TABLE, TR, TD, with parameters.
+  // Nested.
+}
+
+TEST(HTMLTest, ThreadIsolation) {}
+
+TEST(HTMLTest, HTMLShouldBeStarted) {
+  // Errors go in the tops, as they will print line numbers from this test.
+  // Also, need an `#ifdef` to only dump line numbers, not the file name, as otherwise the test will fail CI.
+}
+
+TEST(HTMLTest, HTMLShouldBeStopped) {}
+
+TEST(HtmlTest, HTTPIntegration) {}
