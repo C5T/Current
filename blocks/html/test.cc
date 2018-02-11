@@ -27,9 +27,10 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main.h"
 
 TEST(HTMLTest, Trivial) {
-  EXPECT_EQ("", ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().context.os.str());
+  ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().BeginHTML(__FILE__, __LINE__);
   HTML(UnsafeText) << "Hello, World!";
-  EXPECT_EQ("Hello, World!", ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().context.os.str());
+  EXPECT_EQ("Hello, World!",
+            ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().EndHTML(__FILE__, __LINE__));
 }
 
 TEST(HTMLTest, Smoke) {

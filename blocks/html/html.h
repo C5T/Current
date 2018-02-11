@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "../../bricks/exception.h"
 #include "../../bricks/util/singleton.h"
@@ -42,12 +43,83 @@ namespace html {
 // The lightweight context to be passed to the callers.
 struct HTMLGeneratingContext {
   std::ostringstream os;
+  std::vector<std::string> errors;
+
+  HTMLGeneratingContext() { errors.push_back("HTML generating context uninitialized."); }
+
+  void Reset() {
+    os.clear();
+    errors.clear();
+  }
+
+  void PartialReset() {
+    // Wipe the current contents just in case there was any sensitive data already.
+    // It won't go out regardless, but just in case. -- D.K.
+    os.clear();
+  }
 };
 
 // The thread-local singleton to manage the context.
-struct HTMLGenerator {
+class HTMLGenerator {
+ private:
+  bool started = false;
   HTMLGeneratingContext context;
-  HTMLGeneratingContext& Ctx(const char* tag_name) {
+
+ public:
+  void BeginHTML(const char* file, int line) {
+    if (started) {
+      context.PartialReset();
+      std::ostringstream error;
+      error << "Attempted to call X without Y on ";
+#if 1
+      error << file << ':';
+#else
+      error << "UNITTEST:";
+#endif
+      error << line;
+      context.errors.push_back(error.str());
+    } else {
+      context.Reset();
+      started = true;
+    }
+  }
+
+  std::string EndHTML(const char* file, int line) {
+    if (!started) {
+      std::ostringstream error;
+      error << "Attempted to call Y without X on ";
+#if 1
+      error << file << ':';
+#else
+      error << "UNITTEST:";
+#endif
+      error << line;
+      context.errors.push_back(error.str());
+
+      std::ostringstream result;
+      for (const std::string& error : context.errors) {
+        result << error << '\n';
+      }
+      return result.str();
+    } else {
+      started = false;
+      return context.os.str();
+    }
+  }
+
+  HTMLGeneratingContext& Ctx(const char* tag_name, const char* file, int line) {
+    if (!started) {
+      context.Reset();
+      std::ostringstream error;
+      error << "Forgot to call X before doing HTML(" << tag_name << ") on ";
+#if 1
+      error << file << ':';
+#else
+      error << "UNITTEST:";
+#endif
+      error << line;
+      context.errors.push_back(error.str());
+    }
     static_cast<void>(tag_name);
     return context;
   }
@@ -58,9 +130,11 @@ struct HTMLGenerator {
 #define CURRENT_HTML_ID CURRENT_HTML_ID_PREFIX(__LINE__)
 
 // NOTE(dkorolev): `SUERW()`, which just returns `*this`, stands for `SuppressUnusedExpressionResultWarning`.
-#define HTML(TAG)                                                                                                      \
-  auto CURRENT_HTML_ID =                                                                                               \
-      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().Ctx(#TAG), __FILE__, __LINE__); \
+#define HTML(TAG)                                                                                                     \
+  auto CURRENT_HTML_ID =                                                                                              \
+      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().Ctx(#TAG, __FILE__, __LINE__), \
+                     __FILE__,                                                                                        \
+                     __LINE__);                                                                                       \
   CURRENT_HTML_ID.SUERW()
 
 }  // namespace current::html
