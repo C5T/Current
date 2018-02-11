@@ -25,10 +25,15 @@ SOFTWARE.
 #define CURRENT_HTML_UNIT_TEST
 
 #include "html.h"
+#include "html_http.h"
 
 #include <thread>
 
-#include "../../3rdparty/gtest/gtest-main.h"
+#include "../http/api.h"
+
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+
+DEFINE_uint16(html_http_test_port, PickPortForUnitTest(), "Local port to use for the HTML/HTTP integration unit test.");
 
 TEST(HTMLTest, Smoke) {
   {
@@ -193,6 +198,36 @@ TEST(HTMLTest, ThreadIsolation) {
   EXPECT_EQ("Thread two", r2);
 }
 
-TEST(HtmlTest, DISABLED_HTTPIntegration) {
-  // TODO(dkorolev): This.
+TEST(HTMLTest, HTTPIntegration) {
+  const auto http_route_scope = HTTP(FLAGS_html_http_test_port).Register("/", [](Request r) {
+    const current::html::HTMLGeneratorHTTPResponseScope html_scope(std::move(r));
+    HTML(html);
+    {
+      HTML(head);
+      HTML(title);
+      HTML(_) << "Yo!";
+    }
+    {
+      HTML(body);
+      {
+        HTML(i);
+        HTML(_) << "Test";
+      }
+      HTML(_) << ' ';
+      {
+        HTML(font, color("green").size("+1"));
+        HTML(b);
+        HTML(_) << "PASSED";
+      }
+      HTML(_) << '.';
+    }
+  });
+  const std::string url = Printf("http://localhost:%d/", static_cast<int>(FLAGS_html_http_test_port));
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "<html><head><title>Yo!</title></head>"
+      "<body><i>Test</i> <font color='green' size='+1'><b>PASSED</b></font>.</body></html>",
+      response.body);
+  EXPECT_EQ("text/html; charset=utf-8", response.headers.GetOrDefault("Content-Type", "N/A"));
 }
