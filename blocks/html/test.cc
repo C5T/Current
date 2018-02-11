@@ -26,6 +26,8 @@ SOFTWARE.
 
 #include "html.h"
 
+#include <thread>
+
 #include "../../3rdparty/gtest/gtest-main.h"
 
 // Tests sensitive to line numbers go first. Scroll down for functionality tests.
@@ -33,7 +35,7 @@ SOFTWARE.
 
 TEST(HTMLTest, HTMLShouldCallBegin) {
   HTMLGenerator.ResetForUnitTest();
-  EXPECT_EQ("Attempted to call HTMLGenerator.End() on an uninitialized HTMLGenerator @ UNITTEST:37\n",
+  EXPECT_EQ("Attempted to call HTMLGenerator.End() on an uninitialized HTMLGenerator @ UNITTEST:39\n",
             HTMLGenerator.End());
 }
 
@@ -42,8 +44,8 @@ TEST(HTMLTest, HTMLShouldNotCallBeginTwice) {
   HTMLGenerator.Begin();
   HTMLGenerator.Begin();
   EXPECT_EQ(
-      "Attempted to call HTMLGenerator.Begin() more than once in a row @ UNITTEST:43\n"
-      "Attempted to call HTMLGenerator.End() with critical errors @ UNITTEST:47\n",
+      "Attempted to call HTMLGenerator.Begin() more than once in a row @ UNITTEST:45\n"
+      "Attempted to call HTMLGenerator.End() with critical errors @ UNITTEST:49\n",
       HTMLGenerator.End());
 }
 
@@ -51,7 +53,7 @@ TEST(HTMLTest, HTMLShouldNotCallEndTwice) {
   HTMLGenerator.ResetForUnitTest();
   HTMLGenerator.Begin();
   EXPECT_EQ("", HTMLGenerator.End());
-  EXPECT_EQ("Attempted to call HTMLGenerator.End() more than once in a row @ UNITTEST:54\n", HTMLGenerator.End());
+  EXPECT_EQ("Attempted to call HTMLGenerator.End() more than once in a row @ UNITTEST:56\n", HTMLGenerator.End());
 }
 
 // clang-format on
@@ -77,7 +79,28 @@ TEST(HTMLTest, Smoke) {
   // Nested.
 }
 
-TEST(HTMLTest, ThreadIsolation) {}
+TEST(HTMLTest, ThreadIsolation) {
+  std::string r1;
+  std::string r2;
+  std::thread t1([&r1]() {
+    HTMLGenerator.Begin();
+    HTML(UnsafeText) << "Thread ";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    HTML(UnsafeText) << "one";
+    r1 = HTMLGenerator.End();
+  });
+  std::thread t2([&r2]() {
+    HTMLGenerator.Begin();
+    HTML(UnsafeText) << "Thread ";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    HTML(UnsafeText) << "two";
+    r2 = HTMLGenerator.End();
+  });
+  t1.join();
+  t2.join();
+  EXPECT_EQ("Thread one", r1);
+  EXPECT_EQ("Thread two", r2);
+}
 
 TEST(HtmlTest, HTTPIntegration) {
   // TODO(dkorolev): This.
