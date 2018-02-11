@@ -40,11 +40,19 @@ namespace htmltag {
     tag& SUERW() { return *this; }                                                                 \
   };
 
+CURRENT_SIMPLE_HTML_TAG(html);
+
+CURRENT_SIMPLE_HTML_TAG(head);
+CURRENT_SIMPLE_HTML_TAG(title);
+
+CURRENT_SIMPLE_HTML_TAG(body);
+
 CURRENT_SIMPLE_HTML_TAG(p);
 CURRENT_SIMPLE_HTML_TAG(b);
 CURRENT_SIMPLE_HTML_TAG(i);
 CURRENT_SIMPLE_HTML_TAG(pre);
 
+// The `a` tag, for `href=`.
 struct a final {
   struct Params {
     std::string value_href;
@@ -60,6 +68,37 @@ struct a final {
   }
   ~a() { os << "</a>"; }
   a& SUERW() { return *this; }
+};
+
+// The `font` tag, supports `color=` and `size=`, both as string parameters as "size=1" and "size=+1" are different.
+struct font final {
+  struct Params {
+    std::string value_color;
+    std::string value_size;
+    template <typename S>
+    Params& color(S&& s) {
+      value_color = std::forward<S>(s);
+      return *this;
+    }
+    template <typename S>
+    Params& size(S&& s) {
+      value_size = std::forward<S>(s);
+      return *this;
+    }
+  };
+  std::ostream& os;
+  font(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params) : os(scope.OutputStream()) {
+    os << "<font";
+    if (!params.value_color.empty()) {
+      os << " color='" << params.value_color << "'";
+    }
+    if (!params.value_size.empty()) {
+      os << " size='" << params.value_size << "'";
+    }
+    os << '>';
+  }
+  ~font() { os << "</font>"; }
+  font& SUERW() { return *this; }
 };
 
 }  // namespace ::htmltag
