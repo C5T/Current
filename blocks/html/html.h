@@ -174,16 +174,25 @@ class HTMLGeneratorThreadLocalSingleton {
                      __LINE__);                                                                                 \
   CURRENT_HTML_ID.SUERW()
 
+#define HTML_WITH_ARGS(TAG, ARG)                                                                                \
+  auto CURRENT_HTML_ID =                                                                                        \
+      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Ctx( \
+                         #TAG, __FILE__, __LINE__),                                                             \
+                     __FILE__,                                                                                  \
+                     __LINE__,                                                                                  \
+                     ::htmltag::TAG::Params().ARG);                                                             \
+  CURRENT_HTML_ID.SUERW()
+
 #define HTMLGenerator \
   ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Call(__FILE__, __LINE__)
 
 }  // namespace current::html
 }  // namespace current
 
-// The `htmltag` namespace is intentionally in the global scope, not within `::current`.
+// The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
 namespace htmltag {
 
-struct UnsafeText {
+struct UnsafeText final {
   ::current::html::HTMLGeneratingContext& ctx;
   UnsafeText(::current::html::HTMLGeneratingContext& ctx, const char*, int) : ctx(ctx) {}
   UnsafeText& SUERW() { return *this; }
@@ -195,5 +204,7 @@ struct UnsafeText {
 };
 
 }  // namespace ::htmltag
+
+#include "tags.h"
 
 #endif  // BLOCKS_HTML_HTML_H

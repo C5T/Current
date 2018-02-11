@@ -57,7 +57,9 @@ TEST(HTMLTest, HTMLShouldNotCallEndTwice) {
 }
 
 // clang-format on
-// Now, tests the functionality.
+// Now, test the functionality.
+
+// TODO(dkorolev): Wrap `Begin` and `End` into some `Scope`, for a string on an HTTP request/response combo.
 
 TEST(HTMLTest, Trivial) {
   HTMLGenerator.Begin();
@@ -70,6 +72,40 @@ TEST(HTMLTest, Trivial) {
 }
 
 TEST(HTMLTest, Smoke) {
+  {
+    HTMLGenerator.Begin();
+    {
+      HTML(b);
+      HTML(UnsafeText) << "Bold";
+    }
+    EXPECT_EQ("<b>Bold</b>", HTMLGenerator.End());
+  }
+  {
+    HTMLGenerator.Begin();
+    {
+      HTML(i);
+      HTML(UnsafeText) << "Italic";
+    }
+    EXPECT_EQ("<i>Italic</i>", HTMLGenerator.End());
+  }
+  {
+    HTMLGenerator.Begin();
+    {
+      HTML(pre);
+      HTML(UnsafeText) << "Monospace";
+    }
+    EXPECT_EQ("<pre>Monospace</pre>", HTMLGenerator.End());
+  }
+  {
+    HTMLGenerator.Begin();
+    {
+      HTML_WITH_ARGS(a, href("https://github.com/C5T/Current"));
+      HTML(UnsafeText) << "Duh.";
+    }
+    EXPECT_EQ("<a href='https://github.com/C5T/Current'>Duh.</a>", HTMLGenerator.End());
+  }
+  // TODO(dkorolev): Error message on unclosed tags!
+
   // HTML.
   // HEAD.
   // B, I.
