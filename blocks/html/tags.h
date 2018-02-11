@@ -38,6 +38,7 @@ namespace htmltag {
     tag& SUERW() { return *this; }                                                                            \
   };
 
+CURRENT_SIMPLE_HTML_TAG(p);
 CURRENT_SIMPLE_HTML_TAG(b);
 CURRENT_SIMPLE_HTML_TAG(i);
 CURRENT_SIMPLE_HTML_TAG(pre);

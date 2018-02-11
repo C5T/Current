@@ -99,10 +99,31 @@ TEST(HTMLTest, Smoke) {
   {
     HTMLGenerator.Begin();
     {
-      HTML_WITH_ARGS(a, href("https://github.com/C5T/Current"));
+      HTML(a, href("https://github.com/C5T/Current"));
       HTML(UnsafeText) << "Duh.";
     }
     EXPECT_EQ("<a href='https://github.com/C5T/Current'>Duh.</a>", HTMLGenerator.End());
+  }
+  {
+    HTMLGenerator.Begin();
+    {
+      HTML(a, href("https://github.com/C5T/Current"));
+      {
+        HTML(i);
+        HTML(UnsafeText) << "This";
+      }
+      HTML(UnsafeText) << ' ';
+      {
+        HTML(p);
+        HTML(UnsafeText) << "is";
+      }
+      HTML(UnsafeText) << ' ';
+      {
+        HTML(b);
+        HTML(UnsafeText) << "sparta!";
+      }
+    }
+    EXPECT_EQ("<a href='https://github.com/C5T/Current'><i>This</i> <p>is</p> <b>sparta!</b></a>", HTMLGenerator.End());
   }
   // TODO(dkorolev): Error message on unclosed tags!
 

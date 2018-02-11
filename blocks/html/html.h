@@ -161,12 +161,13 @@ class HTMLGeneratorThreadLocalSingleton {
   }
 };
 
+// C-style macros magic. Don't try to understand it. Thanks.
 #define CURRENT_HTML_CONCAT(x, y) x##y
 #define CURRENT_HTML_ID_PREFIX(z) CURRENT_HTML_CONCAT(__htmlnode_, z)
 #define CURRENT_HTML_ID CURRENT_HTML_ID_PREFIX(__LINE__)
 
 // NOTE(dkorolev): `SUERW()`, which just returns `*this`, stands for `SuppressUnusedExpressionResultWarning`.
-#define HTML(TAG)                                                                                               \
+#define CURRENT_HTML_COUNT_1(TAG)                                                                               \
   auto CURRENT_HTML_ID =                                                                                        \
       ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Ctx( \
                          #TAG, __FILE__, __LINE__),                                                             \
@@ -174,7 +175,7 @@ class HTMLGeneratorThreadLocalSingleton {
                      __LINE__);                                                                                 \
   CURRENT_HTML_ID.SUERW()
 
-#define HTML_WITH_ARGS(TAG, ARG)                                                                                \
+#define CURRENT_HTML_COUNT_2(TAG, ARG)                                                                          \
   auto CURRENT_HTML_ID =                                                                                        \
       ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Ctx( \
                          #TAG, __FILE__, __LINE__),                                                             \
@@ -182,6 +183,19 @@ class HTMLGeneratorThreadLocalSingleton {
                      __LINE__,                                                                                  \
                      ::htmltag::TAG::Params().ARG);                                                             \
   CURRENT_HTML_ID.SUERW()
+
+#define CURRENT_HTML_NARGS_IMPL(_1, _2, n, ...) n
+#define CURRENT_HTML_NARGS_IMPL_CALLER(args) CURRENT_HTML_NARGS_IMPL args
+
+#define CURRENT_HTML_NARGS(...) CURRENT_HTML_NARGS_IMPL_CALLER((__VA_ARGS__, 2, 1, 0))
+
+#define CURRENT_HTML_CASE_3(n) CURRENT_HTML_COUNT_##n
+#define CURRENT_HTML_CASE_2(n) CURRENT_HTML_CASE_3(n)
+#define CURRENT_HTML_CASE_1(n) CURRENT_HTML_CASE_2(n)
+#define CURRENT_HTML_SWITCH_N(n) CURRENT_HTML_CASE_1(n)
+
+#define CURRENT_HTML_SWITCH(x, y) x y
+#define HTML(...) CURRENT_HTML_SWITCH(CURRENT_HTML_SWITCH_N(CURRENT_HTML_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 #define HTMLGenerator \
   ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Call(__FILE__, __LINE__)
