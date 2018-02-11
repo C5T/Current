@@ -45,76 +45,112 @@ struct HTMLGeneratingContext {
   std::ostringstream os;
   std::vector<std::string> errors;
 
-  HTMLGeneratingContext() { errors.push_back("HTML generating context uninitialized."); }
+  HTMLGeneratingContext() { FullReset(); }
+
+  void FullReset() {
+    std::ostringstream().swap(os);
+    errors.clear();
+  }
+
+#ifdef CURRENT_HTML_UNIT_TEST
+  void ResetForUnitTest() { FullReset(); }
+#endif
 
   void Reset() {
-    os.clear();
+    std::ostringstream().swap(os);
     errors.clear();
   }
 
   void PartialReset() {
     // Wipe the current contents just in case there was any sensitive data already.
     // It won't go out regardless, but just in case. -- D.K.
-    os.clear();
+    std::ostringstream().swap(os);
   }
 };
 
 // The thread-local singleton to manage the context.
-class HTMLGenerator {
+class HTMLGeneratorThreadLocalSingleton {
  private:
+  bool initialized = false;
   bool started = false;
   HTMLGeneratingContext context;
 
  public:
-  void BeginHTML(const char* file, int line) {
-    if (started) {
-      context.PartialReset();
-      std::ostringstream error;
-      error << "Attempted to call X without Y on ";
-#if 1
-      error << file << ':';
-#else
-      error << "UNITTEST:";
-#endif
-      error << line;
-      context.errors.push_back(error.str());
-    } else {
-      context.Reset();
-      started = true;
+  struct CallReferencingFileLine {
+    HTMLGeneratorThreadLocalSingleton& self;
+    const char* file;
+    const int line;
+    CallReferencingFileLine(HTMLGeneratorThreadLocalSingleton& self, const char* file, const int line)
+        : self(self), file(file), line(line) {}
+
+#ifdef CURRENT_HTML_UNIT_TEST
+    void ResetForUnitTest() {
+      self.initialized = false;
+      self.started = false;
+      self.context.ResetForUnitTest();
     }
-  }
-
-  std::string EndHTML(const char* file, int line) {
-    if (!started) {
-      std::ostringstream error;
-      error << "Attempted to call Y without X on ";
-#if 1
-      error << file << ':';
-#else
-      error << "UNITTEST:";
 #endif
-      error << line;
-      context.errors.push_back(error.str());
 
-      std::ostringstream result;
-      for (const std::string& error : context.errors) {
-        result << error << '\n';
+    void Begin() {
+      if (self.started) {
+        self.context.PartialReset();
+        std::ostringstream error;
+        error << "Attempted to call HTMLGenerator.Begin() more than once in a row @ ";
+#ifndef CURRENT_HTML_UNIT_TEST  // Only dump file names in non-unittest builds.
+        error << file << ':';
+#else
+        error << "UNITTEST:";
+#endif
+        error << line;
+        self.context.errors.push_back(error.str());
+      } else {
+        self.context.Reset();
+        self.started = true;
+        self.initialized = true;
       }
-      return result.str();
-    } else {
-      started = false;
-      return context.os.str();
     }
-  }
+
+    std::string End() {
+      if (!self.initialized || !self.started || !self.context.errors.empty()) {
+        std::ostringstream error;
+        if (!self.initialized) {
+          error << "Attempted to call HTMLGenerator.End() on an uninitialized HTMLGenerator @ ";
+        } else if (!self.started) {
+          error << "Attempted to call HTMLGenerator.End() more than once in a row @ ";
+        } else {
+          error << "Attempted to call HTMLGenerator.End() with critical errors @ ";
+        }
+#ifndef CURRENT_HTML_UNIT_TEST  // Only dump file names in non-unittest builds.
+        error << file << ':';
+#else
+        error << "UNITTEST:";
+#endif
+        error << line;
+        self.context.errors.push_back(error.str());
+
+        std::ostringstream result;
+        for (const std::string& error : self.context.errors) {
+          result << error << '\n';
+        }
+        return result.str();
+      } else {
+        self.started = false;
+        return self.context.os.str();
+      }
+    }
+  };
+
+  CallReferencingFileLine Call(const char* file, int line) { return CallReferencingFileLine(*this, file, line); }
 
   HTMLGeneratingContext& Ctx(const char* tag_name, const char* file, int line) {
     if (!started) {
       context.Reset();
       std::ostringstream error;
       error << "Forgot to call X before doing HTML(" << tag_name << ") on ";
-#if 1
+#ifndef CURRENT_HTML_UNIT_TEST  // Only dump file names in non-unittest builds.
       error << file << ':';
 #else
+      static_cast<void>(file);
       error << "UNITTEST:";
 #endif
       error << line;
@@ -130,12 +166,16 @@ class HTMLGenerator {
 #define CURRENT_HTML_ID CURRENT_HTML_ID_PREFIX(__LINE__)
 
 // NOTE(dkorolev): `SUERW()`, which just returns `*this`, stands for `SuppressUnusedExpressionResultWarning`.
-#define HTML(TAG)                                                                                                     \
-  auto CURRENT_HTML_ID =                                                                                              \
-      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().Ctx(#TAG, __FILE__, __LINE__), \
-                     __FILE__,                                                                                        \
-                     __LINE__);                                                                                       \
+#define HTML(TAG)                                                                                               \
+  auto CURRENT_HTML_ID =                                                                                        \
+      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Ctx( \
+                         #TAG, __FILE__, __LINE__),                                                             \
+                     __FILE__,                                                                                  \
+                     __LINE__);                                                                                 \
   CURRENT_HTML_ID.SUERW()
+
+#define HTMLGenerator \
+  ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Call(__FILE__, __LINE__)
 
 }  // namespace current::html
 }  // namespace current

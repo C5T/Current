@@ -22,15 +22,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_HTML_UNIT_TEST
+
 #include "html.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
+// Tests sensitive to line numbers go first. Scroll down for functionality tests.
+// clang-format off
+
+TEST(HTMLTest, HTMLShouldCallBegin) {
+  HTMLGenerator.ResetForUnitTest();
+  EXPECT_EQ("Attempted to call HTMLGenerator.End() on an uninitialized HTMLGenerator @ UNITTEST:37\n",
+            HTMLGenerator.End());
+}
+
+TEST(HTMLTest, HTMLShouldNotCallBeginTwice) {
+  HTMLGenerator.ResetForUnitTest();
+  HTMLGenerator.Begin();
+  HTMLGenerator.Begin();
+  EXPECT_EQ(
+      "Attempted to call HTMLGenerator.Begin() more than once in a row @ UNITTEST:43\n"
+      "Attempted to call HTMLGenerator.End() with critical errors @ UNITTEST:47\n",
+      HTMLGenerator.End());
+}
+
+TEST(HTMLTest, HTMLShouldNotCallEndTwice) {
+  HTMLGenerator.ResetForUnitTest();
+  HTMLGenerator.Begin();
+  EXPECT_EQ("", HTMLGenerator.End());
+  EXPECT_EQ("Attempted to call HTMLGenerator.End() more than once in a row @ UNITTEST:54\n", HTMLGenerator.End());
+}
+
+// clang-format on
+// Now, tests the functionality.
+
 TEST(HTMLTest, Trivial) {
-  ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().BeginHTML(__FILE__, __LINE__);
+  HTMLGenerator.Begin();
   HTML(UnsafeText) << "Hello, World!";
-  EXPECT_EQ("Hello, World!",
-            ::current::ThreadLocalSingleton<::current::html::HTMLGenerator>().EndHTML(__FILE__, __LINE__));
+  EXPECT_EQ("Hello, World!", HTMLGenerator.End());
+
+  HTMLGenerator.Begin();
+  HTML(UnsafeText) << "And once again.";
+  EXPECT_EQ("And once again.", HTMLGenerator.End());
 }
 
 TEST(HTMLTest, Smoke) {
@@ -45,11 +79,6 @@ TEST(HTMLTest, Smoke) {
 
 TEST(HTMLTest, ThreadIsolation) {}
 
-TEST(HTMLTest, HTMLShouldBeStarted) {
-  // Errors go in the tops, as they will print line numbers from this test.
-  // Also, need an `#ifdef` to only dump line numbers, not the file name, as otherwise the test will fail CI.
+TEST(HtmlTest, HTTPIntegration) {
+  // TODO(dkorolev): This.
 }
-
-TEST(HTMLTest, HTMLShouldBeStopped) {}
-
-TEST(HtmlTest, HTTPIntegration) {}
