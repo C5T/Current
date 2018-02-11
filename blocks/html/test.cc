@@ -30,83 +30,47 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-// Tests sensitive to line numbers go first. Scroll down for functionality tests.
-// clang-format off
-
-TEST(HTMLTest, HTMLShouldCallBegin) {
-  HTMLGenerator.ResetForUnitTest();
-  EXPECT_EQ("Attempted to call HTMLGenerator.End() on an uninitialized HTMLGenerator @ UNITTEST:39\n",
-            HTMLGenerator.End());
-}
-
-TEST(HTMLTest, HTMLShouldNotCallBeginTwice) {
-  HTMLGenerator.ResetForUnitTest();
-  HTMLGenerator.Begin();
-  HTMLGenerator.Begin();
-  EXPECT_EQ(
-      "Attempted to call HTMLGenerator.Begin() more than once in a row @ UNITTEST:45\n"
-      "Attempted to call HTMLGenerator.End() with critical errors @ UNITTEST:49\n",
-      HTMLGenerator.End());
-}
-
-TEST(HTMLTest, HTMLShouldNotCallEndTwice) {
-  HTMLGenerator.ResetForUnitTest();
-  HTMLGenerator.Begin();
-  EXPECT_EQ("", HTMLGenerator.End());
-  EXPECT_EQ("Attempted to call HTMLGenerator.End() more than once in a row @ UNITTEST:56\n", HTMLGenerator.End());
-}
-
-// clang-format on
-// Now, test the functionality.
-
-// TODO(dkorolev): Wrap `Begin` and `End` into some `Scope`, for a string on an HTTP request/response combo.
-
-TEST(HTMLTest, Trivial) {
-  HTMLGenerator.Begin();
-  HTML(_) << "Hello, World!";
-  EXPECT_EQ("Hello, World!", HTMLGenerator.End());
-
-  HTMLGenerator.Begin();
-  HTML(_) << "And once again.";
-  EXPECT_EQ("And once again.", HTMLGenerator.End());
-}
-
 TEST(HTMLTest, Smoke) {
   {
-    HTMLGenerator.Begin();
+    std::ostringstream oss;
     {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(b);
       HTML(_) << "Bold";
     }
-    EXPECT_EQ("<b>Bold</b>", HTMLGenerator.End());
+    EXPECT_EQ("<b>Bold</b>", oss.str());
   }
   {
-    HTMLGenerator.Begin();
+    std::ostringstream oss;
     {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(i);
       HTML(_) << "Italic";
     }
-    EXPECT_EQ("<i>Italic</i>", HTMLGenerator.End());
+    EXPECT_EQ("<i>Italic</i>", oss.str());
   }
   {
-    HTMLGenerator.Begin();
+    std::ostringstream oss;
     {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(pre);
       HTML(_) << "Monospace";
     }
-    EXPECT_EQ("<pre>Monospace</pre>", HTMLGenerator.End());
+    EXPECT_EQ("<pre>Monospace</pre>", oss.str());
   }
   {
-    HTMLGenerator.Begin();
+    std::ostringstream oss;
     {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(a, href("https://github.com/C5T/Current"));
       HTML(_) << "Duh.";
     }
-    EXPECT_EQ("<a href='https://github.com/C5T/Current'>Duh.</a>", HTMLGenerator.End());
+    EXPECT_EQ("<a href='https://github.com/C5T/Current'>Duh.</a>", oss.str());
   }
   {
-    HTMLGenerator.Begin();
+    std::ostringstream oss;
     {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(a, href("https://github.com/C5T/Current"));
       {
         HTML(i);
@@ -120,38 +84,108 @@ TEST(HTMLTest, Smoke) {
       HTML(_) << ' ';
       {
         HTML(b);
-        HTML(_) << "sparta!";
+        HTML(_) << "Sparta!";
       }
     }
-    EXPECT_EQ("<a href='https://github.com/C5T/Current'><i>This</i> <p>is</p> <b>sparta!</b></a>", HTMLGenerator.End());
+    EXPECT_EQ("<a href='https://github.com/C5T/Current'><i>This</i> <p>is</p> <b>Sparta!</b></a>", oss.str());
   }
+
   // TODO(dkorolev): Error message on unclosed tags!
 
   // HTML.
   // HEAD.
-  // B, I.
-  // A, with a parameter.
   // FONT, with a parameter.
   // TABLE, TR, TD, with parameters.
   // Nested.
+}
+
+TEST(HTMLTest, ScopeSanityChecks) {
+  {
+    std::ostringstream oss;
+    ASSERT_FALSE(
+        ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().HasActiveScope());
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      ASSERT_TRUE(
+          ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().HasActiveScope());
+      HTML(_) << "Hello, World!";
+    }
+    ASSERT_FALSE(
+        ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().HasActiveScope());
+    EXPECT_EQ("Hello, World!", oss.str());
+  }
+  {
+    std::ostringstream oss;
+    ASSERT_FALSE(
+        ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().HasActiveScope());
+    auto scope = std::make_unique<current::html::HTMLGeneratorOStreamScope>(oss);
+    ASSERT_TRUE(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().HasActiveScope());
+    HTML(_) << "And once again.";
+    scope = nullptr;
+    ASSERT_FALSE(
+        ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().HasActiveScope());
+    EXPECT_EQ("And once again.", oss.str());
+  }
+}
+
+TEST(HTMLTest, OutsideScopeException) {
+  int expected_line = -1;
+  try {
+    expected_line = __LINE__ + 1;
+    HTML(b);
+    HTML(_) << "The above line should fail.";
+    ASSERT_TRUE(false);
+  } catch (const current::html::HTMLGenerationNoActiveScopeException& e) {
+    EXPECT_STREQ("b", e.tag);
+    std::string file = e.file;
+    std::string expected_file_suffix = "test.cc";
+    ASSERT_GE(file.length(), expected_file_suffix.length());
+    EXPECT_EQ(expected_file_suffix, file.substr(file.length() - expected_file_suffix.length()));  // Strip the path.
+    EXPECT_EQ(expected_line, e.line);
+  }
+}
+
+TEST(HTMLTest, IntersectingScopesException) {
+  std::ostringstream oss1;
+  std::ostringstream oss2;
+  {
+    const auto scope1 = current::html::HTMLGeneratorOStreamScope(oss1);
+    HTML(_) << "scope one\n";
+    try {
+      const auto scope2 = current::html::HTMLGeneratorOStreamScope(oss2);
+      HTML(_) << "scope two won't really start\n";
+      ASSERT_TRUE(false);
+    } catch (const current::html::HTMLGenerationIntersectingScopesException&) {
+      HTML(_) << "ok, no intersecting scopes\n";
+    }
+    HTML(_) << "done\n";
+  }
+  EXPECT_EQ("scope one\nok, no intersecting scopes\ndone\n", oss1.str());
+  EXPECT_EQ("", oss2.str());
 }
 
 TEST(HTMLTest, ThreadIsolation) {
   std::string r1;
   std::string r2;
   std::thread t1([&r1]() {
-    HTMLGenerator.Begin();
-    HTML(_) << "Thread ";
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    HTML(_) << "one";
-    r1 = HTMLGenerator.End();
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(_) << "Thread ";
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      HTML(_) << "one";
+    }
+    r1 = oss.str();
   });
   std::thread t2([&r2]() {
-    HTMLGenerator.Begin();
-    HTML(_) << "Thread ";
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    HTML(_) << "two";
-    r2 = HTMLGenerator.End();
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(_) << "Thread ";
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      HTML(_) << "two";
+    }
+    r2 = oss.str();
   });
   t1.join();
   t2.join();
@@ -159,6 +193,6 @@ TEST(HTMLTest, ThreadIsolation) {
   EXPECT_EQ("Thread two", r2);
 }
 
-TEST(HtmlTest, HTTPIntegration) {
+TEST(HtmlTest, DISABLED_HTTPIntegration) {
   // TODO(dkorolev): This.
 }

@@ -30,12 +30,14 @@ SOFTWARE.
 // The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
 namespace htmltag {
 
-#define CURRENT_SIMPLE_HTML_TAG(tag)                                                                          \
-  struct tag final {                                                                                          \
-    ::current::html::HTMLGeneratingContext& ctx;                                                              \
-    tag(::current::html::HTMLGeneratingContext& ctx, const char*, int) : ctx(ctx) { ctx.os << "<" #tag ">"; } \
-    ~tag() { ctx.os << "</" #tag ">"; }                                                                       \
-    tag& SUERW() { return *this; }                                                                            \
+#define CURRENT_SIMPLE_HTML_TAG(tag)                                                               \
+  struct tag final {                                                                               \
+    std::ostream& os;                                                                              \
+    tag(::current::html::HTMLGeneratorScope& scope, const char*, int) : os(scope.OutputStream()) { \
+      os << "<" #tag ">";                                                                          \
+    }                                                                                              \
+    ~tag() { os << "</" #tag ">"; }                                                                \
+    tag& SUERW() { return *this; }                                                                 \
   };
 
 CURRENT_SIMPLE_HTML_TAG(p);
@@ -52,11 +54,11 @@ struct a final {
       return *this;
     }
   };
-  ::current::html::HTMLGeneratingContext& ctx;
-  a(::current::html::HTMLGeneratingContext& ctx, const char*, int, const Params& params) : ctx(ctx) {
-    ctx.os << "<a href='" << params.value_href << "'>";
+  std::ostream& os;
+  a(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params) : os(scope.OutputStream()) {
+    os << "<a href='" << params.value_href << "'>";
   }
-  ~a() { ctx.os << "</a>"; }
+  ~a() { os << "</a>"; }
   a& SUERW() { return *this; }
 };
 

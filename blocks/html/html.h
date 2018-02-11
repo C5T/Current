@@ -30,6 +30,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -40,40 +41,29 @@ SOFTWARE.
 namespace current {
 namespace html {
 
-// The lightweight context to be passed to the callers.
-struct HTMLGeneratingContext {
-  std::ostringstream os;
-  std::vector<std::string> errors;
+// An exception that is thrown if multiple interesting HTML generation scopes per thread are attempted to be used.
+struct HTMLGenerationIntersectingScopesException : Exception {
+  using Exception::Exception;
+};
 
-  HTMLGeneratingContext() { FullReset(); }
+// An exception that is thrown if no HTML generation scope was initialized for this thread.
+struct HTMLGenerationNoActiveScopeException : Exception {
+  const char* tag;
+  const char* file;
+  const int line;
+  HTMLGenerationNoActiveScopeException(const char* tag, const char* file, const int line)
+      : tag(tag), file(file), line(line) {}
+};
 
-  void FullReset() {
-    std::ostringstream().swap(os);
-    errors.clear();
-  }
-
-#ifdef CURRENT_HTML_UNIT_TEST
-  void ResetForUnitTest() { FullReset(); }
-#endif
-
-  void Reset() {
-    std::ostringstream().swap(os);
-    errors.clear();
-  }
-
-  void PartialReset() {
-    // Wipe the current contents just in case there was any sensitive data already.
-    // It won't go out regardless, but just in case. -- D.K.
-    std::ostringstream().swap(os);
-  }
+struct HTMLGeneratorScope {
+  virtual ~HTMLGeneratorScope() = default;
+  virtual std::ostream& OutputStream() = 0;
 };
 
 // The thread-local singleton to manage the context.
-class HTMLGeneratorThreadLocalSingleton {
+class HTMLGeneratorThreadLocalSingleton final {
  private:
-  bool initialized = false;
-  bool started = false;
-  HTMLGeneratingContext context;
+  HTMLGeneratorScope* scope_ptr_ = nullptr;
 
  public:
   struct CallReferencingFileLine {
@@ -82,83 +72,46 @@ class HTMLGeneratorThreadLocalSingleton {
     const int line;
     CallReferencingFileLine(HTMLGeneratorThreadLocalSingleton& self, const char* file, const int line)
         : self(self), file(file), line(line) {}
-
-#ifdef CURRENT_HTML_UNIT_TEST
-    void ResetForUnitTest() {
-      self.initialized = false;
-      self.started = false;
-      self.context.ResetForUnitTest();
-    }
-#endif
-
-    void Begin() {
-      if (self.started) {
-        self.context.PartialReset();
-        std::ostringstream error;
-        error << "Attempted to call HTMLGenerator.Begin() more than once in a row @ ";
-#ifndef CURRENT_HTML_UNIT_TEST  // Only dump file names in non-unittest builds.
-        error << file << ':';
-#else
-        error << "UNITTEST:";
-#endif
-        error << line;
-        self.context.errors.push_back(error.str());
-      } else {
-        self.context.Reset();
-        self.started = true;
-        self.initialized = true;
-      }
-    }
-
-    std::string End() {
-      if (!self.initialized || !self.started || !self.context.errors.empty()) {
-        std::ostringstream error;
-        if (!self.initialized) {
-          error << "Attempted to call HTMLGenerator.End() on an uninitialized HTMLGenerator @ ";
-        } else if (!self.started) {
-          error << "Attempted to call HTMLGenerator.End() more than once in a row @ ";
-        } else {
-          error << "Attempted to call HTMLGenerator.End() with critical errors @ ";
-        }
-#ifndef CURRENT_HTML_UNIT_TEST  // Only dump file names in non-unittest builds.
-        error << file << ':';
-#else
-        error << "UNITTEST:";
-#endif
-        error << line;
-        self.context.errors.push_back(error.str());
-
-        std::ostringstream result;
-        for (const std::string& error : self.context.errors) {
-          result << error << '\n';
-        }
-        return result.str();
-      } else {
-        self.started = false;
-        return self.context.os.str();
-      }
-    }
   };
 
   CallReferencingFileLine Call(const char* file, int line) { return CallReferencingFileLine(*this, file, line); }
 
-  HTMLGeneratingContext& Ctx(const char* tag_name, const char* file, int line) {
-    if (!started) {
-      context.Reset();
-      std::ostringstream error;
-      error << "Forgot to call X before doing HTML(" << tag_name << ") on ";
-#ifndef CURRENT_HTML_UNIT_TEST  // Only dump file names in non-unittest builds.
-      error << file << ':';
-#else
-      static_cast<void>(file);
-      error << "UNITTEST:";
-#endif
-      error << line;
-      context.errors.push_back(error.str());
+  bool HasActiveScope() const { return scope_ptr_ != nullptr; }
+
+  HTMLGeneratorScope& ActiveScope(const char* tag_name, const char* file, int line) {
+    if (scope_ptr_) {
+      return *scope_ptr_;
+    } else {
+      CURRENT_THROW(HTMLGenerationNoActiveScopeException(tag_name, file, line));
     }
-    static_cast<void>(tag_name);
-    return context;
   }
+
+  void RegisterSelfAsScope(HTMLGeneratorScope* scope) {
+    if (scope_ptr_) {
+      CURRENT_THROW(HTMLGenerationIntersectingScopesException());
+    } else {
+      scope_ptr_ = scope;
+    }
+  }
+
+  void UnregisterSelfAsScope(HTMLGeneratorScope* scope) {
+    if (scope_ptr_ == scope) {
+      scope_ptr_ = nullptr;
+    } else {
+      std::cerr << "INTERNAL ERROR: An inactive HTML generation scope attempted to unregister itself; ignored.";
+    }
+  }
+};
+
+struct HTMLGeneratorOStreamScope final : HTMLGeneratorScope {
+  std::ostream& os;
+  explicit HTMLGeneratorOStreamScope(std::ostream& os) : os(os) {
+    ThreadLocalSingleton<HTMLGeneratorThreadLocalSingleton>().RegisterSelfAsScope(this);
+  }
+  ~HTMLGeneratorOStreamScope() {
+    ThreadLocalSingleton<HTMLGeneratorThreadLocalSingleton>().UnregisterSelfAsScope(this);
+  }
+  std::ostream& OutputStream() override { return os; }
 };
 
 // C-style macros magic. Don't try to understand it. Thanks.
@@ -167,21 +120,21 @@ class HTMLGeneratorThreadLocalSingleton {
 #define CURRENT_HTML_ID CURRENT_HTML_ID_PREFIX(__LINE__)
 
 // NOTE(dkorolev): `SUERW()`, which just returns `*this`, stands for `SuppressUnusedExpressionResultWarning`.
-#define CURRENT_HTML_COUNT_1(TAG)                                                                               \
-  auto CURRENT_HTML_ID =                                                                                        \
-      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Ctx( \
-                         #TAG, __FILE__, __LINE__),                                                             \
-                     __FILE__,                                                                                  \
-                     __LINE__);                                                                                 \
+#define CURRENT_HTML_COUNT_1(TAG)                                                                        \
+  auto CURRENT_HTML_ID = ::htmltag::TAG(                                                                 \
+      ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().ActiveScope( \
+          #TAG, __FILE__, __LINE__),                                                                     \
+      __FILE__,                                                                                          \
+      __LINE__);                                                                                         \
   CURRENT_HTML_ID.SUERW()
 
-#define CURRENT_HTML_COUNT_2(TAG, ARG)                                                                          \
-  auto CURRENT_HTML_ID =                                                                                        \
-      ::htmltag::TAG(::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Ctx( \
-                         #TAG, __FILE__, __LINE__),                                                             \
-                     __FILE__,                                                                                  \
-                     __LINE__,                                                                                  \
-                     ::htmltag::TAG::Params().ARG);                                                             \
+#define CURRENT_HTML_COUNT_2(TAG, ARG)                                                                   \
+  auto CURRENT_HTML_ID = ::htmltag::TAG(                                                                 \
+      ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().ActiveScope( \
+          #TAG, __FILE__, __LINE__),                                                                     \
+      __FILE__,                                                                                          \
+      __LINE__,                                                                                          \
+      ::htmltag::TAG::Params().ARG);                                                                     \
   CURRENT_HTML_ID.SUERW()
 
 #define CURRENT_HTML_NARGS_IMPL(_1, _2, n, ...) n
@@ -197,22 +150,20 @@ class HTMLGeneratorThreadLocalSingleton {
 #define CURRENT_HTML_SWITCH(x, y) x y
 #define HTML(...) CURRENT_HTML_SWITCH(CURRENT_HTML_SWITCH_N(CURRENT_HTML_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-#define HTMLGenerator \
-  ::current::ThreadLocalSingleton<::current::html::HTMLGeneratorThreadLocalSingleton>().Call(__FILE__, __LINE__)
-
 }  // namespace current::html
 }  // namespace current
 
 // The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
 namespace htmltag {
 
+// This header file only defines the `_` tag, which stands for raw HTML body. Refer to the `tags.h` header for more.
 struct _ final {
-  ::current::html::HTMLGeneratingContext& ctx;
-  _(::current::html::HTMLGeneratingContext& ctx, const char*, int) : ctx(ctx) {}
+  std::ostream& os;
+  _(::current::html::HTMLGeneratorScope& scope, const char*, int) : os(scope.OutputStream()) {}
   _& SUERW() { return *this; }
   template <typename ARG>
   _& operator<<(ARG&& arg) {
-    ctx.os << std::forward<ARG>(arg);
+    os << std::forward<ARG>(arg);
     return *this;
   }
 };
