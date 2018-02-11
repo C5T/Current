@@ -206,12 +206,12 @@ class HTMLGeneratorThreadLocalSingleton {
 // The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
 namespace htmltag {
 
-struct UnsafeText final {
+struct _ final {
   ::current::html::HTMLGeneratingContext& ctx;
-  UnsafeText(::current::html::HTMLGeneratingContext& ctx, const char*, int) : ctx(ctx) {}
-  UnsafeText& SUERW() { return *this; }
+  _(::current::html::HTMLGeneratingContext& ctx, const char*, int) : ctx(ctx) {}
+  _& SUERW() { return *this; }
   template <typename ARG>
-  UnsafeText& operator<<(ARG&& arg) {
+  _& operator<<(ARG&& arg) {
     ctx.os << std::forward<ARG>(arg);
     return *this;
   }

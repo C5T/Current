@@ -63,11 +63,11 @@ TEST(HTMLTest, HTMLShouldNotCallEndTwice) {
 
 TEST(HTMLTest, Trivial) {
   HTMLGenerator.Begin();
-  HTML(UnsafeText) << "Hello, World!";
+  HTML(_) << "Hello, World!";
   EXPECT_EQ("Hello, World!", HTMLGenerator.End());
 
   HTMLGenerator.Begin();
-  HTML(UnsafeText) << "And once again.";
+  HTML(_) << "And once again.";
   EXPECT_EQ("And once again.", HTMLGenerator.End());
 }
 
@@ -76,7 +76,7 @@ TEST(HTMLTest, Smoke) {
     HTMLGenerator.Begin();
     {
       HTML(b);
-      HTML(UnsafeText) << "Bold";
+      HTML(_) << "Bold";
     }
     EXPECT_EQ("<b>Bold</b>", HTMLGenerator.End());
   }
@@ -84,7 +84,7 @@ TEST(HTMLTest, Smoke) {
     HTMLGenerator.Begin();
     {
       HTML(i);
-      HTML(UnsafeText) << "Italic";
+      HTML(_) << "Italic";
     }
     EXPECT_EQ("<i>Italic</i>", HTMLGenerator.End());
   }
@@ -92,7 +92,7 @@ TEST(HTMLTest, Smoke) {
     HTMLGenerator.Begin();
     {
       HTML(pre);
-      HTML(UnsafeText) << "Monospace";
+      HTML(_) << "Monospace";
     }
     EXPECT_EQ("<pre>Monospace</pre>", HTMLGenerator.End());
   }
@@ -100,7 +100,7 @@ TEST(HTMLTest, Smoke) {
     HTMLGenerator.Begin();
     {
       HTML(a, href("https://github.com/C5T/Current"));
-      HTML(UnsafeText) << "Duh.";
+      HTML(_) << "Duh.";
     }
     EXPECT_EQ("<a href='https://github.com/C5T/Current'>Duh.</a>", HTMLGenerator.End());
   }
@@ -110,17 +110,17 @@ TEST(HTMLTest, Smoke) {
       HTML(a, href("https://github.com/C5T/Current"));
       {
         HTML(i);
-        HTML(UnsafeText) << "This";
+        HTML(_) << "This";
       }
-      HTML(UnsafeText) << ' ';
+      HTML(_) << ' ';
       {
         HTML(p);
-        HTML(UnsafeText) << "is";
+        HTML(_) << "is";
       }
-      HTML(UnsafeText) << ' ';
+      HTML(_) << ' ';
       {
         HTML(b);
-        HTML(UnsafeText) << "sparta!";
+        HTML(_) << "sparta!";
       }
     }
     EXPECT_EQ("<a href='https://github.com/C5T/Current'><i>This</i> <p>is</p> <b>sparta!</b></a>", HTMLGenerator.End());
@@ -141,16 +141,16 @@ TEST(HTMLTest, ThreadIsolation) {
   std::string r2;
   std::thread t1([&r1]() {
     HTMLGenerator.Begin();
-    HTML(UnsafeText) << "Thread ";
+    HTML(_) << "Thread ";
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    HTML(UnsafeText) << "one";
+    HTML(_) << "one";
     r1 = HTMLGenerator.End();
   });
   std::thread t2([&r2]() {
     HTMLGenerator.Begin();
-    HTML(UnsafeText) << "Thread ";
+    HTML(_) << "Thread ";
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    HTML(UnsafeText) << "two";
+    HTML(_) << "two";
     r2 = HTMLGenerator.End();
   });
   t1.join();
