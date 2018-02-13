@@ -41,7 +41,7 @@ SOFTWARE.
 namespace current {
 namespace html {
 
-// An exception that is thrown if multiple interesting HTML generation scopes per thread are attempted to be used.
+// An exception that is thrown if multiple intersecting HTML generation scopes per thread are attempted to be used.
 struct HTMLGenerationIntersectingScopesException : Exception {
   using Exception::Exception;
 };
