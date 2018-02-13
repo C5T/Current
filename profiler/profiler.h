@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// A simple profiler with a `PROFILER_SCOPE("my magical scope")` macro to declare scopes
-// and a `PROFILER_HTTP_ROUTE(port, "/route")` macro to define an HTTP endpoint exposing
-// a full snapshot of how much time did each thread spend in each scope.
+// A simple profiler with a `CURRENT_PROFILER_SCOPE("my magical scope")` macro to declare scopes and
+// a `CURRENT_PROFILER_HTTP_ROUTE(http_scopes_variable, port, "/route")` macro to define an HTTP endpoint
+// exposing a full snapshot of how much time did each thread spend in each scope.
 // Scopes are hierarchical, represented in the output as a full call stack tree.
 
 #ifndef CURRENT_PROFILER_H
@@ -32,9 +32,8 @@ SOFTWARE.
 
 #ifndef CURRENT_PROFILER
 
-#define PROFILER_ENABLED false
-#define PROFILER_SCOPE(scope)
-#define PROFILER_HTTP_ROUTE(port, route)
+#define CURRENT_PROFILER_SCOPE(scope)
+#define CURRENT_PROFILER_HTTP_ROUTE(scope, port, route)
 
 #else
 
@@ -51,6 +50,30 @@ SOFTWARE.
 #ifdef CURRENT_MOCK_TIME
 #error "No `CURRENT_PROFILER` in `CURRENT_MOCK_TIME` please."
 #endif
+
+namespace current {
+namespace profiler {
+
+CURRENT_STRUCT(PerThreadReporting) {
+  CURRENT_FIELD(scope, std::string);
+  CURRENT_FIELD(entries, uint64_t);
+  CURRENT_FIELD(ms, uint64_t);
+  CURRENT_FIELD(ms_per_entry, double);
+  CURRENT_FIELD(absolute_best_possible_qps, double);
+  CURRENT_FIELD(ratio_of_parent, double);
+  CURRENT_FIELD(subscope, std::vector<PerThreadReporting>);
+  CURRENT_FIELD(subscope_total_ratio_of_parent, double);
+  bool operator<(const PerThreadReporting& rhs) const {
+    return ms > rhs.ms;  // Naturally sort in reverse order of `ms`.
+  }
+};
+
+CURRENT_STRUCT(ProfilingReport) {
+  CURRENT_FIELD(thread, std::vector<PerThreadReporting>);
+  CURRENT_FIELD(profiling_overhead, uint64_t);
+  CURRENT_FIELD(profiling_mutex_overhead, uint64_t);
+  CURRENT_FIELD(reporting_overhead, uint64_t);
+};
 
 struct Profiler {
   class StateMaintainer {
@@ -89,30 +112,6 @@ struct Profiler {
           stack.push(std::make_pair("", &trie));
         }
       };
-      struct PerThreadReporting {
-        std::string scope;
-        uint64_t entries;
-        uint64_t ms;
-        double ms_per_entry;
-        double absolute_best_possible_qps;
-        double ratio_of_parent;
-        std::vector<PerThreadReporting> subscope;
-        double subscope_total_ratio_of_parent;
-        bool operator<(const PerThreadReporting& rhs) const {
-          return ms > rhs.ms;  // Naturally sort in reverse order of `ms`.
-        }
-        template <typename A>
-        void save(A& ar) const {
-          ar(CEREAL_NVP(scope),
-             CEREAL_NVP(entries),
-             CEREAL_NVP(ms),
-             CEREAL_NVP(ms_per_entry),
-             CEREAL_NVP(absolute_best_possible_qps),
-             CEREAL_NVP(ratio_of_parent),
-             CEREAL_NVP(subscope),
-             CEREAL_NVP(subscope_total_ratio_of_parent));
-        }
-      };
       std::unordered_map<std::thread::id, PerThread> per_thread;
       uint64_t total_spent_in_profiling = 0;
       uint64_t spent_in_reporting = 0;
@@ -125,13 +124,12 @@ struct Profiler {
           e.second.trie.RecursiveReset(Now());
         }
       }
-      static const char* JSONEntryName() { return "milliseconds"; }
-      template <typename A>
-      void save(A& ar) const {
+      ProfilingReport GenerateReport() const {
         const uint64_t now = Now();
-        const uint64_t profiling_overhead = total_spent_in_profiling - spent_in_reporting;
-        const uint64_t reporting_overhead = spent_in_reporting;
-        const uint64_t profiling_mutex_overhead = spent_in_mutex_locking;
+        ProfilingReport report;
+        report.profiling_overhead = total_spent_in_profiling - spent_in_reporting;
+        report.reporting_overhead = spent_in_reporting;
+        report.profiling_mutex_overhead = spent_in_mutex_locking;
         std::vector<PerThreadReporting> thread;
         thread.reserve(per_thread.size());
         for (const auto& per_thread_element : per_thread) {
@@ -170,10 +168,8 @@ struct Profiler {
                          thread_id_as_string.str().c_str());
         }
         CURRENT_ASSERT(thread.size() == per_thread.size());
-        ar(CEREAL_NVP(thread),
-           CEREAL_NVP(profiling_overhead),
-           CEREAL_NVP(profiling_mutex_overhead),
-           CEREAL_NVP(reporting_overhead));
+        report.thread = thread;
+        return report;
       }
     };
 
@@ -216,7 +212,7 @@ struct Profiler {
           request("The profiler has been reset.\n");
         } else {
           const uint64_t pre_report = Now();
-          request(state_);
+          request(state_.GenerateReport());
           const uint64_t post_report = Now();
           state_.spent_in_reporting += (post_report - pre_report);
         }
@@ -224,7 +220,7 @@ struct Profiler {
     }
 
    private:
-    static uint64_t Now() { return static_cast<uint64_t>(current::time::Now()); }
+    static uint64_t Now() { return static_cast<uint64_t>(current::time::Now().count() / 1e3); }
 
     template <typename F>
     void Guarded(F&& f) {
@@ -263,19 +259,22 @@ struct Profiler {
   static void HTTPRoute(Request request) { current::Singleton<StateMaintainer>().Report(std::move(request)); }
 };
 
-#define PROFILER_ENABLED true
-
 // Preprocessor token pasting occurs before recursive macro expansion, hence three-stage magic.
-#define PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b) a##b
-#define PROFILER_SCOPE_CONCATENATE_HELPER(a, b) PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b)
-#define PROFILER_SCOPE(scope) \
-  Profiler::ScopedStateMaintainer PROFILER_SCOPE_CONCATENATE_HELPER(profiler_scope_, __LINE__)(scope)
+#define CURRENT_PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b) a##b
+#define PROFILER_SCOPE_CONCATENATE_HELPER(a, b) CURRENT_PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b)
+#define CURRENT_PROFILER_SCOPE(scope)                                                                     \
+  ::current::profiler::Profiler::ScopedStateMaintainer PROFILER_SCOPE_CONCATENATE_HELPER(profiler_scope_, \
+                                                                                         __LINE__)(scope)
 
-#define PROFILER_HTTP_ROUTE(port, route)                                      \
-  do {                                                                        \
-    std::cerr << "Profiler: http://localhost:" << port << route << std::endl; \
-    HTTP(port).Register(route, Profiler::HTTPRoute);                          \
+#define CURRENT_PROFILER_HTTP_ROUTE(scope, port, route)                            \
+  do {                                                                             \
+    std::cerr << "Profiler: http://localhost:" << port << route << std::endl;      \
+    scope += HTTP(port).Register(route, ::current::profiler::Profiler::HTTPRoute); \
   } while (false)
+
+
+}  // namespace current::profiler
+}  // namespace current
 
 #endif
 
