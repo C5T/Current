@@ -71,14 +71,46 @@ namespace htmltag {
 #define CURRENT_HTML_TAG(...) \
   CURRENT_HTML_TAG_SWITCH(CURRENT_HTML_TAG_SWITCH_N(CURRENT_HTML_TAG_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-#define CURRENT_HTML_START_ONLY_TAG(tag)                                                           \
-  struct tag final {                                                                               \
-    std::ostream& os;                                                                              \
-    tag(::current::html::HTMLGeneratorScope& scope, const char*, int) : os(scope.OutputStream()) { \
-      os << "<" #tag ">";                                                                          \
-    }                                                                                              \
-    tag& SUERW() { return *this; }                                                                 \
+
+// clang-format off
+
+#define CURRENT_HTML_START_ONLY_TAG_COUNT_3(tag, param1, param2)                                                    \
+  struct tag final {                                                                                     \
+    struct Params {                                                                                      \
+      std::string value_##param1;                                                                        \
+      std::string value_##param2;                                                                        \
+      template <typename S> Params& param1(S&& s) { value_##param1 = std::forward<S>(s); return *this; } \
+      template <typename S> Params& param2(S&& s) { value_##param2 = std::forward<S>(s); return *this; } \
+    };                                                                                                   \
+    std::ostream& os;                                                                                    \
+    tag(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params = Params())   \
+        : os(scope.OutputStream()) {                                                                     \
+      os << "<" #tag;                                                                                    \
+      if (!params.value_##param1.empty()) { os << " " #param1 "='" << params.value_##param1 << "'"; }    \
+      if (!params.value_##param2.empty()) { os << " " #param2 "='" << params.value_##param2 << "'"; }    \
+      os << '>';                                                                                         \
+    }                                                                                                    \
+    tag& SUERW() { return *this; }                                                                       \
   }
+
+#define CURRENT_HTML_START_ONLY_TAG_COUNT_2(tag, param) CURRENT_HTML_START_ONLY_TAG_COUNT_3(tag, param, crnt_notag_1)
+#define CURRENT_HTML_START_ONLY_TAG_COUNT_1(tag) CURRENT_HTML_START_ONLY_TAG_COUNT_3(tag, crnt_notag_1, crnt_notag_2)
+
+#define CURRENT_HTML_START_ONLY_TAG_NARGS_IMPL(_1, _2, _3, n, ...) n
+#define CURRENT_HTML_START_ONLY_TAG_NARGS_IMPL_CALLER(args) CURRENT_HTML_START_ONLY_TAG_NARGS_IMPL args
+
+#define CURRENT_HTML_START_ONLY_TAG_NARGS(...) CURRENT_HTML_START_ONLY_TAG_NARGS_IMPL_CALLER((__VA_ARGS__, 3, 2, 1, 0))
+
+#define CURRENT_HTML_START_ONLY_TAG_CASE_3(n) CURRENT_HTML_START_ONLY_TAG_COUNT_##n
+#define CURRENT_HTML_START_ONLY_TAG_CASE_2(n) CURRENT_HTML_START_ONLY_TAG_CASE_3(n)
+#define CURRENT_HTML_START_ONLY_TAG_CASE_1(n) CURRENT_HTML_START_ONLY_TAG_CASE_2(n)
+#define CURRENT_HTML_START_ONLY_TAG_SWITCH_N(n) CURRENT_HTML_START_ONLY_TAG_CASE_1(n)
+
+#define CURRENT_HTML_START_ONLY_TAG_SWITCH(x, y) x y
+#define CURRENT_HTML_START_ONLY_TAG(...) \
+  CURRENT_HTML_START_ONLY_TAG_SWITCH(CURRENT_HTML_START_ONLY_TAG_SWITCH_N(CURRENT_HTML_START_ONLY_TAG_NARGS(__VA_ARGS__)), (__VA_ARGS__))
+
+// clang-format on
 
 CURRENT_HTML_TAG(html);
 
@@ -96,8 +128,8 @@ CURRENT_HTML_TAG(font, color, size);
 
 CURRENT_HTML_START_ONLY_TAG(br);
 
-// CURRENT_HTML_TAG(form, method, action);
-// CURRENT_HTML_START_ONLY_TAG(input, submit, value);
+CURRENT_HTML_TAG(form, method, action);
+CURRENT_HTML_START_ONLY_TAG(input, type, value);
 
 CURRENT_HTML_TAG(h1);
 CURRENT_HTML_TAG(h2);

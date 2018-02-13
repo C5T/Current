@@ -108,6 +108,15 @@ TEST(HTMLTest, Smoke) {
     std::ostringstream oss;
     {
       const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(form, method("GET").action("http://localhost"));
+      HTML(input, type("submit").value("Ha!"));
+    }
+    EXPECT_EQ("<form method='GET' action='http://localhost'><input type='submit' value='Ha!'></form>", oss.str());
+  }
+  {
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       {
         HTML(table);
         for (size_t i = 0; i < 2; ++i) {
