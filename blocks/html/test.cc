@@ -130,6 +130,30 @@ TEST(HTMLTest, Smoke) {
     }
     EXPECT_EQ("<table><tr><td>11</td><td>12</td></tr><tr><td>21</td><td>22</td></tr></table>", oss.str());
   }
+  {
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(td, colspan("42").align("test").valign("passed"));
+    }
+    EXPECT_EQ("<td align='test' colspan='42' valign='passed'></td>", oss.str());
+  }
+  {
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(table, border(0));  // Number, not a string.
+    } 
+    EXPECT_EQ("<table border='0'></table>", oss.str());
+  }
+  {
+    std::ostringstream oss;
+    {
+      const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
+      HTML(input, value(42));  // Number, not a string.
+    } 
+    EXPECT_EQ("<input value='42'>", oss.str());
+  }
 }
 
 TEST(HTMLTest, ScopeSanityChecks) {
