@@ -30,34 +30,7 @@ SOFTWARE.
 // The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
 namespace htmltag {
 
-#define CURRENT_HTML_TAG_COUNT_1(tag)                                                              \
-  struct tag final {                                                                               \
-    std::ostream& os;                                                                              \
-    tag(::current::html::HTMLGeneratorScope& scope, const char*, int) : os(scope.OutputStream()) { \
-      os << "<" #tag ">";                                                                          \
-    }                                                                                              \
-    ~tag() { os << "</" #tag ">"; }                                                                \
-    tag& SUERW() { return *this; }                                                                 \
-  }
-
 // clang-format off
-
-#define CURRENT_HTML_TAG_COUNT_2(tag, param)                                                           \
-  struct tag final {                                                                                   \
-    struct Params {                                                                                    \
-      std::string value_##param;                                                                       \
-      template <typename S> Params& param(S&& s) { value_##param = std::forward<S>(s); return *this; } \
-    };                                                                                                 \
-    std::ostream& os;                                                                                  \
-    tag(::current::html::HTMLGeneratorScope& scope, const char*, int, const Params& params = Params()) \
-        : os(scope.OutputStream()) {                                                                   \
-      os << "<" #tag;                                                                                  \
-      if (!params.value_##param.empty()) { os << " " #param "='" << params.value_##param << "'"; }     \
-      os << '>';                                                                                       \
-    }                                                                                                  \
-    ~tag() { os << "</" #tag ">"; }                                                                    \
-    tag& SUERW() { return *this; }                                                                     \
-  }
 
 #define CURRENT_HTML_TAG_COUNT_3(tag, param1, param2)                                                    \
   struct tag final {                                                                                     \
@@ -78,6 +51,9 @@ namespace htmltag {
     ~tag() { os << "</" #tag ">"; }                                                                      \
     tag& SUERW() { return *this; }                                                                       \
   }
+
+#define CURRENT_HTML_TAG_COUNT_2(tag, param) CURRENT_HTML_TAG_COUNT_3(tag, param, crnt_notag_1)
+#define CURRENT_HTML_TAG_COUNT_1(tag) CURRENT_HTML_TAG_COUNT_3(tag, crnt_notag_1, crnt_notag_2)
 
 // clang-format on
 
@@ -119,6 +95,9 @@ CURRENT_HTML_TAG(pre);
 CURRENT_HTML_TAG(font, color, size);
 
 CURRENT_HTML_START_ONLY_TAG(br);
+
+// CURRENT_HTML_TAG(form, method, action);
+// CURRENT_HTML_START_ONLY_TAG(input, submit, value);
 
 CURRENT_HTML_TAG(h1);
 CURRENT_HTML_TAG(h2);
