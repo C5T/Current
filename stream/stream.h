@@ -194,6 +194,19 @@ class Stream final {
         impl_(MakeOwned<impl_t>(schema_namespace_name_, std::forward<ARGS>(args)...)),
         owned_publisher_(MakeOwned<publisher_t>(impl_)),
         borrowable_publisher_(Value(owned_publisher_)) {}
+	
+  // `RecreatePublisher` invalidates all external publishers to this stream and creates a fresh new publisher,
+  // which then can be stored in the stream (Master mode) or given out of it (Following mode).
+  // NOTE: The call to `RecreatePublisher` will wait indefinitely if external publishers are not giving up.
+  Borrowed<publisher_t> RecreatePublisher() {
+    // Kill existing borrowers of the publisher. Wait as needed, for as long as needed.
+    // This is essential to gracefully invalidate all the previously-issued borrowed publishers.
+    borrowable_publisher_ = nullptr;
+    owned_publisher_ = nullptr;
+    // Create a fresh new publisher.
+    owned_publisher_ = MakeOwned<publisher_t>(impl_);
+    return Value(owned_publisher_);
+  }
 
  public:
   // `Publisher()`: The caller assumes full responsibility for making sure the underlying stream
@@ -235,32 +248,18 @@ class Stream final {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void BecomeMasterStream() {
     current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
-    // First, "unlock" the stream's own publisher it can be giving away. This is to avoid the deadlock.
-    borrowable_publisher_ = nullptr;
-    // Kill existing borrowers of the publisher. Yes, even though the stream itself is not its own data authority,
-    // as the present data authority may have delegated the "publish access" to various other pieces of logic.
-    // Wait as needed, for as long as needed.
-    owned_publisher_ = nullptr;
-    // Create a fresh new publisher. And keep it within the stream.
-    owned_publisher_ = MakeOwned<publisher_t>(impl_);
-    borrowable_publisher_ = Value(owned_publisher_);
+    borrowable_publisher_ = RecreatePublisher();
   }
 
-  // `BecomeFollowingStream` first invalidates all external publishers to this stream,
+  // `BecomeFollowingStream` invalidates all external publishers to this stream,
   // but instead of "restoring the order" where this stream can publish into itself,
-  // it gives this only publisher away, making it such that the only possible way to publish into this stream
+  // it gives its publisher away, so the only possible way to publish into this stream
   // is to borrow the publisher from the caller of `BecomeFollowingStream`, not from the stream itself.
   // NOTE: The call to `BecomeFollowingStream` will wait indefinitely if external publishers are not giving up.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   Borrowed<publisher_t> BecomeFollowingStream() {
     current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
-    // Kill existing borrowers of the publisher. Wait as needed, for as long as needed.
-    // This is essential to gracefully invalidate all the previously-issued borrowed publishers.
-    borrowable_publisher_ = nullptr;
-    owned_publisher_ = nullptr;
-    // Create a fresh new publisher and give it away.
-    owned_publisher_ = MakeOwned<publisher_t>(impl_);
-    return Value(owned_publisher_);
+    return RecreatePublisher();
   }
 
   // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
