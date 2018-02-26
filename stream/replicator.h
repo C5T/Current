@@ -87,15 +87,124 @@ class SubscribableRemoteStream final {
     std::string GetURLToTerminate(const std::string& subscription_id) const {
       return url_ + "?terminate=" + subscription_id;
     }
+    
+    std::string GetFlipToMasterURL(uint64_t index, bool checked_subscription) const {
+      return url_ + "/become/master?i=" + current::ToString(index) + (checked_subscription ? "&checked" : "");
+    }
 
    private:
     const std::string url_;
     const SubscribableStreamSchema schema_;
   };
+  
+  template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
+  class RemoteStreamSubscriber
+  {
+    static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    
+   public:
+    RemoteStreamSubscriber(Borrowed<RemoteStream> remote_stream,
+                           F& subscriber,
+                           uint64_t start_idx,
+                           std::function<void()> destruction_callback)
+    : borrowed_remote_stream_(std::move(remote_stream), destruction_callback),
+      subscriber_(subscriber),
+      index_(start_idx),
+      unused_idxts_() {
+    }
+    
+    void PassChunkToSubscriber(const std::string & chunk) {
+      const size_t chunk_size = chunk.size();
+      size_t end_pos = 0;
+      if (!carried_over_data_.empty()) {
+        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
+          ++end_pos;
+        }
+        if (end_pos == chunk_size) {
+          carried_over_data_ += chunk;
+          return;
+        }
+        PassEntryToSubscriber(carried_over_data_ + chunk.substr(0, end_pos));
+      }
+      
+      size_t start_pos = end_pos;
+      for (;;) {
+        while (start_pos < chunk_size && (chunk[start_pos] == '\n' || chunk[start_pos] == '\r')) {
+          ++start_pos;
+        }
+        end_pos = start_pos + 1;
+        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
+          ++end_pos;
+        }
+        if (end_pos >= chunk_size) {
+          break;
+        }
+        PassEntryToSubscriber(chunk.substr(start_pos, end_pos - start_pos));
+        start_pos = end_pos + 1;
+      }
+      if (start_pos < chunk_size) {
+        carried_over_data_ = chunk.substr(start_pos);
+      } else {
+        carried_over_data_.clear();
+      }
+    }
+    
+   protected:
+    BorrowedWithCallback<RemoteStream> borrowed_remote_stream_;
+    F& subscriber_;
+    uint64_t index_;
+    const idxts_t unused_idxts_;
+    std::string carried_over_data_;
+    
+   private:
+    template <SubscriptionMode MODE = SM>
+    ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
+      const auto split = current::strings::Split(raw_log_line, '\t');
+      if (split.empty()) {
+        CURRENT_THROW(RemoteStreamMalformedChunkException());
+      }
+      const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
+      if (Exists(tsoptidx.index)) {
+        const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
+        if (split.size() != 2u || idxts.index != index_) {
+          CURRENT_THROW(RemoteStreamMalformedChunkException());
+        }
+        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+        ++index_;
+        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
+      } else {
+        if (split.size() != 1u) {
+          CURRENT_THROW(RemoteStreamMalformedChunkException());
+        }
+        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
+      }
+    }
+    
+    template <SubscriptionMode MODE = SM>
+    ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
+      const auto tab_pos = raw_log_line.find('\t');
+      if (tab_pos != std::string::npos) {
+        if (subscriber_(raw_log_line, index_++, unused_idxts_) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
+      } else {
+        const auto tsoptidx = ParseJSON<ts_only_t>(raw_log_line);
+        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+          CURRENT_THROW(StreamTerminatedBySubscriber());
+        }
+      }
+    }
+  };
+    
 
   template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
-  class RemoteSubscriberThread final : public current::stream::SubscriberScope::SubscriberThread {
-    static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+  class RemoteSubscriberThread final : public current::stream::SubscriberScope::SubscriberThread,
+                                       public RemoteStreamSubscriber<F, TYPE_SUBSCRIBED_TO, SM> {
+    using base_subscriber_t = RemoteStreamSubscriber<F, TYPE_SUBSCRIBED_TO, SM>;
 
    public:
     RemoteSubscriberThread(Borrowed<RemoteStream> remote_stream,
@@ -103,13 +212,10 @@ class SubscribableRemoteStream final {
                            uint64_t start_idx,
                            bool checked_subscription,
                            std::function<void()> done_callback)
-        : valid_(false),
-          borrowed_remote_stream_(std::move(remote_stream), [this]() { TerminateSubscription(); }),
+        : base_subscriber_t(remote_stream, subscriber, start_idx, [this]() { TerminateSubscription(); }),
+          valid_(false),
           done_callback_(done_callback),
-          subscriber_(subscriber),
-          index_(start_idx),
           checked_subscription_(checked_subscription),
-          unused_idxts_(),
           terminate_subscription_requested_(false),
           thread_([this]() { Thread(); }) {
       valid_ = true;
@@ -143,18 +249,18 @@ class SubscribableRemoteStream final {
     }
 
     void ThreadImpl() {
-      const RemoteStream& bare_stream = *borrowed_remote_stream_;
+      const RemoteStream& bare_stream = *this->borrowed_remote_stream_;
       bool terminate_sent = false;
       while (true) {
         if (!terminate_sent && terminate_subscription_requested_) {
           terminate_sent = true;
-          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+          if (this->subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(index_, checked_subscription_),
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->index_, checked_subscription_),
                           [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                           [this](const std::string& chunk_body) { OnChunk(chunk_body); },
                           [this]() {}));
@@ -164,55 +270,12 @@ class SubscribableRemoteStream final {
           if (++consecutive_malformed_chunks_count_ == 3) {
             fprintf(stderr,
                     "Constantly receiving malformed chunks from \"%s\"\n",
-                    bare_stream.GetURLToSubscribe(index_, checked_subscription_).c_str());
+                    bare_stream.GetURLToSubscribe(this->index_, checked_subscription_).c_str());
           }
         } catch (current::Exception&) {
         }
-        carried_over_data_.clear();
+        this->carried_over_data_.clear();
         subscription_id_.MutableScopedAccessor()->clear();
-      }
-    }
-
-    template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
-      const auto split = current::strings::Split(raw_log_line, '\t');
-      if (split.empty()) {
-        CURRENT_THROW(RemoteStreamMalformedChunkException());
-      }
-      const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
-      if (Exists(tsoptidx.index)) {
-        const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-        if (split.size() != 2u || idxts.index != index_) {
-          CURRENT_THROW(RemoteStreamMalformedChunkException());
-        }
-        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-        ++index_;
-        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
-        }
-      } else {
-        if (split.size() != 1u) {
-          CURRENT_THROW(RemoteStreamMalformedChunkException());
-        }
-        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
-        }
-      }
-      consecutive_malformed_chunks_count_ = 0;
-    }
-
-    template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
-      const auto tab_pos = raw_log_line.find('\t');
-      if (tab_pos != std::string::npos) {
-        if (subscriber_(raw_log_line, index_++, unused_idxts_) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
-        }
-      } else {
-        const auto tsoptidx = ParseJSON<ts_only_t>(raw_log_line);
-        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
-        }
       }
     }
 
@@ -227,39 +290,8 @@ class SubscribableRemoteStream final {
         return;
       }
 
-      const size_t chunk_size = chunk.size();
-      size_t end_pos = 0;
-      if (!carried_over_data_.empty()) {
-        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
-          ++end_pos;
-        }
-        if (end_pos == chunk_size) {
-          carried_over_data_ += chunk;
-          return;
-        }
-        PassEntryToSubscriber(carried_over_data_ + chunk.substr(0, end_pos));
-      }
-
-      size_t start_pos = end_pos;
-      for (;;) {
-        while (start_pos < chunk_size && (chunk[start_pos] == '\n' || chunk[start_pos] == '\r')) {
-          ++start_pos;
-        }
-        end_pos = start_pos + 1;
-        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
-          ++end_pos;
-        }
-        if (end_pos >= chunk_size) {
-          break;
-        }
-        PassEntryToSubscriber(chunk.substr(start_pos, end_pos - start_pos));
-        start_pos = end_pos + 1;
-      }
-      if (start_pos < chunk_size) {
-        carried_over_data_ = chunk.substr(start_pos);
-      } else {
-        carried_over_data_.clear();
-      }
+      this->PassChunkToSubscriber(chunk);
+      consecutive_malformed_chunks_count_ = 0;
     }
 
     void TerminateSubscription() {
@@ -268,7 +300,7 @@ class SubscribableRemoteStream final {
           return true;
         } else if (!subscription_id.empty()) {
           terminate_subscription_requested_ = true;
-          const std::string terminate_url = borrowed_remote_stream_->GetURLToTerminate(subscription_id);
+          const std::string terminate_url = this->borrowed_remote_stream_->GetURLToTerminate(subscription_id);
           try {
             HTTP(GET(terminate_url));
           } catch (current::Exception&) {
@@ -281,16 +313,11 @@ class SubscribableRemoteStream final {
 
    private:
     bool valid_;
-    BorrowedWithCallback<RemoteStream> borrowed_remote_stream_;
     const std::function<void()> done_callback_;
-    F& subscriber_;
-    uint64_t index_;
     const bool checked_subscription_;
-    const idxts_t unused_idxts_;
     current::WaitableAtomic<std::string> subscription_id_;
     std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
-    std::string carried_over_data_;
     uint32_t consecutive_malformed_chunks_count_;
   };
 
@@ -336,6 +363,21 @@ class SubscribableRemoteStream final {
                                      std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
     return RemoteSubscriberScope<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
+  }
+
+  template <typename F>
+  void FlipToMaster(F& subscriber,
+                    uint64_t start_idx = 0u,
+                    bool checked_subscription = false) const {
+    static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
+    auto response = HTTP(GET(stream_->GetFlipToMasterURL(start_idx, checked_subscription)));
+    if (response.code == HTTPResponseCode.OK) {
+      RemoteStreamSubscriber<F, entry_t, SubscriptionMode::Checked> remote_subscriber(
+        stream_, subscriber, start_idx, [](){});
+      remote_subscriber.PassChunkToSubscriber(response.body);
+    } else {
+      CURRENT_THROW(RemoteStreamDoesNotRespondException());
+    }
   }
 
   template <typename F>
@@ -411,6 +453,128 @@ struct StreamReplicatorImpl {
 
 template <typename STREAM>
 using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
+
+template <typename STREAM>
+class MasterFlipController final
+{
+public:
+  using stream_t = STREAM;
+  using entry_t = typename stream_t::entry_t;
+
+//private:
+  MasterFlipController(Owned<STREAM> && stream, uint16_t port, const std::string & route)
+    : stream_(std::move(stream))
+    , port_(port)
+    , route_(route) {
+    if (!stream_->IsMasterStream()) {
+      // throw exception (or not?)
+    }
+    routes_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_));
+    routes_scope_ += HTTP(port).Register(route + "/become/master", URLPathArgs::CountMask::None, *this);
+  }
+
+  MasterFlipController(Owned<STREAM> && stream, const std::string & url, bool checked = true)
+    : stream_(std::move(stream))
+    , remote_stream_(std::make_unique<SubscribableRemoteStream<entry_t>>(url))
+    , replicator_(std::make_unique<StreamReplicator<stream_t>>(stream_))
+    , subscriber_scope_(remote_stream_->Subscribe(*replicator_, 0, checked))
+    , checked_(checked) {
+  }
+
+  ~MasterFlipController() = default;
+  
+  stream_t & Stream() { return Value(stream_); }
+  
+  bool IsMasterStream() const {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return stream_->IsMasterStream();
+  }
+  
+  bool WaitForChanges(std::chrono::microseconds timeout) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return event_.wait_for(timeout);
+  }
+
+  void FlipStreamToMaster(uint16_t port, const std::string & route) {
+    // terminate the remote subscription.
+    subscriber_scope_ = nullptr;
+    // force the remote stream to send the rest of its data and destroy itself.
+    remote_stream_->FlipToMaster(*replicator_, stream_->Data()->Size(), checked_);
+    // become master.
+    replicator_ = nullptr;
+    remote_stream_ = nullptr;
+
+    std::unique_lock<std::mutex> lock(mutex_);
+    stream_->BecomeMasterStream();
+    port_ = port;
+    route_ = route;
+    routes_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_));
+    routes_scope_ += HTTP(port).Register(route + "/become/master", URLPathArgs::CountMask::None, *this);
+
+    event_.notify_all();
+  }
+  
+  void operator()(Request r) {
+    if (r.method != "GET") {
+      r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
+      return;
+    }
+    
+    if (!r.url.query.has("i")) {
+      r("", HTTPResponseCode.ServiceUnavailable);
+      return;
+    }
+
+    // Grab the publisher to make sure no one can publish into it.
+    replicator_ = std::make_unique<StreamReplicator<stream_t>>(stream_);
+
+    auto start_idx = current::FromString<uint64_t>(r.url.query["i"]);
+    // send back diff
+    r(CollectEntries(start_idx, r.url.query.has("checked")), HTTPResponseCode.OK);
+    
+    // subscribe back somehow?
+    std::unique_lock<std::mutex> lock(mutex_);
+    // Can't really call UnRegister from here, it would lead to a deadlock.
+    // HTTP(port_).UnRegister(route_, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One);
+    // HTTP(port_).UnRegister(route_ + "/become/master", URLPathArgs::CountMask::None);
+    event_.notify_all();
+  }
+
+private:
+  std::string CollectEntries(uint64_t start_idx, bool checked) {
+    std::stringstream sstream;
+    if (checked) {
+      for (const auto& e : stream_->Data()->Iterate(start_idx)) {
+        sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
+      }
+    } else {
+      for (const auto& e : stream_->Data()->IterateUnsafe(start_idx)) {
+        sstream << e << '\n';
+      }
+    }
+    const auto head_idx = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
+    if (head_idx.head > Value(head_idx.idxts).us)
+      sstream << JSON<JSONFormat::Minimalistic>(ts_only_t(head_idx.head)) << '\n';
+    return sstream.str();
+  }
+
+  mutable std::mutex mutex_;
+  std::condition_variable event_;
+  
+  
+  Owned<stream_t> stream_;
+  
+  // master
+  uint16_t port_;
+  std::string route_;
+  HTTPRoutesScope routes_scope_;
+
+  // follower
+  std::unique_ptr<SubscribableRemoteStream<entry_t>> remote_stream_;
+  std::unique_ptr<StreamReplicator<stream_t>> replicator_;
+  Optional<SubscriberScope> subscriber_scope_;
+  bool checked_ = false;
+};
 
 }  // namespace stream
 }  // namespace current

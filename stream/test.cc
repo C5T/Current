@@ -1345,6 +1345,31 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
   EXPECT_EQ(stream_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
+TEST(Stream, MasterFollowerFlip) {
+  current::time::ResetToZero();
+  
+  using namespace stream_unittest;
+  using stream_t = current::stream::Stream<Record, current::persistence::File>;
+
+  const std::string master_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "master");
+  const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
+  current::FileSystem::WriteStringToFile(stream_golden_data, master_file_name.c_str());
+  
+  const std::string follower_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "follower");
+  const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
+  
+  current::stream::MasterFlipController<stream_t> master_stream(
+    stream_t::CreateStream(master_file_name), FLAGS_stream_http_test_port, "/exposed");
+  EXPECT_TRUE(master_stream.IsMasterStream());
+  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
+  current::stream::MasterFlipController<stream_t> following_stream(
+    stream_t::CreateStream(follower_file_name), base_url, false/*checked*/);
+  EXPECT_FALSE(following_stream.IsMasterStream());
+  following_stream.FlipStreamToMaster(FLAGS_stream_http_test_port+1, "/exposed");
+  EXPECT_TRUE(following_stream.IsMasterStream());
+  EXPECT_FALSE(master_stream.IsMasterStream());
+}
+
 TEST(Stream, SubscribeWithFilterByType) {
   current::time::ResetToZero();
 
