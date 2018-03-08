@@ -1365,7 +1365,7 @@ TEST(Stream, MasterFollowerFlip) {
   current::stream::MasterFlipController<stream_t> following_stream(
     stream_t::CreateStream(follower_file_name), base_url, false/*checked*/);
   EXPECT_FALSE(following_stream.IsMasterStream());
-  following_stream.FlipStreamToMaster(FLAGS_stream_http_test_port+1, "/exposed");
+  following_stream.FlipToMaster(FLAGS_stream_http_test_port+1, "/exposed");
   EXPECT_TRUE(following_stream.IsMasterStream());
   EXPECT_FALSE(master_stream.IsMasterStream());
 }
