@@ -1358,16 +1358,25 @@ TEST(Stream, MasterFollowerFlip) {
   const std::string follower_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "follower");
   const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
   
-  current::stream::MasterFlipController<stream_t> master_stream(
-    stream_t::CreateStream(master_file_name), FLAGS_stream_http_test_port, "/exposed");
-  EXPECT_TRUE(master_stream.IsMasterStream());
+  current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(master_file_name));
+  EXPECT_TRUE(stream1.IsMasterStream());
+  stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  EXPECT_TRUE(stream1.IsMasterStream());
+
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
-  current::stream::MasterFlipController<stream_t> following_stream(
-    stream_t::CreateStream(follower_file_name), base_url, false/*checked*/);
-  EXPECT_FALSE(following_stream.IsMasterStream());
-  following_stream.FlipToMaster(FLAGS_stream_http_test_port+1, "/exposed");
-  EXPECT_TRUE(following_stream.IsMasterStream());
-  EXPECT_FALSE(master_stream.IsMasterStream());
+  current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(follower_file_name));
+
+  EXPECT_TRUE(stream2.IsMasterStream());
+  stream2.FollowRemoteStream(base_url, false/*checked*/);
+  EXPECT_FALSE(stream2.IsMasterStream());
+
+  stream2.FlipToMaster();
+  EXPECT_TRUE(stream2.IsMasterStream());
+  EXPECT_FALSE(stream1.IsMasterStream());
+  stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  EXPECT_TRUE(stream2.IsMasterStream());
+  stream1.FollowRemoteStream(base_url, true/*checked*/);
+  EXPECT_FALSE(stream1.IsMasterStream());
 }
 
 TEST(Stream, SubscribeWithFilterByType) {
