@@ -194,7 +194,7 @@ class Stream final {
         impl_(MakeOwned<impl_t>(schema_namespace_name_, std::forward<ARGS>(args)...)),
         owned_publisher_(MakeOwned<publisher_t>(impl_)),
         borrowable_publisher_(Value(owned_publisher_)) {}
-	
+
   // `RecreatePublisher` invalidates all external publishers to this stream and creates a fresh new publisher,
   // which then can be stored in the stream (Master mode) or given out of it (Following mode).
   // NOTE: The call to `RecreatePublisher` will wait indefinitely if external publishers are not giving up.

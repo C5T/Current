@@ -87,7 +87,7 @@ class SubscribableRemoteStream final {
     std::string GetURLToTerminate(const std::string& subscription_id) const {
       return url_ + "?terminate=" + subscription_id;
     }
-    
+
     std::string GetFlipToMasterURL(uint64_t index, bool checked_subscription) const {
       return url_ + "/become/master?i=" + current::ToString(index) + (checked_subscription ? "&checked" : "");
     }
@@ -96,24 +96,22 @@ class SubscribableRemoteStream final {
     const std::string url_;
     const SubscribableStreamSchema schema_;
   };
-  
+
   template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
-  class RemoteStreamSubscriber
-  {
+  class RemoteStreamSubscriber {
     static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    
+
    public:
     RemoteStreamSubscriber(Borrowed<RemoteStream> remote_stream,
                            F& subscriber,
                            uint64_t start_idx,
                            std::function<void()> destruction_callback)
-    : borrowed_remote_stream_(std::move(remote_stream), destruction_callback),
-      subscriber_(subscriber),
-      index_(start_idx),
-      unused_idxts_() {
-    }
-    
-    void PassChunkToSubscriber(const std::string & chunk) {
+        : borrowed_remote_stream_(std::move(remote_stream), destruction_callback),
+          subscriber_(subscriber),
+          index_(start_idx),
+          unused_idxts_() {}
+
+    void PassChunkToSubscriber(const std::string& chunk) {
       const size_t chunk_size = chunk.size();
       size_t end_pos = 0;
       if (!carried_over_data_.empty()) {
@@ -126,7 +124,7 @@ class SubscribableRemoteStream final {
         }
         PassEntryToSubscriber(carried_over_data_ + chunk.substr(0, end_pos));
       }
-      
+
       size_t start_pos = end_pos;
       for (;;) {
         while (start_pos < chunk_size && (chunk[start_pos] == '\n' || chunk[start_pos] == '\r')) {
@@ -148,14 +146,14 @@ class SubscribableRemoteStream final {
         carried_over_data_.clear();
       }
     }
-    
+
    protected:
     BorrowedWithCallback<RemoteStream> borrowed_remote_stream_;
     F& subscriber_;
     uint64_t index_;
     const idxts_t unused_idxts_;
     std::string carried_over_data_;
-    
+
    private:
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
@@ -183,7 +181,7 @@ class SubscribableRemoteStream final {
         }
       }
     }
-    
+
     template <SubscriptionMode MODE = SM>
     ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto tab_pos = raw_log_line.find('\t');
@@ -199,7 +197,6 @@ class SubscribableRemoteStream final {
       }
     }
   };
-    
 
   template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
   class RemoteSubscriberThread final : public current::stream::SubscriberScope::SubscriberThread,
@@ -368,14 +365,12 @@ class SubscribableRemoteStream final {
   }
 
   template <typename F>
-  void FlipToMaster(F& subscriber,
-                    uint64_t start_idx = 0u,
-                    bool checked_subscription = false) const {
+  void FlipToMaster(F& subscriber, uint64_t start_idx = 0u, bool checked_subscription = false) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
     auto response = HTTP(GET(stream_->GetFlipToMasterURL(start_idx, checked_subscription)));
     if (response.code == HTTPResponseCode.OK) {
       RemoteStreamSubscriber<F, entry_t, SubscriptionMode::Checked> remote_subscriber(
-        stream_, subscriber, start_idx, [](){});
+          stream_, subscriber, start_idx, []() {});
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
       CURRENT_THROW(RemoteStreamDoesNotRespondException());
@@ -407,10 +402,8 @@ struct StreamReplicatorImpl {
   using entry_t = typename stream_t::entry_t;
   using publisher_t = typename stream_t::publisher_t;
 
-  StreamReplicatorImpl(Borrowed<stream_t> stream)
-    : publisher_(std::move(stream->BecomeFollowingStream())) {}
-  StreamReplicatorImpl(Borrowed<publisher_t> && publisher)
-    : publisher_(std::move(publisher)) {}
+  StreamReplicatorImpl(Borrowed<stream_t> stream) : publisher_(std::move(stream->BecomeFollowingStream())) {}
+  StreamReplicatorImpl(Borrowed<publisher_t>&& publisher) : publisher_(std::move(publisher)) {}
   virtual ~StreamReplicatorImpl() {
     publisher_ = nullptr;
     // NOTE(dkorolev): The destructor should not automatically order the stream to re-acquire data authority.
@@ -457,21 +450,16 @@ template <typename STREAM>
 using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
 
 template <typename STREAM, typename REPLICATOR = StreamReplicator<STREAM>>
-class MasterFlipController final
-{
+class MasterFlipController final {
  public:
   using stream_t = STREAM;
   using replicator_t = REPLICATOR;
   using entry_t = typename stream_t::entry_t;
   using publisher_t = typename stream_t::publisher_t;
-  
-  MasterFlipController(Owned<STREAM> && stream)
-    : stream_(std::move(stream))
-  {
-  }
-  
-  ~MasterFlipController()
-  {
+
+  MasterFlipController(Owned<STREAM>&& stream) : stream_(std::move(stream)) {}
+
+  ~MasterFlipController() {
     if (master_flip_thread_) {
       std::unique_lock<std::mutex> lock(mutex_);
       event_.notify_one();
@@ -480,10 +468,10 @@ class MasterFlipController final
     }
   }
 
-  void ExposeMasterStream(uint16_t port, const std::string & route,
-                          std::function<void()> flip_started  = nullptr,
-                          std::function<void()> flip_finished = nullptr)
-  {
+  void ExposeMasterStream(uint16_t port,
+                          const std::string& route,
+                          std::function<void()> flip_started = nullptr,
+                          std::function<void()> flip_finished = nullptr) {
     if (exposed_master_) {
       // throw or stop it?
       return;
@@ -499,16 +487,14 @@ class MasterFlipController final
       stream_->BecomeMasterStream();
     }
 
-    master_flip_thread_ = std::make_unique<std::thread>(
-        [this, &flip_finished]() { WaitForMasterFlip(flip_finished); });
+    master_flip_thread_ = std::make_unique<std::thread>([this, &flip_finished]() { WaitForMasterFlip(flip_finished); });
     exposed_master_ = std::make_unique<ExposedMasterStream>(port, route, flip_started);
-    exposed_master_->routes_scope_ += HTTP(port).Register(
-      route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_))
-      + HTTP(port).Register(route + "/become/master", URLPathArgs::CountMask::None, *this);
+    exposed_master_->routes_scope_ +=
+        HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_)) +
+        HTTP(port).Register(route + "/become/master", URLPathArgs::CountMask::None, *this);
   }
 
-  void FollowRemoteStream(const std::string & url, bool checked = true)
-  {
+  void FollowRemoteStream(const std::string& url, bool checked = true) {
     if (remote_follower_) {
       // trow or stop it?
       return;
@@ -522,14 +508,13 @@ class MasterFlipController final
       return;
     }
 
-    remote_follower_ = std::make_unique<RemoteStreamFollower>(Exists(borrowed_publisher_)
-                                                              ? std::move(Value(borrowed_publisher_))
-                                                              : stream_->BecomeFollowingStream(),
-                                                              url,
-                                                              stream_->Data()->Size(),
-                                                              checked);
+    remote_follower_ = std::make_unique<RemoteStreamFollower>(
+        Exists(borrowed_publisher_) ? std::move(Value(borrowed_publisher_)) : stream_->BecomeFollowingStream(),
+        url,
+        stream_->Data()->Size(),
+        checked);
   }
-  
+
   void FlipToMaster() {
     if (!remote_follower_) {
       // throw ?
@@ -552,25 +537,26 @@ class MasterFlipController final
       r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
       return;
     }
-    
+
     if (!r.url.query.has("i")) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
-    
+
     if (!stream_->IsMasterStream()) {
       r("", HTTPResponseCode.ServiceUnavailable);
       return;
     }
-    
-    if (exposed_master_->flip_started_callback_)
+
+    if (exposed_master_->flip_started_callback_) {
       exposed_master_->flip_started_callback_();
+    }
 
     std::unique_lock<std::mutex> lock(mutex_);
     event_.notify_one();
     // Grab the publisher to make sure no one can publish into it.
     borrowed_publisher_ = stream_->BecomeFollowingStream();
-    
+
     auto start_idx = current::FromString<uint64_t>(r.url.query["i"]);
     // send back diff
     r(CollectEntries(start_idx, r.url.query.has("checked")), HTTPResponseCode.OK);
@@ -594,7 +580,7 @@ class MasterFlipController final
       sstream << JSON<JSONFormat::Minimalistic>(ts_only_t(head_idx.head)) << '\n';
     return sstream.str();
   }
-  
+
   void WaitForMasterFlip(std::function<void()> flip_finished_callback) {
     std::unique_lock<std::mutex> lock(mutex_);
     event_.wait(lock);
@@ -610,25 +596,22 @@ class MasterFlipController final
     std::string route_;
     std::function<void()> flip_started_callback_;
     HTTPRoutesScope routes_scope_;
-    
+
     ExposedMasterStream(uint16_t port, const std::string& route, std::function<void()> flip_started)
-      : port_(port), route_(route), flip_started_callback_(flip_started) {
-      
-    }
+        : port_(port), route_(route), flip_started_callback_(flip_started) {}
   };
   struct RemoteStreamFollower {
     bool checked_;
     SubscribableRemoteStream<entry_t> remote_stream_;
     replicator_t replicator_;
     std::unique_ptr<SubscriberScope> subscriber_scope_;
-    
+
     RemoteStreamFollower(Borrowed<publisher_t>&& publisher, const std::string& url, uint64_t start_idx, bool checked)
-      : checked_(checked)
-      , remote_stream_(url)
-      , replicator_(std::move(publisher))
-      , subscriber_scope_(std::make_unique<SubscriberScope>(
-          remote_stream_.Subscribe(replicator_, start_idx, checked)))
-    {}
+        : checked_(checked),
+          remote_stream_(url),
+          replicator_(std::move(publisher)),
+          subscriber_scope_(
+              std::make_unique<SubscriberScope>(remote_stream_.Subscribe(replicator_, start_idx, checked))) {}
 
     void PerformMasterFlip(const stream_t& stream) {
       // terminate the remote subscription.

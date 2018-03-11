@@ -1347,17 +1347,17 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
 
 TEST(Stream, MasterFollowerFlip) {
   current::time::ResetToZero();
-  
+
   using namespace stream_unittest;
   using stream_t = current::stream::Stream<Record, current::persistence::File>;
 
   const std::string master_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "master");
   const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
   current::FileSystem::WriteStringToFile(stream_golden_data, master_file_name.c_str());
-  
+
   const std::string follower_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "follower");
   const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
-  
+
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(master_file_name));
   EXPECT_TRUE(stream1.IsMasterStream());
   stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
@@ -1367,7 +1367,7 @@ TEST(Stream, MasterFollowerFlip) {
   current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(follower_file_name));
 
   EXPECT_TRUE(stream2.IsMasterStream());
-  stream2.FollowRemoteStream(base_url, false/*checked*/);
+  stream2.FollowRemoteStream(base_url, false /*checked*/);
   EXPECT_FALSE(stream2.IsMasterStream());
 
   stream2.FlipToMaster();
@@ -1375,7 +1375,7 @@ TEST(Stream, MasterFollowerFlip) {
   EXPECT_FALSE(stream1.IsMasterStream());
   stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
   EXPECT_TRUE(stream2.IsMasterStream());
-  stream1.FollowRemoteStream(base_url, true/*checked*/);
+  stream1.FollowRemoteStream(base_url, true /*checked*/);
   EXPECT_FALSE(stream1.IsMasterStream());
 }
 
