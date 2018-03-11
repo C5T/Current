@@ -1351,31 +1351,48 @@ TEST(Stream, MasterFollowerFlip) {
   using namespace stream_unittest;
   using stream_t = current::stream::Stream<Record, current::persistence::File>;
 
-  const std::string master_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "master");
-  const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
-  current::FileSystem::WriteStringToFile(stream_golden_data, master_file_name.c_str());
+  const std::string stream1_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream1");
+  const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
+  current::FileSystem::WriteStringToFile(stream_golden_data, stream1_file_name.c_str());
 
-  const std::string follower_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "follower");
-  const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
+  const std::string stream2_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream2");
+  const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
 
-  current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(master_file_name));
+  current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
   EXPECT_TRUE(stream1.IsMasterStream());
   const auto flip_key = stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  ASSERT_THROW(stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_twice"),
+               current::stream::MasterStreamAlreadyExposedException);
+  ASSERT_THROW(stream1.FollowRemoteStream("fake_url"),
+               current::stream::AttemptedToFollowFromAnActiveMasterStreamException);
+  ASSERT_THROW(stream1.FlipToMaster(flip_key), current::stream::StreamIsAlreadyMasterException);
   EXPECT_TRUE(stream1.IsMasterStream());
 
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
-  current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(follower_file_name));
+  current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
 
+  ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::StreamIsAlreadyMasterException);
+  auto publisher = stream2.Stream().BecomeFollowingStream();
+  EXPECT_FALSE(stream2.IsMasterStream());
+  ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::StreamDoesNotFollowAnyoneException);
+  publisher = nullptr;
+  stream2.Stream().BecomeMasterStream();
   EXPECT_TRUE(stream2.IsMasterStream());
-  stream2.FollowRemoteStream(base_url, false /*checked*/);
+  ASSERT_THROW(stream2.FollowRemoteStream("invalid_url"), current::net::SocketResolveAddressException);
+  EXPECT_NO_THROW(stream2.FollowRemoteStream(base_url, false /*checked*/));
+  ASSERT_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_follower"),
+               current::stream::AttemptedToExposeFollowingStreamException);
+  ASSERT_THROW(stream2.FollowRemoteStream("fake_url"), current::stream::StreamIsAlreadyFollowingException);
   EXPECT_FALSE(stream2.IsMasterStream());
 
-  stream2.FlipToMaster(flip_key);
+  ASSERT_THROW(stream2.FlipToMaster(flip_key + 1), current::stream::RemoteStreamRefusedFlipRequestException);
+  EXPECT_NO_THROW(stream2.FlipToMaster(flip_key));
   EXPECT_TRUE(stream2.IsMasterStream());
   EXPECT_FALSE(stream1.IsMasterStream());
-  stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
-  EXPECT_TRUE(stream2.IsMasterStream());
-  stream1.FollowRemoteStream(base_url, true /*checked*/);
+  ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::StreamIsAlreadyMasterException);
+  EXPECT_NO_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed"));
+  ASSERT_THROW(stream1.FlipToMaster(flip_key), current::stream::StreamDoesNotFollowAnyoneException);
+  EXPECT_NO_THROW(stream1.FollowRemoteStream(base_url));
   EXPECT_FALSE(stream1.IsMasterStream());
 }
 

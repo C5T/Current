@@ -374,7 +374,8 @@ class SubscribableRemoteStream final {
           stream_, subscriber, start_idx, []() {});
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
-      CURRENT_THROW(RemoteStreamDoesNotRespondException());
+      const auto response_string = ToString(response.code) + " " + HTTPResponseCodeAsString(response.code);
+      CURRENT_THROW(RemoteStreamRefusedFlipRequestException(response_string));
     }
   }
 
@@ -474,12 +475,10 @@ class MasterFlipController final {
                               std::function<void()> flip_started = nullptr,
                               std::function<void()> flip_finished = nullptr) {
     if (exposed_master_) {
-      // throw or stop it?
-      return 0;
+      CURRENT_THROW(MasterStreamAlreadyExposedException());
     }
     if (remote_follower_) {
-      // throw.
-      return 0;
+      CURRENT_THROW(AttemptedToExposeFollowingStreamException());
     }
     if (Exists(borrowed_publisher_)) {
       // the stream was previously flipped from master
@@ -501,16 +500,14 @@ class MasterFlipController final {
 
   void FollowRemoteStream(const std::string& url, bool checked = true) {
     if (remote_follower_) {
-      // trow or stop it?
-      return;
+      CURRENT_THROW(StreamIsAlreadyFollowingException());
     }
     if (Exists(borrowed_publisher_)) {
       master_flip_thread_->join();
       master_flip_thread_ = nullptr;
     }
     if (exposed_master_) {
-      // throw or stop it?
-      return;
+      CURRENT_THROW(AttemptedToFollowFromAnActiveMasterStreamException());
     }
 
     remote_follower_ = std::make_unique<RemoteStreamFollower>(
@@ -521,12 +518,13 @@ class MasterFlipController final {
   }
 
   void FlipToMaster(uint64_t key) {
+    if (stream_->IsMasterStream()) {
+      CURRENT_THROW(StreamIsAlreadyMasterException());
+    }
     if (!remote_follower_) {
-      // throw ?
-      return;
+      CURRENT_THROW(StreamDoesNotFollowAnyoneException());
     }
     remote_follower_->PerformMasterFlip(*Value(stream_), key);
-    // become master.
     remote_follower_ = nullptr;
     stream_->BecomeMasterStream();
   }
