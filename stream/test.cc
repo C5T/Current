@@ -1360,7 +1360,7 @@ TEST(Stream, MasterFollowerFlip) {
 
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(master_file_name));
   EXPECT_TRUE(stream1.IsMasterStream());
-  stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  const auto flip_key = stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
   EXPECT_TRUE(stream1.IsMasterStream());
 
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
@@ -1370,7 +1370,7 @@ TEST(Stream, MasterFollowerFlip) {
   stream2.FollowRemoteStream(base_url, false /*checked*/);
   EXPECT_FALSE(stream2.IsMasterStream());
 
-  stream2.FlipToMaster();
+  stream2.FlipToMaster(flip_key);
   EXPECT_TRUE(stream2.IsMasterStream());
   EXPECT_FALSE(stream1.IsMasterStream());
   stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
