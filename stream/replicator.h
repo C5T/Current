@@ -464,7 +464,8 @@ class MasterFlipController final {
   ~MasterFlipController() {
     if (master_flip_thread_) {
       std::unique_lock<std::mutex> lock(mutex_);
-      event_.notify_one();
+      stopping_ = true;
+      event_.notify_all();
       lock.unlock();
       master_flip_thread_->join();
     }
@@ -476,17 +477,6 @@ class MasterFlipController final {
                               std::function<void()> flip_finished = nullptr) {
     if (exposed_master_) {
       CURRENT_THROW(MasterStreamAlreadyExposedException());
-    }
-    if (remote_follower_) {
-      CURRENT_THROW(AttemptedToExposeFollowingStreamException());
-    }
-    if (Exists(borrowed_publisher_)) {
-      // the stream was previously flipped from master
-      // what should we do in this case?
-      borrowed_publisher_ = nullptr;
-    }
-    if (!IsMasterStream()) {
-      stream_->BecomeMasterStream();
     }
 
     master_flip_thread_ = std::make_unique<std::thread>([this, &flip_finished]() { WaitForMasterFlip(flip_finished); });
@@ -503,18 +493,26 @@ class MasterFlipController final {
       CURRENT_THROW(StreamIsAlreadyFollowingException());
     }
     if (Exists(borrowed_publisher_)) {
-      master_flip_thread_->join();
-      master_flip_thread_ = nullptr;
-    }
-    if (exposed_master_) {
-      CURRENT_THROW(AttemptedToFollowFromAnActiveMasterStreamException());
+      WaitForStopBeingMaster();
     }
 
-    remote_follower_ = std::make_unique<RemoteStreamFollower>(
-        Exists(borrowed_publisher_) ? std::move(Value(borrowed_publisher_)) : stream_->BecomeFollowingStream(),
-        url,
-        stream_->Data()->Size(),
-        checked);
+    std::unique_lock<std::mutex> lock(mutex_);
+    bool has_borrowed_publisher = Exists(borrowed_publisher_);
+    try {
+      remote_follower_ = std::make_unique<RemoteStreamFollower>(
+          has_borrowed_publisher ? std::move(Value(borrowed_publisher_)) : stream_->BecomeFollowingStream(),
+          url,
+          stream_->Data()->Size(),
+          checked);
+    } catch (current::Exception& e) {
+      // Can't follow the remote stream for some reason,
+      // restore the stream state and propagate the exception.
+      if (has_borrowed_publisher)
+        borrowed_publisher_ = stream_->BecomeFollowingStream();
+      else
+        stream_->BecomeMasterStream();
+      throw;
+    }
   }
 
   void FlipToMaster(uint64_t key) {
@@ -527,6 +525,15 @@ class MasterFlipController final {
     remote_follower_->PerformMasterFlip(*Value(stream_), key);
     remote_follower_ = nullptr;
     stream_->BecomeMasterStream();
+  }
+
+  void WaitForStopBeingMaster() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    event_.wait(lock, [this]() { return !exposed_master_; });
+    if (master_flip_thread_ && master_flip_thread_->joinable()) {
+      master_flip_thread_->join();
+      master_flip_thread_ = nullptr;
+    }
   }
 
   bool IsMasterStream() const { return stream_->IsMasterStream(); }
@@ -547,26 +554,38 @@ class MasterFlipController final {
       return;
     }
 
-    if (!exposed_master_ || !stream_->IsMasterStream()) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!exposed_master_) {
       r("", HTTPResponseCode.ServiceUnavailable);
       return;
     }
 
     const auto flip_key = current::FromString<uint64_t>(r.url.query["key"]);
-    if (flip_key != exposed_master_->flip_code) {
+    if (remote_follower_) {
+      try {
+        remote_follower_->PerformMasterFlip(*Value(stream_), flip_key);
+        remote_follower_ = nullptr;
+        stream_->BecomeMasterStream();
+      } catch (RemoteStreamRefusedFlipRequestException&) {
+        r("", HTTPResponseCode.BadRequest);
+        return;
+      }
+    } else if (flip_key != exposed_master_->flip_code) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
 
-    if (exposed_master_->flip_started_callback_) {
-      exposed_master_->flip_started_callback_();
+    const auto flip_started = exposed_master_->flip_started_callback_;
+    if (flip_started) {
+      lock.unlock();
+      flip_started();
+      lock.lock();
     }
 
     const auto start_idx = current::FromString<uint64_t>(r.url.query["i"]);
-    std::unique_lock<std::mutex> lock(mutex_);
-    event_.notify_one();
     // Grab the publisher to make sure no one can publish into it.
     borrowed_publisher_ = stream_->BecomeFollowingStream();
+    event_.notify_all();
     // send back diff
     r(CollectEntries(start_idx, r.url.query.has("checked")), HTTPResponseCode.OK);
   }
@@ -590,7 +609,7 @@ class MasterFlipController final {
 
   void WaitForMasterFlip(std::function<void()> flip_finished_callback) {
     std::unique_lock<std::mutex> lock(mutex_);
-    event_.wait(lock);
+    event_.wait(lock, [this]() { return Exists(borrowed_publisher_) || stopping_; });
     exposed_master_ = nullptr;
     if (flip_finished_callback && Exists(borrowed_publisher_)) {
       lock.unlock();
@@ -640,6 +659,7 @@ class MasterFlipController final {
   std::mutex mutex_;
   std::condition_variable event_;
   std::unique_ptr<std::thread> master_flip_thread_;
+  bool stopping_ = false;
 };
 
 }  // namespace stream

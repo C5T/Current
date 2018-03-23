@@ -75,14 +75,6 @@ struct StreamDoesNotFollowAnyoneException : StreamException {
   using StreamException::StreamException;
 };
 
-struct AttemptedToExposeFollowingStreamException : StreamException {
-  using StreamException::StreamException;
-};
-
-struct AttemptedToFollowFromAnActiveMasterStreamException : StreamException {
-  using StreamException::StreamException;
-};
-
 struct RemoteStreamRefusedFlipRequestException : StreamException {
   using StreamException::StreamException;
 };

@@ -1359,41 +1359,61 @@ TEST(Stream, MasterFollowerFlip) {
   const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
 
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
+  // After construction every stream should be master.
   EXPECT_TRUE(stream1.IsMasterStream());
   const auto flip_key = stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  // Cannot expose the same stream twice. Why not, BTW?
   ASSERT_THROW(stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_twice"),
                current::stream::MasterStreamAlreadyExposedException);
-  ASSERT_THROW(stream1.FollowRemoteStream("fake_url"),
-               current::stream::AttemptedToFollowFromAnActiveMasterStreamException);
+  // Attempt to follow using invalid url should lead to an exception.
+  ASSERT_THROW(stream1.FollowRemoteStream("fake_url"), current::net::SocketResolveAddressException);
+  // Cannot flip stream if it's already in master mode.
   ASSERT_THROW(stream1.FlipToMaster(flip_key), current::stream::StreamIsAlreadyMasterException);
+  // Stream should remain a valid master after all these unsuccessful calls.
   EXPECT_TRUE(stream1.IsMasterStream());
 
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
   current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
 
+  // The second stream is master now, so it has no reason to flip.
   ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::StreamIsAlreadyMasterException);
   auto publisher = stream2.Stream().BecomeFollowingStream();
+  // Now the stream should be following.
   EXPECT_FALSE(stream2.IsMasterStream());
+  // But it doesn't follow any remote stream, so it still can't perform the flip.
   ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::StreamDoesNotFollowAnyoneException);
+  // Can't call the `FollowRemoteStream` now, cause it will hung in the `BecomeFollowingStream`.
+  // stream2.FollowRemoteStream(base_url);
   publisher = nullptr;
-  stream2.Stream().BecomeMasterStream();
-  EXPECT_TRUE(stream2.IsMasterStream());
+  // And now, after the borrowed publisher was released, we can call `FollowRemoteStream`.
   ASSERT_THROW(stream2.FollowRemoteStream("invalid_url"), current::net::SocketResolveAddressException);
+  // At last, this call should suceeded.
   EXPECT_NO_THROW(stream2.FollowRemoteStream(base_url, false /*checked*/));
-  ASSERT_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_follower"),
-               current::stream::AttemptedToExposeFollowingStreamException);
+  // And the same stream can be exposed on a different endpoint.
+  EXPECT_NO_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_follower"));
+  // But it can't follow two remote streams simultaneously.
   ASSERT_THROW(stream2.FollowRemoteStream("fake_url"), current::stream::StreamIsAlreadyFollowingException);
-  EXPECT_FALSE(stream2.IsMasterStream());
 
+  // First attempt to flip to master using the wrong key should fail.
   ASSERT_THROW(stream2.FlipToMaster(flip_key + 1), current::stream::RemoteStreamRefusedFlipRequestException);
+  // The second try, now with the correct key, should succeed.
   EXPECT_NO_THROW(stream2.FlipToMaster(flip_key));
+  // After the flip the second stream becomes master,
+  // while the first one turns into a follower (but it doesn't follow anyone, actually).
   EXPECT_TRUE(stream2.IsMasterStream());
   EXPECT_FALSE(stream1.IsMasterStream());
+  // One flip is enough, the second should fail, because the stream is master now.
   ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::StreamIsAlreadyMasterException);
-  EXPECT_NO_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed"));
+  // The stream was exposed before and it keeps that endpoints alive after the flip.
+  ASSERT_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed"),
+               current::stream::MasterStreamAlreadyExposedException);
+  // The first stream can't flip, because it doesn't automatically start following the second stream
+  // after the flip procedure.
   ASSERT_THROW(stream1.FlipToMaster(flip_key), current::stream::StreamDoesNotFollowAnyoneException);
-  EXPECT_NO_THROW(stream1.FollowRemoteStream(base_url));
-  EXPECT_FALSE(stream1.IsMasterStream());
+  // Wrong url, the second stream is exposed on "/exposed_follower" endpoint.
+  ASSERT_THROW(stream1.FollowRemoteStream(base_url), current::stream::RemoteStreamDoesNotRespondException);
+  // This is the right one.
+  EXPECT_NO_THROW(stream1.FollowRemoteStream(base_url + "_follower"));
 }
 
 TEST(Stream, SubscribeWithFilterByType) {
