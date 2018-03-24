@@ -46,6 +46,8 @@ SOFTWARE.
 namespace current {
 namespace stream {
 
+enum class ReplicationMode : bool { Checked = true, Unchecked = false };
+
 template <typename STREAM_ENTRY>
 class SubscribableRemoteStream final {
  public:
@@ -80,17 +82,17 @@ class SubscribableRemoteStream final {
       }
     }
 
-    std::string GetURLToSubscribe(uint64_t index, bool checked_subscription) const {
-      return url_ + "?i=" + current::ToString(index) + (checked_subscription ? "&checked" : "");
+    std::string GetURLToSubscribe(uint64_t index, SubscriptionMode mode) const {
+      return url_ + "?i=" + current::ToString(index) + (mode == SubscriptionMode::Checked ? "&checked" : "");
     }
 
     std::string GetURLToTerminate(const std::string& subscription_id) const {
       return url_ + "?terminate=" + subscription_id;
     }
 
-    std::string GetFlipToMasterURL(uint64_t index, uint64_t key, bool checked_subscription) const {
+    std::string GetFlipToMasterURL(uint64_t index, uint64_t key, SubscriptionMode mode) const {
       return url_ + "/become/master?i=" + current::ToString(index) + "&key=" + current::ToString(key) +
-             (checked_subscription ? "&checked" : "");
+             (mode == SubscriptionMode::Checked ? "&checked" : "");
     }
 
    private:
@@ -98,7 +100,7 @@ class SubscribableRemoteStream final {
     const SubscribableStreamSchema schema_;
   };
 
-  template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
+  template <typename F, typename TYPE_SUBSCRIBED_TO, ReplicationMode RM>
   class RemoteStreamSubscriber {
     static_assert(current::ss::IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
 
@@ -156,8 +158,8 @@ class SubscribableRemoteStream final {
     std::string carried_over_data_;
 
    private:
-    template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
+    template <ReplicationMode MODE = RM>
+    ENABLE_IF<MODE == ReplicationMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto split = current::strings::Split(raw_log_line, '\t');
       if (split.empty()) {
         CURRENT_THROW(RemoteStreamMalformedChunkException());
@@ -183,8 +185,8 @@ class SubscribableRemoteStream final {
       }
     }
 
-    template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
+    template <ReplicationMode MODE = RM>
+    ENABLE_IF<MODE == ReplicationMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto tab_pos = raw_log_line.find('\t');
       if (tab_pos != std::string::npos) {
         if (subscriber_(raw_log_line, index_++, unused_idxts_) == ss::EntryResponse::Done) {
@@ -199,21 +201,21 @@ class SubscribableRemoteStream final {
     }
   };
 
-  template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
+  template <typename F, typename TYPE_SUBSCRIBED_TO, ReplicationMode RM>
   class RemoteSubscriberThread final : public current::stream::SubscriberScope::SubscriberThread,
-                                       public RemoteStreamSubscriber<F, TYPE_SUBSCRIBED_TO, SM> {
-    using base_subscriber_t = RemoteStreamSubscriber<F, TYPE_SUBSCRIBED_TO, SM>;
+                                       public RemoteStreamSubscriber<F, TYPE_SUBSCRIBED_TO, RM> {
+    using base_subscriber_t = RemoteStreamSubscriber<F, TYPE_SUBSCRIBED_TO, RM>;
 
    public:
     RemoteSubscriberThread(Borrowed<RemoteStream> remote_stream,
                            F& subscriber,
                            uint64_t start_idx,
-                           bool checked_subscription,
+                           SubscriptionMode subscription_mode,
                            std::function<void()> done_callback)
         : base_subscriber_t(remote_stream, subscriber, start_idx, [this]() { TerminateSubscription(); }),
           valid_(false),
           done_callback_(done_callback),
-          checked_subscription_(checked_subscription),
+          subscription_mode_(subscription_mode),
           terminate_subscription_requested_(false),
           thread_([this]() { Thread(); }) {
       valid_ = true;
@@ -258,7 +260,7 @@ class SubscribableRemoteStream final {
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->index_, checked_subscription_),
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->index_, subscription_mode_),
                           [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                           [this](const std::string& chunk_body) { OnChunk(chunk_body); },
                           [this]() {}));
@@ -268,7 +270,7 @@ class SubscribableRemoteStream final {
           if (++consecutive_malformed_chunks_count_ == 3) {
             fprintf(stderr,
                     "Constantly receiving malformed chunks from \"%s\"\n",
-                    bare_stream.GetURLToSubscribe(this->index_, checked_subscription_).c_str());
+                    bare_stream.GetURLToSubscribe(this->index_, subscription_mode_).c_str());
           }
         } catch (current::Exception&) {
         }
@@ -314,34 +316,34 @@ class SubscribableRemoteStream final {
    private:
     bool valid_;
     const std::function<void()> done_callback_;
-    const bool checked_subscription_;
+    const SubscriptionMode subscription_mode_;
     current::WaitableAtomic<std::string> subscription_id_;
     std::atomic_bool terminate_subscription_requested_;
     std::thread thread_;
     uint32_t consecutive_malformed_chunks_count_;
   };
 
-  template <typename F, typename TYPE_SUBSCRIBED_TO, SubscriptionMode SM>
+  template <typename F, typename TYPE_SUBSCRIBED_TO, ReplicationMode RM>
   class RemoteSubscriberScopeImpl final : public current::stream::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     using base_t = current::stream::SubscriberScope;
 
    public:
-    using subscriber_thread_t = RemoteSubscriberThread<F, TYPE_SUBSCRIBED_TO, SM>;
+    using subscriber_thread_t = RemoteSubscriberThread<F, TYPE_SUBSCRIBED_TO, RM>;
 
     RemoteSubscriberScopeImpl(Borrowed<RemoteStream> remote_stream,
                               F& subscriber,
                               uint64_t start_idx,
-                              bool checked_subscription,
+                              SubscriptionMode subscription_mode,
                               std::function<void()> done_callback)
         : base_t(std::move(std::make_unique<subscriber_thread_t>(
-              std::move(remote_stream), subscriber, start_idx, checked_subscription, done_callback))) {}
+              std::move(remote_stream), subscriber, start_idx, subscription_mode, done_callback))) {}
   };
   template <typename F>
-  using RemoteSubscriberScope = RemoteSubscriberScopeImpl<F, entry_t, SubscriptionMode::Checked>;
+  using RemoteSubscriberScope = RemoteSubscriberScopeImpl<F, entry_t, ReplicationMode::Checked>;
   template <typename F>
-  using RemoteSubscriberScopeUnchecked = RemoteSubscriberScopeImpl<F, entry_t, SubscriptionMode::Unchecked>;
+  using RemoteSubscriberScopeUnchecked = RemoteSubscriberScopeImpl<F, entry_t, ReplicationMode::Unchecked>;
 
   explicit SubscribableRemoteStream(const std::string& remote_stream_url)
       : stream_(MakeOwned<RemoteStream>(
@@ -359,19 +361,18 @@ class SubscribableRemoteStream final {
   template <typename F>
   RemoteSubscriberScope<F> Subscribe(F& subscriber,
                                      uint64_t start_idx = 0u,
-                                     bool checked_subscription = false,
+                                     SubscriptionMode subscription_mode = SubscriptionMode::Unchecked,
                                      std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    return RemoteSubscriberScope<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
+    return RemoteSubscriberScope<F>(stream_, subscriber, start_idx, subscription_mode, done_callback);
   }
 
-  template <typename F>
-  void FlipToMaster(F& subscriber, uint64_t start_idx, uint64_t key, bool checked_subscription = false) const {
+  template <typename F, ReplicationMode RM>
+  void FlipToMaster(F& subscriber, uint64_t start_idx, uint64_t key, SubscriptionMode subscription_mode) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    auto response = HTTP(GET(stream_->GetFlipToMasterURL(start_idx, key, checked_subscription)));
+    auto response = HTTP(GET(stream_->GetFlipToMasterURL(start_idx, key, subscription_mode)));
     if (response.code == HTTPResponseCode.OK) {
-      RemoteStreamSubscriber<F, entry_t, SubscriptionMode::Checked> remote_subscriber(
-          stream_, subscriber, start_idx, []() {});
+      RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx, []() {});
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
       const auto response_string = ToString(response.code) + " " + HTTPResponseCodeAsString(response.code);
@@ -382,10 +383,10 @@ class SubscribableRemoteStream final {
   template <typename F>
   RemoteSubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
                                                        uint64_t start_idx = 0u,
-                                                       bool checked_subscription = false,
+                                                       SubscriptionMode subscription_mode = SubscriptionMode::Unchecked,
                                                        std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    return RemoteSubscriberScopeUnchecked<F>(stream_, subscriber, start_idx, checked_subscription, done_callback);
+    return RemoteSubscriberScopeUnchecked<F>(stream_, subscriber, start_idx, subscription_mode, done_callback);
   }
 
   uint64_t GetNumberOfEntries() const {
@@ -451,7 +452,9 @@ struct StreamReplicatorImpl {
 template <typename STREAM>
 using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
 
-template <typename STREAM, typename REPLICATOR = StreamReplicator<STREAM>>
+template <typename STREAM,
+          typename REPLICATOR = StreamReplicator<STREAM>,
+          ReplicationMode RM = ReplicationMode::Checked>
 class MasterFlipController final {
  public:
   using stream_t = STREAM;
@@ -488,7 +491,7 @@ class MasterFlipController final {
     return exposed_master_->flip_code;
   }
 
-  void FollowRemoteStream(const std::string& url, bool checked = true) {
+  void FollowRemoteStream(const std::string& url, SubscriptionMode subscription_mode = SubscriptionMode::Unchecked) {
     if (remote_follower_) {
       CURRENT_THROW(StreamIsAlreadyFollowingException());
     }
@@ -503,7 +506,7 @@ class MasterFlipController final {
           has_borrowed_publisher ? std::move(Value(borrowed_publisher_)) : stream_->BecomeFollowingStream(),
           url,
           stream_->Data()->Size(),
-          checked);
+          subscription_mode);
     } catch (current::Exception& e) {
       // Can't follow the remote stream for some reason,
       // restore the stream state and propagate the exception.
@@ -586,13 +589,13 @@ class MasterFlipController final {
     // Grab the publisher to make sure no one can publish into it.
     borrowed_publisher_ = stream_->BecomeFollowingStream();
     event_.notify_all();
-    // send back diff
+    // Send back the remaining diff.
     r(CollectEntries(start_idx, r.url.query.has("checked")), HTTPResponseCode.OK);
   }
 
-  std::string CollectEntries(uint64_t start_idx, bool checked) {
+  std::string CollectEntries(uint64_t start_idx, bool checked_subscription) {
     std::stringstream sstream;
-    if (checked) {
+    if (checked_subscription) {
       for (const auto& e : stream_->Data()->Iterate(start_idx)) {
         sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
       }
@@ -632,23 +635,39 @@ class MasterFlipController final {
   };
 
   struct RemoteStreamFollower {
-    bool checked_;
-    SubscribableRemoteStream<entry_t> remote_stream_;
+    using remote_stream_t = SubscribableRemoteStream<entry_t>;
+    SubscriptionMode subscription_mode_;
+    remote_stream_t remote_stream_;
     replicator_t replicator_;
     std::unique_ptr<SubscriberScope> subscriber_scope_;
 
-    RemoteStreamFollower(Borrowed<publisher_t>&& publisher, const std::string& url, uint64_t start_idx, bool checked)
-        : checked_(checked),
+    RemoteStreamFollower(Borrowed<publisher_t>&& publisher,
+                         const std::string& url,
+                         uint64_t start_idx,
+                         SubscriptionMode subscription_mode)
+        : subscription_mode_(subscription_mode),
           remote_stream_(url),
           replicator_(std::move(publisher)),
-          subscriber_scope_(
-              std::make_unique<SubscriberScope>(remote_stream_.Subscribe(replicator_, start_idx, checked))) {}
+          subscriber_scope_(Subscribe(start_idx)) {}
 
     void PerformMasterFlip(const stream_t& stream, uint64_t key) {
       // terminate the remote subscription.
       subscriber_scope_ = nullptr;
       // force the remote stream to send the rest of its data and destroy itself.
-      remote_stream_.FlipToMaster(replicator_, stream.Data()->Size(), key, checked_);
+      remote_stream_.template FlipToMaster<replicator_t, RM>(
+          replicator_, stream.Data()->Size(), key, subscription_mode_);
+    }
+
+   private:
+    template <ReplicationMode MODE = RM>
+    ENABLE_IF<MODE == ReplicationMode::Checked, std::unique_ptr<SubscriberScope>> Subscribe(uint64_t start_idx) {
+      using scope_t = typename remote_stream_t::template RemoteSubscriberScope<replicator_t>;
+      return std::make_unique<scope_t>(remote_stream_.Subscribe(replicator_, start_idx, subscription_mode_));
+    }
+    template <ReplicationMode MODE = RM>
+    ENABLE_IF<MODE == ReplicationMode::Unchecked, std::unique_ptr<SubscriberScope>> Subscribe(uint64_t start_idx) {
+      using scope_t = typename remote_stream_t::template RemoteSubscriberScopeUnchecked<replicator_t>;
+      return std::make_unique<scope_t>(remote_stream_.SubscribeUnchecked(replicator_, start_idx, subscription_mode_));
     }
   };
 

@@ -1388,7 +1388,7 @@ TEST(Stream, MasterFollowerFlip) {
   // And now, after the borrowed publisher was released, we can call `FollowRemoteStream`.
   ASSERT_THROW(stream2.FollowRemoteStream("invalid_url"), current::net::SocketResolveAddressException);
   // At last, this call should suceeded.
-  EXPECT_NO_THROW(stream2.FollowRemoteStream(base_url, false /*checked*/));
+  EXPECT_NO_THROW(stream2.FollowRemoteStream(base_url, current::stream::SubscriptionMode::Checked));
   // And the same stream can be exposed on a different endpoint.
   EXPECT_NO_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_follower"));
   // But it can't follow two remote streams simultaneously.
