@@ -90,8 +90,18 @@ class SubscribableRemoteStream final {
       return url_ + "?terminate=" + subscription_id;
     }
 
-    std::string GetFlipToMasterURL(uint64_t index, uint64_t key, SubscriptionMode mode) const {
-      return url_ + "/become/master?i=" + current::ToString(index) + "&key=" + current::ToString(key) +
+    std::string GetFlipToMasterURL(head_optidxts_t head_idxts, uint64_t key, SubscriptionMode mode) const {
+      std::string opt;
+      if (Exists(head_idxts.idxts)) {
+        const auto idxts = Value(head_idxts.idxts);
+        if (idxts.us == head_idxts.head)
+          opt = "i=" + current::ToString(idxts.index);
+        else
+          opt = "since=" + current::ToString(head_idxts.head);
+      } else {
+        opt = "i=0";
+      }
+      return url_ + "/become/master?" + opt + "&key=" + current::ToString(key) +
              (mode == SubscriptionMode::Checked ? "&checked" : "");
     }
 
@@ -368,10 +378,11 @@ class SubscribableRemoteStream final {
   }
 
   template <typename F, ReplicationMode RM>
-  void FlipToMaster(F& subscriber, uint64_t start_idx, uint64_t key, SubscriptionMode subscription_mode) const {
+  void FlipToMaster(F& subscriber, head_optidxts_t head_idxts, uint64_t key, SubscriptionMode subscription_mode) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    auto response = HTTP(GET(stream_->GetFlipToMasterURL(start_idx, key, subscription_mode)));
+    auto response = HTTP(GET(stream_->GetFlipToMasterURL(head_idxts, key, subscription_mode)));
     if (response.code == HTTPResponseCode.OK) {
+      const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index : 0;
       RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx, []() {});
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
@@ -552,7 +563,9 @@ class MasterFlipController final {
       return;
     }
 
-    if (!r.url.query.has("i") || !r.url.query.has("key")) {
+    bool has_i = r.url.query.has("i");
+    bool has_since = r.url.query.has("since");
+    if (has_i == has_since || !r.url.query.has("key")) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
@@ -585,15 +598,37 @@ class MasterFlipController final {
       lock.lock();
     }
 
-    const auto start_idx = current::FromString<uint64_t>(r.url.query["i"]);
+    const bool checked = r.url.query.has("checked");
     // Grab the publisher to make sure no one can publish into it.
     borrowed_publisher_ = stream_->BecomeFollowingStream();
     event_.notify_all();
     // Send back the remaining diff.
-    r(CollectEntries(start_idx, r.url.query.has("checked")), HTTPResponseCode.OK);
+    if (has_i) {
+      r(CollectEntries(current::FromString<uint64_t>(r.url.query["i"]), checked), HTTPResponseCode.OK);
+    } else {
+      r(CollectEntries(std::chrono::microseconds(current::FromString<uint64_t>(r.url.query["since"])), checked),
+        HTTPResponseCode.OK);
+    }
   }
 
-  std::string CollectEntries(uint64_t start_idx, bool checked_subscription) {
+  std::string CollectEntries(std::chrono::microseconds since, bool checked_subscription) const {
+    std::stringstream sstream;
+    if (checked_subscription) {
+      for (const auto& e : stream_->Data()->Iterate(since)) {
+        sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
+      }
+    } else {
+      for (const auto& e : stream_->Data()->IterateUnsafe(since)) {
+        sstream << e << '\n';
+      }
+    }
+    const auto head_idx = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
+    if (since < head_idx.head && (!Exists(head_idx.idxts) || head_idx.head > Value(head_idx.idxts).us))
+      sstream << JSON<JSONFormat::Minimalistic>(ts_only_t(head_idx.head)) << '\n';
+    return sstream.str();
+  }
+
+  std::string CollectEntries(uint64_t start_idx, bool checked_subscription) const {
     std::stringstream sstream;
     if (checked_subscription) {
       for (const auto& e : stream_->Data()->Iterate(start_idx)) {
@@ -605,7 +640,7 @@ class MasterFlipController final {
       }
     }
     const auto head_idx = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
-    if (head_idx.head > Value(head_idx.idxts).us)
+    if (head_idx.head.count() >= 0 && (!Exists(head_idx.idxts) || head_idx.head > Value(head_idx.idxts).us))
       sstream << JSON<JSONFormat::Minimalistic>(ts_only_t(head_idx.head)) << '\n';
     return sstream.str();
   }
@@ -655,7 +690,7 @@ class MasterFlipController final {
       subscriber_scope_ = nullptr;
       // force the remote stream to send the rest of its data and destroy itself.
       remote_stream_.template FlipToMaster<replicator_t, RM>(
-          replicator_, stream.Data()->Size(), key, subscription_mode_);
+          replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), key, subscription_mode_);
     }
 
    private:
