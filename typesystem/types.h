@@ -62,18 +62,6 @@ struct CurrentVariant : CurrentSuper {};
 
 #define IS_EMPTY_CURRENT_STRUCT(T) (::current::reflection::IsEmptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value)
 
-// The `_CURRENT_` part of the name is only here to not pollute the "global macros namespace".
-// The macro just checks whether `T` is an `std::tuple<...>`.
-template <typename>
-struct CurrentTupleDetector { constexpr static bool value = false; };
-template <typename... TS>
-struct CurrentTupleDetector<std::tuple<TS...>> { constexpr static bool value = true; };
-#define IS_CURRENT_TUPLE(T) (::crnt::CurrentTupleDetector<::current::decay<T>>::value)
-
-static_assert(!IS_CURRENT_TUPLE(int), "");
-static_assert(IS_CURRENT_TUPLE(std::tuple<int>), "");
-static_assert(IS_CURRENT_TUPLE(const std::tuple<int>&), "");
-
 namespace sfinae {
 
 // Whether an `ExistsImpl()` method is defined for a type.

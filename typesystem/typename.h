@@ -43,6 +43,7 @@ SOFTWARE.
 #include "types.h"
 
 #include "../bricks/template/decay.h"
+#include "../bricks/template/tuple.h"
 
 namespace current {
 
@@ -75,7 +76,7 @@ struct CurrentTypeNameCaller {
                                      IS_CURRENT_STRUCT(T),
                                      IS_CURRENT_VARIANT(T),
                                      std::is_enum<T>::value,
-                                     IS_CURRENT_TUPLE(T)>;
+                                     current::metaprogramming::is_std_tuple<T>::value>;
   static const char* CallGetCurrentTypeName() {
     static const std::string value = impl_t::GetCurrentTypeName();
     return value.c_str();
