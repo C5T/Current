@@ -47,6 +47,44 @@ static_assert(is_std_tuple<std::tuple<int, std::string>>::value, "");
 static_assert(!is_std_tuple<int>::value, "");
 static_assert(!is_std_tuple<std::string>::value, "");
 
+template <typename T>
+struct wrapped_into_tuple_impl {
+  using type = std::tuple<T>;
+  static type Cast(const T& parameter) { return type(parameter); }
+};
+
+template <typename... TS>
+struct wrapped_into_tuple_impl<std::tuple<TS...>> {
+  using type = std::tuple<TS...>;
+  static const type& Cast(const type& parameter) { return parameter; }
+};
+
+template <typename T>
+using wrapped_into_tuple_t = typename wrapped_into_tuple_impl<T>::type;
+
+static_assert(std::is_same<std::tuple<>, wrapped_into_tuple_t<std::tuple<>>>::value, "");
+static_assert(std::is_same<std::tuple<int>, wrapped_into_tuple_t<int>>::value, "");
+static_assert(std::is_same<std::tuple<int>, wrapped_into_tuple_t<std::tuple<int>>>::value, "");
+static_assert(std::is_same<std::tuple<char, double>, wrapped_into_tuple_t<std::tuple<char, double>>>::value, "");
+
+template <class LHS, class RHS>
+struct tuple_cat_type_impl;
+
+template <typename... LHS_TS, typename... RHS_TS>
+struct tuple_cat_type_impl<std::tuple<LHS_TS...>, std::tuple<RHS_TS...>> {
+  using type = std::tuple<LHS_TS..., RHS_TS...>;
+};
+
+template <typename LHS, typename RHS>
+using tuple_cat_t = typename tuple_cat_type_impl<wrapped_into_tuple_t<LHS>, wrapped_into_tuple_t<RHS>>::type;
+
+static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<char, double>>::value, "");
+static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<char>, double>>::value, "");
+static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<char, std::tuple<double>>>::value, "");
+static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<char>, std::tuple<double>>>::value, "");
+static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<char, double>, std::tuple<>>>::value, "");
+static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<>, std::tuple<char, double>>>::value, "");
+
 }  // namespace metaprogramming
 }  // namespace current
 

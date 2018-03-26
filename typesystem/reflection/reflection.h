@@ -36,10 +36,10 @@ SOFTWARE.
 #include "types.h"
 
 #include "../optional.h"
-#include "../variant.h"
 #include "../struct.h"
 #include "../timestamp.h"
 #include "../typename.h"
+#include "../variant.h"
 
 #include "../../bricks/template/call_all_constructors.h"
 #include "../../bricks/util/comparators.h"
@@ -51,7 +51,7 @@ namespace reflection {
 
 namespace impl {
 template <NameFormat NF>
-struct CurrentTypeNameImpl<NF, reflection::TypeID, false, false, true> {
+struct CurrentTypeNameImpl<NF, reflection::TypeID, false, false, true, false> {
   static const char* GetCurrentTypeName() { return "TypeID"; }
 };
 }  // namespace current::reflection::impl

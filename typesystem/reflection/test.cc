@@ -32,8 +32,8 @@ SOFTWARE.
 
 #include "reflection.h"
 
-#include "../../bricks/strings/strings.h"
 #include "../../3rdparty/gtest/gtest-main.h"
+#include "../../bricks/strings/strings.h"
 
 namespace reflection_test {
 
@@ -168,6 +168,9 @@ TEST(Reflection, CurrentTypeName) {
   EXPECT_STREQ("std::map<int32_t, int64_t>", (CurrentTypeName<std::map<int32_t, int64_t>>()));
   EXPECT_STREQ("std::unordered_map<int64_t, int32_t>", (CurrentTypeName<std::unordered_map<int64_t, int32_t>>()));
   EXPECT_STREQ("std::pair<char, bool>", (CurrentTypeName<std::pair<char, bool>>()));
+  EXPECT_STREQ("std::tuple<std::string>", CurrentTypeName<std::tuple<std::string>>());
+  EXPECT_STREQ("std::tuple<bool, bool>", (CurrentTypeName<std::tuple<bool, bool>>()));
+  EXPECT_STREQ("std::tuple<std::string, char, double>", (CurrentTypeName<std::tuple<std::string, char, double>>()));
 
   // Current types.
   EXPECT_STREQ("TypeID", CurrentTypeName<current::reflection::TypeID>());
@@ -210,6 +213,10 @@ TEST(Reflection, CurrentTypeName) {
   EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<Templated<Foo>, NameFormat::AsIdentifier>()));
   EXPECT_STREQ("Templated_T_Vector_Optional_Foo",
                (CurrentTypeName<Templated<std::vector<Optional<Foo>>>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Tuple_String", (CurrentTypeName<std::tuple<std::string>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Tuple_Bool_Bool", (CurrentTypeName<std::tuple<bool, bool>, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("Tuple_String_Char_Double",
+               (CurrentTypeName<std::tuple<std::string, char, double>, NameFormat::AsIdentifier>()));
 }
 
 TEST(Reflection, StructAndVariant) {
