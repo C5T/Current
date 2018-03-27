@@ -31,3 +31,4 @@ clean:
 	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name "everything.*")
 	rm -rf $(shell find . -name ".current")
 	rm -rf $(shell find . -name "everything")
+	make -f scripts/MakefileImpl clean

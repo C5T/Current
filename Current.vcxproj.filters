@@ -723,7 +723,7 @@
     <ClInclude Include="Bricks\template\enable_if.h">
       <Filter>Header Files\Bricks\template</Filter>
     </ClInclude>
-    <ClInclude Include="Bricks\template\is_tuple.h">
+    <ClInclude Include="Bricks\template\tuple.h">
       <Filter>Header Files\Bricks\template</Filter>
     </ClInclude>
     <ClInclude Include="Bricks\template\mapreduce.h">
