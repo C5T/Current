@@ -59,7 +59,11 @@ struct RemoteStreamMalformedChunkException : StreamException {
   using StreamException::StreamException;
 };
 
-struct MasterStreamAlreadyExposedException : StreamException {
+struct StreamIsAlreadyExposedException : StreamException {
+  using StreamException::StreamException;
+};
+
+struct StreamIsNotExposedException : StreamException {
   using StreamException::StreamException;
 };
 

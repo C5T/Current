@@ -1370,10 +1370,10 @@ TEST(Stream, MasterFollowerFlip) {
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
   // After construction the stream is always should be master.
   EXPECT_TRUE(stream1.IsMasterStream());
-  auto flip_key1 = stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  auto flip_key1 = stream1.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed");
   // Cannot expose the same stream twice. Why not, BTW?
-  ASSERT_THROW(stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed_twice"),
-               current::stream::MasterStreamAlreadyExposedException);
+  ASSERT_THROW(stream1.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed_twice"),
+               current::stream::StreamIsAlreadyExposedException);
   // Attempt to follow using invalid url should lead to an exception.
   ASSERT_THROW(stream1.FollowRemoteStream("fake_url"), current::net::SocketResolveAddressException);
   // Cannot flip stream if it's already in master mode.
@@ -1400,14 +1400,14 @@ TEST(Stream, MasterFollowerFlip) {
   // At last, this call should suceeded.
   stream2.FollowRemoteStream(base_url, current::stream::SubscriptionMode::Checked);
   // And the same stream can be exposed on a different endpoint.
-  const auto flip_key2 = stream2.ExposeMasterStream(FLAGS_stream_http_test_port + 1, "/exposed_follower");
+  const auto flip_key2 = stream2.ExposeViaHTTP(FLAGS_stream_http_test_port + 1, "/exposed_follower");
   // But it can't follow two remote streams simultaneously.
   ASSERT_THROW(stream2.FollowRemoteStream("fake_url"), current::stream::StreamIsAlreadyFollowingException);
 
   // First attempt to flip to master using the wrong key should fail.
   ASSERT_THROW(stream2.FlipToMaster(flip_key1 + 1), current::stream::RemoteStreamRefusedFlipRequestException);
   // The second try, now with the correct key, should succeed.
-  EXPECT_NO_THROW(stream2.FlipToMaster(flip_key1));
+  stream2.FlipToMaster(flip_key1);
   // After the flip stream should be replicated completely.
   EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream2_file_name));
   // The second stream becomes master,
@@ -1417,23 +1417,21 @@ TEST(Stream, MasterFollowerFlip) {
   // One flip is enough, the second should fail, because the stream is master now.
   ASSERT_THROW(stream2.FlipToMaster(flip_key1), current::stream::StreamIsAlreadyMasterException);
   // The stream was exposed before and it keeps that endpoints alive after the flip.
-  ASSERT_THROW(stream2.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed"),
-               current::stream::MasterStreamAlreadyExposedException);
+  ASSERT_THROW(stream2.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed"),
+               current::stream::StreamIsAlreadyExposedException);
   // The first stream can't flip, because it doesn't automatically start following the second stream
   // after the flip procedure.
   ASSERT_THROW(stream1.FlipToMaster(flip_key2), current::stream::StreamDoesNotFollowAnyoneException);
-  // The first url should no longer work.
-  ASSERT_THROW(stream1.FollowRemoteStream(base_url), current::stream::RemoteStreamDoesNotRespondException);
-  // This is the right one.
+  stream1.StopExposingViaHTTP(FLAGS_stream_http_test_port, "/exposed");
   stream1.FollowRemoteStream(base_url2);
-  flip_key1 = stream1.ExposeMasterStream(FLAGS_stream_http_test_port, "/exposed");
+  flip_key1 = stream1.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed");
 
   current::stream::MasterFlipController<stream_t> stream3(stream_t::CreateStream(stream3_file_name));
   stream3.FollowRemoteStream(base_url);
   // Now we have stream3 following the stream1, which is following the stream2.
   // To flip stream3 with stream2 we should use key for the stream2, not the stream1.
   ASSERT_THROW(stream3.FlipToMaster(flip_key1), current::stream::RemoteStreamRefusedFlipRequestException);
-  EXPECT_NO_THROW(stream3.FlipToMaster(flip_key2));
+  stream3.FlipToMaster(flip_key2);
   EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream2_file_name));
   EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream3_file_name));
   EXPECT_FALSE(stream1.IsMasterStream());

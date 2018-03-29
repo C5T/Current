@@ -475,39 +475,35 @@ class MasterFlipController final {
 
   MasterFlipController(Owned<STREAM>&& stream) : stream_(std::move(stream)) {}
 
-  ~MasterFlipController() {
-    if (master_flip_thread_) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      stopping_ = true;
-      event_.notify_all();
-      lock.unlock();
-      master_flip_thread_->join();
-    }
-  }
-
-  uint64_t ExposeMasterStream(uint16_t port,
-                              const std::string& route,
-                              std::function<void()> flip_started = nullptr,
-                              std::function<void()> flip_finished = nullptr) {
-    if (exposed_master_) {
-      CURRENT_THROW(MasterStreamAlreadyExposedException());
+  uint64_t ExposeViaHTTP(uint16_t port,
+                         const std::string& route,
+                         std::function<void()> flip_started = nullptr,
+                         std::function<void()> flip_finished = nullptr) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (exposed_via_http_) {
+      CURRENT_THROW(StreamIsAlreadyExposedException());
     }
 
-    master_flip_thread_ = std::make_unique<std::thread>([this, &flip_finished]() { WaitForMasterFlip(flip_finished); });
-    exposed_master_ = std::make_unique<ExposedMasterStream>(port, route, flip_started);
-    exposed_master_->routes_scope_ +=
+    exposed_via_http_ = std::make_unique<ExposedStreamState>(port, route, flip_started, flip_finished);
+    exposed_via_http_->routes_scope_ +=
         HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_)) +
         HTTP(port).Register(
             route + "/become/master", URLPathArgs::CountMask::None, [this](Request r) { MasterFlipRequest(r); });
-    return exposed_master_->flip_code;
+    return exposed_via_http_->flip_code;
+  }
+
+  void StopExposingViaHTTP(uint16_t port, const std::string& route) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (exposed_via_http_ && exposed_via_http_->port_ == port && exposed_via_http_->route_ == route) {
+      exposed_via_http_ = nullptr;
+    } else {
+      CURRENT_THROW(StreamIsNotExposedException());
+    }
   }
 
   void FollowRemoteStream(const std::string& url, SubscriptionMode subscription_mode = SubscriptionMode::Unchecked) {
     if (remote_follower_) {
       CURRENT_THROW(StreamIsAlreadyFollowingException());
-    }
-    if (Exists(borrowed_publisher_)) {
-      WaitForStopBeingMaster();
     }
 
     std::unique_lock<std::mutex> lock(mutex_);
@@ -518,6 +514,7 @@ class MasterFlipController final {
           url,
           stream_->Data()->Size(),
           subscription_mode);
+      borrowed_publisher_ = nullptr;
     } catch (current::Exception& e) {
       // Can't follow the remote stream for some reason,
       // restore the stream state and propagate the exception.
@@ -541,15 +538,6 @@ class MasterFlipController final {
     stream_->BecomeMasterStream();
   }
 
-  void WaitForStopBeingMaster() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    event_.wait(lock, [this]() { return !exposed_master_; });
-    if (master_flip_thread_ && master_flip_thread_->joinable()) {
-      master_flip_thread_->join();
-      master_flip_thread_ = nullptr;
-    }
-  }
-
   bool IsMasterStream() const { return stream_->IsMasterStream(); }
   stream_t& Stream() { return *Value(stream_); }
   const stream_t& Stream() const { return *Value(stream_); }
@@ -571,7 +559,7 @@ class MasterFlipController final {
     }
 
     std::unique_lock<std::mutex> lock(mutex_);
-    if (!exposed_master_) {
+    if (!exposed_via_http_ || Exists(borrowed_publisher_)) {
       r("", HTTPResponseCode.ServiceUnavailable);
       return;
     }
@@ -586,28 +574,28 @@ class MasterFlipController final {
         r("", HTTPResponseCode.BadRequest);
         return;
       }
-    } else if (flip_key != exposed_master_->flip_code) {
+    } else if (flip_key != exposed_via_http_->flip_code) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
 
-    const auto flip_started = exposed_master_->flip_started_callback_;
-    if (flip_started) {
-      lock.unlock();
-      flip_started();
-      lock.lock();
+    if (exposed_via_http_->flip_started_callback_) {
+      exposed_via_http_->flip_started_callback_();
     }
 
     const bool checked = r.url.query.has("checked");
     // Grab the publisher to make sure no one can publish into it.
     borrowed_publisher_ = stream_->BecomeFollowingStream();
-    event_.notify_all();
     // Send back the remaining diff.
     if (has_i) {
       r(CollectEntries(current::FromString<uint64_t>(r.url.query["i"]), checked), HTTPResponseCode.OK);
     } else {
       r(CollectEntries(std::chrono::microseconds(current::FromString<uint64_t>(r.url.query["since"])), checked),
         HTTPResponseCode.OK);
+    }
+
+    if (exposed_via_http_->flip_finished_callback_) {
+      std::thread(exposed_via_http_->flip_finished_callback_).detach();
     }
   }
 
@@ -645,27 +633,22 @@ class MasterFlipController final {
     return sstream.str();
   }
 
-  void WaitForMasterFlip(std::function<void()> flip_finished_callback) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    event_.wait(lock, [this]() { return Exists(borrowed_publisher_) || stopping_; });
-    exposed_master_ = nullptr;
-    if (flip_finished_callback && Exists(borrowed_publisher_)) {
-      lock.unlock();
-      flip_finished_callback();
-    }
-  }
-
-  struct ExposedMasterStream {
+  struct ExposedStreamState {
     uint16_t port_;
     std::string route_;
     std::function<void()> flip_started_callback_;
+    std::function<void()> flip_finished_callback_;
     uint64_t flip_code;
     HTTPRoutesScope routes_scope_;
 
-    ExposedMasterStream(uint16_t port, const std::string& route, std::function<void()> flip_started)
+    ExposedStreamState(uint16_t port,
+                       const std::string& route,
+                       std::function<void()> flip_started,
+                       std::function<void()> flip_finished)
         : port_(port),
           route_(route),
           flip_started_callback_(flip_started),
+          flip_finished_callback_(flip_finished),
           flip_code(random::CSRandomUInt64(0llu, ~0llu)) {}
   };
 
@@ -708,12 +691,9 @@ class MasterFlipController final {
 
   Owned<stream_t> stream_;
   Optional<Borrowed<publisher_t>> borrowed_publisher_;
-  std::unique_ptr<ExposedMasterStream> exposed_master_;
+  std::unique_ptr<ExposedStreamState> exposed_via_http_;
   std::unique_ptr<RemoteStreamFollower> remote_follower_;
   std::mutex mutex_;
-  std::condition_variable event_;
-  std::unique_ptr<std::thread> master_flip_thread_;
-  bool stopping_ = false;
 };
 
 }  // namespace stream
