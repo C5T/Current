@@ -1353,26 +1353,72 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
 
 TEST(Stream, MasterFollowerFlip) {
   current::time::ResetToZero();
+  
+  using namespace stream_unittest;
+  using stream_t = current::stream::Stream<Record, current::persistence::File>;
+  
+  const std::string stream1_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream1");
+  const std::string stream2_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream2");
+  const std::string stream3_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream3");
+  const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
+  const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
+  const auto stream3_file_remover = current::FileSystem::ScopedRmFile(stream3_file_name);
+  const auto port1 = FLAGS_stream_http_test_port;
+  const auto port2 = FLAGS_stream_http_test_port + 1;
+  const std::string base_url1 = Printf("http://localhost:%d/exposed", port1);
+  const std::string base_url2 = Printf("http://localhost:%d/exposed", port2);
+  
+  current::FileSystem::WriteStringToFile(stream_golden_data, stream1_file_name.c_str());
+  current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
+  auto flip_key1 = stream1.ExposeViaHTTP(port1, "/exposed");
+  current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
+  stream2.FollowRemoteStream(base_url1, current::stream::SubscriptionMode::Checked);
+  EXPECT_FALSE(stream2.IsMasterStream());
+  EXPECT_TRUE(stream1.IsMasterStream());
+
+  stream2.FlipToMaster(flip_key1);
+  EXPECT_TRUE(stream2.IsMasterStream());
+  EXPECT_FALSE(stream1.IsMasterStream());
+
+  const auto flip_key2 = stream2.ExposeViaHTTP(port2, "/exposed");
+  stream1.FollowRemoteStream(base_url2);
+  current::stream::MasterFlipController<stream_t> stream3(stream_t::CreateStream(stream3_file_name));
+  stream3.FollowRemoteStream(base_url1);
+  EXPECT_FALSE(stream1.IsMasterStream());
+  EXPECT_TRUE(stream2.IsMasterStream());
+  EXPECT_FALSE(stream3.IsMasterStream());
+
+  stream3.FlipToMaster(flip_key2);
+  EXPECT_FALSE(stream1.IsMasterStream());
+  EXPECT_FALSE(stream2.IsMasterStream());
+  EXPECT_TRUE(stream3.IsMasterStream());
+
+  EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream2_file_name));
+  EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream3_file_name));
+}
+
+TEST(Stream, MasterFollowerFlipExceptions) {
+  current::time::ResetToZero();
 
   using namespace stream_unittest;
   using stream_t = current::stream::Stream<Record, current::persistence::File>;
 
   const std::string stream1_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream1");
-  const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
-
   const std::string stream2_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream2");
-  const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
-
   const std::string stream3_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream3");
+  const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
+  const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
   const auto stream3_file_remover = current::FileSystem::ScopedRmFile(stream3_file_name);
+  const auto port1 = FLAGS_stream_http_test_port;
+  const auto port2 = FLAGS_stream_http_test_port + 1;
 
   current::FileSystem::WriteStringToFile(stream_golden_data, stream1_file_name.c_str());
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
   // After construction the stream is always should be master.
   EXPECT_TRUE(stream1.IsMasterStream());
-  auto flip_key1 = stream1.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed");
+  auto flip_key1 = stream1.ExposeViaHTTP(port1, "/exposed");
   // Cannot expose the same stream twice. Why not, BTW?
-  ASSERT_THROW(stream1.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed_twice"),
+  ASSERT_THROW(stream1.ExposeViaHTTP(port2, "/exposed_twice"),
                current::stream::StreamIsAlreadyExposedException);
   // Attempt to follow using invalid url should lead to an exception.
   ASSERT_THROW(stream1.FollowRemoteStream("fake_url"), current::net::SocketResolveAddressException);
@@ -1381,8 +1427,8 @@ TEST(Stream, MasterFollowerFlip) {
   // Stream should remain a valid master after all these unsuccessful calls.
   EXPECT_TRUE(stream1.IsMasterStream());
 
-  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
-  const std::string base_url2 = Printf("http://localhost:%d/exposed_follower", FLAGS_stream_http_test_port + 1);
+  const std::string base_url = Printf("http://localhost:%d/exposed", port1);
+  const std::string base_url2 = Printf("http://localhost:%d/exposed_follower", port2);
 
   current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
   // The second stream is master now, so it has no reason to flip.
@@ -1400,7 +1446,7 @@ TEST(Stream, MasterFollowerFlip) {
   // At last, this call should suceeded.
   stream2.FollowRemoteStream(base_url, current::stream::SubscriptionMode::Checked);
   // And the same stream can be exposed on a different endpoint.
-  const auto flip_key2 = stream2.ExposeViaHTTP(FLAGS_stream_http_test_port + 1, "/exposed_follower");
+  const auto flip_key2 = stream2.ExposeViaHTTP(port2, "/exposed_follower");
   // But it can't follow two remote streams simultaneously.
   ASSERT_THROW(stream2.FollowRemoteStream("fake_url"), current::stream::StreamIsAlreadyFollowingException);
 
@@ -1417,14 +1463,14 @@ TEST(Stream, MasterFollowerFlip) {
   // One flip is enough, the second should fail, because the stream is master now.
   ASSERT_THROW(stream2.FlipToMaster(flip_key1), current::stream::StreamIsAlreadyMasterException);
   // The stream was exposed before and it keeps that endpoints alive after the flip.
-  ASSERT_THROW(stream2.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed"),
+  ASSERT_THROW(stream2.ExposeViaHTTP(port1, "/exposed"),
                current::stream::StreamIsAlreadyExposedException);
   // The first stream can't flip, because it doesn't automatically start following the second stream
   // after the flip procedure.
   ASSERT_THROW(stream1.FlipToMaster(flip_key2), current::stream::StreamDoesNotFollowAnyoneException);
-  stream1.StopExposingViaHTTP(FLAGS_stream_http_test_port, "/exposed");
+  stream1.StopExposingViaHTTP(port1, "/exposed");
   stream1.FollowRemoteStream(base_url2);
-  flip_key1 = stream1.ExposeViaHTTP(FLAGS_stream_http_test_port, "/exposed");
+  flip_key1 = stream1.ExposeViaHTTP(port1, "/exposed");
 
   current::stream::MasterFlipController<stream_t> stream3(stream_t::CreateStream(stream3_file_name));
   stream3.FollowRemoteStream(base_url);
