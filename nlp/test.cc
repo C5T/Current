@@ -319,6 +319,11 @@ TEST(NLP, SchemaCompositionMechamisms) {
     EXPECT_EQ("ffbf2f", std::get<0>(Value(result)).rgb);
     EXPECT_EQ("sphere", std::get<1>(Value(result)).shape);
   }
+  {
+    const Optional<Variant<Color, Fruit>> result = JustMatchQuery(color_or_fruit, "orange");
+    ASSERT_TRUE(Exists(result));
+    EXPECT_TRUE(Exists<Color>(Value(result)));
+  }
 
   EXPECT_TRUE(MatchQueryIntoVector(color_or_fruit, "foo").empty());
   {

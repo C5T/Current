@@ -125,6 +125,7 @@ struct UnitImpl {
         throw SignalUnitEmitted();
       });
     } catch (const SignalUnitEmitted&) {
+      // Only a single `Unit` block should be emitted.
     }
   }
 };
@@ -277,13 +278,12 @@ struct AndImpl {
                 size_t begin,
                 size_t end,
                 std::function<void(const emitted_t&)> emit) const {
-    lhs_impl_.EvalImpl(
-        query, begin, end, [this, &query, begin, end, &emit](const typename LHS_IMPL::emitted_t& lhs) {
-          rhs_impl_.EvalImpl(query, begin, end, [&lhs, &emit](const typename RHS_IMPL::emitted_t& rhs) {
-            emit(std::tuple_cat(current::metaprogramming::wrapped_into_tuple_t<typename LHS_IMPL::emitted_t>(lhs),
-                                current::metaprogramming::wrapped_into_tuple_t<typename RHS_IMPL::emitted_t>(rhs)));
-          });
-        });
+    lhs_impl_.EvalImpl(query, begin, end, [this, &query, begin, end, &emit](const typename LHS_IMPL::emitted_t& lhs) {
+      rhs_impl_.EvalImpl(query, begin, end, [&lhs, &emit](const typename RHS_IMPL::emitted_t& rhs) {
+        emit(std::tuple_cat(current::metaprogramming::wrapped_into_tuple_t<typename LHS_IMPL::emitted_t>(lhs),
+                            current::metaprogramming::wrapped_into_tuple_t<typename RHS_IMPL::emitted_t>(rhs)));
+      });
+    });
   }
 };
 
@@ -359,7 +359,8 @@ struct SeqImplUnitInRHS {
                 std::function<void(const emitted_t&)> emit) const {
     for (size_t i = begin; i <= end; ++i) {
       // Rely on the fact that only a single `Unit` will be emitted.
-      // Start from testing the right hand side, as it's faster, and the order does not matter when a `Unit` present.
+      // Start from testing the right hand side, as it's faster, and the order does not matter when a `Unit` is
+      // present.
       rhs_impl_.EvalImpl(
           query, i, end, [this, &query, begin, i, &emit](const Unit&) { lhs_impl_.EvalImpl(query, begin, i, emit); });
     }
@@ -656,11 +657,17 @@ Optional<typename IMPL::emitted_t> JustMatchQuery(const SchemaBlock<ANNOTATED_QU
     });
     return nullptr;
   } catch (const SignalEvalSucceeded&) {
+    // Unlike `MatchQueryIntoVector`, return a single successfully evaluated result.
     return return_value;
   }
 }
 
 }  // namespace current::nlp
 }  // namespace current
+
+// `UseNLPSchema` injects names defined in the Current NLP schema into user's namespace.
+#define UseNLPSchema(schema_name) \
+  using namespace ::current::nlp; \
+  using namespace ::schema_name##_schema
 
 #endif  // NLP_NLP_H

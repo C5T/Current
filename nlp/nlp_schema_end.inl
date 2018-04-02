@@ -1,5 +1,4 @@
 #undef NLPSchema
-#undef UseNLPSchema
 
 #undef DefineAnnotation
 #undef DictionaryAnnotation

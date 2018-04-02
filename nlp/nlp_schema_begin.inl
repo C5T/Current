@@ -21,10 +21,6 @@
   }                                                                                          \
   namespace schema_name##_schema
 
-#define UseNLPSchema(schema_name) \
-  using namespace ::current::nlp; \
-  using namespace ::schema_name##_schema
-
 #define CustomAnnotation(...)                                                                                 \
   struct custom_annotator_initializer final {                                                                 \
     custom_annotator_initializer() {                                                                          \
