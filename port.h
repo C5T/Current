@@ -30,9 +30,6 @@ SOFTWARE.
 #ifndef CURRENT_PORT_H
 #define CURRENT_PORT_H
 
-// TODO(dkorolev): Needed by Nathan. Remove later.
-#include <cassert>
-
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 
 #ifdef _MSC_VER
