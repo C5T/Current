@@ -36,6 +36,7 @@ SOFTWARE.
 #include "json/primitives.h"
 #include "json/set.h"
 #include "json/struct.h"
+#include "json/tuple.h"
 #include "json/typeid.h"
 #include "json/unordered_map.h"
 #include "json/unordered_set.h"

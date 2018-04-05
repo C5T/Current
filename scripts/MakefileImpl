@@ -105,8 +105,10 @@ clean:
 	find . -type f -name 'current_build.h' | xargs rm -f
 	find . -type f -name 'current_build.h.*' | xargs rm -f
 	find . -type f -name '.current_std???.txt' | xargs rm -f
+	find . -type f -name '.current_*.g++.cc' | xargs rm -f
 	find . -type f -name core | xargs rm -f
-	find . -type f -name '.current_*.*.*' | xargs rm -f  # `make check`'s `*.clang++.cc.o` stuff.
+	find . -type f -name '.current_*.*g++.*' | xargs rm -f  # `make check`'s `*.[clan]g++.cc.*` stuff.
+	find . -type l -name '.current_*.*g++.*' | xargs rm -f  # `make check`'s `*.[clan]g++.cc.*` stuff.
 	find . -type l -name '.current_*' | xargs rm -f
 	find . -type l -name '.current_*.*' | xargs rm -f
 
