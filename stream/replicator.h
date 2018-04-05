@@ -93,14 +93,10 @@ class SubscribableRemoteStream final {
     std::string GetFlipToMasterURL(head_optidxts_t head_idxts, uint64_t key, SubscriptionMode mode) const {
       std::string opt;
       if (Exists(head_idxts.idxts)) {
-        const auto idxts = Value(head_idxts.idxts);
-        if (idxts.us == head_idxts.head)
-          opt = "i=" + current::ToString(idxts.index);
-        else
-          opt = "since=" + current::ToString(head_idxts.head);
-      } else {
-        opt = "i=0";
+        const auto last_idx = Value(head_idxts.idxts).index;
+        opt = "i=" + current::ToString(last_idx);
       }
+      opt += "&head=" + current::ToString(head_idxts.head);
       return url_ + "/become/master?" + opt + "&key=" + current::ToString(key) + "&clock=" +
              current::ToString(current::time::Now().count()) + (mode == SubscriptionMode::Checked ? "&checked" : "");
     }
@@ -380,9 +376,9 @@ class SubscribableRemoteStream final {
   template <typename F, ReplicationMode RM>
   void FlipToMaster(F& subscriber, head_optidxts_t head_idxts, uint64_t key, SubscriptionMode subscription_mode) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    auto response = HTTP(GET(stream_->GetFlipToMasterURL(head_idxts, key, subscription_mode)));
+    const auto response = HTTP(GET(stream_->GetFlipToMasterURL(head_idxts, key, subscription_mode)));
     if (response.code == HTTPResponseCode.OK) {
-      const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index : 0;
+      const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index + 1 : 0;
       RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx, []() {});
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
@@ -463,6 +459,30 @@ struct StreamReplicatorImpl {
 template <typename STREAM>
 using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
 
+struct MasterFlipRestrictions {
+  uint64_t max_index_diff_ = 0;
+  uint64_t max_diff_size_ = 0;
+  std::chrono::microseconds max_head_diff_ = std::chrono::microseconds(0);
+  std::chrono::microseconds max_clock_diff_ = std::chrono::microseconds(0);
+
+  MasterFlipRestrictions& SetMaxIndexDifference(uint64_t value) {
+    max_index_diff_ = value;
+    return *this;
+  }
+  MasterFlipRestrictions& SetMaxHeadDifference(std::chrono::microseconds value) {
+    max_head_diff_ = value;
+    return *this;
+  }
+  MasterFlipRestrictions& SetMaxClockDifference(std::chrono::microseconds value) {
+    max_clock_diff_ = value;
+    return *this;
+  }
+  MasterFlipRestrictions& SetMaxDiffSize(uint64_t bytes) {
+    max_diff_size_ = bytes;
+    return *this;
+  }
+};
+
 template <typename STREAM,
           typename REPLICATOR = StreamReplicator<STREAM>,
           ReplicationMode RM = ReplicationMode::Checked>
@@ -473,33 +493,11 @@ class MasterFlipController final {
   using entry_t = typename stream_t::entry_t;
   using publisher_t = typename stream_t::publisher_t;
 
-  struct FlipRestrictions {
-    uint64_t max_index_diff_ = 0;
-    uint64_t max_diff_size_ = 0;
-    std::chrono::microseconds max_head_diff_ = std::chrono::microseconds(0);
-    std::chrono::microseconds max_clock_diff_ = std::chrono::microseconds(0);
-
-    FlipRestrictions& SetMaxIndexDifference(uint64_t value) {
-      max_index_diff_ = value;
-      return *this;
-    }
-    FlipRestrictions& SetMaxHeadDifference(std::chrono::microseconds value) {
-      max_head_diff_ = value;
-      return *this;
-    }
-    FlipRestrictions& SetMaxClockDifference(std::chrono::microseconds value) {
-      max_clock_diff_ = value;
-      return *this;
-    }
-    FlipRestrictions& SetMaxDiffSize(uint64_t bytes) { max_diff_size_ = bytes; }
-  };
-
   MasterFlipController(Owned<STREAM>&& stream) : stream_(std::move(stream)) {}
-  MasterFlipController(Owned<STREAM>&& stream, FlipRestrictions&& restrictions)
-      : stream_(std::move(stream)), flip_restrictions_(std::move(restrictions)) {}
 
   uint64_t ExposeViaHTTP(uint16_t port,
                          const std::string& route,
+                         MasterFlipRestrictions restrictions = MasterFlipRestrictions(),
                          std::function<void()> flip_started = nullptr,
                          std::function<void()> flip_finished = nullptr,
                          std::function<void()> flip_canceled = nullptr) {
@@ -508,12 +506,13 @@ class MasterFlipController final {
       CURRENT_THROW(StreamIsAlreadyExposedException());
     }
 
-    exposed_via_http_ = std::make_unique<ExposedStreamState>(port, route, flip_started, flip_finished, flip_canceled);
+    exposed_via_http_ = std::make_unique<ExposedStreamState>(
+        port, route, std::move(restrictions), flip_started, flip_finished, flip_canceled);
     exposed_via_http_->routes_scope_ +=
         HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_)) +
         HTTP(port).Register(
             route + "/become/master", URLPathArgs::CountMask::None, [this](Request r) { MasterFlipRequest(r); });
-    return exposed_via_http_->flip_code;
+    return exposed_via_http_->flip_key_;
   }
 
   void StopExposingViaHTTP(uint16_t port, const std::string& route) {
@@ -531,7 +530,7 @@ class MasterFlipController final {
     }
 
     std::unique_lock<std::mutex> lock(mutex_);
-    bool has_borrowed_publisher = Exists(borrowed_publisher_);
+    const bool has_borrowed_publisher = Exists(borrowed_publisher_);
     try {
       remote_follower_ = std::make_unique<RemoteStreamFollower>(
           has_borrowed_publisher ? std::move(Value(borrowed_publisher_)) : stream_->BecomeFollowingStream(),
@@ -567,6 +566,8 @@ class MasterFlipController final {
   const stream_t& Stream() const { return *Value(stream_); }
   stream_t& operator*() { return *Value(stream_); }
   const stream_t& operator*() const { return *Value(stream_); }
+  stream_t* operator->() { return stream_.operator->(); }
+  const stream_t* operator->() const { return stream_.operator->(); }
 
  private:
   void MasterFlipRequest(Request& r) {
@@ -575,30 +576,21 @@ class MasterFlipController final {
       return;
     }
 
-    bool has_i = r.url.query.has("i");
-    bool has_since = r.url.query.has("since");
-    if ((!has_i && !has_since) || !r.url.query.has("key")) {
+    if (!r.url.query.has("head") || !r.url.query.has("key")) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
-    const auto start_index = has_i ? current::FromString<uint64_t>(r.url.query["i"]) : 0;
-    const auto start_time =
-        std::chrono::microseconds(has_since ? current::FromString<uint64_t>(r.url.query["since"]) : 0);
+    const bool has_i = r.url.query.has("i");
+    const auto client_head = std::chrono::microseconds(current::FromString<int64_t>(r.url.query["head"]));
+    const auto next_index = has_i ? current::FromString<uint64_t>(r.url.query["i"]) + 1 : 0;
     const auto flip_key = current::FromString<uint64_t>(r.url.query["key"]);
 
     const auto head_idxts = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
-    if (has_i && start_index != 0 && (!Exists(head_idxts.idxts) || start_index > Value(head_idxts.idxts).index)) {
+    if (client_head > head_idxts.head) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
-    if (has_since && start_time > head_idxts.head) {
-      r("", HTTPResponseCode.BadRequest);
-      return;
-    }
-    const auto max_clock_diff = flip_restrictions_.max_clock_diff_.count();
-    if (max_clock_diff > 0 &&
-        (!r.url.query.has("clock") ||
-         abs(current::FromString<int64_t>(r.url.query["clock"]) - current::time::Now().count()) > max_clock_diff)) {
+    if (has_i && (!Exists(head_idxts.idxts) || next_index > Value(head_idxts.idxts).index + 1)) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
@@ -606,6 +598,14 @@ class MasterFlipController final {
     std::unique_lock<std::mutex> lock(mutex_);
     if (!exposed_via_http_ || Exists(borrowed_publisher_)) {
       r("", HTTPResponseCode.ServiceUnavailable);
+      return;
+    }
+    const auto& restrictions = exposed_via_http_->flip_restrictions_;
+    const auto max_clock_diff = restrictions.max_clock_diff_.count();
+    if (max_clock_diff > 0 &&
+        (!r.url.query.has("clock") ||
+         abs(current::FromString<int64_t>(r.url.query["clock"]) - current::time::Now().count()) > max_clock_diff)) {
+      r("", HTTPResponseCode.BadRequest);
       return;
     }
     if (remote_follower_) {
@@ -617,7 +617,7 @@ class MasterFlipController final {
         r("", HTTPResponseCode.BadRequest);
         return;
       }
-    } else if (flip_key != exposed_via_http_->flip_code) {
+    } else if (flip_key != exposed_via_http_->flip_key_) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
@@ -629,9 +629,10 @@ class MasterFlipController final {
     const bool checked = r.url.query.has("checked");
     // Grab the publisher to make sure no one can publish into it.
     borrowed_publisher_ = stream_->BecomeFollowingStream();
+
     // Send back the remaining diff.
-    auto validated = has_i ? ValidateAndSendDiff(r, start_index, checked) : ValidateAndSendDiff(r, start_time, checked);
-    if (!validated) {
+    const auto succeeded = ValidateAndSendDiff(r, next_index, client_head, checked);
+    if (!succeeded) {
       // If something went wrong, restore the original state.
       borrowed_publisher_ = nullptr;
       stream_->BecomeMasterStream();
@@ -644,60 +645,21 @@ class MasterFlipController final {
     }
   }
 
-  bool ValidateAndSendDiff(Request& r, std::chrono::microseconds since, bool checked_subscription) const {
+  bool ValidateAndSendDiff(Request& r,
+                           uint64_t start_idx,
+                           std::chrono::microseconds head_us,
+                           bool checked_subscription) const {
     const auto head_idxts = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
-    const auto max_head_diff = flip_restrictions_.max_head_diff_;
-    const auto max_diff_size = flip_restrictions_.max_diff_size_;
-    auto max_index_diff = flip_restrictions_.max_index_diff_;
+    const auto& restrictions = exposed_via_http_->flip_restrictions_;
+    const auto max_index_diff = restrictions.max_index_diff_;
+    const auto max_diff_size = restrictions.max_diff_size_;
+    const auto max_head_diff = restrictions.max_head_diff_;
 
-    if (max_head_diff.count() > 0 && head_idxts.head - since > max_head_diff) {
+    if (max_index_diff != 0 && start_idx != 0 && Value(head_idxts.idxts).index > start_idx + max_index_diff - 1) {
       r("", HTTPResponseCode.BadRequest);
       return false;
     }
-    std::stringstream sstream(std::ios::out | std::ios::app);
-    if (checked_subscription) {
-      for (const auto& e : stream_->Data()->Iterate(since)) {
-        if (max_index_diff != 0 && Value(head_idxts.idxts).index - e.idx_ts.index > max_index_diff) {
-          r("", HTTPResponseCode.BadRequest);
-          return false;
-        }
-        max_index_diff = 0;
-        sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
-        if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
-          r("", HTTPResponseCode.BadRequest);
-          return false;
-        }
-      }
-    } else {
-      for (const auto& e : stream_->Data()->IterateUnsafe(since)) {
-        if (max_index_diff != 0) {
-          auto idxts = ParseJSON<idxts_t>(e);
-          if (Value(head_idxts.idxts).index - idxts.index > max_index_diff) {
-            r("", HTTPResponseCode.BadRequest);
-            return false;
-          }
-          max_index_diff = 0;
-        }
-        sstream << e << '\n';
-        if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
-          r("", HTTPResponseCode.BadRequest);
-          return false;
-        }
-      }
-    }
-    if (since < head_idxts.head && (!Exists(head_idxts.idxts) || head_idxts.head > Value(head_idxts.idxts).us))
-      sstream << JSON<JSONFormat::Minimalistic>(ts_only_t(head_idxts.head)) << '\n';
-    r(sstream.str(), HTTPResponseCode.OK);
-    return true;
-  }
-
-  bool ValidateAndSendDiff(Request& r, uint64_t start_idx, bool checked_subscription) const {
-    const auto head_idxts = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
-    const auto max_index_diff = flip_restrictions_.max_index_diff_;
-    const auto max_diff_size = flip_restrictions_.max_diff_size_;
-    auto max_head_diff = flip_restrictions_.max_head_diff_;
-
-    if (max_index_diff != 0 && start_idx != 0 && Value(head_idxts.idxts).index - start_idx > max_index_diff) {
+    if (max_head_diff.count() > 0 && head_idxts.head > head_us + max_head_diff) {
       r("", HTTPResponseCode.BadRequest);
       return false;
     }
@@ -705,12 +667,9 @@ class MasterFlipController final {
     std::stringstream sstream(std::ios::out | std::ios::app);
     if (checked_subscription) {
       for (const auto& e : stream_->Data()->Iterate(start_idx)) {
-        if (max_head_diff.count() > 0) {
-          if (head_idxts.head - e.idx_ts.us > max_head_diff) {
-            r("", HTTPResponseCode.BadRequest);
-            return false;
-          }
-          max_head_diff = std::chrono::microseconds(0);
+        if (head_us >= e.idx_ts.us) {
+          r("", HTTPResponseCode.BadRequest);
+          return false;
         }
         sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
         if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
@@ -719,15 +678,13 @@ class MasterFlipController final {
         }
       }
     } else {
+      auto us_to_check_with = head_us;
       for (const auto& e : stream_->Data()->IterateUnsafe(start_idx)) {
-        if (max_head_diff.count() > 0) {
-          auto idxts = ParseJSON<idxts_t>(e);
-          if (head_idxts.head - idxts.us > max_head_diff) {
-            r("", HTTPResponseCode.BadRequest);
-            return false;
-          }
-          max_head_diff = std::chrono::microseconds(0);
+        if (us_to_check_with.count() >= 0 && us_to_check_with >= ParseJSON<idxts_t>(e).us) {
+          r("", HTTPResponseCode.BadRequest);
+          return false;
         }
+        us_to_check_with = std::chrono::microseconds(-1);
         sstream << e << '\n';
         if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
           r("", HTTPResponseCode.BadRequest);
@@ -735,7 +692,7 @@ class MasterFlipController final {
         }
       }
     }
-    if (head_idxts.head.count() >= 0 && (!Exists(head_idxts.idxts) || head_idxts.head > Value(head_idxts.idxts).us))
+    if (head_idxts.head > head_us && (!Exists(head_idxts.idxts) || head_idxts.head > Value(head_idxts.idxts).us))
       sstream << JSON<JSONFormat::Minimalistic>(ts_only_t(head_idxts.head)) << '\n';
     r(sstream.str(), HTTPResponseCode.OK);
     return true;
@@ -744,23 +701,26 @@ class MasterFlipController final {
   struct ExposedStreamState {
     uint16_t port_;
     std::string route_;
+    uint64_t flip_key_;
+    MasterFlipRestrictions flip_restrictions_;
     std::function<void()> flip_started_callback_;
     std::function<void()> flip_finished_callback_;
     std::function<void()> flip_canceled_callback_;
-    uint64_t flip_code;
     HTTPRoutesScope routes_scope_;
 
     ExposedStreamState(uint16_t port,
                        const std::string& route,
+                       MasterFlipRestrictions&& restrictions,
                        std::function<void()> flip_started,
                        std::function<void()> flip_finished,
                        std::function<void()> flip_canceled)
         : port_(port),
           route_(route),
+          flip_key_(random::CSRandomUInt64(0llu, ~0llu)),
+          flip_restrictions_(std::move(restrictions)),
           flip_started_callback_(flip_started),
           flip_finished_callback_(flip_finished),
-          flip_canceled_callback_(flip_canceled),
-          flip_code(random::CSRandomUInt64(0llu, ~0llu)) {}
+          flip_canceled_callback_(flip_canceled) {}
   };
 
   struct RemoteStreamFollower {
@@ -783,8 +743,14 @@ class MasterFlipController final {
       // terminate the remote subscription.
       subscriber_scope_ = nullptr;
       // force the remote stream to send the rest of its data and destroy itself.
-      remote_stream_.template FlipToMaster<replicator_t, RM>(
-          replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), key, subscription_mode_);
+      try {
+        remote_stream_.template FlipToMaster<replicator_t, RM>(
+            replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), key, subscription_mode_);
+      } catch (current::Exception& e) {
+        // restore the subscription if the flip failed.
+        subscriber_scope_ = Subscribe(stream.Data()->Size());
+        throw;
+      }
     }
 
    private:
@@ -804,7 +770,6 @@ class MasterFlipController final {
   Optional<Borrowed<publisher_t>> borrowed_publisher_;
   std::unique_ptr<ExposedStreamState> exposed_via_http_;
   std::unique_ptr<RemoteStreamFollower> remote_follower_;
-  FlipRestrictions flip_restrictions_;
   std::mutex mutex_;
 };
 
