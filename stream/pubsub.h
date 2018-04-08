@@ -435,7 +435,15 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     if (time_to_terminate_) {
       return ss::EntryResponse::Done;
     }
+    // Respect `since` and `recent`.
+    if (!serving_ && from_timestamp_.count() > 0 && us >= from_timestamp_) {
+      serving_ = true;
+    }
     if (serving_) {
+      // If `period` is set, set the maximum possible timestamp.
+      if (params_.period.count() && to_timestamp_.count() == 0u) {
+        to_timestamp_ = us + params_.period;
+      }
       // Stop serving if the limit on timestamp is exceeded.
       if (to_timestamp_.count() && us > to_timestamp_) {
         return ss::EntryResponse::Done;
