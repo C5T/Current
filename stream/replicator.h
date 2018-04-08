@@ -82,8 +82,9 @@ class SubscribableRemoteStream final {
       }
     }
 
-    std::string GetURLToSubscribe(uint64_t index, SubscriptionMode mode) const {
-      return url_ + "?i=" + current::ToString(index) + (mode == SubscriptionMode::Checked ? "&checked" : "");
+    std::string GetURLToSubscribe(uint64_t index, std::chrono::microseconds from_us, SubscriptionMode mode) const {
+      return url_ + "?i=" + current::ToString(index) + (mode == SubscriptionMode::Checked ? "&checked" : "") +
+             (from_us.count() > 0 ? "&since=" + current::ToString(from_us) : "");
     }
 
     std::string GetURLToTerminate(const std::string& subscription_id) const {
@@ -114,10 +115,12 @@ class SubscribableRemoteStream final {
     RemoteStreamSubscriber(Borrowed<RemoteStream> remote_stream,
                            F& subscriber,
                            uint64_t start_idx,
-                           std::function<void()> destruction_callback)
+                           std::chrono::microseconds from_us = std::chrono::microseconds(0),
+                           std::function<void()> destruction_callback = nullptr)
         : borrowed_remote_stream_(std::move(remote_stream), destruction_callback),
           subscriber_(subscriber),
           index_(start_idx),
+          from_us_(from_us),
           unused_idxts_() {}
 
     void PassChunkToSubscriber(const std::string& chunk) {
@@ -160,6 +163,7 @@ class SubscribableRemoteStream final {
     BorrowedWithCallback<RemoteStream> borrowed_remote_stream_;
     F& subscriber_;
     uint64_t index_;
+    std::chrono::microseconds from_us_;
     const idxts_t unused_idxts_;
     std::string carried_over_data_;
 
@@ -173,21 +177,23 @@ class SubscribableRemoteStream final {
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
       if (Exists(tsoptidx.index)) {
         const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-        if (split.size() != 2u || idxts.index != index_) {
+        if (split.size() != 2u || idxts.index != index_ || (from_us_.count() > 0 && idxts.us < from_us_)) {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
         ++index_;
+        from_us_ = std::chrono::microseconds(0);
         if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
       } else {
-        if (split.size() != 1u) {
+        if (split.size() != 1u || (from_us_.count() > 0 && tsoptidx.us < from_us_)) {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
+        from_us_ = tsoptidx.us + std::chrono::microseconds(1);
       }
     }
 
@@ -198,11 +204,13 @@ class SubscribableRemoteStream final {
         if (subscriber_(raw_log_line, index_++, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
+        from_us_ = std::chrono::microseconds(0);
       } else {
         const auto tsoptidx = ParseJSON<ts_only_t>(raw_log_line);
         if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
+        from_us_ = tsoptidx.us + std::chrono::microseconds(1);
       }
     }
   };
@@ -216,9 +224,10 @@ class SubscribableRemoteStream final {
     RemoteSubscriberThread(Borrowed<RemoteStream> remote_stream,
                            F& subscriber,
                            uint64_t start_idx,
+                           std::chrono::microseconds from_us,
                            SubscriptionMode subscription_mode,
                            std::function<void()> done_callback)
-        : base_subscriber_t(remote_stream, subscriber, start_idx, [this]() { TerminateSubscription(); }),
+        : base_subscriber_t(remote_stream, subscriber, start_idx, from_us, [this]() { TerminateSubscription(); }),
           valid_(false),
           done_callback_(done_callback),
           subscription_mode_(subscription_mode),
@@ -266,7 +275,7 @@ class SubscribableRemoteStream final {
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->index_, subscription_mode_),
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->index_, this->from_us_, subscription_mode_),
                           [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                           [this](const std::string& chunk_body) { OnChunk(chunk_body); },
                           [this]() {}));
@@ -276,7 +285,7 @@ class SubscribableRemoteStream final {
           if (++consecutive_malformed_chunks_count_ == 3) {
             fprintf(stderr,
                     "Constantly receiving malformed chunks from \"%s\"\n",
-                    bare_stream.GetURLToSubscribe(this->index_, subscription_mode_).c_str());
+                    bare_stream.GetURLToSubscribe(this->index_, this->from_us_, subscription_mode_).c_str());
           }
         } catch (current::Exception&) {
         }
@@ -341,10 +350,11 @@ class SubscribableRemoteStream final {
     RemoteSubscriberScopeImpl(Borrowed<RemoteStream> remote_stream,
                               F& subscriber,
                               uint64_t start_idx,
+                              std::chrono::microseconds from_us,
                               SubscriptionMode subscription_mode,
                               std::function<void()> done_callback)
         : base_t(std::move(std::make_unique<subscriber_thread_t>(
-              std::move(remote_stream), subscriber, start_idx, subscription_mode, done_callback))) {}
+              std::move(remote_stream), subscriber, start_idx, from_us, subscription_mode, done_callback))) {}
   };
   template <typename F>
   using RemoteSubscriberScope = RemoteSubscriberScopeImpl<F, entry_t, ReplicationMode::Checked>;
@@ -367,10 +377,11 @@ class SubscribableRemoteStream final {
   template <typename F>
   RemoteSubscriberScope<F> Subscribe(F& subscriber,
                                      uint64_t start_idx = 0u,
+                                     std::chrono::microseconds from_us = std::chrono::microseconds(0),
                                      SubscriptionMode subscription_mode = SubscriptionMode::Unchecked,
                                      std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    return RemoteSubscriberScope<F>(stream_, subscriber, start_idx, subscription_mode, done_callback);
+    return RemoteSubscriberScope<F>(stream_, subscriber, start_idx, from_us, subscription_mode, done_callback);
   }
 
   template <typename F, ReplicationMode RM>
@@ -390,10 +401,11 @@ class SubscribableRemoteStream final {
   template <typename F>
   RemoteSubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
                                                        uint64_t start_idx = 0u,
+                                                       std::chrono::microseconds from_us = std::chrono::microseconds(0),
                                                        SubscriptionMode subscription_mode = SubscriptionMode::Unchecked,
                                                        std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
-    return RemoteSubscriberScopeUnchecked<F>(stream_, subscriber, start_idx, subscription_mode, done_callback);
+    return RemoteSubscriberScopeUnchecked<F>(stream_, subscriber, start_idx, from_us, subscription_mode, done_callback);
   }
 
   uint64_t GetNumberOfEntries() const {
