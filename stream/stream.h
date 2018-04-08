@@ -273,6 +273,7 @@ class Stream final {
     BorrowedWithCallback<impl_t> impl_;
     F& subscriber_;
     const uint64_t begin_idx_;
+    const std::chrono::microseconds from_us_;
     std::thread thread_;
 
     SubscriberThreadInstance() = delete;
@@ -285,6 +286,7 @@ class Stream final {
     SubscriberThreadInstance(Borrowed<impl_t> impl,
                              F& subscriber,
                              uint64_t begin_idx,
+                             std::chrono::microseconds from_us,
                              std::function<void()> done_callback)
         : this_is_valid_(false),
           done_callback_(done_callback),
@@ -298,6 +300,7 @@ class Stream final {
                 }),
           subscriber_(subscriber),
           begin_idx_(begin_idx),
+          from_us_(from_us),
           thread_(&SubscriberThreadInstance::Thread, this) {
       // Must guard against the constructor of `BorrowedWithCallback<impl_t> impl_` throwing.
       // NOTE(dkorolev): This is obsolete now, but keeping the logic for now, to keep it safe. -- D.K.
@@ -374,7 +377,7 @@ class Stream final {
     }
 
     void ThreadImpl(uint64_t begin_idx) {
-      auto head = std::chrono::microseconds(-1);
+      auto head = from_us_ - std::chrono::microseconds(1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
       while (true) {
@@ -394,7 +397,7 @@ class Stream final {
             index = size;
             head = Value(head_idx.idxts).us;
           }
-          if (size > begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
+          if (size >= begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
             return;
           }
           head = head_idx.head;
@@ -424,10 +427,13 @@ class Stream final {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F, SM>;
 
-    SubscriberScopeImpl(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
-        : base_t(
-              std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
-    }
+    SubscriberScopeImpl(Borrowed<impl_t> impl,
+                        F& subscriber,
+                        uint64_t begin_idx,
+                        std::chrono::microseconds from_us,
+                        std::function<void()> done_callback)
+        : base_t(std::move(
+              std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, from_us, done_callback))) {}
 
     SubscriberScopeImpl(SubscriberScopeImpl&&) = default;
     SubscriberScopeImpl& operator=(SubscriberScopeImpl&&) = default;
@@ -445,16 +451,18 @@ class Stream final {
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
                                                    uint64_t begin_idx = 0u,
+                                                   std::chrono::microseconds from_us = std::chrono::microseconds(0),
                                                    std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(impl_, subscriber, begin_idx, done_callback);
+    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(impl_, subscriber, begin_idx, from_us, done_callback);
   }
 
   template <typename F>
   SubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
                                                  uint64_t begin_idx = 0u,
+                                                 std::chrono::microseconds from_us = std::chrono::microseconds(0),
                                                  std::function<void()> done_callback = nullptr) const {
-    return SubscriberScopeUnchecked<F>(impl_, subscriber, begin_idx, done_callback);
+    return SubscriberScopeUnchecked<F>(impl_, subscriber, begin_idx, from_us, done_callback);
   }
 
   // Generates a random HTTP subscription.
@@ -579,9 +587,9 @@ class Stream final {
       };
       current::stream::SubscriberScope http_chunked_subscriber_scope =
           request_params.checked ? static_cast<current::stream::SubscriberScope>(
-                                       Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
-                                 : static_cast<current::stream::SubscriberScope>(
-                                       SubscribeUnchecked(*http_chunked_subscriber, begin_idx, done_callback));
+                                       Subscribe(*http_chunked_subscriber, begin_idx, from_timestamp, done_callback))
+                                 : static_cast<current::stream::SubscriberScope>(SubscribeUnchecked(
+                                       *http_chunked_subscriber, begin_idx, from_timestamp, done_callback));
 
       {
         std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);
