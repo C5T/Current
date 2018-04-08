@@ -1513,7 +1513,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     while (stream2->Data()->Size() != stream1->Data()->Size()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(stream2->Data()->Size(), 2u);
+    EXPECT_EQ(2u, stream2->Data()->Size());
     ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
     EXPECT_TRUE(flip_started_called);
     EXPECT_FALSE(flip_finished_called);
@@ -1522,7 +1522,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     while (stream2->Data()->Size() != stream1->Data()->Size()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(stream2->Data()->Size(), 4u);
+    EXPECT_EQ(4u, stream2->Data()->Size());
     stream2.FlipToMaster(flip_key);
     EXPECT_TRUE(flip_started_called);
     EXPECT_TRUE(flip_finished_called);
@@ -1560,8 +1560,8 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(stream2->Data()->Size(), 4u);
-    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(49));
+    EXPECT_EQ(4u, stream2->Data()->Size());
+    EXPECT_EQ(std::chrono::microseconds(49), stream2->Data()->CurrentHead());
     ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
     EXPECT_TRUE(flip_started_called);
     EXPECT_FALSE(flip_finished_called);
@@ -1570,8 +1570,8 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(stream2->Data()->Size(), 4u);
-    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(70));
+    EXPECT_EQ(4u, stream2->Data()->Size());
+    EXPECT_EQ(std::chrono::microseconds(70), stream2->Data()->CurrentHead());
     stream2.FlipToMaster(flip_key);
     EXPECT_TRUE(flip_started_called);
     EXPECT_TRUE(flip_finished_called);
@@ -1612,8 +1612,8 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(stream2->Data()->Size(), 4u);
-    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(70));
+    EXPECT_EQ(4u, stream2->Data()->Size());
+    EXPECT_EQ(std::chrono::microseconds(70), stream2->Data()->CurrentHead());
     ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
     EXPECT_TRUE(flip_started_called);
     EXPECT_FALSE(flip_finished_called);
@@ -1622,11 +1622,11 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
     }
-    EXPECT_EQ(stream2->Data()->Size(), 5u);
-    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(80));
+    EXPECT_EQ(5u, stream2->Data()->Size());
+    EXPECT_EQ(std::chrono::microseconds(80), stream2->Data()->CurrentHead());
     stream2.FlipToMaster(flip_key);
-    EXPECT_EQ(stream2->Data()->Size(), 6u);
-    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(90));
+    EXPECT_EQ(6u, stream2->Data()->Size());
+    EXPECT_EQ(std::chrono::microseconds(90), stream2->Data()->CurrentHead());
     EXPECT_TRUE(flip_started_called);
     EXPECT_TRUE(flip_finished_called);
     EXPECT_FALSE(flip_canceled_called);
