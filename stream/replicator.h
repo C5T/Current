@@ -390,7 +390,7 @@ class SubscribableRemoteStream final {
     const auto response = HTTP(GET(stream_->GetFlipToMasterURL(head_idxts, key, subscription_mode)));
     if (response.code == HTTPResponseCode.OK) {
       const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index + 1 : 0;
-      RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx, []() {});
+      RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx);
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
       const auto response_string = ToString(response.code) + " " + HTTPResponseCodeAsString(response.code);
@@ -548,6 +548,7 @@ class MasterFlipController final {
           has_borrowed_publisher ? std::move(Value(borrowed_publisher_)) : stream_->BecomeFollowingStream(),
           url,
           stream_->Data()->Size(),
+          stream_->Data()->CurrentHead() + std::chrono::microseconds(1),
           subscription_mode);
       borrowed_publisher_ = nullptr;
     } catch (current::Exception& e) {
@@ -745,11 +746,12 @@ class MasterFlipController final {
     RemoteStreamFollower(Borrowed<publisher_t>&& publisher,
                          const std::string& url,
                          uint64_t start_idx,
+                         std::chrono::microseconds from_us,
                          SubscriptionMode subscription_mode)
         : subscription_mode_(subscription_mode),
           remote_stream_(url),
           replicator_(std::move(publisher)),
-          subscriber_scope_(Subscribe(start_idx)) {}
+          subscriber_scope_(Subscribe(start_idx, from_us)) {}
 
     void PerformMasterFlip(const stream_t& stream, uint64_t key) {
       // terminate the remote subscription.
@@ -760,21 +762,25 @@ class MasterFlipController final {
             replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), key, subscription_mode_);
       } catch (current::Exception& e) {
         // restore the subscription if the flip failed.
-        subscriber_scope_ = Subscribe(stream.Data()->Size());
+        subscriber_scope_ =
+            Subscribe(stream.Data()->Size(), stream.Data()->CurrentHead() + std::chrono::microseconds(1));
         throw;
       }
     }
 
    private:
     template <ReplicationMode MODE = RM>
-    ENABLE_IF<MODE == ReplicationMode::Checked, std::unique_ptr<SubscriberScope>> Subscribe(uint64_t start_idx) {
+    ENABLE_IF<MODE == ReplicationMode::Checked, std::unique_ptr<SubscriberScope>> Subscribe(
+        uint64_t start_idx, std::chrono::microseconds from_us) {
       using scope_t = typename remote_stream_t::template RemoteSubscriberScope<replicator_t>;
-      return std::make_unique<scope_t>(remote_stream_.Subscribe(replicator_, start_idx, subscription_mode_));
+      return std::make_unique<scope_t>(remote_stream_.Subscribe(replicator_, start_idx, from_us, subscription_mode_));
     }
     template <ReplicationMode MODE = RM>
-    ENABLE_IF<MODE == ReplicationMode::Unchecked, std::unique_ptr<SubscriberScope>> Subscribe(uint64_t start_idx) {
+    ENABLE_IF<MODE == ReplicationMode::Unchecked, std::unique_ptr<SubscriberScope>> Subscribe(
+        uint64_t start_idx, std::chrono::microseconds from_us) {
       using scope_t = typename remote_stream_t::template RemoteSubscriberScopeUnchecked<replicator_t>;
-      return std::make_unique<scope_t>(remote_stream_.SubscribeUnchecked(replicator_, start_idx, subscription_mode_));
+      return std::make_unique<scope_t>(
+          remote_stream_.SubscribeUnchecked(replicator_, start_idx, from_us, subscription_mode_));
     }
   };
 
