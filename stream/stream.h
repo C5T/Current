@@ -565,9 +565,8 @@ class Stream final {
       }
 
       if (from_timestamp.count() > 0) {
-        const auto idx_by_timestamp = std::min(
-            borrowed_impl->persister.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
-            stream_size);
+        const auto idx_by_timestamp =
+            std::min(borrowed_impl->persister.IndexRangeByTimestampRange(from_timestamp).first, stream_size);
         begin_idx = std::max(begin_idx, idx_by_timestamp);
       }
 

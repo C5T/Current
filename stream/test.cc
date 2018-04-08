@@ -1447,10 +1447,37 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Unchecked>(
                      dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Unchecked)),
                  current::stream::RemoteStreamRefusedFlipRequestException);
+    ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Checked>(
+                     dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
+                 current::stream::RemoteStreamRefusedFlipRequestException);
 
     // Restriction 2: The last index of the follower shouldn't be greater than the one of the master.
     head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
     ++Value(head_idxts.idxts).index;
+    ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Unchecked>(
+                     dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Unchecked)),
+                 current::stream::RemoteStreamRefusedFlipRequestException);
+    ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Checked>(
+                     dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
+                 current::stream::RemoteStreamRefusedFlipRequestException);
+
+    // Restriction 3: The Head of the follower should be less than the timestamp of the next entry.
+    head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
+    --Value(head_idxts.idxts).index;
+    ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Unchecked>(
+                     dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Unchecked)),
+                 current::stream::RemoteStreamRefusedFlipRequestException);
+    ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Checked>(
+                     dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
+                 current::stream::RemoteStreamRefusedFlipRequestException);
+
+    // Restriction 4: The Head of the follower should be greater or equal than the timestamp of the last entry.
+    head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
+    Value(head_idxts.idxts).us -= std::chrono::microseconds(10);
+    head_idxts.head -= std::chrono::microseconds(10);
+    ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Unchecked>(
+                     dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Unchecked)),
+                 current::stream::RemoteStreamRefusedFlipRequestException);
     ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Checked>(
                      dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
                  current::stream::RemoteStreamRefusedFlipRequestException);
@@ -1553,6 +1580,96 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     stream1.FollowRemoteStream(base_url2, current::stream::SubscriptionMode::Checked);
     stream1.FlipToMaster(flip_key);
     stream1.StopExposingViaHTTP(port1, "/exposed");
+  }
+
+  // Custom restriction 3: maximum diff size in bytes between the master and the follower.
+  {
+    const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
+    current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
+    bool flip_started_called = false;
+    bool flip_finished_called = false;
+    bool flip_canceled_called = false;
+
+    // Calculate the next entry size (2 stays for \t and \n) to make the restriction just 1 byte smaller.
+    const auto entry_size = JSON(Record(55)).length() + JSON(idxts_t(4, std::chrono::microseconds(80))).length() + 2;
+
+    auto flip_key = stream1.ExposeViaHTTP(port1,
+                                          "/exposed",
+                                          current::stream::MasterFlipRestrictions().SetMaxDiffSize(entry_size - 1),
+                                          [&]() {
+                                            flip_started_called = true;
+                                            if (stream1->Data()->CurrentHead() < std::chrono::microseconds(80)) {
+                                              current::time::SetNow(std::chrono::microseconds(80));
+                                              stream1->Publisher()->Publish(Record(55));
+                                            } else if (stream1->Data()->CurrentHead() < std::chrono::microseconds(90)) {
+                                              current::time::SetNow(std::chrono::microseconds(90));
+                                              stream1->Publisher()->Publish(Record(6));
+                                            }
+                                          },
+                                          [&]() { flip_finished_called = true; },
+                                          [&]() { flip_canceled_called = true; });
+    stream2.FollowRemoteStream(base_url1, current::stream::SubscriptionMode::Checked);
+    while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
+      std::this_thread::yield();
+    }
+    EXPECT_EQ(stream2->Data()->Size(), 4u);
+    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(70));
+    ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
+    EXPECT_TRUE(flip_started_called);
+    EXPECT_FALSE(flip_finished_called);
+    EXPECT_TRUE(flip_canceled_called);
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
+    while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
+      std::this_thread::yield();
+    }
+    EXPECT_EQ(stream2->Data()->Size(), 5u);
+    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(80));
+    stream2.FlipToMaster(flip_key);
+    EXPECT_EQ(stream2->Data()->Size(), 6u);
+    EXPECT_EQ(stream2->Data()->CurrentHead(), std::chrono::microseconds(90));
+    EXPECT_TRUE(flip_started_called);
+    EXPECT_TRUE(flip_finished_called);
+    EXPECT_FALSE(flip_canceled_called);
+    flip_key = stream2.ExposeViaHTTP(port2, "/exposed");
+    stream1.FollowRemoteStream(base_url2, current::stream::SubscriptionMode::Checked);
+    stream1.FlipToMaster(flip_key);
+    stream1.StopExposingViaHTTP(port1, "/exposed");
+  }
+
+  // Custom restriction 4: maximum clock difference between the master and the follower.
+  {
+    const auto head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
+    const auto max_clock_diff = std::chrono::microseconds(10);
+    bool flip_started_called = false;
+    bool flip_finished_called = false;
+    bool flip_canceled_called = false;
+
+    const auto flip_key =
+        stream1.ExposeViaHTTP(port1,
+                              "/exposed",
+                              current::stream::MasterFlipRestrictions().SetMaxClockDifference(max_clock_diff),
+                              [&]() { flip_started_called = true; },
+                              [&]() { flip_finished_called = true; },
+                              [&]() { flip_canceled_called = true; });
+    current::stream::SubscribableRemoteStream<Record>::RemoteStream remote_stream(
+        base_url1, current::stream::constants::kDefaultTopLevelName, current::stream::constants::kDefaultNamespaceName);
+    const auto url_checked =
+        remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
+    const auto url_unchecked =
+        remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
+    current::time::SetNow(current::time::Now() + max_clock_diff + std::chrono::microseconds(1));
+
+    auto response = HTTP(GET(url_checked));
+    EXPECT_EQ(400, static_cast<int>(response.code));
+    response = HTTP(GET(url_unchecked));
+    EXPECT_EQ(400, static_cast<int>(response.code));
+
+    const auto url2 =
+        remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
+    current::time::SetNow(current::time::Now() + max_clock_diff);
+    response = HTTP(GET(url2));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("", response.body);
   }
 }
 

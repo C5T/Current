@@ -607,6 +607,15 @@ class MasterFlipController final {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
+    if (Exists(head_idxts.idxts)) {
+      const auto next_index_by_timestamp =
+          std::min(stream_->Data()->IndexRangeByTimestampRange(client_head + std::chrono::microseconds(1)).first,
+                   Value(head_idxts.idxts).index + 1);
+      if (next_index_by_timestamp != next_index) {
+        r("", HTTPResponseCode.BadRequest);
+        return;
+      }
+    }
 
     std::unique_lock<std::mutex> lock(mutex_);
     if (!exposed_via_http_ || Exists(borrowed_publisher_)) {
@@ -680,10 +689,6 @@ class MasterFlipController final {
     std::stringstream sstream(std::ios::out | std::ios::app);
     if (checked_subscription) {
       for (const auto& e : stream_->Data()->Iterate(start_idx)) {
-        if (head_us >= e.idx_ts.us) {
-          r("", HTTPResponseCode.BadRequest);
-          return false;
-        }
         sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
         if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
           r("", HTTPResponseCode.BadRequest);
@@ -691,13 +696,7 @@ class MasterFlipController final {
         }
       }
     } else {
-      auto us_to_check_with = head_us;
       for (const auto& e : stream_->Data()->IterateUnsafe(start_idx)) {
-        if (us_to_check_with.count() >= 0 && us_to_check_with >= ParseJSON<idxts_t>(e).us) {
-          r("", HTTPResponseCode.BadRequest);
-          return false;
-        }
-        us_to_check_with = std::chrono::microseconds(-1);
         sstream << e << '\n';
         if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
           r("", HTTPResponseCode.BadRequest);

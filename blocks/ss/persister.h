@@ -118,8 +118,8 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
-  std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(std::chrono::microseconds from,
-                                                           std::chrono::microseconds till) const {
+  std::pair<uint64_t, uint64_t> IndexRangeByTimestampRange(
+      std::chrono::microseconds from, std::chrono::microseconds till = std::chrono::microseconds(-1)) const {
     return IMPL::template PersisterIndexRangeByTimestampRangeImpl<MLS>(from, till);
   }
 
