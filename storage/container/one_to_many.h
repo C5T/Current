@@ -43,7 +43,9 @@ namespace container {
 template <typename T,
           typename UPDATE_EVENT,
           typename DELETE_EVENT,
-          typename PATCH_EVENT, 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+          typename PATCH_EVENT_OR_VOID,
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
 class GenericOneToMany {
@@ -294,6 +296,8 @@ class GenericOneToMany {
   MutationJournal& journal_;
 };
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
 using UnorderedOneToUnorderedMany = GenericOneToMany<T,
                                                      UPDATE_EVENT,
@@ -326,7 +330,25 @@ using OrderedOneToUnorderedMany = GenericOneToMany<T,
                                                    Ordered,
                                                    Unordered>;
 
+#else
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedOneToUnorderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedOneToOrderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedOneToOrderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedOneToUnorderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Unordered>;
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+
 }  // namespace container
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
 template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event.
 struct StorageFieldTypeSelector<container::UnorderedOneToUnorderedMany<T, E1, E2, E3>> {
@@ -347,6 +369,30 @@ template <typename T, typename E1, typename E2, typename E3>  // Entry, update e
 struct StorageFieldTypeSelector<container::OrderedOneToUnorderedMany<T, E1, E2, E3>> {
   static const char* HumanReadableName() { return "OrderedOneToUnorderedMany"; }
 };
+
+#else
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedOneToUnorderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToUnorderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedOneToOrderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToOrderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedOneToOrderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToOrderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedOneToUnorderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToUnorderedMany"; }
+};
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 }  // namespace storage
 }  // namespace current

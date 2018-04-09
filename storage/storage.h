@@ -69,6 +69,8 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
 #define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)        \
   struct entry_name;                                                                                \
   CURRENT_STRUCT(entry_name##Updated) {                                                             \
@@ -114,11 +116,46 @@ namespace storage {
     using persisted_event_3_t = patch_event_t;                                                      \
   }
 
+#else
+
+#define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)        \
+  struct entry_name;                                                                                \
+  CURRENT_STRUCT(entry_name##Updated) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(data, entry_type);                                                                \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value) \
+        : us(us), data(value) {}                                                                    \
+    using storage_field_t = entry_name;                                                             \
+  };                                                                                                \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                             \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                   \
+    CURRENT_FIELD(key, ::current::storage::sfinae::entry_key_t<entry_type>);                        \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                             \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value) \
+        : us(us), key(::current::storage::sfinae::GetKey(value)) {}                                 \
+    using storage_field_t = entry_name;                                                             \
+  };                                                                                                \
+  struct entry_name {                                                                               \
+    template <typename T, typename E1, typename E2>                                                 \
+    using field_t = dictionary_type<T, E1, E2>;                                                     \
+    using entry_t = entry_type;                                                                     \
+    using key_t = ::current::storage::sfinae::entry_key_t<entry_type>;                              \
+    using update_event_t = entry_name##Updated;                                                     \
+    using delete_event_t = entry_name##Deleted;                                                     \
+    using persisted_event_1_t = entry_name##Updated;                                                \
+    using persisted_event_2_t = entry_name##Deleted;                                                \
+  }
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedDictionary(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(UnorderedDictionary, entry_type, entry_name)
 
 #define CURRENT_STORAGE_FIELD_ENTRY_OrderedDictionary(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(OrderedDictionary, entry_type, entry_name)
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
 // NOTE(dkorolev): `Patch` is only supported in the dictionaries for now.
 #define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                                   \
@@ -157,6 +194,44 @@ namespace storage {
     using persisted_event_2_t = delete_event_t;                                                                        \
     using persisted_event_3_t = patch_event_t;                                                                         \
   }
+
+#else
+
+#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                                   \
+  struct entry_name;                                                                                                   \
+  CURRENT_STRUCT(entry_name##Updated) {                                                                                \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                                      \
+    CURRENT_FIELD(data, entry_type);                                                                                   \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                                                \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(std::chrono::microseconds us, const entry_type& value)                    \
+        : us(us), data(value) {}                                                                                       \
+    using storage_field_t = entry_name;                                                                                \
+  };                                                                                                                   \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                                                \
+    CURRENT_FIELD(us, std::chrono::microseconds);                                                                      \
+    CURRENT_FIELD(key,                                                                                                 \
+                  (std::pair<::current::storage::sfinae::entry_row_t<entry_type>,                                      \
+                             ::current::storage::sfinae::entry_col_t<entry_type>>));                                   \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                                                \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(std::chrono::microseconds us, const entry_type& value)                    \
+        : us(us),                                                                                                      \
+          key(std::make_pair(::current::storage::sfinae::GetRow(value), ::current::storage::sfinae::GetCol(value))) {} \
+    using storage_field_t = entry_name;                                                                                \
+  };                                                                                                                   \
+  struct entry_name {                                                                                                  \
+    template <typename T, typename E1, typename E2>                                                                    \
+    using field_t = matrix_type<T, E1, E2>;                                                                            \
+    using entry_t = entry_type;                                                                                        \
+    using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                                                 \
+    using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                                                 \
+    using key_t = std::pair<row_t, col_t>;                                                                             \
+    using update_event_t = entry_name##Updated;                                                                        \
+    using delete_event_t = entry_name##Deleted;                                                                        \
+    using persisted_event_1_t = entry_name##Updated;                                                                   \
+    using persisted_event_2_t = entry_name##Deleted;                                                                   \
+  }
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToUnorderedMany(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedManyToUnorderedMany, entry_type, entry_name)
@@ -429,6 +504,8 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
       : ::current::storage::FieldsBase<  \
             CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>>
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
 // clang-format off
 #define CURRENT_STORAGE_FIELD(field_name, entry_name)                                                          \
   using field_container_##field_name##_t = entry_name::field_t<entry_name::entry_t,                            \
@@ -508,6 +585,78 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
     field_name(e3);                                                                                            \
   }
 // clang-format on
+
+#else
+
+// clang-format off
+#define CURRENT_STORAGE_FIELD(field_name, entry_name)                                                          \
+  using field_container_##field_name##_t = entry_name::field_t<entry_name::entry_t,                            \
+                                                               entry_name::persisted_event_1_t,                \
+                                                               entry_name::persisted_event_2_t>;               \
+  using entry_type_##field_name##_t = entry_name;                                                              \
+  using field_type_##field_name##_t =                                                                          \
+      ::current::storage::Field<INSTANTIATION_TYPE, field_container_##field_name##_t>;                         \
+  constexpr static size_t FIELD_INDEX_##field_name =                                                           \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE;                                    \
+  ::current::storage::FieldInfo<entry_name::persisted_event_1_t, entry_name::persisted_event_2_t> operator()(  \
+      ::current::storage::FieldInfoByIndex<FIELD_INDEX_##field_name>) const {                                  \
+    return ::current::storage::FieldInfo<entry_name::persisted_event_1_t, entry_name::persisted_event_2_t>();  \
+  }                                                                                                            \
+  std::string operator()(::current::storage::FieldNameByIndex<FIELD_INDEX_##field_name>) const {               \
+    return #field_name;                                                                                        \
+  }                                                                                                            \
+  const field_type_##field_name##_t& operator()(                                                               \
+      ::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>) const {                             \
+    return field_name;                                                                                         \
+  }                                                                                                            \
+  template <typename F>                                                                                        \
+  void operator()(::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) const {          \
+    f(field_name);                                                                                             \
+  }                                                                                                            \
+  template <typename F, typename RETVAL>                                                                       \
+  RETVAL operator()(::current::storage::ImmutableFieldByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,      \
+                    F&& f) const {                                                                             \
+    return f(field_name);                                                                                      \
+  }                                                                                                            \
+  template <typename F>                                                                                        \
+  void operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) {                  \
+    f(field_name);                                                                                             \
+  }                                                                                                            \
+  field_type_##field_name##_t& operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>) { \
+    return field_name;                                                                                         \
+  }                                                                                                            \
+  template <typename F, typename RETVAL>                                                                       \
+  RETVAL operator()(::current::storage::MutableFieldByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,        \
+                    F&& f) {                                                                                   \
+    return f(field_name);                                                                                      \
+  }                                                                                                            \
+  template <typename F>                                                                                        \
+  void operator()(::current::storage::FieldNameAndTypeByIndex<FIELD_INDEX_##field_name>, F&& f) const {        \
+    f(#field_name,                                                                                             \
+      ::current::storage::StorageFieldTypeSelector<field_container_##field_name##_t>(),                        \
+      ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                          \
+  }                                                                                                            \
+  ::current::storage::StorageExtractedFieldType<field_container_##field_name##_t> operator()(                  \
+      ::current::storage::FieldTypeExtractor<FIELD_INDEX_##field_name>) const {                                \
+    return ::current::storage::StorageExtractedFieldType<field_container_##field_name##_t>();                  \
+  }                                                                                                            \
+  ::current::storage::StorageExtractedFieldType<entry_type_##field_name##_t> operator()(                       \
+      ::current::storage::FieldEntryTypeExtractor<FIELD_INDEX_##field_name>) const {                           \
+    return ::current::storage::StorageExtractedFieldType<entry_type_##field_name##_t>();                       \
+  }                                                                                                            \
+  template <typename F, typename RETVAL>                                                                       \
+  RETVAL operator()(::current::storage::FieldNameAndTypeByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,    \
+                    F&& f) const {                                                                             \
+    return f(#field_name,                                                                                      \
+             ::current::storage::StorageFieldTypeSelector<field_container_##field_name##_t>(),                 \
+             ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                   \
+  }                                                                                                            \
+  field_type_##field_name##_t field_name{#field_name, current_storage_mutation_journal_};                      \
+  void operator()(const entry_name::persisted_event_1_t& e) { field_name(e); }                                 \
+  void operator()(const entry_name::persisted_event_2_t& e) { field_name(e); }
+// clang-format on
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 template <typename STORAGE>
 using MutableFields = typename STORAGE::fields_by_ref_t;

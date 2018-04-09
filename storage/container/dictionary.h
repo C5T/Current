@@ -40,7 +40,9 @@ namespace container {
 template <typename T,
           typename UPDATE_EVENT,
           typename DELETE_EVENT,
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
           typename PATCH_EVENT_OR_VOID,
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
           template <typename...> class MAP>
 class GenericDictionary {
  public:
@@ -128,6 +130,7 @@ class GenericDictionary {
     }
   }
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
   // NOTE(dkorolev): The `patch_object` parameter should be passed by value, 
   // as otherwise it won't be valid during the possible rollback.
   template <typename E = entry_t>
@@ -164,6 +167,7 @@ class GenericDictionary {
   typename std::enable_if<HasPatch<E>(), bool>::type Patch(const entry_t& entry, ARGS&&... args) {
     return Patch(sfinae::GetKey(entry), typename E::patch_object_t(std::forward<ARGS>(args)...));
   }
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
   void operator()(const UPDATE_EVENT& e) {
     const auto key = sfinae::GetKey(e.data);
@@ -174,6 +178,7 @@ class GenericDictionary {
     last_modified_[e.key] = e.us;
     map_.erase(e.key);
   }
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
   struct DummyStructForNonExistentPatch {};  // Essential, as can't form a reference to `void` even if disabled.
   void operator()(const typename std::conditional<HasPatch<entry_t>(),
                                                   PATCH_EVENT_OR_VOID,
@@ -184,6 +189,7 @@ class GenericDictionary {
       it->second.PatchWith(e.patch);
     }
   }
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
   struct Iterator final {
     using iterator_t = typename map_t::const_iterator;
@@ -210,13 +216,27 @@ class GenericDictionary {
   MutationJournal& journal_;
 };
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
 using UnorderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
 using OrderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered>;
 
+#else
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, Unordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, Ordered>;
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+
 }  // namespace container
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
 template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event.
 struct StorageFieldTypeSelector<container::UnorderedDictionary<T, E1, E2, E3>> {
@@ -227,6 +247,20 @@ template <typename T, typename E1, typename E2, typename E3>  // Entry, update e
 struct StorageFieldTypeSelector<container::OrderedDictionary<T, E1, E2, E3>> {
   static const char* HumanReadableName() { return "OrderedDictionary"; }
 };
+
+#else
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedDictionary<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedDictionary"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedDictionary<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedDictionary"; }
+};
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 }  // namespace storage
 }  // namespace current

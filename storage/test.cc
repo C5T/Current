@@ -3346,6 +3346,8 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   }
 }
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
 namespace transactional_storage_test {
 
 CURRENT_STRUCT(NonPatchableX) {
@@ -3566,5 +3568,7 @@ TEST(TransactionalStorage, PatchMutation) {
     }
   }
 }
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 #endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS
