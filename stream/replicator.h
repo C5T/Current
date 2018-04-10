@@ -513,7 +513,7 @@ class MasterFlipController final {
                          std::function<void()> flip_started = nullptr,
                          std::function<void()> flip_finished = nullptr,
                          std::function<void()> flip_canceled = nullptr) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (exposed_via_http_) {
       CURRENT_THROW(StreamIsAlreadyExposedException());
     }
@@ -528,7 +528,7 @@ class MasterFlipController final {
   }
 
   void StopExposingViaHTTP(uint16_t port, const std::string& route) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (exposed_via_http_ && exposed_via_http_->port_ == port && exposed_via_http_->route_ == route) {
       exposed_via_http_ = nullptr;
     } else {
@@ -541,7 +541,7 @@ class MasterFlipController final {
       CURRENT_THROW(StreamIsAlreadyFollowingException());
     }
 
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     const bool has_borrowed_publisher = Exists(borrowed_publisher_);
     try {
       remote_follower_ = std::make_unique<RemoteStreamFollower>(
@@ -617,7 +617,7 @@ class MasterFlipController final {
       }
     }
 
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (!exposed_via_http_ || Exists(borrowed_publisher_)) {
       r("", HTTPResponseCode.ServiceUnavailable);
       return;

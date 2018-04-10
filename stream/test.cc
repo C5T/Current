@@ -1405,9 +1405,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
 
   const std::string stream1_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream1");
   const std::string stream2_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream2");
-  const std::string stream3_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream3");
   const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
-  const auto stream3_file_remover = current::FileSystem::ScopedRmFile(stream3_file_name);
   const auto port1 = FLAGS_stream_http_test_port;
   const auto port2 = FLAGS_stream_http_test_port + 1;
   const std::string base_url1 = Printf("http://localhost:%d/exposed", port1);
@@ -1659,15 +1657,13 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
         remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
     current::time::SetNow(current::time::Now() + max_clock_diff + std::chrono::microseconds(1));
 
-    auto response = HTTP(GET(url_checked));
-    EXPECT_EQ(400, static_cast<int>(response.code));
-    response = HTTP(GET(url_unchecked));
-    EXPECT_EQ(400, static_cast<int>(response.code));
+    EXPECT_EQ(400, static_cast<int>(HTTP(GET(url_checked)).code));
+    EXPECT_EQ(400, static_cast<int>(HTTP(GET(url_unchecked)).code));
 
     const auto url2 =
         remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
     current::time::SetNow(current::time::Now() + max_clock_diff);
-    response = HTTP(GET(url2));
+    const auto response = HTTP(GET(url2));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("", response.body);
   }
