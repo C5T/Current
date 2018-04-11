@@ -83,6 +83,13 @@ struct CurrentTypeNameCaller {
   }
 };
 
+template <NameFormat NF>
+struct CurrentTypeNameCaller<NF, CurrentSuper> {
+  static const char* CallGetCurrentTypeName() {
+    return "CurrentSuper";
+  }
+};
+
 template <NameFormat NF, typename T>
 struct JoinTypeNames;
 
