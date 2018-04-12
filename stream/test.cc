@@ -1483,13 +1483,23 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     stream1.StopExposingViaHTTP(port1, "/exposed");
   }
 
+  std::atomic<bool> flip_started_called;
+  std::atomic<bool> flip_finished_called;
+  std::atomic<bool> flip_canceled_called;
+  const auto WaitForFlipCompletion = [&]() {
+    // If, for some reason, flip hasn't already started, the rest of the callbacks
+    // will not be called, so there is no point to wait for any of them.
+    if (flip_started_called) {
+      while (!flip_finished_called && !flip_canceled_called) {
+        std::this_thread::yield();
+      }
+    }
+  };
+
   // Custom restriction 1: the difference between last indices of the master and the follower.
   {
     const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
     current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
-    bool flip_started_called = false;
-    bool flip_finished_called = false;
-    bool flip_canceled_called = false;
 
     auto flip_key = stream1.ExposeViaHTTP(port1,
                                           "/exposed",
@@ -1512,16 +1522,19 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
       std::this_thread::yield();
     }
     EXPECT_EQ(2u, stream2->Data()->Size());
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
+    WaitForFlipCompletion();
     EXPECT_TRUE(flip_started_called);
     EXPECT_FALSE(flip_finished_called);
     EXPECT_TRUE(flip_canceled_called);
-    flip_started_called = flip_finished_called = flip_canceled_called = false;
     while (stream2->Data()->Size() != stream1->Data()->Size()) {
       std::this_thread::yield();
     }
     EXPECT_EQ(4u, stream2->Data()->Size());
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     stream2.FlipToMaster(flip_key);
+    WaitForFlipCompletion();
     EXPECT_TRUE(flip_started_called);
     EXPECT_TRUE(flip_finished_called);
     EXPECT_FALSE(flip_canceled_called);
@@ -1535,9 +1548,6 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
   {
     const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
     current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
-    bool flip_started_called = false;
-    bool flip_finished_called = false;
-    bool flip_canceled_called = false;
 
     auto flip_key = stream1.ExposeViaHTTP(
         port1,
@@ -1560,17 +1570,20 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     }
     EXPECT_EQ(4u, stream2->Data()->Size());
     EXPECT_EQ(std::chrono::microseconds(49), stream2->Data()->CurrentHead());
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
+    WaitForFlipCompletion();
     EXPECT_TRUE(flip_started_called);
     EXPECT_FALSE(flip_finished_called);
     EXPECT_TRUE(flip_canceled_called);
-    flip_started_called = flip_finished_called = flip_canceled_called = false;
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
     }
     EXPECT_EQ(4u, stream2->Data()->Size());
     EXPECT_EQ(std::chrono::microseconds(70), stream2->Data()->CurrentHead());
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     stream2.FlipToMaster(flip_key);
+    WaitForFlipCompletion();
     EXPECT_TRUE(flip_started_called);
     EXPECT_TRUE(flip_finished_called);
     EXPECT_FALSE(flip_canceled_called);
@@ -1584,9 +1597,6 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
   {
     const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
     current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
-    bool flip_started_called = false;
-    bool flip_finished_called = false;
-    bool flip_canceled_called = false;
 
     // Calculate the next entry size (2 stays for \t and \n) to make the restriction just 1 byte smaller.
     const auto entry_size = JSON(Record(55)).length() + JSON(idxts_t(4, std::chrono::microseconds(80))).length() + 2;
@@ -1612,19 +1622,22 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     }
     EXPECT_EQ(4u, stream2->Data()->Size());
     EXPECT_EQ(std::chrono::microseconds(70), stream2->Data()->CurrentHead());
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     ASSERT_THROW(stream2.FlipToMaster(flip_key), current::stream::RemoteStreamRefusedFlipRequestException);
+    WaitForFlipCompletion();
     EXPECT_TRUE(flip_started_called);
     EXPECT_FALSE(flip_finished_called);
     EXPECT_TRUE(flip_canceled_called);
-    flip_started_called = flip_finished_called = flip_canceled_called = false;
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
     }
     EXPECT_EQ(5u, stream2->Data()->Size());
     EXPECT_EQ(std::chrono::microseconds(80), stream2->Data()->CurrentHead());
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     stream2.FlipToMaster(flip_key);
     EXPECT_EQ(6u, stream2->Data()->Size());
     EXPECT_EQ(std::chrono::microseconds(90), stream2->Data()->CurrentHead());
+    WaitForFlipCompletion();
     EXPECT_TRUE(flip_started_called);
     EXPECT_TRUE(flip_finished_called);
     EXPECT_FALSE(flip_canceled_called);
@@ -1638,9 +1651,6 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
   {
     const auto head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
     const auto max_clock_diff = std::chrono::microseconds(10);
-    bool flip_started_called = false;
-    bool flip_finished_called = false;
-    bool flip_canceled_called = false;
 
     const auto flip_key =
         stream1.ExposeViaHTTP(port1,
@@ -1657,8 +1667,17 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
         remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
     current::time::SetNow(current::time::Now() + max_clock_diff + std::chrono::microseconds(1));
 
+    flip_started_called = flip_finished_called = flip_canceled_called = false;
     EXPECT_EQ(400, static_cast<int>(HTTP(GET(url_checked)).code));
+    WaitForFlipCompletion();
+    EXPECT_FALSE(flip_started_called);
+    EXPECT_FALSE(flip_finished_called);
+    EXPECT_FALSE(flip_canceled_called);
     EXPECT_EQ(400, static_cast<int>(HTTP(GET(url_unchecked)).code));
+    WaitForFlipCompletion();
+    EXPECT_FALSE(flip_started_called);
+    EXPECT_FALSE(flip_finished_called);
+    EXPECT_FALSE(flip_canceled_called);
 
     const auto url2 =
         remote_stream.GetFlipToMasterURL(head_idxts, flip_key, current::stream::SubscriptionMode::Checked);
@@ -1666,6 +1685,10 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     const auto response = HTTP(GET(url2));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("", response.body);
+    WaitForFlipCompletion();
+    EXPECT_TRUE(flip_started_called);
+    EXPECT_TRUE(flip_finished_called);
+    EXPECT_FALSE(flip_canceled_called);
   }
 }
 

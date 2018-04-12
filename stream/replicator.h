@@ -624,9 +624,9 @@ class MasterFlipController final {
     }
     const auto& restrictions = exposed_via_http_->flip_restrictions_;
     const auto max_clock_diff = restrictions.max_clock_diff_.count();
-    if (max_clock_diff > 0 &&
-        (!r.url.query.has("clock") ||
-		 std::abs(current::FromString<int64_t>(r.url.query["clock"]) - current::time::Now().count()) > max_clock_diff)) {
+    if (max_clock_diff > 0 && (!r.url.query.has("clock") ||
+                               std::abs(current::FromString<int64_t>(r.url.query["clock"]) -
+                                        current::time::Now().count()) > max_clock_diff)) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
