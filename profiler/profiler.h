@@ -82,9 +82,9 @@ struct Profiler {
       struct PerThread {
         struct Trie {
           // `Now()` if within it, `0` if currently not there.
-          std::chrono::microseconds us_entered = std::chrono::microseconds(0u);
+          std::chrono::microseconds us_entered = std::chrono::microseconds(0);
           // Total across all the times this scope was entered.
-          std::chrono::microseconds us_total = std::chrono::microseconds(0u);
+          std::chrono::microseconds us_total = std::chrono::microseconds(0);
           // The number of times this scope was entered.
           uint64_t entries = 0;
           // Sub-scopes within this scope, if any.
@@ -99,7 +99,7 @@ struct Profiler {
             }
           }
           void RecursiveReset(std::chrono::microseconds now) {
-            us_total = std::chrono::microseconds(0u);
+            us_total = std::chrono::microseconds(0);
             if (us_entered.count()) {
               us_entered = now;
             }
@@ -118,13 +118,13 @@ struct Profiler {
         }
       };
       std::unordered_map<std::thread::id, PerThread> per_thread;
-      std::chrono::microseconds total_spent_in_profiling = std::chrono::microseconds(0u);
-      std::chrono::microseconds spent_in_reporting = std::chrono::microseconds(0u);
-      std::chrono::microseconds spent_in_mutex_locking = std::chrono::microseconds(0u);
+      std::chrono::microseconds total_spent_in_profiling = std::chrono::microseconds(0);
+      std::chrono::microseconds spent_in_reporting = std::chrono::microseconds(0);
+      std::chrono::microseconds spent_in_mutex_locking = std::chrono::microseconds(0);
       void Reset() {
-        total_spent_in_profiling = std::chrono::microseconds(0u);
-        spent_in_reporting = std::chrono::microseconds(0u);
-        spent_in_mutex_locking = std::chrono::microseconds(0u);
+        total_spent_in_profiling = std::chrono::microseconds(0);
+        spent_in_reporting = std::chrono::microseconds(0);
+        spent_in_mutex_locking = std::chrono::microseconds(0);
         for (auto& e : per_thread) {
           e.second.trie.RecursiveReset(current::time::Now());
         }
@@ -152,7 +152,7 @@ struct Profiler {
             CURRENT_ASSERT(output.entries);
             output.us = input.ComputeTotalMicroseconds(now);
             output.us_per_entry = 1.0 * output.us.count() / output.entries;
-            output.absolute_best_possible_qps = output.us.count() ? (1e9 / output.us_per_entry) : 1e9;
+            output.absolute_best_possible_qps = output.us.count() ? (1e6 / output.us_per_entry) : 1e6;
             output.ratio_of_parent = total_us.count() ? (1.0 * output.us.count() / total_us.count()) : 1.0;
             output.subscope.reserve(input.children.size());
             for (const auto& scope : input.children) {
@@ -160,7 +160,7 @@ struct Profiler {
               recursive_fill(scope.second, output.us, output.subscope.back(), scope.first);
             }
             CURRENT_ASSERT(output.subscope.size() == input.children.size());
-            std::chrono::microseconds subscope_total = std::chrono::microseconds(0u);
+            std::chrono::microseconds subscope_total = std::chrono::microseconds(0);
             for (const auto& subscope : output.subscope) {
               subscope_total += subscope.us;
             }
@@ -207,7 +207,7 @@ struct Profiler {
         State::PerThread::Trie& node = (*per_thread.stack.top().second);
         CURRENT_ASSERT(node.us_entered <= now);
         node.us_total += (now - node.us_entered);
-        node.us_entered = std::chrono::microseconds(0u);
+        node.us_entered = std::chrono::microseconds(0);
         per_thread.stack.pop();
         CURRENT_ASSERT(!per_thread.stack.empty());  // Should have at least the root trie node left in the stack.
       });
