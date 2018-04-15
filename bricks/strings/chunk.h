@@ -88,6 +88,11 @@ class Chunk {
 
   const char* c_str() const { return S; }
 
+  // NOTE(dkorolev): We may need these later, but I'll comment them out for now,
+  // just to make sure they are not required by the code being checked in now.
+  // const char* begin() const { return S; }
+  // const char* end() const { return S + N; }
+
   void assign(const char* s, size_t n) {
     S = s;
     N = n;
