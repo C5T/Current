@@ -125,37 +125,42 @@ class SubscribableRemoteStream final {
 
     void PassChunkToSubscriber(const std::string& chunk) {
       const size_t chunk_size = chunk.size();
-      size_t end_pos = 0;
+      size_t begin_pos = 0u;
+
       if (!carried_over_data_.empty()) {
+        // The previous chunk did not complete the previous record (full line).
+        while (begin_pos < chunk_size && chunk[begin_pos] != '\n' && chunk[begin_pos] != '\r') {
+          ++begin_pos;
+        }
+        if (begin_pos == chunk_size) {
+          // The current chunk does not complete the previous record either, so keep receiving.
+          carried_over_data_ += chunk;
+          return;
+        }
+        // The leftover, previously incomplete record (full line) is now complete,
+        // process it and begin processing this chunk from offset `begin_pos`.
+        PassEntryToSubscriber(carried_over_data_ + chunk.substr(0u, begin_pos));
+        carried_over_data_.clear();
+      }
+
+      size_t end_pos = 0u;
+      for (;;) {
+        while (begin_pos < chunk_size && (chunk[begin_pos] == '\n' || chunk[begin_pos] == '\r')) {
+          ++begin_pos;
+        }
+        if (begin_pos == chunk_size) {
+          break;
+        }
+        end_pos = begin_pos + 1u;
         while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
           ++end_pos;
         }
         if (end_pos == chunk_size) {
-          carried_over_data_ += chunk;
-          return;
-        }
-        PassEntryToSubscriber(carried_over_data_ + chunk.substr(0, end_pos));
-      }
-
-      size_t start_pos = end_pos;
-      for (;;) {
-        while (start_pos < chunk_size && (chunk[start_pos] == '\n' || chunk[start_pos] == '\r')) {
-          ++start_pos;
-        }
-        end_pos = start_pos + 1;
-        while (end_pos < chunk_size && chunk[end_pos] != '\n' && chunk[end_pos] != '\r') {
-          ++end_pos;
-        }
-        if (end_pos >= chunk_size) {
+          carried_over_data_ = chunk.substr(begin_pos);
           break;
         }
-        PassEntryToSubscriber(chunk.substr(start_pos, end_pos - start_pos));
-        start_pos = end_pos + 1;
-      }
-      if (start_pos < chunk_size) {
-        carried_over_data_ = chunk.substr(start_pos);
-      } else {
-        carried_over_data_.clear();
+        PassEntryToSubscriber(chunk.substr(begin_pos, end_pos - begin_pos));  // NOTE(dkorolev): Can be `Chunk`.
+        begin_pos = end_pos + 1u;
       }
     }
 
@@ -181,11 +186,11 @@ class SubscribableRemoteStream final {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-        ++index_;
-        from_us_ = std::chrono::microseconds(0);
         if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
+        ++index_;
+        from_us_ = std::chrono::microseconds(0);
       } else {
         if (split.size() != 1u || (from_us_.count() > 0 && tsoptidx.us < from_us_)) {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
@@ -201,16 +206,18 @@ class SubscribableRemoteStream final {
     ENABLE_IF<MODE == ReplicationMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto tab_pos = raw_log_line.find('\t');
       if (tab_pos != std::string::npos) {
-        if (subscriber_(raw_log_line, index_++, unused_idxts_) == ss::EntryResponse::Done) {
+        if (subscriber_(raw_log_line, index_, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
+        // NOTE(dkorolev) & NOTE(grixa): In `RM::Unchecked` mode `index_` is not checked at all, just incremented.
+        ++index_;
         from_us_ = std::chrono::microseconds(0);
       } else {
-        const auto tsoptidx = ParseJSON<ts_only_t>(raw_log_line);
-        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+        const auto ts = ParseJSON<ts_only_t>(raw_log_line);
+        if (subscriber_(ts.us) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
-        from_us_ = tsoptidx.us + std::chrono::microseconds(1);
+        from_us_ = ts.us + std::chrono::microseconds(1);
       }
     }
   };
@@ -282,7 +289,7 @@ class SubscribableRemoteStream final {
         } catch (StreamTerminatedBySubscriber&) {
           break;
         } catch (RemoteStreamMalformedChunkException&) {
-          if (++consecutive_malformed_chunks_count_ == 3) {
+          if (++consecutive_malformed_chunks_count_ == 3u) {
             fprintf(stderr,
                     "Constantly receiving malformed chunks from \"%s\"\n",
                     bare_stream.GetURLToSubscribe(this->index_, this->from_us_, subscription_mode_).c_str());
@@ -295,7 +302,7 @@ class SubscribableRemoteStream final {
     }
 
     void OnHeader(const std::string& header, const std::string& value) {
-      if (header == "X-Current-Stream-Subscription-Id") {
+      if (header == "X-Current-Stream-Subscription-Id") {  // NOTE(dkorolev): Case and `-`-vs-`_`-aware comparison?
         subscription_id_.SetValue(value);
       }
     }
@@ -306,7 +313,7 @@ class SubscribableRemoteStream final {
       }
 
       this->PassChunkToSubscriber(chunk);
-      consecutive_malformed_chunks_count_ = 0;
+      consecutive_malformed_chunks_count_ = 0u;
     }
 
     void TerminateSubscription() {
@@ -389,7 +396,7 @@ class SubscribableRemoteStream final {
     static_assert(current::ss::IsStreamSubscriber<F, entry_t>::value, "");
     const auto response = HTTP(GET(stream_->GetFlipToMasterURL(head_idxts, key, subscription_mode)));
     if (response.code == HTTPResponseCode.OK) {
-      const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index + 1 : 0;
+      const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index + 1u : 0u;
       RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx);
       remote_subscriber.PassChunkToSubscriber(response.body);
     } else {
@@ -472,8 +479,8 @@ template <typename STREAM>
 using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl<STREAM>, typename STREAM::entry_t>;
 
 struct MasterFlipRestrictions {
-  uint64_t max_index_diff_ = 0;
-  uint64_t max_diff_size_ = 0;
+  uint64_t max_index_diff_ = 0u;
+  uint64_t max_diff_size_ = 0u;
   std::chrono::microseconds max_head_diff_ = std::chrono::microseconds(0);
   std::chrono::microseconds max_clock_diff_ = std::chrono::microseconds(0);
 
@@ -595,7 +602,7 @@ class MasterFlipController final {
     }
     const bool has_i = r.url.query.has("i");
     const auto client_head = std::chrono::microseconds(current::FromString<int64_t>(r.url.query["head"]));
-    const auto next_index = has_i ? current::FromString<uint64_t>(r.url.query["i"]) + 1 : 0;
+    const auto next_index = has_i ? current::FromString<uint64_t>(r.url.query["i"]) + 1u : 0u;
     const auto flip_key = current::FromString<uint64_t>(r.url.query["key"]);
 
     const auto head_idxts = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
@@ -603,14 +610,14 @@ class MasterFlipController final {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
-    if (has_i && (!Exists(head_idxts.idxts) || next_index > Value(head_idxts.idxts).index + 1)) {
+    if (has_i && (!Exists(head_idxts.idxts) || next_index > Value(head_idxts.idxts).index + 1u)) {
       r("", HTTPResponseCode.BadRequest);
       return;
     }
     if (Exists(head_idxts.idxts)) {
       const auto next_index_by_timestamp =
           std::min(stream_->Data()->IndexRangeByTimestampRange(client_head + std::chrono::microseconds(1)).first,
-                   Value(head_idxts.idxts).index + 1);
+                   Value(head_idxts.idxts).index + 1u);
       if (next_index_by_timestamp != next_index) {
         r("", HTTPResponseCode.BadRequest);
         return;
@@ -677,7 +684,7 @@ class MasterFlipController final {
     const auto max_diff_size = restrictions.max_diff_size_;
     const auto max_head_diff = restrictions.max_head_diff_;
 
-    if (max_index_diff != 0 && start_idx != 0 && Value(head_idxts.idxts).index > start_idx + max_index_diff - 1) {
+    if (max_index_diff != 0 && start_idx != 0 && Value(head_idxts.idxts).index >= start_idx + max_index_diff) {
       r("", HTTPResponseCode.BadRequest);
       return false;
     }
