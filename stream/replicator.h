@@ -514,6 +514,15 @@ class MasterFlipController final {
 
   MasterFlipController(Owned<STREAM>&& stream) : stream_(std::move(stream)) {}
 
+  // Expose an endpoint to make it possible to request this (`Owned`, local) master stream to become
+  // a following stream to an external prospective master that is being promoted to the new master of this stream.
+  //
+  // Returns the secret "flip key" which the remote prospective master must know in order to signal
+  // this owned, local, now-master stream that it's time to let go of its master status in favor of the remote one.
+  //
+  // NOTE(dkorolev) & NOTE(grixa): It's the user's responsibility to securely deliver this secret key
+  // from the current, owned, local master to the remote prospective one. If this key gets into the wrong hands,
+  // that wrong remote party can bring the system to a halt by claiming ownership of the stream that it should not own.
   uint64_t ExposeViaHTTP(uint16_t port,
                          const std::string& route,
                          MasterFlipRestrictions restrictions = MasterFlipRestrictions(),
@@ -529,11 +538,14 @@ class MasterFlipController final {
         port, route, std::move(restrictions), flip_started, flip_finished, flip_canceled);
     exposed_via_http_->routes_scope_ +=
         HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_)) +
-        HTTP(port).Register(
-            route + "/become/master", URLPathArgs::CountMask::None, [this](Request r) { MasterFlipRequest(r); });
+        HTTP(port).Register(route + "/become/master",
+                            URLPathArgs::CountMask::None,
+                            [this](Request r) { MasterFlipRequest(std::move(r)); });
     return exposed_via_http_->flip_key_;
   }
 
+  // Remove the possibility of remotely promoting this stream to master.
+  // The `port` and `route` parameters are only here for extra safety.
   void StopExposingViaHTTP(uint16_t port, const std::string& route) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (exposed_via_http_ && exposed_via_http_->port_ == port && exposed_via_http_->route_ == route) {
@@ -543,6 +555,7 @@ class MasterFlipController final {
     }
   }
 
+  // Makes the local, owned, ex-master stream follow the remote now-master one.
   void FollowRemoteStream(const std::string& url, SubscriptionMode subscription_mode = SubscriptionMode::Unchecked) {
     if (remote_follower_) {
       CURRENT_THROW(StreamIsAlreadyFollowingException());
@@ -558,25 +571,26 @@ class MasterFlipController final {
           stream_->Data()->CurrentHead() + std::chrono::microseconds(1),
           subscription_mode);
       borrowed_publisher_ = nullptr;
-    } catch (current::Exception& e) {
+    } catch (const current::Exception& e) {
       // Can't follow the remote stream for some reason,
       // restore the stream state and propagate the exception.
-      if (has_borrowed_publisher)
+      if (has_borrowed_publisher) {
         borrowed_publisher_ = stream_->BecomeFollowingStream();
-      else
+      } else {
         stream_->BecomeMasterStream();
+      }
       throw;
     }
   }
 
-  void FlipToMaster(uint64_t key) {
+  void FlipToMaster(uint64_t secret_flip_key) {
     if (stream_->IsMasterStream()) {
       CURRENT_THROW(StreamIsAlreadyMasterException());
     }
     if (!remote_follower_) {
       CURRENT_THROW(StreamDoesNotFollowAnyoneException());
     }
-    remote_follower_->PerformMasterFlip(*Value(stream_), key);
+    remote_follower_->FlipRemoteStreamFromMasterToFollower(*Value(stream_), secret_flip_key);
     remote_follower_ = nullptr;
     stream_->BecomeMasterStream();
   }
@@ -590,35 +604,37 @@ class MasterFlipController final {
   const stream_t* operator->() const { return stream_.operator->(); }
 
  private:
-  void MasterFlipRequest(Request& r) {
+  void MasterFlipRequest(Request r) {
     if (r.method != "GET") {
       r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
       return;
     }
 
     if (!r.url.query.has("head") || !r.url.query.has("key")) {
-      r("", HTTPResponseCode.BadRequest);
+      r("Need `head` and `key` as URL parameters.", HTTPResponseCode.BadRequest);
       return;
     }
     const bool has_i = r.url.query.has("i");
     const auto client_head = std::chrono::microseconds(current::FromString<int64_t>(r.url.query["head"]));
-    const auto next_index = has_i ? current::FromString<uint64_t>(r.url.query["i"]) + 1u : 0u;
-    const auto flip_key = current::FromString<uint64_t>(r.url.query["key"]);
+    const auto client_next_index = has_i ? current::FromString<uint64_t>(r.url.query["i"]) + 1u : 0u;
+    const auto secret_flip_key = current::FromString<uint64_t>(r.url.query["key"]);
 
     const auto head_idxts = stream_->Data()->HeadAndLastPublishedIndexAndTimestamp();
     if (client_head > head_idxts.head) {
-      r("", HTTPResponseCode.BadRequest);
+      r("The prospective master's HEAD is ahead of the current master's HEAD.\n", HTTPResponseCode.BadRequest);
       return;
     }
-    if (has_i && (!Exists(head_idxts.idxts) || next_index > Value(head_idxts.idxts).index + 1u)) {
-      r("", HTTPResponseCode.BadRequest);
+    if (has_i && (!Exists(head_idxts.idxts) || client_next_index > Value(head_idxts.idxts).index + 1u)) {
+      r("The prospective master's number of entries is greater than that of the current master.\n",
+        HTTPResponseCode.BadRequest);
       return;
     }
     if (Exists(head_idxts.idxts)) {
       const auto next_index_by_timestamp =
           std::min(stream_->Data()->IndexRangeByTimestampRange(client_head + std::chrono::microseconds(1)).first,
                    Value(head_idxts.idxts).index + 1u);
-      if (next_index_by_timestamp != next_index) {
+      if (next_index_by_timestamp != client_next_index) {
+        // NOTE(dkorolev) & TODO(grixa): This `std::min(...)` reads like black magic to me. Could you elaborate pls?
         r("", HTTPResponseCode.BadRequest);
         return;
       }
@@ -626,7 +642,7 @@ class MasterFlipController final {
 
     std::lock_guard<std::mutex> lock(mutex_);
     if (!exposed_via_http_ || Exists(borrowed_publisher_)) {
-      r("", HTTPResponseCode.ServiceUnavailable);
+      r("Cannot flip to master ", HTTPResponseCode.ServiceUnavailable);
       return;
     }
     const auto& restrictions = exposed_via_http_->flip_restrictions_;
@@ -634,20 +650,22 @@ class MasterFlipController final {
     if (max_clock_diff > 0 && (!r.url.query.has("clock") ||
                                std::abs(current::FromString<int64_t>(r.url.query["clock"]) -
                                         current::time::Now().count()) > max_clock_diff)) {
-      r("", HTTPResponseCode.BadRequest);
+      r("Network latency and/or the time skew between the current and prospective masters is too large.\n",
+        HTTPResponseCode.BadRequest);
       return;
     }
     if (remote_follower_) {
       try {
-        remote_follower_->PerformMasterFlip(*Value(stream_), flip_key);
+        remote_follower_->FlipRemoteStreamFromMasterToFollower(*Value(stream_), secret_flip_key);
         remote_follower_ = nullptr;
         stream_->BecomeMasterStream();
-      } catch (RemoteStreamRefusedFlipRequestException&) {
-        r("", HTTPResponseCode.BadRequest);
+      } catch (const RemoteStreamRefusedFlipRequestException&) {
+        r("The remote stream refused the flip.\n", HTTPResponseCode.BadRequest);
         return;
       }
-    } else if (flip_key != exposed_via_http_->flip_key_) {
-      r("", HTTPResponseCode.BadRequest);
+    } else if (secret_flip_key != exposed_via_http_->flip_key_) {
+      // NOTE(dkorolev): Should we put some [exponential] delay here, to eliminate room for brute force keys spamming?
+      r("Wrong secret flip key.\n", HTTPResponseCode.BadRequest);
       return;
     }
 
@@ -660,12 +678,14 @@ class MasterFlipController final {
     borrowed_publisher_ = stream_->BecomeFollowingStream();
 
     // Send back the remaining diff.
-    const auto succeeded = ValidateAndSendDiff(r, next_index, client_head, checked);
+    const auto succeeded = ValidateAndSendDiff(r, client_next_index, client_head, checked);
     if (!succeeded) {
       // If something went wrong, restore the original state.
       borrowed_publisher_ = nullptr;
       stream_->BecomeMasterStream();
-      if (exposed_via_http_->flip_canceled_callback_) exposed_via_http_->flip_canceled_callback_();
+      if (exposed_via_http_->flip_canceled_callback_) {
+        exposed_via_http_->flip_canceled_callback_();
+      }
     } else if (exposed_via_http_->flip_finished_callback_) {
       // Otherwise notify about flip completion from a separate thread
       // to make it possible to unregister endpoints
@@ -685,11 +705,11 @@ class MasterFlipController final {
     const auto max_head_diff = restrictions.max_head_diff_;
 
     if (max_index_diff != 0 && start_idx != 0 && Value(head_idxts.idxts).index >= start_idx + max_index_diff) {
-      r("", HTTPResponseCode.BadRequest);
+      r("Too many entries to replay, aborting sending the diff.\n", HTTPResponseCode.BadRequest);
       return false;
     }
     if (max_head_diff.count() > 0 && head_idxts.head > head_us + max_head_diff) {
-      r("", HTTPResponseCode.BadRequest);
+      r("Too large of a delta between HEADs, aborting sending the diff.\n", HTTPResponseCode.BadRequest);
       return false;
     }
 
@@ -698,7 +718,7 @@ class MasterFlipController final {
       for (const auto& e : stream_->Data()->Iterate(start_idx)) {
         sstream << JSON(e.idx_ts) << '\t' << JSON(e.entry) << '\n';
         if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
-          r("", HTTPResponseCode.BadRequest);
+          r("The diff to replay is too large.\n", HTTPResponseCode.BadRequest);
           return false;
         }
       }
@@ -706,7 +726,7 @@ class MasterFlipController final {
       for (const auto& e : stream_->Data()->IterateUnsafe(start_idx)) {
         sstream << e << '\n';
         if (max_diff_size != 0 && static_cast<unsigned long long>(sstream.tellp()) > max_diff_size) {
-          r("", HTTPResponseCode.BadRequest);
+          r("The diff to replay is too large.\n", HTTPResponseCode.BadRequest);
           return false;
         }
       }
@@ -735,7 +755,7 @@ class MasterFlipController final {
                        std::function<void()> flip_canceled)
         : port_(port),
           route_(route),
-          flip_key_(random::CSRandomUInt64(0llu, ~0llu)),
+          flip_key_(random::CSRandomUInt64(static_cast<uint64_t>(1e18), static_cast<uint64_t>(1e19 - 1))),
           flip_restrictions_(std::move(restrictions)),
           flip_started_callback_(flip_started),
           flip_finished_callback_(flip_finished),
@@ -759,15 +779,28 @@ class MasterFlipController final {
           replicator_(std::move(publisher)),
           subscriber_scope_(Subscribe(start_idx, from_us)) {}
 
-    void PerformMasterFlip(const stream_t& stream, uint64_t key) {
-      // terminate the remote subscription.
+    // Orders the remote stream to quit being the master and begin acting as a follower.
+    //
+    // The call will only succeed when:
+    // 1) The secret flip key is the one the exposed remote stream will obey, and
+    // 2) The invariants wrt. the flip -- both strong ("out of sync") and weak ("too much data left to transfer")
+    //    are met.
+    //
+    // IMPORTANT: All the calls to this method for the remote stream:
+    // 1) Are performed by the `MasterFlipController`, and
+    // 2) Are immediately followed by:
+    //    2.a) Releasing the remote follower on which this `FlipRemoteStreamFromMasterToFollower` was just called, and
+    //    2.b) The call to `BecomeMasterStream` on the local now-master stream.
+    // The above is the only way to ensure the atomicity of the flip.
+    void FlipRemoteStreamFromMasterToFollower(const stream_t& stream, uint64_t secret_flip_key) {
+      // Terminate the remote subscription.
       subscriber_scope_ = nullptr;
-      // force the remote stream to send the rest of its data and destroy itself.
+      // Force the remote stream to send the rest of its data and destroy itself.
       try {
         remote_stream_.template FlipToMaster<replicator_t, RM>(
-            replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), key, subscription_mode_);
+            replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), secret_flip_key, subscription_mode_);
       } catch (current::Exception& e) {
-        // restore the subscription if the flip failed.
+        // Restore the subscription if the flip failed.
         subscriber_scope_ =
             Subscribe(stream.Data()->Size(), stream.Data()->CurrentHead() + std::chrono::microseconds(1));
         throw;

@@ -1440,7 +1440,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     auto flip_key = stream1.ExposeViaHTTP(port1, "/exposed");
     current::stream::SubscribableRemoteStream<Record> remote_stream(base_url1);
 
-    // Restriction 1: Head of the follower shouldn't be ahead of the master.
+    // Restriction 1: The head of the follower shouldn't be ahead of the master.
     head_idxts.head += std::chrono::microseconds(1);
     ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Unchecked>(
                      dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Unchecked)),
@@ -1459,7 +1459,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
                      dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
                  current::stream::RemoteStreamRefusedFlipRequestException);
 
-    // Restriction 3: The Head of the follower should be less than the timestamp of the next entry.
+    // Restriction 3: The head of the follower should be less than the timestamp of the next entry.
     head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
     --Value(head_idxts.idxts).index;
     ASSERT_THROW((remote_stream.template FlipToMaster<DummyReplicator, current::stream::ReplicationMode::Unchecked>(
@@ -1469,7 +1469,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
                      dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
                  current::stream::RemoteStreamRefusedFlipRequestException);
 
-    // Restriction 4: The Head of the follower should be greater or equal than the timestamp of the last entry.
+    // Restriction 4: The head of the follower should be greater or equal than the timestamp of the last entry.
     head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
     Value(head_idxts.idxts).us -= std::chrono::microseconds(10);
     head_idxts.head -= std::chrono::microseconds(10);
@@ -1487,7 +1487,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
   std::atomic<bool> flip_finished_called;
   std::atomic<bool> flip_canceled_called;
   const auto WaitForFlipCompletion = [&]() {
-    // If, for some reason, flip hasn't already started, the rest of the callbacks
+    // If, for some reason, the flip hasn't already started, the rest of the callbacks
     // will not be called, so there is no point to wait for any of them.
     if (flip_started_called) {
       while (!flip_finished_called && !flip_canceled_called) {
@@ -1732,7 +1732,7 @@ TEST(Stream, MasterFollowerFlipExceptions) {
   EXPECT_FALSE(stream2.IsMasterStream());
   // But it doesn't follow any remote stream, so it still can't perform the flip.
   ASSERT_THROW(stream2.FlipToMaster(flip_key1), current::stream::StreamDoesNotFollowAnyoneException);
-  // Can't call the `FollowRemoteStream` now, cause it will hung in the `BecomeFollowingStream`.
+  // Can't call the `FollowRemoteStream` now, cause it will hang in the `BecomeFollowingStream`.
   // stream2.FollowRemoteStream(base_url);
   publisher = nullptr;
   // And now, after the borrowed publisher was released, we can call `FollowRemoteStream`.
@@ -1758,7 +1758,7 @@ TEST(Stream, MasterFollowerFlipExceptions) {
   ASSERT_THROW(stream2.FlipToMaster(flip_key1), current::stream::StreamIsAlreadyMasterException);
   // The stream was exposed before and it keeps that endpoints alive after the flip.
   ASSERT_THROW(stream2.ExposeViaHTTP(port1, "/exposed"), current::stream::StreamIsAlreadyExposedException);
-  // The first stream can't flip, because it doesn't automatically start following the second stream
+  // The first stream can't flip, because it doesn't automatically begin following the second stream
   // after the flip procedure.
   ASSERT_THROW(stream1.FlipToMaster(flip_key2), current::stream::StreamDoesNotFollowAnyoneException);
   stream1.StopExposingViaHTTP(port1, "/exposed");
