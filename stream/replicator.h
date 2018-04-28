@@ -180,9 +180,12 @@ class SubscribableRemoteStream final {
         CURRENT_THROW(RemoteStreamMalformedChunkException());
       }
       const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
+      if (from_us_.count() > 0 && tsoptidx.us < from_us_) {
+        CURRENT_THROW(RemoteStreamMalformedChunkException());
+      }
       if (Exists(tsoptidx.index)) {
         const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-        if (split.size() != 2u || idxts.index != index_ || (from_us_.count() > 0 && idxts.us < from_us_)) {
+        if (split.size() != 2u || idxts.index != index_) {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
@@ -192,7 +195,7 @@ class SubscribableRemoteStream final {
         ++index_;
         from_us_ = std::chrono::microseconds(0);
       } else {
-        if (split.size() != 1u || (from_us_.count() > 0 && tsoptidx.us < from_us_)) {
+        if (split.size() != 1u) {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
         if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
