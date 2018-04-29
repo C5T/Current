@@ -418,7 +418,7 @@ TEST(HTTPAPI, HandlesRespondTwiceWithString) {
 }
 
 TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
-  std::string result = "";
+  volatile std::string result = "";
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_twice",
                                    [&result](Request r) {
