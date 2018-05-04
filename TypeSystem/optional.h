@@ -345,13 +345,21 @@ class Optional<T, std::enable_if_t<!std::is_pod<T>::value>> final {
   }
 
   Optional<T>& operator=(const T& object) {
-    owned_optional_object_ = std::make_unique<T>(object);
+    if (!owned_optional_object_) {
+      owned_optional_object_ = std::make_unique<T>(object);
+    } else {
+      *owned_optional_object_ = object;
+    }
     optional_object_ = owned_optional_object_.get();
     return *this;
   }
 
   Optional<T>& operator=(T&& object) {
-    owned_optional_object_ = std::make_unique<T>(std::move(object));
+    if (!owned_optional_object_) {
+      owned_optional_object_ = std::make_unique<T>(std::move(object));
+    } else {
+      *owned_optional_object_ = std::move(object);
+    }
     optional_object_ = owned_optional_object_.get();
     return *this;
   }
