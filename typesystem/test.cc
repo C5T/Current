@@ -660,6 +660,24 @@ TEST(TypeSystemTest, Optional) {
     } catch (NoValue) {
     }
   }
+  // Non-POD version: Using `Value()`.
+  {
+    Optional<Foo> foo(100u);
+    const auto foo_i_value = Value(foo).i;
+    const auto& foo_i_ref = Value(foo).i;
+    EXPECT_EQ(100u, Value(foo).i);
+    EXPECT_EQ(100u, foo_i_value);
+    EXPECT_EQ(100u, foo_i_ref);
+    foo = 200u;
+    EXPECT_EQ(200u, Value(foo).i);
+    EXPECT_EQ(100u, foo_i_value);
+    EXPECT_EQ(200u, foo_i_ref);
+    Foo bar(300u);
+    foo = std::move(bar);
+    EXPECT_EQ(300u, Value(foo).i);
+    EXPECT_EQ(100u, foo_i_value);
+    EXPECT_EQ(300u, foo_i_ref);
+  }
 }
 
 namespace optionals_test {
