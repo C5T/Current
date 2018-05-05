@@ -42,6 +42,7 @@ using current::strings::ToLower;
 using current::strings::ToUpper;
 using current::strings::Join;
 using current::strings::Split;
+using current::strings::SplitIntoChunks;
 using current::strings::SplitIntoKeyValuePairs;
 using current::strings::EmptyFields;
 using current::strings::KeyValueParsing;
@@ -179,6 +180,14 @@ TEST(Util, FromString) {
 
   EXPECT_TRUE(StringConversionTestEnum::TheAnswer == current::FromString<StringConversionTestEnum>("42"));
   EXPECT_EQ(0, static_cast<int>(current::FromString<StringConversionTestEnum>("")));
+}
+
+TEST(Util, FromStringForSingleBytesThatSelfIdentifyAsNumbers) {
+  EXPECT_EQ(1, current::FromString<int>("01"));
+  EXPECT_EQ(2, current::FromString<int8_t>("002"));
+  EXPECT_EQ(3, current::FromString<uint8_t>("0003"));
+  EXPECT_EQ(4, current::FromString<int16_t>("00004"));
+  EXPECT_EQ(5, current::FromString<uint16_t>("00005"));
 }
 
 TEST(ToString, SmokeTest) {
@@ -371,6 +380,15 @@ TEST(JoinAndSplit, EfficientlySplitsMutableStringIntoTemporaryChunks) {
   }
 
   EXPECT_EQ(original_input, mutable_input);
+
+  {
+    std::vector<current::strings::Chunk> pieces = SplitIntoChunks(mutable_input, ' ');
+    EXPECT_EQ("foo,bar,baz", Join(pieces, ','));
+  }
+  {
+    std::vector<current::strings::Chunk> pieces = SplitIntoChunks(chunk, ' ');
+    EXPECT_EQ("foo,bar,baz", Join(pieces, ','));
+  }
 }
 
 TEST(EditDistance, SmokeTest) {
