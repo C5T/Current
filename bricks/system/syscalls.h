@@ -28,7 +28,10 @@ SOFTWARE.
 #include "../../port.h"
 
 #include "../exception.h"
+#include "../file/file.h"
 #include "../strings/util.h"
+
+#include <dlfcn.h>
 
 #include <cstdio>
 #include <vector>
@@ -41,15 +44,15 @@ struct SystemException : Exception {
   using Exception::Exception;
 };
 
-struct PopenCallException : SystemException {
+struct PopenCallException final : SystemException {
   using SystemException::SystemException;
 };
 
-struct SystemCallException : SystemException {
+struct SystemCallException final : SystemException {
   using SystemException::SystemException;
 };
 
-class InputTextPipe {
+class InputTextPipe final {
  private:
   const std::string command_;
   std::vector<char> buffer_;
@@ -111,6 +114,94 @@ int SystemCall(S&& input_command) {
   }
   return result;
 }
+
+struct ExternalLibraryException : SystemException {
+  using SystemException::SystemException;
+};
+
+struct CompilationException final : ExternalLibraryException {
+  using ExternalLibraryException::ExternalLibraryException;
+};
+
+struct DLOpenException final : ExternalLibraryException {
+  using ExternalLibraryException::ExternalLibraryException;
+};
+
+struct DLSymException final : ExternalLibraryException {
+  using ExternalLibraryException::ExternalLibraryException;
+};
+
+class JITCompiledCPP final {
+ private:
+  const std::string base_file_name_;
+  const std::string source_file_name_;
+  const std::string library_file_name_;
+  const current::FileSystem::ScopedRmFile source_file_remover_;
+  const current::FileSystem::ScopedRmFile library_file_remover_;
+  void* lib_ = nullptr;
+
+ public:
+  template <typename S>
+  explicit JITCompiledCPP(S&& source)
+      : base_file_name_(current::FileSystem::GenTmpFileName()),
+        source_file_name_(base_file_name_ + ".cc"),
+        library_file_name_(base_file_name_ + ".so"),
+        source_file_remover_(source_file_name_),
+        library_file_remover_(library_file_name_) {
+    current::FileSystem::WriteStringToFile(current::strings::ConstCharPtr(std::forward<S>(source)),
+                                           source_file_name_.c_str());
+    std::string cmdline = "g++ -fPIC -shared -nostartfiles " + source_file_name_ + " -o " + library_file_name_;
+
+#if 1
+    // Try to capture the compilation error message into the exception body.
+    // Testing how cross-platform this is. -- D.K.
+    cmdline += " 2>&1";
+    std::ostringstream error_message;
+    bool compilation_successful = true;
+    InputTextPipe pipe(cmdline);
+    do {
+      std::string error_message_line = pipe.ReadLine();
+      if (!error_message_line.empty()) {
+        error_message << error_message_line << '\n';
+        compilation_successful = false;
+      }
+    } while (pipe);
+    if (!compilation_successful) {
+      CURRENT_THROW(CompilationException("Failed to compile user code:\n" + error_message.str()));
+    }
+#else
+    // The default implementation.
+    if (current::bricks::system::SystemCall(cmdline.c_str())) {
+      CURRENT_THROW(CompilationException("Failed to compile user code."));
+    }
+#endif
+
+    lib_ = ::dlopen(library_file_name_.c_str(), RTLD_LAZY);
+    if (!lib_) {
+      CURRENT_THROW(DLOpenException("Failed to load the library."));
+    }
+  }
+
+  ~JITCompiledCPP() {
+    if (lib_) {
+      ::dlclose(lib_);
+    }
+  }
+
+  template <typename F, typename S>
+  F Get(S&& function_name) {
+    if (!lib_) {
+      CURRENT_THROW(DLOpenException("Failed to load the library."));
+    } else {
+      void* f = ::dlsym(lib_, current::strings::ConstCharPtr(std::forward<S>(function_name)));
+      if (!f) {
+        CURRENT_THROW(DLSymException("Failed to load the symbol."));
+      } else {
+        return reinterpret_cast<F>(f);
+      }
+    }
+  }
+};
 
 }  // namespace current::bricks::system
 }  // namespace current::bricks

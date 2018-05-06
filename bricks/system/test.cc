@@ -64,3 +64,17 @@ TEST(Syscalls, SystemCall) {
   current::bricks::system::SystemCall(std::string("cp ") + tmp1_file_name + ' ' + tmp2_file_name);
   EXPECT_EQ("OK", current::FileSystem::ReadFileAsString(tmp2_file_name));
 }
+
+TEST(Syscalls, DLOpen) {
+  current::bricks::system::JITCompiledCPP lib("int foo() { return 42; }");
+  auto bar = lib.template Get<int (*)()>("_Z3foov");  // The C++-mangled name for `foo`, use `objdump -t` if unsure.
+  EXPECT_EQ(42, bar());
+}
+
+TEST(Syscalls, DLOpenExceptions) {
+  ASSERT_THROW(current::bricks::system::JITCompiledCPP("*"), current::bricks::system::CompilationException);
+  {
+    current::bricks::system::JITCompiledCPP lib("");  // An empty source is fine.
+    ASSERT_THROW(lib.template Get<int (*)()>("bwahaha"), current::bricks::system::DLSymException);
+  }
+}
