@@ -32,10 +32,10 @@ SOFTWARE.
 #include "http.h"
 
 #include "../../dflags/dflags.h"
+#include "../../strings/printf.h"
+#include "../../system/syscalls.h"
 
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
-
-#include "../../strings/printf.h"
 
 DEFINE_int32(net_http_test_port, PickPortForUnitTest(), "Local port to use for the test HTTP server.");
 
@@ -835,19 +835,9 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
 
 #ifndef CURRENT_WINDOWS
 struct HTTPClientImplCURL {
-  static std::string Syscall(const std::string& cmdline) {
-    FILE* pipe = ::popen(cmdline.c_str(), "r");
-    CURRENT_ASSERT(pipe);
-    char s[1024];
-    const auto warn_unused_result_catch_warning = ::fgets(s, sizeof(s), pipe);
-    static_cast<void>(warn_unused_result_catch_warning);
-    ::pclose(pipe);
-    return s;
-  }
-
   static std::string MakeGetRequest(std::thread& server_thread, const std::string& url) {
-    const std::string result = Syscall(current::strings::Printf(
-        "curl -s localhost:%d%s", FLAGS_net_http_test_port, url.c_str()));
+    const auto cmd = current::strings::Printf( "curl -s localhost:%d%s", FLAGS_net_http_test_port, url.c_str());
+    const std::string result = current::bricks::system::InputTextPipe(cmd).ReadLine();
     server_thread.join();
     return result;
   }
@@ -855,8 +845,9 @@ struct HTTPClientImplCURL {
   static std::string MakePostRequest(std::thread& server_thread,
                                      const std::string& url,
                                      const std::string& data) {
-    const std::string result = Syscall(current::strings::Printf(
-        "curl -s -d '%s' localhost:%d%s", data.c_str(), FLAGS_net_http_test_port, url.c_str()));
+    const auto cmd = current::strings::Printf(
+        "curl -s -d '%s' localhost:%d%s", data.c_str(), FLAGS_net_http_test_port, url.c_str());
+    const std::string result = current::bricks::system::InputTextPipe(cmd).ReadLine();
     server_thread.join();
     return result;
   }
@@ -957,7 +948,8 @@ TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
 TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
   std::thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::MakeGetRequest(t, "/"));
+  EXPECT_EQ(current::strings::Trim(DefaultInternalServerErrorMessage()),
+            current::strings::Trim(TypeParam::MakeGetRequest(t, "/")));
 }
 
 TEST(HTTPCodesTest, SmokeTest) {
