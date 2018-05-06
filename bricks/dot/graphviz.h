@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../util/singleton.h"
 #include "../file/file.h"
 #include "../strings/printf.h"
+#include "../system/syscalls.h"
 
 #include "../../typesystem/optional.h"
 #include "../../typesystem/helpers.h"
@@ -258,8 +259,8 @@ struct GenericGraph {
     const auto output_file_deleter = current::FileSystem::ScopedRmFile(output_file_name);
 
     current::FileSystem::WriteStringToFile(AsDOT(), input_file_name.c_str());
-    CURRENT_ASSERT(!::system(current::strings::Printf(
-                                 "dot -T svg %s -o %s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
+    CURRENT_ASSERT(!bricks::system::SystemCall(current::strings::Printf(
+        "dot -T svg %s -o %s", input_file_name.c_str(), output_file_name.c_str()).c_str()));
     return current::FileSystem::ReadFileAsString(output_file_name.c_str());
   }
 };
