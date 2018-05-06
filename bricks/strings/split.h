@@ -35,8 +35,8 @@ SOFTWARE.
 #include "chunk.h"
 
 #include "../exception.h"
-#include "../template/enable_if.h"
 #include "../template/decay.h"
+#include "../template/enable_if.h"
 #include "../template/weed.h"
 
 namespace current {
@@ -248,6 +248,39 @@ inline size_t Split(STRING&& s, PROCESSOR&& processor, EmptyFields empty_fields_
                impl::DefaultSeparator<SEPARATOR>::value(),
                std::forward<PROCESSOR>(processor),
                empty_fields_strategy);
+}
+
+// The version returning an `std::vector<Chunk>`, which is somewhat performant.
+template <typename SEPARATOR>
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+                        std::vector<Chunk>>
+SplitIntoChunks(Chunk chunk,
+                SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
+                EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+  std::vector<Chunk> result;
+  Split(chunk,
+        std::forward<SEPARATOR>(separator),
+        [&result](Chunk chunk) { result.emplace_back(chunk); },
+        empty_fields_strategy);
+  return result;
+}
+
+template <typename SEPARATOR>
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+                        std::vector<Chunk>>
+SplitIntoChunks(char* s,
+                SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
+                EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+  return SplitIntoChunks(Chunk(s, ::strlen(s)), std::forward<SEPARATOR>(separator), empty_fields_strategy);
+}
+
+template <typename SEPARATOR>
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+                        std::vector<Chunk>>
+SplitIntoChunks(const std::string& s,
+                SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
+                EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+  return SplitIntoChunks(Chunk(&s[0], s.length()), std::forward<SEPARATOR>(separator), empty_fields_strategy);
 }
 
 // The versions returning an `std::vector<std::string>`, for those not caring about performance.
