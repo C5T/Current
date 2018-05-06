@@ -26,6 +26,8 @@ SOFTWARE.
 
 #include "syscalls.h"
 
+#include "../file/file.h"
+
 #include "../../3rdparty/gtest/gtest-main.h"
 
 #include <thread>
@@ -50,3 +52,15 @@ TEST(Syscalls, PopenException) {
   ASSERT_THROW(current::bricks::system::InputTextPipe("/does/not/exist"), current::bricks::system::PopenCallException);
 }
 #endif
+
+TEST(Syscalls, SystemCall) {
+  const std::string tmp1_file_name = current::FileSystem::GenTmpFileName();
+  const std::string tmp2_file_name = current::FileSystem::GenTmpFileName();
+  const auto tmp1_deleter = current::FileSystem::ScopedRmFile(tmp1_file_name);
+  const auto tmp2_deleter = current::FileSystem::ScopedRmFile(tmp2_file_name);
+  current::FileSystem::WriteStringToFile("OK", tmp1_file_name.c_str());
+  current::FileSystem::WriteStringToFile("NO", tmp2_file_name.c_str());
+  EXPECT_EQ("NO", current::FileSystem::ReadFileAsString(tmp2_file_name));
+  current::bricks::system::SystemCall(std::string("cp ") + tmp1_file_name + ' ' + tmp2_file_name);
+  EXPECT_EQ("OK", current::FileSystem::ReadFileAsString(tmp2_file_name));
+}

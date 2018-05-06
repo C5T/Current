@@ -45,6 +45,10 @@ struct PopenCallException : SystemException {
   using SystemException::SystemException;
 };
 
+struct SystemCallException : SystemException {
+  using SystemException::SystemException;
+};
+
 class InputTextPipe {
  private:
   const std::string command_;
@@ -91,6 +95,22 @@ class InputTextPipe {
   // `false` if the `popen()` call failed, or is the previous `fgets()` call returned a null pointer.
   operator bool() const { return f_; }
 };
+
+template <typename S>
+int SystemCall(S&& input_command) {
+  const std::string command(std::forward<S>(input_command));
+  int result = ::system(command.c_str());
+  if (result == -1 || result == 127) {
+    if (!::system("")) {
+      CURRENT_THROW(SystemCallException("No shell available to call `::system()`."));
+    } else if (result == -1) {
+      CURRENT_THROW(SystemCallException("Child process could not be created for: " + command));
+    } else if (result == 127) {
+      CURRENT_THROW(SystemCallException("Child process could not start the shell for: " + command));
+    }
+  }
+  return result;
+}
 
 }  // namespace current::bricks::system
 }  // namespace current::bricks
