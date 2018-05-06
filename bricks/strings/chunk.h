@@ -74,7 +74,7 @@ class Chunk {
   Chunk() : S(""), N(0u) {}
   Chunk(const char* s, size_t n) : S(s), N(n) { CURRENT_ASSERT(S[N] == '\0'); }
   Chunk(const char* s) : S(s), N(strlen(s)) {}
-  Chunk(const char* begin, const char* end) : S(begin), N(end -begin) {}
+  Chunk(const char* begin, const char* end) : S(begin), N(end - begin) {}
 
   template <int L>
   Chunk(const char s[L]) : S(s), N(L - 1) {
