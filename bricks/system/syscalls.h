@@ -26,6 +26,8 @@ SOFTWARE.
 #define BRICKS_SYSTEM_SYSCALLS_H
 
 #include "../../port.h"
+
+#include "../exception.h"
 #include "../strings/util.h"
 
 #include <cstdio>
@@ -35,23 +37,33 @@ namespace current {
 namespace bricks {
 namespace system {
 
+struct SystemException : Exception {
+  using Exception::Exception;
+};
+
+struct PopenCallException : SystemException {
+  using SystemException::SystemException;
+};
+
 class InputTextPipe {
  private:
-  std::vector<char> buffer;
-  FILE* f;
+  const std::string command_;
+  std::vector<char> buffer_;
+  FILE* f_;
 
  public:
   template <typename S>
   explicit InputTextPipe(S&& command, size_t max_line_length = 1024 * 1024)
-      : buffer(max_line_length), f(::popen(strings::ConstCharPtr(std::forward<S>(command)), "r")) {
-    if (!f) {
-      //     CURRENT_THROW
+      : command_(std::forward<S>(command)), buffer_(max_line_length), f_(::popen(command_.c_str(), "r")) {
+    if (!f_) {
+      // NOTE(dkorolev): I couldn't test it.
+      CURRENT_THROW(PopenCallException(command_));
     }
   }
 
   ~InputTextPipe() {
-    if (f) {
-      ::pclose(f);
+    if (f_) {
+      ::pclose(f_);
     }
   }
 
@@ -59,11 +71,11 @@ class InputTextPipe {
   // Generally, if an empty string was returned from a valid `InputTextPipe`,
   // casting it to `bool` is the way to tell whether the stream of data to read has ended.
   std::string ReadLine() {
-    if (f) {
-      const char* p = ::fgets(&buffer[0], buffer.size(), f);
+    if (f_) {
+      const char* p = ::fgets(&buffer_[0], buffer_.size(), f_);
       if (!p) {
-        ::pclose(f);
-        f = nullptr;
+        ::pclose(f_);
+        f_ = nullptr;
         return "";
       } else {
         std::string s(p);
@@ -77,7 +89,7 @@ class InputTextPipe {
     }
   }
   // `false` if the `popen()` call failed, or is the previous `fgets()` call returned a null pointer.
-  operator bool() const { return f; }
+  operator bool() const { return f_; }
 };
 
 }  // namespace current::bricks::system

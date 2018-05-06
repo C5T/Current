@@ -44,3 +44,9 @@ TEST(Syscalls, PipedOutputMultipleLines) {
   EXPECT_EQ("", pipe.ReadLine());
   EXPECT_FALSE(pipe);
 }
+
+#if 0
+TEST(Syscalls, PopenException) {
+  ASSERT_THROW(current::bricks::system::InputTextPipe("/does/not/exist"), current::bricks::system::PopenCallException);
+}
+#endif
