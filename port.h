@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// #define CURRENT_STORAGE_PATCH_SUPPORT
+
 // Cross-platform portability header.
 //
 // Ensures that one and only one of CURRENT_{POSIX,APPLE,ANDROID} is defined.
@@ -29,9 +31,6 @@ SOFTWARE.
 
 #ifndef CURRENT_PORT_H
 #define CURRENT_PORT_H
-
-// TODO(dkorolev): Needed by Nathan. Remove later.
-#include <cassert>
 
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 

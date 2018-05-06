@@ -1521,3 +1521,46 @@ TEST(TypeSystemTest, InplaceVariantConstruction) {
   ASSERT_FALSE(Exists<Foo>(v));
   EXPECT_EQ(202u, Value<Bar>(v).j);
 }
+
+namespace struct_definition_test {
+
+CURRENT_STRUCT(DoesNotSupportPatch) {
+  CURRENT_FIELD(x, int32_t, 0);
+};
+
+CURRENT_STRUCT(PatchToY) {
+  CURRENT_FIELD(dy, int32_t, 0);
+};
+
+CURRENT_STRUCT(DoesSupportPatch) {
+  CURRENT_FIELD(y, int32_t, 0);
+
+  using patch_object_t = PatchToY;
+  void PatchWith(const patch_object_t& patch) {
+    y += patch.dy;
+  }
+};
+
+}  // namespace struct_definition_test
+
+TEST(TypeSystemTest, Patch) {
+  using namespace struct_definition_test;
+
+  static_assert(!current::HasPatch<void>(), "");
+  static_assert(!current::HasPatch<int>(), "");
+  static_assert(!current::HasPatch<DoesNotSupportPatch>(), "");
+
+  static_assert(current::HasPatch<DoesSupportPatch>(), "");
+
+  DoesSupportPatch object;
+  EXPECT_EQ(0, object.y);
+
+  PatchToY delta_object;
+  delta_object.dy = 42;
+  object.PatchWith(delta_object);
+  EXPECT_EQ(42, object.y);
+
+  delta_object.dy = -10;
+  object.PatchWith(delta_object);
+  EXPECT_EQ(32, object.y);
+}

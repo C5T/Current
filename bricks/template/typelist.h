@@ -28,6 +28,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_TYPELIST_H
 #define BRICKS_TEMPLATE_TYPELIST_H
 
+#include "../../port.h"
+
 #include <cstdlib>
 #include <type_traits>
 
@@ -143,6 +145,45 @@ static_assert(std::is_same<TypeListImpl<int>, TypeListCat<TypeListImpl<int>>>::v
 static_assert(std::is_same<TypeListImpl<int, char, double>,
                            TypeListCat<TypeListImpl<int>, TypeListImpl<char>, TypeListImpl<double>>>::value,
               "");
+
+template <typename LHS, typename RHS>
+struct TypeListRemoveVoidsInnerImpl;
+
+template <typename... NON_VOIDS>
+struct TypeListRemoveVoidsInnerImpl<TypeListImpl<NON_VOIDS...>, TypeListImpl<>> {
+  using type = TypeListImpl<NON_VOIDS...>;
+};
+
+template <typename... NON_VOIDS, typename... TS>
+struct TypeListRemoveVoidsInnerImpl<TypeListImpl<NON_VOIDS...>, TypeListImpl<void, TS...>> {
+  using type = typename TypeListRemoveVoidsInnerImpl<TypeListImpl<NON_VOIDS...>, TypeListImpl<TS...>>::type;
+};
+
+template <typename... NON_VOIDS, typename T, typename... TS>
+struct TypeListRemoveVoidsInnerImpl<TypeListImpl<NON_VOIDS...>, TypeListImpl<T, TS...>> {
+  using type = typename TypeListRemoveVoidsInnerImpl<TypeListImpl<NON_VOIDS..., T>, TypeListImpl<TS...>>::type;
+};
+
+template <typename T>
+struct TypeListRemoveVoidsImpl;
+
+template <typename... TS>
+struct TypeListRemoveVoidsImpl<TypeListImpl<TS...>> {
+  using type = typename TypeListRemoveVoidsInnerImpl<TypeListImpl<>, TypeListImpl<TS...>>::type;
+};
+
+template <typename T>
+using TypeListRemoveVoids = typename TypeListRemoveVoidsImpl<T>::type;
+
+static_assert(std::is_same<TypeListImpl<>, TypeListRemoveVoids<TypeListImpl<>>>::value, "");
+static_assert(std::is_same<TypeListImpl<>, TypeListRemoveVoids<TypeListImpl<void>>>::value, "");
+static_assert(std::is_same<TypeListImpl<>, TypeListRemoveVoids<TypeListImpl<void, void>>>::value, "");
+static_assert(std::is_same<TypeListImpl<>, TypeListRemoveVoids<TypeListImpl<void, void, void>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListRemoveVoids<TypeListImpl<void, int>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListRemoveVoids<TypeListImpl<int, void>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListRemoveVoids<TypeListImpl<int, void, void>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListRemoveVoids<TypeListImpl<void, int, void>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, TypeListRemoveVoids<TypeListImpl<void, void, int>>>::value, "");
 
 // `TypeListUnion` creates a `TypeList<{types belonging to either LHS.. or RHS...}>`.
 // It's a `TypeListCat` that allows duplicates.
@@ -363,7 +404,7 @@ struct E;
 
 template <size_t I>
 struct E<I, TypeListImpl<>> {
-  // ``TypeAtIndex`.
+  // `TypeAtIndex`.
   void F(TI<I>) {}
 };
 

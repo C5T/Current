@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// A simple profiler with a `PROFILER_SCOPE("my magical scope")` macro to declare scopes
-// and a `PROFILER_HTTP_ROUTE(port, "/route")` macro to define an HTTP endpoint exposing
-// a full snapshot of how much time did each thread spend in each scope.
+// A simple profiler with a `CURRENT_PROFILER_SCOPE("my magical scope")` macro to declare scopes and
+// a `CURRENT_PROFILER_HTTP_ROUTE(http_scopes_variable, port, "/route")` macro to define an HTTP endpoint
+// exposing a full snapshot of how much time did each thread spend in each scope.
 // Scopes are hierarchical, represented in the output as a full call stack tree.
 
 #ifndef CURRENT_PROFILER_H
@@ -32,9 +32,8 @@ SOFTWARE.
 
 #ifndef CURRENT_PROFILER
 
-#define PROFILER_ENABLED false
-#define PROFILER_SCOPE(scope)
-#define PROFILER_HTTP_ROUTE(port, route)
+#define CURRENT_PROFILER_SCOPE(scope)
+#define CURRENT_PROFILER_HTTP_ROUTE(scope, port, route)
 
 #else
 
@@ -52,28 +51,57 @@ SOFTWARE.
 #error "No `CURRENT_PROFILER` in `CURRENT_MOCK_TIME` please."
 #endif
 
+namespace current {
+namespace profiler {
+
+CURRENT_STRUCT(PerThreadReporting) {
+  CURRENT_FIELD(scope, std::string);
+  CURRENT_FIELD(entries, uint64_t);
+  CURRENT_FIELD(us, std::chrono::microseconds);
+  CURRENT_FIELD(us_per_entry, double);
+  CURRENT_FIELD(absolute_best_possible_qps, double);
+  CURRENT_FIELD(ratio_of_parent, double);
+  CURRENT_FIELD(subscope, std::vector<PerThreadReporting>);
+  CURRENT_FIELD(subscope_total_ratio_of_parent, double);
+  bool operator<(const PerThreadReporting& rhs) const {
+    return us > rhs.us;  // Naturally sort in reverse order of `us`.
+  }
+};
+
+CURRENT_STRUCT(ProfilingReport) {
+  CURRENT_FIELD(thread, std::vector<PerThreadReporting>);
+  CURRENT_FIELD(profiling_overhead, std::chrono::microseconds);
+  CURRENT_FIELD(profiling_mutex_overhead, std::chrono::microseconds);
+  CURRENT_FIELD(reporting_overhead, std::chrono::microseconds);
+};
+
 struct Profiler {
   class StateMaintainer {
    private:
     struct State {
       struct PerThread {
         struct Trie {
-          uint64_t ms_entered = 0;               // `Now()` if within it, `0` if currently not there.
-          uint64_t ms_total = 0;                 // Total across all the times this scope was entered.
-          uint64_t entries = 0;                  // The number of times this scope was entered.
-          std::map<const char*, Trie> children;  // Sub-scopes within this scope, if any.
-          uint64_t ComputeTotalMilliseconds(uint64_t now) const {
-            if (ms_entered) {
-              CURRENT_ASSERT(now >= ms_entered);
-              return ms_total + (now - ms_entered);
+          // `Now()` if within it, `0` if currently not there.
+          std::chrono::microseconds us_entered = std::chrono::microseconds(0);
+          // Total across all the times this scope was entered.
+          std::chrono::microseconds us_total = std::chrono::microseconds(0);
+          // The number of times this scope was entered.
+          uint64_t entries = 0;
+          // Sub-scopes within this scope, if any.
+          std::map<const char*, Trie> children;
+
+          std::chrono::microseconds ComputeTotalMicroseconds(std::chrono::microseconds now) const {
+            if (us_entered.count()) {
+              CURRENT_ASSERT(now >= us_entered);
+              return std::chrono::microseconds(us_total.count() + (now - us_entered).count());
             } else {
-              return ms_total;
+              return us_total;
             }
           }
-          void RecursiveReset(uint64_t now) {
-            ms_total = 0;
-            if (ms_entered) {
-              ms_entered = now;
+          void RecursiveReset(std::chrono::microseconds now) {
+            us_total = std::chrono::microseconds(0);
+            if (us_entered.count()) {
+              us_entered = now;
             }
             entries = 1;
             for (auto& e : children) {
@@ -82,98 +110,76 @@ struct Profiler {
           }
         };
         Trie trie;
-        std::stack<std::pair<const char*, Trie*>> stack;
+        std::stack<std::pair<const char*, Trie*> > stack;
         PerThread() {
-          trie.ms_entered = Now();
+          trie.us_entered = current::time::Now();
           trie.entries = 1;
           stack.push(std::make_pair("", &trie));
         }
       };
-      struct PerThreadReporting {
-        std::string scope;
-        uint64_t entries;
-        uint64_t ms;
-        double ms_per_entry;
-        double absolute_best_possible_qps;
-        double ratio_of_parent;
-        std::vector<PerThreadReporting> subscope;
-        double subscope_total_ratio_of_parent;
-        bool operator<(const PerThreadReporting& rhs) const {
-          return ms > rhs.ms;  // Naturally sort in reverse order of `ms`.
-        }
-        template <typename A>
-        void save(A& ar) const {
-          ar(CEREAL_NVP(scope),
-             CEREAL_NVP(entries),
-             CEREAL_NVP(ms),
-             CEREAL_NVP(ms_per_entry),
-             CEREAL_NVP(absolute_best_possible_qps),
-             CEREAL_NVP(ratio_of_parent),
-             CEREAL_NVP(subscope),
-             CEREAL_NVP(subscope_total_ratio_of_parent));
-        }
-      };
       std::unordered_map<std::thread::id, PerThread> per_thread;
-      uint64_t total_spent_in_profiling = 0;
-      uint64_t spent_in_reporting = 0;
-      uint64_t spent_in_mutex_locking = 0;
+      std::chrono::microseconds total_spent_in_profiling = std::chrono::microseconds(0);
+      std::chrono::microseconds spent_in_reporting = std::chrono::microseconds(0);
+      std::chrono::microseconds spent_in_mutex_locking = std::chrono::microseconds(0);
       void Reset() {
-        total_spent_in_profiling = 0;
-        spent_in_reporting = 0;
-        spent_in_mutex_locking = 0;
+        total_spent_in_profiling = std::chrono::microseconds(0);
+        spent_in_reporting = std::chrono::microseconds(0);
+        spent_in_mutex_locking = std::chrono::microseconds(0);
         for (auto& e : per_thread) {
-          e.second.trie.RecursiveReset(Now());
+          e.second.trie.RecursiveReset(current::time::Now());
         }
       }
-      static const char* JSONEntryName() { return "milliseconds"; }
-      template <typename A>
-      void save(A& ar) const {
-        const uint64_t now = Now();
-        const uint64_t profiling_overhead = total_spent_in_profiling - spent_in_reporting;
-        const uint64_t reporting_overhead = spent_in_reporting;
-        const uint64_t profiling_mutex_overhead = spent_in_mutex_locking;
+      ProfilingReport GenerateReport() const {
+        const std::chrono::microseconds now = current::time::Now();
+        ProfilingReport report;
+        report.profiling_overhead = total_spent_in_profiling - spent_in_reporting;
+        report.reporting_overhead = spent_in_reporting;
+        report.profiling_mutex_overhead = spent_in_mutex_locking;
         std::vector<PerThreadReporting> thread;
         thread.reserve(per_thread.size());
         for (const auto& per_thread_element : per_thread) {
-          std::function<void(
-              const PerThread::Trie& input, uint64_t total_ms, PerThreadReporting& output, const char* stack)>
+          std::function<void(const PerThread::Trie& input,
+                             std::chrono::microseconds total_us,
+                             PerThreadReporting& output,
+                             const char* stack)>
               recursive_fill;
-          recursive_fill = [now, &recursive_fill](
-              const PerThread::Trie& input, uint64_t total_ms, PerThreadReporting& output, const char* stack) {
+          recursive_fill = [now, &recursive_fill](const PerThread::Trie& input,
+                                                  std::chrono::microseconds total_us,
+                                                  PerThreadReporting& output,
+                                                  const char* stack) {
             output.scope = stack;
             output.entries = input.entries;
             CURRENT_ASSERT(output.entries);
-            output.ms = input.ComputeTotalMilliseconds(now);
-            output.ms_per_entry = 1.0 * output.ms / output.entries;
-            output.absolute_best_possible_qps = output.ms ? (1000.0 / output.ms_per_entry) : 1e9;
-            output.ratio_of_parent = total_ms ? (1.0 * output.ms / total_ms) : 1.0;
+            output.us = input.ComputeTotalMicroseconds(now);
+            output.us_per_entry = 1.0 * output.us.count() / output.entries;
+            output.absolute_best_possible_qps = output.us.count() ? (1e6 / output.us_per_entry) : 1e6;
+            output.ratio_of_parent = total_us.count() ? (1.0 * output.us.count() / total_us.count()) : 1.0;
             output.subscope.reserve(input.children.size());
             for (const auto& scope : input.children) {
               output.subscope.resize(output.subscope.size() + 1);
-              recursive_fill(scope.second, output.ms, output.subscope.back(), scope.first);
+              recursive_fill(scope.second, output.us, output.subscope.back(), scope.first);
             }
             CURRENT_ASSERT(output.subscope.size() == input.children.size());
-            uint64_t subscope_total = 0;
+            std::chrono::microseconds subscope_total = std::chrono::microseconds(0);
             for (const auto& subscope : output.subscope) {
-              subscope_total += subscope.ms;
+              subscope_total += subscope.us;
             }
-            CURRENT_ASSERT(subscope_total <= output.ms);
-            output.subscope_total_ratio_of_parent = output.ms ? (1.0 * subscope_total / output.ms) : 1.0;
+            CURRENT_ASSERT(subscope_total <= output.us);
+            output.subscope_total_ratio_of_parent =
+                output.us.count() ? (1.0 * subscope_total.count() / output.us.count()) : 1.0;
             std::sort(output.subscope.begin(), output.subscope.end());
           };
           thread.resize(thread.size() + 1);
           std::ostringstream thread_id_as_string;
           thread_id_as_string << "C++ thread with internal ID " << per_thread_element.first;
           recursive_fill(per_thread_element.second.trie,
-                         per_thread_element.second.trie.ComputeTotalMilliseconds(now),
+                         per_thread_element.second.trie.ComputeTotalMicroseconds(now),
                          thread.back(),
                          thread_id_as_string.str().c_str());
         }
         CURRENT_ASSERT(thread.size() == per_thread.size());
-        ar(CEREAL_NVP(thread),
-           CEREAL_NVP(profiling_overhead),
-           CEREAL_NVP(profiling_mutex_overhead),
-           CEREAL_NVP(reporting_overhead));
+        report.thread = thread;
+        return report;
       }
     };
 
@@ -181,11 +187,11 @@ struct Profiler {
     void EnterScope(const char* scope) {
       CURRENT_ASSERT(scope);
       CURRENT_ASSERT(*scope);
-      Guarded([scope](uint64_t now, State::PerThread& per_thread) {
-        CURRENT_ASSERT(now);
+      Guarded([scope](std::chrono::microseconds now, State::PerThread& per_thread) {
+        CURRENT_ASSERT(now.count());
         CURRENT_ASSERT(!per_thread.stack.empty());
         State::PerThread::Trie& node = (*per_thread.stack.top().second).children[scope];
-        node.ms_entered = now;
+        node.us_entered = now;
         ++node.entries;
         per_thread.stack.push(std::make_pair(scope, &node));
       });
@@ -194,45 +200,43 @@ struct Profiler {
     void LeaveScope(const char* scope) {
       CURRENT_ASSERT(scope);
       CURRENT_ASSERT(*scope);
-      Guarded([scope](uint64_t now, State::PerThread& per_thread) {
-        CURRENT_ASSERT(now);
+      Guarded([scope](std::chrono::microseconds now, State::PerThread& per_thread) {
+        CURRENT_ASSERT(now.count());
         CURRENT_ASSERT(!per_thread.stack.empty());
         CURRENT_ASSERT(scope == per_thread.stack.top().first);
         State::PerThread::Trie& node = (*per_thread.stack.top().second);
-        CURRENT_ASSERT(node.ms_entered <= now);
-        node.ms_total += (now - node.ms_entered);
-        node.ms_entered = 0;
+        CURRENT_ASSERT(node.us_entered <= now);
+        node.us_total += (now - node.us_entered);
+        node.us_entered = std::chrono::microseconds(0);
         per_thread.stack.pop();
         CURRENT_ASSERT(!per_thread.stack.empty());  // Should have at least the root trie node left in the stack.
       });
     }
 
     void Report(Request request) {
-      Guarded([this, &request](uint64_t unused_now, const State::PerThread& unused_per_thread_state) {
+      Guarded([this, &request](std::chrono::microseconds unused_now, const State::PerThread& unused_per_thread_state) {
         static_cast<void>(unused_now);
         static_cast<void>(unused_per_thread_state);
         if (request.url.query.has("reset")) {
           state_.Reset();
           request("The profiler has been reset.\n");
         } else {
-          const uint64_t pre_report = Now();
-          request(state_);
-          const uint64_t post_report = Now();
+          const std::chrono::microseconds pre_report = current::time::Now();
+          request(state_.GenerateReport());
+          const std::chrono::microseconds post_report = current::time::Now();
           state_.spent_in_reporting += (post_report - pre_report);
         }
       });
     }
 
    private:
-    static uint64_t Now() { return static_cast<uint64_t>(current::time::Now()); }
-
     template <typename F>
     void Guarded(F&& f) {
-      const uint64_t pre_mutex_lock = Now();
+      const std::chrono::microseconds pre_mutex_lock = current::time::Now();
       std::lock_guard<std::mutex> lock(mutex_);
-      const uint64_t post_mutex_lock = Now();
+      const std::chrono::microseconds post_mutex_lock = current::time::Now();
       f(post_mutex_lock, state_.per_thread[std::this_thread::get_id()]);
-      const uint64_t post_guarded_code = Now();
+      const std::chrono::microseconds post_guarded_code = current::time::Now();
       state_.total_spent_in_profiling += (post_guarded_code - pre_mutex_lock);
       state_.spent_in_mutex_locking += (post_mutex_lock - pre_mutex_lock);
     }
@@ -263,19 +267,21 @@ struct Profiler {
   static void HTTPRoute(Request request) { current::Singleton<StateMaintainer>().Report(std::move(request)); }
 };
 
-#define PROFILER_ENABLED true
-
 // Preprocessor token pasting occurs before recursive macro expansion, hence three-stage magic.
-#define PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b) a##b
-#define PROFILER_SCOPE_CONCATENATE_HELPER(a, b) PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b)
-#define PROFILER_SCOPE(scope) \
-  Profiler::ScopedStateMaintainer PROFILER_SCOPE_CONCATENATE_HELPER(profiler_scope_, __LINE__)(scope)
+#define CURRENT_PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b) a##b
+#define PROFILER_SCOPE_CONCATENATE_HELPER(a, b) CURRENT_PROFILER_SCOPE_CONCATENATE_HELPER_IMPL(a, b)
+#define CURRENT_PROFILER_SCOPE(scope)                                                                     \
+  ::current::profiler::Profiler::ScopedStateMaintainer PROFILER_SCOPE_CONCATENATE_HELPER(profiler_scope_, \
+                                                                                         __LINE__)(scope)
 
-#define PROFILER_HTTP_ROUTE(port, route)                                      \
-  do {                                                                        \
-    std::cerr << "Profiler: http://localhost:" << port << route << std::endl; \
-    HTTP(port).Register(route, Profiler::HTTPRoute);                          \
+#define CURRENT_PROFILER_HTTP_ROUTE(scope, port, route)                            \
+  do {                                                                             \
+    std::cerr << "Profiler: http://localhost:" << port << route << std::endl;      \
+    scope += HTTP(port).Register(route, ::current::profiler::Profiler::HTTPRoute); \
   } while (false)
+
+}  // namespace current::profiler
+}  // namespace current
 
 #endif
 
