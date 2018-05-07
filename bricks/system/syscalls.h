@@ -150,7 +150,7 @@ class JITCompiledCPP final {
         library_file_remover_(library_file_name_) {
     current::FileSystem::WriteStringToFile(current::strings::ConstCharPtr(std::forward<S>(source)),
                                            source_file_name_.c_str());
-    std::string cppflags = "-fPIC -shared -nostartfiles";
+    std::string cppflags = "-std=c++11 -fPIC -shared -nostartfiles";
 #ifdef NDEBUG
     cppflags += " -O3";
 #endif
