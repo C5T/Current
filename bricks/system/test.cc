@@ -33,11 +33,11 @@ SOFTWARE.
 #include <thread>
 
 TEST(Syscalls, PipedOutputSingleLine) {
-  EXPECT_EQ("Hello, World!", current::bricks::system::InputTextPipe("echo 'Hello, World!'").ReadLine());
+  EXPECT_EQ("Hello, World!", current::bricks::system::SystemCallReadPipe("echo 'Hello, World!'").ReadLine());
 }
 
 TEST(Syscalls, PipedOutputMultipleLines) {
-  current::bricks::system::InputTextPipe pipe("echo Hello; echo World");
+  current::bricks::system::SystemCallReadPipe pipe("echo Hello; echo World");
   EXPECT_TRUE(pipe);
   EXPECT_EQ("Hello", pipe.ReadLine());
   EXPECT_TRUE(pipe);
@@ -49,7 +49,8 @@ TEST(Syscalls, PipedOutputMultipleLines) {
 
 #if 0
 TEST(Syscalls, PopenException) {
-  ASSERT_THROW(current::bricks::system::InputTextPipe("/does/not/exist"), current::bricks::system::PopenCallException);
+  ASSERT_THROW(current::bricks::system::SystemCallReadPipe("/does/not/exist"),
+               current::bricks::system::PopenCallException);
 }
 #endif
 

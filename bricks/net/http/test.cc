@@ -837,7 +837,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
 struct HTTPClientImplCURL {
   static std::string MakeGetRequest(std::thread& server_thread, const std::string& url) {
     const auto cmd = current::strings::Printf( "curl -s localhost:%d%s", FLAGS_net_http_test_port, url.c_str());
-    const std::string result = current::bricks::system::InputTextPipe(cmd).ReadLine();
+    const std::string result = current::bricks::system::SystemCallReadPipe(cmd).ReadLine();
     server_thread.join();
     return result;
   }
@@ -847,7 +847,7 @@ struct HTTPClientImplCURL {
                                      const std::string& data) {
     const auto cmd = current::strings::Printf(
         "curl -s -d '%s' localhost:%d%s", data.c_str(), FLAGS_net_http_test_port, url.c_str());
-    const std::string result = current::bricks::system::InputTextPipe(cmd).ReadLine();
+    const std::string result = current::bricks::system::SystemCallReadPipe(cmd).ReadLine();
     server_thread.join();
     return result;
   }

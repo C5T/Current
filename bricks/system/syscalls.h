@@ -52,7 +52,7 @@ struct SystemCallException final : SystemException {
   using SystemException::SystemException;
 };
 
-class InputTextPipe final {
+class SystemCallReadPipe final {
  private:
   const std::string command_;
   std::vector<char> buffer_;
@@ -60,7 +60,7 @@ class InputTextPipe final {
 
  public:
   template <typename S>
-  explicit InputTextPipe(S&& command, size_t max_line_length = 1024 * 1024)
+  explicit SystemCallReadPipe(S&& command, size_t max_line_length = 16 * 1024)
       : command_(std::forward<S>(command)), buffer_(max_line_length), f_(::popen(command_.c_str(), "r")) {
     if (!f_) {
       // NOTE(dkorolev): I couldn't test it.
@@ -68,14 +68,14 @@ class InputTextPipe final {
     }
   }
 
-  ~InputTextPipe() {
+  ~SystemCallReadPipe() {
     if (f_) {
       ::pclose(f_);
     }
   }
 
   // Read a single line, or, if can not, returns an empty string.
-  // Generally, if an empty string was returned from a valid `InputTextPipe`,
+  // Generally, if an empty string was returned from a valid `SystemCallReadPipe`,
   // casting it to `bool` is the way to tell whether the stream of data to read has ended.
   std::string ReadLine() {
     if (f_) {
@@ -162,7 +162,7 @@ class JITCompiledCPP final {
     cmdline += " 2>&1";
     std::ostringstream error_message;
     bool compilation_successful = true;
-    InputTextPipe pipe(cmdline);
+    SystemCallReadPipe pipe(cmdline);
     do {
       std::string error_message_line = pipe.ReadLine();
       if (!error_message_line.empty()) {
