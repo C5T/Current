@@ -33,6 +33,8 @@ SOFTWARE.
 
 #include "is_string_type.h"
 
+#include "chunk.h"
+
 #include "../template/enable_if.h"
 #include "../template/decay.h"
 
@@ -137,6 +139,12 @@ struct ToStringImpl<std::chrono::microseconds, false, false> {
   static std::string DoIt(std::chrono::microseconds t) { return std::to_string(t.count()); }
 };
 
+// `Chunk` uses its own native cast into `std::string`, but it should be enabled.
+template <>
+struct ToStringImpl<strings::Chunk, false, false> {
+  static std::string DoIt(strings::Chunk chunk) { return chunk; }
+};
+
 template <typename T>
 inline std::string ToString(T&& something) {
   using decayed_t = current::decay<T>;
@@ -190,6 +198,31 @@ struct FromStringImpl<INPUT, bool, false, false> {
     return output;
   }
 };
+
+// Well, `int8_t` and `uint8_t` are not f*cking `char`-s, contrary to what `std::istringstream` thinks they are.
+template <typename INPUT>
+struct FromStringImpl<INPUT, int8_t, false, false> {
+  // Must return a reference as the callers expects it so. -- D.K.
+  static const int8_t& Go(const std::string& input, int8_t& output) {
+    std::istringstream is(input);
+    int value;
+    is >> value;
+    output = static_cast<int8_t>(value);
+    return output;
+  }
+};
+template <typename INPUT>
+struct FromStringImpl<INPUT, uint8_t, false, false> {
+  // Must return a reference as the callers expects it so. -- D.K.
+  static const uint8_t& Go(const std::string& input, uint8_t& output) {
+    std::istringstream is(input);
+    int value;
+    is >> value;
+    output = static_cast<uint8_t>(value);
+    return output;
+  }
+};
+
 
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
@@ -300,6 +333,11 @@ inline size_t UTF8StringLength(char const* s) {
 }
 
 inline size_t UTF8StringLength(std::string const& s) { return UTF8StringLength(s.c_str()); }
+
+// Another helper wrapper for `.c_str()`-using code to be able to accept `template<typename S>`.
+inline const char* ConstCharPtr(const char* s) { return s; }
+inline const char* ConstCharPtr(Chunk c) { return c.c_str(); }
+inline const char* ConstCharPtr(const std::string& s) { return s.c_str(); }
 
 }  // namespace strings
 

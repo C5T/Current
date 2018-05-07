@@ -63,8 +63,8 @@ SOFTWARE.
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 namespace current {
 namespace strings {
@@ -74,12 +74,13 @@ class Chunk {
   Chunk() : S(""), N(0u) {}
   Chunk(const char* s, size_t n) : S(s), N(n) { CURRENT_ASSERT(S[N] == '\0'); }
   Chunk(const char* s) : S(s), N(strlen(s)) {}
+  Chunk(const char* begin, const char* end) : S(begin), N(end - begin) {}
+
   template <int L>
-  Chunk(const char s[L])
-      : S(s), N(L - 1) {
-    // The above line break is `clang-format`, not me. -- D.K.
+  Chunk(const char s[L]) : S(s), N(L - 1) {
     CURRENT_ASSERT(S[N] == '\0');
   }
+
   Chunk(const std::string& s) : S(s.data()), N(s.size()) {}
   // Copyable and assignable by design.
 
@@ -87,6 +88,9 @@ class Chunk {
   size_t length() const { return N; }
 
   const char* c_str() const { return S; }
+
+  const char* begin() const { return S; }
+  const char* end() const { return S + N; }
 
   void assign(const char* s, size_t n) {
     S = s;
@@ -161,6 +165,14 @@ class Chunk {
 
   typedef EqualityComparator Pride;  // Your favorite equality smiley here. Mine is *HAWAII*, because rainbow.
 
+  // Still allow comparing `Chunk`-s to `std::string`-s, for purely code readability purposes.
+  bool operator==(const std::string& rhs) const {
+    return N == rhs.length() && ::memcmp(S, rhs.c_str(), N) == 0;
+  }
+  bool operator!=(const std::string& rhs) const {
+    return !operator==(rhs);
+  }
+
  private:
   const char* S;
   size_t N;
@@ -190,12 +202,12 @@ class UniqueChunk final : public Chunk {
 #define DEFINE_COMPARATOR(OP) \
   bool operator OP(const UniqueChunk& rhs) const { return S OP rhs.S; }
   // It's `clang-format` inserting those spaces between the operator and closing parenthesis; not me. -- D.K.
-  DEFINE_COMPARATOR(== );
-  DEFINE_COMPARATOR(!= );
-  DEFINE_COMPARATOR(< );
-  DEFINE_COMPARATOR(> );
-  DEFINE_COMPARATOR(<= );
-  DEFINE_COMPARATOR(>= );
+  DEFINE_COMPARATOR(==);
+  DEFINE_COMPARATOR(!=);
+  DEFINE_COMPARATOR(<);
+  DEFINE_COMPARATOR(>);
+  DEFINE_COMPARATOR(<=);
+  DEFINE_COMPARATOR(>=);
 #undef DEFINE_COMPARATOR
 };
 
