@@ -136,6 +136,37 @@ struct SherlockTestProcessorImpl {
     }
   }
 
+  EntryResponse operator()(const std::string& entry_json, uint64_t current_index, idxts_t last) {
+    while (wait_) {
+      std::this_thread::yield();
+    }
+    if (!data_.results_.empty()) {
+      data_.results_ += ",";
+    }
+    const auto tab_pos = entry_json.find('\t');
+    CURRENT_ASSERT(tab_pos != std::string::npos);
+    const auto idxts = ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    const auto entry = ParseJSON<Record>(entry_json.c_str() + tab_pos + 1);
+    CURRENT_ASSERT(current_index == idxts.index);
+    if (with_idx_ts_) {
+      data_.results_ += Printf("[%llu:%llu,%llu:%llu] %i",
+                               static_cast<unsigned long long>(current_index),
+                               static_cast<unsigned long long>(idxts.us.count()),
+                               static_cast<unsigned long long>(last.index),
+                               static_cast<unsigned long long>(last.us.count()),
+                               entry.x);
+    } else {
+      data_.results_ += current::ToString(entry.x);
+    }
+    data_.head_ = idxts.us;
+    ++data_.seen_;
+    if (data_.seen_ < max_to_process_) {
+      return EntryResponse::More;
+    } else {
+      return EntryResponse::Done;
+    }
+  }
+
   EntryResponse operator()(std::chrono::microseconds ts) {
     while (wait_) {
       std::this_thread::yield();
@@ -207,21 +238,34 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   foo_stream.Publish(2, std::chrono::microseconds(20));
   foo_stream.Publish(3, std::chrono::microseconds(30));
   Data d;
+  Data d_unchecked;
   {
     ASSERT_FALSE(d.subscriber_alive_);
+    ASSERT_FALSE(d_unchecked.subscriber_alive_);
     SherlockTestProcessor p(d, false, true);
+    SherlockTestProcessor p_unchecked(d_unchecked, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
     p.SetMax(3u);
+    p_unchecked.SetMax(3u);
     foo_stream.Subscribe(p);  // With no return value collection to capture the scope, it's a blocking call.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
+    foo_stream.SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(3u, d_unchecked.seen_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
+  ASSERT_FALSE(d_unchecked.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
+  const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
-      << Join(expected_values, ',') << " != " << d.results_;
+      << joined_expected_values << " != " << d.results_;
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unchecked.results_;
 }
 
 TEST(Sherlock, SubscribeSynchronously) {
@@ -235,26 +279,38 @@ TEST(Sherlock, SubscribeSynchronously) {
   current::time::SetNow(std::chrono::microseconds(50));
   bar_stream.Publish(5);
   current::time::SetNow(std::chrono::microseconds(60));
-  bar_stream.Publish(6);
-  Data d;
+  bar_stream.Publish(Record(6));
+  Data d, d_unchecked;
   ASSERT_FALSE(d.subscriber_alive_);
+  ASSERT_FALSE(d_unchecked.subscriber_alive_);
 
   {
     SherlockTestProcessor p(d, false, true);
+    SherlockTestProcessor p_unchecked(d_unchecked, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
     p.SetMax(3u);
+    p_unchecked.SetMax(3u);
     // As `.SetMax(3)` was called, blocks the thread until all three recods are processed.
     bar_stream.Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
+    bar_stream.SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(3u, d_unchecked.seen_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
   }
 
   EXPECT_FALSE(d.subscriber_alive_);
+  EXPECT_FALSE(d_unchecked.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
+  const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
-      << Join(expected_values, ',') << " != " << d.results_;
+      << joined_expected_values << " != " << d.results_;
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unchecked.results_;
 }
 
 TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
@@ -273,19 +329,26 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     baz_stream.Publish(9, std::chrono::microseconds(3));
   });
   {
-    Data d;
+    Data d, d_unchecked;
     SherlockTestProcessor p(d, true);
+    SherlockTestProcessor p_unchecked(d_unchecked, true);
     baz_stream.Subscribe(p);
     EXPECT_EQ(0u, d.seen_);
+    baz_stream.SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(0u, d_unchecked.seen_);
   }
   wait = false;
   delayed_publish_thread.join();
   {
-    Data d;
+    Data d, d_unchecked;
     SherlockTestProcessor p(d, false, true);
+    SherlockTestProcessor p_unchecked(d_unchecked, false, true);
     p.SetMax(3u);
+    p_unchecked.SetMax(3u);
     baz_stream.Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
+    baz_stream.SubscribeUnchecked(p_unchecked);
+    EXPECT_EQ(3u, d_unchecked.seen_);
   }
 }
 
@@ -300,46 +363,65 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   current::time::SetNow(std::chrono::microseconds(2));
   meh_stream.Publish(11);
   current::time::SetNow(std::chrono::microseconds(3));
-  meh_stream.Publish(12);
-  Data d;
+  meh_stream.Publish(Record(12));
+  Data d, d_unchecked;
   SherlockTestProcessor p(d, true);
+  SherlockTestProcessor p_unchecked(d_unchecked, true);
   p.SetWait();
+  p_unchecked.SetWait();
   {
     auto scope1 = meh_stream.Subscribe(p);
+    auto scope1_unchecked = meh_stream.SubscribeUnchecked(p_unchecked);
     EXPECT_TRUE(scope1);
+    EXPECT_TRUE(scope1_unchecked);
     {
       auto scope2 = std::move(scope1);
+      auto scope2_unchecked = std::move(scope1_unchecked);
       EXPECT_TRUE(scope2);
+      EXPECT_TRUE(scope2_unchecked);
       EXPECT_FALSE(scope1);
+      EXPECT_FALSE(scope1_unchecked);
       {
-        current::sherlock::SubscriberScope scope3;
+        current::sherlock::SubscriberScope scope3, scope3_unchecked;
         EXPECT_FALSE(scope3);
+        EXPECT_FALSE(scope3_unchecked);
         EXPECT_TRUE(scope2);
+        EXPECT_TRUE(scope2_unchecked);
         {
           scope3 = std::move(scope2);
+          scope3_unchecked = std::move(scope2_unchecked);
           EXPECT_TRUE(scope3);
+          EXPECT_TRUE(scope3_unchecked);
           EXPECT_FALSE(scope2);
+          EXPECT_FALSE(scope2_unchecked);
           p.SetMax(3u);
+          p_unchecked.SetMax(3u);
           EXPECT_EQ(0u, d.seen_);
+          EXPECT_EQ(0u, d_unchecked.seen_);
           p.SetWait(false);
-          while (d.seen_ < 3u) {
+          p_unchecked.SetWait(false);
+          while (d.seen_ < 3u || d_unchecked.seen_ < 3u) {
             std::this_thread::yield();
           }
-          while (scope3) {
+          while (scope3 || scope3_unchecked) {
             std::this_thread::yield();
           }
         }
         EXPECT_FALSE(scope3);
+        EXPECT_FALSE(scope3_unchecked);
       }
     }
   }
   EXPECT_EQ(3u, d.seen_);
   EXPECT_EQ("10,11,12", d.results_);
+  EXPECT_EQ(3u, d_unchecked.seen_);
+  EXPECT_EQ("10,11,12", d_unchecked.results_);
 }
 
 namespace sherlock_unittest {
 
 // Collector class for `SubscribeToStreamViaHTTP` test.
+template <typename ENTRY>
 struct RecordsCollectorImpl {
   std::atomic_size_t count_;
   std::vector<std::string>& rows_;
@@ -349,9 +431,9 @@ struct RecordsCollectorImpl {
   RecordsCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
       : count_(0u), rows_(rows), entries_(entries) {}
 
-  EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
+  EntryResponse operator()(const ENTRY& entry, idxts_t current, idxts_t) {
     rows_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
-    entries_.push_back(JSON(entry));
+    entries_.push_back(JSON(entry) + '\n');
     ++count_;
     return EntryResponse::More;
   }
@@ -363,7 +445,51 @@ struct RecordsCollectorImpl {
   TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
 
-using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl, RecordWithTimestamp>;
+template <typename ENTRY>
+struct RecordsUncheckedCollectorImpl {
+  std::atomic_size_t count_;
+  std::vector<std::string>& rows_;
+  std::vector<std::string>& entries_;
+
+  RecordsUncheckedCollectorImpl() = delete;
+  RecordsUncheckedCollectorImpl(std::vector<std::string>& rows, std::vector<std::string>& entries)
+      : count_(0u), rows_(rows), entries_(entries) {}
+
+  EntryResponse operator()(const std::string& entry_json, uint64_t, idxts_t) {
+    rows_.push_back(entry_json + '\n');
+    const auto tab_pos = entry_json.find('\t');
+    ++count_;
+    if (tab_pos == std::string::npos) {
+      entries_.push_back("Malformed row\n");
+      return EntryResponse::More;
+    }
+    try {
+      ParseJSON<idxts_t>(entry_json.substr(0, tab_pos));
+    } catch (const current::InvalidJSONException&) {
+      entries_.push_back("Malformed index and timestamp\n");
+      return EntryResponse::More;
+    }
+    try {
+      ParseJSON<ENTRY>(entry_json.substr(tab_pos + 1));
+    } catch (const current::InvalidJSONException&) {
+      entries_.push_back("Malformed entry\n");
+      return EntryResponse::More;
+    }
+    entries_.push_back(entry_json.substr(tab_pos + 1) + '\n');
+    return EntryResponse::More;
+  }
+
+  EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
+
+  static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
+
+  static TerminationResponse Terminate() { return TerminationResponse::Terminate; }
+};
+
+using RecordsWithTimestampCollector =
+    current::ss::StreamSubscriber<RecordsCollectorImpl<RecordWithTimestamp>, RecordWithTimestamp>;
+using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl<Record>, Record>;
+using RecordsUncheckedCollector = current::ss::StreamSubscriber<RecordsUncheckedCollectorImpl<Record>, Record>;
 
 }  // namespace sherlock_unittest
 
@@ -390,9 +516,12 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   }
   {
     // Request with `?nowait` works even if stream is empty.
-    const auto result = HTTP(GET(base_url + "?nowait"));
+    const auto result = HTTP(GET(base_url + "?nowait&checked"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("", result.body);
+    const auto result_unchecked = HTTP(GET(base_url + "?nowait"));
+    EXPECT_EQ(200, static_cast<int>(result_unchecked.code));
+    EXPECT_EQ("", result_unchecked.body);
   }
   {
     // `?sizeonly` returns "0" since the stream is empty.
@@ -552,11 +681,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   std::vector<std::string> s;
   std::vector<std::string> e;
-  RecordsCollector collector(s, e);
+  RecordsWithTimestampCollector collector(s, e);
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
-    const current::sherlock::StreamImpl<RecordWithTimestamp>::SubscriberScope<RecordsCollector> scope(
+    const current::sherlock::Stream<RecordWithTimestamp>::SubscriberScope<RecordsWithTimestampCollector> scope(
         exposed_stream.Subscribe(collector));
     while (collector.count_ < 4u) {
       std::this_thread::yield();
@@ -578,121 +707,175 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   }
 
   // Test `n`.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?n=1&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?n=1")).body);
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?n=2&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?n=2")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4")).body);
   // Test `n` + `nowait`.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=100&nowait&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=100&nowait")).body);
 
   // Test `since` + `nowait`.
   // All entries since the timestamp of the last entry.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&nowait")).body);
   // All entries since the moment 1 us later than the second entry timestamp.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?since=201&nowait&checked")).body);
   EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?since=201&nowait")).body);
   // All entries since the timestamp of the second entry.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=200&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=200&nowait")).body);
   // All entries since the timestamp in the future.
+  EXPECT_EQ("", HTTP(GET(base_url + "?since=5000&nowait&checked")).body);
   EXPECT_EQ("", HTTP(GET(base_url + "?since=5000&nowait")).body);
 
   // Test `since` + `n`.
   // One entry since the timestamp of the last entry.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&n=1&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&n=1")).body);
   // Two entries since the timestamp of the first entry.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?since=100&n=2&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?since=100&n=2")).body);
 
   // Test `recent` + `nowait`.
   // All entries since (now - 400 us).
+  EXPECT_EQ(
+      s[3],
+      HTTP(GET(base_url + "?nowait&checked&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
   EXPECT_EQ(s[3],
             HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
   // All entries since (now - 300 us).
+  EXPECT_EQ(
+      s[2] + s[3],
+      HTTP(GET(base_url + "?nowait&checked&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
   EXPECT_EQ(s[2] + s[3],
             HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
   // All entries since (now - 100 us).
+  EXPECT_EQ(
+      s[0] + s[1] + s[2] + s[3],
+      HTTP(GET(base_url + "?nowait&checked&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
             HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
   // Large `recent` value => all entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?nowait&checked&recent=10000")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?nowait&recent=10000")).body);
 
   // Test `recent` + `n`.
   // Two entries since (now - 101 us).
+  EXPECT_EQ(
+      s[1] + s[2],
+      HTTP(GET(base_url + "?n=2&checked&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
   EXPECT_EQ(s[1] + s[2],
             HTTP(GET(base_url + "?n=2&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
   // Three entries with large `recent` value.
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&checked&recent=10000")).body);
   EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&recent=10000")).body);
 
   // Test `i` + `nowait`
   // All entries from `index = 3`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?i=3&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?i=3&nowait")).body);
   // All entries from `index = 1`.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?i=1&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?i=1&nowait")).body);
 
   // Test `i` + `n`
   // One entry from `index = 0`.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?i=0&n=1&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?i=0&n=1")).body);
   // Two entry from `index = 2`.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?i=2&n=2&checked")).body);
   EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?i=2&n=2")).body);
 
   // Test `tail` + `nowait`
   // Last three entries.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=3&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=3&nowait")).body);
   // Large `tail` value => all entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=50&nowait&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=50&nowait")).body);
 
   // Test `tail` + `n`
   // One entry starting from the 4th from the end.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?tail=4&n=1&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?tail=4&n=1")).body);
   // Two entries starting from the 3rd from the end.
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?tail=3&n=2&checked")).body);
   EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?tail=3&n=2")).body);
 
   // Test `tail` + `i` + `nowait`.
   // More strict constraint by `tail`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=1&i=0&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=1&i=0&nowait")).body);
   // More strict constraint by `i`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=4&i=3&nowait&checked")).body);
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=4&i=3&nowait")).body);
   // Nonexistent `i`.
+  EXPECT_EQ("", HTTP(GET(base_url + "?tail=4&i=10&nowait&checked")).body);
   EXPECT_EQ("", HTTP(GET(base_url + "?tail=4&i=10&nowait")).body);
 
   // Test `tail` + `i` + `n`.
   // More strict constraint by `tail`.
+  EXPECT_EQ(s[2], HTTP(GET(base_url + "?tail=2&i=0&n=1&checked")).body);
   EXPECT_EQ(s[2], HTTP(GET(base_url + "?tail=2&i=0&n=1")).body);
   // More strict constraint by `i`.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1&checked")).body);
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1")).body);
 
   // Test `period`.
   // Start from the first entry with the `period` less than 100.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99")).body);
   // Start 1 us later than the first entry with the `period` less than 200.
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199&checked")).body);
   EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199")).body);
   // Start 1 us later than the first entry with the `period` equal to 200.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait&checked")).body);
   EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait")).body);
   // Start 1 us later than the first entry with the `period` equal to 200 and limit to one entry.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1&checked")).body);
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1")).body);
   // Start from the third entry from the end with the `period` less than 100.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99&checked")).body);
   EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99")).body);
 
   // Test `?stop_after_bytes=...`'
   // Request exactly the size of the first entry.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=42&checked")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=42")).body);
   // Request slightly more max bytes than the size of the first entry.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=50&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=50")).body);
   // Request exactly the size of the first two entries.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=84&checked")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=84")).body);
   // Request with the capacity large enough to hold all the entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait&checked")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait")).body);
 
   // Test the `array` mode.
   {
     {
-      const std::string body = HTTP(GET(base_url + "?n=1&array")).body;
-      EXPECT_EQ("[\n" + e[0] + "\n]\n", body);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
+      const std::string body = HTTP(GET(base_url + "?n=1&array&checked")).body;
+      EXPECT_EQ("[\n" + e[0] + "]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]) + '\n');
+      const std::string body_unchecked = HTTP(GET(base_url + "?n=1&array")).body;
+      EXPECT_EQ("[\n" + e[0] + "]\n", body_unchecked);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unchecked)[0]) + '\n');
     }
     {
-      const std::string body = HTTP(GET(base_url + "?n=2&array")).body;
-      EXPECT_EQ("[\n" + e[0] + "\n,\n" + e[1] + "\n]\n", body);
-      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]));
-      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]));
+      const std::string body = HTTP(GET(base_url + "?n=2&array&checked")).body;
+      EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[0]) + '\n');
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body)[1]) + '\n');
+      const std::string body_unchecked = HTTP(GET(base_url + "?n=2&array")).body;
+      EXPECT_EQ("[\n" + e[0] + ",\n" + e[1] + "]\n", body_unchecked);
+      EXPECT_EQ(e[0], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unchecked)[0]) + '\n');
+      EXPECT_EQ(e[1], JSON(ParseJSON<std::vector<RecordWithTimestamp>>(body_unchecked)[1]) + '\n');
     }
   }
 
@@ -836,43 +1019,264 @@ TEST(Sherlock, ParsesFromFile) {
   auto parsed = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
   Data d;
+  Data d_unchecked;
   {
     ASSERT_FALSE(d.subscriber_alive_);
+    ASSERT_FALSE(d_unchecked.subscriber_alive_);
     SherlockTestProcessor p(d, false, true);
+    SherlockTestProcessor p_unchecked(d_unchecked, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
     p.SetMax(4u);
+    p_unchecked.SetMax(4u);
     parsed.Subscribe(p);  // A blocking call until the subscriber processes three entries and one head update.
+    parsed.SubscribeUnchecked(p_unchecked);
     EXPECT_EQ(4u, d.seen_);
     EXPECT_EQ(500, d.head_.count());
     ASSERT_TRUE(d.subscriber_alive_);
+    EXPECT_EQ(4u, d_unchecked.seen_);
+    EXPECT_EQ(500, d_unchecked.head_.count());
+    ASSERT_TRUE(d_unchecked.subscriber_alive_);
   }
   ASSERT_FALSE(d.subscriber_alive_);
+  ASSERT_FALSE(d_unchecked.subscriber_alive_);
 
   {
     // Try scope-based subscription of a limited-range subscriber, and confirm
     // casting the scope of this subscription to `bool` eventially become `false`.
     Data d2;
+    Data d2_unchecked;
     {
       ASSERT_FALSE(d2.subscriber_alive_);
+      ASSERT_FALSE(d2_unchecked.subscriber_alive_);
       SherlockTestProcessor p2(d2, false, true);
+      SherlockTestProcessor p2_unchecked(d2_unchecked, false, true);
       ASSERT_TRUE(d2.subscriber_alive_);
+      ASSERT_TRUE(d2_unchecked.subscriber_alive_);
       p2.SetMax(4u);
+      p2_unchecked.SetMax(4u);
       const auto scope = parsed.Subscribe(p2);
       while (static_cast<bool>(scope)) {
         std::this_thread::yield();
       }
       EXPECT_FALSE(static_cast<bool>(scope));
+      const auto scope_unchecked = parsed.SubscribeUnchecked(p2_unchecked);
+      while (static_cast<bool>(scope_unchecked)) {
+        std::this_thread::yield();
+      }
+      EXPECT_FALSE(static_cast<bool>(scope_unchecked));
       EXPECT_EQ(4u, d2.seen_);
       EXPECT_EQ(500, d2.head_.count());
       EXPECT_TRUE(d2.subscriber_alive_);
+      EXPECT_EQ(4u, d2_unchecked.seen_);
+      EXPECT_EQ(500, d2_unchecked.head_.count());
+      EXPECT_TRUE(d2_unchecked.subscriber_alive_);
     }
     EXPECT_FALSE(d2.subscriber_alive_);
+    EXPECT_FALSE(d2_unchecked.subscriber_alive_);
   }
 
   const std::vector<std::string> expected_values{"[0:100,2:400] 1", "[1:200,2:400] 2", "[2:400,2:400] 3"};
+  const auto joined_expected_values = Join(expected_values, ',');
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
-      << d.results_;
+      << joined_expected_values << " != " << d.results_;
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d_unchecked.results_, expected_values, SherlockTestProcessor::kTerminateStr))
+      << joined_expected_values << " != " << d_unchecked.results_;
+}
+
+TEST(Stream, UncheckedVsCheckedSubscription) {
+  using namespace sherlock_unittest;
+
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  const std::string signature = golden_signature();
+  std::vector<std::string> lines = {"{\"index\":0,\"us\":100}\t{\"x\":1}",
+                                    "{\"index\":1,\"us\":200}\t{\"x\":2}",
+                                    "#head 00000000000000000300",
+                                    "{\"index\":2,\"us\":400}\t{\"x\":3}",
+                                    "#head 00000000000000000500"};
+  const auto CombineFileContents = [&]() -> std::string {
+    std::string contents = signature;
+    for (const auto& line : lines) {
+      contents += line + '\n';
+    }
+    return contents;
+  };
+
+  current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+  auto exposed_stream = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
+
+  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
+  const auto scope = HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+
+  const auto CollectSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+    rows.clear();
+    entries.clear();
+    RecordsCollector collector(entries, rows);
+    const auto scope = exposed_stream.Subscribe(collector);
+    while (collector.count_ < 3u) {
+      std::this_thread::yield();
+    }
+  };
+  const auto CollectUncheckedSubscriptionResult =
+      [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
+        rows.clear();
+        entries.clear();
+        RecordsUncheckedCollector collector(entries, rows);
+        const auto scope = exposed_stream.SubscribeUnchecked(collector);
+        while (collector.count_ < 3u) {
+          std::this_thread::yield();
+        }
+      };
+
+  {
+    std::vector<std::string> all_entries;
+    std::vector<std::string> all_rows;
+    const auto expected_rows =
+        "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+        "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+    const auto expected_entries =
+        "{\"x\":1}\n"
+        "{\"x\":2}\n"
+        "{\"x\":3}\n";
+
+    CollectSubscriptionResult(all_entries, all_rows);
+    EXPECT_EQ(expected_rows, Join(all_rows, ""));
+    EXPECT_EQ(expected_entries, Join(all_entries, ""));
+
+    CollectUncheckedSubscriptionResult(all_entries, all_rows);
+    EXPECT_EQ(expected_rows, Join(all_rows, ""));
+    EXPECT_EQ(expected_entries, Join(all_entries, ""));
+
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait&checked")).body);
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only&checked")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+  }
+
+  {
+    // Swap the first two entries, which should provoke the `InconsistentIndexException` exceptions
+    // in case of the "Checked" subscription, but for the "Unchecked" it should't.
+    std::swap(lines[0], lines[1]);
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+        "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+    const auto expected_entries =
+        "{\"x\":2}\n"
+        "{\"x\":1}\n"
+        "{\"x\":3}\n";
+
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(expected_entries, Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(expected_entries, HTTP(GET(base_url + "?nowait&entries_only")).body);
+    // Restore the correct lines ordering before the next test case.
+    std::swap(lines[0], lines[1]);
+  }
+
+  {
+    // Produce wrong JSON instead of an entire entry - replace both index and value with garbage.
+    lines[1] = std::string(lines[1].length(), 'A');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "Malformed row\n"
+        "{\"x\":3}\n",
+        Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"x\":3}\n",
+        HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", HTTP(GET(base_url + "?i=1&n=1&nowait")).body);
+    EXPECT_EQ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n", HTTP(GET(base_url + "?i=1&n=1&nowait&entries_only")).body);
+    EXPECT_EQ("{\"index\":2,\"us\":400}\t{\"x\":3}\n", HTTP(GET(base_url + "?i=2&n=1&nowait")).body);
+    EXPECT_EQ("{\"x\":3}\n", HTTP(GET(base_url + "?i=2&n=1&nowait&entries_only")).body);
+  }
+
+  {
+    // Produce wrong JSON instead of the index and timestamp only and leave the entry value valid.
+    const auto tab_pos = lines[0].find('\t');
+    ASSERT_FALSE(std::string::npos == tab_pos);
+    lines[0].replace(0, tab_pos, tab_pos, 'B');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":400}\t{\"x\":3}\n";
+
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(
+        "Malformed index and timestamp\n"
+        "Malformed row\n"
+        "{\"x\":3}\n",
+        Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"x\":3}\n",
+        HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ("BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n", HTTP(GET(base_url + "?i=0&n=1&nowait")).body);
+    EXPECT_EQ("{\"x\":1}\n", HTTP(GET(base_url + "?i=0&n=1&nowait&entries_only")).body);
+  }
+
+  {
+    // Produce wrong JSON instead of the entry's value only and leave index and timestamp section valid.
+    const auto tab_pos = lines[3].find('\t');
+    ASSERT_FALSE(std::string::npos == tab_pos);
+    const auto length_to_replace = lines[3].length() - (tab_pos + 1);
+    lines[3].replace(tab_pos + 1, length_to_replace, length_to_replace, 'C');
+    current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+    std::vector<std::string> entries;
+    std::vector<std::string> rows;
+    const auto expected_rows =
+        "BBBBBBBBBBBBBBBBBBBB\t{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "{\"index\":2,\"us\":400}\tCCCCCCC\n";
+
+    EXPECT_NO_THROW(CollectUncheckedSubscriptionResult(entries, rows));
+    EXPECT_EQ(expected_rows, Join(rows, ""));
+    EXPECT_EQ(
+        "Malformed index and timestamp\n"
+        "Malformed row\n"
+        "Malformed entry\n",
+        Join(entries, ""));
+    EXPECT_EQ(expected_rows, HTTP(GET(base_url + "?nowait")).body);
+    EXPECT_EQ(
+        "{\"x\":1}\n"
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+        "CCCCCCC\n",
+        HTTP(GET(base_url + "?nowait&entries_only")).body);
+    EXPECT_EQ("{\"index\":2,\"us\":400}\tCCCCCCC\n", HTTP(GET(base_url + "?i=2&n=1&nowait")).body);
+    EXPECT_EQ("CCCCCCC\n", HTTP(GET(base_url + "?i=2&n=1&nowait&entries_only")).body);
+  }
 }
 
 TEST(Sherlock, ParseArbitrarilySplitChunks) {
@@ -961,6 +1365,13 @@ TEST(Sherlock, SubscribeWithFilterByType) {
       return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
     }
 
+    EntryResponse operator()(const std::string& record_json, uint64_t, idxts_t) {
+      const auto tab_pos = record_json.find('\t');
+      CURRENT_ASSERT(tab_pos != std::string::npos);
+      results_.push_back(record_json.c_str() + tab_pos + 1);
+      return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
+    }
+
     EntryResponse operator()(std::chrono::microseconds) const { return EntryResponse::More; }
 
     TerminationResponse Terminate() const { return TerminationResponse::Wait; }
@@ -988,11 +1399,20 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(5);
+    Collector c_unchecked(5);
     stream.Subscribe(c);
+    stream.SubscribeUnchecked(c_unchecked);
     EXPECT_EQ(
         "{\"Record\":{\"x\":1}} {\"AnotherRecord\":{\"y\":2}} {\"Record\":{\"x\":3}} "
         "{\"AnotherRecord\":{\"y\":4}} {\"Record\":{\"x\":5}}",
         Join(c.results_, ' '));
+    EXPECT_EQ(
+        "{\"Record\":{\"x\":1},\"\":\"T9209980947553411947\"} "
+        "{\"AnotherRecord\":{\"y\":2},\"\":\"T9201000647893547023\"} "
+        "{\"Record\":{\"x\":3},\"\":\"T9209980947553411947\"} "
+        "{\"AnotherRecord\":{\"y\":4},\"\":\"T9201000647893547023\"} "
+        "{\"Record\":{\"x\":5},\"\":\"T9209980947553411947\"}",
+        Join(c_unchecked.results_, ' '));
   }
 
   {

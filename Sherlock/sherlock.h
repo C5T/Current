@@ -116,6 +116,8 @@ enum class StreamDataAuthority : bool { Own = true, External = false };
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
+enum class SubscriptionMode : bool { Checked = true, Unchecked = false };
+
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {
  public:
@@ -148,6 +150,16 @@ class StreamImpl {
     }
 
     template <current::locks::MutexLockStatus MLS>
+    idxts_t DoPublishUnchecked(std::string&& entry_json) {
+      return PublishUncheckedImpl<MLS>(std::move(entry_json));
+    }
+
+    template <current::locks::MutexLockStatus MLS>
+    idxts_t DoPublishUnchecked(const std::string& entry_json) {
+      return PublishUncheckedImpl<MLS>(entry_json);
+    }
+
+    template <current::locks::MutexLockStatus MLS>
     void DoUpdateHead(const current::time::DefaultTimeArgument) {
       UpdateHeadImpl<MLS>();
     }
@@ -166,6 +178,20 @@ class StreamImpl {
         auto& data = *data_;
         current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
         const auto result = data.persistence.template Publish<current::locks::MutexLockStatus::AlreadyLocked>(
+            std::forward<ARGS>(args)...);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+        return result;
+      } catch (const current::sync::InDestructingModeException&) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+    }
+
+    template <current::locks::MutexLockStatus MLS, typename... ARGS>
+    idxts_t PublishUncheckedImpl(ARGS&&... args) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        const auto result = data.persistence.template PublishUnchecked<current::locks::MutexLockStatus::AlreadyLocked>(
             std::forward<ARGS>(args)...);
         data.notifier.NotifyAllOfExternalWaitableEvent();
         return result;
@@ -282,12 +308,13 @@ class StreamImpl {
     return authority_;
   }
 
-  template <typename TYPE_SUBSCRIBED_TO, typename F>
+  template <typename TYPE_SUBSCRIBED_TO, typename F, SubscriptionMode SM>
   class SubscriberThreadInstance final : public current::sherlock::SubscriberScope::SubscriberThread {
    private:
     bool this_is_valid_;
     std::function<void()> done_callback_;
     current::WaitableTerminateSignal terminate_signal_;
+    bool terminate_sent_;
     ScopeOwnedBySomeoneElse<stream_data_t> data_;
     F& subscriber_;
     const uint64_t begin_idx_;
@@ -307,6 +334,7 @@ class StreamImpl {
         : this_is_valid_(false),
           done_callback_(done_callback),
           terminate_signal_(),
+          terminate_sent_(false),
           data_(data,
                 [this]() {
                   std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
@@ -349,16 +377,56 @@ class StreamImpl {
       }
     }
 
+    template <SubscriptionMode MODE = SM>
+    ENABLE_IF<MODE == SubscriptionMode::Checked, ss::EntryResponse> PassEntriesToSubscriber(const stream_data_t& impl,
+                                                                                            uint64_t index,
+                                                                                            uint64_t size) {
+      for (const auto& e : impl.persistence.Iterate(index, size)) {
+        if (!terminate_sent_ && terminate_signal_) {
+          terminate_sent_ = true;
+          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
+                subscriber_,
+                [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
+                e.entry,
+                e.idx_ts,
+                impl.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      return ss::EntryResponse::More;
+    }
+
+    template <SubscriptionMode MODE = SM>
+    ENABLE_IF<MODE == SubscriptionMode::Unchecked, ss::EntryResponse> PassEntriesToSubscriber(const stream_data_t& impl,
+                                                                                              uint64_t index,
+                                                                                              uint64_t size) {
+      for (const auto& e : impl.persistence.IterateUnsafe(index, size)) {
+        if (!terminate_sent_ && terminate_signal_) {
+          terminate_sent_ = true;
+          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
+            return ss::EntryResponse::Done;
+          }
+        }
+        if (subscriber_(e, index++, impl.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      return ss::EntryResponse::More;
+    }
+
     void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
       auto head = std::chrono::microseconds(-1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
-      bool terminate_sent = false;
       while (true) {
         // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
         // TODO(dkorolev): This is actually more a case of `EndReached()` first, right?
-        if (!terminate_sent && terminate_signal_) {
-          terminate_sent = true;
+        if (!terminate_sent_ && terminate_signal_) {
+          terminate_sent_ = true;
           if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
@@ -367,21 +435,8 @@ class StreamImpl {
         size = Exists(head_idx.idxts) ? Value(head_idx.idxts).index + 1 : 0;
         if (head_idx.head > head) {
           if (size > index) {
-            for (const auto& e : bare_data.persistence.Iterate(index, size)) {
-              if (!terminate_sent && terminate_signal_) {
-                terminate_sent = true;
-                if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
-                  return;
-                }
-              }
-              if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
-                      subscriber_,
-                      [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
-                      e.entry,
-                      e.idx_ts,
-                      bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
-                return;
-              }
+            if (PassEntriesToSubscriber(bare_data, index, size) == ss::EntryResponse::Done) {
+              return;
             }
             index = size;
             head = Value(head_idx.idxts).us;
@@ -408,21 +463,27 @@ class StreamImpl {
   };
 
   // Expose the means to control the scope of the subscriber.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  class SubscriberScope final : public current::sherlock::SubscriberScope {
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t, SubscriptionMode SM = SubscriptionMode::Unchecked>
+  class SubscriberScopeImpl final : public current::sherlock::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     using base_t = current::sherlock::SubscriberScope;
 
    public:
-    using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
+    using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F, SM>;
 
-    SubscriberScope(ScopeOwned<stream_data_t>& data,
-                    F& subscriber,
-                    uint64_t begin_idx,
-                    std::function<void()> done_callback)
+    SubscriberScopeImpl(ScopeOwned<stream_data_t>& data,
+                        F& subscriber,
+                        uint64_t begin_idx,
+                        std::function<void()> done_callback)
+
         : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {}
   };
+
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
+  using SubscriberScope = SubscriberScopeImpl<F, TYPE_SUBSCRIBED_TO, SubscriptionMode::Checked>;
+  template <typename F>
+  using SubscriberScopeUnchecked = SubscriberScopeImpl<F>;
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
@@ -431,6 +492,17 @@ class StreamImpl {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     try {
       return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, begin_idx, done_callback);
+    } catch (const current::sync::InDestructingModeException&) {
+      CURRENT_THROW(StreamInGracefulShutdownException());
+    }
+  }
+
+  template <typename F>
+  SubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
+                                                 uint64_t begin_idx = 0u,
+                                                 std::function<void()> done_callback = nullptr) {
+    try {
+      return SubscriberScopeUnchecked<F>(own_data_, subscriber, begin_idx, done_callback);
     } catch (const current::sync::InDestructingModeException&) {
       CURRENT_THROW(StreamInGracefulShutdownException());
     }
@@ -548,16 +620,18 @@ class StreamImpl {
         auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
             subscription_id, scoped_data, std::move(r), std::move(request_params));
 
-        current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-            Subscribe(*http_chunked_subscriber,
-                      begin_idx,
-                      [this, &data, subscription_id]() {
-                        // NOTE: Need to figure out when and where to lock.
-                        // Chat w/ Max about the logic to clean up completed listeners.
-                        // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                        data.http_subscriptions[subscription_id].second = nullptr;
-                      });
+        const auto done_callback = [this, &data, subscription_id]() {
+          // NOTE: Need to figure out when and where to lock.
+          // Chat w/ Max about the logic to clean up completed listeners.
+          // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
+          data.http_subscriptions[subscription_id].second = nullptr;
+        };
 
+        current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+            request_params.checked ? static_cast<current::sherlock::SubscriberScope>(
+                                         Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
+                                   : static_cast<current::sherlock::SubscriberScope>(
+                                         SubscribeUnchecked(*http_chunked_subscriber, begin_idx, done_callback));
         {
           std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
           // TODO(dkorolev): This condition is to be rewritten correctly.
@@ -590,20 +664,6 @@ class StreamImpl {
 
   persistence_layer_t& Persister() { return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence; }
 
- private:
-  struct FillPerLanguageSchema {
-    SherlockSchema& schema_ref;
-    const ss::StreamNamespaceName& namespace_name;
-    explicit FillPerLanguageSchema(SherlockSchema& schema, const ss::StreamNamespaceName& namespace_name)
-        : schema_ref(schema), namespace_name(namespace_name) {}
-    template <current::reflection::Language language>
-    void PerLanguage() {
-      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
-          current::reflection::NamespaceToExpose(namespace_name.namespace_name)
-              .template AddType<entry_t>(namespace_name.entry_name));
-    }
-  };
-
   static SherlockSchema StaticConstructSchemaAsObject(const ss::StreamNamespaceName& namespace_name) {
     SherlockSchema schema;
 
@@ -620,6 +680,20 @@ class StreamImpl {
 
     return schema;
   }
+
+ private:
+  struct FillPerLanguageSchema {
+    SherlockSchema& schema_ref;
+    const ss::StreamNamespaceName& namespace_name;
+    explicit FillPerLanguageSchema(SherlockSchema& schema, const ss::StreamNamespaceName& namespace_name)
+        : schema_ref(schema), namespace_name(namespace_name) {}
+    template <current::reflection::Language language>
+    void PerLanguage() {
+      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>(
+          current::reflection::NamespaceToExpose(namespace_name.namespace_name)
+              .template AddType<entry_t>(namespace_name.entry_name));
+    }
+  };
 
   template <typename... ARGS>
   idxts_t PublishImpl(ARGS&&... args) {
