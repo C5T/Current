@@ -3,10 +3,11 @@
 #include <iomanip>
 
 struct Base {
-  virtual ~Base() = default;
+  virtual ~Base() {}
 };
 
 struct Flower : Base {
+  virtual ~Flower() {}
   union {
     struct {
       double sl;

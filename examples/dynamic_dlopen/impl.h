@@ -15,7 +15,7 @@ class DynamicDLOpenIrisExampleImpl {
   using F = void (*)(const Schema&, std::ostringstream&);
 
   // clang-format off
-  const std::string prefix_ = current::Base64Decode("I2luY2x1ZGUgPHZlY3Rvcj4KI2luY2x1ZGUgPHNzdHJlYW0+CiNpbmNsdWRlIDxpb21hbmlwPgoKc3RydWN0IEJhc2UgewogIHZpcnR1YWwgfkJhc2UoKSA9IGRlZmF1bHQ7Cn07CgpzdHJ1Y3QgRmxvd2VyIDogQmFzZSB7CiAgdW5pb24gewogICAgc3RydWN0IHsKICAgICAgZG91YmxlIHNsOwogICAgICBkb3VibGUgc3c7CiAgICAgIGRvdWJsZSBwbDsKICAgICAgZG91YmxlIHB3OwogICAgfTsKICAgIGRvdWJsZSB4WzRdOwogIH07CiAgc3RkOjpzdHJpbmcgbGFiZWw7Cn07CgpleHRlcm4gIkMiIHZvaWQgUnVuKGNvbnN0IHN0ZDo6dmVjdG9yPEZsb3dlcj4mIGZsb3dlcnMsIHN0ZDo6b3N0cmluZ3N0cmVhbSYgb3MpIHsK");
+  const std::string prefix_ = current::Base64Decode("I2luY2x1ZGUgPHZlY3Rvcj4KI2luY2x1ZGUgPHNzdHJlYW0+CiNpbmNsdWRlIDxpb21hbmlwPgoKc3RydWN0IEJhc2UgewogIHZpcnR1YWwgfkJhc2UoKSB7fQp9OwoKc3RydWN0IEZsb3dlciA6IEJhc2UgewogIHZpcnR1YWwgfkZsb3dlcigpIHt9CiAgdW5pb24gewogICAgc3RydWN0IHsKICAgICAgZG91YmxlIHNsOwogICAgICBkb3VibGUgc3c7CiAgICAgIGRvdWJsZSBwbDsKICAgICAgZG91YmxlIHB3OwogICAgfTsKICAgIGRvdWJsZSB4WzRdOwogIH07CiAgc3RkOjpzdHJpbmcgbGFiZWw7Cn07CgpleHRlcm4gIkMiIHZvaWQgUnVuKGNvbnN0IHN0ZDo6dmVjdG9yPEZsb3dlcj4mIGZsb3dlcnMsIHN0ZDo6b3N0cmluZ3N0cmVhbSYgb3MpIHsK");
   const std::string suffix_ = "\n}\n";
   // clang-format on
 
@@ -41,8 +41,14 @@ class DynamicDLOpenIrisExampleImpl {
         r(Response("Already available: @" + sha + '\n').SetHeader("X-SHA", sha).Code(HTTPResponseCode.Created));
       } else {
         try {
+          const std::chrono::microseconds t_begin = current::time::Now();
           handlers_.emplace(sha, std::make_unique<CompiledUserFunction>(prefix_ + body + suffix_));
-          r(Response("Compiled: @" + sha + '\n').SetHeader("X-SHA", sha).Code(HTTPResponseCode.Created));
+          const std::chrono::microseconds t_end = current::time::Now();
+          const double ms = 0.001 * (t_end - t_begin).count();
+          r(Response("Compiled: @" + sha + '\n')
+                .SetHeader("X-SHA", sha)
+                .SetHeader("X-Compile-MS", current::strings::Printf("%.1lf", ms))
+                .Code(HTTPResponseCode.Created));
         } catch (const current::Exception& e) {
           r(Response("*** ERROR ***\n\n" + e.OriginalDescription() + '\n').Code(HTTPResponseCode.BadRequest));
         }
@@ -54,9 +60,9 @@ class DynamicDLOpenIrisExampleImpl {
         const auto cit = handlers_.find(r.url_path_args[0]);
         if (cit != handlers_.end()) {
           std::ostringstream os;
-          std::chrono::microseconds t_begin = current::time::Now();
+          const std::chrono::microseconds t_begin = current::time::Now();
           cit->second->f(data_, os);
-          std::chrono::microseconds t_end = current::time::Now();
+          const std::chrono::microseconds t_end = current::time::Now();
           const double ms = 0.001 * (t_end - t_begin).count();
           const double qps = 1000.0 / ms;
           r(Response(os.str())
