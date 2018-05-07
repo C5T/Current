@@ -150,7 +150,11 @@ class JITCompiledCPP final {
         library_file_remover_(library_file_name_) {
     current::FileSystem::WriteStringToFile(current::strings::ConstCharPtr(std::forward<S>(source)),
                                            source_file_name_.c_str());
-    std::string cmdline = "g++ -fPIC -shared -nostartfiles " + source_file_name_ + " -o " + library_file_name_;
+    std::string cppflags = "-fPIC -shared -nostartfiles";
+#ifdef NDEBUG
+    cppflags += " -O3";
+#endif
+    std::string cmdline = "g++ " + cppflags + ' ' + source_file_name_ + " -o " + library_file_name_;
 
 #if 1
     // Try to capture the compilation error message into the exception body.
