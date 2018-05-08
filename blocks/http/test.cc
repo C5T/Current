@@ -419,15 +419,18 @@ TEST(HTTPAPI, HandlesRespondTwiceWithString) {
 
 TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
   std::string result = "";
+  std::atomic_bool result_ready(false);
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_twice",
-                                   [&result](Request r) {
+                                   [&result, &result_ready](Request r) {
                                      r(Response("OK", HTTPResponseCode.OK));
                                      try {
                                        r(Response("FAIL", HTTPResponseCode(762)));
                                        result = "Error, second response did not throw.";
+                                       result_ready = true;
                                      } catch (const current::net::AttemptedToSendHTTPResponseMoreThanOnce&) {
                                        result = "OK, second response did throw.";
+                                       result_ready = true;
                                      }
                                    });
   const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
@@ -435,6 +438,10 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
+
+  while (!result_ready) {
+    std::this_thread::yield();
+  }
   EXPECT_EQ("OK, second response did throw.", result);
 }
 
