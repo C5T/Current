@@ -59,6 +59,8 @@ int main(int argc, char** argv) {
 #ifndef DFLAGS_H
 #define DFLAGS_H
 
+#include "../port.h"
+
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -66,6 +68,8 @@ int main(int argc, char** argv) {
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "../util/singleton.h"
 
 namespace dflags {
 
@@ -149,6 +153,10 @@ inline std::string ToStringSupportingStringAndBool(bool b) {
   return b ? "True" : "False";
 }
 
+struct Argv0Container {
+  std::string argv_0;
+};
+
 class FlagsManager {
  public:
   class DefaultRegisterer : public FlagsRegistererSingleton {
@@ -161,6 +169,7 @@ class FlagsManager {
       }
       parse_flags_called_ = true;
       argv_.push_back(argv[0]);
+      current::Singleton<Argv0Container>().argv_0 = argv[0];
 
       for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
