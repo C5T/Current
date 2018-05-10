@@ -1371,7 +1371,8 @@ TEST(Stream, MasterFollowerFlip) {
   current::FileSystem::WriteStringToFile(stream_golden_data, stream1_file_name.c_str());
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
   auto flip_key1 = stream1.ExposeViaHTTP(port1, "/exposed");
-  current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
+  auto stream2_separate = stream_t::CreateStream(stream2_file_name);
+  current::stream::MasterFlipController<stream_t> stream2(Value(stream2_separate));
   stream2.FollowRemoteStream(base_url1, current::stream::SubscriptionMode::Checked);
   EXPECT_FALSE(stream2.IsMasterStream());
   EXPECT_TRUE(stream1.IsMasterStream());
@@ -1727,7 +1728,7 @@ TEST(Stream, MasterFollowerFlipExceptions) {
   current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
   // The second stream is master now, so it has no reason to flip.
   ASSERT_THROW(stream2.FlipToMaster(flip_key1), current::stream::StreamIsAlreadyMasterException);
-  auto publisher = stream2.Stream().BecomeFollowingStream();
+  auto publisher = stream2->BecomeFollowingStream();
   // Now the stream should be following.
   EXPECT_FALSE(stream2.IsMasterStream());
   // But it doesn't follow any remote stream, so it still can't perform the flip.
