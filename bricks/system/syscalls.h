@@ -133,24 +133,33 @@ struct DLSymException final : ExternalLibraryException {
 
 class JITCompiledCPP final {
  private:
-  const std::string base_file_name_;
+  const std::string dir_name_;
   const std::string source_file_name_;
+  const std::string current_header_file_name_;
   const std::string library_file_name_;
+  const current::FileSystem::ScopedRmFile dir_remover_;
   const current::FileSystem::ScopedRmFile source_file_remover_;
   const current::FileSystem::ScopedRmFile library_file_remover_;
   void* lib_ = nullptr;
 
  public:
   template <typename S>
-  explicit JITCompiledCPP(S&& source)
-      : base_file_name_(current::FileSystem::GenTmpFileName()),
-        source_file_name_(base_file_name_ + ".cc"),
-        library_file_name_(base_file_name_ + ".so"),
+  explicit JITCompiledCPP(S&& source, const std::string& additional_include_path = "")
+      : dir_name_(current::FileSystem::GenTmpFileName()),
+        source_file_name_(current::FileSystem::JoinPath(dir_name_, "code.cc")),
+        current_header_file_name_(current::FileSystem::JoinPath(dir_name_, "current.h")),
+        library_file_name_(current::FileSystem::JoinPath(dir_name_, "lib.so")),
+        dir_remover_(dir_name_),
         source_file_remover_(source_file_name_),
         library_file_remover_(library_file_name_) {
+    current::FileSystem::MkDir(dir_name_);
+    current::FileSystem::WriteStringToFile("", current_header_file_name_.c_str());
     current::FileSystem::WriteStringToFile(current::strings::ConstCharPtr(std::forward<S>(source)),
                                            source_file_name_.c_str());
-    std::string cppflags = "-std=c++11 -fPIC -shared -nostartfiles";
+    std::string cppflags = "-std=c++11 -fPIC -shared";
+    if (!additional_include_path.empty()) {
+      cppflags += " -I" + additional_include_path;
+    }
 #ifdef NDEBUG
     cppflags += " -O3";
 #endif
@@ -171,12 +180,12 @@ class JITCompiledCPP final {
       }
     } while (pipe);
     if (!compilation_successful) {
-      CURRENT_THROW(CompilationException("Failed to compile user code:\n" + error_message.str()));
+      CURRENT_THROW(CompilationException("Compilation error:\n" + error_message.str()));
     }
 #else
     // The default implementation.
     if (current::bricks::system::SystemCall(cmdline.c_str())) {
-      CURRENT_THROW(CompilationException("Failed to compile user code."));
+      CURRENT_THROW(CompilationException("Compilation error."));
     }
 #endif
 

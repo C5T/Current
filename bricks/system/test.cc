@@ -68,8 +68,14 @@ TEST(Syscalls, SystemCall) {
 
 TEST(Syscalls, DLOpen) {
   current::bricks::system::JITCompiledCPP lib("int foo() { return 42; }");
-  auto bar = lib.template Get<int (*)()>("_Z3foov");  // The C++-mangled name for `foo`, use `objdump -t` if unsure.
-  EXPECT_EQ(42, bar());
+  auto foo = lib.template Get<int (*)()>("_Z3foov");  // The C++-mangled name for `foo`, use `objdump -t` if unsure.
+  EXPECT_EQ(42, foo());
+}
+
+TEST(Syscalls, DLOpenHasCurrentHeader) {
+  current::bricks::system::JITCompiledCPP lib("#include \"current.h\"\nextern \"C\" int bar() { return 101; }");
+  auto bar = lib.template Get<int (*)()>("bar");
+  EXPECT_EQ(101, bar());
 }
 
 TEST(Syscalls, DLOpenExceptions) {
