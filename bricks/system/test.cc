@@ -26,11 +26,16 @@ SOFTWARE.
 
 #include "syscalls.h"
 
+#include "../dflags/dflags.h"
 #include "../file/file.h"
 
-#include "../../3rdparty/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #include <thread>
+
+DEFINE_string(current_base_dir_for_dlopen_test,
+              "",
+              "If set, the top-level `current/` dir for `dlopen`-based integrations to symlink to.");
 
 TEST(Syscalls, PipedOutputSingleLine) {
   EXPECT_EQ("Hello, World!", current::bricks::system::SystemCallReadPipe("echo 'Hello, World!'").ReadLine());
@@ -76,6 +81,18 @@ TEST(Syscalls, DLOpenHasCurrentHeader) {
   current::bricks::system::JITCompiledCPP lib("#include \"current.h\"\nextern \"C\" int bar() { return 101; }");
   auto bar = lib.template Get<int (*)()>("bar");
   EXPECT_EQ(101, bar());
+}
+
+TEST(Syscalls, DLOpenHasSymlinkToCurrent) {
+  if (!FLAGS_current_base_dir_for_dlopen_test.empty()) {
+    current::bricks::system::JITCompiledCPP lib(
+        "#include \"current.h\"\nextern \"C\" std::string test() { return \"passed\"; }",
+        FLAGS_current_base_dir_for_dlopen_test);
+    auto test = lib.template Get<std::string (*)()>("test");
+    EXPECT_EQ("passed", test());
+  } else {
+    std::cout << "Test skipped as `--current_base_dir_for_dlopen_test` was not set." << std::endl;
+  }
 }
 
 TEST(Syscalls, DLOpenExceptions) {
