@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "../../bricks/dflags/dflags.h"
 #include "../../bricks/file/file.h"
+#include "../../bricks/system/syscalls.h"
 #include "../../bricks/util/random.h"
 #include "../../bricks/util/sha256.h"
 #include "../../bricks/util/singleton.h"
@@ -72,7 +73,7 @@ class NginxInvokerImpl final {
   int ExecNginx(const std::string& args) const {
     const std::string cmd_line = nginx_ + ' ' + args + " >" + FileSystem::NullDeviceName() + " 2>&1";
     std::lock_guard<std::mutex> lock(mutex_);
-    int result = std::system(cmd_line.c_str());
+    int result = bricks::system::SystemCall(cmd_line);
     return WEXITSTATUS(result);
   }
 

@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../file/file.h"
 #include "../strings/util.h"
+#include "../system/syscalls.h"
 
 namespace current {
 namespace gnuplot {
@@ -234,8 +235,8 @@ struct GNUPlot {
       }
     }
     if (output_format_ != "gnuplot") {
-      CURRENT_ASSERT(
-          !::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str()).c_str()));
+      CURRENT_ASSERT(!bricks::system::SystemCall(current::strings::Printf(
+          strings::Printf("gnuplot <%s >%s", input_file_name.c_str(), output_file_name.c_str()).c_str())));
       return current::FileSystem::ReadFileAsString(output_file_name.c_str());
     } else {
       // For unit tests, just compare the inputs.
