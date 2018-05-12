@@ -572,6 +572,37 @@ TEST(HTTPAPI, RedirectLoop) {
 }
 #endif
 
+TEST(HTTPAPI, ResponseDotNotation) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/response_dot_notation",
+                                   [](Request r) {
+                                     r(Response("OK").Code(HTTPResponseCode.Created).SetHeader("X-Foo", "bar"));
+                                   });
+  const auto response = HTTP(GET(Printf("http://localhost:%d/response_dot_notation", FLAGS_net_api_test_port)));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_EQ(201, static_cast<int>(response.code));
+  EXPECT_TRUE(response.headers.Has("X-Foo"));
+  EXPECT_EQ("bar", response.headers.Get("X-Foo"));
+}
+
+static Response BuildResponse() {
+  return Response("").Code(HTTPResponseCode.NoContent).SetHeader("X-Meh", "foo");
+}
+
+TEST(HTTPAPI, ResponseDotNotationReturnedFromAFunction) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/response_returned_from_function",
+                                   [](Request r) {
+                                     r(BuildResponse());
+                                   });
+  const auto response =
+      HTTP(GET(Printf("http://localhost:%d/response_returned_from_function", FLAGS_net_api_test_port)));
+  EXPECT_EQ("", response.body);
+  EXPECT_EQ(204, static_cast<int>(response.code));
+  EXPECT_TRUE(response.headers.Has("X-Meh"));
+  EXPECT_EQ("foo", response.headers.Get("X-Meh"));
+}
+
 TEST(HTTPAPI, FourOhFourNotFound) {
   EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultNotFoundMessage());
   const string url = Printf("http://localhost:%d/ORLY", FLAGS_net_api_test_port);
