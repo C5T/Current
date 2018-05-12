@@ -1,0 +1,79 @@
+$ g++ -O3 -std=c++11 step1_cook.cc && ./a.out  # Takes 4 minutes.
+IntegerRide size in binary: 84 bytes.
+
+$ md5sum ../cooked_as_integers.bin 
+b64534224409b2162f08d20ebed9d1ca  ../cooked_as_integers.bin
+
+$ sha256sum ../cooked_as_integers.bin 
+3efb5ce7395f058daa5a48ca71ffa1dc3898eea938f1704e7c597cf4432b30c8  ../cooked_as_integers.bin
+
+$ gcc -O3 step2_sanitycheck_rides_by_months.c && ./a.out | tee >(md5sum)
+1445285 01/2016
+1510722 02/2016
+1576393 03/2016
+1543925 04/2016
+1536979 05/2016
+1404726 06/2016
+1332510 07/2016
+1247675 08/2016
+1162373 09/2016
+1252572 10/2016
+1148214 11/2016
+1224158 12/2016
+bd5b6d7f389e64aab50c56fed61eaded  -
+
+$ gcc -O3 step3_sanitycheck_avg_speed_by_hour.c && ./a.out | tee >(md5sum)
+Total rides considered: 15592086 (95.2%)
+00  15.37
+01  15.85
+02  16.10
+03  16.67
+04  17.81
+05  19.72
+06  19.47
+07  14.82
+08  12.99
+09  13.55
+10  13.49
+11  13.51
+12  13.22
+13  13.18
+14  12.40
+15  12.02
+16  11.61
+17  11.29
+18  11.74
+19  12.70
+20  13.51
+21  14.00
+22  14.46
+23  14.93
+ddba3b195052774ddc8e5f4d4ff26bec  -
+
+$ gcc -O3 step4_correct_avg_speed_by_hour.c && ./a.out | tee >(md5sum)
+Total rides considered: 15592086 (95.2%)
+00	7.39
+01	7.00
+02	7.35
+03	7.45
+04	8.20
+05	11.14
+06	10.84
+07	8.82
+08	8.17
+09	8.46
+10	8.46
+11	8.28
+12	8.28
+13	8.10
+14	7.70
+15	7.32
+16	7.08
+17	6.91
+18	7.06
+19	7.48
+20	7.73
+21	8.10
+22	8.31
+23	8.38
+41e29e22c4976c9bd1b43bd28488eb9b  -
