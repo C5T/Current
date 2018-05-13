@@ -68,10 +68,9 @@ struct IterableData {
   size_t size() const { return total_rides_; }
 };
 
-inline Response DoRun(const IterableData& data, std::map<std::string, std::string> params);
-
-extern "C" void Run(const IterableData& data, Request request) {
-  request(DoRun(data, request.url.query.AsImmutableMap()));
-}
-
-#define ENDPOINT(data, params) Response DoRun(const IterableData& data, std::map<std::string, std::string> params)
+#define ENDPOINT(data, params)                                                                \
+  inline Response DoRun(const IterableData& data, std::map<std::string, std::string> params); \
+  extern "C" void Run(const IterableData& data, Request request) {                            \
+    request(DoRun(data, request.url.query.AsImmutableMap()));                                 \
+  }                                                                                           \
+  Response DoRun(const IterableData& data, std::map<std::string, std::string> params)

@@ -73,5 +73,4 @@ struct IterableData {
 
 using current::strings::Printf;
 
-
 #define FUNCTION(dataset, os) extern "C" void Run(const IterableData& dataset, std::ostringstream& os)
