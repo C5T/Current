@@ -29,13 +29,23 @@ double ComputeAverageSpeed(const struct PerHourCounter* self) {
 
 void Run(const struct Ride* data, size_t n) {
   int total_considered = 0;
+#if 0
+  const int two = 2;
+  const int ten = 10;  // `float` and `double` give different results here. -- D.K.
+#endif
   for (size_t i = 0; i < n; ++i) {
     const int trip_duration_seconds = data[i].dropoff.epoch - data[i].pickup.epoch;
     if (data[i].trip_distance > 0 && trip_duration_seconds > 0) {
+#if 1
       const double cost_per_mile = data[i].fare_amount / data[i].trip_distance;
-      if (cost_per_mile >= 2 && cost_per_mile <= 10) {
+      if (cost_per_mile >= 2.0 && cost_per_mile <= 10.0) {
+#else
+      if (data[i].fare_amount >= two * data[i].trip_distance &&
+          data[i].fare_amount <= ten * data[i].trip_distance) {
+#endif
         ++total_considered;
-        UpdateAverageSpeed(&per_hour_counters[data[i].pickup.hour], data[i].trip_distance / trip_duration_seconds);
+        UpdateAverageSpeed(&per_hour_counters[data[i].pickup.hour],
+                           data[i].trip_distance / trip_duration_seconds);
       }
     }
   }
