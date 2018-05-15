@@ -11,13 +11,6 @@ current_build.h.*
 blocks/http/README.md
 storage/README.md
 
-# Input data for the DataFest talk in May 2018. 2.1GB.
-examples/datafest_talk/2016-Green-Taxi-Trip-Data-NYC-Open-Data.csv # 16385533L, md5sum 1c0d4f17fada63d6d8f9bca956197675.
-examples/datafest_talk/data.csv                                    # A copy and/or symlink for the above.
-examples/datafest_talk/cooked.csv                        
-examples/datafest_talk/cooked.bin                        
-examples/datafest_talk/cooked_as_integers.bin                        
-
 # Usual C++ stuff.
 core
 *.h.gch
