@@ -9,7 +9,7 @@ FAILURES=""
 # A space-separated list of relative paths to exclude from the test run. Example: "./blocks/HTTP ./blocks/MMQ".
 EXCLUDE=("")
 
-for i in $(find . -name test.cc | sort -g) ; do
+for i in $(find . -name test.cc | sort) ; do
   DIR=$(dirname $i)
   echo -e "\n\033[0m\033[1mDir\033[0m: \033[36m${DIR}\033[0m"
   if [[ " ${EXCLUDE[@]} " =~ " $DIR " ]]; then

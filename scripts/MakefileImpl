@@ -49,6 +49,7 @@ endif
 TRAVIS?=0
 ifeq ($(TRAVIS),true)
   CURRENT_CI=1
+  CPPFLAGS+= -DCURRENT_CI_TRAVIS
 endif
 
 ifeq (${CURRENT_CI},1)
