@@ -1,0 +1,5 @@
+2016-Green-Taxi-Trip-Data-NYC-Open-Data.csv # 16385533L, md5sum 1c0d4f17fada63d6d8f9bca956197675.
+data.csv                                    # A copy and/or symlink for the above.
+cooked.csv    
+cooked.bin    
+cooked_as_integers.bin   
