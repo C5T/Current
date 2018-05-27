@@ -44,13 +44,13 @@ SOFTWARE.
 #endif
 
 #include "base.h"
-#include "helpers.h"
 #include "exceptions.h"
+#include "helpers.h"
 
 #include "../bricks/template/call_all_constructors.h"
 #include "../bricks/template/mapreduce.h"
-#include "../bricks/template/typelist.h"
 #include "../bricks/template/rtti_dynamic_call.h"
+#include "../bricks/template/typelist.h"
 
 namespace current {
 
@@ -376,9 +376,18 @@ struct VariantSelector<NAME, TypeListImpl<T, TS...>> {
 template <typename... TS>
 using Variant = typename VariantSelector<reflection::CurrentVariantDefaultName, TS...>::type;
 
-// `NamedVariant` is only used from the `CURRENT_VARIANT` macro, so only support `TS...`, not `TypeList<TS...>`.
+template <class NAME, class TYPELIST>
+struct NamedVariantTypeSelector {
+  using type = VariantImpl<NAME, TYPELIST>;
+};
+
 template <class NAME, typename... TS>
-using NamedVariant = VariantImpl<NAME, TypeListImpl<TS...>>;
+struct NamedVariantTypeSelector<NAME, TypeListImpl<TypeListImpl<TS...>>> {
+  using type = VariantImpl<NAME, TypeListImpl<TS...>>;
+};
+
+template <class NAME, typename... TS>
+using NamedVariant = typename NamedVariantTypeSelector<NAME, TypeListImpl<TS...>>::type;
 
 }  // namespace current
 
