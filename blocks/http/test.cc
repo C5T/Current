@@ -1615,7 +1615,7 @@ TEST(HTTPAPI, ResponseSmokeTest) {
                     }) +
       HTTP(FLAGS_net_api_test_port)
           .Register("/response10",
-                    [send_response](Request r) {
+                    [](Request r) {
                       SerializableVariant v;
                       v.template Construct<SerializableObject>();
                       r(v);

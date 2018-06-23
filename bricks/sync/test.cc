@@ -181,7 +181,7 @@ TEST(OwnedBorrowed, BorrowedWithCallbackOutlivingTheOwner) {
     std::atomic_bool terminating(false);
     // The `unique_ptr` ugliness is to have the pre-initialized `current::BorrowedWithCallback` movable.
     thread = std::make_unique<std::thread>(
-        [&log, &terminating](std::unique_ptr<current::BorrowedWithCallback<Container>> y0) {
+        [&terminating](std::unique_ptr<current::BorrowedWithCallback<Container>> y0) {
           current::BorrowedWithCallback<Container>& y = *y0.get();
           EXPECT_TRUE(static_cast<bool>(y));
           // Keep incrementing until external termination request.
