@@ -560,10 +560,9 @@ class MasterFlipController final {
   }
 
   // Remove the possibility of remotely promoting this stream to master.
-  // The `port` and `route` parameters are only here for extra safety.
-  void StopExposingViaHTTP(uint16_t port, const std::string& route) {
+  void StopExposingViaHTTP() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (exposed_via_http_ && exposed_via_http_->port_ == port && exposed_via_http_->route_ == route) {
+    if (exposed_via_http_) {
       exposed_via_http_ = nullptr;
     } else {
       CURRENT_THROW(StreamIsNotExposedException());

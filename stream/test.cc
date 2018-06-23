@@ -1481,7 +1481,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
                      dummy_replicator, head_idxts, flip_key, current::stream::SubscriptionMode::Checked)),
                  current::stream::RemoteStreamRefusedFlipRequestException);
 
-    stream1.StopExposingViaHTTP(port1, "/exposed");
+    stream1.StopExposingViaHTTP();
   }
 
   std::atomic<bool> flip_started_called;
@@ -1542,7 +1542,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     flip_key = stream2.ExposeViaHTTP(port2, "/exposed");
     stream1.FollowRemoteStream(base_url2, current::stream::SubscriptionMode::Checked);
     stream1.FlipToMaster(flip_key);
-    stream1.StopExposingViaHTTP(port1, "/exposed");
+    stream1.StopExposingViaHTTP();
   }
 
   // Custom restriction 2: the difference between heads of the master and the follower.
@@ -1591,7 +1591,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     flip_key = stream2.ExposeViaHTTP(port2, "/exposed");
     stream1.FollowRemoteStream(base_url2, current::stream::SubscriptionMode::Checked);
     stream1.FlipToMaster(flip_key);
-    stream1.StopExposingViaHTTP(port1, "/exposed");
+    stream1.StopExposingViaHTTP();
   }
 
   // Custom restriction 3: maximum diff size in bytes between the master and the follower.
@@ -1645,7 +1645,7 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     flip_key = stream2.ExposeViaHTTP(port2, "/exposed");
     stream1.FollowRemoteStream(base_url2, current::stream::SubscriptionMode::Checked);
     stream1.FlipToMaster(flip_key);
-    stream1.StopExposingViaHTTP(port1, "/exposed");
+    stream1.StopExposingViaHTTP();
   }
 
   // Custom restriction 4: maximum clock difference between the master and the follower.
@@ -1762,7 +1762,7 @@ TEST(Stream, MasterFollowerFlipExceptions) {
   // The first stream can't flip, because it doesn't automatically begin following the second stream
   // after the flip procedure.
   ASSERT_THROW(stream1.FlipToMaster(flip_key2), current::stream::StreamDoesNotFollowAnyoneException);
-  stream1.StopExposingViaHTTP(port1, "/exposed");
+  stream1.StopExposingViaHTTP();
   stream1.FollowRemoteStream(base_url2);
   flip_key1 = stream1.ExposeViaHTTP(port1, "/exposed");
 
