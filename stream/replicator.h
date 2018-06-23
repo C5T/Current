@@ -119,7 +119,7 @@ class SubscribableRemoteStream final {
                            std::function<void()> destruction_callback = nullptr)
         : borrowed_remote_stream_(std::move(remote_stream), destruction_callback),
           subscriber_(subscriber),
-          index_(start_idx),
+          next_expected_index_(start_idx),
           from_us_(from_us),
           unused_idxts_() {}
 
@@ -167,7 +167,7 @@ class SubscribableRemoteStream final {
    protected:
     BorrowedWithCallback<RemoteStream> borrowed_remote_stream_;
     F& subscriber_;
-    uint64_t index_;
+    uint64_t next_expected_index_;
     std::chrono::microseconds from_us_;
     const idxts_t unused_idxts_;
     std::string carried_over_data_;
@@ -179,29 +179,33 @@ class SubscribableRemoteStream final {
       if (split.empty()) {
         CURRENT_THROW(RemoteStreamMalformedChunkException());
       }
-      const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
-      if (from_us_.count() > 0 && tsoptidx.us < from_us_) {
+      try {
+        const auto tsoptidx = ParseJSON<ts_optidx_t>(split[0]);
+        if (from_us_.count() > 0 && tsoptidx.us < from_us_) {
+          CURRENT_THROW(RemoteStreamMalformedChunkException());
+        }
+        if (Exists(tsoptidx.index)) {
+          const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
+          if (split.size() != 2u || idxts.index != next_expected_index_) {
+            CURRENT_THROW(RemoteStreamMalformedChunkException());
+          }
+          auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
+          if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
+            CURRENT_THROW(StreamTerminatedBySubscriber());
+          }
+          ++next_expected_index_;
+          from_us_ = std::chrono::microseconds(0);
+        } else {
+          if (split.size() != 1u) {
+            CURRENT_THROW(RemoteStreamMalformedChunkException());
+          }
+          if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
+            CURRENT_THROW(StreamTerminatedBySubscriber());
+          }
+          from_us_ = tsoptidx.us + std::chrono::microseconds(1);
+        }
+      } catch (const current::serialization::json::TypeSystemParseJSONException& json_exception) {
         CURRENT_THROW(RemoteStreamMalformedChunkException());
-      }
-      if (Exists(tsoptidx.index)) {
-        const auto idxts = idxts_t(Value(tsoptidx.index), tsoptidx.us);
-        if (split.size() != 2u || idxts.index != index_) {
-          CURRENT_THROW(RemoteStreamMalformedChunkException());
-        }
-        auto entry = ParseJSON<TYPE_SUBSCRIBED_TO>(split[1]);
-        if (subscriber_(std::move(entry), idxts, unused_idxts_) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
-        }
-        ++index_;
-        from_us_ = std::chrono::microseconds(0);
-      } else {
-        if (split.size() != 1u) {
-          CURRENT_THROW(RemoteStreamMalformedChunkException());
-        }
-        if (subscriber_(tsoptidx.us) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
-        }
-        from_us_ = tsoptidx.us + std::chrono::microseconds(1);
       }
     }
 
@@ -209,18 +213,23 @@ class SubscribableRemoteStream final {
     ENABLE_IF<MODE == ReplicationMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto tab_pos = raw_log_line.find('\t');
       if (tab_pos != std::string::npos) {
-        if (subscriber_(raw_log_line, index_, unused_idxts_) == ss::EntryResponse::Done) {
+        if (subscriber_(raw_log_line, next_expected_index_, unused_idxts_) == ss::EntryResponse::Done) {
           CURRENT_THROW(StreamTerminatedBySubscriber());
         }
-        // NOTE(dkorolev) & NOTE(grixa): In `RM::Unchecked` mode `index_` is not checked at all, just incremented.
-        ++index_;
+        // NOTE(dkorolev) & NOTE(grixa): In `RM::Unchecked` mode
+        // `next_expected_index_` is not checked at all, just incremented.
+        ++next_expected_index_;
         from_us_ = std::chrono::microseconds(0);
       } else {
-        const auto ts = ParseJSON<ts_only_t>(raw_log_line);
-        if (subscriber_(ts.us) == ss::EntryResponse::Done) {
-          CURRENT_THROW(StreamTerminatedBySubscriber());
+        try {
+          const auto ts = ParseJSON<ts_only_t>(raw_log_line);
+          if (subscriber_(ts.us) == ss::EntryResponse::Done) {
+            CURRENT_THROW(StreamTerminatedBySubscriber());
+          }
+          from_us_ = ts.us + std::chrono::microseconds(1);
+        } catch (const current::serialization::json::TypeSystemParseJSONException& json_exception) {
+          CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
-        from_us_ = ts.us + std::chrono::microseconds(1);
       }
     }
   };
@@ -285,7 +294,7 @@ class SubscribableRemoteStream final {
         }
         try {
           bare_stream.CheckSchema();
-          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->index_, this->from_us_, subscription_mode_),
+          HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(this->next_expected_index_, this->from_us_, subscription_mode_),
                           [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                           [this](const std::string& chunk_body) { OnChunk(chunk_body); },
                           [this]() {}));
@@ -293,9 +302,10 @@ class SubscribableRemoteStream final {
           break;
         } catch (RemoteStreamMalformedChunkException&) {
           if (++consecutive_malformed_chunks_count_ == 3u) {
-            fprintf(stderr,
-                    "Constantly receiving malformed chunks from \"%s\"\n",
-                    bare_stream.GetURLToSubscribe(this->index_, this->from_us_, subscription_mode_).c_str());
+            fprintf(
+                stderr,
+                "Constantly receiving malformed chunks from \"%s\"\n",
+                bare_stream.GetURLToSubscribe(this->next_expected_index_, this->from_us_, subscription_mode_).c_str());
           }
         } catch (current::Exception&) {
         }
