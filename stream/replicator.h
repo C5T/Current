@@ -665,11 +665,16 @@ class MasterFlipController final {
       r("Cannot flip to master ", HTTPResponseCode.ServiceUnavailable);
       return;
     }
+    const auto now = current::time::Now();
+    if (now < exposed_via_http_->block_flip_until_) {
+      r("Too many attempts, wait for some time until the next one.\n", HTTPResponseCode.BadRequest);
+      return;
+    }
     const auto& restrictions = exposed_via_http_->flip_restrictions_;
     const auto max_clock_diff = restrictions.max_clock_diff_.count();
-    if (max_clock_diff > 0 && (!r.url.query.has("clock") ||
-                               std::abs(current::FromString<int64_t>(r.url.query["clock"]) -
-                                        current::time::Now().count()) > max_clock_diff)) {
+    if (max_clock_diff > 0 &&
+        (!r.url.query.has("clock") ||
+         std::abs(current::FromString<int64_t>(r.url.query["clock"]) - now.count()) > max_clock_diff)) {
       r("Network latency and/or the time skew between the current and prospective masters is too large.\n",
         HTTPResponseCode.BadRequest);
       return;
@@ -684,7 +689,8 @@ class MasterFlipController final {
         return;
       }
     } else if (secret_flip_key != exposed_via_http_->flip_key_) {
-      // NOTE(dkorolev): Should we put some [exponential] delay here, to eliminate room for brute force keys spamming?
+      exposed_via_http_->block_flip_until_ = current::time::Now() + exposed_via_http_->wrong_key_delay_;
+      exposed_via_http_->wrong_key_delay_ *= 2;
       r("Wrong secret flip key.\n", HTTPResponseCode.BadRequest);
       return;
     }
@@ -762,6 +768,8 @@ class MasterFlipController final {
     uint16_t port_;
     std::string route_;
     uint64_t flip_key_;
+    std::chrono::microseconds wrong_key_delay_;
+    std::chrono::microseconds block_flip_until_;
     MasterFlipRestrictions flip_restrictions_;
     std::function<void()> flip_started_callback_;
     std::function<void()> flip_finished_callback_;
@@ -777,6 +785,8 @@ class MasterFlipController final {
         : port_(port),
           route_(route),
           flip_key_(random::CSRandomUInt64(static_cast<uint64_t>(1e18), static_cast<uint64_t>(1e19 - 1))),
+          wrong_key_delay_(std::chrono::seconds(1)),
+          block_flip_until_(std::chrono::microseconds(0)),
           flip_restrictions_(std::move(restrictions)),
           flip_started_callback_(flip_started),
           flip_finished_callback_(flip_finished),

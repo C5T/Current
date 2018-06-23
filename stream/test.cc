@@ -1747,7 +1747,12 @@ TEST(Stream, MasterFollowerFlipExceptions) {
 
   // First attempt to flip to master using the wrong key should fail.
   ASSERT_THROW(stream2.FlipToMaster(flip_key1 + 1), current::stream::RemoteStreamRefusedFlipRequestException);
-  // The second try, now with the correct key, should succeed.
+  // Now the flip operation is blocked for 1 second, so the second try should also fail, although the key is correct.
+  current::time::SetNow(current::time::Now() + std::chrono::milliseconds(500));
+  ASSERT_THROW(stream2.FlipToMaster(flip_key1), current::stream::RemoteStreamRefusedFlipRequestException);
+  current::time::SetNow(current::time::Now() + std::chrono::milliseconds(500));
+  // The third attempt should succeed, as the key is correct and the previous attempt
+  // with the wrong key was made more than 1s ago.
   stream2.FlipToMaster(flip_key1);
   // After the flip stream should be replicated completely.
   EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream2_file_name));
@@ -1771,6 +1776,7 @@ TEST(Stream, MasterFollowerFlipExceptions) {
   // Now we have stream3 following the stream1, which is following the stream2.
   // To flip stream3 with stream2 we should use key for the stream2, not the stream1.
   ASSERT_THROW(stream3.FlipToMaster(flip_key1), current::stream::RemoteStreamRefusedFlipRequestException);
+  current::time::SetNow(current::time::Now() + std::chrono::seconds(1));
   stream3.FlipToMaster(flip_key2);
   EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream2_file_name));
   EXPECT_EQ(stream_golden_data_single_head, current::FileSystem::ReadFileAsString(stream3_file_name));
