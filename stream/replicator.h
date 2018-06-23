@@ -98,7 +98,7 @@ class SubscribableRemoteStream final {
         opt = "i=" + current::ToString(last_idx);
       }
       opt += "&head=" + current::ToString(head_idxts.head);
-      return url_ + "/become/master?" + opt + "&key=" + current::ToString(key) + "&clock=" +
+      return url_ + "/control/flip_to_master?" + opt + "&key=" + current::ToString(key) + "&clock=" +
              current::ToString(current::time::Now().count()) + (mode == SubscriptionMode::Checked ? "&checked" : "");
     }
 
@@ -410,8 +410,7 @@ class SubscribableRemoteStream final {
     const auto response = HTTP(GET(stream_->GetFlipToMasterURL(head_idxts, key, subscription_mode)));
     if (response.code == HTTPResponseCode.OK) {
       const auto start_idx = Exists(head_idxts.idxts) ? Value(head_idxts.idxts).index + 1u : 0u;
-      RemoteStreamSubscriber<F, entry_t, RM> remote_subscriber(stream_, subscriber, start_idx);
-      remote_subscriber.PassChunkToSubscriber(response.body);
+      RemoteStreamSubscriber<F, entry_t, RM>(stream_, subscriber, start_idx).PassChunkToSubscriber(response.body);
     } else {
       const auto response_string = ToString(response.code) + " " + HTTPResponseCodeAsString(response.code);
       CURRENT_THROW(RemoteStreamRefusedFlipRequestException(response_string));
@@ -553,7 +552,7 @@ class MasterFlipController final {
         port, route, std::move(restrictions), flip_started, flip_finished, flip_canceled);
     exposed_via_http_->routes_scope_ +=
         HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_)) +
-        HTTP(port).Register(route + "/become/master",
+        HTTP(port).Register(route + "/control/flip_to_master",
                             URLPathArgs::CountMask::None,
                             [this](Request r) { MasterFlipRequest(std::move(r)); });
     return exposed_via_http_->flip_key_;
@@ -646,12 +645,17 @@ class MasterFlipController final {
       return;
     }
     if (Exists(head_idxts.idxts)) {
+      // Calculate the next expected index based on the client's head timestamp.
+      // If it differs from the `client_next_index`, it means the client
+      // will not accept the diff from the former master because of inconsistent timestamps.
+      // Note: `IndexRangeByTimestampRange` returns (uint64_t)-1 if there are no suitable entries in the stream,
+      // use the last entry index + 1 in this case.
       const auto next_index_by_timestamp =
           std::min(stream_->Data()->IndexRangeByTimestampRange(client_head + std::chrono::microseconds(1)).first,
                    Value(head_idxts.idxts).index + 1u);
       if (next_index_by_timestamp != client_next_index) {
-        // NOTE(dkorolev) & TODO(grixa): This `std::min(...)` reads like black magic to me. Could you elaborate pls?
-        r("", HTTPResponseCode.BadRequest);
+        r("The prospective master's head doesn't correlate with the specified next index.\n",
+          HTTPResponseCode.BadRequest);
         return;
       }
     }
@@ -706,6 +710,7 @@ class MasterFlipController final {
       // Otherwise notify about flip completion from a separate thread
       // to make it possible to unregister endpoints
       // or even destroy the stream from inside the callback.
+      // Note: better to use something like cron in future to get rid of spawning a new thread here.
       std::thread(exposed_via_http_->flip_finished_callback_).detach();
     }
   }
