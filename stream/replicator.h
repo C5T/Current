@@ -157,7 +157,7 @@ class SubscribableRemoteStream final {
           HTTP(ChunkedGET(bare_stream.GetURLToSubscribe(index_, checked_subscription_),
                           [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                           [this](const std::string& chunk_body) { OnChunk(chunk_body); },
-                          [this]() {}));
+                          [](){}));
         } catch (StreamTerminatedBySubscriber&) {
           break;
         } catch (RemoteStreamMalformedChunkException&) {
