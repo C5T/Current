@@ -146,10 +146,8 @@ struct OrImplWithVariant {
                 size_t begin,
                 size_t end,
                 std::function<void(const emitted_t&)> emit) const {
-    lhs_impl_.EvalImpl(
-        query, begin, end, [&query, begin, end, &emit](const LHS_TYPE& value) { emit(emitted_t(value)); });
-    rhs_impl_.EvalImpl(
-        query, begin, end, [&query, begin, end, &emit](const RHS_TYPE& value) { emit(emitted_t(value)); });
+    lhs_impl_.EvalImpl(query, begin, end, [&emit](const LHS_TYPE& value) { emit(emitted_t(value)); });
+    rhs_impl_.EvalImpl(query, begin, end, [&emit](const RHS_TYPE& value) { emit(emitted_t(value)); });
   }
 };
 
@@ -165,8 +163,8 @@ struct OrImplSameType {
                 size_t begin,
                 size_t end,
                 std::function<void(const emitted_t&)> emit) const {
-    lhs_impl_.EvalImpl(query, begin, end, [&query, begin, end, &emit](const TYPE& value) { emit(emitted_t(value)); });
-    rhs_impl_.EvalImpl(query, begin, end, [&query, begin, end, &emit](const TYPE& value) { emit(emitted_t(value)); });
+    lhs_impl_.EvalImpl(query, begin, end, [&emit](const TYPE& value) { emit(emitted_t(value)); });
+    rhs_impl_.EvalImpl(query, begin, end, [&emit](const TYPE& value) { emit(emitted_t(value)); });
   }
 };
 

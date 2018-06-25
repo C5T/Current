@@ -272,7 +272,7 @@ class HTTPServerPOSIX final {
     HTTPRoutesScope scope;
     current::FileSystem::ScanDir(
         dir,
-        [this, &dir, &options, &scope](const current::FileSystem::ScanDirItemInfo& item_info) {
+        [this, &options, &scope](const current::FileSystem::ScanDirItemInfo& item_info) {
           // Ignore files named with a leading dot (means hidden in POSIX) before checking MIME type.
           if (item_info.basename.front() == '.') {
             return;

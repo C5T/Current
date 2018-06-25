@@ -68,12 +68,8 @@ class GenericOneToMany {
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
 
-  bool Has(sfinae::CF<key_t> key) const {
-    return map_.find(key) != map_.end();
-  }
-  bool Has(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
-    return map_.find(key_t(row, col)) != map_.end();
-  }
+  bool Has(sfinae::CF<key_t> key) const { return map_.find(key) != map_.end(); }
+  bool Has(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const { return map_.find(key_t(row, col)) != map_.end(); }
 
   // Adds specified object and overwrites existing one if it has the same row and col.
   // Removes all other existing objects with the same col.

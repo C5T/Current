@@ -336,7 +336,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
  public:
   ~GenericKarl() {
     destructing_ = true;
-    storage_->ReadWriteTransaction([this](MutableFields<storage_t> fields) {
+    storage_->ReadWriteTransaction([](MutableFields<storage_t> fields) {
       KarlInfo self_info;
       self_info.up = false;
       fields.karl.Add(self_info);
@@ -547,105 +547,100 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           }
 
           auto& notifiable_ref = notifiable_ref_;
-          storage_->ReadWriteTransaction(
-                        [this,
-                         now,
-                         location,
-                         &parsed_status,
-                         &detailed_parsed_status,
-                         optional_behind_this_by,
-                         &notifiable_ref](MutableFields<storage_t> fields) -> Response {
-                          // OK to call from within a transaction.
-                          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                          notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
+          storage_
+              ->ReadWriteTransaction(
+                    [now, location, &parsed_status, &detailed_parsed_status, optional_behind_this_by, &notifiable_ref](
+                        MutableFields<storage_t> fields) -> Response {
+                      // OK to call from within a transaction.
+                      // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                      notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
 
-                          const auto& service = parsed_status.service;
-                          const auto& codename = parsed_status.codename;
-                          const auto& optional_build = parsed_status.build;
-                          const auto& optional_instance = parsed_status.cloud_instance_name;
-                          const auto& optional_av_group = parsed_status.cloud_availability_group;
+                      const auto& service = parsed_status.service;
+                      const auto& codename = parsed_status.codename;
+                      const auto& optional_build = parsed_status.build;
+                      const auto& optional_instance = parsed_status.cloud_instance_name;
+                      const auto& optional_av_group = parsed_status.cloud_availability_group;
 
-                          // Update per-server information in the `DB`.
-                          ServerInfo server;
-                          server.ip = location.ip;
-                          bool need_to_update_server_info = false;
-                          const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
-                          if (Exists(current_server_info)) {
-                            server = Value(current_server_info);
-                          }
-                          // Check the instance name.
-                          if (Exists(optional_instance)) {
-                            if (!Exists(server.cloud_instance_name) ||
-                                Value(server.cloud_instance_name) != Value(optional_instance)) {
-                              server.cloud_instance_name = Value(optional_instance);
-                              need_to_update_server_info = true;
+                      // Update per-server information in the `DB`.
+                      ServerInfo server;
+                      server.ip = location.ip;
+                      bool need_to_update_server_info = false;
+                      const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
+                      if (Exists(current_server_info)) {
+                        server = Value(current_server_info);
+                      }
+                      // Check the instance name.
+                      if (Exists(optional_instance)) {
+                        if (!Exists(server.cloud_instance_name) ||
+                            Value(server.cloud_instance_name) != Value(optional_instance)) {
+                          server.cloud_instance_name = Value(optional_instance);
+                          need_to_update_server_info = true;
+                        }
+                      }
+                      // Check the availability group.
+                      if (Exists(optional_av_group)) {
+                        if (!Exists(server.cloud_availability_group) ||
+                            Value(server.cloud_availability_group) != Value(optional_av_group)) {
+                          server.cloud_availability_group = Value(optional_av_group);
+                          need_to_update_server_info = true;
+                        }
+                      }
+                      // Check the time skew.
+                      if (Exists(optional_behind_this_by)) {
+                        const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
+                        const auto time_skew_difference = server.behind_this_by - behind_this_by;
+                        if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
+                            kUpdateServerInfoThresholdByTimeSkewDifference) {
+                          server.behind_this_by = behind_this_by;
+                          need_to_update_server_info = true;
+                        }
+                      }
+                      if (need_to_update_server_info) {
+                        fields.servers.Add(server);
+                      }
+
+                      // Update the `DB` if the build information was not stored there yet.
+                      const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
+                      if (Exists(optional_build) && (!Exists(current_claire_build_info) ||
+                                                     Value(current_claire_build_info).build != Value(optional_build))) {
+                        ClaireBuildInfo build;
+                        build.codename = codename;
+                        build.build = Value(optional_build);
+                        fields.builds.Add(build);
+                      }
+
+                      // Update the `DB` if "codename", "location", or "dependencies" differ.
+                      const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
+                      if ([&]() {
+                            if (!Exists(current_claire_info)) {
+                              return true;
+                            } else if (Value(current_claire_info).location != location) {
+                              return true;
+                            } else if (Value(current_claire_info).registered_state != ClaireRegisteredState::Active) {
+                              return true;
+                            } else {
+                              return false;
                             }
-                          }
-                          // Check the availability group.
-                          if (Exists(optional_av_group)) {
-                            if (!Exists(server.cloud_availability_group) ||
-                                Value(server.cloud_availability_group) != Value(optional_av_group)) {
-                              server.cloud_availability_group = Value(optional_av_group);
-                              need_to_update_server_info = true;
-                            }
-                          }
-                          // Check the time skew.
-                          if (Exists(optional_behind_this_by)) {
-                            const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
-                            const auto time_skew_difference = server.behind_this_by - behind_this_by;
-                            if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
-                                kUpdateServerInfoThresholdByTimeSkewDifference) {
-                              server.behind_this_by = behind_this_by;
-                              need_to_update_server_info = true;
-                            }
-                          }
-                          if (need_to_update_server_info) {
-                            fields.servers.Add(server);
-                          }
+                          }()) {
+                        ClaireInfo claire;
+                        if (Exists(current_claire_info)) {
+                          // Do not overwrite `build` with `null`.
+                          claire = Value(current_claire_info);
+                        }
 
-                          // Update the `DB` if the build information was not stored there yet.
-                          const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
-                          if (Exists(optional_build) &&
-                              (!Exists(current_claire_build_info) ||
-                               Value(current_claire_build_info).build != Value(optional_build))) {
-                            ClaireBuildInfo build;
-                            build.codename = codename;
-                            build.build = Value(optional_build);
-                            fields.builds.Add(build);
-                          }
+                        claire.codename = codename;
+                        claire.service = service;
+                        claire.location = location;
+                        claire.reported_timestamp = now;
+                        claire.url_status_page_direct = location.StatusPageURL();
+                        claire.registered_state = ClaireRegisteredState::Active;
 
-                          // Update the `DB` if "codename", "location", or "dependencies" differ.
-                          const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
-                          if ([&]() {
-                                if (!Exists(current_claire_info)) {
-                                  return true;
-                                } else if (Value(current_claire_info).location != location) {
-                                  return true;
-                                } else if (Value(current_claire_info).registered_state !=
-                                           ClaireRegisteredState::Active) {
-                                  return true;
-                                } else {
-                                  return false;
-                                }
-                              }()) {
-                            ClaireInfo claire;
-                            if (Exists(current_claire_info)) {
-                              // Do not overwrite `build` with `null`.
-                              claire = Value(current_claire_info);
-                            }
-
-                            claire.codename = codename;
-                            claire.service = service;
-                            claire.location = location;
-                            claire.reported_timestamp = now;
-                            claire.url_status_page_direct = location.StatusPageURL();
-                            claire.registered_state = ClaireRegisteredState::Active;
-
-                            fields.claires.Add(claire);
-                          }
-                          return Response("OK\n");
-                        },
-                        std::move(r)).Wait();
+                        fields.claires.Add(claire);
+                      }
+                      return Response("OK\n");
+                    },
+                    std::move(r))
+              .Wait();
           {
             std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
             auto& placeholder = services_keepalive_time_cache_[parsed_status.codename];
@@ -704,7 +699,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
   void ServeBuild(Request r) {
     const auto codename = r.url_path_args[0];
-    storage_->ReadOnlyTransaction([this, codename](ImmutableFields<storage_t> fields) -> Response {
+    storage_->ReadOnlyTransaction([codename](ImmutableFields<storage_t> fields) -> Response {
       const auto result = fields.builds[codename];
       if (Exists(result)) {
         return Value(result);

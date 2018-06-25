@@ -66,7 +66,7 @@ class HTTPStreamSubscriber {
       HTTP(ChunkedGET(url,
                       [this](const std::string& header, const std::string& value) { OnHeader(header, value); },
                       [this](const std::string& chunk_body) { OnChunk(chunk_body); },
-                      [this]() {}));
+                      []() {}));
     } catch (current::net::NetworkException& e) {
       std::cerr << e.DetailedDescription() << std::endl;
       CURRENT_ASSERT(false);
