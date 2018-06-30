@@ -85,7 +85,7 @@ class FlowTool final {
   struct NodeSearchResult {
     const db::Node* node = nullptr;
     Optional<Response> error;
-    explicit NodeSearchResult(const db::Node* node) : node(node) { assert(node != nullptr); }
+    explicit NodeSearchResult(const db::Node* node) : node(node) { CURRENT_ASSERT(node != nullptr); }
     explicit NodeSearchResult(Response error) : error(std::move(error)) {}
   };
 
@@ -242,7 +242,7 @@ class FlowTool final {
                   result.node->data.Call(get_handler);
                   return std::move(get_handler.response);
                 } else {
-                  assert(Exists(result.error));
+                  CURRENT_ASSERT(Exists(result.error));
                   return Value(result.error);
                 }
               },
@@ -355,7 +355,7 @@ class FlowTool final {
                         } else {
                           // Neither file nor the directory for it was found.
                           // We don't support `mkdir -p` (yet), so it's an error.
-                          assert(Exists(result_dir.error));
+                          CURRENT_ASSERT(Exists(result_dir.error));
                           response = Value(result_dir.error);
                           return;
                         }
@@ -412,7 +412,7 @@ class FlowTool final {
                         } else {
                           // Neither file nor the directory for it was found. We don't support `mkdir -p` (yet), so it's
                           // an error.
-                          assert(Exists(result_dir.error));
+                          CURRENT_ASSERT(Exists(result_dir.error));
                           response = Value(result_dir.error);
                           return;
                         }
