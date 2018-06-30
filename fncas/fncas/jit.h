@@ -42,6 +42,7 @@
 
 #include "../../bricks/strings/printf.h"
 #include "../../bricks/file/file.h"
+#include "../../bricks/system/syscalls.h"
 
 #include "base.h"
 #include "node.h"
@@ -161,10 +162,9 @@ struct compiled_expression final : noncopyable {
   size_t heap_size() const { return heap_size_ ? static_cast<size_t>(heap_size_()) : 0; }
 
   static void syscall(const std::string& command) {
-    int retval = system(command.c_str());
+    const int retval = current::bricks::system::SystemCall(command.c_str());
     if (retval) {
-      std::cerr << command << std::endl
-                << retval << std::endl;
+      std::cerr << command << std::endl << retval << std::endl;
       exit(-1);
     }
   }

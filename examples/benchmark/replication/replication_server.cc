@@ -68,11 +68,11 @@ class FakeStream final {
           http_request_(std::move(r)),
           http_response_(http_request_.SendChunkedResponse(
               HTTPResponseCode.OK,
-              current::net::constants::kDefaultJSONContentType,
               current::net::http::Headers({
                   {current::stream::kStreamHeaderCurrentSubscriptionId, subscription_id},
                   {current::stream::kStreamHeaderCurrentStreamSize, current::ToString(stream_size)},
-              }))) {}
+              }),
+              current::net::constants::kDefaultJSONContentType)) {}
 
     current::ss::EntryResponse operator()(std::string&& data) {
       const current::ss::EntryResponse result = [&, this]() {
@@ -280,8 +280,8 @@ class FakeStream final {
       const std::string body = (r.method == "GET") ? size_str + '\n' : "";
       r(body,
         HTTPResponseCode.OK,
-        current::net::constants::kDefaultContentType,
-        current::net::http::Headers({{current::stream::kStreamHeaderCurrentStreamSize, size_str}}));
+        current::net::http::Headers({{current::stream::kStreamHeaderCurrentStreamSize, size_str}}),
+        current::net::constants::kDefaultContentType);
       return;
     }
 

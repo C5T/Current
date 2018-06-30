@@ -37,7 +37,13 @@ namespace current {
 namespace storage {
 namespace container {
 
-template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, template <typename...> class MAP>
+template <typename T,
+          typename UPDATE_EVENT,
+          typename DELETE_EVENT,
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+          typename PATCH_EVENT_OR_VOID,
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+          template <typename...> class MAP>
 class GenericDictionary {
  public:
   using entry_t = T;
@@ -120,9 +126,48 @@ class GenericDictionary {
                              map_[key] = previous_object;
                            });
       last_modified_[key] = now;
-      map_.erase(key);
+      map_.erase(map_iterator);
     }
   }
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+  // NOTE(dkorolev): The `patch_object` parameter should be passed by value, 
+  // as otherwise it won't be valid during the possible rollback.
+  template <typename E = entry_t>
+  typename std::enable_if<HasPatch<E>(), bool>::type Patch(
+      sfinae::CF<key_t> key,
+      const typename E::patch_object_t patch_object) {
+    static_assert(std::is_same<E, entry_t>::value, "");
+    const auto now = current::time::Now();
+    const auto map_iterator = map_.find(key);
+    if (map_iterator != map_.end()) {
+      const T& previous_object = map_iterator->second;
+      const auto lm_iterator = last_modified_.find(key);
+      CURRENT_ASSERT(lm_iterator != last_modified_.end());
+      const auto previous_timestamp = lm_iterator->second;
+      journal_.LogMutation(PATCH_EVENT_OR_VOID(now, key, patch_object),
+                           [this, key, previous_object, previous_timestamp]() {
+                             last_modified_[key] = previous_timestamp;
+                             map_[key] = previous_object;
+                           });
+      last_modified_[key] = now;
+      map_iterator->second.PatchWith(patch_object);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  template <typename E = entry_t, typename... ARGS>
+  typename std::enable_if<HasPatch<E>(), bool>::type Patch(sfinae::CF<key_t> key, ARGS&&... args) {
+    return Patch(key, typename E::patch_object_t(std::forward<ARGS>(args)...));
+  }
+
+  template <typename E = entry_t, typename... ARGS>
+  typename std::enable_if<HasPatch<E>(), bool>::type Patch(const entry_t& entry, ARGS&&... args) {
+    return Patch(sfinae::GetKey(entry), typename E::patch_object_t(std::forward<ARGS>(args)...));
+  }
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
   void operator()(const UPDATE_EVENT& e) {
     const auto key = sfinae::GetKey(e.data);
@@ -133,6 +178,18 @@ class GenericDictionary {
     last_modified_[e.key] = e.us;
     map_.erase(e.key);
   }
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+  struct DummyStructForNonExistentPatch {};  // Essential, as can't form a reference to `void` even if disabled.
+  void operator()(const typename std::conditional<HasPatch<entry_t>(),
+                                                  PATCH_EVENT_OR_VOID,
+                                                  DummyStructForNonExistentPatch>::type& e) {
+    auto it = map_.find(e.key);
+    if (it != map_.end()) {
+      last_modified_[e.key] = e.us;
+      it->second.PatchWith(e.patch);
+    }
+  }
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
   struct Iterator final {
     using iterator_t = typename map_t::const_iterator;
@@ -159,13 +216,39 @@ class GenericDictionary {
   MutationJournal& journal_;
 };
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using UnorderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using OrderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered>;
+
+#else
+
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
 using UnorderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
 using OrderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, Ordered>;
 
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+
 }  // namespace container
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event.
+struct StorageFieldTypeSelector<container::UnorderedDictionary<T, E1, E2, E3>> {
+  static const char* HumanReadableName() { return "UnorderedDictionary"; }
+};
+
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event.
+struct StorageFieldTypeSelector<container::OrderedDictionary<T, E1, E2, E3>> {
+  static const char* HumanReadableName() { return "OrderedDictionary"; }
+};
+
+#else
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
 struct StorageFieldTypeSelector<container::UnorderedDictionary<T, E1, E2>> {
@@ -176,6 +259,8 @@ template <typename T, typename E1, typename E2>  // Entry, update event, delete 
 struct StorageFieldTypeSelector<container::OrderedDictionary<T, E1, E2>> {
   static const char* HumanReadableName() { return "OrderedDictionary"; }
 };
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 }  // namespace storage
 }  // namespace current

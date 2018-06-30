@@ -133,10 +133,16 @@ static_assert(current::serialization::json::IsJSONSerializable<Float>::value, ""
 static_assert(current::serialization::json::IsJSONSerializable<Double>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<ComplexSerializable>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<ContainsVariant>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::tuple<>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::tuple<int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::tuple<int, int>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::tuple<int, std::vector<int>>>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::tuple<int, ContainsVariant>>::value, "");
 
 struct NotSerializable {};
 
 static_assert(!current::serialization::json::IsJSONSerializable<NotSerializable>::value, "");
+static_assert(!current::serialization::json::IsJSONSerializable<std::tuple<NotSerializable>>::value, "");
 
 namespace named_variant {
 
@@ -241,6 +247,7 @@ TEST(Serialization, Binary) {
 #endif
 
 TEST(JSONSerialization, CPPTypes) {
+  using namespace serialization_test;
   // `bool`.
   EXPECT_EQ("true", JSON(true));
   EXPECT_TRUE(ParseJSON<bool>("true"));
@@ -325,6 +332,25 @@ TEST(JSONSerialization, CPPTypes) {
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ("Expected set as array, got: {}", e.OriginalDescription());
+  }
+}
+
+TEST(JSONSerialization, Tuple) {
+  EXPECT_EQ("[]", JSON(std::tuple<>()));
+  EXPECT_EQ("[1,2,3]", JSON(std::make_tuple(1, 2, 3)));
+  {
+    serialization_test::Serializable simple_object;
+    simple_object.i = 42;
+    simple_object.s = "foo";
+    simple_object.b = true;
+    simple_object.e = serialization_test::Enum::SET;
+    EXPECT_EQ("[1,\"foo\",{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}]",
+              JSON(std::make_tuple(1, std::string("foo"), simple_object)));
+  }
+  {
+    const auto tuple = ParseJSON<std::tuple<int, std::string>>("[42,\"passed\"]");
+    EXPECT_EQ(42, std::get<0>(tuple));
+    EXPECT_EQ("passed", std::get<1>(tuple));
   }
 }
 

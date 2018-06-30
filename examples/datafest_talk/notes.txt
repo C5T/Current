@@ -1,0 +1,54 @@
+# Below are the dataset-related sanity check commands
+# and their "golden" outputs on the data files I have. -- D.K.
+#
+# Each of the subdirectories in this one contain short self-descriptive code snippets,
+# and the `notes.txt` file in each respective directory explains their purposes.
+#
+# Have fun!
+# Dima
+
+# List the columns.
+$ head -n 1 data.csv | sed 's/,/\n/g'
+VendorID
+lpep_pickup_datetime
+Lpep_dropoff_datetime
+Store_and_fwd_flag
+RateCodeID
+Pickup_longitude
+Pickup_latitude
+Dropoff_longitude
+Dropoff_latitude
+Passenger_count
+Trip_distance
+Fare_amount
+Extra
+MTA_tax
+Tip_amount
+Tolls_amount
+Ehail_fee
+improvement_surcharge
+Total_amount
+Payment_type
+Trip_type 
+PULocationID
+DOLocationID
+
+# The number of columns.
+$ head -n 1 data.csv | sed 's/,/\n/g' | wc -l
+23
+
+# The number of rows, including the header one.
+# On the full dataset.
+$ wc -l data.csv 
+16385533 data.csv
+
+# Confirm that the number of columns is the same throughout the whole CSV file.
+# On the full dataset.
+$ cat data.csv | awk -F, '{ print NF }' | sort -g | uniq -c
+16385533 23
+
+# The checksums. Of the full dataset.
+$ md5sum data.csv
+1c0d4f17fada63d6d8f9bca956197675  data.csv
+$ sha256sum data.csv
+456acb8ca23bffe1440b8553107d36c7fb848365a467613623a13de1e451d6d3  data.csv

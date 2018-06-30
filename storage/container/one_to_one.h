@@ -42,6 +42,9 @@ namespace container {
 template <typename T,
           typename UPDATE_EVENT,
           typename DELETE_EVENT,
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+          typename PATCH_EVENT_OR_VOID,
+#endif // CURRENT_STORAGE_PATCH_SUPPORT
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
 class GenericOneToOne {
@@ -286,6 +289,42 @@ class GenericOneToOne {
   MutationJournal& journal_;
 };
 
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using UnorderedOneToUnorderedOne = GenericOneToOne<T,
+                                                   UPDATE_EVENT,
+                                                   DELETE_EVENT,
+                                                   PATCH_EVENT_OR_VOID,
+                                                   Unordered,
+                                                   Unordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using OrderedOneToOrderedOne = GenericOneToOne<T,
+                                               UPDATE_EVENT,
+                                               DELETE_EVENT,
+                                               PATCH_EVENT_OR_VOID,
+                                               Ordered,
+                                               Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using UnorderedOneToOrderedOne = GenericOneToOne<T,
+                                                 UPDATE_EVENT,
+                                                 DELETE_EVENT,
+                                                 PATCH_EVENT_OR_VOID,
+                                                 Unordered,
+                                                 Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
+using OrderedOneToUnorderedOne = GenericOneToOne<T,
+                                                 UPDATE_EVENT,
+                                                 DELETE_EVENT,
+                                                 PATCH_EVENT_OR_VOID,
+                                                 Ordered,
+                                                 Unordered>;
+
+#else
+
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
 using UnorderedOneToUnorderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
@@ -298,7 +337,33 @@ using UnorderedOneToOrderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
 using OrderedOneToUnorderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Unordered>;
 
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+
 }  // namespace container
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::UnorderedOneToUnorderedOne<T, E1, E2, E3>> {
+  static const char* HumanReadableName() { return "UnorderedOneToUnorderedOne"; }
+};
+
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::OrderedOneToOrderedOne<T, E1, E2, E3>> {
+  static const char* HumanReadableName() { return "OrderedOneToOrderedOne"; }
+};
+
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::UnorderedOneToOrderedOne<T, E1, E2, E3>> {
+  static const char* HumanReadableName() { return "UnorderedOneToOrderedOne"; }
+};
+
+template <typename T, typename E1, typename E2, typename E3>  // Entry, update event, delete event, patch event or void.
+struct StorageFieldTypeSelector<container::OrderedOneToUnorderedOne<T, E1, E2, E3>> {
+  static const char* HumanReadableName() { return "OrderedOneToUnorderedOne"; }
+};
+
+#else
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
 struct StorageFieldTypeSelector<container::UnorderedOneToUnorderedOne<T, E1, E2>> {
@@ -319,6 +384,8 @@ template <typename T, typename E1, typename E2>  // Entry, update event, delete 
 struct StorageFieldTypeSelector<container::OrderedOneToUnorderedOne<T, E1, E2>> {
   static const char* HumanReadableName() { return "OrderedOneToUnorderedOne"; }
 };
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 }  // namespace storage
 }  // namespace current

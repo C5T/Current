@@ -418,16 +418,19 @@ TEST(HTTPAPI, HandlesRespondTwiceWithString) {
 }
 
 TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
-  std::atomic_char result('.');
+  std::string result = "";
+  std::atomic_bool result_ready(false);
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/respond_twice",
-                                   [&result](Request r) {
+                                   [&result, &result_ready](Request r) {
                                      r(Response("OK", HTTPResponseCode.OK));
                                      try {
                                        r(Response("FAIL", HTTPResponseCode(762)));
-                                       result = 'F';  // Fail, the second response muts throw.
+                                       result = "Error, second response did not throw.";
+                                       result_ready = true;
                                      } catch (const current::net::AttemptedToSendHTTPResponseMoreThanOnce&) {
-                                       result = 'P';  // Pass, the second response did throw.
+                                       result = "OK, second response did throw.";
+                                       result_ready = true;
                                      }
                                    });
   const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
@@ -439,7 +442,11 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ('P', result);
+
+  while (!result_ready) {
+    std::this_thread::yield();
+  }
+  EXPECT_EQ("OK, second response did throw.", result);
 }
 
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
@@ -568,6 +575,37 @@ TEST(HTTPAPI, RedirectLoop) {
   }
 }
 #endif
+
+TEST(HTTPAPI, ResponseDotNotation) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/response_dot_notation",
+                                   [](Request r) {
+                                     r(Response("OK").Code(HTTPResponseCode.Created).SetHeader("X-Foo", "bar"));
+                                   });
+  const auto response = HTTP(GET(Printf("http://localhost:%d/response_dot_notation", FLAGS_net_api_test_port)));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_EQ(201, static_cast<int>(response.code));
+  EXPECT_TRUE(response.headers.Has("X-Foo"));
+  EXPECT_EQ("bar", response.headers.Get("X-Foo"));
+}
+
+static Response BuildResponse() {
+  return Response("").Code(HTTPResponseCode.NoContent).SetHeader("X-Meh", "foo");
+}
+
+TEST(HTTPAPI, ResponseDotNotationReturnedFromAFunction) {
+  const auto scope = HTTP(FLAGS_net_api_test_port)
+                         .Register("/response_returned_from_function",
+                                   [](Request r) {
+                                     r(BuildResponse());
+                                   });
+  const auto response =
+      HTTP(GET(Printf("http://localhost:%d/response_returned_from_function", FLAGS_net_api_test_port)));
+  EXPECT_EQ("", response.body);
+  EXPECT_EQ(204, static_cast<int>(response.code));
+  EXPECT_TRUE(response.headers.Has("X-Meh"));
+  EXPECT_EQ("foo", response.headers.Get("X-Meh"));
+}
 
 TEST(HTTPAPI, FourOhFourNotFound) {
   EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultNotFoundMessage());
@@ -1581,7 +1619,7 @@ TEST(HTTPAPI, ResponseSmokeTest) {
                     }) +
       HTTP(FLAGS_net_api_test_port)
           .Register("/response10",
-                    [send_response](Request r) {
+                    [](Request r) {
                       SerializableVariant v;
                       v.template Construct<SerializableObject>();
                       r(v);
