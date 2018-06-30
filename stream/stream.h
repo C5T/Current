@@ -514,8 +514,8 @@ class Stream final {
       const std::string body = (r.method == "GET") ? size_str + '\n' : "";
       r(body,
         HTTPResponseCode.OK,
-        current::net::constants::kDefaultContentType,
-        current::net::http::Headers({{kStreamHeaderCurrentStreamSize, size_str}}));
+        current::net::http::Headers({{kStreamHeaderCurrentStreamSize, size_str}}),
+        current::net::constants::kDefaultContentType);
       return;
     }
 
@@ -574,7 +574,7 @@ class Stream final {
 
       auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
           subscription_id, borrowed_impl, std::move(r), std::move(request_params));
-      const auto done_callback = [this, borrowed_impl, subscription_id]() {
+      const auto done_callback = [borrowed_impl, subscription_id]() {
         // Note: Called from a locked section of `borrowed_impl->http_subscriptions_mutex`.
         borrowed_impl->http_subscriptions[subscription_id].second = nullptr;
       };

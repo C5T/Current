@@ -442,6 +442,19 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 
 namespace current {
 
+template <typename T>
+constexpr bool HasPatchObjectImpl(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasPatchObjectImpl(int) -> decltype(sizeof(typename T::patch_object_t), bool()) {
+  return true;
+}
+
+template <typename T>
+constexpr bool HasPatch() { return HasPatchObjectImpl<T>(0); }
+
 // TODO(dkorolev): Find a better place for this code. Must be included from the top-level `current.h`.
 
 template <class B, class D>

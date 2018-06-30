@@ -79,9 +79,11 @@ struct Response final : IHasDoRespondViaHTTP {
   Response() : body(""), code(HTTPResponseCode.OK), content_type(net::constants::kDefaultContentType) {}
 
   Response(const Response&) = default;
+  Response(Response&) = default;  // Apparently, required to return a dot-constructed `Response` from a function.
   Response(Response&&) = default;
 
   Response& operator=(const Response&) = default;
+  Response& operator=(Response&) = default;
   Response& operator=(Response&&) = default;
 
   template <typename... ARGS>
@@ -238,12 +240,12 @@ struct Response final : IHasDoRespondViaHTTP {
     return *this;
   }
 
-  Response& NoCORS() {
+  Response& DisableCORS() {
     cors_header = false;
     return *this;
   }
 
-  Response& ReinsertCORS() {
+  Response& EnableCORS() {
     cors_header = true;
     return *this;
   }

@@ -1,0 +1,47 @@
+$ ./step1_rides_by_months_python.py | tee >(md5sum)
+1445285 01/2016
+1510722 02/2016
+1576393 03/2016
+1543925 04/2016
+1536979 05/2016
+1404726 06/2016
+1332510 07/2016
+1247675 08/2016
+1162373 09/2016
+1252572 10/2016
+1148214 11/2016
+1224158 12/2016
+bd5b6d7f389e64aab50c56fed61eaded  -
+
+$ cat ../cooked.csv | ./step2_rides_by_months_awk.awk | sort -k 2 | tee >(md5sum)
+1445285 01/2016
+1510722 02/2016
+1576393 03/2016
+1543925 04/2016
+1536979 05/2016
+1404726 06/2016
+1332510 07/2016
+1247675 08/2016
+1162373 09/2016
+1252572 10/2016
+1148214 11/2016
+1224158 12/2016
+bd5b6d7f389e64aab50c56fed61eaded  -
+
+$ cat ../cooked.csv | cut -d, -f2 | awk -F'-' '{ print $2 "/" $1 }' | sort | uniq -c | sed 's/^\s*//g' | tee >(md5sum)
+1445285 01/2016
+1510722 02/2016
+1576393 03/2016
+1543925 04/2016
+1536979 05/2016
+1404726 06/2016
+1332510 07/2016
+1247675 08/2016
+1162373 09/2016
+1252572 10/2016
+1148214 11/2016
+1224158 12/2016
+bd5b6d7f389e64aab50c56fed61eaded  -
+
+# The C and C++ examples produce the same output, and their launch commands are in their first source files lines.
+$ head -n 1 step*.c*  # To list all those commands.

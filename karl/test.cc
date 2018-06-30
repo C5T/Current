@@ -494,6 +494,8 @@ TEST(Karl, DeregisterWithNginx) {
 }
 #endif  // CURRENT_CI
 
+#ifndef CURRENT_CI_TRAVIS  // NOTE(dkorolev): Disable Karl test on Travis, as it's overloaded and they often time out.
+
 TEST(Karl, DisconnectedByTimout) {
   current::time::ResetToZero();
 
@@ -1259,3 +1261,5 @@ TEST(Karl, Visualization) {
   EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".dot"), graph.AsDOT());
 }
 #endif
+
+#endif  // #ifndef CURRENT_CI_TRAVIS for the second half of Travis tests.

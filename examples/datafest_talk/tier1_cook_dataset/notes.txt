@@ -1,0 +1,22 @@
+$ wc -l ../data.csv 
+16385533 data.csv
+
+$ pip install pytz
+$ time ./step1_cook.py | pv -l > ../cooked.csv  # Takes ~12 minutes on my laptop. -- D.K.
+
+$ wc -l ../cooked.csv 
+16385532 data.csv
+
+$ cat ../cooked.csv | awk -F, '{ print NF }' | sort -g | uniq -c
+16385533 23
+
+$ g++ -std=c++11 -O3 step2_confirm_timestamps_are_valid.cc && time ./a.out  # Takes ~3 minutes. -- D.K.
+All timestamps OK.
+
+$ md5sum ../data.csv ../cooked.csv
+1c0d4f17fada63d6d8f9bca956197675  ../data.csv
+44aa8ef8ac31e4b24475503983ceb681  ../cooked.csv
+
+$ sha256sum ../data.csv ../cooked.csv
+456acb8ca23bffe1440b8553107d36c7fb848365a467613623a13de1e451d6d3  ../data.csv
+25f5eb21dcb56ed55dcb0dbaf81b69b69c9b2d574c2b7278032ab188ec53f7fb  ../cooked.csv

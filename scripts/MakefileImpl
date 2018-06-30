@@ -6,7 +6,7 @@
 
 # TODO(dkorolev): Add a top-level 'make update' target to update from GitHub.
 
-.PHONY: test docu docu_impl README.md all indent clean check coverage
+.PHONY: test docu docu_impl README.md all indent clean check coverage phony_current_build
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
@@ -49,6 +49,7 @@ endif
 TRAVIS?=0
 ifeq ($(TRAVIS),true)
   CURRENT_CI=1
+  CPPFLAGS+= -DCURRENT_CI_TRAVIS
 endif
 
 ifeq (${CURRENT_CI},1)
@@ -105,8 +106,10 @@ clean:
 	find . -type f -name 'current_build.h' | xargs rm -f
 	find . -type f -name 'current_build.h.*' | xargs rm -f
 	find . -type f -name '.current_std???.txt' | xargs rm -f
+	find . -type f -name '.current_*.g++.cc' | xargs rm -f
 	find . -type f -name core | xargs rm -f
-	find . -type f -name '.current_*.*.*' | xargs rm -f  # `make check`'s `*.clang++.cc.o` stuff.
+	find . -type f -name '.current_*.*g++.*' | xargs rm -f  # `make check`'s `*.[clan]g++.cc.*` stuff.
+	find . -type l -name '.current_*.*g++.*' | xargs rm -f  # `make check`'s `*.[clan]g++.cc.*` stuff.
 	find . -type l -name '.current_*' | xargs rm -f
 	find . -type l -name '.current_*.*' | xargs rm -f
 

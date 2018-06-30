@@ -35,6 +35,8 @@ SOFTWARE.
 
 #include "gtest.h"
 
+#include "../../bricks/dflags/dflags.h"  // Must include this directly, otherwise headers order would matter. -- D.K.
+
 DEFINE_string(current_runtime_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
 
 int main(int argc, char** argv) {

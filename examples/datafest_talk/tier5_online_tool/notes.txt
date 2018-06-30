@@ -1,0 +1,7 @@
+# Re-pack the `.inl` files into a C++ header if necessary.
+$ ./step0_update_boilerplates.sh > inl_files.h
+
+# Start the service. Keep it running in a terminal.
+$ g++ -std=c++11 -O3 -DNDEBUG step1_service.cc -lpthread -ldl && ./a.out --current_dir=$PWD/../../..
+
+# Run various steps by navigating to http://localhost:3000, or by running `make` from `step2_*` and onwards.

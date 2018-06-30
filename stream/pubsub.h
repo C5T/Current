@@ -244,11 +244,11 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         output_started_(false),
         http_response_(http_request_.SendChunkedResponse(
             HTTPResponseCode.OK,
-            current::net::constants::kDefaultJSONContentType,
             current::net::http::Headers({
                 {kStreamHeaderCurrentSubscriptionId, subscription_id},
                 {kStreamHeaderCurrentStreamSize, current::ToString(impl_->persister.Size())},
-            }))) {
+            }),
+            current::net::constants::kDefaultJSONContentType)) {
     if (params_.recent.count() > 0) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ = r.timestamp - params_.recent;
@@ -348,7 +348,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       }
       auto current_us = std::chrono::microseconds(0);
       // Obtain current timestamp only when it's necessary by parsing the `raw_log_line`.
-      const auto GetCurrentUs = [this, &current_us, &raw_log_line]() -> std::chrono::microseconds {
+      const auto GetCurrentUs = [&current_us, &raw_log_line]() -> std::chrono::microseconds {
         if (!current_us.count()) {
           current_us = ParseJSON<ts_only_t>(raw_log_line.substr(0, raw_log_line.find('\t'))).us;
         }

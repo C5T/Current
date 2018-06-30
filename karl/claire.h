@@ -511,6 +511,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       // LCOV_EXCL_START
       r(current::net::DefaultMethodNotAllowedMessage(),
         HTTPResponseCode.MethodNotAllowed,
+        net::http::Headers(),
         net::constants::kDefaultHTMLContentType);
       // LCOV_EXCL_STOP
     }

@@ -193,7 +193,15 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.umany_to_umany.Cols().Empty());
         EXPECT_EQ(0u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(0u, fields.umany_to_umany.Cols().Size());
+        EXPECT_FALSE(fields.umany_to_umany.Has(1, "one"));
+        EXPECT_FALSE(fields.umany_to_umany.Has(std::make_pair(1, "one")));
         fields.umany_to_umany.Add(Cell{1, "one", 1});
+        EXPECT_TRUE(fields.umany_to_umany.Has(1, "one"));
+        EXPECT_TRUE(fields.umany_to_umany.Has(std::make_pair(1, "one")));
+        EXPECT_FALSE(fields.umany_to_umany.Has(101, "one"));
+        EXPECT_FALSE(fields.umany_to_umany.Has(1, "some one"));
+        EXPECT_FALSE(fields.umany_to_umany.Has(std::make_pair(101, "one")));
+        EXPECT_FALSE(fields.umany_to_umany.Has(std::make_pair(1, "some one")));
         fields.umany_to_umany.Add(Cell{2, "two", 2});
         fields.umany_to_umany.Add(Cell{2, "too", 3});
         EXPECT_FALSE(fields.umany_to_umany.Empty());
@@ -268,6 +276,10 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.uone_to_umany.Cols().Empty());
         EXPECT_EQ(0u, fields.uone_to_umany.Rows().Size());
         EXPECT_EQ(0u, fields.uone_to_umany.Cols().Size());
+
+        EXPECT_FALSE(fields.uone_to_umany.Has(1, "one"));
+        EXPECT_FALSE(fields.uone_to_umany.Has(std::make_pair(1, "one")));
+
         fields.uone_to_umany.Add(Cell{1, "one", 1});   // Adds {1,one=1 }
         fields.uone_to_umany.Add(Cell{2, "two", 5});   // Adds {2,two=5 }
         fields.uone_to_umany.Add(Cell{2, "two", 4});   // Adds {2,two=4 }, overwrites {2,two=5}
@@ -275,6 +287,14 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.uone_to_umany.Add(Cell{2, "fiv", 10});  // Adds {2,fiv=10}, removes {1,fiv=5}
         fields.uone_to_umany.Add(Cell{3, "six", 18});  // Adds {3,six=18}
         fields.uone_to_umany.Add(Cell{1, "six", 6});   // Adds {1,six=6 }, removes {3,six=18}
+
+        EXPECT_TRUE(fields.uone_to_umany.Has(1, "one"));
+        EXPECT_TRUE(fields.uone_to_umany.Has(std::make_pair(1, "one")));
+        EXPECT_FALSE(fields.uone_to_umany.Has(1, "fiv"));  // Implicitly removed above.
+        EXPECT_FALSE(fields.uone_to_umany.Has(3, "six"));  // Implicitly removed above.
+        EXPECT_FALSE(fields.uone_to_umany.Has(std::make_pair(1, "fiv")));
+        EXPECT_FALSE(fields.uone_to_umany.Has(std::make_pair(3, "six")));
+
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_EQ(4u, fields.uone_to_umany.Size());
         EXPECT_FALSE(fields.uone_to_umany.Rows().Empty());
@@ -3325,5 +3345,230 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     EXPECT_TRUE(WasCommitted(result));
   }
 }
+
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+
+namespace transactional_storage_test {
+
+CURRENT_STRUCT(NonPatchableX) {
+  CURRENT_FIELD(key, std::string);
+  CURRENT_FIELD(x, int32_t);
+  CURRENT_CONSTRUCTOR(NonPatchableX)(std::string key = "", int32_t x = 0) : key(std::move(key)), x(x) {}
+};
+
+CURRENT_STRUCT(PatchToY) {
+  CURRENT_FIELD(dy, int32_t, 0);
+  CURRENT_CONSTRUCTOR(PatchToY)(int32_t dy = 0) : dy(dy) {}
+
+  // To test the forwarding constructor.
+  CURRENT_CONSTRUCTOR(PatchToY)(int32_t dy1, int32_t dy2, int32_t dy3) : dy(dy1 + dy2 + dy3) {}
+};
+
+CURRENT_STRUCT(PatchableY) {
+  CURRENT_FIELD(key, std::string);
+  CURRENT_FIELD(y, int32_t);
+  CURRENT_CONSTRUCTOR(PatchableY)(std::string key = "", int32_t y = 0) : key(std::move(key)), y(y) {}
+  
+  using patch_object_t = PatchToY;
+  void PatchWith(const patch_object_t& patch) {
+    y += patch.dy;
+  }
+};
+
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, NonPatchableX, NonPatchableXDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, PatchableY, PatchableYDictionary);
+
+CURRENT_STORAGE(PatchTestStorage) {
+  CURRENT_STORAGE_FIELD(x, NonPatchableXDictionary);
+  CURRENT_STORAGE_FIELD(y, PatchableYDictionary);
+};
+
+}  // namespace transactional_storage_test
+
+TEST(TransactionalStorage, PatchMutation) {
+  current::time::ResetToZero();
+
+  using namespace transactional_storage_test;
+  static_assert(!current::HasPatch<NonPatchableX>(), "");
+  static_assert(current::HasPatch<PatchableY>(), "");
+
+  using storage_t = PatchTestStorage<StreamInMemoryStreamPersister>;
+
+  static_assert(std::is_same<typename storage_t::transaction_t, typename storage_t::stream_t::entry_t>::value, "");
+  // clang-format off
+  EXPECT_STREQ("Transaction<Variant<NonPatchableXDictionaryUpdated, PatchableYDictionaryUpdated, NonPatchableXDictionaryDeleted, PatchableYDictionaryDeleted, PatchableYDictionaryPatched>>",
+               current::reflection::CurrentTypeName<typename storage_t::transaction_t>());
+  // clang-format on
+
+  EXPECT_EQ(2u, storage_t::FIELDS_COUNT);
+
+  current::Owned<typename storage_t::stream_t> stream = storage_t::stream_t::CreateStream();
+  current::Owned<storage_t> storage = storage_t::CreateMasterStorageAtopExistingStream(stream);
+
+  EXPECT_TRUE(storage->IsMasterStorage());
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      EXPECT_FALSE(fields.x.Has("a"));
+      fields.x.Add(NonPatchableX{"a", 1});
+      EXPECT_TRUE(fields.x.Has("a"));
+      EXPECT_TRUE(Exists(fields.x["a"]));
+      EXPECT_EQ(1, Value(fields.x["a"]).x);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(1), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      EXPECT_FALSE(fields.y.Has("b"));
+      fields.y.Add(PatchableY{"b", 2});
+      ASSERT_TRUE(fields.y.Has("b"));
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(2, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(2), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      EXPECT_TRUE(fields.y.Patch("b", PatchToY(+10)));
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(12, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(3), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(12, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      EXPECT_TRUE(fields.y.Patch("b", +100));
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(112, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(4), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(112, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      EXPECT_TRUE(fields.y.Patch("b", +333, +333, +334));
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(1112, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(5), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      const auto b = Value(fields.y["b"]);
+      EXPECT_TRUE(fields.y.Patch(b, PatchToY(+1)));
+      EXPECT_TRUE(fields.y.Patch(b, +2));
+      EXPECT_TRUE(fields.y.Patch(b, 0, -1, -2));
+      EXPECT_EQ(1112, Value(fields.y["b"]).y);
+
+      EXPECT_FALSE(fields.y.Patch("no such key", -1));
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(6), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(1112, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+      EXPECT_TRUE(fields.y.Patch("b", PatchToY(+1000000)));
+      CURRENT_STORAGE_THROW_ROLLBACK();
+    }).Go();
+    EXPECT_FALSE(WasCommitted(result));
+    EXPECT_EQ(static_cast<uint64_t>(6), stream->Data()->Size());
+  }
+
+  {
+    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+      ASSERT_TRUE(Exists(fields.y["b"]));
+      EXPECT_EQ(1112, Value(fields.y["b"]).y);
+    }).Go();
+
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    std::vector<std::string> entries;
+    for (const auto& entry : stream->Data()->Iterate()) {
+      for (const auto& mutation : entry.entry.mutations) {
+        entries.push_back(JSON<JSONFormat::Minimalistic>(mutation));
+      }
+    }
+    ASSERT_EQ(8u, entries.size());
+    // clang-format off
+    EXPECT_EQ("{\"NonPatchableXDictionaryUpdated\":{\"us\":1,\"data\":{\"key\":\"a\",\"x\":1}}}", entries[0]);
+    EXPECT_EQ("{\"PatchableYDictionaryUpdated\":{\"us\":5,\"data\":{\"key\":\"b\",\"y\":2}}}", entries[1]);
+    EXPECT_EQ("{\"PatchableYDictionaryPatched\":{\"us\":9,\"key\":\"b\",\"patch\":{\"dy\":10}}}", entries[2]);
+    EXPECT_EQ("{\"PatchableYDictionaryPatched\":{\"us\":13,\"key\":\"b\",\"patch\":{\"dy\":100}}}", entries[3]);
+    EXPECT_EQ("{\"PatchableYDictionaryPatched\":{\"us\":17,\"key\":\"b\",\"patch\":{\"dy\":1000}}}", entries[4]);
+    EXPECT_EQ("{\"PatchableYDictionaryPatched\":{\"us\":21,\"key\":\"b\",\"patch\":{\"dy\":1}}}", entries[5]);
+    EXPECT_EQ("{\"PatchableYDictionaryPatched\":{\"us\":22,\"key\":\"b\",\"patch\":{\"dy\":2}}}", entries[6]);
+    EXPECT_EQ("{\"PatchableYDictionaryPatched\":{\"us\":23,\"key\":\"b\",\"patch\":{\"dy\":-3}}}", entries[7]);
+    // clang-format on
+  }
+
+  {
+    current::Owned<storage_t> following_storage = storage_t::CreateFollowingStorageAtopExistingStream(stream);
+    EXPECT_FALSE(following_storage->IsMasterStorage());
+    EXPECT_EQ(6u, following_storage->UnderlyingStream()->Data()->Size());
+
+    while (following_storage->LastAppliedTimestamp() < storage->LastAppliedTimestamp()) {
+      std::this_thread::yield();
+    }
+
+    {
+      const auto result = following_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+        ASSERT_TRUE(Exists(fields.x["a"]));
+        EXPECT_EQ(1, Value(fields.x["a"]).x);
+        ASSERT_TRUE(Exists(fields.y["b"]));
+        EXPECT_EQ(1112, Value(fields.y["b"]).y);
+      }).Go();
+
+      EXPECT_TRUE(WasCommitted(result));
+    }
+  }
+}
+
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
 
 #endif  // STORAGE_ONLY_RUN_RESTFUL_TESTS

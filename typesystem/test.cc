@@ -660,6 +660,24 @@ TEST(TypeSystemTest, Optional) {
     } catch (NoValue) {
     }
   }
+  // Non-POD version: Using `Value()`.
+  {
+    Optional<Foo> foo(100u);
+    const auto foo_i_value = Value(foo).i;
+    const auto& foo_i_ref = Value(foo).i;
+    EXPECT_EQ(100u, Value(foo).i);
+    EXPECT_EQ(100u, foo_i_value);
+    EXPECT_EQ(100u, foo_i_ref);
+    foo = 200u;
+    EXPECT_EQ(200u, Value(foo).i);
+    EXPECT_EQ(100u, foo_i_value);
+    EXPECT_EQ(200u, foo_i_ref);
+    Foo bar(300u);
+    foo = std::move(bar);
+    EXPECT_EQ(300u, Value(foo).i);
+    EXPECT_EQ(100u, foo_i_value);
+    EXPECT_EQ(300u, foo_i_ref);
+  }
 }
 
 namespace optionals_test {
@@ -1502,4 +1520,47 @@ TEST(TypeSystemTest, InplaceVariantConstruction) {
   ASSERT_TRUE(Exists<Bar>(v));
   ASSERT_FALSE(Exists<Foo>(v));
   EXPECT_EQ(202u, Value<Bar>(v).j);
+}
+
+namespace struct_definition_test {
+
+CURRENT_STRUCT(DoesNotSupportPatch) {
+  CURRENT_FIELD(x, int32_t, 0);
+};
+
+CURRENT_STRUCT(PatchToY) {
+  CURRENT_FIELD(dy, int32_t, 0);
+};
+
+CURRENT_STRUCT(DoesSupportPatch) {
+  CURRENT_FIELD(y, int32_t, 0);
+
+  using patch_object_t = PatchToY;
+  void PatchWith(const patch_object_t& patch) {
+    y += patch.dy;
+  }
+};
+
+}  // namespace struct_definition_test
+
+TEST(TypeSystemTest, Patch) {
+  using namespace struct_definition_test;
+
+  static_assert(!current::HasPatch<void>(), "");
+  static_assert(!current::HasPatch<int>(), "");
+  static_assert(!current::HasPatch<DoesNotSupportPatch>(), "");
+
+  static_assert(current::HasPatch<DoesSupportPatch>(), "");
+
+  DoesSupportPatch object;
+  EXPECT_EQ(0, object.y);
+
+  PatchToY delta_object;
+  delta_object.dy = 42;
+  object.PatchWith(delta_object);
+  EXPECT_EQ(42, object.y);
+
+  delta_object.dy = -10;
+  object.PatchWith(delta_object);
+  EXPECT_EQ(32, object.y);
 }
