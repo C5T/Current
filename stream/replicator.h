@@ -304,7 +304,7 @@ class SubscribableRemoteStream final {
           if (++consecutive_malformed_chunks_count_ == 3u) {
             fprintf(
                 stderr,
-                "Constantly receiving malformed chunks from \"%s\"\n",
+                "Received three malformed chunks in a row from \"%s\"\n",
                 bare_stream.GetURLToSubscribe(this->next_expected_index_, this->from_us_, subscription_mode_).c_str());
           }
         } catch (current::Exception&) {
@@ -654,7 +654,7 @@ class MasterFlipController final {
           std::min(stream_->Data()->IndexRangeByTimestampRange(client_head + std::chrono::microseconds(1)).first,
                    Value(head_idxts.idxts).index + 1u);
       if (next_index_by_timestamp != client_next_index) {
-        r("The prospective master's head doesn't correlate with the specified next index.\n",
+        r("The prospective master's head doesn't match the specified next index.\n",
           HTTPResponseCode.BadRequest);
         return;
       }
