@@ -435,10 +435,6 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
                                    });
   const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
-  while (result == '.') {
-    // Must wait until the second response is attempted to be sent.
-    std::this_thread::yield();
-  }
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
