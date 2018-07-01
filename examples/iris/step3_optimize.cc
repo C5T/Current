@@ -208,8 +208,8 @@ Response PlotAccuracy(const std::vector<IrisFlower>& flowers,
           if (bin == N) {
             bin = N - 1;
           }
-          assert(bin >= 0);
-          assert(bin < N);
+          CURRENT_ASSERT(bin >= 0);
+          CURRENT_ASSERT(bin < N);
           ++count[bin];
         }
       }
@@ -305,7 +305,7 @@ struct FunctionToOptimize {
             ++n;
           }
         }
-        assert(n > 0);
+        CURRENT_ASSERT(n > 0);
         const double mean_x = sum_x / n;
         center[c].push_back(mean_x);
         point.push_back(mean_x);
@@ -338,7 +338,7 @@ struct FunctionToOptimize {
         negative_penalty_discriminant += fncas::log(w[label_cit->second] / ws);
       }
     }
-    assert(valid_examples > 0u);
+    CURRENT_ASSERT(valid_examples > 0u);
 
     const T accuracy = fncas::exp(negative_penalty_discriminant / valid_examples);
 
@@ -506,7 +506,10 @@ int main(int argc, char** argv) {
                           html += "  </tr>\n";
                         }
                         html += "</table>\n";
-                        r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
+                        r(html,
+                          HTTPResponseCode.OK,
+                          current::net::http::Headers(),
+                          current::net::constants::kDefaultHTMLContentType);
                       }
                     }) +
       http.Register("/accuracy",
@@ -541,7 +544,10 @@ int main(int argc, char** argv) {
                           html += "  </tr>\n";
                         }
                         html += "</table>\n";
-                        r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
+                        r(html,
+                          HTTPResponseCode.OK,
+                          current::net::http::Headers(),
+                          current::net::constants::kDefaultHTMLContentType);
                       }
                     }) +
       http.Register(
@@ -576,6 +582,7 @@ int main(int argc, char** argv) {
                   .OutputFormat("svg")
                   .ImageSize(800),
               HTTPResponseCode.OK,
+              current::net::http::Headers(),
               current::net::constants::kDefaultSVGContentType);
           });
 

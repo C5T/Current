@@ -125,7 +125,7 @@ TEST(GraphViz, HTMLWithHyperlink) {
 
   RunTest(DiGraph().Title("Test").Add(
       Node("<TABLE CELLBORDER='0'><TR><TD HREF='http://current.ai'>link</TD></TR><TR><TD>text</TD></TR></TABLE>")
-          .HTML()
+          .BodyAsHTML()
           .Shape("none")));
 }
 
