@@ -183,7 +183,7 @@ class FlowTool final {
               [this, path, trailing_slash](ImmutableFields<storage_t> fields) -> Response {
                 const NodeSearchResult result = FindNodeFromWithinTransaction(fields, path);
                 if (result.node) {
-                  struct GetFileOrDirHandler {
+                  struct GetFileOrDirHandler final {
                     const ImmutableFields<storage_t>& fields;
                     const std::vector<std::string>& path;
                     const bool trailing_slash;
@@ -265,7 +265,7 @@ class FlowTool final {
         storage_
             ->ReadWriteTransaction(
                 [this, path, body, trailing_slash](MutableFields<storage_t> fields) -> Response {
-                  struct PutFileOrDirHandler {
+                  struct PutFileOrDirHandler final {
                     const FlowTool* self;
                     MutableFields<storage_t> fields;
                     const std::vector<std::string> path;
