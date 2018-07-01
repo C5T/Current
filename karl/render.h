@@ -44,7 +44,7 @@ const std::string tiny_text_begin = "<FONT POINT-SIZE='8' FACE='Courier'>";
 const std::string tiny_text_end = "</FONT>";
 const std::string width_marker = "<BR/>" + h1_begin + std::string(8u, ' ') + h1_end;
 
-enum class FleetViewResponseFormat { JSONFull, JSONMinimalistic, HTML };
+enum class FleetViewResponseFormat { JSONFull, JSONMinimalistic, HTMLFormat };
 
 // Interface to implement for custom fleet view page renderer.
 template <typename INNER_STATUSES_VARIANT>
@@ -83,7 +83,7 @@ class DefaultFleetViewRenderer : public IKarlFleetViewRenderer<INNER_STATUSES_VA
       return Response(JSON<JSONFormat::Minimalistic>(status),
                       HTTPResponseCode.OK,
                       current::net::constants::kDefaultJSONContentType);
-    } else if (response_format == FleetViewResponseFormat::HTML) {
+    } else if (response_format == FleetViewResponseFormat::HTMLFormat) {
       // clang-format off
       return Response(
           "<!doctype html>"
@@ -233,7 +233,7 @@ class DefaultFleetViewRenderer : public IKarlFleetViewRenderer<INNER_STATUSES_VA
         }
         os << "</TABLE>";
 
-        graph += (services[service.codename] = graphviz::Node(os.str()).HTML().Shape("none"));
+        graph += (services[service.codename] = graphviz::Node(os.str()).BodyAsHTML().Shape("none"));
         machines[ip].push_back(service.codename);
       }
     }
