@@ -26,7 +26,12 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_string(dlopen_example_test_input_filename, "../iris/data/dataset.json", "The input Irises dataset.");
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+static const char* const kDefaultPathToIrisDataset = "../iris/data/dataset.json";
+#else
+static const char* const kDefaultPathToIrisDataset = "golden/dataset.json";
+#endif
+DEFINE_string(dlopen_example_test_input_filename, kDefaultPathToIrisDataset, "The input Irises dataset.");
 DEFINE_uint16(dlopen_example_test_port, PickPortForUnitTest(), "");
 
 TEST(DLOpenExample, Smoke) {

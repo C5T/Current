@@ -847,13 +847,13 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         return FleetViewResponseFormat::JSONMinimalistic;
       }
       if (r.url.query.has("html")) {
-        return FleetViewResponseFormat::HTML;
+        return FleetViewResponseFormat::HTMLFormat;
       }
       const char* kAcceptHeader = "Accept";
       if (r.headers.Has(kAcceptHeader)) {
         for (const auto& h : strings::Split(r.headers[kAcceptHeader].value, ',')) {
           if (strings::Split(h, ';').front() == "text/html") {  // Allow "text/html; charset=...", etc.
-            return FleetViewResponseFormat::HTML;
+            return FleetViewResponseFormat::HTMLFormat;
           }
         }
       }

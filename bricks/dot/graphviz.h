@@ -80,7 +80,7 @@ struct Node {
     return Set("shape", std::forward<T>(shape));
   }
 
-  Node& HTML() {
+  Node& BodyAsHTML() {
     impl->html = true;
     return *this;
   }

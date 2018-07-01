@@ -195,6 +195,19 @@ class Stream final {
         owned_publisher_(MakeOwned<publisher_t>(impl_)),
         borrowable_publisher_(Value(owned_publisher_)) {}
 
+  // `RecreatePublisher` invalidates all external publishers to this stream and creates a fresh new publisher,
+  // which then can be stored in the stream (Master mode) or given out of it (Following mode).
+  // NOTE: The call to `RecreatePublisher` will wait indefinitely if external publishers are not giving up.
+  Borrowed<publisher_t> RecreatePublisher() {
+    // Kill existing borrowers of the publisher. Wait as needed, for as long as needed.
+    // This is essential to gracefully invalidate all the previously-issued borrowed publishers.
+    borrowable_publisher_ = nullptr;
+    owned_publisher_ = nullptr;
+    // Create a fresh new publisher.
+    owned_publisher_ = MakeOwned<publisher_t>(impl_);
+    return Value(owned_publisher_);
+  }
+
  public:
   // `Publisher()`: The caller assumes full responsibility for making sure the underlying stream
   // is not destroyed while it is being published to.
@@ -235,32 +248,18 @@ class Stream final {
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void BecomeMasterStream() {
     current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
-    // First, "unlock" the stream's own publisher it can be giving away. This is to avoid the deadlock.
-    borrowable_publisher_ = nullptr;
-    // Kill existing borrowers of the publisher. Yes, even though the stream itself is not its own data authority,
-    // as the present data authority may have delegated the "publish access" to various other pieces of logic.
-    // Wait as needed, for as long as needed.
-    owned_publisher_ = nullptr;
-    // Create a fresh new publisher. And keep it within the stream.
-    owned_publisher_ = MakeOwned<publisher_t>(impl_);
-    borrowable_publisher_ = Value(owned_publisher_);
+    borrowable_publisher_ = RecreatePublisher();
   }
 
-  // `BecomeFollowingStream` first invalidates all external publishers to this stream,
+  // `BecomeFollowingStream` invalidates all external publishers to this stream,
   // but instead of "restoring the order" where this stream can publish into itself,
-  // it gives this only publisher away, making it such that the only possible way to publish into this stream
+  // it gives its publisher away, so the only possible way to publish into this stream
   // is to borrow the publisher from the caller of `BecomeFollowingStream`, not from the stream itself.
   // NOTE: The call to `BecomeFollowingStream` will wait indefinitely if external publishers are not giving up.
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   Borrowed<publisher_t> BecomeFollowingStream() {
     current::locks::SmartMutexLockGuard<MLS> lock(impl_->publishing_mutex);
-    // Kill existing borrowers of the publisher. Wait as needed, for as long as needed.
-    // This is essential to gracefully invalidate all the previously-issued borrowed publishers.
-    borrowable_publisher_ = nullptr;
-    owned_publisher_ = nullptr;
-    // Create a fresh new publisher and give it away.
-    owned_publisher_ = MakeOwned<publisher_t>(impl_);
-    return Value(owned_publisher_);
+    return RecreatePublisher();
   }
 
   // TODO(dkorolev): Master-follower flip between two streams belongs in Stream first, then in Storage.
@@ -274,6 +273,7 @@ class Stream final {
     BorrowedWithCallback<impl_t> impl_;
     F& subscriber_;
     const uint64_t begin_idx_;
+    const std::chrono::microseconds from_us_;
     std::thread thread_;
 
     SubscriberThreadInstance() = delete;
@@ -286,6 +286,7 @@ class Stream final {
     SubscriberThreadInstance(Borrowed<impl_t> impl,
                              F& subscriber,
                              uint64_t begin_idx,
+                             std::chrono::microseconds from_us,
                              std::function<void()> done_callback)
         : this_is_valid_(false),
           done_callback_(done_callback),
@@ -299,6 +300,7 @@ class Stream final {
                 }),
           subscriber_(subscriber),
           begin_idx_(begin_idx),
+          from_us_(from_us),
           thread_(&SubscriberThreadInstance::Thread, this) {
       // Must guard against the constructor of `BorrowedWithCallback<impl_t> impl_` throwing.
       // NOTE(dkorolev): This is obsolete now, but keeping the logic for now, to keep it safe. -- D.K.
@@ -375,7 +377,7 @@ class Stream final {
     }
 
     void ThreadImpl(uint64_t begin_idx) {
-      auto head = std::chrono::microseconds(-1);
+      auto head = from_us_ - std::chrono::microseconds(1);
       uint64_t index = begin_idx;
       uint64_t size = 0;
       while (true) {
@@ -395,7 +397,7 @@ class Stream final {
             index = size;
             head = Value(head_idx.idxts).us;
           }
-          if (size > begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
+          if (size >= begin_idx && head_idx.head > head && subscriber_(head_idx.head) == ss::EntryResponse::Done) {
             return;
           }
           head = head_idx.head;
@@ -425,10 +427,13 @@ class Stream final {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F, SM>;
 
-    SubscriberScopeImpl(Borrowed<impl_t> impl, F& subscriber, uint64_t begin_idx, std::function<void()> done_callback)
-        : base_t(
-              std::move(std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, done_callback))) {
-    }
+    SubscriberScopeImpl(Borrowed<impl_t> impl,
+                        F& subscriber,
+                        uint64_t begin_idx,
+                        std::chrono::microseconds from_us,
+                        std::function<void()> done_callback)
+        : base_t(std::move(
+              std::make_unique<subscriber_thread_t>(std::move(impl), subscriber, begin_idx, from_us, done_callback))) {}
 
     SubscriberScopeImpl(SubscriberScopeImpl&&) = default;
     SubscriberScopeImpl& operator=(SubscriberScopeImpl&&) = default;
@@ -446,16 +451,18 @@ class Stream final {
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
                                                    uint64_t begin_idx = 0u,
+                                                   std::chrono::microseconds from_us = std::chrono::microseconds(0),
                                                    std::function<void()> done_callback = nullptr) const {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(impl_, subscriber, begin_idx, done_callback);
+    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(impl_, subscriber, begin_idx, from_us, done_callback);
   }
 
   template <typename F>
   SubscriberScopeUnchecked<F> SubscribeUnchecked(F& subscriber,
                                                  uint64_t begin_idx = 0u,
+                                                 std::chrono::microseconds from_us = std::chrono::microseconds(0),
                                                  std::function<void()> done_callback = nullptr) const {
-    return SubscriberScopeUnchecked<F>(impl_, subscriber, begin_idx, done_callback);
+    return SubscriberScopeUnchecked<F>(impl_, subscriber, begin_idx, from_us, done_callback);
   }
 
   // Generates a random HTTP subscription.
@@ -558,9 +565,8 @@ class Stream final {
       }
 
       if (from_timestamp.count() > 0) {
-        const auto idx_by_timestamp = std::min(
-            borrowed_impl->persister.IndexRangeByTimestampRange(from_timestamp, std::chrono::microseconds(0)).first,
-            stream_size);
+        const auto idx_by_timestamp =
+            std::min(borrowed_impl->persister.IndexRangeByTimestampRange(from_timestamp).first, stream_size);
         begin_idx = std::max(begin_idx, idx_by_timestamp);
       }
 
@@ -580,9 +586,9 @@ class Stream final {
       };
       current::stream::SubscriberScope http_chunked_subscriber_scope =
           request_params.checked ? static_cast<current::stream::SubscriberScope>(
-                                       Subscribe(*http_chunked_subscriber, begin_idx, done_callback))
-                                 : static_cast<current::stream::SubscriberScope>(
-                                       SubscribeUnchecked(*http_chunked_subscriber, begin_idx, done_callback));
+                                       Subscribe(*http_chunked_subscriber, begin_idx, from_timestamp, done_callback))
+                                 : static_cast<current::stream::SubscriberScope>(SubscribeUnchecked(
+                                       *http_chunked_subscriber, begin_idx, from_timestamp, done_callback));
 
       {
         std::lock_guard<std::mutex> lock(borrowed_impl->http_subscriptions_mutex);

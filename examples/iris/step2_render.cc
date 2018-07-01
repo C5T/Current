@@ -133,7 +133,10 @@ int main(int argc, char** argv) {
                           html += "  </tr>\n";
                         }
                         html += "</table>\n";
-                        r(html, HTTPResponseCode.OK, current::net::constants::kDefaultHTMLContentType);
+                        r(html,
+                          HTTPResponseCode.OK,
+                          current::net::http::Headers(),
+                          current::net::constants::kDefaultHTMLContentType);
                       }
                     });
 
