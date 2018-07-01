@@ -149,11 +149,12 @@ void Replicate(ARGS&&... args) {
   {
     std::cerr << "Subscribing to the stream ..." << std::flush;
     const std::chrono::milliseconds print_delay(500);
-    const auto subscriber_scope = FLAGS_use_safe_replication
-                                      ? static_cast<current::stream::SubscriberScope>(
-                                            remote_stream.Subscribe(*replicator, 0, FLAGS_use_checked_subscription))
-                                      : static_cast<current::stream::SubscriberScope>(remote_stream.SubscribeUnchecked(
-                                            *replicator, 0, FLAGS_use_checked_subscription));
+    const auto mode = FLAGS_use_checked_subscription ? current::stream::SubscriptionMode::Checked
+                                                     : current::stream::SubscriptionMode::Unchecked;
+    const auto subscriber_scope =
+        FLAGS_use_safe_replication
+            ? static_cast<current::stream::SubscriberScope>(remote_stream.Subscribe(*replicator, 0, mode))
+            : static_cast<current::stream::SubscriberScope>(remote_stream.SubscribeUnchecked(*replicator, 0, mode));
     std::cerr << "\b\b\bOK" << std::endl;
     auto next_print_time = start_time + print_delay;
 

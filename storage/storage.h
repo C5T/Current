@@ -416,8 +416,12 @@ class StorageImpl {
 
   template <typename TYPE_SUBSCRIBED_TO = typename stream_t::entry_t, typename F>
   typename stream_t::template SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(
-      F& subscriber, uint64_t begin_idx = 0u, std::function<void()> done_callback = nullptr) const {
-    return persister_.Stream()->template Subscribe<TYPE_SUBSCRIBED_TO, F>(subscriber, begin_idx, done_callback);
+      F& subscriber,
+      uint64_t begin_idx = 0u,
+      std::chrono::microseconds from_us = std::chrono::microseconds(0),
+      std::function<void()> done_callback = nullptr) const {
+    return persister_.Stream()->template Subscribe<TYPE_SUBSCRIBED_TO, F>(
+        subscriber, begin_idx, from_us, done_callback);
   }
 
   // Note: This method must be called from the stream-publishing-mutex-unlocked section,

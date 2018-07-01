@@ -1703,8 +1703,6 @@ TEST(TransactionalStorage, WaitUntilLocalLogIsReplayed) {
 
     // TODO(dkorolev): Test for no write transaction possible?
 
-    // Important to release the external publisher, otherwise the destructor will wait for its release indefinitely.
-    stream_publisher_owner = nullptr;
     // owned_stream->BecomeMasterStream();  // REQUIRED FOR NO DEADLOCK. -- D.K.
   }
 }

@@ -59,6 +59,30 @@ struct RemoteStreamMalformedChunkException : StreamException {
   using StreamException::StreamException;
 };
 
+struct StreamIsAlreadyExposedException : StreamException {
+  using StreamException::StreamException;
+};
+
+struct StreamIsNotExposedException : StreamException {
+  using StreamException::StreamException;
+};
+
+struct StreamIsAlreadyFollowingException : StreamException {
+  using StreamException::StreamException;
+};
+
+struct StreamIsAlreadyMasterException : StreamException {
+  using StreamException::StreamException;
+};
+
+struct StreamDoesNotFollowAnyoneException : StreamException {
+  using StreamException::StreamException;
+};
+
+struct RemoteStreamRefusedFlipRequestException : StreamException {
+  using StreamException::StreamException;
+};
+
 }  // namespace stream
 }  // namespace current
 
