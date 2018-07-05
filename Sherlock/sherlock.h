@@ -229,12 +229,26 @@ class StreamImpl {
   }
 
   ~StreamImpl() {
-    // TODO(dkorolev): These should be erased in an ongoing fashion.
-    // Order of destruction in `http_subscriptions` does matter - scopes should be deleted first -- M.Z.
-    for (auto& it : own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions) {
-      it.second.first = nullptr;
+    auto& own_data = own_data_.ObjectAccessorDespitePossiblyDestructing();
+    auto& http_subscriptions = own_data.http_subscriptions;
+    // Ask all the HTTP subscibers to terminate asynchronously.
+    {
+      std::lock_guard<std::mutex> lock(http_subscriptions->mutex);
+      for (auto& it : http_subscriptions->subscribers_map) {
+        auto& subsciber_scope = *(it.second.first);
+        subsciber_scope.AsyncTerminate();
+      }
     }
-    own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions.clear();
+    // Waiting for all the `subscribers_map` entries to be wiped by asynchronous tasks.
+    while (true) {
+      {
+        std::lock_guard<std::mutex> lock(http_subscriptions->mutex);
+        if (http_subscriptions->subscribers_map.empty()) {
+          break;
+        }
+      }
+      std::this_thread::yield();
+    }
   }
 
   void operator=(StreamImpl&& rhs) {
@@ -292,6 +306,7 @@ class StreamImpl {
     F& subscriber_;
     const uint64_t begin_idx_;
     std::thread thread_;
+    std::atomic_bool termination_requested_;
 
     SubscriberThreadInstance() = delete;
     SubscriberThreadInstance(const SubscriberThreadInstance&) = delete;
@@ -314,7 +329,8 @@ class StreamImpl {
                 }),
           subscriber_(subscriber),
           begin_idx_(begin_idx),
-          thread_(&SubscriberThreadInstance::Thread, this) {
+          thread_(&SubscriberThreadInstance::Thread, this),
+          termination_requested_(false) {
       // Must guard against the constructor of `ScopeOwnedBySomeoneElse<stream_data_t> data_` throwing.
       this_is_valid_ = true;
     }
@@ -322,11 +338,10 @@ class StreamImpl {
     ~SubscriberThreadInstance() {
       if (this_is_valid_) {
         // The constructor has completed successfully. The thread has started, and `data_` is valid.
-        CURRENT_ASSERT(thread_.joinable());
-        if (!subscriber_thread_done_) {
-          std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
-          terminate_signal_.SignalExternalTermination();
+        if (!termination_requested_) {
+          TerminateSubscription();
         }
+        CURRENT_ASSERT(thread_.joinable());
         thread_.join();
       } else {
         // The constructor has not completed successfully. The thread was not started, and `data_` is garbage.
@@ -343,7 +358,7 @@ class StreamImpl {
       stream_data_t& bare_data = data_.ObjectAccessorDespitePossiblyDestructing();
       ThreadImpl(bare_data, begin_idx_);
       subscriber_thread_done_ = true;
-      std::lock_guard<std::mutex> lock(bare_data.http_subscriptions_mutex);
+      std::lock_guard<std::mutex> lock(bare_data.http_subscriptions->mutex);
       if (done_callback_) {
         done_callback_();
       }
@@ -405,6 +420,16 @@ class StreamImpl {
         }
       }
     }
+
+    void TerminateSubscription() {
+      if (!termination_requested_) {
+        termination_requested_ = true;
+        if (!subscriber_thread_done_) {
+          std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
+          terminate_signal_.SignalExternalTermination();
+        }
+      }
+    }
   };
 
   // Expose the means to control the scope of the subscriber.
@@ -422,6 +447,10 @@ class StreamImpl {
                     uint64_t begin_idx,
                     std::function<void()> done_callback)
         : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {}
+
+    virtual void AsyncTerminate() override {
+      dynamic_cast<subscriber_thread_t&>(*thread_.get()).TerminateSubscription();
+    }
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
@@ -451,24 +480,20 @@ class StreamImpl {
       auto request_params = ParsePubSubHTTPRequest(r);  // Mutable as `tail` may change. -- D.K.
 
       if (request_params.terminate_requested) {
-        typename stream_data_t::http_subscriptions_t::iterator it;
         {
-          // NOTE: This is not thread-safe!!!
-          // The iterator may get invalidated in between the next few lines.
-          // However, during the call to `= nullptr` the mutex will be locked again from within the
-          // thread terminating callback. Need to clean this up. TODO(dkorolev).
-          std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-          it = data.http_subscriptions.find(request_params.terminate_id);
-        }
-        if (it != data.http_subscriptions.end()) {
-          // Subscription found. Delete the scope, triggering the thread to shut down.
-          // TODO(dkorolev): This should certainly not happen synchronously.
-          it->second.first = nullptr;
-          // Subscription terminated.
-          r("", HTTPResponseCode.OK);
-        } else {
-          // Subscription not found.
-          r("", HTTPResponseCode.NotFound);
+          auto& http_subscriptions = *(data.http_subscriptions);
+          std::lock_guard<std::mutex> lock(http_subscriptions.mutex);
+          auto it = http_subscriptions.subscribers_map.find(request_params.terminate_id);
+          if (it != http_subscriptions.subscribers_map.end()) {
+            // Subscription found.
+            auto& subscriber_scope = *(it->second.first);
+            // Subscription will be terminated asynchronously.
+            subscriber_scope.AsyncTerminate();
+            r("", HTTPResponseCode.OK);
+          } else {
+            // Subscription not found.
+            r("", HTTPResponseCode.NotFound);
+          }
         }
         return;
       }
@@ -552,29 +577,37 @@ class StreamImpl {
         // this mutex, thus ensuring that the corresponding `http_subscriptions` map entry will be initialized
         // prior to subscriber's thread starts its job.
         {
-          std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-          current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+          std::lock_guard<std::mutex> lock(data.http_subscriptions->mutex);
+          auto http_chunked_subscriber_scope =
               Subscribe(*http_chunked_subscriber,
                         begin_idx,
                         [&data, subscription_id]() {
                           // Launch the asynchronous task to destroy subscriber.
                           // This can not be done synchronously, since our lambda is called from within the
                           // subscriber's thread.
-                          std::thread([&data, subscription_id] {
+                          auto& http_subscriptions = data.http_subscriptions;
+                          // `http_subscriptions` is captured by value, so the thread owns `shared_ptr`.
+                          std::thread([http_subscriptions, subscription_id] {
                             // `done_callback()` is invoked by subscriber's thread in the locked section.
                             // This asynchronous thread will be able to acquire lock only after subscriber's
                             // thread is done and lock is released.
-                            std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-                            data.http_subscriptions[subscription_id].first = nullptr;
-                            data.http_subscriptions[subscription_id].second = nullptr;
-                            data.http_subscriptions.erase(subscription_id);
+                            std::lock_guard<std::mutex> lock(http_subscriptions->mutex);
+                            auto it = http_subscriptions->subscribers_map.find(subscription_id);
+                            if (it != http_subscriptions->subscribers_map.end()) {
+                              it->second.first = nullptr;
+                              it->second.second = nullptr;
+                              http_subscriptions->subscribers_map.erase(subscription_id);
+                            }
                           }).detach();
                         });
 
           // TODO(dkorolev): This condition is to be rewritten correctly.
-          if (!data.http_subscriptions.count(subscription_id)) {
-            data.http_subscriptions[subscription_id] =
-                std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+          if (!data.http_subscriptions->subscribers_map.count(subscription_id)) {
+            data.http_subscriptions->subscribers_map.emplace(
+              subscription_id,
+              std::make_pair(std::make_unique<decltype(http_chunked_subscriber_scope)>(std::move(http_chunked_subscriber_scope)),
+                             std::move(http_chunked_subscriber))
+            );
           }
         }
       }
