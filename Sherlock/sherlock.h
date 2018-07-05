@@ -548,18 +548,29 @@ class StreamImpl {
         auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
             subscription_id, scoped_data, std::move(r), std::move(request_params));
 
-        current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-            Subscribe(*http_chunked_subscriber,
-                      begin_idx,
-                      [this, &data, subscription_id]() {
-                        // NOTE: Need to figure out when and where to lock.
-                        // Chat w/ Max about the logic to clean up completed listeners.
-                        // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                        data.http_subscriptions[subscription_id].second = nullptr;
-                      });
-
+        // Acquire mutex before subscribing to the stream. Subscriber's thread will start with trying to lock
+        // this mutex, thus ensuring that the corresponding `http_subscriptions` map entry will be initialized
+        // prior to subscriber's thread starts its job.
         {
           std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
+          current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+              Subscribe(*http_chunked_subscriber,
+                        begin_idx,
+                        [&data, subscription_id]() {
+                          // Launch the asynchronous task to destroy subscriber.
+                          // This can not be done synchronously, since our lambda is called from within the
+                          // subscriber's thread.
+                          std::thread([&data, subscription_id] {
+                            // `done_callback()` is invoked by subscriber's thread in the locked section.
+                            // This asynchronous thread will be able to acquire lock only after subscriber's
+                            // thread is done and lock is released.
+                            std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
+                            data.http_subscriptions[subscription_id].first = nullptr;
+                            data.http_subscriptions[subscription_id].second = nullptr;
+                            data.http_subscriptions.erase(subscription_id);
+                          }).detach();
+                        });
+
           // TODO(dkorolev): This condition is to be rewritten correctly.
           if (!data.http_subscriptions.count(subscription_id)) {
             data.http_subscriptions[subscription_id] =
