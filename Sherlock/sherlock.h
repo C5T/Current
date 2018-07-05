@@ -235,18 +235,19 @@ class StreamImpl {
     {
       std::lock_guard<std::mutex> lock(http_subscriptions->mutex);
       for (auto& it : http_subscriptions->subscribers_map) {
-        auto& subsciber_scope_ptr = it.second.first;
-        subsciber_scope_ptr->AsyncTerminate();
+        auto& subsciber_scope = *(it.second.first);
+        subsciber_scope.AsyncTerminate();
       }
     }
     // Waiting for all the `subscribers_map` entries to be wiped by asynchronous tasks.
     while (true) {
-      std::lock_guard<std::mutex> lock(http_subscriptions->mutex);
-      if (!http_subscriptions->subscribers_map.empty()) {
-        std::this_thread::yield();
-      } else {
-        break;
+      {
+        std::lock_guard<std::mutex> lock(http_subscriptions->mutex);
+        if (http_subscriptions->subscribers_map.empty()) {
+          break;
+        }
       }
+      std::this_thread::yield();
     }
   }
 
@@ -480,14 +481,14 @@ class StreamImpl {
 
       if (request_params.terminate_requested) {
         {
-          auto& http_subscriptions_ptr = data.http_subscriptions;
-          std::lock_guard<std::mutex> lock(http_subscriptions_ptr->mutex);
-          auto it = http_subscriptions_ptr->subscribers_map.find(request_params.terminate_id);
-          if (it != http_subscriptions_ptr->subscribers_map.end()) {
-            // Subscription found
-            auto& subscriber_scope_ptr = it->second.first;
-            subscriber_scope_ptr->AsyncTerminate();
-            // Subscription terminated.
+          auto& http_subscriptions = *(data.http_subscriptions);
+          std::lock_guard<std::mutex> lock(http_subscriptions.mutex);
+          auto it = http_subscriptions.subscribers_map.find(request_params.terminate_id);
+          if (it != http_subscriptions.subscribers_map.end()) {
+            // Subscription found.
+            auto& subscriber_scope = *(it->second.first);
+            // Subscription will be terminated asynchronously.
+            subscriber_scope.AsyncTerminate();
             r("", HTTPResponseCode.OK);
           } else {
             // Subscription not found.
