@@ -59,6 +59,8 @@ class SubscriberScope {
   };
 
   SubscriberScope() = default;
+  SubscriberScope(const SubscriberScope&) = delete;
+  SubscriberScope& operator=(const SubscriberScope&) = delete;
   SubscriberScope(std::unique_ptr<SubscriberThread>&& thread) : thread_(std::move(thread)) {}
   SubscriberScope(SubscriberScope&& rhs) {
     std::lock_guard<std::mutex> rhs_lock(rhs.mutex_);
@@ -71,6 +73,7 @@ class SubscriberScope {
     thread_ = std::move(rhs.thread_);
     return *this;
   }
+  virtual ~SubscriberScope() = default;
 
   SubscriberScope& operator=(std::nullptr_t) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -83,10 +86,9 @@ class SubscriberScope {
     return thread_ && !thread_->IsSubscriberThreadDone();
   }
 
-  SubscriberScope(const SubscriberScope&) = delete;
-  SubscriberScope& operator=(const SubscriberScope&) = delete;
+  virtual void AsyncTerminate() {}
 
- private:
+ protected:
   mutable std::mutex mutex_;
   std::unique_ptr<SubscriberThread> thread_;
 };
@@ -101,18 +103,22 @@ struct StreamData {
   using entry_t = ENTRY;
   using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
 
-  using http_subscriptions_t =
-      std::unordered_map<std::string, std::pair<SubscriberScope, std::unique_ptr<AbstractSubscriberObject>>>;
+  struct HTTPSubscriptions {
+    using subscibers_map_t =
+      std::unordered_map<std::string, std::pair<std::unique_ptr<SubscriberScope>, std::unique_ptr<AbstractSubscriberObject>>>;
+    subscibers_map_t subscribers_map;
+    std::mutex mutex;
+  };
+
   std::mutex publish_mutex;
   persistence_layer_t persistence;
   current::WaitableTerminateSignalBulkNotifier notifier;
-
-  http_subscriptions_t http_subscriptions;
-  std::mutex http_subscriptions_mutex;
+  std::shared_ptr<HTTPSubscriptions> http_subscriptions;
 
   template <typename... ARGS>
   StreamData(ARGS&&... args)
-      : persistence(publish_mutex, std::forward<ARGS>(args)...) {}
+      : persistence(publish_mutex, std::forward<ARGS>(args)...),
+        http_subscriptions(std::make_shared<HTTPSubscriptions>()) {}
 
   static std::string GenerateRandomHTTPSubscriptionID() {
     return current::SHA256("sherlock_http_subscription_" +
