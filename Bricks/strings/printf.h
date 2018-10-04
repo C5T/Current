@@ -28,8 +28,9 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <string>
 #include <cstdarg>
+#include <string>
+#include <vector>
 
 namespace current {
 namespace strings {
@@ -39,9 +40,9 @@ __attribute__((__format__(__printf__, 1, 2)))
 #endif
 inline std::string Printf(const char *fmt, ...) {
   // Most of the platforms now support thread locals, so 64Kb buffer seems reasonable.
-  const int max_string_length_for_static_buffer = 64 * 1024 - 1;
+  constexpr int max_string_length_for_static_buffer = 64 * 1024 - 1;
   // Absolute limit on result size is 1Mb.
-  const int max_formatted_output_length = 1024 * 1024 - 1;
+  constexpr int max_formatted_output_length = 1024 * 1024 - 1;
 
 #ifdef CURRENT_HAS_THREAD_LOCAL
   thread_local static char buffer[max_string_length_for_static_buffer + 1];
@@ -57,23 +58,25 @@ inline std::string Printf(const char *fmt, ...) {
   va_end(ap);
   if (res > max_string_length_for_static_buffer) {
     const int large_buffer_length = std::min(res + 1, max_formatted_output_length + 1);
-    char large_buffer[large_buffer_length];
+    std::vector<char> large_buffer(large_buffer_length);
     va_start(ap, fmt);
-    vsnprintf(large_buffer, large_buffer_length, fmt, ap);
+    vsnprintf(large_buffer.data(), large_buffer_length, fmt, ap);
     va_end(ap);
-    return large_buffer;
+    return large_buffer.data();
   }
 #else
   va_start(ap, fmt);
   const int res = _vsnprintf_s(buffer, max_string_length_for_static_buffer + 1, max_string_length_for_static_buffer, fmt, ap);
   va_end(ap);
   if (errno == ERANGE) {
-    const int large_buffer_length = std::min(_vscprintf(fmt, ap) + 1, max_formatted_output_length);
-    char large_buffer[new_buffer_length];
     va_start(ap, fmt);
-    _vsnprintf_s(large_buffer, large_buffer_length, _TRUNCATE, fmt, ap);
+    const int large_buffer_length = std::min(_vscprintf(fmt, ap) + 1, max_formatted_output_length);
     va_end(ap);
-    return large_buffer;
+    std::vector<char> large_buffer(large_buffer_length);
+    va_start(ap, fmt);
+    _vsnprintf_s(large_buffer.data(), large_buffer_length, _TRUNCATE, fmt, ap);
+    va_end(ap);
+    return large_buffer.data();
   }
 #endif
 
