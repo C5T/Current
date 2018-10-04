@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2018 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -37,26 +38,46 @@ namespace strings {
 __attribute__((__format__(__printf__, 1, 2)))
 #endif
 inline std::string Printf(const char *fmt, ...) {
-  // `Printf()` crops the output to five KiB.
-  const int max_formatted_output_length = 5 * 1024;
+  // Most of the platforms now support thread locals, so 64Kb buffer seems reasonable.
+  const int max_string_length_for_static_buffer = 64 * 1024 - 1;
+  // Absolute limit on result size is 1Mb.
+  const int max_formatted_output_length = 1024 * 1024 - 1;
 
 #ifdef CURRENT_HAS_THREAD_LOCAL
-  thread_local static char buf[max_formatted_output_length + 1];
+  thread_local static char buffer[max_string_length_for_static_buffer + 1];
 #else
   // Slow but safe.
-  char buf[max_formatted_output_length + 1];
+  char buffer[max_string_length_for_static_buffer + 1];
 #endif
 
   va_list ap;
-  va_start(ap, fmt);
 #ifndef CURRENT_WINDOWS
-  vsnprintf(buf, max_formatted_output_length + 1, fmt, ap);
-#else
-  _vsnprintf_s(buf, max_formatted_output_length + 1, _TRUNCATE, fmt, ap);
-#endif
+  va_start(ap, fmt);
+  const int res = vsnprintf(buffer, max_string_length_for_static_buffer + 1, fmt, ap);
   va_end(ap);
+  if (res > max_string_length_for_static_buffer) {
+    const int large_buffer_length = std::min(res + 1, max_formatted_output_length + 1);
+    char large_buffer[large_buffer_length];
+    va_start(ap, fmt);
+    vsnprintf(large_buffer, large_buffer_length, fmt, ap);
+    va_end(ap);
+    return large_buffer;
+  }
+#else
+  va_start(ap, fmt);
+  const int res = _vsnprintf_s(buffer, max_string_length_for_static_buffer + 1, max_string_length_for_static_buffer, fmt, ap);
+  va_end(ap);
+  if (errno == ERANGE) {
+    const int large_buffer_length = std::min(_vscprintf(fmt, ap) + 1, max_formatted_output_length);
+    char large_buffer[new_buffer_length];
+    va_start(ap, fmt);
+    _vsnprintf_s(large_buffer, large_buffer_length, _TRUNCATE, fmt, ap);
+    va_end(ap);
+    return large_buffer;
+  }
+#endif
 
-  return buf;
+  return buffer;
 }
 
 }  // namespace strings
