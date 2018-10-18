@@ -64,7 +64,12 @@ using current::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
-  EXPECT_EQ(1024u * 5, Printf("%s", std::string(10000, 'A').c_str()).length());
+  const std::string string_60k_chars(60000, 'A');
+  EXPECT_EQ(60000u, Printf("%s", string_60k_chars.c_str()).length());
+  EXPECT_EQ(120000u, Printf("%s%s", string_60k_chars.c_str(), string_60k_chars.c_str()).length());
+  const std::string string_1m_chars(1000000, 'B');
+  EXPECT_EQ(1000000u, Printf("%s", string_1m_chars.c_str()).length());
+  EXPECT_EQ(1024u * 1024u - 1, Printf("%s%s", string_1m_chars.c_str(), string_1m_chars.c_str()).length());
 }
 
 TEST(FixedSizeSerializer, UInt16) {
