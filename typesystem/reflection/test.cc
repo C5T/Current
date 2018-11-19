@@ -220,13 +220,13 @@ TEST(Reflection, CurrentTypeName) {
 }
 
 TEST(Reflection, ConstInCurrentTypeName) {
-  using current::reflection::CurrentTypeName;
+  using current::reflection::TypeName;
   using namespace reflection_test;
 
-  EXPECT_STREQ("Foo", CurrentTypeName<Foo>());
-  EXPECT_STREQ("Foo", CurrentTypeName<Foo&>());
-  EXPECT_STREQ("Foo", CurrentTypeName<const Foo>());
-  EXPECT_STREQ("Foo", CurrentTypeName<const Foo&>());
+  EXPECT_STREQ("Foo", TypeName<Foo>());
+  EXPECT_STREQ("Foo", TypeName<Foo&>());
+  EXPECT_STREQ("Foo", TypeName<const Foo>());
+  EXPECT_STREQ("Foo", TypeName<const Foo&>());
 }
 
 TEST(Reflection, StructAndVariant) {
