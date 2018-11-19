@@ -340,7 +340,7 @@ struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::tuple<TS...>, false, f
 
 template <typename T, NameFormat NF = NameFormat::FullCPP>
 inline const char* CurrentTypeName() {
-  return impl::CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName();
+  return impl::CurrentTypeNameCaller<NF, current::decay<T>>::CallGetCurrentTypeName();
 }
 
 namespace impl {
