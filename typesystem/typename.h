@@ -339,8 +339,17 @@ struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::tuple<TS...>, false, f
 }  // namespace current::reflection::impl
 
 template <typename T, NameFormat NF = NameFormat::FullCPP>
-inline const char* CurrentTypeName() {
-  return impl::CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName();
+const char* CurrentTypeName() {
+  return impl::CurrentTypeNameCaller<NF, current::decay<T>>::CallGetCurrentTypeName();
+}
+
+// Within `current::reflection`, `TypeName<T>()` looks clean enough.
+// Make it an alias for now. -- D.K.
+// TODO(dkorolev): Consider deprecating `CurrentTypeName()` altogether in favor of `TypeName()`.
+// TODO(dkorolev): Consider adding `Tuple<>` as an alias to `std::tuple`, for clean output type names.
+template <typename T, NameFormat NF = NameFormat::FullCPP>
+const char* TypeName() {
+  return CurrentTypeName<T, NF>();
 }
 
 namespace impl {

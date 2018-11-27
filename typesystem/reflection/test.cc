@@ -219,6 +219,16 @@ TEST(Reflection, CurrentTypeName) {
                (CurrentTypeName<std::tuple<std::string, char, double>, NameFormat::AsIdentifier>()));
 }
 
+TEST(Reflection, ConstInCurrentTypeName) {
+  using current::reflection::TypeName;
+  using namespace reflection_test;
+
+  EXPECT_STREQ("Foo", TypeName<Foo>());
+  EXPECT_STREQ("Foo", TypeName<Foo&>());
+  EXPECT_STREQ("Foo", TypeName<const Foo>());
+  EXPECT_STREQ("Foo", TypeName<const Foo&>());
+}
+
 TEST(Reflection, StructAndVariant) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;
