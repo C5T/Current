@@ -327,10 +327,12 @@ TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {
   WaitableTerminateSignal signal;
   size_t counter = 0u;
   std::mutex mutex;
+  bool result_set = false;
   bool result;
-  std::thread thread([&signal, &counter, &result, &mutex]() {
+  std::thread thread([&signal, &counter, &result, &result_set, &mutex]() {
     std::unique_lock<std::mutex> lock(mutex);
     result = signal.WaitUntil(lock, [&counter]() { return counter > 1000u; });
+    result_set = true;
   });
 
   bool repeat = true;
@@ -345,6 +347,7 @@ TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {
 
   thread.join();
 
+  EXPECT_TRUE(result_set);
   EXPECT_FALSE(result);
   EXPECT_FALSE(signal);
 }
@@ -355,13 +358,15 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
   WaitableTerminateSignal signal;
   size_t counter = 0u;
   std::mutex mutex;
-  bool result = false;
-  std::thread thread([&signal, &counter, &mutex, &result]() {
+  bool result_set = false;
+  bool result;
+  std::thread thread([&signal, &counter, &mutex, &result, &result_set]() {
     std::unique_lock<std::mutex> lock(mutex);
     result = signal.WaitUntil(lock,
                               [&counter]() {
                                 return counter > 1000u;  // Not going to happen in this test.
                               });
+    result_set = true;
   });
 
   bool repeat = true;
@@ -381,6 +386,7 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
 
   thread.join();
 
+  EXPECT_TRUE(result_set);
   EXPECT_TRUE(result);
   EXPECT_TRUE(signal);
 }
