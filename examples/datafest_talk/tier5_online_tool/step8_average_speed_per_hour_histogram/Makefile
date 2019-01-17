@@ -3,5 +3,8 @@ RUN=$(CPP:%.cpp=%.run)
 
 all: ${RUN}
 
-%.run: %.cpp
+current:
+	ln -sf ../../../../ $@
+
+%.run: %.cpp current
 	@../run_full.sh $<
