@@ -25,6 +25,10 @@ TMP_STDERR="$PWD/.current_stderr.txt"
 
 rm -f "$PWD"/.current_*.cc "$PWD"/.current_*.o "$PWD"/.current_.txt "$SOURCE_FILE"
 
+if make -n current >/dev/null 2>&1 ; then
+  make current >/dev/null  # Create the `current` symlink via the `current` make target, if it exists.
+fi
+
 echo -e -n "\033[1mCompiling\033[0m: "
 for i in $(ls *.h | grep -v ".cc.h$" | grep -v "^current_build.h") ; do
   if ! (head -n 1 "$i" | grep -i "auto" > /dev/null) ; then
