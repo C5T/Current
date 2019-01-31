@@ -111,7 +111,7 @@ template <DispatcherInputType, typename BASE, typename F, typename DERIVED, type
 struct RTTIDispatcher;
 
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
-struct RTTIDispatcher<DispatcherInputType::ConstReference, BASE, F, DERIVED, ARGS...>
+struct RTTIDispatcher<DispatcherInputType::ConstReference, BASE, F, DERIVED, ARGS...> final
     : RTTIDispatcherBase<DispatcherInputType::ConstReference, BASE, F, ARGS...> {
   virtual void HandleByConstReference(const BASE& ref, F&& f, ARGS&&... args) const override {
     const auto* derived = dynamic_cast<const DERIVED*>(&ref);
