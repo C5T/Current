@@ -94,11 +94,13 @@ struct RTTIDispatcherBase<DispatcherInputType::ConstReference, BASE, F, ARGS...>
 
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase<DispatcherInputType::Reference, BASE, F, ARGS...> {
+  virtual ~RTTIDispatcherBase() = default;
   virtual void HandleByReference(BASE&, F&&, ARGS&&...) const { CURRENT_THROW(SpecificUnhandledTypeException<BASE>()); }
 };
 
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase<DispatcherInputType::RValueReference, BASE, F, ARGS...> {
+  virtual ~RTTIDispatcherBase() = default;
   virtual void HandleByRValueReference(BASE&&, F&&, ARGS&&...) const {
     CURRENT_THROW(SpecificUnhandledTypeException<BASE>());
   }
@@ -122,7 +124,7 @@ struct RTTIDispatcher<DispatcherInputType::ConstReference, BASE, F, DERIVED, ARG
 };
 
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
-struct RTTIDispatcher<DispatcherInputType::Reference, BASE, F, DERIVED, ARGS...>
+struct RTTIDispatcher<DispatcherInputType::Reference, BASE, F, DERIVED, ARGS...> final
     : RTTIDispatcherBase<DispatcherInputType::Reference, BASE, F, ARGS...> {
   virtual void HandleByReference(BASE& ref, F&& f, ARGS&&... args) const override {
     auto* derived = dynamic_cast<DERIVED*>(&ref);
@@ -135,7 +137,7 @@ struct RTTIDispatcher<DispatcherInputType::Reference, BASE, F, DERIVED, ARGS...>
 };
 
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
-struct RTTIDispatcher<DispatcherInputType::RValueReference, BASE, F, DERIVED, ARGS...>
+struct RTTIDispatcher<DispatcherInputType::RValueReference, BASE, F, DERIVED, ARGS...> final
     : RTTIDispatcherBase<DispatcherInputType::RValueReference, BASE, F, ARGS...> {
   virtual void HandleByRValueReference(BASE&& ref, F&& f, ARGS&&... args) const override {
     auto* derived = dynamic_cast<DERIVED*>(&ref);
