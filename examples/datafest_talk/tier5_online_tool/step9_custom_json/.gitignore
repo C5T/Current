@@ -1,0 +1,2 @@
+# `current` here is the the symlink, created dynamically to avoid circular paths.
+current
