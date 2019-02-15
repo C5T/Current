@@ -47,9 +47,9 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
   // clang-format off
   std::vector<uint8_t> code({
     0x53,                   // push  %rbx
-    0xf2, 0x0f, 0x10, 0x07, // movsd (%rdi),%xmm0
-    0xf2, 0x0f, 0x58, 0x07, // addsd (%rdi),%xmm0
-    0x5b,                   // pop    %rbx
+    0xf2, 0x0f, 0x10, 0x07, // movsd (%rdi), %xmm0
+    0xf2, 0x0f, 0x58, 0x07, // addsd (%rdi), %xmm0
+    0x5b,                   // pop   %rbx
     0xc3                    // ret
   });
   // clang-format on 
