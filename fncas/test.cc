@@ -46,6 +46,8 @@ SOFTWARE.
 #include "docu/docu_10.cc"
 #endif
 
+#include "linux_native_jit/test.cc"
+
 template <typename T>
 T ParametrizedFunction(const std::vector<T>& x, size_t c) {
   CURRENT_ASSERT(x.size() == 2u);
