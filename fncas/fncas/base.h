@@ -83,9 +83,8 @@ enum class JIT {
   Default = AS
 #else
   // ... unless we are on Linux, and the Linux-native JIT is active.
-  // TODO(dkorolve): Implement and enable it!
   LinuxNativeJIT,
-  Default = AS  // LinuxNativeJIT
+  Default = LinuxNativeJIT
 #endif
 };
 

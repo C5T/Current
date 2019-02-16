@@ -950,6 +950,9 @@ struct f_compiled_linux_native_jit final {
   double operator()(const std::vector<double>& x) const {
     return (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
   }
+
+  // For backwards "compatibility" with the unit tests. -- D.K.
+  static const char* lib_filename() { return ""; }
 };
 
 struct g_compiled_linux_native_jit final {
@@ -990,6 +993,9 @@ struct g_compiled_linux_native_jit final {
     (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
     return std::vector<double>(&actual_heap[0], &actual_heap[0] + dim);
   }
+
+  // For backwards "compatibility" with the unit tests. -- D.K.
+  static const char* lib_filename() { return ""; }
 };
 
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
