@@ -947,7 +947,7 @@ struct f_compiled_linux_native_jit final : f_super {
     generate_code_for_f(f.f_);
   }
 
-  double_t operator()(const std::vector<double_t>& x) const override {
+  double operator()(const std::vector<double>& x) const override {
     return (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
   }
 
@@ -972,7 +972,7 @@ struct g_compiled final : g_compiled_super {
   void operator=(const g_compiled&) = delete;
   g_compiled(g_compiled&& rhs) : c_(std::move(rhs.c_)) { CURRENT_ASSERT(c_.HasGradient()); }
 
-  std::vector<double_t> operator()(const std::vector<double_t>& x) const override { return c_.compute_compiled_g(x); }
+  std::vector<double> operator()(const std::vector<double>& x) const override { return c_.compute_compiled_g(x); }
 
   size_t dim() const override { return c_.dim(); }
   size_t heap_size() const override { return c_.heap_size(); }
