@@ -78,7 +78,7 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
   load_immediate_to_memory_by_offset(code, r::rdi, 1, d2);
   load_immediate_to_memory_by_offset(code, r::rsi, 2, d3);
   load_immediate_to_memory_by_offset(code, r::rsi, 3, d4);
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
 
   ret(code);
 
@@ -126,8 +126,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
   {
     // Return X[0].
     std::vector<uint8_t> code;
-    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
-    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 7);  // `xmm1` is ignored.
+    load_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
     ret(code);
     EXPECT_EQ(0, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -135,8 +134,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
   {
     // Return X[259].
     std::vector<uint8_t> code;
-    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 259);
-    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 13);  // `xmm1` is ignored.
+    load_from_memory_by_offset_to_xmm0(code, r::rdi, 259);
     ret(code);
     EXPECT_EQ(259, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -144,8 +142,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
   {
     // Return Y[0].
     std::vector<uint8_t> code;
-    load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 0);
-    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 29);  // `xmm1` is ignored.
+    load_from_memory_by_offset_to_xmm0(code, r::rsi, 0);
     ret(code);
     EXPECT_EQ(1000, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -153,8 +150,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
   {
     // Return Y[931].
     std::vector<uint8_t> code;
-    load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 931);
-    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 74);  // `xmm1` is ignored.
+    load_from_memory_by_offset_to_xmm0(code, r::rsi, 931);
     ret(code);
     EXPECT_EQ(1000 - 931, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -173,11 +169,11 @@ TEST(LinuxNativeJIT, Adds) {
   load_immediate_to_memory_by_offset(code, r::rsi, 2, 16);
 
   // Let y[0] = x[1] + x[2].
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 1);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 1);
   add_from_memory_by_offset_to_xmm0(code, r::rdi, 2);
   store_xmm0_to_memory_by_offset(code, 0);
   // Let y[1] = y[0] + x[0]
-  load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 0);
+  load_from_memory_by_offset_to_xmm0(code, r::rsi, 0);
   add_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
   store_xmm0_to_memory_by_offset(code, 1);
   ret(code);
@@ -207,19 +203,19 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
 
   std::vector<uint8_t> code;
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
   add_from_memory_by_offset_to_xmm0(code, r::rsi, 0);
   store_xmm0_to_memory_by_offset(code, 0);
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 1);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 1);
   sub_from_memory_by_offset_to_xmm0(code, r::rsi, 1);
   store_xmm0_to_memory_by_offset(code, 1);
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 2);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 2);
   mul_from_memory_by_offset_to_xmm0(code, r::rsi, 2);
   store_xmm0_to_memory_by_offset(code, 2);
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 3);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 3);
   div_from_memory_by_offset_to_xmm0(code, r::rsi, 3);
   store_xmm0_to_memory_by_offset(code, 3);
 
@@ -257,7 +253,7 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
 
   // mov_rsi_rbx(code);
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
   push_rdi(code);
   push_rsi(code);
   push_rdx(code);
@@ -267,7 +263,7 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
   pop_rdi(code);
   store_xmm0_to_memory_by_offset(code, 0);
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 1);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 1);
   push_rsi(code);
   push_rdi(code);
   push_rsi(code);
@@ -279,7 +275,7 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
   pop_rsi(code);
   store_xmm0_to_memory_by_offset(code, 1);
 
-  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 2);
+  load_from_memory_by_offset_to_xmm0(code, r::rdi, 2);
   push_rsi(code);
   push_rsi(code);
   push_rdi(code);
