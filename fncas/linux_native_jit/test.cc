@@ -46,10 +46,8 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
 
   // clang-format off
   std::vector<uint8_t> code({
-    0x53,                   // push  %rbx
     0xf2, 0x0f, 0x10, 0x07, // movsd (%rdi), %xmm0
     0xf2, 0x0f, 0x58, 0x07, // addsd (%rdi), %xmm0
-    0x5b,                   // pop   %rbx
     0xc3                    // ret
   });
   // clang-format on
@@ -75,13 +73,11 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
     double const d2 = 2.17;
     double const d3 = 0.1234;
     double const d4 = 9.8765;
-    push_rbx(code);
     load_immediate_to_memory_by_offset(code, r::rdi, 0, d1);
     load_immediate_to_memory_by_offset(code, r::rdi, 1, d2);
     load_immediate_to_memory_by_offset(code, r::rsi, 2, d3);
     load_immediate_to_memory_by_offset(code, r::rsi, 3, d4);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
-    pop_rbx(code);
     ret(code);
     std::vector<double> x(1000, 1.0);
     std::vector<double> y(1000, 2.0);
@@ -110,7 +106,6 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
 
   {
     std::vector<uint8_t> code;
-    push_rbx(code);
     load_immediate_to_memory_by_offset(code, r::rdi, 0, 11);
     load_immediate_to_memory_by_offset(code, r::rdi, 1, 12);
     load_immediate_to_memory_by_offset(code, r::rdi, 2, 13);
@@ -125,7 +120,6 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
     load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 0);
     add_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
     store_xmm0_to_memory_by_offset(code, 1);
-    pop_rbx(code);
     ret(code);
     std::vector<double> x(3, 1.0);
     std::vector<double> y(3, 2.0);
@@ -157,10 +151,8 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
   {
     // Return X[0].
     std::vector<uint8_t> code;
-    push_rbx(code);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 7);  // `xmm1` is ignored.
-    pop_rbx(code);
     ret(code);
     EXPECT_EQ(0, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -168,10 +160,8 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
   {
     // Return X[259].
     std::vector<uint8_t> code;
-    push_rbx(code);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 259);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 13);  // `xmm1` is ignored.
-    pop_rbx(code);
     ret(code);
     EXPECT_EQ(259, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -179,10 +169,8 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
   {
     // Return Y[0].
     std::vector<uint8_t> code;
-    push_rbx(code);
     load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 0);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 29);  // `xmm1` is ignored.
-    pop_rbx(code);
     ret(code);
     EXPECT_EQ(1000, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
@@ -190,10 +178,8 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
   {
     // Return Y[931].
     std::vector<uint8_t> code;
-    push_rbx(code);
     load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 931);
     load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 74);  // `xmm1` is ignored.
-    pop_rbx(code);
     ret(code);
     EXPECT_EQ(1000 - 931, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
