@@ -249,46 +249,39 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
 
   std::vector<uint8_t> code;
 
+  // HACK(dkorolev): Well, `cos` needs two extra elements on the stack to be accessible, otherwise it segfaults. -- D.K.
+  push_rbx(code);
+  push_rbx(code);
   push_rbx(code);
 
-  // mov_rsi_rbx(code);
+  mov_rsi_rbx(code);
 
   load_from_memory_by_rdi_offset_to_xmm0(code, 0);
   push_rdi(code);
-  push_rsi(code);
   push_rdx(code);
   call_function_from_rdx_pointers_array_by_index(code, 0);
   pop_rdx(code);
-  pop_rsi(code);
   pop_rdi(code);
-  store_xmm0_to_memory_by_rsi_offset(code, 0);
+  store_xmm0_to_memory_by_rbx_offset(code, 0);
 
   load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  push_rsi(code);
   push_rdi(code);
-  push_rsi(code);
   push_rdx(code);
   call_function_from_rdx_pointers_array_by_index(code, 1);
   pop_rdx(code);
-  pop_rsi(code);
   pop_rdi(code);
-  pop_rsi(code);
-  store_xmm0_to_memory_by_rsi_offset(code, 1);
+  store_xmm0_to_memory_by_rbx_offset(code, 1);
 
   load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  push_rsi(code);
-  push_rsi(code);
   push_rdi(code);
-  push_rsi(code);
   push_rdx(code);
   call_function_from_rdx_pointers_array_by_index(code, 2);
   pop_rdx(code);
-  pop_rsi(code);
   pop_rdi(code);
-  pop_rsi(code);
-  pop_rsi(code);
-  store_xmm0_to_memory_by_rsi_offset(code, 2);
+  store_xmm0_to_memory_by_rbx_offset(code, 2);
 
+  pop_rbx(code);
+  pop_rbx(code);
   pop_rbx(code);
 
   ret(code);
