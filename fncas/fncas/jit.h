@@ -953,10 +953,42 @@ struct f_compiled_linux_native_jit final {
 };
 
 struct g_compiled_linux_native_jit final {
-  explicit g_compiled_linux_native_jit(const f_impl<JIT::Blueprint>&, const g_impl<JIT::Blueprint>&) {}
-  std::vector<double> operator()(const std::vector<double>&) const {
-    // TODO(dkorolev): Implement this.
-    return std::vector<double>(2, 42.42);
+  size_t const dim;
+  std::unique_ptr<current::fncas::linux_native_jit::CallableVectorUInt8> jit_compiled_code;
+  mutable std::vector<double> actual_heap;
+
+  void generate_code_for_g(JITCodeGenerator& code_generator, V const& v, size_t output_index) {
+    using namespace current::fncas::linux_native_jit;
+    code_generator.jit_compile_node(v.index());
+    opcodes::load_from_memory_by_rbx_offset_to_xmm0(code_generator.code, v.index());
+    opcodes::store_xmm0_to_memory_by_rbx_offset(code_generator.code, output_index);
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << v.index() + dim << ");\n";
+    std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << output_index << ");\n";
+#endif
+  }
+
+  g_compiled_linux_native_jit(const f_impl<JIT::Blueprint>& unused_f, const g_impl<JIT::Blueprint>& g)
+      : dim(g.g_.size()) {
+    CURRENT_ASSERT(dim == internals_singleton().dim_);
+    std::vector<uint8_t> code;
+    {
+      JITCodeGenerator code_generator(code, dim);
+      static_cast<void>(unused_f);
+      for (size_t i = 0; i < dim; ++i) {
+        generate_code_for_g(code_generator, g.g_[i], i);
+      }
+      CURRENT_ASSERT(static_cast<size_t>(code_generator.max_dim + 1) >= dim);
+      actual_heap.resize(dim + code_generator.max_dim + 1);
+    }
+    jit_compiled_code = std::make_unique<current::fncas::linux_native_jit::CallableVectorUInt8>(code);
+  }
+
+  // NOTE(dkorolev): Perhaps just return a pointer to `&actual_heap[0]` to avoid a copy?
+  // NOTE(dkorolev): This would require looking into the optimizer(s) code, I'll do it some time later.
+  std::vector<double> operator()(const std::vector<double>& x) const {
+    (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
+    return std::vector<double>(&actual_heap[0], &actual_heap[0] + dim);
   }
 };
 
