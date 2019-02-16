@@ -910,7 +910,7 @@ struct linux_native_jit_function_pointers {
   }
 };
 
-struct f_compiled_linux_native_jit final : f_super {
+struct f_compiled_linux_native_jit final {
   std::unique_ptr<current::fncas::linux_native_jit::CallableVectorUInt8> jit_compiled_code;
   mutable std::vector<double> actual_heap;
 
@@ -947,12 +947,17 @@ struct f_compiled_linux_native_jit final : f_super {
     generate_code_for_f(f.f_);
   }
 
-  double operator()(const std::vector<double>& x) const override {
+  double operator()(const std::vector<double>& x) const {
     return (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
   }
+};
 
-  size_t dim() const override { return static_cast<size_t>(-1); }  // HACK(dkorolev): Unused as it's not `dlopen()`-ed.
-  size_t heap_size() const override { return 0; }
+struct g_compiled_linux_native_jit final {
+  explicit g_compiled_linux_native_jit(const f_impl<JIT::Blueprint>&, const g_impl<JIT::Blueprint>&) {}
+  std::vector<double> operator()(const std::vector<double>&) const {
+    // TODO(dkorolev): Implement this.
+    return std::vector<double>(2, 42.42);
+  }
 };
 
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
@@ -1016,6 +1021,12 @@ template <>
 struct g_impl_selector<JIT::NASM> {
   using type = g_compiled<JIT::NASM>;
 };
+
+template <>
+struct g_impl_selector<JIT::LinuxNativeJIT> {
+  using type = g_compiled_linux_native_jit;
+};
+
 
 }  // namespace fncas::impl
 }  // namespace fncas

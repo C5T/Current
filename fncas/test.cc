@@ -900,4 +900,23 @@ TEST(FnCASLinuxNativeJIT, SmokeTestFunction) {
   EXPECT_EQ(9.0, fn({3.0, 0.0, -1.0}));
 }
 
+TEST(FnCASLinuxNativeJIT, Gradients) {
+  // Use the synopsis of the gradient computed via the `Blueprint` technique.
+  // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
+
+  const fncas::variables_vector_t x(1);
+  const fncas::function_t<fncas::JIT::Blueprint> intermediate_function = ZeroOrXFunction(x);
+
+  EXPECT_EQ(0.0, intermediate_function({-5.0}));
+  EXPECT_EQ(6.0, intermediate_function({+6.0}));
+
+  const fncas::gradient_t<fncas::JIT::Blueprint> intermediate_gradient(x, intermediate_function);
+  EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
+  EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
+
+  const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> jit_compiled_gradient(intermediate_function, intermediate_gradient);
+  EXPECT_EQ(0.0, jit_compiled_gradient({-9.5})[0]);
+  EXPECT_EQ(1.0, jit_compiled_gradient({+9.5})[0]);
+}
+
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
