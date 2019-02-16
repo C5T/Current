@@ -183,6 +183,48 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
     ret(code);
     EXPECT_EQ(1000 - 931, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
+
+  {
+    std::vector<uint8_t> code;
+
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+    add_from_memory_by_offset_to_xmm0(code, r::rsi, 0);
+    store_xmm0_to_memory_by_offset(code, 0);
+
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 1);
+    sub_from_memory_by_offset_to_xmm0(code, r::rsi, 1);
+    store_xmm0_to_memory_by_offset(code, 1);
+
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 2);
+    mul_from_memory_by_offset_to_xmm0(code, r::rsi, 2);
+    store_xmm0_to_memory_by_offset(code, 2);
+
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 3);
+    div_from_memory_by_offset_to_xmm0(code, r::rsi, 3);
+    store_xmm0_to_memory_by_offset(code, 3);
+
+    ret(code);
+
+    std::vector<double> x(4, 10.0);
+    std::vector<double> y(4, 5.0);
+
+    EXPECT_EQ(10.0, x[0]);
+    EXPECT_EQ(10.0, x[1]);
+    EXPECT_EQ(10.0, x[2]);
+    EXPECT_EQ(10.0, x[3]);
+
+    EXPECT_EQ(5.0, y[0]);
+    EXPECT_EQ(5.0, y[1]);
+    EXPECT_EQ(5.0, y[2]);
+    EXPECT_EQ(5.0, y[3]);
+
+    (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
+
+    EXPECT_EQ(15.0, y[0]);
+    EXPECT_EQ(5.0, y[1]);
+    EXPECT_EQ(50.0, y[2]);
+    EXPECT_EQ(2.0, y[3]);
+  }
 }
 
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
