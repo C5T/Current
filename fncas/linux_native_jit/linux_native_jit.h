@@ -170,8 +170,9 @@ void internal_load_immediate_to_memory_by_someregister_offset(C& c, uint8_t reg,
   }
 }
 
+// NOTE(dkorolev): The `unsafe` prefix is becase the usecase is unit test only; FnCAS should not overwrite that memory.
 template <typename C, typename O>
-void load_immediate_to_memory_by_rdi_offset(C& c, O offset, double v) {
+void unsafe_load_immediate_to_memory_by_rdi_offset(C& c, O offset, double v) {
   internal_load_immediate_to_memory_by_someregister_offset(c, 0x87, offset, v);
 }
 

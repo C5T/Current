@@ -74,8 +74,8 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
 
   std::vector<uint8_t> code;
 
-  load_immediate_to_memory_by_rdi_offset(code, 0, d1);
-  load_immediate_to_memory_by_rdi_offset(code, 1, d2);
+  unsafe_load_immediate_to_memory_by_rdi_offset(code, 0, d1);
+  unsafe_load_immediate_to_memory_by_rdi_offset(code, 1, d2);
   load_immediate_to_memory_by_rsi_offset(code, 2, d3);
   load_immediate_to_memory_by_rsi_offset(code, 3, d4);
   load_from_memory_by_rdi_offset_to_xmm0(code, 0);
@@ -161,9 +161,9 @@ TEST(LinuxNativeJIT, Adds) {
 
   std::vector<uint8_t> code;
 
-  load_immediate_to_memory_by_rdi_offset(code, 0, 11);
-  load_immediate_to_memory_by_rdi_offset(code, 1, 12);
-  load_immediate_to_memory_by_rdi_offset(code, 2, 13);
+  unsafe_load_immediate_to_memory_by_rdi_offset(code, 0, 11);
+  unsafe_load_immediate_to_memory_by_rdi_offset(code, 1, 12);
+  unsafe_load_immediate_to_memory_by_rdi_offset(code, 2, 13);
   load_immediate_to_memory_by_rsi_offset(code, 0, 14);
   load_immediate_to_memory_by_rsi_offset(code, 1, 15);
   load_immediate_to_memory_by_rsi_offset(code, 2, 16);
