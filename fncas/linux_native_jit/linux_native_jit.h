@@ -265,6 +265,26 @@ void div_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
 }
 
 template <typename C, typename O>
+void add_from_memory_by_rbx_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x58, c, 0x83, offset);
+}
+
+template <typename C, typename O>
+void sub_from_memory_by_rbx_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x5c, c, 0x83, offset);
+}
+
+template <typename C, typename O>
+void mul_from_memory_by_rbx_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x59, c, 0x83, offset);
+}
+
+template <typename C, typename O>
+void div_from_memory_by_rbx_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x5e, c, 0x83, offset);
+}
+
+template <typename C, typename O>
 void internal_store_xmm0_to_memory_by_reg_offset(C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.

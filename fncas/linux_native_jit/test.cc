@@ -242,6 +242,55 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
   EXPECT_EQ(2.0, y[3]);
 }
 
+TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
+  using namespace current::fncas::linux_native_jit::opcodes;
+
+  std::vector<uint8_t> code;
+
+  push_rbx(code);
+  mov_rsi_rbx(code);
+
+  load_from_memory_by_rdi_offset_to_xmm0(code, 0);
+  add_from_memory_by_rbx_offset_to_xmm0(code, 0);
+  store_xmm0_to_memory_by_rbx_offset(code, 0);
+
+  load_from_memory_by_rdi_offset_to_xmm0(code, 1);
+  sub_from_memory_by_rbx_offset_to_xmm0(code, 1);
+  store_xmm0_to_memory_by_rbx_offset(code, 1);
+
+  load_from_memory_by_rdi_offset_to_xmm0(code, 2);
+  mul_from_memory_by_rbx_offset_to_xmm0(code, 2);
+  store_xmm0_to_memory_by_rbx_offset(code, 2);
+
+  load_from_memory_by_rdi_offset_to_xmm0(code, 3);
+  div_from_memory_by_rbx_offset_to_xmm0(code, 3);
+  store_xmm0_to_memory_by_rbx_offset(code, 3);
+
+  pop_rbx(code);
+
+  ret(code);
+
+  std::vector<double> x(4, 10.0);
+  std::vector<double> y(4, 5.0);
+
+  EXPECT_EQ(10.0, x[0]);
+  EXPECT_EQ(10.0, x[1]);
+  EXPECT_EQ(10.0, x[2]);
+  EXPECT_EQ(10.0, x[3]);
+
+  EXPECT_EQ(5.0, y[0]);
+  EXPECT_EQ(5.0, y[1]);
+  EXPECT_EQ(5.0, y[2]);
+  EXPECT_EQ(5.0, y[3]);
+
+  (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
+
+  EXPECT_EQ(15.0, y[0]);
+  EXPECT_EQ(5.0, y[1]);
+  EXPECT_EQ(50.0, y[2]);
+  EXPECT_EQ(2.0, y[3]);
+}
+
 TEST(LinuxNativeJIT, CallsExternalFunctions) {
   using namespace current::fncas::linux_native_jit::opcodes;
 
