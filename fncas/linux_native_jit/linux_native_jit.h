@@ -149,7 +149,7 @@ void ret(C& c) {
 }
 
 template <typename C, typename O>
-void load_immediate_to_memory_by_offset(C& c, r reg, O offset, double v) {
+void internal_load_immediate_to_memory_by_someregister_offset(C& c, uint8_t reg, O offset, double v) {
   uint64_t x = *reinterpret_cast<uint64_t const*>(&v);
   c.push_back(0x48);
   c.push_back(0xb8);
@@ -159,7 +159,7 @@ void load_immediate_to_memory_by_offset(C& c, r reg, O offset, double v) {
   }
   c.push_back(0x48);
   c.push_back(0x89);
-  c.push_back(reg == r::rdi ? 0x87 : 0x86);
+  c.push_back(reg);
 
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
@@ -170,6 +170,16 @@ void load_immediate_to_memory_by_offset(C& c, r reg, O offset, double v) {
     c.push_back(o & 0xff);
     o >>= 8;
   }
+}
+
+template <typename C, typename O>
+void load_immediate_to_memory_by_rdi_offset(C& c, O offset, double v) {
+  internal_load_immediate_to_memory_by_someregister_offset(c, 0x87, offset, v);
+}
+
+template <typename C, typename O>
+void load_immediate_to_memory_by_rsi_offset(C& c, O offset, double v) {
+  internal_load_immediate_to_memory_by_someregister_offset(c, 0x86, offset, v);
 }
 
 template <typename C, typename O>

@@ -74,10 +74,10 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
 
   std::vector<uint8_t> code;
 
-  load_immediate_to_memory_by_offset(code, r::rdi, 0, d1);
-  load_immediate_to_memory_by_offset(code, r::rdi, 1, d2);
-  load_immediate_to_memory_by_offset(code, r::rsi, 2, d3);
-  load_immediate_to_memory_by_offset(code, r::rsi, 3, d4);
+  load_immediate_to_memory_by_rdi_offset(code, 0, d1);
+  load_immediate_to_memory_by_rdi_offset(code, 1, d2);
+  load_immediate_to_memory_by_rsi_offset(code, 2, d3);
+  load_immediate_to_memory_by_rsi_offset(code, 3, d4);
   load_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
 
   ret(code);
@@ -161,12 +161,12 @@ TEST(LinuxNativeJIT, Adds) {
 
   std::vector<uint8_t> code;
 
-  load_immediate_to_memory_by_offset(code, r::rdi, 0, 11);
-  load_immediate_to_memory_by_offset(code, r::rdi, 1, 12);
-  load_immediate_to_memory_by_offset(code, r::rdi, 2, 13);
-  load_immediate_to_memory_by_offset(code, r::rsi, 0, 14);
-  load_immediate_to_memory_by_offset(code, r::rsi, 1, 15);
-  load_immediate_to_memory_by_offset(code, r::rsi, 2, 16);
+  load_immediate_to_memory_by_rdi_offset(code, 0, 11);
+  load_immediate_to_memory_by_rdi_offset(code, 1, 12);
+  load_immediate_to_memory_by_rdi_offset(code, 2, 13);
+  load_immediate_to_memory_by_rsi_offset(code, 0, 14);
+  load_immediate_to_memory_by_rsi_offset(code, 1, 15);
+  load_immediate_to_memory_by_rsi_offset(code, 2, 16);
 
   // Let y[0] = x[1] + x[2].
   load_from_memory_by_offset_to_xmm0(code, r::rdi, 1);
