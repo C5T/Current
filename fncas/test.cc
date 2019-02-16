@@ -856,26 +856,26 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
   using namespace linux_native_jit_test;
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
     EXPECT_EQ(42.0, fn({}));
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionExtract(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionExtract(fncas::variables_vector_t(1)));
     EXPECT_EQ(1.0, fn({1.0}));
     EXPECT_EQ(42.0, fn({42.0}));
     EXPECT_EQ(101.0, fn({101.0}));
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionAdd(fncas::variables_vector_t(2)));
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionAdd(fncas::variables_vector_t(2)));
     EXPECT_EQ(3.0, fn({1.0, 2.0}));
     EXPECT_EQ(4.0, fn({1.5, 2.5}));
     EXPECT_EQ(142.0, fn({42.0, 100,0}));
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionExp(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionExp(fncas::variables_vector_t(1)));
     EXPECT_EQ(std::exp(1.0), fn({1.0}));
     EXPECT_EQ(std::exp(0.5), fn({0.5}));
     EXPECT_EQ(std::exp(2.5), fn({2.5}));
@@ -884,9 +884,20 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
 }
 
 TEST(FnCASLinuxNativeJIT, SimpleFunction) {
-  fncas::variables_vector_t x(2);
-  fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(SimpleFunction(x));
+  fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SimpleFunction(fncas::variables_vector_t(2)));
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
+}
+
+TEST(FnCASLinuxNativeJIT, SmokeTestFunction) {
+  fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SmokeTestFunction(fncas::variables_vector_t(3)));
+
+  EXPECT_EQ(0.0, fn({0.0, 0.0, -2.0}));
+  EXPECT_EQ(1.0, fn({0.0, 0.0, +0.0}));
+  EXPECT_EQ(1.0, fn({0.0, 0.0, +2.0}));
+  EXPECT_EQ(0.0, fn({0.0, -2.0, -1.0}));
+  EXPECT_EQ(0.0, fn({0.0, +0.0, -1.0}));
+  EXPECT_EQ(2.0, fn({0.0, +2.0, -1.0}));
+  EXPECT_EQ(9.0, fn({3.0, 0.0, -1.0}));
 }
 
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
