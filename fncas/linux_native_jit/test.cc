@@ -270,12 +270,14 @@ TEST(LinuxNativeJIT, FullySupportsRbx) {
   opcodes::add_from_memory_by_rbx_offset_to_xmm0(code, 0);
   opcodes::store_xmm0_to_memory_by_rbx_offset(code, 4);
 
+  opcodes::load_immediate_to_memory_by_rbx_offset(code, 5, 42.5);
+
   opcodes::pop_rbx(code);
 
   opcodes::ret(code);
 
   std::vector<double> x(4, 10.0);
-  std::vector<double> y(5, 5.0);
+  std::vector<double> y(6, 5.0);
 
   EXPECT_EQ(10.0, x[0]);
   EXPECT_EQ(10.0, x[1]);
@@ -287,6 +289,7 @@ TEST(LinuxNativeJIT, FullySupportsRbx) {
   EXPECT_EQ(5.0, y[2]);
   EXPECT_EQ(5.0, y[3]);
   EXPECT_EQ(5.0, y[4]);
+  EXPECT_EQ(5.0, y[5]);
 
   (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
 
@@ -295,6 +298,7 @@ TEST(LinuxNativeJIT, FullySupportsRbx) {
   EXPECT_EQ(50.0, y[2]);
   EXPECT_EQ(2.0, y[3]);
   EXPECT_EQ(30.0, y[4]);  // `y[4]` is `y[0] + y[0]`, loaded by `rbx` instead of by `rsi`. -- D.K.
+  EXPECT_EQ(42.5, y[5]);
 }
 
 TEST(LinuxNativeJIT, CallsExternalFunctions) {

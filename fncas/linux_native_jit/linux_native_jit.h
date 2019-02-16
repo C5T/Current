@@ -193,6 +193,11 @@ void load_immediate_to_memory_by_rsi_offset(C& c, O offset, double v) {
 }
 
 template <typename C, typename O>
+void load_immediate_to_memory_by_rbx_offset(C& c, O offset, double v) {
+  internal_load_immediate_to_memory_by_someregister_offset(c, 0x83, offset, v);
+}
+
+template <typename C, typename O>
 void internal_load_from_memory_by_offset_to_xmm0(C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
