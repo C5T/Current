@@ -111,9 +111,8 @@ void ret(C& c) {
   c.push_back(0xc3);
 }
 
-template <typename C, typename O, typename V>
-void load_immediate_to_memory_by_offset(C& c, r reg, O offset, V v) {
-  static_assert(sizeof(v) == 8, "");
+template <typename C, typename O>
+void load_immediate_to_memory_by_offset(C& c, r reg, O offset, double v) {
   uint64_t x = *reinterpret_cast<uint64_t const*>(&v);
   c.push_back(0x48);
   c.push_back(0xb8);
@@ -147,6 +146,40 @@ void load_from_memory_by_offset_to_xmm(C& c, r reg, xr xreg, O offset) {
   c.push_back(0x0f);
   c.push_back(0x10);
   c.push_back(xreg == xr::xmm0 ? (reg == r::rdi ? 0x87 : 0x86) : (reg == r::rdi ? 0x8f : 0x8e));
+  for (size_t i = 0; i < 4; ++i) {
+    c.push_back(o & 0xff);
+    o >>= 8;
+  }
+}
+
+template <typename C, typename O>
+void add_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
+  auto o = static_cast<int64_t>(offset);
+  o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
+  o *= 8;   // Double is eight bytes, signed multiplication by design.
+  LINUX_JIT_ASSERT(o >= 0x80);
+  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  c.push_back(0xf2);
+  c.push_back(0x0f);
+  c.push_back(0x58);
+  c.push_back(reg == r::rdi ? 0x87 : 0x86);
+  for (size_t i = 0; i < 4; ++i) {
+    c.push_back(o & 0xff);
+    o >>= 8;
+  }
+}
+
+template <typename C, typename O>
+void store_xmm0_to_memory_by_offset(C& c, O offset) {
+  auto o = static_cast<int64_t>(offset);
+  o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
+  o *= 8;   // Double is eight bytes, signed multiplication by design.
+  LINUX_JIT_ASSERT(o >= 0x80);
+  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  c.push_back(0xf2);
+  c.push_back(0x0f);
+  c.push_back(0x11);
+  c.push_back(0x86);
   for (size_t i = 0; i < 4; ++i) {
     c.push_back(o & 0xff);
     o >>= 8;

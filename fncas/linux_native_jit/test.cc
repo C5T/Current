@@ -108,6 +108,42 @@ TEST(LinuxNativeJIT, MiddleLevelTest) {
     EXPECT_EQ(d4, y[3]);
   }
 
+  {
+    std::vector<uint8_t> code;
+    push_rbx(code);
+    load_immediate_to_memory_by_offset(code, r::rdi, 0, 11);
+    load_immediate_to_memory_by_offset(code, r::rdi, 1, 12);
+    load_immediate_to_memory_by_offset(code, r::rdi, 2, 13);
+    load_immediate_to_memory_by_offset(code, r::rsi, 0, 14);
+    load_immediate_to_memory_by_offset(code, r::rsi, 1, 15);
+    load_immediate_to_memory_by_offset(code, r::rsi, 2, 16);
+    // Let y[0] = x[1] + x[2].
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 1);
+    add_from_memory_by_offset_to_xmm0(code, r::rdi, 2);
+    store_xmm0_to_memory_by_offset(code, 0);
+    // Let y[1] = y[0] + x[0]
+    load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 0);
+    add_from_memory_by_offset_to_xmm0(code, r::rdi, 0);
+    store_xmm0_to_memory_by_offset(code, 1);
+    pop_rbx(code);
+    ret(code);
+    std::vector<double> x(3, 1.0);
+    std::vector<double> y(3, 2.0);
+    EXPECT_EQ(1, x[0]);
+    EXPECT_EQ(1, x[1]);
+    EXPECT_EQ(1, x[2]);
+    EXPECT_EQ(2, y[0]);
+    EXPECT_EQ(2, y[1]);
+    EXPECT_EQ(2, y[2]);
+    EXPECT_EQ(36, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+    EXPECT_EQ(11, x[0]);
+    EXPECT_EQ(12, x[1]);
+    EXPECT_EQ(13, x[2]);
+    EXPECT_EQ(25, y[0]);  // Originally `x[1]` plus `x[2]`, which is 12 + 13.
+    EXPECT_EQ(36, y[1]);  // The `y[0]`, which is 25, plus `x[0]`, which is 11.
+    EXPECT_EQ(16, y[2]);
+  }
+
   std::vector<double> x(1000);
   for (size_t i = 0; i < x.size(); ++i) {
     x[i] = i;
