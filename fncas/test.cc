@@ -821,3 +821,58 @@ TEST(FnCAS, OptimizationInMaximizingDirection) {
     EXPECT_NEAR(7.0, result.point[1], 5e-2);
   }
 }
+
+#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
+
+namespace linux_native_jit_test {
+
+template <typename T>
+T TrivialFunctionConst(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);  // Parameterless functions are not supported, so take one dummy argument.
+  return 42.0;
+}
+
+template <typename T>
+T TrivialFunctionExtract(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);
+  return x[0];
+}
+
+template <typename T>
+T TrivialFunctionAdd(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] + x[1];
+}
+
+}  // namespace linux_native_jit_test
+
+TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
+  using namespace linux_native_jit_test;
+
+  {
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
+    EXPECT_EQ(42.0, fn({}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionExtract(fncas::variables_vector_t(1)));
+    EXPECT_EQ(1.0, fn({1.0}));
+    EXPECT_EQ(42.0, fn({42.0}));
+    EXPECT_EQ(101.0, fn({101.0}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionAdd(fncas::variables_vector_t(2)));
+    EXPECT_EQ(3.0, fn({1.0, 2.0}));
+    EXPECT_EQ(4.0, fn({1.5, 2.5}));
+    EXPECT_EQ(142.0, fn({42.0, 100,0}));
+  }
+}
+
+TEST(FnCASLinuxNativeJIT, SimpleFunction) {
+  fncas::variables_vector_t x(2);
+  fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(SimpleFunction(x));
+  EXPECT_EQ(25.0, fn({1.0, 2.0}));
+}
+
+#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED

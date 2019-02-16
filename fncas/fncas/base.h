@@ -32,6 +32,8 @@
 #include <cstdlib>
 #include <cstdint>
 
+#include "../linux_native_jit/linux_native_jit.h"
+
 namespace fncas {
 
 #ifndef FNCAS_USE_LONG_DOUBLE
@@ -76,7 +78,15 @@ enum class JIT {
   CLANG,          // JIT via `clang++`.
   AS,             // JIT via `as`.
   NASM,           // JIT via `nasm`.
-  Default = AS    // The JIT used by default by the optimization algorithms.
+#ifndef FNCAS_LINUX_NATIVE_JIT_ENABLED
+  // The JIT used by default by the optimization algorithms is the `as` one ...
+  Default = AS
+#else
+  // ... unless we are on Linux, and the Linux-native JIT is active.
+  // TODO(dkorolve): Implement and enable it!
+  LinuxNativeJIT,
+  Default = AS  // LinuxNativeJIT
+#endif
 };
 
 template <JIT>
