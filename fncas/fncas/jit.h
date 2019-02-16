@@ -773,7 +773,7 @@ struct f_compiled final : f_compiled_super {
 #error "Someone forgot to in-#define `FNCAS_DEBUG_NATIVE_JIT`."
 #endif
 
-struct JITCodeGenerator {
+struct JITCodeGenerator final {
   std::vector<uint8_t>& code;
   size_t const dim;  // "Pre-allocated" in the output vector, 0 for function computation, dim. of `x` for gradints.
 
@@ -898,6 +898,18 @@ struct JITCodeGenerator {
   }
 };
 
+struct linux_native_jit_function_pointers {
+  std::vector<double (*)(double x)> p;
+  linux_native_jit_function_pointers() {
+#define FNCAS_FUNCTION(f) p.push_back(fncas::f);
+#include "fncas_functions.dsl.h"
+#undef FNCAS_FUNCTION
+  }
+  static linux_native_jit_function_pointers& tls() {
+    return current::ThreadLocalSingleton<linux_native_jit_function_pointers>();
+  }
+};
+
 struct f_compiled_linux_native_jit final : f_super {
   std::unique_ptr<current::fncas::linux_native_jit::CallableVectorUInt8> jit_compiled_code;
   mutable std::vector<double> actual_heap;
@@ -936,12 +948,13 @@ struct f_compiled_linux_native_jit final : f_super {
   }
 
   double_t operator()(const std::vector<double_t>& x) const override {
-    return (*jit_compiled_code)(&x[0], &actual_heap[0], nullptr);
+    return (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
   }
 
-  size_t dim() const override { return static_cast<size_t>(-1); }  // Unused as it's not `dlopen()`-ed. -- D.K.
+  size_t dim() const override { return static_cast<size_t>(-1); }  // HACK(dkorolev): Unused as it's not `dlopen()`-ed.
   size_t heap_size() const override { return 0; }
 };
+
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
 
 struct g_compiled_super : g_super {};

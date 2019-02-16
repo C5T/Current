@@ -844,6 +844,12 @@ T TrivialFunctionAdd(const std::vector<T>& x) {
   return x[0] + x[1];
 }
 
+template <typename T>
+T TrivialFunctionExp(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);
+  return fncas::exp(x[0]);
+}
+
 }  // namespace linux_native_jit_test
 
 TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
@@ -866,6 +872,14 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
     EXPECT_EQ(3.0, fn({1.0, 2.0}));
     EXPECT_EQ(4.0, fn({1.5, 2.5}));
     EXPECT_EQ(142.0, fn({42.0, 100,0}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> fn(TrivialFunctionExp(fncas::variables_vector_t(1)));
+    EXPECT_EQ(std::exp(1.0), fn({1.0}));
+    EXPECT_EQ(std::exp(0.5), fn({0.5}));
+    EXPECT_EQ(std::exp(2.5), fn({2.5}));
+    EXPECT_EQ(std::exp(-8), fn({-8}));
   }
 }
 
