@@ -65,7 +65,7 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
 }
 
 TEST(LinuxNativeJIT, LoadsImmediateValues) {
-  using namespace current::fncas::linux_native_jit::opcodes;
+  using namespace current::fncas::linux_native_jit;
 
   double const d1 = 3.14;
   double const d2 = 2.17;
@@ -74,13 +74,13 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
 
   std::vector<uint8_t> code;
 
-  unsafe_load_immediate_to_memory_by_rdi_offset(code, 0, d1);
-  unsafe_load_immediate_to_memory_by_rdi_offset(code, 1, d2);
-  load_immediate_to_memory_by_rsi_offset(code, 2, d3);
-  load_immediate_to_memory_by_rsi_offset(code, 3, d4);
-  load_from_memory_by_rdi_offset_to_xmm0(code, 0);
+  opcodes::unsafe_load_immediate_to_memory_by_rdi_offset(code, 0, d1);
+  opcodes::unsafe_load_immediate_to_memory_by_rdi_offset(code, 1, d2);
+  opcodes::load_immediate_to_memory_by_rsi_offset(code, 2, d3);
+  opcodes::load_immediate_to_memory_by_rsi_offset(code, 3, d4);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 0);
 
-  ret(code);
+  opcodes::ret(code);
 
   std::vector<double> x(1000, 1.0);
   std::vector<double> y(1000, 2.0);
@@ -111,7 +111,7 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
 }
 
 TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
-  using namespace current::fncas::linux_native_jit::opcodes;
+  using namespace current::fncas::linux_native_jit;
 
   std::vector<double> x(1000);
   for (size_t i = 0; i < x.size(); ++i) {
@@ -126,57 +126,57 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
   {
     // Return X[0].
     std::vector<uint8_t> code;
-    load_from_memory_by_rdi_offset_to_xmm0(code, 0);
-    ret(code);
+    opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 0);
+    opcodes::ret(code);
     EXPECT_EQ(0, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 
   {
     // Return X[259].
     std::vector<uint8_t> code;
-    load_from_memory_by_rdi_offset_to_xmm0(code, 259);
-    ret(code);
+    opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 259);
+    opcodes::ret(code);
     EXPECT_EQ(259, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 
   {
     // Return Y[0].
     std::vector<uint8_t> code;
-    load_from_memory_by_rsi_offset_to_xmm0(code, 0);
-    ret(code);
+    opcodes::load_from_memory_by_rsi_offset_to_xmm0(code, 0);
+    opcodes::ret(code);
     EXPECT_EQ(1000, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 
   {
     // Return Y[931].
     std::vector<uint8_t> code;
-    load_from_memory_by_rsi_offset_to_xmm0(code, 931);
-    ret(code);
+    opcodes::load_from_memory_by_rsi_offset_to_xmm0(code, 931);
+    opcodes::ret(code);
     EXPECT_EQ(1000 - 931, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 }
 
 TEST(LinuxNativeJIT, Adds) {
-  using namespace current::fncas::linux_native_jit::opcodes;
+  using namespace current::fncas::linux_native_jit;
 
   std::vector<uint8_t> code;
 
-  unsafe_load_immediate_to_memory_by_rdi_offset(code, 0, 11);
-  unsafe_load_immediate_to_memory_by_rdi_offset(code, 1, 12);
-  unsafe_load_immediate_to_memory_by_rdi_offset(code, 2, 13);
-  load_immediate_to_memory_by_rsi_offset(code, 0, 14);
-  load_immediate_to_memory_by_rsi_offset(code, 1, 15);
-  load_immediate_to_memory_by_rsi_offset(code, 2, 16);
+  opcodes::unsafe_load_immediate_to_memory_by_rdi_offset(code, 0, 11);
+  opcodes::unsafe_load_immediate_to_memory_by_rdi_offset(code, 1, 12);
+  opcodes::unsafe_load_immediate_to_memory_by_rdi_offset(code, 2, 13);
+  opcodes::load_immediate_to_memory_by_rsi_offset(code, 0, 14);
+  opcodes::load_immediate_to_memory_by_rsi_offset(code, 1, 15);
+  opcodes::load_immediate_to_memory_by_rsi_offset(code, 2, 16);
 
   // Let y[0] = x[1] + x[2].
-  load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  add_from_memory_by_rdi_offset_to_xmm0(code, 2);
-  store_xmm0_to_memory_by_rsi_offset(code, 0);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 1);
+  opcodes::add_from_memory_by_rdi_offset_to_xmm0(code, 2);
+  opcodes::store_xmm0_to_memory_by_rsi_offset(code, 0);
   // Let y[1] = y[0] + x[0]
-  load_from_memory_by_rsi_offset_to_xmm0(code, 0);
-  add_from_memory_by_rdi_offset_to_xmm0(code, 0);
-  store_xmm0_to_memory_by_rsi_offset(code, 1);
-  ret(code);
+  opcodes::load_from_memory_by_rsi_offset_to_xmm0(code, 0);
+  opcodes::add_from_memory_by_rdi_offset_to_xmm0(code, 0);
+  opcodes::store_xmm0_to_memory_by_rsi_offset(code, 1);
+  opcodes::ret(code);
 
   std::vector<double> x(3, 1.0);
   std::vector<double> y(3, 2.0);
@@ -199,27 +199,27 @@ TEST(LinuxNativeJIT, Adds) {
 }
 
 TEST(LinuxNativeJIT, PerformsArithmetic) {
-  using namespace current::fncas::linux_native_jit::opcodes;
+  using namespace current::fncas::linux_native_jit;
 
   std::vector<uint8_t> code;
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 0);
-  add_from_memory_by_rsi_offset_to_xmm0(code, 0);
-  store_xmm0_to_memory_by_rsi_offset(code, 0);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 0);
+  opcodes::add_from_memory_by_rsi_offset_to_xmm0(code, 0);
+  opcodes::store_xmm0_to_memory_by_rsi_offset(code, 0);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  sub_from_memory_by_rsi_offset_to_xmm0(code, 1);
-  store_xmm0_to_memory_by_rsi_offset(code, 1);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 1);
+  opcodes::sub_from_memory_by_rsi_offset_to_xmm0(code, 1);
+  opcodes::store_xmm0_to_memory_by_rsi_offset(code, 1);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 2);
-  mul_from_memory_by_rsi_offset_to_xmm0(code, 2);
-  store_xmm0_to_memory_by_rsi_offset(code, 2);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 2);
+  opcodes::mul_from_memory_by_rsi_offset_to_xmm0(code, 2);
+  opcodes::store_xmm0_to_memory_by_rsi_offset(code, 2);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 3);
-  div_from_memory_by_rsi_offset_to_xmm0(code, 3);
-  store_xmm0_to_memory_by_rsi_offset(code, 3);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 3);
+  opcodes::div_from_memory_by_rsi_offset_to_xmm0(code, 3);
+  opcodes::store_xmm0_to_memory_by_rsi_offset(code, 3);
 
-  ret(code);
+  opcodes::ret(code);
 
   std::vector<double> x(4, 10.0);
   std::vector<double> y(4, 5.0);
@@ -243,32 +243,32 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
 }
 
 TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
-  using namespace current::fncas::linux_native_jit::opcodes;
+  using namespace current::fncas::linux_native_jit;
 
   std::vector<uint8_t> code;
 
-  push_rbx(code);
-  mov_rsi_rbx(code);
+  opcodes::push_rbx(code);
+  opcodes::mov_rsi_rbx(code);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 0);
-  add_from_memory_by_rbx_offset_to_xmm0(code, 0);
-  store_xmm0_to_memory_by_rbx_offset(code, 0);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 0);
+  opcodes::add_from_memory_by_rbx_offset_to_xmm0(code, 0);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 0);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  sub_from_memory_by_rbx_offset_to_xmm0(code, 1);
-  store_xmm0_to_memory_by_rbx_offset(code, 1);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 1);
+  opcodes::sub_from_memory_by_rbx_offset_to_xmm0(code, 1);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 1);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 2);
-  mul_from_memory_by_rbx_offset_to_xmm0(code, 2);
-  store_xmm0_to_memory_by_rbx_offset(code, 2);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 2);
+  opcodes::mul_from_memory_by_rbx_offset_to_xmm0(code, 2);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 2);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 3);
-  div_from_memory_by_rbx_offset_to_xmm0(code, 3);
-  store_xmm0_to_memory_by_rbx_offset(code, 3);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 3);
+  opcodes::div_from_memory_by_rbx_offset_to_xmm0(code, 3);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 3);
 
-  pop_rbx(code);
+  opcodes::pop_rbx(code);
 
-  ret(code);
+  opcodes::ret(code);
 
   std::vector<double> x(4, 10.0);
   std::vector<double> y(4, 5.0);
@@ -292,48 +292,48 @@ TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
 }
 
 TEST(LinuxNativeJIT, CallsExternalFunctions) {
-  using namespace current::fncas::linux_native_jit::opcodes;
+  using namespace current::fncas::linux_native_jit;
 
   double (*f[])(double x) = {sin, cos, exp};
 
   std::vector<uint8_t> code;
 
   // HACK(dkorolev): Well, `cos` needs two extra elements on the stack to be accessible, otherwise it segfaults. -- D.K.
-  push_rbx(code);
-  push_rbx(code);
-  push_rbx(code);
+  opcodes::push_rbx(code);
+  opcodes::push_rbx(code);
+  opcodes::push_rbx(code);
 
-  mov_rsi_rbx(code);
+  opcodes::mov_rsi_rbx(code);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 0);
-  push_rdi(code);
-  push_rdx(code);
-  call_function_from_rdx_pointers_array_by_index(code, 0);
-  pop_rdx(code);
-  pop_rdi(code);
-  store_xmm0_to_memory_by_rbx_offset(code, 0);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 0);
+  opcodes::push_rdi(code);
+  opcodes::push_rdx(code);
+  opcodes::call_function_from_rdx_pointers_array_by_index(code, 0);
+  opcodes::pop_rdx(code);
+  opcodes::pop_rdi(code);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 0);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  push_rdi(code);
-  push_rdx(code);
-  call_function_from_rdx_pointers_array_by_index(code, 1);
-  pop_rdx(code);
-  pop_rdi(code);
-  store_xmm0_to_memory_by_rbx_offset(code, 1);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 1);
+  opcodes::push_rdi(code);
+  opcodes::push_rdx(code);
+  opcodes::call_function_from_rdx_pointers_array_by_index(code, 1);
+  opcodes::pop_rdx(code);
+  opcodes::pop_rdi(code);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 1);
 
-  load_from_memory_by_rdi_offset_to_xmm0(code, 1);
-  push_rdi(code);
-  push_rdx(code);
-  call_function_from_rdx_pointers_array_by_index(code, 2);
-  pop_rdx(code);
-  pop_rdi(code);
-  store_xmm0_to_memory_by_rbx_offset(code, 2);
+  opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 1);
+  opcodes::push_rdi(code);
+  opcodes::push_rdx(code);
+  opcodes::call_function_from_rdx_pointers_array_by_index(code, 2);
+  opcodes::pop_rdx(code);
+  opcodes::pop_rdi(code);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 2);
 
-  pop_rbx(code);
-  pop_rbx(code);
-  pop_rbx(code);
+  opcodes::pop_rbx(code);
+  opcodes::pop_rbx(code);
+  opcodes::pop_rbx(code);
 
-  ret(code);
+  opcodes::ret(code);
 
   std::vector<double> x(3, 1.0);
   std::vector<double> y(3);
