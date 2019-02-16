@@ -80,8 +80,9 @@ struct CallableVectorUInt8 final {
   }
 
   double operator()(double const* x, double* o, double (*f[])(double)) {
-    // HACK(dkorolev): Shift by 16 to have the opcodes have the same length.
-    return reinterpret_cast<pf_t>(buffer_)(x - 16, o - 16, f);
+    // HACK(dkorolev): Shift the buffets by 16 doubles (16 * 8 bytes) to have the load/save/etc. opcodes of same length.
+    // HACK(dkorolev): Shitf the functions buffer by one function (8 bytes) to even up the indirect call opcodes.
+    return reinterpret_cast<pf_t>(buffer_)(x - 16, o - 16, f - 1);
   }
 
   ~CallableVectorUInt8() {
@@ -102,8 +103,45 @@ void push_rbx(C& c) {
 }
 
 template <typename C>
+void push_rsi(C& c) {
+  c.push_back(0x56);
+}
+
+template <typename C>
+void push_rdi(C& c) {
+  c.push_back(0x57);
+}
+
+template <typename C>
+void push_rdx(C& c) {
+  c.push_back(0x52);
+}
+
+template <typename C>
+void mov_rsi_rbx(C& c) {
+  c.push_back(0x48);
+  c.push_back(0x89);
+  c.push_back(0xf3);
+}
+
+template <typename C>
 void pop_rbx(C& c) {
   c.push_back(0x5b);
+}
+
+template <typename C>
+void pop_rsi(C& c) {
+  c.push_back(0x5e);
+}
+
+template <typename C>
+void pop_rdi(C& c) {
+  c.push_back(0x5f);
+}
+
+template <typename C>
+void pop_rdx(C& c) {
+  c.push_back(0x5a);
 }
 
 template <typename C>
@@ -204,6 +242,31 @@ void store_xmm0_to_memory_by_offset(C& c, O offset) {
     c.push_back(o & 0xff);
     o >>= 8;
   }
+}
+
+template <typename C, typename O>
+void store_xmm0_to_memory_by_offset_RBX(C& c, O offset) {
+  auto o = static_cast<int64_t>(offset);
+  o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
+  o *= 8;   // Double is eight bytes, signed multiplication by design.
+  LINUX_JIT_ASSERT(o >= 0x80);
+  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  c.push_back(0xf2);
+  c.push_back(0x0f);
+  c.push_back(0x11);
+  c.push_back(0x83);  // RBX!
+  for (size_t i = 0; i < 4; ++i) {
+    c.push_back(o & 0xff);
+    o >>= 8;
+  }
+}
+
+template <typename C>
+void call_function(C& c, uint8_t index) {
+  LINUX_JIT_ASSERT(index < 31);  // Should fit one byte after adding one and multiplying by 8. -- D.K.
+  c.push_back(0xff);
+  c.push_back(0x52);
+  c.push_back((index + 1) * 0x08);
 }
 
 }  // namespace current::fncas::linux_native_jit::opcodes

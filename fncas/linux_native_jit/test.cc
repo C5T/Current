@@ -246,4 +246,65 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
   EXPECT_EQ(2.0, y[3]);
 }
 
+TEST(LinuxNativeJIT, CallsExternalFunctions) {
+  using namespace current::fncas::linux_native_jit::opcodes;
+
+  double (*f[])(double x) = {sin, cos, exp};
+
+  std::vector<uint8_t> code;
+
+  push_rbx(code);
+
+  // mov_rsi_rbx(code);
+
+  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+  push_rdi(code);
+  push_rsi(code);
+  push_rdx(code);
+  call_function(code, 0);
+  pop_rdx(code);
+  pop_rsi(code);
+  pop_rdi(code);
+  store_xmm0_to_memory_by_offset(code, 0);
+
+  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 1);
+  push_rsi(code);
+  push_rdi(code);
+  push_rsi(code);
+  push_rdx(code);
+  call_function(code, 1);
+  pop_rdx(code);
+  pop_rsi(code);
+  pop_rdi(code);
+  pop_rsi(code);
+  store_xmm0_to_memory_by_offset(code, 1);
+
+  load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 2);
+  push_rsi(code);
+  push_rsi(code);
+  push_rdi(code);
+  push_rsi(code);
+  push_rdx(code);
+  call_function(code, 2);
+  pop_rdx(code);
+  pop_rsi(code);
+  pop_rdi(code);
+  pop_rsi(code);
+  pop_rsi(code);
+  store_xmm0_to_memory_by_offset(code, 2);
+
+  pop_rbx(code);
+
+  ret(code);
+
+  std::vector<double> x(3, 1.0);
+  std::vector<double> y(3);
+
+  (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], f);
+
+  EXPECT_EQ(sin(1.0), y[0]);
+  EXPECT_EQ(cos(1.0), y[1]);
+  EXPECT_EQ(exp(1.0), y[2]);
+}
+
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
