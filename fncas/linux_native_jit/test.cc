@@ -242,7 +242,7 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
   EXPECT_EQ(2.0, y[3]);
 }
 
-TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
+TEST(LinuxNativeJIT, FullySupportsRbx) {
   using namespace current::fncas::linux_native_jit;
 
   std::vector<uint8_t> code;
@@ -266,12 +266,16 @@ TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
   opcodes::div_from_memory_by_rbx_offset_to_xmm0(code, 3);
   opcodes::store_xmm0_to_memory_by_rbx_offset(code, 3);
 
+  opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, 0);
+  opcodes::add_from_memory_by_rbx_offset_to_xmm0(code, 0);
+  opcodes::store_xmm0_to_memory_by_rbx_offset(code, 4);
+
   opcodes::pop_rbx(code);
 
   opcodes::ret(code);
 
   std::vector<double> x(4, 10.0);
-  std::vector<double> y(4, 5.0);
+  std::vector<double> y(5, 5.0);
 
   EXPECT_EQ(10.0, x[0]);
   EXPECT_EQ(10.0, x[1]);
@@ -282,6 +286,7 @@ TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
   EXPECT_EQ(5.0, y[1]);
   EXPECT_EQ(5.0, y[2]);
   EXPECT_EQ(5.0, y[3]);
+  EXPECT_EQ(5.0, y[4]);
 
   (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
 
@@ -289,6 +294,7 @@ TEST(LinuxNativeJIT, PerformsArithmeticUsingRbx) {
   EXPECT_EQ(5.0, y[1]);
   EXPECT_EQ(50.0, y[2]);
   EXPECT_EQ(2.0, y[3]);
+  EXPECT_EQ(30.0, y[4]);  // `y[4]` is `y[0] + y[0]`, loaded by `rbx` instead of by `rsi`. -- D.K.
 }
 
 TEST(LinuxNativeJIT, CallsExternalFunctions) {

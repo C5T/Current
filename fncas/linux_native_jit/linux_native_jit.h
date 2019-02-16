@@ -27,6 +27,9 @@ SOFTWARE.
 // TODO(dkorolev): Offsets to offsets, to make sure the instructions have the same opcode length, may be suboptimal.
 // TODO(dkorolev): Look into endianness.
 
+#ifndef FNCAS_LINUX_NATIVE_JIT_LINUX_NATIVE_JIT_H
+#define FNCAS_LINUX_NATIVE_JIT_LINUX_NATIVE_JIT_H
+
 #if defined(__linux__) && defined(__x86_64__)
 
 #define FNCAS_LINUX_NATIVE_JIT_ENABLED
@@ -59,14 +62,15 @@ namespace linux_native_jit {
 // * Uses the `double (*f[])(double): External functions (`sin`, `exp`, etc.) to be called, to avoid dealing with PLT.
 typedef double (*pf_t)(double const* x, double* o, double (*f[])(double));
 
-constexpr static size_t const kPageSize = 4096;
+constexpr static size_t const kLinuxNativeJITExecutableMageSize = 4096;
 
 struct CallableVectorUInt8 final {
   size_t const allocated_size_;
   void* buffer_ = nullptr;
 
   explicit CallableVectorUInt8(std::vector<uint8_t> const& data)
-      : allocated_size_(kPageSize * ((data.size() + kPageSize - 1) / kPageSize)) {
+      : allocated_size_(kLinuxNativeJITExecutableMageSize *
+                        ((data.size() + kLinuxNativeJITExecutableMageSize - 1) / kLinuxNativeJITExecutableMageSize)) {
     buffer_ = ::mmap(NULL, allocated_size_, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON, -1, 0);
     if (!buffer_) {
       std::cerr << "`mmap()` failed.\n";
@@ -209,6 +213,11 @@ void load_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
 }
 
 template <typename C, typename O>
+void load_from_memory_by_rbx_offset_to_xmm0(C& c, O offset) {
+  internal_load_from_memory_by_offset_to_xmm0(c, 0x83, offset);
+}
+
+template <typename C, typename O>
 void internal_op_from_memory_by_offset_to_xmm0(uint8_t add_sub_mul_div_code, C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
@@ -326,4 +335,6 @@ void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
 }  // namespace current::fncas
 }  // namespace current
 
-#endif
+#endif  // defined(__linux__) && defined(__x86_64__)
+
+#endif  // FNCAS_LINUX_NATIVE_JIT_LINUX_NATIVE_JIT_H
