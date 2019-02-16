@@ -79,7 +79,7 @@ struct CallableVectorUInt8 final {
     ::memcpy(buffer_, reinterpret_cast<void const*>(&data[0]), data.size());
   }
 
-  double operator()(double const* x, double* o, double (*f[])(double)) {
+  double operator()(double const* x, double* o, double (*f[])(double)) const {
     // HACK(dkorolev): Shift the buffets by 16 doubles (16 * 8 bytes) to have the load/save/etc. opcodes of same length.
     // HACK(dkorolev): Shitf the functions buffer by one function (8 bytes) to even up the indirect call opcodes.
     return reinterpret_cast<pf_t>(buffer_)(x - 16, o - 16, f - 1);
@@ -93,8 +93,6 @@ struct CallableVectorUInt8 final {
 };
 
 namespace opcodes {
-
-enum class r { rdi, rsi };
 
 template <typename C>
 void push_rbx(C& c) {
@@ -183,7 +181,7 @@ void load_immediate_to_memory_by_rsi_offset(C& c, O offset, double v) {
 }
 
 template <typename C, typename O>
-void load_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
+void internal_load_from_memory_by_offset_to_xmm0(C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
@@ -192,7 +190,7 @@ void load_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
   c.push_back(0xf2);
   c.push_back(0x0f);
   c.push_back(0x10);
-  c.push_back(reg == r::rdi ? 0x87 : 0x86);
+  c.push_back(reg);
   for (size_t i = 0; i < 4; ++i) {
     c.push_back(o & 0xff);
     o >>= 8;
@@ -200,7 +198,17 @@ void load_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
 }
 
 template <typename C, typename O>
-void internal_op_from_memory_by_offset_to_xmm0(uint8_t add_sub_mul_div_code, C& c, r reg, O offset) {
+void load_from_memory_by_rdi_offset_to_xmm0(C& c, O offset) {
+  internal_load_from_memory_by_offset_to_xmm0(c, 0x87, offset);
+}
+
+template <typename C, typename O>
+void load_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
+  internal_load_from_memory_by_offset_to_xmm0(c, 0x86, offset);
+}
+
+template <typename C, typename O>
+void internal_op_from_memory_by_offset_to_xmm0(uint8_t add_sub_mul_div_code, C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
@@ -209,7 +217,7 @@ void internal_op_from_memory_by_offset_to_xmm0(uint8_t add_sub_mul_div_code, C& 
   c.push_back(0xf2);
   c.push_back(0x0f);
   c.push_back(add_sub_mul_div_code);
-  c.push_back(reg == r::rdi ? 0x87 : 0x86);
+  c.push_back(reg);
   for (size_t i = 0; i < 4; ++i) {
     c.push_back(o & 0xff);
     o >>= 8;
@@ -217,27 +225,47 @@ void internal_op_from_memory_by_offset_to_xmm0(uint8_t add_sub_mul_div_code, C& 
 }
 
 template <typename C, typename O>
-void add_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
-  internal_op_from_memory_by_offset_to_xmm0(0x58, c, reg, offset);
+void add_from_memory_by_rdi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x58, c, 0x87, offset);
 }
 
 template <typename C, typename O>
-void sub_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
-  internal_op_from_memory_by_offset_to_xmm0(0x5c, c, reg, offset);
+void sub_from_memory_by_rdi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x5c, c, 0x87, offset);
 }
 
 template <typename C, typename O>
-void mul_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
-  internal_op_from_memory_by_offset_to_xmm0(0x59, c, reg, offset);
+void mul_from_memory_by_rdi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x59, c, 0x87, offset);
 }
 
 template <typename C, typename O>
-void div_from_memory_by_offset_to_xmm0(C& c, r reg, O offset) {
-  internal_op_from_memory_by_offset_to_xmm0(0x5e, c, reg, offset);
+void div_from_memory_by_rdi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x5e, c, 0x87, offset);
 }
 
 template <typename C, typename O>
-void store_xmm0_to_memory_by_offset(C& c, O offset) {
+void add_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x58, c, 0x86, offset);
+}
+
+template <typename C, typename O>
+void sub_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x5c, c, 0x86, offset);
+}
+
+template <typename C, typename O>
+void mul_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x59, c, 0x86, offset);
+}
+
+template <typename C, typename O>
+void div_from_memory_by_rsi_offset_to_xmm0(C& c, O offset) {
+  internal_op_from_memory_by_offset_to_xmm0(0x5e, c, 0x86, offset);
+}
+
+template <typename C, typename O>
+void internal_store_xmm0_to_memory_by_reg_offset(C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
@@ -246,7 +274,7 @@ void store_xmm0_to_memory_by_offset(C& c, O offset) {
   c.push_back(0xf2);
   c.push_back(0x0f);
   c.push_back(0x11);
-  c.push_back(0x86);
+  c.push_back(reg);
   for (size_t i = 0; i < 4; ++i) {
     c.push_back(o & 0xff);
     o >>= 8;
@@ -254,24 +282,17 @@ void store_xmm0_to_memory_by_offset(C& c, O offset) {
 }
 
 template <typename C, typename O>
-void store_xmm0_to_memory_by_offset_RBX(C& c, O offset) {
-  auto o = static_cast<int64_t>(offset);
-  o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
-  o *= 8;   // Double is eight bytes, signed multiplication by design.
-  LINUX_JIT_ASSERT(o >= 0x80);
-  LINUX_JIT_ASSERT(o <= 0x7fffffff);
-  c.push_back(0xf2);
-  c.push_back(0x0f);
-  c.push_back(0x11);
-  c.push_back(0x83);  // RBX!
-  for (size_t i = 0; i < 4; ++i) {
-    c.push_back(o & 0xff);
-    o >>= 8;
-  }
+void store_xmm0_to_memory_by_rsi_offset(C& c, O offset) {
+  internal_store_xmm0_to_memory_by_reg_offset(c, 0x86, offset);
+}
+
+template <typename C, typename O>
+void store_xmm0_to_memory_by_rbx_offset(C& c, O offset) {
+  internal_store_xmm0_to_memory_by_reg_offset(c, 0x83, offset);
 }
 
 template <typename C>
-void call_function(C& c, uint8_t index) {
+void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
   LINUX_JIT_ASSERT(index < 31);  // Should fit one byte after adding one and multiplying by 8. -- D.K.
   c.push_back(0xff);
   c.push_back(0x52);
