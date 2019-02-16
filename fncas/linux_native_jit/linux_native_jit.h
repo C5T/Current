@@ -23,6 +23,9 @@ SOFTWARE.
 *******************************************************************************/
 
 // NOTE(dkorolev): This is really an alpha version. "It works on my machines", and then I don't care for now. -- D.K.
+// TODO(dkorolev): Indirect calls to external functions (to avoid dealing with `@plt`) may be suboptimal.
+// TODO(dkorolev): Offsets to offsets, to make sure the instructions have the same opcode length, may be suboptimal.
+// TODO(dkorolev): Look into endianness.
 
 #if defined(__linux__) && defined(__x86_64__)
 
@@ -35,6 +38,15 @@ SOFTWARE.
 #include <vector>
 
 #include <sys/mman.h>
+
+#ifdef NDEBUG
+#include <cassert>
+#define LINUX_JIT_ASSERT(x) assert(x)
+#else
+#define LINUX_JIT_ASSERT(x)
+#endif
+
+static_assert(sizeof(double) == 8, "FnCAS Linux native JIT compiler requires `double` to be 8 bytes.");
 
 namespace current {
 namespace fncas {
@@ -68,7 +80,8 @@ struct CallableVectorUInt8 final {
   }
 
   double operator()(double const* x, double* o, double (*f[])(double)) {
-    return reinterpret_cast<pf_t>(buffer_)(x, o, f);
+    // HACK(dkorolev): Shift by 16 to have the opcodes have the same length.
+    return reinterpret_cast<pf_t>(buffer_)(x - 16, o - 16, f);
   }
 
   ~CallableVectorUInt8() {
@@ -77,6 +90,70 @@ struct CallableVectorUInt8 final {
     }
   }
 };
+
+namespace opcodes {
+
+enum class r { rdi, rsi };
+enum class xr { xmm0, xmm1 };
+
+template <typename C>
+void push_rbx(C& c) {
+  c.push_back(0x53);
+}
+
+template <typename C>
+void pop_rbx(C& c) {
+  c.push_back(0x5b);
+}
+
+template <typename C>
+void ret(C& c) {
+  c.push_back(0xc3);
+}
+
+template <typename C, typename O, typename V>
+void load_immediate_to_memory_by_offset(C& c, r reg, O offset, V v) {
+  static_assert(sizeof(v) == 8, "");
+  uint64_t x = *reinterpret_cast<uint64_t const*>(&v);
+  c.push_back(0x48);
+  c.push_back(0xb8);
+  for (size_t i = 0; i < 8; ++i) {
+    c.push_back(x & 0xff);
+    x >>= 8;
+  }
+  c.push_back(0x48);
+  c.push_back(0x89);
+  c.push_back(reg == r::rdi ? 0x87 : 0x86);
+
+  auto o = static_cast<int64_t>(offset);
+  o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
+  o *= 8;   // Double is eight bytes, signed multiplication by design.
+  LINUX_JIT_ASSERT(o >= 0x80);
+  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  for (size_t i = 0; i < 4; ++i) {
+    c.push_back(o & 0xff);
+    o >>= 8;
+  }
+}
+
+template <typename C, typename O>
+void load_from_memory_by_offset_to_xmm(C& c, r reg, xr xreg, O offset) {
+  auto o = static_cast<int64_t>(offset);
+  o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
+  o *= 8;   // Double is eight bytes, signed multiplication by design.
+  LINUX_JIT_ASSERT(o >= 0x80);
+  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  c.push_back(0xf2);
+  c.push_back(0x0f);
+  c.push_back(0x10);
+  c.push_back(xreg == xr::xmm0 ? (reg == r::rdi ? 0x87 : 0x86) : (reg == r::rdi ? 0x8f : 0x8e));
+  for (size_t i = 0; i < 4; ++i) {
+    c.push_back(o & 0xff);
+    o >>= 8;
+  }
+}
+
+}  // namespace current::fncas::linux_native_jit::opcodes
 
 }  // namespace current::fncas::linux_native_jit
 }  // namespace current::fncas

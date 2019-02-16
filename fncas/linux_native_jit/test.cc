@@ -52,18 +52,115 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
     0x5b,                   // pop   %rbx
     0xc3                    // ret
   });
-  // clang-format on 
+  // clang-format on
 
   current::fncas::linux_native_jit::CallableVectorUInt8 f(code);
 
-  double x[1] = { 1.0 };
-  EXPECT_EQ(2.0, f(x, nullptr, nullptr));
+  double x[1] = {1.0};
+  EXPECT_EQ(2.0, f(x + 16, nullptr, nullptr));
 
   x[0] = 42;
-  EXPECT_EQ(84.0, f(x, nullptr, nullptr));
+  EXPECT_EQ(84.0, f(x + 16, nullptr, nullptr));
 
   x[0] = 1.5;
-  EXPECT_EQ(3.0, f(x, nullptr, nullptr));
+  EXPECT_EQ(3.0, f(x + 16, nullptr, nullptr));
+}
+
+TEST(LinuxNativeJIT, MiddleLevelTest) {
+  using namespace current::fncas::linux_native_jit::opcodes;
+
+  {
+    std::vector<uint8_t> code;
+    double const d1 = 3.14;
+    double const d2 = 2.17;
+    double const d3 = 0.1234;
+    double const d4 = 9.8765;
+    push_rbx(code);
+    load_immediate_to_memory_by_offset(code, r::rdi, 0, d1);
+    load_immediate_to_memory_by_offset(code, r::rdi, 1, d2);
+    load_immediate_to_memory_by_offset(code, r::rsi, 2, d3);
+    load_immediate_to_memory_by_offset(code, r::rsi, 3, d4);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+    pop_rbx(code);
+    ret(code);
+    std::vector<double> x(1000, 1.0);
+    std::vector<double> y(1000, 2.0);
+    EXPECT_EQ(1.0, x[0]);
+    EXPECT_EQ(1.0, x[1]);
+    EXPECT_EQ(1.0, x[2]);
+    EXPECT_EQ(1.0, x[3]);
+    EXPECT_EQ(2.0, y[0]);
+    EXPECT_EQ(2.0, y[1]);
+    EXPECT_EQ(2.0, y[2]);
+    EXPECT_EQ(2.0, y[3]);
+    EXPECT_EQ(d1, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+    EXPECT_NE(1.0, x[0]);
+    EXPECT_NE(1.0, x[1]);
+    EXPECT_EQ(1.0, x[2]);
+    EXPECT_EQ(1.0, x[3]);
+    EXPECT_EQ(2.0, y[0]);
+    EXPECT_EQ(2.0, y[1]);
+    EXPECT_NE(2.0, y[2]);
+    EXPECT_NE(2.0, y[3]);
+    EXPECT_EQ(d1, x[0]);
+    EXPECT_EQ(d2, x[1]);
+    EXPECT_EQ(d3, y[2]);
+    EXPECT_EQ(d4, y[3]);
+  }
+
+  std::vector<double> x(1000);
+  for (size_t i = 0; i < x.size(); ++i) {
+    x[i] = i;
+  }
+
+  std::vector<double> y(1000);
+  for (size_t i = 0; i < y.size(); ++i) {
+    y[i] = 1000 - i;
+  }
+
+  {
+    // Return X[0].
+    std::vector<uint8_t> code;
+    push_rbx(code);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 0);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 7);  // `xmm1` is ignored.
+    pop_rbx(code);
+    ret(code);
+    EXPECT_EQ(0, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+  }
+
+  {
+    // Return X[259].
+    std::vector<uint8_t> code;
+    push_rbx(code);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm0, 259);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 13);  // `xmm1` is ignored.
+    pop_rbx(code);
+    ret(code);
+    EXPECT_EQ(259, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+  }
+
+  {
+    // Return Y[0].
+    std::vector<uint8_t> code;
+    push_rbx(code);
+    load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 0);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 29);  // `xmm1` is ignored.
+    pop_rbx(code);
+    ret(code);
+    EXPECT_EQ(1000, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+  }
+
+  {
+    // Return Y[931].
+    std::vector<uint8_t> code;
+    push_rbx(code);
+    load_from_memory_by_offset_to_xmm(code, r::rsi, xr::xmm0, 931);
+    load_from_memory_by_offset_to_xmm(code, r::rdi, xr::xmm1, 74);  // `xmm1` is ignored.
+    pop_rbx(code);
+    ret(code);
+    EXPECT_EQ(1000 - 931, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+  }
 }
 
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
