@@ -52,8 +52,11 @@ DEFINE_int64(n, 250, "The number of training examples.");
 DEFINE_int64(m, 50, "The number of variables to train on.");
 DEFINE_double(k, 0.1, "The fraction of variables used per training example.");
 
-DEFINE_bool(dump, false, "Set to dump the input data and the optimization result.");
+DEFINE_string(function, "l2", "The cost function to optimize for, `softmaxes/l1/l2`.");
+DEFINE_string(optimizer, "jit", "The gradient evaluation technique to use `jit|as|clang|slow`.");
+DEFINE_uint32(max_iterations, 10000, "The maximum number of iterations to make.");
 
+DEFINE_bool(dump, false, "Set to dump the input data and the optimization result.");
 DEFINE_bool(log, false, "Set to see the log of optimization iterations.");
 
 DEFINE_int32(random_seed, 42, "The random seed to use. System- and compiler-dependent still.");
@@ -118,20 +121,53 @@ struct CostFunction {
       }
       T const delta = value - data.true_value_per_example[i];
 
-#if 0
-      // This is a case that is just too easy for conjugate gradient descent: Convex multi-variable sparse min-squares.
-      penalty += fncas::sqr(delta);
-#elif 0
-      // FnCAS can optimize L1 as well, although analytical differentiation is kind of pointless in this case. -- D.K.
-      penalty += fncas::ramp(delta) + fncas::ramp(-delta);
-#else
-      // The cost function that shows the power of analytical differentiation.
-      penalty += fncas::log(fncas::exp(delta) + 1.0) + fncas::log(fncas::exp(-delta) + 1.0);
-#endif
+      if (FLAGS_function == "l2") {
+        // This is a case that is just easy for conjugate gradient descent: Convex multi-variable sparse min-squares.
+        penalty += fncas::sqr(delta);
+      } else if (FLAGS_function == "l1") {
+        // FnCAS can optimize L1 as well, although analytical differentiation is kind of pointless in this case. -- D.K.
+        penalty += fncas::ramp(delta) + fncas::ramp(-delta);
+      } else if (FLAGS_function == "softmaxes") {
+        // The cost function that shows the power of analytical differentiation.
+        penalty += fncas::log(fncas::exp(delta) + 1.0) + fncas::log(fncas::exp(-delta) + 1.0);
+      } else {
+        std::cout << "Invalid value for `--function`, try `--help`." << std::endl;
+        std::exit(-1);
+      }
     }
-    return penalty - (2.0 * data.n - std::log(2.0));
+    if (FLAGS_function == "softmaxes") {
+      return penalty - (2.0 * data.n * std::log(2.0));
+    } else {
+      return penalty;
+    }
   }
 };
+
+fncas::optimize::OptimizationResult RunOptimization(Data const& data) {
+  fncas::optimize::OptimizerParameters params;
+  if (FLAGS_max_iterations) {
+    params.SetValue("max_steps", FLAGS_max_iterations);
+  }
+  if (FLAGS_optimizer == "jit") {
+    return fncas::optimize::
+        DefaultOptimizer<CostFunction, fncas::OptimizationDirection::Minimize, fncas::JIT::LinuxNativeJIT>(params, data)
+            .Optimize(data.StartingPoint());
+  } else if (FLAGS_optimizer == "as") {
+    return fncas::optimize::DefaultOptimizer<CostFunction, fncas::OptimizationDirection::Minimize, fncas::JIT::AS>(
+               params, data)
+        .Optimize(data.StartingPoint());
+  } else if (FLAGS_optimizer == "clang") {
+    return fncas::optimize::DefaultOptimizer<CostFunction, fncas::OptimizationDirection::Minimize, fncas::JIT::CLANG>(
+               params, data)
+        .Optimize(data.StartingPoint());
+  } else if (FLAGS_optimizer == "slow") {
+    params.DisableJIT();
+    return fncas::optimize::DefaultOptimizer<CostFunction>(params, data).Optimize(data.StartingPoint());
+  } else {
+    std::cout << "Invalid value for `--optimizer`, try `--help`." << std::endl;
+    std::exit(-1);
+  }
+}
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
@@ -150,21 +186,15 @@ int main(int argc, char** argv) {
     optional_log_fncas_to_stderr_scope = std::make_unique<fncas::impl::ScopedLogToStderr>();
   }
 
-  fncas::optimize::OptimizationResult const result =
-      fncas::optimize::DefaultOptimizer<CostFunction>(data).Optimize(data.StartingPoint());
+  fncas::optimize::OptimizationResult const result = RunOptimization(data);
 
   if (FLAGS_dump) {
     std::cout << JSON(result) << std::endl;
   }
 
-  double sum_squares_over_final_point = 0.0;
-  for (size_t j = 0; j < data.m; ++j) {
-    sum_squares_over_final_point += fncas::sqr(data.true_value_per_variable[j] - result.point[j]);
-  }
-  double const avg_diff_per_variable = std::sqrt(sum_squares_over_final_point / data.m);
-  if (avg_diff_per_variable < 1e-5) {
+  if (result.value < 1e-5) {
     std::cout << "OK, test passed." << std::endl;
   } else {
-    std::cout << "Fail, average per-var discrepancy is " << avg_diff_per_variable << std::endl;
+    std::cout << "FAIL, the optimization did not converge." << std::endl;
   }
 }
