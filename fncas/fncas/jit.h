@@ -770,7 +770,7 @@ struct f_compiled final : f_compiled_super {
 // #define FNCAS_DEBUG_NATIVE_JIT  // NOTE(dkorolev): This line should be commented out.
 
 #if defined(FNCAS_DEBUG_NATIVE_JIT) && defined(NDEBUG)
-#error "Someone forgot to in-#define `FNCAS_DEBUG_NATIVE_JIT`."
+#error "Someone forgot to un-#define `FNCAS_DEBUG_NATIVE_JIT`."
 #endif
 
 struct JITCodeGenerator final {
@@ -942,7 +942,7 @@ struct f_compiled_linux_native_jit final {
       fprintf(stderr, " %02x", int(c));
     }
     std::cerr << "\nHeap size: " << required_heap_size << '\n';
-    std::cerr << "\nDesired index: " << v.index() << '\n';
+    std::cerr << "Desired index: " << v.index() << '\n';
 #endif
     jit_compiled_code = std::make_unique<current::fncas::linux_native_jit::CallableVectorUInt8>(code);
     actual_heap.resize(required_heap_size);
@@ -997,7 +997,7 @@ struct g_compiled_linux_native_jit final {
 #ifdef FNCAS_DEBUG_NATIVE_JIT
     std::cerr << "Code:";
     for (uint8_t c : code) {
-      fprintf(stderr, "\n%02x", int(c));
+      fprintf(stderr, " %02x", int(c));
     }
     std::cerr << "\nHeap size: " << actual_heap.size() << '\n';
 #endif
@@ -1056,10 +1056,12 @@ struct f_impl_selector<JIT::NASM> {
   using type = f_compiled<JIT::NASM>;
 };
 
+#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
 template <>
 struct f_impl_selector<JIT::LinuxNativeJIT> {
   using type = f_compiled_linux_native_jit;
 };
+#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
 
 // Expose JIT-compiled gradients as `fncas::gradient_t<JIT::*>`.
 template <>
@@ -1077,11 +1079,12 @@ struct g_impl_selector<JIT::NASM> {
   using type = g_compiled<JIT::NASM>;
 };
 
+#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
 template <>
 struct g_impl_selector<JIT::LinuxNativeJIT> {
   using type = g_compiled_linux_native_jit;
 };
-
+#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
 
 }  // namespace fncas::impl
 }  // namespace fncas

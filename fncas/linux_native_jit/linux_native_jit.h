@@ -80,7 +80,7 @@ struct CallableVectorUInt8 final {
       std::cerr << "`mprotect()` failed.\n";
       std::exit(-1);
     }
-    ::memcpy(buffer_, reinterpret_cast<void const*>(&data[0]), data.size());
+    ::memcpy(buffer_, &data[0], data.size());
   }
 
   CallableVectorUInt8(CallableVectorUInt8 const&) = delete;
@@ -91,7 +91,7 @@ struct CallableVectorUInt8 final {
   CallableVectorUInt8& operator=(CallableVectorUInt8&&) = delete;
 
   double operator()(double const* x, double* o, double (*f[])(double)) const {
-    // HACK(dkorolev): Shift the buffets by 16 doubles (16 * 8 bytes) to have the load/save/etc. opcodes of same length.
+    // HACK(dkorolev): Shift the buffers by 16 doubles (16 * 8 bytes) to have the load/save/etc. opcodes of same length.
     // HACK(dkorolev): Shitf the functions buffer by one function (8 bytes) to even up the indirect call opcodes.
     return reinterpret_cast<pf_t>(buffer_)(x - 16, o - 16, f - 1);
   }
