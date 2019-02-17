@@ -783,11 +783,7 @@ struct JITCodeGenerator final {
   JITCodeGenerator(std::vector<uint8_t>& code, size_t dim) : code(code), dim(dim) {
     using namespace current::fncas::linux_native_jit;
 
-    // HACK(dkorolev): Well, `cos` needs two extra elements on the stack to be accessible, otherwise it segfaults. -- D.K.
     opcodes::push_rbx(code);
-    opcodes::push_rbx(code);
-    opcodes::push_rbx(code);
-
     opcodes::mov_rsi_rbx(code);
 
 #ifdef FNCAS_DEBUG_NATIVE_JIT
@@ -798,11 +794,7 @@ struct JITCodeGenerator final {
   ~JITCodeGenerator() {
     using namespace current::fncas::linux_native_jit;
 
-    // HACK(dkorolev): Well, `cos` needs two extra elements on the stack to be accessible, otherwise it segfaults. -- D.K.
     opcodes::pop_rbx(code);
-    opcodes::pop_rbx(code);
-    opcodes::pop_rbx(code);
-
     opcodes::ret(code);
 
 #ifdef FNCAS_DEBUG_NATIVE_JIT
@@ -889,13 +881,21 @@ struct JITCodeGenerator final {
 #endif
         } else if (node.type() == NodeType::function) {
           opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, node.argument_index() + dim);
+          opcodes::push_rdi(code);
+          opcodes::push_rdx(code);
           opcodes::call_function_from_rdx_pointers_array_by_index(code, static_cast<uint8_t>(node.function()));
+          opcodes::pop_rdx(code);
+          opcodes::pop_rdi(code);
           opcodes::store_xmm0_to_memory_by_rbx_offset(code, dependent_i + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
           std::cerr << "# Z[" << dependent_i << " + " << dim << "] = "
-                    << function_as_string(node.function()) << "(Z[" << node.argument_index() << " + " << dim << "];\n";
+                    << function_as_string(node.function()) << "(Z[" << node.argument_index() << " + " << dim << "]);\n";
           std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.argument_index() + dim << ");\n";
+          std::cerr << "push_rdi();\n";
+          std::cerr << "push_rdx();\n";
           std::cerr << "call_function_from_rdx_pointers_array_by_index(" << static_cast<int>(node.function()) << ");\n";
+          std::cerr << "pop_rdx();\n";
+          std::cerr << "pop_rdi();\n";
           std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << dependent_i + dim << ");\n";
 #endif
         } else {

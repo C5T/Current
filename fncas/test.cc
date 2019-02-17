@@ -849,6 +849,23 @@ T TrivialFunctionExp(const std::vector<T>& x) {
   return fncas::exp(x[0]);
 }
 
+template <typename T>
+T TrivialSoftmaxFunction(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);
+  return fncas::log(fncas::exp(x[0]) + 1.0);
+}
+
+template <typename T>
+T SoftmaxFunction(const std::vector<T>& x) {
+  // Mimics the implementation of the code in `fncas_linux_native_jit/benchmark.cc`.
+  T penalty = 0.0;
+  T value = 0.0;
+  value += x[0];
+  T const delta = (value - 7.0);
+  penalty += fncas::log(fncas::exp(delta) + 1.0) + fncas::log(fncas::exp(-delta) + 1.0);
+  return penalty - (2.0 - std::log(2.0));
+}
+
 }  // namespace linux_native_jit_test
 
 TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
@@ -880,6 +897,23 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
     EXPECT_EQ(std::exp(2.5), fn({2.5}));
     EXPECT_EQ(std::exp(-8), fn({-8}));
   }
+
+  {
+    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialSoftmaxFunction(fncas::variables_vector_t(1)));
+    EXPECT_EQ(std::log(std::exp(0.0) + 1.0), fn({0.0}));
+    EXPECT_EQ(std::log(std::exp(0.5) + 1.0), fn({0.5}));
+    EXPECT_EQ(std::log(std::exp(1.0) + 1.0), fn({1.0}));
+    EXPECT_EQ(std::log(std::exp(2.0) + 1.0), fn({2.0}));
+    EXPECT_EQ(std::log(std::exp(-0.5) + 1.0), fn({-0.5}));
+    EXPECT_EQ(std::log(std::exp(-1.0) + 1.0), fn({-1.0}));
+    EXPECT_EQ(std::log(std::exp(-2.0) + 1.0), fn({-2.0}));
+  }
+}
+
+TEST(FnCASLinuxNativeJIT, SoftmaxFunction) {
+  using namespace linux_native_jit_test;
+  fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SoftmaxFunction(fncas::variables_vector_t(1)));
+  EXPECT_EQ(SoftmaxFunction(std::vector<double>({1.0})), fn({1.0}));
 }
 
 TEST(FnCASLinuxNativeJIT, SimpleFunction) {
@@ -934,6 +968,16 @@ TEST(FnCASLinuxNativeJIT, GradientOfZeroOrXFunction) {
   const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> jit_compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, jit_compiled_gradient({-9.5})[0]);
   EXPECT_EQ(1.0, jit_compiled_gradient({+9.5})[0]);
+}
+
+TEST(FnCASLinuxNativeJIT, GradientOfSoftmaxFunction) {
+  const fncas::variables_vector_t x(1);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = linux_native_jit_test::SoftmaxFunction(x);
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+
+  const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> gc(fi, gi);
+
+  EXPECT_NEAR(gi({0.0})[0], gc({0.0})[0], 1e-6);
 }
 
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
