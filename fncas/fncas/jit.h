@@ -835,6 +835,7 @@ struct JITCodeGenerator final {
             opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, v);
             opcodes::store_xmm0_to_memory_by_rbx_offset(code, i + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
+            std::cerr << "# Z[" << i << " + " << dim << "] = X[" << v << "];\n";
             std::cerr << "load_from_memory_by_rdi_offset_to_xmm0(" << v << ");\n";
             std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << i + dim << ");\n";
 #endif
@@ -842,6 +843,7 @@ struct JITCodeGenerator final {
             // Load value `node.value()` by address `i + dim`, because the first `dim` of the output are the gradient.
             opcodes::load_immediate_to_memory_by_rbx_offset(code, i + dim, node.value());
 #ifdef FNCAS_DEBUG_NATIVE_JIT
+            std::cerr << "# Z[" << i << " + " << dim << "] = " << node.value() << ";\n";
             std::cerr << "load_immediate_to_memory_by_rbx_offset(" << i + dim << ", " << node.value() << ");\n";
 #endif
           } else if (node.type() == NodeType::operation) {
@@ -859,11 +861,15 @@ struct JITCodeGenerator final {
         node_impl& node = node_vector_singleton()[dependent_i];
         if (node.type() == NodeType::operation) {
           // Perform add/sub/mul/div, all in the operating memory, shifted by `dim`.
+          auto const op = node.operation();
           opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, node.lhs_index() + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
+          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = Z["
+                    << node.lhs_index() << " + " << dim << "] " << operation_as_string(op) << " Z["
+                    << node.rhs_index() << " + " << dim << "];\n";
+
           std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.lhs_index() + dim << ");\n";
 #endif
-          auto const op = node.operation();
           if (op == MathOperation::add) {
             opcodes::add_from_memory_by_rbx_offset_to_xmm0(code, node.rhs_index() + dim);
           } else if (op == MathOperation::subtract) {
@@ -886,8 +892,10 @@ struct JITCodeGenerator final {
           opcodes::call_function_from_rdx_pointers_array_by_index(code, static_cast<uint8_t>(node.function()));
           opcodes::store_xmm0_to_memory_by_rbx_offset(code, dependent_i + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
+          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = "
+                    << function_as_string(node.function()) << "(Z[" << node.argument_index() << " + " << dim << "];\n";
           std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.argument_index() + dim << ");\n";
-          std::cerr << "call_function_from_rdx_pointers_array_by_index(" << dependent_i + dim << ");\n";
+          std::cerr << "call_function_from_rdx_pointers_array_by_index(" << static_cast<int>(node.function()) << ");\n";
           std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << dependent_i + dim << ");\n";
 #endif
         } else {
@@ -923,6 +931,7 @@ struct f_compiled_linux_native_jit final {
       code_generator.jit_compile_node(v.index());
       opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, v.index());
 #ifdef FNCAS_DEBUG_NATIVE_JIT
+      std::cerr << "# return Z[" << v.index() << "];\n";
       std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << v.index() << ");\n";
 #endif
       required_heap_size = code_generator.max_dim + 1;
@@ -963,9 +972,10 @@ struct g_compiled_linux_native_jit final {
   void generate_code_for_g(JITCodeGenerator& code_generator, V const& v, size_t output_index) {
     using namespace current::fncas::linux_native_jit;
     code_generator.jit_compile_node(v.index());
-    opcodes::load_from_memory_by_rbx_offset_to_xmm0(code_generator.code, v.index());
+    opcodes::load_from_memory_by_rbx_offset_to_xmm0(code_generator.code, v.index() + dim);
     opcodes::store_xmm0_to_memory_by_rbx_offset(code_generator.code, output_index);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "# G[" << output_index << "] = Z[" << v.index() << " + " << dim << "];\n";
     std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << v.index() + dim << ");\n";
     std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << output_index << ");\n";
 #endif
@@ -984,6 +994,13 @@ struct g_compiled_linux_native_jit final {
       CURRENT_ASSERT(static_cast<size_t>(code_generator.max_dim + 1) >= dim);
       actual_heap.resize(dim + code_generator.max_dim + 1);
     }
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "Code:";
+    for (uint8_t c : code) {
+      fprintf(stderr, "\n%02x", int(c));
+    }
+    std::cerr << "\nHeap size: " << actual_heap.size() << '\n';
+#endif
     jit_compiled_code = std::make_unique<current::fncas::linux_native_jit::CallableVectorUInt8>(code);
   }
 

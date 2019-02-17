@@ -210,7 +210,6 @@ TEST(FnCAS, JITGradientsWrapper) {
 
   const fncas::gradient_t<fncas::JIT::Default> gc(fi, gi);
 
-  // TODO(dkorolev): Maybe return return function value and its gradient together from a call to `gc`?
   const auto d_3_3_compiled = gc(p_3_3);
 
   EXPECT_EQ(18, d_3_3_compiled[0]) << gc.lib_filename();
@@ -900,7 +899,25 @@ TEST(FnCASLinuxNativeJIT, SmokeTestFunction) {
   EXPECT_EQ(9.0, fn({3.0, 0.0, -1.0}));
 }
 
-TEST(FnCASLinuxNativeJIT, Gradients) {
+TEST(FnCASLinuxNativeJIT, GradientOfSimpleFunction) {
+  // Use the synopsis of the gradient computed via the `Blueprint` technique.
+  // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
+
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
+
+  const fncas::variables_vector_t x(2);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+
+  // NOTE(dkorolev): With the proper default setting, this test is identical to the one above,
+  //                 but I would still like to keep it in case the default is changed later on.
+  const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> gc(fi, gi);
+
+  EXPECT_EQ(18, gc(p_3_3)[0]) << gc.lib_filename();
+  EXPECT_EQ(36, gc(p_3_3)[1]) << gc.lib_filename();
+}
+
+TEST(FnCASLinuxNativeJIT, GradientOfZeroOrXFunction) {
   // Use the synopsis of the gradient computed via the `Blueprint` technique.
   // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
 
