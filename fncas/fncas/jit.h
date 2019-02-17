@@ -775,7 +775,7 @@ struct f_compiled final : f_compiled_super {
 
 struct JITCodeGenerator final {
   std::vector<uint8_t>& code;
-  size_t const dim;  // "Pre-allocated" in the output vector, 0 for function computation, dim. of `x` for gradints.
+  size_t const dim;  // "Pre-allocated" in the output vector, 0 for function computation, dim. of `x` for gradients.
 
   std::vector<bool> computed;
   node_index_t max_dim = 0;
