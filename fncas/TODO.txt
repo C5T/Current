@@ -11,6 +11,7 @@ TODO after adding real native Linux JIT:
   * At least, do not add zeroes and multiply by ones in the gradient.
   * Collapse constants.
   * Remove multiplications by zero altogether.
+* Look into how hard would it be to have this code run on a Mac as well.
 
 "Good to have"-s and "didn't-have-time-to-add"-s, in no particular order.
 
