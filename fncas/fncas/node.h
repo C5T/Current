@@ -175,7 +175,7 @@ enum class reuse_cache : int8_t { invalidate = 0, reuse = 1 };
 inline double_t eval_node(node_index_t index,
                           const std::vector<double_t>& x,
                           reuse_cache reuse = reuse_cache::invalidate) {
-  std::vector<double_t>& V = internals_singleton().node_value_;
+  std::vector<double_t>& node_value = internals_singleton().node_value_;
   std::vector<int8_t>& B = internals_singleton().node_computed_;
   if (reuse == reuse_cache::invalidate) {
     B.clear();
@@ -192,11 +192,11 @@ inline double_t eval_node(node_index_t index,
         if (f.type() == NodeType::variable) {
           const int32_t v = f.variable();
           CURRENT_ASSERT(v >= 0 && v < static_cast<int32_t>(x.size()));
-          growing_vector_access(V, i, 0.0) = x[v];
+          growing_vector_access(node_value, i, 0.0) = x[v];
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
 
         } else if (f.type() == NodeType::value) {
-          growing_vector_access(V, i, 0.0) = f.value();
+          growing_vector_access(node_value, i, 0.0) = f.value();
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
         } else if (f.type() == NodeType::operation) {
           stack.push(~i);
@@ -213,12 +213,12 @@ inline double_t eval_node(node_index_t index,
     } else {
       node_impl& f = node_vector_singleton()[dependent_i];
       if (f.type() == NodeType::operation) {
-        growing_vector_access(V, dependent_i, 0.0) =
-            apply_operation<double_t>(f.operation(), V[f.lhs_index()], V[f.rhs_index()]);
+        growing_vector_access(node_value, dependent_i, 0.0) =
+            apply_operation<double_t>(f.operation(), node_value[f.lhs_index()], node_value[f.rhs_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == NodeType::function) {
-        growing_vector_access(V, dependent_i, 0.0) =
-            ::fncas::apply_function<double_t>(f.function(), V[f.argument_index()]);
+        growing_vector_access(node_value, dependent_i, 0.0) =
+            ::fncas::apply_function<double_t>(f.function(), node_value[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         CURRENT_ASSERT(false);
@@ -227,7 +227,7 @@ inline double_t eval_node(node_index_t index,
     }
   }
   CURRENT_ASSERT(B[index]);
-  return V[index];
+  return node_value[index];
 }
 
 // The code that deals with nodes directly uses class V as a wrapper to node_impl.

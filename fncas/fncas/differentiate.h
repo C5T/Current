@@ -219,6 +219,7 @@ struct g_impl<JIT::Blueprint> : g_super {
     for (size_t i = 0; i < dim; ++i) {
       g_[i] = f_.template differentiate<X>(x_ref, i);
     }
+    internals_singleton().node_vector_.shrink_to_fit();
   }
   explicit g_impl(const V& f) : g_impl(*internals_singleton().x_ptr_, f) {}
   g_impl(const X& x_ref, const f_impl<JIT::Blueprint>& fi) : g_impl(x_ref, fi.f_) {}
