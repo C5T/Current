@@ -128,7 +128,11 @@ inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const 
       d_add,
       d_sub,
       d_mul,
-      [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
+      [](const V& a, const V& b, const V& da, const V& db) { 
+        // The unary minus doesn't exist, so a "0" node would still appear there, and thus no harm.
+        return (simplified_mul(b, da) - simplified_mul(a, db)) / (b * b);
+      }
+  };
   return operation < MathOperation::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
