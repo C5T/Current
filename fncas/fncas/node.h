@@ -286,6 +286,8 @@ struct GenericV : node_index_allocator {
   NodeType& type() const { return node_vector_singleton()[index_].type(); }
   int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
   double_t& value() const { return node_vector_singleton()[index_].value(); }
+  bool is_value() const { return type() == NodeType::value; }
+  bool equals_to(double_t expected_value) const { return is_value() && value() == expected_value; }
   MathOperation& operation() const { return node_vector_singleton()[index_].operation(); }
   node_index_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
   node_index_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }

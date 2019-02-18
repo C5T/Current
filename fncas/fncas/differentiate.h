@@ -69,11 +69,11 @@ std::vector<double_t> approximate_gradient(F&& f,
 inline V d_add(const V& a, const V& b, const V& da, const V& db) {
   static_cast<void>(a);
   static_cast<void>(b);
-  if (da.type() == NodeType::value && db.type() == NodeType::value) {
+  if (da.is_value() && db.is_value()) {
     return da.value() + db.value();
-  } else if (db.type() == NodeType::value && db.value() == 0.0) {
+  } else if (db.equals_to(0)) {
     return da;
-  } else if(da.type() == NodeType::value && da.value() == 0.0) {
+  } else if(da.equals_to(0)) {
     return db;
   } else {
     return da + db;
@@ -83,14 +83,42 @@ inline V d_add(const V& a, const V& b, const V& da, const V& db) {
 inline V d_sub(const V& a, const V& b, const V& da, const V& db) {
   static_cast<void>(a);
   static_cast<void>(b);
-  if (da.type() == NodeType::value && db.type() == NodeType::value) {
+  if (da.is_value() && db.is_value()) {
     return da.value() - db.value();
-  } else if (db.type() == NodeType::value && db.value() == 0.0) {
+  } else if (db.equals_to(0)) {
     return da;
-  } else if(da.type() == NodeType::value && da.value() == 0.0) {
+  } else if(da.equals_to(0)) {
     return -db;
   } else {
     return da - db;
+  }
+}
+
+inline V simplified_mul(const V& x, const V& y) {
+  if (x.equals_to(0) || y.equals_to(0)) {
+    return 0;
+  } else if (x.is_value() && y.is_value()) {
+    return x.value() * y.value();
+  } else if (y.equals_to(1)) {
+    return x;
+  } else if (x.equals_to(1)) {
+    return y;
+  } else {
+    return x * y;
+  }
+}
+
+inline V d_mul(const V& a, const V& b, const V& da, const V& db) {
+  bool const lhs_zero = a.equals_to(0) || db.equals_to(0);
+  bool const rhs_zero = b.equals_to(0) || da.equals_to(0);
+  if (lhs_zero && rhs_zero) {
+    return 0;
+  } else if (lhs_zero) {
+    return simplified_mul(b, da);
+  } else if (rhs_zero) {
+    return simplified_mul(a, db);
+  } else {
+    return simplified_mul(a, db) + simplified_mul(b, da);
   }
 }
 
@@ -99,7 +127,7 @@ inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const 
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
       d_add,
       d_sub,
-      [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
+      d_mul,
       [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
   return operation < MathOperation::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
