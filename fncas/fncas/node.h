@@ -277,7 +277,7 @@ struct GenericV : node_index_allocator {
   MathFunction& function() const { return node_vector_singleton()[index_].function(); }
   node_index_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
   GenericV argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
-  static GenericV variable(node_index_t index) {
+  static GenericV create_variable_node(node_index_t index) {
     GenericV result;
     result.type() = NodeType::variable;
     result.variable() = index;
@@ -385,7 +385,7 @@ class vector<::fncas::impl::V> {
 namespace fncas {
 namespace impl {
 
-struct X : std::vector<V>, noncopyable {
+struct X final : std::vector<V>, noncopyable {
   using super_t = std::vector<V>;
 
   explicit X(size_t dim) {
@@ -403,11 +403,11 @@ struct X : std::vector<V>, noncopyable {
     // Initialize the actual `vector<V>`.
     super_t::resize(internals_singleton().dim_);
     for (size_t i = 0; i < super_t::size(); ++i) {
-      super_t::operator[](i) = V::variable(i);
+      super_t::operator[](i) = V::create_variable_node(i);
     }
   }
 
-  ~X() {
+  virtual ~X() {
     auto& meta = internals_singleton();
     if (meta.x_ptr_ == this) {
       // The condition is required to correctly handle the case when the constructor did `throw`.
