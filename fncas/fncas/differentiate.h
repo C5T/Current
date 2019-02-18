@@ -80,11 +80,25 @@ inline V d_add(const V& a, const V& b, const V& da, const V& db) {
   }
 }
 
+inline V d_sub(const V& a, const V& b, const V& da, const V& db) {
+  static_cast<void>(a);
+  static_cast<void>(b);
+  if (da.type() == NodeType::value && db.type() == NodeType::value) {
+    return da.value() - db.value();
+  } else if (db.type() == NodeType::value && db.value() == 0.0) {
+    return da;
+  } else if(da.type() == NodeType::value && da.value() == 0.0) {
+    return -db;
+  } else {
+    return da - db;
+  }
+}
+
 inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const V& da, const V& db) {
   static const size_t n = static_cast<size_t>(MathOperation::end);
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
       d_add,
-      [](const V&, const V&, const V& da, const V& db) { return da - db; },
+      d_sub,
       [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
       [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
   return operation < MathOperation::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
