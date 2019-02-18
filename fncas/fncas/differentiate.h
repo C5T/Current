@@ -140,29 +140,63 @@ inline node_index_t d_f(MathFunction function, const V& original, const V& x, co
   static const size_t n = static_cast<size_t>(MathFunction::end);
   static const std::function<V(const V&, const V&, const V&)> differentiator[n] = {
       // sqr().
-      [](const V&, const V& x, const V& dx) { return V(2.0) * x * dx; },
+      [](const V&, const V& x, const V& dx) { return simplified_mul(V(2.0), simplified_mul(x, dx)); },
       // sqrt().
-      [](const V& original, const V&, const V& dx) { return dx / (original + original); },
+      [](const V& original, const V&, const V& dx) { 
+        if (original.is_value()) {
+          return simplified_mul(V(0.5 / original.value()), dx);
+        } else {
+          return dx / (original + original);
+        }
+      },
       // exp().
-      [](const V& original, const V&, const V& dx) { return original * dx; },
+      [](const V& original, const V&, const V& dx) { return simplified_mul(original, dx); },
       // log().
-      [](const V&, const V& x, const V& dx) { return dx / x; },
+      [](const V&, const V& x, const V& dx) { 
+        if (x.is_value()) {
+          return simplified_mul(V(1.0) / x.value(), dx);
+        } else {
+          return dx / x; 
+        }
+      },
       // sin().
-      [](const V&, const V& x, const V& dx) { return dx * ::fncas::cos(x); },
+      [](const V&, const V& x, const V& dx) { return simplified_mul(dx, ::fncas::cos(x)); },
       // cos().
-      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx * ::fncas::sin(x); },
+      [](const V&, const V& x, const V& dx) { return simplified_mul(V(-1.0), simplified_mul(dx, ::fncas::sin(x))); },
       // tan().
       [](const V&, const V& x, const V& dx) {
-        V a = V(4.0) * dx * ::fncas::cos(x) * ::fncas::cos(x);
+        V a = simplified_mul(V(4.0), simplified_mul(dx, ::fncas::cos(x) * ::fncas::cos(x)));
         V b = ::fncas::cos(x + x) + 1;
-        return a / (b * b);
+        if (b.is_value()) {
+          return simplified_mul(V(1.0 / b.value()), a);
+        } else {
+          return a / (b * b);
+        }
       },
       // asin().
-      [](const V&, const V& x, const V& dx) { return dx / ::fncas::sqrt(V(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) {
+        if (x.is_value()) {
+          return simplified_mul(V(1.0) / (::fncas::sqrt(V(1.0) - x * x)), dx);
+        } else {
+          return dx / ::fncas::sqrt(V(1.0) - x * x);
+        }
+      },
       // acos().
-      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / ::fncas::sqrt(V(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) {
+        if (x.is_value()) {
+          return simplified_mul(V(-1.0) / ::fncas::sqrt(V(1.0) - x * x), dx);
+        } else {
+          return V(-1.0) * dx / ::fncas::sqrt(V(1.0) - x * x);
+        }
+      },
       // atan().
-      [](const V&, const V& x, const V& dx) { return dx / (x * x + V(1.0)); },
+      [](const V&, const V& x, const V& dx) {
+        if (x.is_value()) {
+          return simplified_mul(V(1.0) / (x * x + V(1.0)), dx);
+        } else {
+          return dx / (x * x + V(1.0));
+        }
+      },
       // unit_step().
       [](const V& o, const V&, const V&) {
         CURRENT_THROW(exceptions::FnCASZeroOrOneIsNonDifferentiable());
