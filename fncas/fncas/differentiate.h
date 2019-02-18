@@ -237,6 +237,7 @@ struct g_impl<JIT::Blueprint> : g_super {
     }
     return r;
   }
+  std::string debug_gradient_as_string(size_t i) const { return g_[i].debug_as_string(); }
   size_t dim() const override { return g_.size(); }
 };
 

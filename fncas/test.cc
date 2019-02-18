@@ -980,4 +980,67 @@ TEST(FnCASLinuxNativeJIT, GradientOfSoftmaxFunction) {
   EXPECT_NEAR(gi({0.0})[0], gc({0.0})[0], 1e-6);
 }
 
+namespace functions_to_simplify_gradients {
+
+template <typename T>
+T Return42(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);  // Parameterless functions are not supported, so take one dummy argument.
+  return 42.0;
+}
+
+template <typename T>
+T ReturnX0PlusX1(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] + x[1];
+}
+
+template <typename T>
+T ReturnX0MinusX1(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] + x[1];
+}
+
+template <typename T>
+T ReturnX0TimesX1(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] * x[1];
+}
+
+}  // namespace functions_to_simplify_gradients
+
+TEST(FnCASGradientSimplification, Smoke) {
+  using namespace functions_to_simplify_gradients;
+  {
+    const fncas::variables_vector_t x(1);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = Return42(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("42", fi.debug_as_string());
+    EXPECT_EQ("0", gi.debug_gradient_as_string(0));
+  }
+  {
+    const fncas::variables_vector_t x(2);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0PlusX1(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("(x[0]+x[1])", fi.debug_as_string());
+    EXPECT_EQ("(1+0)", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("(0+1)", gi.debug_gradient_as_string(1));
+  }
+  {
+    const fncas::variables_vector_t x(2);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0MinusX1(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("(x[0]+x[1])", fi.debug_as_string());
+    EXPECT_EQ("(1+0)", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("(0+1)", gi.debug_gradient_as_string(1));
+  }
+  {
+    const fncas::variables_vector_t x(2);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0TimesX1(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("(x[0]*x[1])", fi.debug_as_string());
+    EXPECT_EQ("((x[0]*0)+(x[1]*1))", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("((x[0]*1)+(x[1]*0))", gi.debug_gradient_as_string(1));
+  }
+}
+
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
