@@ -37,7 +37,7 @@ namespace impl {
 static const double_t APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 
 template <typename F>
-double_t approximate_derivative(F f,
+double_t approximate_derivative(F&& f,
                                 const std::vector<double_t>& x,
                                 node_index_t i,
                                 const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
@@ -49,7 +49,7 @@ double_t approximate_derivative(F f,
 }
 
 template <typename F>
-std::vector<double_t> approximate_gradient(F f,
+std::vector<double_t> approximate_gradient(F&& f,
                                            const std::vector<double_t>& x,
                                            const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<double_t> g(x.size());
@@ -94,7 +94,7 @@ inline node_index_t d_f(MathFunction function, const V& original, const V& x, co
       // tan().
       [](const V&, const V& x, const V& dx) {
         V a = V(4.0) * dx * ::fncas::cos(x) * ::fncas::cos(x);
-        V b = fncas::cos(x + x) + 1;
+        V b = ::fncas::cos(x + x) + 1;
         return a / (b * b);
       },
       // asin().
@@ -102,7 +102,7 @@ inline node_index_t d_f(MathFunction function, const V& original, const V& x, co
       // acos().
       [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / ::fncas::sqrt(V(1.0) - x * x); },
       // atan().
-      [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
+      [](const V&, const V& x, const V& dx) { return dx / (x * x + V(1.0)); },
       // unit_step().
       [](const V& o, const V&, const V&) {
         CURRENT_THROW(exceptions::FnCASZeroOrOneIsNonDifferentiable());
