@@ -66,10 +66,24 @@ std::vector<double_t> approximate_gradient(F&& f,
   return g;
 }
 
+inline V d_add(const V& a, const V& b, const V& da, const V& db) {
+  static_cast<void>(a);
+  static_cast<void>(b);
+  if (da.type() == NodeType::value && db.type() == NodeType::value) {
+    return da.value() + db.value();
+  } else if (db.type() == NodeType::value && db.value() == 0.0) {
+    return da;
+  } else if(da.type() == NodeType::value && da.value() == 0.0) {
+    return db;
+  } else {
+    return da + db;
+  }
+}
+
 inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const V& da, const V& db) {
   static const size_t n = static_cast<size_t>(MathOperation::end);
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
-      [](const V&, const V&, const V& da, const V& db) { return da + db; },
+      d_add,
       [](const V&, const V&, const V& da, const V& db) { return da - db; },
       [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
       [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};

@@ -997,7 +997,7 @@ T ReturnX0PlusX1(const std::vector<T>& x) {
 template <typename T>
 T ReturnX0MinusX1(const std::vector<T>& x) {
   CURRENT_ASSERT(x.size() == 2u);
-  return x[0] + x[1];
+  return x[0] - x[1];
 }
 
 template <typename T>
@@ -1022,16 +1022,16 @@ TEST(FnCASGradientSimplification, Smoke) {
     const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0PlusX1(x);
     const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
     EXPECT_EQ("(x[0]+x[1])", fi.debug_as_string());
-    EXPECT_EQ("(1+0)", gi.debug_gradient_as_string(0));
-    EXPECT_EQ("(0+1)", gi.debug_gradient_as_string(1));
+    EXPECT_EQ("1", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("1", gi.debug_gradient_as_string(1));
   }
   {
     const fncas::variables_vector_t x(2);
     const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0MinusX1(x);
     const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
-    EXPECT_EQ("(x[0]+x[1])", fi.debug_as_string());
-    EXPECT_EQ("(1+0)", gi.debug_gradient_as_string(0));
-    EXPECT_EQ("(0+1)", gi.debug_gradient_as_string(1));
+    EXPECT_EQ("(x[0]-x[1])", fi.debug_as_string());
+    EXPECT_EQ("(1-0)", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("(0-1)", gi.debug_gradient_as_string(1));
   }
   {
     const fncas::variables_vector_t x(2);
