@@ -49,10 +49,10 @@ SOFTWARE.
 #include "../../bricks/util/random.h"
 
 DEFINE_int64(n, 250, "The number of training examples.");
-DEFINE_int64(m, 50, "The number of variables to train on.");
+DEFINE_int64(m, 100, "The number of variables to train on.");
 DEFINE_double(k, 0.1, "The fraction of variables used per training example.");
 
-DEFINE_string(function, "l2", "The cost function to optimize for, `softmaxes/l1/l2`.");
+DEFINE_string(function, "softmaxes", "The cost function to optimize for, `softmaxes/l1/l2`.");
 DEFINE_string(optimizer, "jit", "The gradient evaluation technique to use `jit|as|clang|slow`.");
 DEFINE_uint32(max_iterations, 10000, "The maximum number of iterations to make.");
 
