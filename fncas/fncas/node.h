@@ -35,6 +35,7 @@
 #include <sstream>
 #include <vector>
 #include <exception>
+#include <unordered_map>
 
 #include "base.h"
 #include "exceptions.h"
@@ -122,12 +123,16 @@ struct internals_impl {
   // A block of RAM to be used as the buffer for externally compiled functions.
   std::vector<double_t> heap_for_compiled_evaluations_;
 
+  // A hashmap of per-immediate-value-created nodes, to not create constants such as zeroes and ones way too often.
+  std::unordered_map<double_t, node_index_t> allocated_values_map_;
+
   void reset() {
     dim_ = 0;
     x_ptr_ = nullptr;
     node_vector_.clear();
     df_.clear();
     heap_for_compiled_evaluations_.clear();
+    allocated_values_map_.clear();
   }
 };
 
@@ -236,13 +241,25 @@ inline double_t eval_node(node_index_t index,
 // arithmetical and mathematical operations are overloaded for class V.
 
 struct allocate_new {};
+struct allocate_for_double {};
 enum class from_index : node_index_t;
 
 struct node_index_allocator {
   node_index_t index_;  // non-const since `V` objects can be modified.
-  explicit inline node_index_allocator(from_index i) : index_(static_cast<node_index_t>(i)) {}
-  explicit inline node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
+  explicit node_index_allocator(from_index i) : index_(static_cast<node_index_t>(i)) {}
+  explicit node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
     node_vector_singleton().resize(index_ + 1);
+  }
+  node_index_allocator(allocate_for_double, double_t value) {
+    std::unordered_map<double_t, node_index_t>& map = internals_singleton().allocated_values_map_;
+    auto const cit = map.find(value);
+    if (cit != map.end()) {
+      index_ = cit->second;
+    } else {
+      index_ = node_vector_singleton().size();
+      map[value] = index_;
+      node_vector_singleton().resize(index_ + 1);
+    }
   }
   node_index_t index() const { return index_; }
   node_index_allocator() = delete;
@@ -261,7 +278,7 @@ struct GenericV : node_index_allocator {
 
  public:
   GenericV() : node_index_allocator(allocate_new()) {}
-  GenericV(double_t x) : node_index_allocator(allocate_new()) {
+  GenericV(double_t x) : node_index_allocator(allocate_for_double(), x) {
     type() = NodeType::value;
     value() = x;
   }
