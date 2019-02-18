@@ -1,16 +1,13 @@
 TODO after adding real native Linux JIT:
 
 * Memory optimizations:
-  * Shrink the nodes container once the function is ready to be processed.
   * Do a dry run to `.reserve()` just the right number of bytes to `mmap()`, and then generate the ultimate code just there.
 * Extra debug outputs.
   * Time it took to differentiate.
   * Size of the "binary" JIT code.
 * Extra optimizations:
   * Actually operate on a `double*`, not a `vector<double>`, when the gradient is computed.
-  * At least, do not add zeroes and multiply by ones in the gradient.
   * Collapse constants.
-  * Remove multiplications by zero altogether.
 * Look into how hard would it be to have this code run on a Mac as well.
 
 "Good to have"-s and "didn't-have-time-to-add"-s, in no particular order.
