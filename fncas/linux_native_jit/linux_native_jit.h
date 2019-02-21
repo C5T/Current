@@ -62,15 +62,15 @@ namespace linux_native_jit {
 // * Uses the `double (*f[])(double): External functions (`sin`, `exp`, etc.) to be called, to avoid dealing with PLT.
 typedef double (*pf_t)(double const* x, double* o, double (*f[])(double));
 
-constexpr static size_t const kLinuxNativeJITExecutableMageSize = 4096;
+constexpr static size_t const kLinuxNativeJITExecutablePageSize = 4096;
 
 struct CallableVectorUInt8 final {
   size_t const allocated_size_;
   void* buffer_ = nullptr;
 
   explicit CallableVectorUInt8(std::vector<uint8_t> const& data)
-      : allocated_size_(kLinuxNativeJITExecutableMageSize *
-                        ((data.size() + kLinuxNativeJITExecutableMageSize - 1) / kLinuxNativeJITExecutableMageSize)) {
+      : allocated_size_(kLinuxNativeJITExecutablePageSize *
+                        ((data.size() + kLinuxNativeJITExecutablePageSize - 1) / kLinuxNativeJITExecutablePageSize)) {
     buffer_ = ::mmap(NULL, allocated_size_, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON, -1, 0);
     if (!buffer_) {
       std::cerr << "`mmap()` failed.\n";
@@ -92,7 +92,7 @@ struct CallableVectorUInt8 final {
 
   double operator()(double const* x, double* o, double (*f[])(double)) const {
     // HACK(dkorolev): Shift the buffers by 16 doubles (16 * 8 bytes) to have the load/save/etc. opcodes of same length.
-    // HACK(dkorolev): Shitf the functions buffer by one function (8 bytes) to even up the indirect call opcodes.
+    // HACK(dkorolev): Shift the functions buffer by one function (8 bytes) to even up the indirect call opcodes.
     return reinterpret_cast<pf_t>(buffer_)(x - 16, o - 16, f - 1);
   }
 
