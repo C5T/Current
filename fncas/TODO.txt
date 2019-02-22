@@ -1,6 +1,10 @@
 TODO after adding real native Linux JIT:
 
 * Memory optimizations:
+  * Add a `JIT.txt` explanation.
+    * https://wiki.osdev.org/System_V_ABI
+    * Registers usage, etc.
+  * Consider using SIMD for further optimization.
   * Do a dry run to `.reserve()` just the right number of bytes to `mmap()`, and then generate the ultimate code just there.
 * Extra debug outputs.
   * Time it took to differentiate.
