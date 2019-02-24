@@ -30,7 +30,7 @@ SOFTWARE.
 #ifndef FNCAS_X64_NATIVE_JIT_X64_NATIVE_JIT_H
 #define FNCAS_X64_NATIVE_JIT_X64_NATIVE_JIT_H
 
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__x86_64__)
 
 #define FNCAS_X64_NATIVE_JIT_ENABLED
 
@@ -347,6 +347,6 @@ void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
 }  // namespace current::fncas
 }  // namespace current
 
-#endif  // defined(__linux__) && defined(__x86_64__)
+#endif  // defined(__x86_64__)
 
 #endif  // FNCAS_X64_NATIVE_JIT_X64_NATIVE_JIT_H
