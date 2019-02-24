@@ -67,17 +67,17 @@ struct Data {
   size_t const n;
   size_t const m;
   double const k;
-  size_t const q;                                  // Just `m * k` rounded to an integer.
-  std::vector<std::vector<size_t>> sparse_matrix;  // Sorted per training example.
-  std::vector<double> true_value_per_variable;     // Integers.
-  std::vector<double> true_value_per_example;      // Integers.
-  std::vector<size_t> shuffled_variable_indexes;   // To always select exactly `m * k` variables per training example.
+  size_t const q;                                    // Just `m * k` rounded to an integer.
+  std::vector<std::vector<uint32_t>> sparse_matrix;  // Sorted per training example.
+  std::vector<double> true_value_per_variable;       // Integers.
+  std::vector<double> true_value_per_example;        // Integers.
+  std::vector<uint32_t> shuffled_variable_indexes;   // To always select exactly `m * k` variables per training example.
   Data(size_t n = FLAGS_n, size_t m = FLAGS_m, double k = FLAGS_k)
       : n(n),
         m(m),
         k(k),
         q(static_cast<size_t>(m * k + 0.5)),
-        sparse_matrix(n, std::vector<size_t>(q)),
+        sparse_matrix(n, std::vector<uint32_t>(q)),
         true_value_per_variable(m),
         true_value_per_example(n),
         shuffled_variable_indexes(m) {
@@ -97,7 +97,7 @@ struct Data {
         sparse_matrix[i][j] = shuffled_variable_indexes[j];
       }
       std::sort(std::begin(sparse_matrix[i]), std::end(sparse_matrix[i]));
-      for (size_t const j : sparse_matrix[i]) {
+      for (uint32_t const j : sparse_matrix[i]) {
         true_value_per_example[i] += true_value_per_variable[j];
       }
     }
@@ -116,7 +116,7 @@ struct CostFunction {
     T penalty = 0.0;
     for (size_t i = 0; i < data.n; ++i) {
       T value = 0.0;
-      for (size_t const k : data.sparse_matrix[i]) {
+      for (uint32_t const k : data.sparse_matrix[i]) {
         value += x[k];
       }
       T const delta = value - data.true_value_per_example[i];
