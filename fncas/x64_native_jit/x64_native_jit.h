@@ -53,7 +53,7 @@ static_assert(sizeof(double) == 8, "FnCAS Linux native JIT compiler requires `do
 
 namespace current {
 namespace fncas {
-namespace linux_native_jit {
+namespace x64_native_jit {
 
 // The signature is:
 // * Returns a `double`:              The value of the function.
@@ -341,9 +341,9 @@ void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
   c.push_back((index + 1) * 0x08);
 }
 
-}  // namespace current::fncas::linux_native_jit::opcodes
+}  // namespace current::fncas::x64_native_jit::opcodes
 
-}  // namespace current::fncas::linux_native_jit
+}  // namespace current::fncas::x64_native_jit
 }  // namespace current::fncas
 }  // namespace current
 

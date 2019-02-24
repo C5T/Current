@@ -46,7 +46,7 @@ SOFTWARE.
 #include "docu/docu_10.cc"
 #endif
 
-#include "linux_native_jit/test.cc"
+#include "x64_native_jit/test.cc"
 
 template <typename T>
 T ParametrizedFunction(const std::vector<T>& x, size_t c) {
@@ -823,7 +823,7 @@ TEST(FnCAS, OptimizationInMaximizingDirection) {
 
 #ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
 
-namespace linux_native_jit_test {
+namespace x64_native_jit_test {
 
 template <typename T>
 T TrivialFunctionConst(const std::vector<T>& x) {
@@ -857,7 +857,7 @@ T TrivialSoftmaxFunction(const std::vector<T>& x) {
 
 template <typename T>
 T SoftmaxFunction(const std::vector<T>& x) {
-  // Mimics the implementation of the code in `fncas_linux_native_jit/benchmark.cc`.
+  // Mimics the implementation of the code in `fncas_x64_native_jit/benchmark.cc`.
   T penalty = 0.0;
   T value = 0.0;
   value += x[0];
@@ -866,10 +866,10 @@ T SoftmaxFunction(const std::vector<T>& x) {
   return penalty - (2.0 - std::log(2.0));
 }
 
-}  // namespace linux_native_jit_test
+}  // namespace x64_native_jit_test
 
 TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
-  using namespace linux_native_jit_test;
+  using namespace x64_native_jit_test;
 
   {
     fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
@@ -911,7 +911,7 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
 }
 
 TEST(FnCASLinuxNativeJIT, SoftmaxFunction) {
-  using namespace linux_native_jit_test;
+  using namespace x64_native_jit_test;
   fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SoftmaxFunction(fncas::variables_vector_t(1)));
   EXPECT_EQ(SoftmaxFunction(std::vector<double>({1.0})), fn({1.0}));
 }
@@ -972,7 +972,7 @@ TEST(FnCASLinuxNativeJIT, GradientOfZeroOrXFunction) {
 
 TEST(FnCASLinuxNativeJIT, GradientOfSoftmaxFunction) {
   const fncas::variables_vector_t x(1);
-  const fncas::function_t<fncas::JIT::Blueprint> fi = linux_native_jit_test::SoftmaxFunction(x);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = x64_native_jit_test::SoftmaxFunction(x);
   const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
 
   const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> gc(fi, gi);

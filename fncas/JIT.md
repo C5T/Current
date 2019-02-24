@@ -2,7 +2,7 @@
 
 ### Code
 
-* Low level in `linux_native_jit/linux_native_jit.h` and `linux_native_jit/test.cc`.
+* Low level in `x64_native_jit/x64_native_jit.h` and `x64_native_jit/test.cc`.
 * Mid level in `fncas/jit.h`.
 * Some higher level in `fncas/optimize.h` and the very `test.cc` from this directory.
 
@@ -26,7 +26,7 @@ While building the JIT component from scratch, I have made the following alterat
 
 ### Calling conventions
 
-Search for `opcodes::` in `linux_native_jit/test.cc` or in `fncas/jit.h` to quickly get to the very code generating pieces.
+Search for `opcodes::` in `x64_native_jit/test.cc` or in `fncas/jit.h` to quickly get to the very code generating pieces.
 
 The conventions are:
 * The function begins with `push rbx`, `mov rsi, rbx`, and and with `pop rbx`, `ret`.
@@ -113,4 +113,4 @@ The default, `run` make target builds and runs this code.
 
 The `make dump` command outputs the resulting assembly code.
 
-If and when in doubt, I generated and tested the `f.o`code by compiling the `f.cc` source, then used `objdump -S` to understand it, and then comfirmed by understanding, first by compiling and running the same logic from the `f.s` code, and then, as necessary, by copy-pasting it into the `CopyPastedOpcodesCanBeExecuted` test in `linux_native_jit/test.cc`.
+If and when in doubt, I generated and tested the `f.o`code by compiling the `f.cc` source, then used `objdump -S` to understand it, and then comfirmed by understanding, first by compiling and running the same logic from the `f.s` code, and then, as necessary, by copy-pasting it into the `CopyPastedOpcodesCanBeExecuted` test in `x64_native_jit/test.cc`.

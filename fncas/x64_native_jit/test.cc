@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-#include "linux_native_jit.h"
+#include "x64_native_jit.h"
 
 #ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
 
@@ -52,7 +52,7 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
   });
   // clang-format on
 
-  current::fncas::linux_native_jit::CallableVectorUInt8 f(code);
+  current::fncas::x64_native_jit::CallableVectorUInt8 f(code);
 
   double x[1] = {1.0};
   EXPECT_EQ(2.0, f(x + 16, nullptr, nullptr));
@@ -65,7 +65,7 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
 }
 
 TEST(LinuxNativeJIT, LoadsImmediateValues) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   double const d1 = 3.14;
   double const d2 = 2.17;
@@ -94,7 +94,7 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
   EXPECT_EQ(2.0, y[2]);
   EXPECT_EQ(2.0, y[3]);
 
-  EXPECT_EQ(d1, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+  EXPECT_EQ(d1, current::fncas::x64_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
 
   EXPECT_NE(1.0, x[0]);
   EXPECT_NE(1.0, x[1]);
@@ -111,7 +111,7 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
 }
 
 TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   std::vector<double> x(1000);
   for (size_t i = 0; i < x.size(); ++i) {
@@ -128,7 +128,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
     std::vector<uint8_t> code;
     opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 0);
     opcodes::ret(code);
-    EXPECT_EQ(0, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+    EXPECT_EQ(0, current::fncas::x64_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 
   {
@@ -136,7 +136,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
     std::vector<uint8_t> code;
     opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, 259);
     opcodes::ret(code);
-    EXPECT_EQ(259, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+    EXPECT_EQ(259, current::fncas::x64_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 
   {
@@ -144,7 +144,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
     std::vector<uint8_t> code;
     opcodes::load_from_memory_by_rsi_offset_to_xmm0(code, 0);
     opcodes::ret(code);
-    EXPECT_EQ(1000, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+    EXPECT_EQ(1000, current::fncas::x64_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 
   {
@@ -152,12 +152,12 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
     std::vector<uint8_t> code;
     opcodes::load_from_memory_by_rsi_offset_to_xmm0(code, 931);
     opcodes::ret(code);
-    EXPECT_EQ(1000 - 931, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+    EXPECT_EQ(1000 - 931, current::fncas::x64_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
   }
 }
 
 TEST(LinuxNativeJIT, Adds) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   std::vector<uint8_t> code;
 
@@ -188,7 +188,7 @@ TEST(LinuxNativeJIT, Adds) {
   EXPECT_EQ(2, y[1]);
   EXPECT_EQ(2, y[2]);
 
-  EXPECT_EQ(36, current::fncas::linux_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
+  EXPECT_EQ(36, current::fncas::x64_native_jit::CallableVectorUInt8(code)(&x[0], &y[0], nullptr));
 
   EXPECT_EQ(11, x[0]);
   EXPECT_EQ(12, x[1]);
@@ -199,7 +199,7 @@ TEST(LinuxNativeJIT, Adds) {
 }
 
 TEST(LinuxNativeJIT, PerformsArithmetic) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   std::vector<uint8_t> code;
 
@@ -234,7 +234,7 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
   EXPECT_EQ(5.0, y[2]);
   EXPECT_EQ(5.0, y[3]);
 
-  (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
+  (current::fncas::x64_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
 
   EXPECT_EQ(15.0, y[0]);
   EXPECT_EQ(5.0, y[1]);
@@ -243,7 +243,7 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
 }
 
 TEST(LinuxNativeJIT, FullySupportsRbx) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   std::vector<uint8_t> code;
 
@@ -291,7 +291,7 @@ TEST(LinuxNativeJIT, FullySupportsRbx) {
   EXPECT_EQ(5.0, y[4]);
   EXPECT_EQ(5.0, y[5]);
 
-  (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
+  (current::fncas::x64_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], nullptr);
 
   EXPECT_EQ(15.0, y[0]);
   EXPECT_EQ(5.0, y[1]);
@@ -302,7 +302,7 @@ TEST(LinuxNativeJIT, FullySupportsRbx) {
 }
 
 TEST(LinuxNativeJIT, CallsExternalFunctions) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   double (*f[])(double x) = {sin, cos, exp};
 
@@ -343,7 +343,7 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
   std::vector<double> x(3, 1.0);
   std::vector<double> y(3);
 
-  (current::fncas::linux_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], f);
+  (current::fncas::x64_native_jit::CallableVectorUInt8(code))(&x[0], &y[0], f);
 
   EXPECT_EQ(sin(1.0), y[0]);
   EXPECT_EQ(cos(1.0), y[1]);
@@ -351,7 +351,7 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
 }
 
 TEST(LinuxNativeJIT, LogExpFunctionsCombination) {
-  using namespace current::fncas::linux_native_jit;
+  using namespace current::fncas::x64_native_jit;
 
   std::vector<double> x(1);
   std::vector<double> y(6);
@@ -379,8 +379,8 @@ TEST(LinuxNativeJIT, LogExpFunctionsCombination) {
   std::vector<uint8_t> code;
 
   {
-    using namespace current::fncas::linux_native_jit;
-    using namespace current::fncas::linux_native_jit::opcodes;  // The code below is autogenerated. -- D.K.
+    using namespace current::fncas::x64_native_jit;
+    using namespace current::fncas::x64_native_jit::opcodes;  // The code below is autogenerated. -- D.K.
 
     opcodes::push_rbx(code);
     opcodes::mov_rsi_rbx(code);
@@ -411,7 +411,7 @@ TEST(LinuxNativeJIT, LogExpFunctionsCombination) {
     opcodes::ret(code);
   }
 
-  current::fncas::linux_native_jit::CallableVectorUInt8 const j0(code);
+  current::fncas::x64_native_jit::CallableVectorUInt8 const j0(code);
   auto const j = [&]() -> double { return j0(&x[0], &y[0], &p[0]); };
 
   x[0] = 0;

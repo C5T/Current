@@ -781,7 +781,7 @@ struct JITCodeGenerator final {
   node_index_t max_dim = 0;
 
   JITCodeGenerator(std::vector<uint8_t>& code, size_t dim) : code(code), dim(dim) {
-    using namespace current::fncas::linux_native_jit;
+    using namespace current::fncas::x64_native_jit;
 
     opcodes::push_rbx(code);
     opcodes::mov_rsi_rbx(code);
@@ -792,7 +792,7 @@ struct JITCodeGenerator final {
   }
 
   ~JITCodeGenerator() {
-    using namespace current::fncas::linux_native_jit;
+    using namespace current::fncas::x64_native_jit;
 
     opcodes::pop_rbx(code);
     opcodes::ret(code);
@@ -803,7 +803,7 @@ struct JITCodeGenerator final {
   }
 
   void jit_compile_node(node_index_t index) {
-    using namespace current::fncas::linux_native_jit;
+    using namespace current::fncas::x64_native_jit;
 
     std::stack<node_index_t> stack;
     stack.push(index);
@@ -906,27 +906,27 @@ struct JITCodeGenerator final {
   }
 };
 
-struct linux_native_jit_function_pointers {
+struct x64_native_jit_function_pointers {
   std::vector<double (*)(double x)> p;
-  linux_native_jit_function_pointers() {
+  x64_native_jit_function_pointers() {
 #define FNCAS_FUNCTION(f) p.push_back(fncas::f);
 #include "fncas_functions.dsl.h"
 #undef FNCAS_FUNCTION
   }
-  static linux_native_jit_function_pointers& tls() {
-    return current::ThreadLocalSingleton<linux_native_jit_function_pointers>();
+  static x64_native_jit_function_pointers& tls() {
+    return current::ThreadLocalSingleton<x64_native_jit_function_pointers>();
   }
 };
 
-struct f_compiled_linux_native_jit final {
-  std::unique_ptr<current::fncas::linux_native_jit::CallableVectorUInt8> jit_compiled_code;
+struct f_compiled_x64_native_jit final {
+  std::unique_ptr<current::fncas::x64_native_jit::CallableVectorUInt8> jit_compiled_code;
   mutable std::vector<double> actual_heap;
 
   void generate_code_for_f(V const& v) {
     std::vector<uint8_t> code;
     size_t required_heap_size;
     {
-      using namespace current::fncas::linux_native_jit;
+      using namespace current::fncas::x64_native_jit;
       JITCodeGenerator code_generator(code, 0);
       code_generator.jit_compile_node(v.index());
       opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, v.index());
@@ -944,33 +944,33 @@ struct f_compiled_linux_native_jit final {
     std::cerr << "\nHeap size: " << required_heap_size << '\n';
     std::cerr << "Desired index: " << v.index() << '\n';
 #endif
-    jit_compiled_code = std::make_unique<current::fncas::linux_native_jit::CallableVectorUInt8>(code);
+    jit_compiled_code = std::make_unique<current::fncas::x64_native_jit::CallableVectorUInt8>(code);
     actual_heap.resize(required_heap_size);
   }
 
-  explicit f_compiled_linux_native_jit(V const& node) {
+  explicit f_compiled_x64_native_jit(V const& node) {
     generate_code_for_f(node);
   }
 
-  explicit f_compiled_linux_native_jit(const f_impl<JIT::Blueprint>& f) {
+  explicit f_compiled_x64_native_jit(const f_impl<JIT::Blueprint>& f) {
     generate_code_for_f(f.f_);
   }
 
   double operator()(const std::vector<double>& x) const {
-    return (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
+    return (*jit_compiled_code)(&x[0], &actual_heap[0], &x64_native_jit_function_pointers::tls().p[0]);
   }
 
   // For backwards "compatibility" with the unit tests. -- D.K.
   static const char* lib_filename() { return ""; }
 };
 
-struct g_compiled_linux_native_jit final {
+struct g_compiled_x64_native_jit final {
   size_t const dim;
-  std::unique_ptr<current::fncas::linux_native_jit::CallableVectorUInt8> jit_compiled_code;
+  std::unique_ptr<current::fncas::x64_native_jit::CallableVectorUInt8> jit_compiled_code;
   mutable std::vector<double> actual_heap;
 
   void generate_code_for_g(JITCodeGenerator& code_generator, V const& v, size_t output_index) {
-    using namespace current::fncas::linux_native_jit;
+    using namespace current::fncas::x64_native_jit;
     code_generator.jit_compile_node(v.index());
     opcodes::load_from_memory_by_rbx_offset_to_xmm0(code_generator.code, v.index() + dim);
     opcodes::store_xmm0_to_memory_by_rbx_offset(code_generator.code, output_index);
@@ -981,7 +981,7 @@ struct g_compiled_linux_native_jit final {
 #endif
   }
 
-  g_compiled_linux_native_jit(const f_impl<JIT::Blueprint>& unused_f, const g_impl<JIT::Blueprint>& g)
+  g_compiled_x64_native_jit(const f_impl<JIT::Blueprint>& unused_f, const g_impl<JIT::Blueprint>& g)
       : dim(g.g_.size()) {
     CURRENT_ASSERT(dim == internals_singleton().dim_);
     std::vector<uint8_t> code;
@@ -1001,13 +1001,13 @@ struct g_compiled_linux_native_jit final {
     }
     std::cerr << "\nHeap size: " << actual_heap.size() << '\n';
 #endif
-    jit_compiled_code = std::make_unique<current::fncas::linux_native_jit::CallableVectorUInt8>(code);
+    jit_compiled_code = std::make_unique<current::fncas::x64_native_jit::CallableVectorUInt8>(code);
   }
 
   // NOTE(dkorolev): Perhaps just return a pointer to `&actual_heap[0]` to avoid a copy?
   // NOTE(dkorolev): This would require looking into the optimizer(s) code, I'll do it some time later.
   std::vector<double> operator()(const std::vector<double>& x) const {
-    (*jit_compiled_code)(&x[0], &actual_heap[0], &linux_native_jit_function_pointers::tls().p[0]);
+    (*jit_compiled_code)(&x[0], &actual_heap[0], &x64_native_jit_function_pointers::tls().p[0]);
     return std::vector<double>(&actual_heap[0], &actual_heap[0] + dim);
   }
 
@@ -1059,7 +1059,7 @@ struct f_impl_selector<JIT::NASM> {
 #ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
 template <>
 struct f_impl_selector<JIT::LinuxNativeJIT> {
-  using type = f_compiled_linux_native_jit;
+  using type = f_compiled_x64_native_jit;
 };
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
 
@@ -1082,7 +1082,7 @@ struct g_impl_selector<JIT::NASM> {
 #ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
 template <>
 struct g_impl_selector<JIT::LinuxNativeJIT> {
-  using type = g_compiled_linux_native_jit;
+  using type = g_compiled_x64_native_jit;
 };
 #endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
 

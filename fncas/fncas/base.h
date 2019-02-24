@@ -32,7 +32,7 @@
 #include <cstdlib>
 #include <cstdint>
 
-#include "../linux_native_jit/linux_native_jit.h"
+#include "../x64_native_jit/x64_native_jit.h"
 
 namespace fncas {
 
