@@ -26,10 +26,10 @@ SOFTWARE.
 
 #include "x64_native_jit.h"
 
-#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
 
 // Tests the `mmap()` and `mprotect()` combination, as well as the calling convention.
-TEST(LinuxNativeJIT, CopyPastedOpcodesCanBeExecuted) {
+TEST(X64NativeJIT, CopyPastedOpcodesCanBeExecuted) {
 #if 0
 Steps to re-create the hexadecimal opcodes for this simple test:
 
@@ -64,7 +64,7 @@ $ g++ -c -O3 1.cc && objdump -S 1.o
   EXPECT_EQ(3.0, f(x + 16, nullptr, nullptr));
 }
 
-TEST(LinuxNativeJIT, LoadsImmediateValues) {
+TEST(X64NativeJIT, LoadsImmediateValues) {
   using namespace current::fncas::x64_native_jit;
 
   double const d1 = 3.14;
@@ -110,7 +110,7 @@ TEST(LinuxNativeJIT, LoadsImmediateValues) {
   EXPECT_EQ(d4, y[3]);
 }
 
-TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
+TEST(X64NativeJIT, LoadsRegistersFromMemory) {
   using namespace current::fncas::x64_native_jit;
 
   std::vector<double> x(1000);
@@ -156,7 +156,7 @@ TEST(LinuxNativeJIT, LoadsRegistersFromMemory) {
   }
 }
 
-TEST(LinuxNativeJIT, Adds) {
+TEST(X64NativeJIT, Adds) {
   using namespace current::fncas::x64_native_jit;
 
   std::vector<uint8_t> code;
@@ -198,7 +198,7 @@ TEST(LinuxNativeJIT, Adds) {
   EXPECT_EQ(16, y[2]);
 }
 
-TEST(LinuxNativeJIT, PerformsArithmetic) {
+TEST(X64NativeJIT, PerformsArithmetic) {
   using namespace current::fncas::x64_native_jit;
 
   std::vector<uint8_t> code;
@@ -242,7 +242,7 @@ TEST(LinuxNativeJIT, PerformsArithmetic) {
   EXPECT_EQ(2.0, y[3]);
 }
 
-TEST(LinuxNativeJIT, FullySupportsRbx) {
+TEST(X64NativeJIT, FullySupportsRbx) {
   using namespace current::fncas::x64_native_jit;
 
   std::vector<uint8_t> code;
@@ -301,7 +301,7 @@ TEST(LinuxNativeJIT, FullySupportsRbx) {
   EXPECT_EQ(42.5, y[5]);
 }
 
-TEST(LinuxNativeJIT, CallsExternalFunctions) {
+TEST(X64NativeJIT, CallsExternalFunctions) {
   using namespace current::fncas::x64_native_jit;
 
   double (*f[])(double x) = {sin, cos, exp};
@@ -350,7 +350,7 @@ TEST(LinuxNativeJIT, CallsExternalFunctions) {
   EXPECT_EQ(exp(1.0), y[2]);
 }
 
-TEST(LinuxNativeJIT, LogExpFunctionsCombination) {
+TEST(X64NativeJIT, LogExpFunctionsCombination) {
   using namespace current::fncas::x64_native_jit;
 
   std::vector<double> x(1);
@@ -425,4 +425,4 @@ TEST(LinuxNativeJIT, LogExpFunctionsCombination) {
   EXPECT_EQ(a(), j());
 }
 
-#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED

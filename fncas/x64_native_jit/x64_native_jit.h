@@ -27,12 +27,12 @@ SOFTWARE.
 // TODO(dkorolev): Offsets to offsets, to make sure the instructions have the same opcode length, may be suboptimal.
 // TODO(dkorolev): Look into endianness.
 
-#ifndef FNCAS_LINUX_NATIVE_JIT_LINUX_NATIVE_JIT_H
-#define FNCAS_LINUX_NATIVE_JIT_LINUX_NATIVE_JIT_H
+#ifndef FNCAS_X64_NATIVE_JIT_X64_NATIVE_JIT_H
+#define FNCAS_X64_NATIVE_JIT_X64_NATIVE_JIT_H
 
 #if defined(__linux__) && defined(__x86_64__)
 
-#define FNCAS_LINUX_NATIVE_JIT_ENABLED
+#define FNCAS_X64_NATIVE_JIT_ENABLED
 
 #include <cmath>
 #include <cstdint>
@@ -44,12 +44,12 @@ SOFTWARE.
 
 #ifdef NDEBUG
 #include <cassert>
-#define LINUX_JIT_ASSERT(x) assert(x)
+#define X64_JIT_ASSERT(x) assert(x)
 #else
-#define LINUX_JIT_ASSERT(x)
+#define X64_JIT_ASSERT(x)
 #endif
 
-static_assert(sizeof(double) == 8, "FnCAS Linux native JIT compiler requires `double` to be 8 bytes.");
+static_assert(sizeof(double) == 8, "FnCAS X64 native JIT compiler requires `double` to be 8 bytes.");
 
 namespace current {
 namespace fncas {
@@ -62,15 +62,15 @@ namespace x64_native_jit {
 // * Uses the `double (*f[])(double): External functions (`sin`, `exp`, etc.) to be called, to avoid dealing with PLT.
 typedef double (*pf_t)(double const* x, double* o, double (*f[])(double));
 
-constexpr static size_t const kLinuxNativeJITExecutablePageSize = 4096;
+constexpr static size_t const kX64NativeJITExecutablePageSize = 4096;
 
 struct CallableVectorUInt8 final {
   size_t const allocated_size_;
   void* buffer_ = nullptr;
 
   explicit CallableVectorUInt8(std::vector<uint8_t> const& data)
-      : allocated_size_(kLinuxNativeJITExecutablePageSize *
-                        ((data.size() + kLinuxNativeJITExecutablePageSize - 1) / kLinuxNativeJITExecutablePageSize)) {
+      : allocated_size_(kX64NativeJITExecutablePageSize *
+                        ((data.size() + kX64NativeJITExecutablePageSize - 1) / kX64NativeJITExecutablePageSize)) {
     buffer_ = ::mmap(NULL, allocated_size_, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON, -1, 0);
     if (!buffer_) {
       std::cerr << "`mmap()` failed.\n";
@@ -173,8 +173,8 @@ void internal_load_immediate_to_memory_by_someregister_offset(C& c, uint8_t reg,
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
-  LINUX_JIT_ASSERT(o >= 0x80);
-  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  X64_JIT_ASSERT(o >= 0x80);
+  X64_JIT_ASSERT(o <= 0x7fffffff);
   for (size_t i = 0; i < 4; ++i) {
     c.push_back(o & 0xff);
     o >>= 8;
@@ -202,8 +202,8 @@ void internal_load_from_memory_by_offset_to_xmm0(C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
-  LINUX_JIT_ASSERT(o >= 0x80);
-  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  X64_JIT_ASSERT(o >= 0x80);
+  X64_JIT_ASSERT(o <= 0x7fffffff);
   c.push_back(0xf2);
   c.push_back(0x0f);
   c.push_back(0x10);
@@ -234,8 +234,8 @@ void internal_op_from_memory_by_offset_to_xmm0(uint8_t add_sub_mul_div_code, C& 
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
-  LINUX_JIT_ASSERT(o >= 0x80);
-  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  X64_JIT_ASSERT(o >= 0x80);
+  X64_JIT_ASSERT(o <= 0x7fffffff);
   c.push_back(0xf2);
   c.push_back(0x0f);
   c.push_back(add_sub_mul_div_code);
@@ -311,8 +311,8 @@ void internal_store_xmm0_to_memory_by_reg_offset(C& c, uint8_t reg, O offset) {
   auto o = static_cast<int64_t>(offset);
   o += 16;  // HACK(dkorolev): Shift by 16 doubles to have the opcodes have the same length.
   o *= 8;   // Double is eight bytes, signed multiplication by design.
-  LINUX_JIT_ASSERT(o >= 0x80);
-  LINUX_JIT_ASSERT(o <= 0x7fffffff);
+  X64_JIT_ASSERT(o >= 0x80);
+  X64_JIT_ASSERT(o <= 0x7fffffff);
   c.push_back(0xf2);
   c.push_back(0x0f);
   c.push_back(0x11);
@@ -335,7 +335,7 @@ void store_xmm0_to_memory_by_rbx_offset(C& c, O offset) {
 
 template <typename C>
 void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
-  LINUX_JIT_ASSERT(index < 31);  // Should fit one byte after adding one and multiplying by 8. -- D.K.
+  X64_JIT_ASSERT(index < 31);  // Should fit one byte after adding one and multiplying by 8. -- D.K.
   c.push_back(0xff);
   c.push_back(0x52);
   c.push_back((index + 1) * 0x08);
@@ -349,4 +349,4 @@ void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
 
 #endif  // defined(__linux__) && defined(__x86_64__)
 
-#endif  // FNCAS_LINUX_NATIVE_JIT_LINUX_NATIVE_JIT_H
+#endif  // FNCAS_X64_NATIVE_JIT_X64_NATIVE_JIT_H

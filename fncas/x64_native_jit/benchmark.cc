@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// A simple real-life-ish optimization problem to measure the performance of the native Linux JIT.
+// A simple real-life-ish optimization problem to measure the performance of the native X64 JIT.
 //
 // The problem is effectively a sparse linear programming one with a softmax-based cost function.
 // For `--n` variables and `--m` training examples, with sparseness coefficient `--k`, so that
@@ -150,7 +150,7 @@ fncas::optimize::OptimizationResult RunOptimization(Data const& data) {
   }
   if (FLAGS_optimizer == "jit") {
     return fncas::optimize::
-        DefaultOptimizer<CostFunction, fncas::OptimizationDirection::Minimize, fncas::JIT::LinuxNativeJIT>(params, data)
+        DefaultOptimizer<CostFunction, fncas::OptimizationDirection::Minimize, fncas::JIT::X64NativeJIT>(params, data)
             .Optimize(data.StartingPoint());
   } else if (FLAGS_optimizer == "as") {
     return fncas::optimize::DefaultOptimizer<CostFunction, fncas::OptimizationDirection::Minimize, fncas::JIT::AS>(

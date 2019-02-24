@@ -53,7 +53,7 @@ namespace impl {
 
 static_assert(std::is_same<double, double_t>::value, "FnCAS JIT assumes `double_t` is the native double.");
 
-// Linux-friendly code to compile into .so and link against it at runtime.
+// Linux- and Mac-friendly code to compile into .so and link against it at runtime.
 // Not portable.
 
 inline const char* operation_as_assembler_opcode(MathOperation operation) {
@@ -765,7 +765,7 @@ struct f_compiled final : f_compiled_super {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
-#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
 
 // #define FNCAS_DEBUG_NATIVE_JIT  // NOTE(dkorolev): This line should be commented out.
 
@@ -1015,7 +1015,7 @@ struct g_compiled_x64_native_jit final {
   static const char* lib_filename() { return ""; }
 };
 
-#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
 
 struct g_compiled_super : g_super {};
 
@@ -1056,12 +1056,12 @@ struct f_impl_selector<JIT::NASM> {
   using type = f_compiled<JIT::NASM>;
 };
 
-#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
 template <>
-struct f_impl_selector<JIT::LinuxNativeJIT> {
+struct f_impl_selector<JIT::X64NativeJIT> {
   using type = f_compiled_x64_native_jit;
 };
-#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
 
 // Expose JIT-compiled gradients as `fncas::gradient_t<JIT::*>`.
 template <>
@@ -1079,12 +1079,12 @@ struct g_impl_selector<JIT::NASM> {
   using type = g_compiled<JIT::NASM>;
 };
 
-#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
 template <>
-struct g_impl_selector<JIT::LinuxNativeJIT> {
+struct g_impl_selector<JIT::X64NativeJIT> {
   using type = g_compiled_x64_native_jit;
 };
-#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
 
 }  // namespace fncas::impl
 }  // namespace fncas

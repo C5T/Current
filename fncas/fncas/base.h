@@ -78,13 +78,13 @@ enum class JIT {
   CLANG,          // JIT via `clang++`.
   AS,             // JIT via `as`.
   NASM,           // JIT via `nasm`.
-#ifndef FNCAS_LINUX_NATIVE_JIT_ENABLED
+#ifndef FNCAS_X64_NATIVE_JIT_ENABLED
   // The JIT used by default by the optimization algorithms is the `as` one ...
   Default = AS
 #else
-  // ... unless we are on Linux, and the Linux-native JIT is active.
-  LinuxNativeJIT,
-  Default = LinuxNativeJIT
+  // ... unless we are on a platform where the x64 native JIT is available (Linux or MacOS).
+  X64NativeJIT,
+  Default = X64NativeJIT
 #endif
 };
 

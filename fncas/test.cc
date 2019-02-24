@@ -821,7 +821,7 @@ TEST(FnCAS, OptimizationInMaximizingDirection) {
   }
 }
 
-#ifdef FNCAS_LINUX_NATIVE_JIT_ENABLED
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
 
 namespace x64_native_jit_test {
 
@@ -868,30 +868,30 @@ T SoftmaxFunction(const std::vector<T>& x) {
 
 }  // namespace x64_native_jit_test
 
-TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
+TEST(FnCASX64NativeJIT, TrivialFunctions) {
   using namespace x64_native_jit_test;
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
     EXPECT_EQ(42.0, fn({}));
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionExtract(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionExtract(fncas::variables_vector_t(1)));
     EXPECT_EQ(1.0, fn({1.0}));
     EXPECT_EQ(42.0, fn({42.0}));
     EXPECT_EQ(101.0, fn({101.0}));
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionAdd(fncas::variables_vector_t(2)));
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionAdd(fncas::variables_vector_t(2)));
     EXPECT_EQ(3.0, fn({1.0, 2.0}));
     EXPECT_EQ(4.0, fn({1.5, 2.5}));
     EXPECT_EQ(142.0, fn({42.0, 100,0}));
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialFunctionExp(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionExp(fncas::variables_vector_t(1)));
     EXPECT_EQ(std::exp(1.0), fn({1.0}));
     EXPECT_EQ(std::exp(0.5), fn({0.5}));
     EXPECT_EQ(std::exp(2.5), fn({2.5}));
@@ -899,7 +899,7 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
   }
 
   {
-    fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(TrivialSoftmaxFunction(fncas::variables_vector_t(1)));
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialSoftmaxFunction(fncas::variables_vector_t(1)));
     EXPECT_EQ(std::log(std::exp(0.0) + 1.0), fn({0.0}));
     EXPECT_EQ(std::log(std::exp(0.5) + 1.0), fn({0.5}));
     EXPECT_EQ(std::log(std::exp(1.0) + 1.0), fn({1.0}));
@@ -910,19 +910,19 @@ TEST(FnCASLinuxNativeJIT, TrivialFunctions) {
   }
 }
 
-TEST(FnCASLinuxNativeJIT, SoftmaxFunction) {
+TEST(FnCASX64NativeJIT, SoftmaxFunction) {
   using namespace x64_native_jit_test;
-  fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SoftmaxFunction(fncas::variables_vector_t(1)));
+  fncas::function_t<fncas::JIT::X64NativeJIT> const fn(SoftmaxFunction(fncas::variables_vector_t(1)));
   EXPECT_EQ(SoftmaxFunction(std::vector<double>({1.0})), fn({1.0}));
 }
 
-TEST(FnCASLinuxNativeJIT, SimpleFunction) {
-  fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SimpleFunction(fncas::variables_vector_t(2)));
+TEST(FnCASX64NativeJIT, SimpleFunction) {
+  fncas::function_t<fncas::JIT::X64NativeJIT> const fn(SimpleFunction(fncas::variables_vector_t(2)));
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
-TEST(FnCASLinuxNativeJIT, SmokeTestFunction) {
-  fncas::function_t<fncas::JIT::LinuxNativeJIT> const fn(SmokeTestFunction(fncas::variables_vector_t(3)));
+TEST(FnCASX64NativeJIT, SmokeTestFunction) {
+  fncas::function_t<fncas::JIT::X64NativeJIT> const fn(SmokeTestFunction(fncas::variables_vector_t(3)));
 
   EXPECT_EQ(0.0, fn({0.0, 0.0, -2.0}));
   EXPECT_EQ(1.0, fn({0.0, 0.0, +0.0}));
@@ -933,7 +933,7 @@ TEST(FnCASLinuxNativeJIT, SmokeTestFunction) {
   EXPECT_EQ(9.0, fn({3.0, 0.0, -1.0}));
 }
 
-TEST(FnCASLinuxNativeJIT, GradientOfSimpleFunction) {
+TEST(FnCASX64NativeJIT, GradientOfSimpleFunction) {
   // Use the synopsis of the gradient computed via the `Blueprint` technique.
   // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
 
@@ -945,13 +945,13 @@ TEST(FnCASLinuxNativeJIT, GradientOfSimpleFunction) {
 
   // NOTE(dkorolev): With the proper default setting, this test is identical to the one above,
   //                 but I would still like to keep it in case the default is changed later on.
-  const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> gc(fi, gi);
+  const fncas::gradient_t<fncas::JIT::X64NativeJIT> gc(fi, gi);
 
   EXPECT_EQ(18, gc(p_3_3)[0]) << gc.lib_filename();
   EXPECT_EQ(36, gc(p_3_3)[1]) << gc.lib_filename();
 }
 
-TEST(FnCASLinuxNativeJIT, GradientOfZeroOrXFunction) {
+TEST(FnCASX64NativeJIT, GradientOfZeroOrXFunction) {
   // Use the synopsis of the gradient computed via the `Blueprint` technique.
   // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
 
@@ -965,17 +965,17 @@ TEST(FnCASLinuxNativeJIT, GradientOfZeroOrXFunction) {
   EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
   EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
 
-  const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> jit_compiled_gradient(intermediate_function, intermediate_gradient);
+  const fncas::gradient_t<fncas::JIT::X64NativeJIT> jit_compiled_gradient(intermediate_function, intermediate_gradient);
   EXPECT_EQ(0.0, jit_compiled_gradient({-9.5})[0]);
   EXPECT_EQ(1.0, jit_compiled_gradient({+9.5})[0]);
 }
 
-TEST(FnCASLinuxNativeJIT, GradientOfSoftmaxFunction) {
+TEST(FnCASX64NativeJIT, GradientOfSoftmaxFunction) {
   const fncas::variables_vector_t x(1);
   const fncas::function_t<fncas::JIT::Blueprint> fi = x64_native_jit_test::SoftmaxFunction(x);
   const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
 
-  const fncas::gradient_t<fncas::JIT::LinuxNativeJIT> gc(fi, gi);
+  const fncas::gradient_t<fncas::JIT::X64NativeJIT> gc(fi, gi);
 
   EXPECT_NEAR(gi({0.0})[0], gc({0.0})[0], 1e-6);
 }
@@ -1043,4 +1043,4 @@ TEST(FnCASGradientSimplification, Smoke) {
   }
 }
 
-#endif  // FNCAS_LINUX_NATIVE_JIT_ENABLED
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
