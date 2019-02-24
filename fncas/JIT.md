@@ -47,7 +47,7 @@ There is a `FNCAS_DEBUG_NATIVE_JIT` symbol, which can be `#define`-d to make sur
 
 ### Development notes
 
-During developent, I have used the following "canonical" C++ code (`f.cc`):
+During developent, I have used the following or similar "canonical" C++ code (`f.cc`):
 
 ```
 extern "C" double f(double const* x, double* y, double (*p[])(double x)) {
@@ -57,7 +57,7 @@ extern "C" double f(double const* x, double* y, double (*p[])(double x)) {
 }
 ```
 
-The following canonical assembly code (`f.s`):
+The following, or similar, "canonical" assembly code (`f.s`):
 
 ```
 .text
@@ -74,7 +74,7 @@ f:
   retq
 ```
 
-The following example run code (`run.cc`):
+The following, or similar, example run code (`run.cc`):
 
 ```
 #include <iostream>
@@ -93,7 +93,7 @@ int main() {
 }
 ```
 
-And the following `Makefile`:
+And this `Makefile`:
 
 ```
 .PHONY: all dump
@@ -113,4 +113,4 @@ The default, `run` make target builds and runs this code.
 
 The `make dump` command outputs the resulting assembly code.
 
-If and when in doubt, I generated and tested the `f.o`code by compiling the `f.cc` source, then used `objdump -s` to understand it, and then comfirmed by understanding, first by compiling and running the same logic from the `f.s` code, and then, as necessary, by copy-pasting it into the `CopyPastedOpcodesCanBeExecuted` test in `linux_native_jit/test.cc`.
+If and when in doubt, I generated and tested the `f.o`code by compiling the `f.cc` source, then used `objdump -S` to understand it, and then comfirmed by understanding, first by compiling and running the same logic from the `f.s` code, and then, as necessary, by copy-pasting it into the `CopyPastedOpcodesCanBeExecuted` test in `linux_native_jit/test.cc`.
