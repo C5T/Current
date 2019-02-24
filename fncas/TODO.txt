@@ -1,9 +1,6 @@
 TODO after adding real native Linux JIT:
 
 * Memory optimizations:
-  * Add a `JIT.txt` explanation.
-    * https://wiki.osdev.org/System_V_ABI
-    * Registers usage, etc.
   * Consider using SIMD for further optimization.
   * Do a dry run to `.reserve()` just the right number of bytes to `mmap()`, and then generate the ultimate code just there.
 * Extra debug outputs.
@@ -16,7 +13,7 @@ TODO after adding real native Linux JIT:
 
 "Good to have"-s and "didn't-have-time-to-add"-s, in no particular order.
 
-* Hash of function. Use it in source / library file name. Don't regenerate / recompile same function.
+* Hash of a function. Use it in source / library file name. Don't regenerate / recompile the same functions.
 * Variable policies during optimization (ex. this var should always be positive).
 * Variable adjustment policies (ex. normalize this exp-normal simples to average of zero).
 * Return `PointAndValue` from a compiled function-plus-gradient (now returns only the gradient)?
