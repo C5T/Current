@@ -53,7 +53,7 @@ namespace impl {
 
 static_assert(std::is_same<double, double_t>::value, "FnCAS JIT assumes `double_t` is the native double.");
 
-// Linux-friendly code to compile into .so and link against it at runtime.
+// Linux- and Mac-friendly code to compile into .so and link against it at runtime.
 // Not portable.
 
 inline const char* operation_as_assembler_opcode(MathOperation operation) {
@@ -765,6 +765,258 @@ struct f_compiled final : f_compiled_super {
   const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
+
+// #define FNCAS_DEBUG_NATIVE_JIT  // NOTE(dkorolev): This line should be commented out.
+
+#if defined(FNCAS_DEBUG_NATIVE_JIT) && defined(NDEBUG)
+#error "Someone forgot to un-#define `FNCAS_DEBUG_NATIVE_JIT`."
+#endif
+
+struct JITCodeGenerator final {
+  std::vector<uint8_t>& code;
+  size_t const dim;  // "Pre-allocated" in the output vector, 0 for function computation, dim. of `x` for gradients.
+
+  std::vector<bool> computed;
+  node_index_t max_dim = 0;
+
+  JITCodeGenerator(std::vector<uint8_t>& code, size_t dim) : code(code), dim(dim) {
+    using namespace current::fncas::x64_native_jit;
+
+    opcodes::push_rbx(code);
+    opcodes::mov_rsi_rbx(code);
+
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "begin();\n";
+#endif
+  }
+
+  ~JITCodeGenerator() {
+    using namespace current::fncas::x64_native_jit;
+
+    opcodes::pop_rbx(code);
+    opcodes::ret(code);
+
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "end();\n";
+#endif
+  }
+
+  void jit_compile_node(node_index_t index) {
+    using namespace current::fncas::x64_native_jit;
+
+    std::stack<node_index_t> stack;
+    stack.push(index);
+
+    while (!stack.empty()) {
+      const node_index_t i = stack.top();
+      stack.pop();
+      const node_index_t dependent_i = ~i;
+      if (i > dependent_i) {
+        max_dim = std::max(max_dim, static_cast<node_index_t>(i));
+        if (computed.size() <= static_cast<size_t>(i)) {
+          computed.resize(static_cast<size_t>(i) + 1);
+        }
+        if (!computed[i]) {
+          computed[i] = true;
+          node_impl& node = node_vector_singleton()[i];
+          if (node.type() == NodeType::variable) {
+            int32_t v = node.variable();
+            // Load input variable `v` by address `i + dim`, because the first `dim` of the output are the gradient.
+            // NOTE(dkorolev) / HACK(dkorolev): Perhaps use `rax`, not `xmm0`, for mere value transfer?
+            opcodes::load_from_memory_by_rdi_offset_to_xmm0(code, v);
+            opcodes::store_xmm0_to_memory_by_rbx_offset(code, i + dim);
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+            std::cerr << "# Z[" << i << " + " << dim << "] = X[" << v << "];\n";
+            std::cerr << "load_from_memory_by_rdi_offset_to_xmm0(" << v << ");\n";
+            std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << i + dim << ");\n";
+#endif
+          } else if (node.type() == NodeType::value) {
+            // Load value `node.value()` by address `i + dim`, because the first `dim` of the output are the gradient.
+            opcodes::load_immediate_to_memory_by_rbx_offset(code, i + dim, node.value());
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+            std::cerr << "# Z[" << i << " + " << dim << "] = " << node.value() << ";\n";
+            std::cerr << "load_immediate_to_memory_by_rbx_offset(" << i + dim << ", " << node.value() << ");\n";
+#endif
+          } else if (node.type() == NodeType::operation) {
+            stack.push(~i);
+            stack.push(node.lhs_index());
+            stack.push(node.rhs_index());
+          } else if (node.type() == NodeType::function) {
+            stack.push(~i);
+            stack.push(node.argument_index());
+          } else {
+            CURRENT_ASSERT(false);
+          }
+        }
+      } else {
+        node_impl& node = node_vector_singleton()[dependent_i];
+        if (node.type() == NodeType::operation) {
+          // Perform add/sub/mul/div, all in the operating memory, shifted by `dim`.
+          auto const op = node.operation();
+          opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, node.lhs_index() + dim);
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = Z["
+                    << node.lhs_index() << " + " << dim << "] " << operation_as_string(op) << " Z["
+                    << node.rhs_index() << " + " << dim << "];\n";
+
+          std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.lhs_index() + dim << ");\n";
+#endif
+          if (op == MathOperation::add) {
+            opcodes::add_from_memory_by_rbx_offset_to_xmm0(code, node.rhs_index() + dim);
+          } else if (op == MathOperation::subtract) {
+            opcodes::sub_from_memory_by_rbx_offset_to_xmm0(code, node.rhs_index() + dim);
+          } else if (op == MathOperation::multiply) {
+            opcodes::mul_from_memory_by_rbx_offset_to_xmm0(code, node.rhs_index() + dim);
+          } else if (op == MathOperation::divide) {
+            opcodes::div_from_memory_by_rbx_offset_to_xmm0(code, node.rhs_index() + dim);
+          } else {
+            CURRENT_ASSERT(false);
+          }
+          opcodes::store_xmm0_to_memory_by_rbx_offset(code, dependent_i + dim);
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+          std::cerr << std::string(operation_as_assembler_opcode(op)).substr(0, 3)
+                    << "_from_memory_by_rbx_offset_to_xmm0("<< node.rhs_index() + dim << ");\n";
+          std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << dependent_i + dim << ");\n";
+#endif
+        } else if (node.type() == NodeType::function) {
+          opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, node.argument_index() + dim);
+          opcodes::push_rdi(code);
+          opcodes::push_rdx(code);
+          opcodes::call_function_from_rdx_pointers_array_by_index(code, static_cast<uint8_t>(node.function()));
+          opcodes::pop_rdx(code);
+          opcodes::pop_rdi(code);
+          opcodes::store_xmm0_to_memory_by_rbx_offset(code, dependent_i + dim);
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = "
+                    << function_as_string(node.function()) << "(Z[" << node.argument_index() << " + " << dim << "]);\n";
+          std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.argument_index() + dim << ");\n";
+          std::cerr << "push_rdi();\n";
+          std::cerr << "push_rdx();\n";
+          std::cerr << "call_function_from_rdx_pointers_array_by_index(" << static_cast<int>(node.function()) << ");\n";
+          std::cerr << "pop_rdx();\n";
+          std::cerr << "pop_rdi();\n";
+          std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << dependent_i + dim << ");\n";
+#endif
+        } else {
+          CURRENT_ASSERT(false);
+        }
+      }
+    }
+  }
+};
+
+struct x64_native_jit_function_pointers {
+  std::vector<double (*)(double x)> p;
+  x64_native_jit_function_pointers() {
+#define FNCAS_FUNCTION(f) p.push_back(fncas::f);
+#include "fncas_functions.dsl.h"
+#undef FNCAS_FUNCTION
+  }
+  static x64_native_jit_function_pointers& tls() {
+    return current::ThreadLocalSingleton<x64_native_jit_function_pointers>();
+  }
+};
+
+struct f_compiled_x64_native_jit final {
+  std::unique_ptr<current::fncas::x64_native_jit::CallableVectorUInt8> jit_compiled_code;
+  mutable std::vector<double> actual_heap;
+
+  void generate_code_for_f(V const& v) {
+    std::vector<uint8_t> code;
+    size_t required_heap_size;
+    {
+      using namespace current::fncas::x64_native_jit;
+      JITCodeGenerator code_generator(code, 0);
+      code_generator.jit_compile_node(v.index());
+      opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, v.index());
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+      std::cerr << "# return Z[" << v.index() << "];\n";
+      std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << v.index() << ");\n";
+#endif
+      required_heap_size = code_generator.max_dim + 1;
+    }
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "Code:";
+    for (uint8_t c : code) {
+      fprintf(stderr, " %02x", int(c));
+    }
+    std::cerr << "\nHeap size: " << required_heap_size << '\n';
+    std::cerr << "Desired index: " << v.index() << '\n';
+#endif
+    jit_compiled_code = std::make_unique<current::fncas::x64_native_jit::CallableVectorUInt8>(code);
+    actual_heap.resize(required_heap_size);
+  }
+
+  explicit f_compiled_x64_native_jit(V const& node) {
+    generate_code_for_f(node);
+  }
+
+  explicit f_compiled_x64_native_jit(const f_impl<JIT::Blueprint>& f) {
+    generate_code_for_f(f.f_);
+  }
+
+  double operator()(const std::vector<double>& x) const {
+    return (*jit_compiled_code)(&x[0], &actual_heap[0], &x64_native_jit_function_pointers::tls().p[0]);
+  }
+
+  // For backwards "compatibility" with the unit tests. -- D.K.
+  static const char* lib_filename() { return ""; }
+};
+
+struct g_compiled_x64_native_jit final {
+  size_t const dim;
+  std::unique_ptr<current::fncas::x64_native_jit::CallableVectorUInt8> jit_compiled_code;
+  mutable std::vector<double> actual_heap;
+
+  void generate_code_for_g(JITCodeGenerator& code_generator, V const& v, size_t output_index) {
+    using namespace current::fncas::x64_native_jit;
+    code_generator.jit_compile_node(v.index());
+    opcodes::load_from_memory_by_rbx_offset_to_xmm0(code_generator.code, v.index() + dim);
+    opcodes::store_xmm0_to_memory_by_rbx_offset(code_generator.code, output_index);
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "# G[" << output_index << "] = Z[" << v.index() << " + " << dim << "];\n";
+    std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << v.index() + dim << ");\n";
+    std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << output_index << ");\n";
+#endif
+  }
+
+  g_compiled_x64_native_jit(const f_impl<JIT::Blueprint>& unused_f, const g_impl<JIT::Blueprint>& g)
+      : dim(g.g_.size()) {
+    CURRENT_ASSERT(dim == internals_singleton().dim_);
+    std::vector<uint8_t> code;
+    {
+      JITCodeGenerator code_generator(code, dim);
+      static_cast<void>(unused_f);
+      for (size_t i = 0; i < dim; ++i) {
+        generate_code_for_g(code_generator, g.g_[i], i);
+      }
+      CURRENT_ASSERT(static_cast<size_t>(code_generator.max_dim + 1) >= dim);
+      actual_heap.resize(dim + code_generator.max_dim + 1);
+    }
+#ifdef FNCAS_DEBUG_NATIVE_JIT
+    std::cerr << "Code:";
+    for (uint8_t c : code) {
+      fprintf(stderr, " %02x", int(c));
+    }
+    std::cerr << "\nHeap size: " << actual_heap.size() << '\n';
+#endif
+    jit_compiled_code = std::make_unique<current::fncas::x64_native_jit::CallableVectorUInt8>(code);
+  }
+
+  // NOTE(dkorolev): Perhaps just return a pointer to `&actual_heap[0]` to avoid a copy?
+  // NOTE(dkorolev): This would require looking into the optimizer(s) code, I'll do it some time later.
+  std::vector<double> operator()(const std::vector<double>& x) const {
+    (*jit_compiled_code)(&x[0], &actual_heap[0], &x64_native_jit_function_pointers::tls().p[0]);
+    return std::vector<double>(&actual_heap[0], &actual_heap[0] + dim);
+  }
+
+  // For backwards "compatibility" with the unit tests. -- D.K.
+  static const char* lib_filename() { return ""; }
+};
+
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
+
 struct g_compiled_super : g_super {};
 
 template <JIT JIT_IMPLEMENTATION>
@@ -780,7 +1032,7 @@ struct g_compiled final : g_compiled_super {
   void operator=(const g_compiled&) = delete;
   g_compiled(g_compiled&& rhs) : c_(std::move(rhs.c_)) { CURRENT_ASSERT(c_.HasGradient()); }
 
-  std::vector<double_t> operator()(const std::vector<double_t>& x) const override { return c_.compute_compiled_g(x); }
+  std::vector<double> operator()(const std::vector<double>& x) const override { return c_.compute_compiled_g(x); }
 
   size_t dim() const override { return c_.dim(); }
   size_t heap_size() const override { return c_.heap_size(); }
@@ -804,6 +1056,13 @@ struct f_impl_selector<JIT::NASM> {
   using type = f_compiled<JIT::NASM>;
 };
 
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
+template <>
+struct f_impl_selector<JIT::X64NativeJIT> {
+  using type = f_compiled_x64_native_jit;
+};
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
+
 // Expose JIT-compiled gradients as `fncas::gradient_t<JIT::*>`.
 template <>
 struct g_impl_selector<JIT::AS> {
@@ -819,6 +1078,13 @@ template <>
 struct g_impl_selector<JIT::NASM> {
   using type = g_compiled<JIT::NASM>;
 };
+
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
+template <>
+struct g_impl_selector<JIT::X64NativeJIT> {
+  using type = g_compiled_x64_native_jit;
+};
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED
 
 }  // namespace fncas::impl
 }  // namespace fncas

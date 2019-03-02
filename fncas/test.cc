@@ -46,6 +46,8 @@ SOFTWARE.
 #include "docu/docu_10.cc"
 #endif
 
+#include "x64_native_jit/test.cc"
+
 template <typename T>
 T ParametrizedFunction(const std::vector<T>& x, size_t c) {
   CURRENT_ASSERT(x.size() == 2u);
@@ -208,7 +210,6 @@ TEST(FnCAS, JITGradientsWrapper) {
 
   const fncas::gradient_t<fncas::JIT::Default> gc(fi, gi);
 
-  // TODO(dkorolev): Maybe return return function value and its gradient together from a call to `gc`?
   const auto d_3_3_compiled = gc(p_3_3);
 
   EXPECT_EQ(18, d_3_3_compiled[0]) << gc.lib_filename();
@@ -819,3 +820,227 @@ TEST(FnCAS, OptimizationInMaximizingDirection) {
     EXPECT_NEAR(7.0, result.point[1], 5e-2);
   }
 }
+
+#ifdef FNCAS_X64_NATIVE_JIT_ENABLED
+
+namespace x64_native_jit_test {
+
+template <typename T>
+T TrivialFunctionConst(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);  // Parameterless functions are not supported, so take one dummy argument.
+  return 42.0;
+}
+
+template <typename T>
+T TrivialFunctionExtract(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);
+  return x[0];
+}
+
+template <typename T>
+T TrivialFunctionAdd(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] + x[1];
+}
+
+template <typename T>
+T TrivialFunctionExp(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);
+  return fncas::exp(x[0]);
+}
+
+template <typename T>
+T TrivialSoftmaxFunction(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);
+  return fncas::log(fncas::exp(x[0]) + 1.0);
+}
+
+template <typename T>
+T SoftmaxFunction(const std::vector<T>& x) {
+  // Mimics the implementation of the code in `fncas_x64_native_jit/benchmark.cc`.
+  T penalty = 0.0;
+  T value = 0.0;
+  value += x[0];
+  T const delta = (value - 7.0);
+  penalty += fncas::log(fncas::exp(delta) + 1.0) + fncas::log(fncas::exp(-delta) + 1.0);
+  return penalty - (2.0 - std::log(2.0));
+}
+
+}  // namespace x64_native_jit_test
+
+TEST(FnCASX64NativeJIT, TrivialFunctions) {
+  using namespace x64_native_jit_test;
+
+  {
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionConst(fncas::variables_vector_t(1)));
+    EXPECT_EQ(42.0, fn({}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionExtract(fncas::variables_vector_t(1)));
+    EXPECT_EQ(1.0, fn({1.0}));
+    EXPECT_EQ(42.0, fn({42.0}));
+    EXPECT_EQ(101.0, fn({101.0}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionAdd(fncas::variables_vector_t(2)));
+    EXPECT_EQ(3.0, fn({1.0, 2.0}));
+    EXPECT_EQ(4.0, fn({1.5, 2.5}));
+    EXPECT_EQ(142.0, fn({42.0, 100,0}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialFunctionExp(fncas::variables_vector_t(1)));
+    EXPECT_EQ(std::exp(1.0), fn({1.0}));
+    EXPECT_EQ(std::exp(0.5), fn({0.5}));
+    EXPECT_EQ(std::exp(2.5), fn({2.5}));
+    EXPECT_EQ(std::exp(-8), fn({-8}));
+  }
+
+  {
+    fncas::function_t<fncas::JIT::X64NativeJIT> const fn(TrivialSoftmaxFunction(fncas::variables_vector_t(1)));
+    EXPECT_EQ(std::log(std::exp(0.0) + 1.0), fn({0.0}));
+    EXPECT_EQ(std::log(std::exp(0.5) + 1.0), fn({0.5}));
+    EXPECT_EQ(std::log(std::exp(1.0) + 1.0), fn({1.0}));
+    EXPECT_EQ(std::log(std::exp(2.0) + 1.0), fn({2.0}));
+    EXPECT_EQ(std::log(std::exp(-0.5) + 1.0), fn({-0.5}));
+    EXPECT_EQ(std::log(std::exp(-1.0) + 1.0), fn({-1.0}));
+    EXPECT_EQ(std::log(std::exp(-2.0) + 1.0), fn({-2.0}));
+  }
+}
+
+TEST(FnCASX64NativeJIT, SoftmaxFunction) {
+  using namespace x64_native_jit_test;
+  fncas::function_t<fncas::JIT::X64NativeJIT> const fn(SoftmaxFunction(fncas::variables_vector_t(1)));
+  EXPECT_EQ(SoftmaxFunction(std::vector<double>({1.0})), fn({1.0}));
+}
+
+TEST(FnCASX64NativeJIT, SimpleFunction) {
+  fncas::function_t<fncas::JIT::X64NativeJIT> const fn(SimpleFunction(fncas::variables_vector_t(2)));
+  EXPECT_EQ(25.0, fn({1.0, 2.0}));
+}
+
+TEST(FnCASX64NativeJIT, SmokeTestFunction) {
+  fncas::function_t<fncas::JIT::X64NativeJIT> const fn(SmokeTestFunction(fncas::variables_vector_t(3)));
+
+  EXPECT_EQ(0.0, fn({0.0, 0.0, -2.0}));
+  EXPECT_EQ(1.0, fn({0.0, 0.0, +0.0}));
+  EXPECT_EQ(1.0, fn({0.0, 0.0, +2.0}));
+  EXPECT_EQ(0.0, fn({0.0, -2.0, -1.0}));
+  EXPECT_EQ(0.0, fn({0.0, +0.0, -1.0}));
+  EXPECT_EQ(2.0, fn({0.0, +2.0, -1.0}));
+  EXPECT_EQ(9.0, fn({3.0, 0.0, -1.0}));
+}
+
+TEST(FnCASX64NativeJIT, GradientOfSimpleFunction) {
+  // Use the synopsis of the gradient computed via the `Blueprint` technique.
+  // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
+
+  std::vector<fncas::double_t> p_3_3({3.0, 3.0});
+
+  const fncas::variables_vector_t x(2);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = SimpleFunction(x);
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+
+  // NOTE(dkorolev): With the proper default setting, this test is identical to the one above,
+  //                 but I would still like to keep it in case the default is changed later on.
+  const fncas::gradient_t<fncas::JIT::X64NativeJIT> gc(fi, gi);
+
+  EXPECT_EQ(18, gc(p_3_3)[0]) << gc.lib_filename();
+  EXPECT_EQ(36, gc(p_3_3)[1]) << gc.lib_filename();
+}
+
+TEST(FnCASX64NativeJIT, GradientOfZeroOrXFunction) {
+  // Use the synopsis of the gradient computed via the `Blueprint` technique.
+  // This is how the gradient is used within the optimizer, which makes it the best format for the test. -- D.K.
+
+  const fncas::variables_vector_t x(1);
+  const fncas::function_t<fncas::JIT::Blueprint> intermediate_function = ZeroOrXFunction(x);
+
+  EXPECT_EQ(0.0, intermediate_function({-5.0}));
+  EXPECT_EQ(6.0, intermediate_function({+6.0}));
+
+  const fncas::gradient_t<fncas::JIT::Blueprint> intermediate_gradient(x, intermediate_function);
+  EXPECT_EQ(0.0, intermediate_gradient({-7.0})[0]);
+  EXPECT_EQ(1.0, intermediate_gradient({+8.0})[0]);
+
+  const fncas::gradient_t<fncas::JIT::X64NativeJIT> jit_compiled_gradient(intermediate_function, intermediate_gradient);
+  EXPECT_EQ(0.0, jit_compiled_gradient({-9.5})[0]);
+  EXPECT_EQ(1.0, jit_compiled_gradient({+9.5})[0]);
+}
+
+TEST(FnCASX64NativeJIT, GradientOfSoftmaxFunction) {
+  const fncas::variables_vector_t x(1);
+  const fncas::function_t<fncas::JIT::Blueprint> fi = x64_native_jit_test::SoftmaxFunction(x);
+  const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+
+  const fncas::gradient_t<fncas::JIT::X64NativeJIT> gc(fi, gi);
+
+  EXPECT_NEAR(gi({0.0})[0], gc({0.0})[0], 1e-6);
+}
+
+namespace functions_to_simplify_gradients {
+
+template <typename T>
+T Return42(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 1u);  // Parameterless functions are not supported, so take one dummy argument.
+  return 42.0;
+}
+
+template <typename T>
+T ReturnX0PlusX1(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] + x[1];
+}
+
+template <typename T>
+T ReturnX0MinusX1(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] - x[1];
+}
+
+template <typename T>
+T ReturnX0TimesX1(const std::vector<T>& x) {
+  CURRENT_ASSERT(x.size() == 2u);
+  return x[0] * x[1];
+}
+
+}  // namespace functions_to_simplify_gradients
+
+TEST(FnCASGradientSimplification, Smoke) {
+  using namespace functions_to_simplify_gradients;
+  {
+    const fncas::variables_vector_t x(1);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = Return42(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("42", fi.debug_as_string());
+    EXPECT_EQ("0", gi.debug_gradient_as_string(0));
+  }
+  {
+    const fncas::variables_vector_t x(2);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0PlusX1(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("(x[0]+x[1])", fi.debug_as_string());
+    EXPECT_EQ("1", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("1", gi.debug_gradient_as_string(1));
+  }
+  {
+    const fncas::variables_vector_t x(2);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0MinusX1(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("(x[0]-x[1])", fi.debug_as_string());
+    EXPECT_EQ("1", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("-1", gi.debug_gradient_as_string(1));
+  }
+  {
+    const fncas::variables_vector_t x(2);
+    const fncas::function_t<fncas::JIT::Blueprint> fi = ReturnX0TimesX1(x);
+    const fncas::gradient_t<fncas::JIT::Blueprint> gi(x, fi);
+    EXPECT_EQ("(x[0]*x[1])", fi.debug_as_string());
+    EXPECT_EQ("x[1]", gi.debug_gradient_as_string(0));
+    EXPECT_EQ("x[0]", gi.debug_gradient_as_string(1));
+  }
+}
+
+#endif  // FNCAS_X64_NATIVE_JIT_ENABLED

@@ -32,6 +32,8 @@
 #include <cstdlib>
 #include <cstdint>
 
+#include "../x64_native_jit/x64_native_jit.h"
+
 namespace fncas {
 
 #ifndef FNCAS_USE_LONG_DOUBLE
@@ -52,8 +54,8 @@ struct noncopyable {
   void operator=(noncopyable&&) = delete;
 };
 
-template <typename T, typename V>
-T& growing_vector_access(std::vector<T>& vector, node_index_t index, V fill) {
+template <typename VECTOR_TYPE, typename FILL_VALUE_TYPE>
+VECTOR_TYPE& growing_vector_access(std::vector<VECTOR_TYPE>& vector, node_index_t index, FILL_VALUE_TYPE fill) {
   if (static_cast<node_index_t>(vector.size()) <= index) {
     vector.resize(static_cast<size_t>(index + 1), fill);
   }
@@ -76,7 +78,14 @@ enum class JIT {
   CLANG,          // JIT via `clang++`.
   AS,             // JIT via `as`.
   NASM,           // JIT via `nasm`.
-  Default = AS    // The JIT used by default by the optimization algorithms.
+#ifndef FNCAS_X64_NATIVE_JIT_ENABLED
+  // The JIT used by default by the optimization algorithms is the `as` one ...
+  Default = AS
+#else
+  // ... unless we are on a platform where the x64 native JIT is available (Linux or MacOS).
+  X64NativeJIT,
+  Default = X64NativeJIT
+#endif
 };
 
 template <JIT>

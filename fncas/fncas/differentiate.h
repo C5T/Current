@@ -37,7 +37,7 @@ namespace impl {
 static const double_t APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 
 template <typename F>
-double_t approximate_derivative(F f,
+double_t approximate_derivative(F&& f,
                                 const std::vector<double_t>& x,
                                 node_index_t i,
                                 const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
@@ -49,7 +49,7 @@ double_t approximate_derivative(F f,
 }
 
 template <typename F>
-std::vector<double_t> approximate_gradient(F f,
+std::vector<double_t> approximate_gradient(F&& f,
                                            const std::vector<double_t>& x,
                                            const double_t EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<double_t> g(x.size());
@@ -66,13 +66,73 @@ std::vector<double_t> approximate_gradient(F f,
   return g;
 }
 
+inline V d_add(const V& a, const V& b, const V& da, const V& db) {
+  static_cast<void>(a);
+  static_cast<void>(b);
+  if (da.is_value() && db.is_value()) {
+    return da.value() + db.value();
+  } else if (db.equals_to(0)) {
+    return da;
+  } else if(da.equals_to(0)) {
+    return db;
+  } else {
+    return da + db;
+  }
+}
+
+inline V d_sub(const V& a, const V& b, const V& da, const V& db) {
+  static_cast<void>(a);
+  static_cast<void>(b);
+  if (da.is_value() && db.is_value()) {
+    return da.value() - db.value();
+  } else if (db.equals_to(0)) {
+    return da;
+  } else if(da.equals_to(0)) {
+    return -db;
+  } else {
+    return da - db;
+  }
+}
+
+inline V simplified_mul(const V& x, const V& y) {
+  if (x.equals_to(0) || y.equals_to(0)) {
+    return 0;
+  } else if (x.is_value() && y.is_value()) {
+    return x.value() * y.value();
+  } else if (y.equals_to(1)) {
+    return x;
+  } else if (x.equals_to(1)) {
+    return y;
+  } else {
+    return x * y;
+  }
+}
+
+inline V d_mul(const V& a, const V& b, const V& da, const V& db) {
+  bool const lhs_zero = a.equals_to(0) || db.equals_to(0);
+  bool const rhs_zero = b.equals_to(0) || da.equals_to(0);
+  if (lhs_zero && rhs_zero) {
+    return 0;
+  } else if (lhs_zero) {
+    return simplified_mul(b, da);
+  } else if (rhs_zero) {
+    return simplified_mul(a, db);
+  } else {
+    return simplified_mul(a, db) + simplified_mul(b, da);
+  }
+}
+
 inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const V& da, const V& db) {
   static const size_t n = static_cast<size_t>(MathOperation::end);
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
-      [](const V&, const V&, const V& da, const V& db) { return da + db; },
-      [](const V&, const V&, const V& da, const V& db) { return da - db; },
-      [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
-      [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
+      d_add,
+      d_sub,
+      d_mul,
+      [](const V& a, const V& b, const V& da, const V& db) { 
+        // The unary minus doesn't exist, so a "0" node would still appear there, and thus no harm.
+        return (simplified_mul(b, da) - simplified_mul(a, db)) / (b * b);
+      }
+  };
   return operation < MathOperation::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
@@ -80,29 +140,63 @@ inline node_index_t d_f(MathFunction function, const V& original, const V& x, co
   static const size_t n = static_cast<size_t>(MathFunction::end);
   static const std::function<V(const V&, const V&, const V&)> differentiator[n] = {
       // sqr().
-      [](const V&, const V& x, const V& dx) { return V(2.0) * x * dx; },
+      [](const V&, const V& x, const V& dx) { return simplified_mul(V(2.0), simplified_mul(x, dx)); },
       // sqrt().
-      [](const V& original, const V&, const V& dx) { return dx / (original + original); },
+      [](const V& original, const V&, const V& dx) { 
+        if (original.is_value()) {
+          return simplified_mul(V(0.5 / original.value()), dx);
+        } else {
+          return dx / (original + original);
+        }
+      },
       // exp().
-      [](const V& original, const V&, const V& dx) { return original * dx; },
+      [](const V& original, const V&, const V& dx) { return simplified_mul(original, dx); },
       // log().
-      [](const V&, const V& x, const V& dx) { return dx / x; },
+      [](const V&, const V& x, const V& dx) { 
+        if (x.is_value()) {
+          return simplified_mul(V(1.0) / x.value(), dx);
+        } else {
+          return dx / x; 
+        }
+      },
       // sin().
-      [](const V&, const V& x, const V& dx) { return dx * ::fncas::cos(x); },
+      [](const V&, const V& x, const V& dx) { return simplified_mul(dx, ::fncas::cos(x)); },
       // cos().
-      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx * ::fncas::sin(x); },
+      [](const V&, const V& x, const V& dx) { return simplified_mul(V(-1.0), simplified_mul(dx, ::fncas::sin(x))); },
       // tan().
       [](const V&, const V& x, const V& dx) {
-        V a = V(4.0) * dx * ::fncas::cos(x) * ::fncas::cos(x);
-        V b = fncas::cos(x + x) + 1;
-        return a / (b * b);
+        V a = simplified_mul(V(4.0), simplified_mul(dx, ::fncas::cos(x) * ::fncas::cos(x)));
+        V b = ::fncas::cos(x + x) + 1;
+        if (b.is_value()) {
+          return simplified_mul(V(1.0 / b.value()), a);
+        } else {
+          return a / (b * b);
+        }
       },
       // asin().
-      [](const V&, const V& x, const V& dx) { return dx / ::fncas::sqrt(V(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) {
+        if (x.is_value()) {
+          return simplified_mul(V(1.0) / (::fncas::sqrt(V(1.0) - x * x)), dx);
+        } else {
+          return dx / ::fncas::sqrt(V(1.0) - x * x);
+        }
+      },
       // acos().
-      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / ::fncas::sqrt(V(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) {
+        if (x.is_value()) {
+          return simplified_mul(V(-1.0) / ::fncas::sqrt(V(1.0) - x * x), dx);
+        } else {
+          return V(-1.0) * dx / ::fncas::sqrt(V(1.0) - x * x);
+        }
+      },
       // atan().
-      [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
+      [](const V&, const V& x, const V& dx) {
+        if (x.is_value()) {
+          return simplified_mul(V(1.0) / (x * x + V(1.0)), dx);
+        } else {
+          return dx / (x * x + V(1.0));
+        }
+      },
       // unit_step().
       [](const V& o, const V&, const V&) {
         CURRENT_THROW(exceptions::FnCASZeroOrOneIsNonDifferentiable());
@@ -219,6 +313,7 @@ struct g_impl<JIT::Blueprint> : g_super {
     for (size_t i = 0; i < dim; ++i) {
       g_[i] = f_.template differentiate<X>(x_ref, i);
     }
+    internals_singleton().node_vector_.shrink_to_fit();
   }
   explicit g_impl(const V& f) : g_impl(*internals_singleton().x_ptr_, f) {}
   g_impl(const X& x_ref, const f_impl<JIT::Blueprint>& fi) : g_impl(x_ref, fi.f_) {}
@@ -236,6 +331,7 @@ struct g_impl<JIT::Blueprint> : g_super {
     }
     return r;
   }
+  std::string debug_gradient_as_string(size_t i) const { return g_[i].debug_as_string(); }
   size_t dim() const override { return g_.size(); }
 };
 

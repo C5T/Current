@@ -35,6 +35,7 @@
 #include <sstream>
 #include <vector>
 #include <exception>
+#include <unordered_map>
 
 #include "base.h"
 #include "exceptions.h"
@@ -122,12 +123,16 @@ struct internals_impl {
   // A block of RAM to be used as the buffer for externally compiled functions.
   std::vector<double_t> heap_for_compiled_evaluations_;
 
+  // A hashmap of per-immediate-value-created nodes, to not create constants such as zeroes and ones way too often.
+  std::unordered_map<double_t, node_index_t> allocated_values_map_;
+
   void reset() {
     dim_ = 0;
     x_ptr_ = nullptr;
     node_vector_.clear();
     df_.clear();
     heap_for_compiled_evaluations_.clear();
+    allocated_values_map_.clear();
   }
 };
 
@@ -175,7 +180,7 @@ enum class reuse_cache : int8_t { invalidate = 0, reuse = 1 };
 inline double_t eval_node(node_index_t index,
                           const std::vector<double_t>& x,
                           reuse_cache reuse = reuse_cache::invalidate) {
-  std::vector<double_t>& V = internals_singleton().node_value_;
+  std::vector<double_t>& node_value = internals_singleton().node_value_;
   std::vector<int8_t>& B = internals_singleton().node_computed_;
   if (reuse == reuse_cache::invalidate) {
     B.clear();
@@ -192,11 +197,11 @@ inline double_t eval_node(node_index_t index,
         if (f.type() == NodeType::variable) {
           const int32_t v = f.variable();
           CURRENT_ASSERT(v >= 0 && v < static_cast<int32_t>(x.size()));
-          growing_vector_access(V, i, 0.0) = x[v];
+          growing_vector_access(node_value, i, 0.0) = x[v];
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
 
         } else if (f.type() == NodeType::value) {
-          growing_vector_access(V, i, 0.0) = f.value();
+          growing_vector_access(node_value, i, 0.0) = f.value();
           growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
         } else if (f.type() == NodeType::operation) {
           stack.push(~i);
@@ -213,12 +218,12 @@ inline double_t eval_node(node_index_t index,
     } else {
       node_impl& f = node_vector_singleton()[dependent_i];
       if (f.type() == NodeType::operation) {
-        growing_vector_access(V, dependent_i, 0.0) =
-            apply_operation<double_t>(f.operation(), V[f.lhs_index()], V[f.rhs_index()]);
+        growing_vector_access(node_value, dependent_i, 0.0) =
+            apply_operation<double_t>(f.operation(), node_value[f.lhs_index()], node_value[f.rhs_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == NodeType::function) {
-        growing_vector_access(V, dependent_i, 0.0) =
-            ::fncas::apply_function<double_t>(f.function(), V[f.argument_index()]);
+        growing_vector_access(node_value, dependent_i, 0.0) =
+            ::fncas::apply_function<double_t>(f.function(), node_value[f.argument_index()]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         CURRENT_ASSERT(false);
@@ -227,7 +232,7 @@ inline double_t eval_node(node_index_t index,
     }
   }
   CURRENT_ASSERT(B[index]);
-  return V[index];
+  return node_value[index];
 }
 
 // The code that deals with nodes directly uses class V as a wrapper to node_impl.
@@ -236,13 +241,25 @@ inline double_t eval_node(node_index_t index,
 // arithmetical and mathematical operations are overloaded for class V.
 
 struct allocate_new {};
+struct allocate_for_double {};
 enum class from_index : node_index_t;
 
 struct node_index_allocator {
   node_index_t index_;  // non-const since `V` objects can be modified.
-  explicit inline node_index_allocator(from_index i) : index_(static_cast<node_index_t>(i)) {}
-  explicit inline node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
+  explicit node_index_allocator(from_index i) : index_(static_cast<node_index_t>(i)) {}
+  explicit node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
     node_vector_singleton().resize(index_ + 1);
+  }
+  node_index_allocator(allocate_for_double, double_t value) {
+    std::unordered_map<double_t, node_index_t>& map = internals_singleton().allocated_values_map_;
+    auto const cit = map.find(value);
+    if (cit != map.end()) {
+      index_ = cit->second;
+    } else {
+      index_ = node_vector_singleton().size();
+      map[value] = index_;
+      node_vector_singleton().resize(index_ + 1);
+    }
   }
   node_index_t index() const { return index_; }
   node_index_allocator() = delete;
@@ -261,7 +278,7 @@ struct GenericV : node_index_allocator {
 
  public:
   GenericV() : node_index_allocator(allocate_new()) {}
-  GenericV(double_t x) : node_index_allocator(allocate_new()) {
+  GenericV(double_t x) : node_index_allocator(allocate_for_double(), x) {
     type() = NodeType::value;
     value() = x;
   }
@@ -269,6 +286,8 @@ struct GenericV : node_index_allocator {
   NodeType& type() const { return node_vector_singleton()[index_].type(); }
   int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
   double_t& value() const { return node_vector_singleton()[index_].value(); }
+  bool is_value() const { return type() == NodeType::value; }
+  bool equals_to(double_t expected_value) const { return is_value() && value() == expected_value; }
   MathOperation& operation() const { return node_vector_singleton()[index_].operation(); }
   node_index_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
   node_index_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
@@ -277,7 +296,7 @@ struct GenericV : node_index_allocator {
   MathFunction& function() const { return node_vector_singleton()[index_].function(); }
   node_index_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
   GenericV argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
-  static GenericV variable(node_index_t index) {
+  static GenericV create_variable_node(node_index_t index) {
     GenericV result;
     result.type() = NodeType::variable;
     result.variable() = index;
@@ -385,7 +404,7 @@ class vector<::fncas::impl::V> {
 namespace fncas {
 namespace impl {
 
-struct X : std::vector<V>, noncopyable {
+struct X final : std::vector<V>, noncopyable {
   using super_t = std::vector<V>;
 
   explicit X(size_t dim) {
@@ -403,11 +422,11 @@ struct X : std::vector<V>, noncopyable {
     // Initialize the actual `vector<V>`.
     super_t::resize(internals_singleton().dim_);
     for (size_t i = 0; i < super_t::size(); ++i) {
-      super_t::operator[](i) = V::variable(i);
+      super_t::operator[](i) = V::create_variable_node(i);
     }
   }
 
-  ~X() {
+  virtual ~X() {
     auto& meta = internals_singleton();
     if (meta.x_ptr_ == this) {
       // The condition is required to correctly handle the case when the constructor did `throw`.
