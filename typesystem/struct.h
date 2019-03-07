@@ -446,6 +446,13 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   using template_inner_t = original_template_inner_type
 #endif
 
+#define CURRENT_EXTRACT_T_SUBTYPE(subtype, exported_subtype)             \
+  struct CRNT_##exported_subtype_##_helper_t { using subtype = int; };   \
+  using exported_subtype =                                               \
+    typename std::conditional<std::is_same<T, ::crnt::r::DummyT>::value, \
+                              CRNT_##exported_subtype_##_helper_t,       \
+                              T>::type::subtype
+
 namespace current {
 
 template <typename T>

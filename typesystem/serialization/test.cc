@@ -1595,4 +1595,35 @@ TEST(JSONSerialization, DerivedSupportsConstructorForwarding) {
   EXPECT_EQ("{'i':12321,'x':'baz','w':101}", SingleQuoted(JSON(NonEmptyDerivedFromTemplatedBase(12321, "baz", 101))));
 }
 
+namespace serialization_test {
+
+CURRENT_STRUCT_T(CurrentStructTUsingSubtype) {
+  CURRENT_EXTRACT_T_SUBTYPE(vector_element_t, extracted_vector_element_t);
+  CURRENT_FIELD(xs, std::vector<extracted_vector_element_t>);
+};
+
+// NOTE(dkorolev): I recall we had a `static_assert` that only `CURRENT_STRUCT`-s can be the bases
+//                 for `CURRENT_STRUCT_T`-s. This test may need to be revisited as we re-enable that check.
+struct VectorOfUInt32s {
+  using vector_element_t = uint32_t;
+};
+
+struct VectorOfStrings {
+  using vector_element_t = std::string;
+};
+
+}  // namespace serialization_test
+
+TEST(JSONSerialization, CanSerializeWithSubtypesOfTInCurrentStructT) {
+  using namespace serialization_test;
+
+  CurrentStructTUsingSubtype<VectorOfUInt32s> u;
+  u.xs.push_back(42);
+  EXPECT_EQ("{'xs':[42]}", SingleQuoted(JSON(u)));
+
+  CurrentStructTUsingSubtype<VectorOfStrings> s;
+  s.xs.push_back("hello");
+  EXPECT_EQ("{'xs':['hello']}", SingleQuoted(JSON(s)));
+}
+
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
