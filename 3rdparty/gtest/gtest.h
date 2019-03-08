@@ -34,15 +34,14 @@ inline std::string CurrentTestName() {
 }
 
 // Effectively returns `argv[0]`.
-// NOTE(dkorolev): Deprecated in `googletest` with v1.8.1.
-#if 0
 inline std::string CurrentBinaryRelativePathAndName() {
-  return testing::internal::g_executable_path;
+  std::vector<std::string> const v = testing::internal::GetArgvs();
+  return !v.empty() ? v.front() : "./current_binary";
 }
 // Returns path part of `argv[0]`.
 inline std::string CurrentBinaryRelativePath() {
   using namespace testing::internal;
-  return FilePath(g_executable_path).RemoveFileName().RemoveTrailingPathSeparator().string();
+  return FilePath(CurrentBinaryRelativePathAndName()).RemoveFileName().RemoveTrailingPathSeparator().string();
 }
 
 // Returns current working directory.
@@ -55,7 +54,6 @@ inline std::string CurrentBinaryFullPath() {
   using namespace testing::internal;
   return FilePath::ConcatPaths(FilePath::GetCurrentDir(), FilePath(CurrentBinaryRelativePath())).string();
 }
-#endif
 
 inline void ExpectStringEndsWith(const std::string& desired_suffix, const std::string& actual) {
   ASSERT_GE(actual.length(), desired_suffix.length());
