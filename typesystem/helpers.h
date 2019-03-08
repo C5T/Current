@@ -102,7 +102,7 @@ struct ExistsImplCaller<T, T> {
   }
 };
 
-struct DefaultExistsInvocaion {};
+struct DefaultExistsInvocation {};
 template <typename TEST = DefaultExistsInvocation, typename T>
 bool Exists(T&& x) {
   return ExistsImplCaller<
