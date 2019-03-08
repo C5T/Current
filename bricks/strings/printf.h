@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <algorithm>
 #include <cstdarg>
 #include <string>
 #include <vector>

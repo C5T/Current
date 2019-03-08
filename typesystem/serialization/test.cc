@@ -41,6 +41,15 @@ SOFTWARE.
 
 namespace serialization_test {
 
+inline std::string SingleQuoted(std::string s) {
+  for (char& c : s) {
+    if (c == '\"') {
+      c = '\'';
+    }
+  }
+  return s;
+}
+
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
 // clang-format off
@@ -1274,7 +1283,6 @@ CURRENT_STRUCT(DummyBaseClass) {
   CURRENT_CONSTRUCTOR(DummyBaseClass)(int32_t base = 0) : base(base) {}
 };
 
-// TODO(dkorolev): Test `: SUPER(42)` does the job.
 CURRENT_STRUCT_T(DerivedTemplatedValue, DummyBaseClass) {
   CURRENT_FIELD(derived, T);
   CURRENT_DEFAULT_CONSTRUCTOR_T(DerivedTemplatedValue) : derived() {}
@@ -1538,6 +1546,84 @@ TEST(JSONSerialization, IntegerZeroIsADouble) {
 
   EXPECT_EQ(0, ParseJSON<Double>(JSON(Int())).x);
   EXPECT_EQ(0, ParseJSON<Float>(JSON(Int())).x);
+}
+
+namespace serialization_test {
+
+CURRENT_STRUCT(NonTemplatedBase) {
+  CURRENT_FIELD(n, uint32_t);
+  CURRENT_CONSTRUCTOR(NonTemplatedBase)(uint32_t n) : n(n) {}
+};
+
+CURRENT_STRUCT_T(TemplatedBase) {
+  CURRENT_FIELD(i, uint32_t);
+  CURRENT_FIELD(x, T);
+  CURRENT_CONSTRUCTOR_T(TemplatedBase)(uint32_t i, T x) : i(i), x(std::move(x)) {}
+};
+
+CURRENT_STRUCT(EmptyDerivedFromNonTemplatedBase, NonTemplatedBase) {
+  CURRENT_CONSTRUCTOR(EmptyDerivedFromNonTemplatedBase)(uint32_t n) : SUPER(n) {}
+};
+
+CURRENT_STRUCT(EmptyDerivedFromTemplatedBase, TemplatedBase<std::string>) {};
+
+CURRENT_STRUCT(NonEmptyDerivedFromNonTemplatedBase, NonTemplatedBase) {
+  CURRENT_FIELD(u, uint32_t);
+  CURRENT_CONSTRUCTOR(NonEmptyDerivedFromNonTemplatedBase)(uint32_t n, uint32_t u) : SUPER(n), u(u) {}
+};
+
+CURRENT_STRUCT(NonEmptyDerivedFromTemplatedBase, TemplatedBase<std::string>) {
+  CURRENT_FIELD(w, uint32_t);
+  CURRENT_CONSTRUCTOR(NonEmptyDerivedFromTemplatedBase)(uint32_t i, std::string s, uint32_t w)
+      : SUPER(i, std::move(s)), w(w) {}
+};
+
+}  // namespace serialization_test
+
+TEST(JSONSerialization, DerivedSupportsConstructorForwarding) {
+  using namespace serialization_test;
+
+  EXPECT_EQ("{'n':1}", SingleQuoted(JSON(NonTemplatedBase(1))));
+
+  EXPECT_EQ("{'i':42,'x':101}", SingleQuoted(JSON(TemplatedBase<uint32_t>(42, 101))));
+  EXPECT_EQ("{'i':42,'x':'foo'}", SingleQuoted(JSON(TemplatedBase<std::string>(42, "foo"))));
+
+  EXPECT_EQ("{'n':121}", SingleQuoted(JSON(EmptyDerivedFromNonTemplatedBase(121))));
+
+  EXPECT_EQ("{'n':3,'u':4}", SingleQuoted(JSON(NonEmptyDerivedFromNonTemplatedBase(3, 4))));
+
+  EXPECT_EQ("{'i':12321,'x':'baz','w':101}", SingleQuoted(JSON(NonEmptyDerivedFromTemplatedBase(12321, "baz", 101))));
+}
+
+namespace serialization_test {
+
+CURRENT_STRUCT_T(CurrentStructTUsingSubtype) {
+  CURRENT_EXTRACT_T_SUBTYPE(vector_element_t, extracted_vector_element_t);
+  CURRENT_FIELD(xs, std::vector<extracted_vector_element_t>);
+};
+
+// NOTE(dkorolev): I recall we had a `static_assert` that only `CURRENT_STRUCT`-s can be the bases
+//                 for `CURRENT_STRUCT_T`-s. This test may need to be revisited as we re-enable that check.
+struct VectorOfUInt32s {
+  using vector_element_t = uint32_t;
+};
+
+struct VectorOfStrings {
+  using vector_element_t = std::string;
+};
+
+}  // namespace serialization_test
+
+TEST(JSONSerialization, CanSerializeWithSubtypesOfTInCurrentStructT) {
+  using namespace serialization_test;
+
+  CurrentStructTUsingSubtype<VectorOfUInt32s> u;
+  u.xs.push_back(42);
+  EXPECT_EQ("{'xs':[42]}", SingleQuoted(JSON(u)));
+
+  CurrentStructTUsingSubtype<VectorOfStrings> s;
+  s.xs.push_back("hello");
+  EXPECT_EQ("{'xs':['hello']}", SingleQuoted(JSON(s)));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
