@@ -64,7 +64,7 @@ class Exception : public std::exception {
   // The user-defined description of the exception.
   std::string original_description_;
 
-  // The description augmented with the full body of the invokation of `CURRENT_THROW`,
+  // The description augmented with the full body of the invocation of `CURRENT_THROW`,
   // as well as `__FILE__` and `__LINE__`. This is what is returned by `what()`, `overriding std::exception::what()`.
   std::string detailed_description_;
 
