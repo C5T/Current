@@ -77,7 +77,7 @@ namespace impl {
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of `node_impl` take 10 bytes each and are packed.
-// Each node_impl refers to a value, an input variable, an operation or math function invokation.
+// Each node_impl refers to a value, an input variable, an operation or math function invocation.
 // The `ThreadLocalSingleton` containing `vector<node_impl>` is the allocator, thus
 // at most one expression per thread (at most one scope of `fncas::impl::X`) can be "recorded" at a time.
 

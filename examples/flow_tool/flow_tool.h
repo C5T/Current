@@ -180,7 +180,7 @@ class FlowTool final {
     if (r.method == "GET") {
       storage_
           ->ReadOnlyTransaction(
-              [this, path, trailing_slash](ImmutableFields<storage_t> fields) -> Response {
+              [path, trailing_slash](ImmutableFields<storage_t> fields) -> Response {
                 const NodeSearchResult result = FindNodeFromWithinTransaction(fields, path);
                 if (result.node) {
                   struct GetFileOrDirHandler final {
