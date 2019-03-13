@@ -1,1 +1,1 @@
-HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`Blocks/http/test.cc`](https://github.com/C5T/Current/blob/master/blocks/http/test.cc) for more details.
+HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`Blocks/http/test.cc`](https://github.com/C5T/Current/blob/stable/blocks/http/test.cc) for more details.

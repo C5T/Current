@@ -1,6 +1,6 @@
 ## Command Line Parsing: `dflags`
 
-Bricks has [`dflags`](https://github.com/C5T/Current/blob/master/bricks/dflags/dflags.h): a C++ library to parse command-line flags.
+Bricks has [`dflags`](https://github.com/C5T/Current/blob/stable/bricks/dflags/dflags.h): a C++ library to parse command-line flags.
 
 ```cpp
 DEFINE_int32(answer, 42, "Human-readable flag description.");
@@ -28,4 +28,4 @@ Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new, upd
 
 Passing `--help` will cause `ParseDFlags()` to print all registered flags with their descriptions and `exit(0)`.
 
-[`dflags`](https://github.com/KnowSheet/bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
+[`dflags`](https://github.com/KnowSheet/bricks/blob/stable/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
