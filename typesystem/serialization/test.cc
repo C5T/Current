@@ -1609,9 +1609,9 @@ namespace serialization_test {
 
 CURRENT_STRUCT_T(CurrentStructTUsingSubtype) {
   CURRENT_EXTRACT_T_SUBTYPE(single_element_t, extracted_single_element_t);
-  CURRENT_EXTRACT_T_SUBTYPE(vector_element_t, extracted_vector_element_t);
+  CURRENT_EXTRACT_T_SUBTYPE(vector_element_t);
   CURRENT_FIELD(xs, extracted_single_element_t);
-  CURRENT_FIELD(xv, std::vector<extracted_vector_element_t>);
+  CURRENT_FIELD(xv, std::vector<vector_element_t>);
 };
 
 CURRENT_STRUCT_T(CurrentStructTUsingDerived) {

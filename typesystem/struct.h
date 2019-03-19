@@ -461,12 +461,27 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define CURRENT_USE_T_BASE_CONSTRUCTORS(s) using SUPER::SUPER
 #endif
 
-#define CURRENT_EXTRACT_T_SUBTYPE(subtype, exported_subtype) \
-  struct CRNT_##exported_subtype##_helper_t {                \
-    using subtype = int;                                     \
-  };                                                         \
-  using exported_subtype = typename std::                    \
+#define CURRENT_EXTRACT_T_SUBTYPE_IMPL(subtype, exported_subtype) \
+  struct CRNT_##exported_subtype##_helper_t {                     \
+    using subtype = int;                                          \
+  };                                                              \
+  using exported_subtype = typename std::                         \
       conditional<std::is_same<T, ::crnt::r::DummyT>::value, CRNT_##exported_subtype##_helper_t, T>::type::subtype
+
+#define CETS_IMPL1(a) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, a)
+#define CETS_IMPL2(a, b) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, b)
+
+#define CETS_N_ARGS_IMPL2(_1, _2, n, ...) n
+#define CETS_N_ARGS_IMPL(args) CETS_N_ARGS_IMPL2 args
+
+#define CETS_NARGS(...) CETS_N_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
+
+#define CETS_CHOOSER2(n) CETS_IMPL##n
+#define CETS_CHOOSER1(n) CETS_CHOOSER2(n)
+#define CETS_CHOOSERX(n) CETS_CHOOSER1(n)
+
+#define CETS_SWITCH(x, y) x y
+#define CURRENT_EXTRACT_T_SUBTYPE(...) CETS_SWITCH(CETS_CHOOSERX(CETS_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 namespace current {
 
