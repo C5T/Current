@@ -441,6 +441,10 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   using template_inner_t_internal = std::true_type;                                                  \
   using template_inner_t_impl = original_template_inner_type
 
+// Can't just write "using SUPER::SUPER", because SUPER always uses ::crnt::r::DF,
+// which means for different INSTANTIATION_TYPEs it isn't actually a base to the "s" struct.
+// Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
+// as they always base to the "s" regardless of what the INSTANTIATION_TYPE is.
 #define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                        \
   using CRNT_super_t =                                                                                          \
       typename std::conditional<std::is_same<INSTANTIATION_TYPE, ::crnt::r::DF>::value, SUPER, CSSH_##s>::type; \
@@ -457,6 +461,8 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
   using template_inner_t = original_template_inner_type
 
+// A "simple" solution with using SUPER::SUPER works only for Windows,
+// as SUPER always corresponds to the base type no matter what INSTANTIATION_TYPE is.
 #define CURRENT_USE_BASE_CONSTRUCTORS(s) using SUPER::SUPER
 #define CURRENT_USE_T_BASE_CONSTRUCTORS(s) using SUPER::SUPER
 #endif
