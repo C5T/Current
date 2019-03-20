@@ -444,7 +444,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // Can't just write "using SUPER::SUPER", because SUPER always uses ::crnt::r::DF,
 // which means for different INSTANTIATION_TYPEs it isn't actually a base to the "s" struct.
 // Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
-// as they always base to the "s" regardless of what the INSTANTIATION_TYPE is.
+// as they are always the base class to the "s" regardless of what the INSTANTIATION_TYPE is.
 #define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                        \
   using CRNT_super_t =                                                                                          \
       typename std::conditional<std::is_same<INSTANTIATION_TYPE, ::crnt::r::DF>::value, SUPER, CSSH_##s>::type; \
