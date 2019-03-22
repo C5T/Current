@@ -440,19 +440,54 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
   using template_inner_t_internal = std::true_type;                                                  \
   using template_inner_t_impl = original_template_inner_type
+
+// Can't just write "using SUPER::SUPER", because SUPER always uses ::crnt::r::DF,
+// which means for different INSTANTIATION_TYPEs it isn't actually a base to the "s" struct.
+// Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
+// as they are always the base class to the "s" regardless of what the INSTANTIATION_TYPE is.
+#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                        \
+  using CRNT_super_t =                                                                                          \
+      typename std::conditional<std::is_same<INSTANTIATION_TYPE, ::crnt::r::DF>::value, SUPER, CSSH_##s>::type; \
+  using CRNT_super_t::CRNT_super_t
+
+#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                               \
+  using CRNT_super_t = typename std::conditional<std::is_same<INSTANTIATION_TYPE, ::crnt::r::DF>::value, \
+                                                 SUPER,                                                  \
+                                                 CURRENT_STRUCT_T_SUPER_HELPER_##s>::type;               \
+  using CRNT_super_t::CRNT_super_t
 #else
 // I sure hope this is how it should be. -- D.K.
 #define CURRENT_EXPORTED_TEMPLATED_STRUCT(original_struct_name, original_template_inner_type)        \
   constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
   using template_inner_t = original_template_inner_type
+
+// A "simple" solution with using SUPER::SUPER works only for Windows,
+// as SUPER always corresponds to the base type no matter what INSTANTIATION_TYPE is.
+#define CURRENT_USE_BASE_CONSTRUCTORS(s) using SUPER::SUPER
+#define CURRENT_USE_T_BASE_CONSTRUCTORS(s) using SUPER::SUPER
 #endif
 
-#define CURRENT_EXTRACT_T_SUBTYPE(subtype, exported_subtype)             \
-  struct CRNT_##exported_subtype_##_helper_t { using subtype = int; };   \
-  using exported_subtype =                                               \
-    typename std::conditional<std::is_same<T, ::crnt::r::DummyT>::value, \
-                              CRNT_##exported_subtype_##_helper_t,       \
-                              T>::type::subtype
+#define CURRENT_EXTRACT_T_SUBTYPE_IMPL(subtype, exported_subtype) \
+  struct CRNT_##exported_subtype##_helper_t {                     \
+    using subtype = int;                                          \
+  };                                                              \
+  using exported_subtype = typename std::                         \
+      conditional<std::is_same<T, ::crnt::r::DummyT>::value, CRNT_##exported_subtype##_helper_t, T>::type::subtype
+
+#define CETS_IMPL1(a) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, a)
+#define CETS_IMPL2(a, b) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, b)
+
+#define CETS_N_ARGS_IMPL2(_1, _2, n, ...) n
+#define CETS_N_ARGS_IMPL(args) CETS_N_ARGS_IMPL2 args
+
+#define CETS_NARGS(...) CETS_N_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
+
+#define CETS_CHOOSER2(n) CETS_IMPL##n
+#define CETS_CHOOSER1(n) CETS_CHOOSER2(n)
+#define CETS_CHOOSERX(n) CETS_CHOOSER1(n)
+
+#define CETS_SWITCH(x, y) x y
+#define CURRENT_EXTRACT_T_SUBTYPE(...) CETS_SWITCH(CETS_CHOOSERX(CETS_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 namespace current {
 

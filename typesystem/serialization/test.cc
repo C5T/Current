@@ -1562,10 +1562,16 @@ CURRENT_STRUCT_T(TemplatedBase) {
 };
 
 CURRENT_STRUCT(EmptyDerivedFromNonTemplatedBase, NonTemplatedBase) {
-  CURRENT_CONSTRUCTOR(EmptyDerivedFromNonTemplatedBase)(uint32_t n) : SUPER(n) {}
+  CURRENT_USE_BASE_CONSTRUCTORS(EmptyDerivedFromNonTemplatedBase);
 };
 
-CURRENT_STRUCT(EmptyDerivedFromTemplatedBase, TemplatedBase<std::string>) {};
+CURRENT_STRUCT(EmptyDerivedFromTemplatedBase, TemplatedBase<std::string>) {
+  CURRENT_USE_BASE_CONSTRUCTORS(EmptyDerivedFromTemplatedBase);
+};
+
+CURRENT_STRUCT_T(TemplateDerivedFromNonTemplatedBase, TemplatedBase<std::string>) {
+  CURRENT_USE_T_BASE_CONSTRUCTORS(TemplateDerivedFromNonTemplatedBase);
+};
 
 CURRENT_STRUCT(NonEmptyDerivedFromNonTemplatedBase, NonTemplatedBase) {
   CURRENT_FIELD(u, uint32_t);
@@ -1592,24 +1598,36 @@ TEST(JSONSerialization, DerivedSupportsConstructorForwarding) {
 
   EXPECT_EQ("{'n':3,'u':4}", SingleQuoted(JSON(NonEmptyDerivedFromNonTemplatedBase(3, 4))));
 
+  EXPECT_EQ("{'i':12321,'x':'baz'}", SingleQuoted(JSON(EmptyDerivedFromTemplatedBase(12321, "baz"))));
+
+  EXPECT_EQ("{'i':12321,'x':'baz'}", SingleQuoted(JSON(TemplateDerivedFromNonTemplatedBase<std::string>(12321, "baz"))));
+
   EXPECT_EQ("{'i':12321,'x':'baz','w':101}", SingleQuoted(JSON(NonEmptyDerivedFromTemplatedBase(12321, "baz", 101))));
 }
 
 namespace serialization_test {
 
 CURRENT_STRUCT_T(CurrentStructTUsingSubtype) {
-  CURRENT_EXTRACT_T_SUBTYPE(vector_element_t, extracted_vector_element_t);
-  CURRENT_FIELD(xs, std::vector<extracted_vector_element_t>);
+  CURRENT_EXTRACT_T_SUBTYPE(single_element_t, extracted_single_element_t);
+  CURRENT_EXTRACT_T_SUBTYPE(vector_element_t);
+  CURRENT_FIELD(xs, extracted_single_element_t);
+  CURRENT_FIELD(xv, std::vector<vector_element_t>);
+};
+
+CURRENT_STRUCT_T(CurrentStructTUsingDerived) {
+  CURRENT_FIELD(x, CurrentStructTUsingSubtype<T>);
 };
 
 // NOTE(dkorolev): I recall we had a `static_assert` that only `CURRENT_STRUCT`-s can be the bases
 //                 for `CURRENT_STRUCT_T`-s. This test may need to be revisited as we re-enable that check.
 struct VectorOfUInt32s {
   using vector_element_t = uint32_t;
+  using single_element_t = uint32_t;
 };
 
 struct VectorOfStrings {
   using vector_element_t = std::string;
+  using single_element_t = std::string;
 };
 
 }  // namespace serialization_test
@@ -1618,12 +1636,22 @@ TEST(JSONSerialization, CanSerializeWithSubtypesOfTInCurrentStructT) {
   using namespace serialization_test;
 
   CurrentStructTUsingSubtype<VectorOfUInt32s> u;
-  u.xs.push_back(42);
-  EXPECT_EQ("{'xs':[42]}", SingleQuoted(JSON(u)));
+  u.xs = 42;
+  u.xv.push_back(42);
+  EXPECT_EQ("{'xs':42,'xv':[42]}", SingleQuoted(JSON(u)));
 
   CurrentStructTUsingSubtype<VectorOfStrings> s;
-  s.xs.push_back("hello");
-  EXPECT_EQ("{'xs':['hello']}", SingleQuoted(JSON(s)));
+  s.xs = "hello";
+  s.xv.push_back("world");
+  EXPECT_EQ("{'xs':'hello','xv':['world']}", SingleQuoted(JSON(s)));
+
+  CurrentStructTUsingDerived<VectorOfUInt32s> du;
+  du.x = u;
+  EXPECT_EQ("{'x':{'xs':42,'xv':[42]}}", SingleQuoted(JSON(du)));
+
+  CurrentStructTUsingDerived<VectorOfStrings> ds;
+  ds.x = s;
+  EXPECT_EQ("{'x':{'xs':'hello','xv':['world']}}", SingleQuoted(JSON(ds)));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
