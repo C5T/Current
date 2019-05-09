@@ -186,4 +186,4 @@ For the above examples to work, run `git clone https://github.com/C5T/Current` a
 
 To save on compilation time, consider fine-graining your headers, ex. `#include "Current/typesystem/struct.h"` for just the `CURRENT_STRUCT`.
 
-The master branch of code is [C5T/Current/TypeSystem](https://github.com/C5T/Current/tree/master/TypeSystem), and its [unit test](https://github.com/C5T/Current/blob/stable/typesystem/test.cc) contains plenty of usage examples.
+The `stable` branch of code is [C5T/Current/TypeSystem](https://github.com/C5T/Current/tree/stable/typesystem), and its [unit test](https://github.com/C5T/Current/blob/stable/typesystem/test.cc) contains plenty of usage examples.
