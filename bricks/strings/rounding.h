@@ -39,11 +39,15 @@ namespace strings {
 inline std::string RoundDoubleToString(double value, size_t n_digits, bool plus_sign = false) {
   CURRENT_ASSERT(n_digits >= 1);
   CURRENT_ASSERT(n_digits <= 15);
-  // `value` will be between `10^dim` and `10^(dim+1)`.
+
   bool negative = false;
   if (value < 0) {
     value = -value;
     negative = true;
+  }
+
+  if (value < 1e-16) {
+    return "0";
   }
 
   const int dim = static_cast<int>(std::ceil(std::log(value) / std::log(10.0) + 1e-10));

@@ -655,6 +655,26 @@ TEST(Rounding, SmokeTest) {
   EXPECT_EQ("3141592.654", RoundDoubleToString(pi * 1e6, 10));
   EXPECT_EQ("3141592.6536", RoundDoubleToString(pi * 1e6, 11));
   EXPECT_EQ("3141592.65359", RoundDoubleToString(pi * 1e6, 12));
+
+  EXPECT_EQ("0", RoundDoubleToString(0));
+  EXPECT_EQ("0", RoundDoubleToString(0, 5));
+  EXPECT_EQ("0", RoundDoubleToString(0, 10));
+
+  EXPECT_EQ("0.0000001", RoundDoubleToString(+1e-7));
+  EXPECT_EQ("0.0000001", RoundDoubleToString(+1e-7, 5));
+  EXPECT_EQ("0.0000001", RoundDoubleToString(+1e-7, 10));
+
+  EXPECT_EQ("0.000000000001", RoundDoubleToString(+1e-12));
+  EXPECT_EQ("0.000000000001", RoundDoubleToString(+1e-12, 5));
+  EXPECT_EQ("0.000000000001", RoundDoubleToString(+1e-12, 10));
+
+  EXPECT_EQ("-0.0000001", RoundDoubleToString(-1e-7));
+  EXPECT_EQ("-0.0000001", RoundDoubleToString(-1e-7, 5));
+  EXPECT_EQ("-0.0000001", RoundDoubleToString(-1e-7, 10));
+
+  EXPECT_EQ("-0.000000000001", RoundDoubleToString(-1e-12));
+  EXPECT_EQ("-0.000000000001", RoundDoubleToString(-1e-12, 5));
+  EXPECT_EQ("-0.000000000001", RoundDoubleToString(-1e-12, 10));
 }
 
 TEST(TimeIntervalAsString, SmokeTest) {
