@@ -637,6 +637,11 @@ TEST(Rounding, SmokeTest) {
   EXPECT_EQ("0.006", RoundDoubleToString(0.006 + 1e-7, 2));
   EXPECT_EQ("0.007", RoundDoubleToString(0.007 + 1e-7, 3));
   EXPECT_EQ("0.008", RoundDoubleToString(0.008 + 1e-7, 4));
+
+  EXPECT_EQ("3.1416", RoundDoubleToString(pi, 5));
+  EXPECT_EQ("+3.1416", RoundDoubleToString(pi, 5, true));
+  EXPECT_EQ("-3.1416", RoundDoubleToString(-pi, 5));
+  EXPECT_EQ("-3.1416", RoundDoubleToString(-pi, 5, true));
 }
 
 TEST(TimeIntervalAsString, SmokeTest) {

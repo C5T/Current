@@ -36,14 +36,18 @@ namespace current {
 namespace strings {
 
 // Rounds the number to have `n_digits` significant digits.
-inline std::string RoundDoubleToString(double value, size_t n_digits) {
+inline std::string RoundDoubleToString(double value, size_t n_digits, bool plus_sign = false) {
   CURRENT_ASSERT(n_digits >= 1);
   CURRENT_ASSERT(n_digits <= 100);
   // `value` will be between `10^dim` and `10^(dim+1)`.
-  const int dim = static_cast<int>(std::floor((std::log(value) / std::log(10.0)) + 1e-6));
+  const int dim = static_cast<int>(std::floor((std::log(std::abs(value)) / std::log(10.0)) + 1e-6));
   const double k = std::pow(10.0, static_cast<double>(dim - static_cast<int>(n_digits) + 1));
+  const double result = (k * std::round(value / k));
   std::ostringstream os;
-  os << (k * std::round(value / k));
+  if (result > 0 && plus_sign) {
+    os << '+';
+  }
+  os << result;
   return os.str();
 }
 
