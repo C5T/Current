@@ -637,6 +637,44 @@ TEST(Rounding, SmokeTest) {
   EXPECT_EQ("0.006", RoundDoubleToString(0.006 + 1e-7, 2));
   EXPECT_EQ("0.007", RoundDoubleToString(0.007 + 1e-7, 3));
   EXPECT_EQ("0.008", RoundDoubleToString(0.008 + 1e-7, 4));
+
+  EXPECT_EQ("3.1416", RoundDoubleToString(pi, 5));
+  EXPECT_EQ("+3.1416", RoundDoubleToString(pi, 5, true));
+  EXPECT_EQ("-3.1416", RoundDoubleToString(-pi, 5));
+  EXPECT_EQ("-3.1416", RoundDoubleToString(-pi, 5, true));
+
+  EXPECT_EQ("3100000", RoundDoubleToString(pi * 1e6));
+  EXPECT_EQ("3100000", RoundDoubleToString(pi * 1e6, 2));
+  EXPECT_EQ("3140000", RoundDoubleToString(pi * 1e6, 3));
+  EXPECT_EQ("3142000", RoundDoubleToString(pi * 1e6, 4));
+  EXPECT_EQ("3141600", RoundDoubleToString(pi * 1e6, 5));
+  EXPECT_EQ("3141590", RoundDoubleToString(pi * 1e6, 6));
+  EXPECT_EQ("3141593", RoundDoubleToString(pi * 1e6, 7));
+  EXPECT_EQ("3141592.7", RoundDoubleToString(pi * 1e6, 8));
+  EXPECT_EQ("3141592.65", RoundDoubleToString(pi * 1e6, 9));
+  EXPECT_EQ("3141592.654", RoundDoubleToString(pi * 1e6, 10));
+  EXPECT_EQ("3141592.6536", RoundDoubleToString(pi * 1e6, 11));
+  EXPECT_EQ("3141592.65359", RoundDoubleToString(pi * 1e6, 12));
+
+  EXPECT_EQ("0", RoundDoubleToString(0));
+  EXPECT_EQ("0", RoundDoubleToString(0, 5));
+  EXPECT_EQ("0", RoundDoubleToString(0, 10));
+
+  EXPECT_EQ("0.0000001", RoundDoubleToString(+1e-7));
+  EXPECT_EQ("0.0000001", RoundDoubleToString(+1e-7, 5));
+  EXPECT_EQ("0.0000001", RoundDoubleToString(+1e-7, 10));
+
+  EXPECT_EQ("0.000000000001", RoundDoubleToString(+1e-12));
+  EXPECT_EQ("0.000000000001", RoundDoubleToString(+1e-12, 5));
+  EXPECT_EQ("0.000000000001", RoundDoubleToString(+1e-12, 10));
+
+  EXPECT_EQ("-0.0000001", RoundDoubleToString(-1e-7));
+  EXPECT_EQ("-0.0000001", RoundDoubleToString(-1e-7, 5));
+  EXPECT_EQ("-0.0000001", RoundDoubleToString(-1e-7, 10));
+
+  EXPECT_EQ("-0.000000000001", RoundDoubleToString(-1e-12));
+  EXPECT_EQ("-0.000000000001", RoundDoubleToString(-1e-12, 5));
+  EXPECT_EQ("-0.000000000001", RoundDoubleToString(-1e-12, 10));
 }
 
 TEST(TimeIntervalAsString, SmokeTest) {
