@@ -26,11 +26,12 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 
-#include <string>
-#include <sstream>
-#include <vector>
+#include <functional>
 #include <map>
 #include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "../base.h"
 #include "../enum.h"

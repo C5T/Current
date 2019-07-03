@@ -94,11 +94,13 @@ struct RTTIDispatcherBase<DispatcherInputType::ConstReference, BASE, F, ARGS...>
 
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase<DispatcherInputType::Reference, BASE, F, ARGS...> {
+  virtual ~RTTIDispatcherBase() = default;
   virtual void HandleByReference(BASE&, F&&, ARGS&&...) const { CURRENT_THROW(SpecificUnhandledTypeException<BASE>()); }
 };
 
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase<DispatcherInputType::RValueReference, BASE, F, ARGS...> {
+  virtual ~RTTIDispatcherBase() = default;
   virtual void HandleByRValueReference(BASE&&, F&&, ARGS&&...) const {
     CURRENT_THROW(SpecificUnhandledTypeException<BASE>());
   }

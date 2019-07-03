@@ -332,11 +332,11 @@ struct PerFieldRESTfulHandlerGenerator {
         handler.Enter(
             std::move(request),
             // Capture by reference since this lambda is run synchronously.
-            [&storage, &handler, &generic_input, &field_name](Request request, const Optional<std::string>& url_key) {
+            [&handler, &generic_input, &field_name](Request request, const Optional<std::string>& url_key) {
               const specific_field_t& field = generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
               generic_input.storage.ReadOnlyTransaction(
                                         // Capture local variables by value for safe async transactions.
-                                        [&storage, handler, generic_input, &field, url_key, field_name](
+                                        [handler, generic_input, &field, url_key, field_name](
                                             immutable_fields_t fields) -> Response {
                                           using RowColGETInput =
                                               RESTfulGETRowColInput<STORAGE,
@@ -614,7 +614,7 @@ class RESTfulStorage {
                   storage.ReadOnlyTransaction(
                               // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                               // Capture local variables by value for safe async transactions.
-                              [&storage, &f_run_query, handler, cqs_parameters, type_erased_query, context](
+                              [&f_run_query, handler, cqs_parameters, type_erased_query, context](
                                   immutable_fields_t fields) -> Response {
                                 return handler.RunQuery(
                                     context, f_run_query, fields, std::move(type_erased_query), cqs_parameters);
@@ -662,7 +662,7 @@ class RESTfulStorage {
                   storage.ReadWriteTransaction(
                               // TODO(dkorolev): Lifetime management here, via Owner/Borrower.
                               // Capture local variables by value for safe async transactions.
-                              [&storage, &f_run_command, handler, cqs_parameters, type_erased_command, ctx](
+                              [&f_run_command, handler, cqs_parameters, type_erased_command, ctx](
                                   mutable_fields_t fields) -> Response {
                                 return handler.RunCommand(
                                     ctx, f_run_command, fields, std::move(type_erased_command), cqs_parameters);
