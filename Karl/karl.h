@@ -546,8 +546,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
           auto& notifiable_ref = notifiable_ref_;
           storage_.ReadWriteTransaction(
-                       [this,
-                        now,
+                       [now,
                         location,
                         &parsed_status,
                         &detailed_parsed_status,
