@@ -1,3 +1,14 @@
+Grabbed `v1.8.1` from https://github.com/google/googletest/releases/tag/release-1.8.1 on March 7th 2019 by @dkorolev.
+
+$ md5sum googletest-release-1.8.1.tar.gz
+2e6fbeb6a91310a16efe181886c59596  googletest-release-1.8.1.tar.gz
+
+The only changes I made to the Google-released code is, much like the last time, fixing the `#include`-d paths.
+
+I have confirmed the LICENSE file is the same.
+
+* * *
+
 Copyright 2008, Google Inc.
 All rights reserved.
 

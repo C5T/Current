@@ -37,13 +37,13 @@ inline std::string CurrentTestName() {
 
 // Effectively returns `argv[0]`.
 inline std::string CurrentBinaryRelativePathAndName() {
-  return testing::internal::g_executable_path;
+  std::vector<std::string> const v = testing::internal::GetArgvs();
+  return !v.empty() ? v.front() : "./current_binary";
 }
-
 // Returns path part of `argv[0]`.
 inline std::string CurrentBinaryRelativePath() {
   using namespace testing::internal;
-  return FilePath(g_executable_path).RemoveFileName().RemoveTrailingPathSeparator().string();
+  return FilePath(CurrentBinaryRelativePathAndName()).RemoveFileName().RemoveTrailingPathSeparator().string();
 }
 
 // Returns current working directory.

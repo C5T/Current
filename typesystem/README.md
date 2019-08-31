@@ -94,7 +94,7 @@ Along with `CURRENT_STRUCT`, Current type system supports `CURRENT_STRUCT_T`: ef
 
 ### Field Descriptions
 
-When a `CURRENT_STRUCT` defined a `CURRENT_FIELD(foo, ...);`, it may also define `CURRENT_FIELD_DESCRIPTION(foo, "This is the story of foo.");` Like fields, field descriptions can be reflected upon. Field descriptions can also be exported in various formats, most notably C++ itself (as the definition of the C++ struct), and [Markdown](https://github.com/C5T/Current/blob/master/typesystem/schema/golden/smoke_test_struct.md).
+When a `CURRENT_STRUCT` defined a `CURRENT_FIELD(foo, ...);`, it may also define `CURRENT_FIELD_DESCRIPTION(foo, "This is the story of foo.");` Like fields, field descriptions can be reflected upon. Field descriptions can also be exported in various formats, most notably C++ itself (as the definition of the C++ struct), and [Markdown](https://github.com/C5T/Current/blob/stable/typesystem/schema/golden/smoke_test_struct.md).
 
 ## `Optional`
 
@@ -186,4 +186,4 @@ For the above examples to work, run `git clone https://github.com/C5T/Current` a
 
 To save on compilation time, consider fine-graining your headers, ex. `#include "Current/typesystem/struct.h"` for just the `CURRENT_STRUCT`.
 
-The master branch of code is [C5T/Current/TypeSystem](https://github.com/C5T/Current/tree/master/TypeSystem), and its [unit test](https://github.com/C5T/Current/blob/master/typesystem/test.cc) contains plenty of usage examples.
+The `stable` branch of the code is [C5T/Current/typesystem](https://github.com/C5T/Current/tree/stable/typesystem), and its [unit test](https://github.com/C5T/Current/blob/stable/typesystem/test.cc) contains plenty of usage examples.

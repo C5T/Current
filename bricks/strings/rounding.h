@@ -36,14 +36,64 @@ namespace current {
 namespace strings {
 
 // Rounds the number to have `n_digits` significant digits.
-inline std::string RoundDoubleToString(double value, size_t n_digits) {
+inline std::string RoundDoubleToString(double value, size_t n_digits, bool plus_sign = false) {
   CURRENT_ASSERT(n_digits >= 1);
-  CURRENT_ASSERT(n_digits <= 100);
-  // `value` will be between `10^dim` and `10^(dim+1)`.
-  const int dim = static_cast<int>(std::floor((std::log(value) / std::log(10.0)) + 1e-6));
-  const double k = std::pow(10.0, static_cast<double>(dim - static_cast<int>(n_digits) + 1));
+  CURRENT_ASSERT(n_digits <= 15);
+
+  bool negative = false;
+  if (value < 0) {
+    value = -value;
+    negative = true;
+  }
+
+  if (value < 1e-16) {
+    return "0";
+  }
+
+  const int dim = static_cast<int>(std::ceil(std::log(value) / std::log(10.0) + 1e-10));
+  uint64_t mod = static_cast<uint64_t>(std::pow(10.0, n_digits));
+
+  const int log10_multiplier = static_cast<int>(n_digits) - dim;
+  uint64_t integerized = static_cast<uint64_t>(value * std::pow(10.0, log10_multiplier) + 0.5);
+
+  int digit_index = n_digits - log10_multiplier;
+
+  if (integerized >= mod) {
+    // The corner case of `1.0 - 1e-7`.
+    mod *= 10;
+    ++digit_index;
+  }
+
   std::ostringstream os;
-  os << (k * std::round(value / k));
+  if (negative) {
+    os << '-';
+  } else if (integerized > 0 && plus_sign) {
+    os << '+';
+  }
+  if (digit_index < 0) {
+    os << "0.";
+    for (int i = 0; i < -digit_index; ++i) {
+      os << '0';
+    }
+  } else if (digit_index == 0) {
+    os << '0';
+  }
+  for (size_t d = 0u; d < n_digits; ++d) {
+    if (digit_index == 0) {
+      os << '.';
+    }
+    mod /= 10;
+    os << (integerized / mod) % 10;
+    integerized %= mod;
+    --digit_index;
+    if (digit_index <= 0 && !integerized) {
+      break;
+    }
+  }
+  while (digit_index-- > 0) {
+    os << '0';
+  }
+
   return os.str();
 }
 
