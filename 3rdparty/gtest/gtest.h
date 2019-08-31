@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef THIRDPARTY_GTEST_H
 #define THIRDPARTY_GTEST_H
 
+#define GTEST_HAS_TR1_TUPLE 0  // Suppress Visual Studio warnings.
+
 #include "src/gtest-all.cc"
 
 // From within `TEST(Module, Smoke)` returns "Smoke".
