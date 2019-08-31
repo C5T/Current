@@ -48,7 +48,7 @@ template <>
 struct FillResponseHelper<true> {
   template <typename T>
   static std::string AsString(T&& object) {
-    return object;
+    return std::string(std::forward<T>(object));
   }
   static std::string DefaultContentType() { return net::constants::kDefaultContentType; }
 };
