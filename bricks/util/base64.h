@@ -29,6 +29,7 @@ SOFTWARE.
 #include <cctype>
 
 #include "../exception.h"
+#include "../strings/chunk.h"
 
 namespace current {
 
@@ -59,12 +60,13 @@ enum class EncodingType { Canonical, URL };
 
 template <EncodingType TYPE>
 struct Impl {
-  static std::string Encode(const uint8_t* input, const size_t input_size) {
+  static void ZeroCopyEncode(const uint8_t* input, const size_t input_size, std::string& output) {
     const char* map = (TYPE == EncodingType::Canonical) ? encode_map : url_encode_map;
     const size_t result_size = 4 * (input_size / 3) + ((input_size % 3) ? 4 : 0);
 
-    std::string result;
-    result.reserve(result_size);
+    output.resize(result_size);
+    char* p = &output[0];
+    char* const p_end = p + result_size;
     uint16_t buf = 0u;
     uint8_t nbits = 0;
     for (size_t i = 0u; i < input_size; ++i) {
@@ -72,14 +74,23 @@ struct Impl {
       nbits += 8;
       while (nbits >= 6) {
         nbits -= 6;
-        result.push_back(map[(buf >> nbits) & 0x3F]);
+        *p++ = map[(buf >> nbits) & 0x3F];
       }
     }
     if (nbits > 0) {
-      result.push_back(map[((buf << 6) >> nbits) & 0x3F]);
+      *p++ = map[((buf << 6) >> nbits) & 0x3F];
     }
-    const size_t num_pads = result_size - result.size();
-    result.append(num_pads, pad_char);
+#ifndef NDEBUG
+    CURRENT_ASSERT(p <= p_end);
+#endif
+    while (p != p_end) {
+      *p++ = pad_char;
+    }
+  }
+
+  static std::string Encode(const uint8_t* input, const size_t input_size) {
+    std::string result;
+    ZeroCopyEncode(input, input_size, result);
     return result;
   }
 
@@ -88,26 +99,37 @@ struct Impl {
             (TYPE == EncodingType::URL && (c == '-' || c == '_')));
   }
 
-  static std::string Decode(const char* input, const size_t input_size) {
-    std::string result;
-    result.reserve(3 * input_size / 4);
+  static void ZeroCopyDecode(const char* input, const size_t input_size, std::string& output) {
+    output.resize(3 * input_size / 4);
+    size_t output_index = 0u;
     uint16_t buf = 0u;
     uint8_t nbits = 0u;
     for (size_t i = 0; i < input_size; ++i) {
       const char c = input[i];
       if (c == pad_char) {
+        output.resize(output_index);
         break;
       }
+#ifndef NDEBUG
       if (!IsValidChar(c)) {
         CURRENT_THROW(Base64DecodeException());
       }
+#endif
       buf = (buf << 6) + decode_map[static_cast<uint8_t>(c)];
       nbits += 6;
       if (nbits >= 8) {
         nbits -= 8;
-        result.push_back(char((buf >> nbits) & 0xFF));
+        output[output_index++] = static_cast<char>((buf >> nbits) & 0xFF);
       }
     }
+#ifndef NDEBUG
+    CURRENT_ASSERT(output_index == output.size());
+#endif
+  }
+
+  static std::string Decode(const char* input, const size_t input_size) {
+    std::string result;
+    ZeroCopyDecode(input, input_size, result);
     return result;
   }
 };
@@ -125,6 +147,13 @@ inline std::string Base64Encode(const char* input, const size_t input_size) {
 inline std::string Base64Encode(const std::string& input) {
   return base64::Impl<base64::EncodingType::Canonical>::Encode(reinterpret_cast<const uint8_t*>(input.c_str()),
                                                                input.size());
+}
+
+inline strings::Chunk ZeroCopyBase64Encode(strings::Chunk input, std::string& placeholder) {
+  base64::Impl<base64::EncodingType::Canonical>::ZeroCopyEncode(reinterpret_cast<const uint8_t*>(input.c_str()),
+                                                                input.length(),
+                                                                placeholder);
+  return placeholder;
 }
 
 inline std::string Base64URLEncode(const uint8_t* input, const size_t input_size) {
@@ -145,6 +174,11 @@ inline std::string Base64Decode(const char* input, const size_t input_size) {
 
 inline std::string Base64Decode(const std::string& input) {
   return base64::Impl<base64::EncodingType::Canonical>::Decode(input.c_str(), input.size());
+}
+
+inline strings::Chunk ZeroCopyBase64Decode(strings::Chunk chunk, std::string& placeholder) {
+  base64::Impl<base64::EncodingType::Canonical>::ZeroCopyDecode(chunk.c_str(), chunk.length(), placeholder);
+  return placeholder;
 }
 
 inline std::string Base64URLDecode(const char* input, const size_t input_size) {
