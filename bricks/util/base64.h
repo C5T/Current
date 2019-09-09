@@ -60,7 +60,7 @@ enum class EncodingType { Canonical, URL };
 
 template <EncodingType TYPE>
 struct Impl {
-  static void ZeroCopyEncode(const uint8_t* input, const size_t input_size, std::string& output) {
+  static void EncodeInto(const uint8_t* input, const size_t input_size, std::string& output) {
     const char* map = (TYPE == EncodingType::Canonical) ? encode_map : url_encode_map;
     const size_t result_size = 4 * (input_size / 3) + ((input_size % 3) ? 4 : 0);
 
@@ -90,7 +90,7 @@ struct Impl {
 
   static std::string Encode(const uint8_t* input, const size_t input_size) {
     std::string result;
-    ZeroCopyEncode(input, input_size, result);
+    EncodeInto(input, input_size, result);
     return result;
   }
 
@@ -99,7 +99,7 @@ struct Impl {
             (TYPE == EncodingType::URL && (c == '-' || c == '_')));
   }
 
-  static void ZeroCopyDecode(const char* input, const size_t input_size, std::string& output) {
+  static void DecodeInto(const char* input, const size_t input_size, std::string& output) {
     output.resize(3 * input_size / 4);
     size_t output_index = 0u;
     uint16_t buf = 0u;
@@ -129,7 +129,7 @@ struct Impl {
 
   static std::string Decode(const char* input, const size_t input_size) {
     std::string result;
-    ZeroCopyDecode(input, input_size, result);
+    DecodeInto(input, input_size, result);
     return result;
   }
 };
@@ -149,10 +149,10 @@ inline std::string Base64Encode(const std::string& input) {
                                                                input.size());
 }
 
-inline strings::Chunk ZeroCopyBase64Encode(strings::Chunk input, std::string& placeholder) {
-  base64::Impl<base64::EncodingType::Canonical>::ZeroCopyEncode(reinterpret_cast<const uint8_t*>(input.c_str()),
-                                                                input.length(),
-                                                                placeholder);
+inline strings::Chunk Base64EncodeInto(strings::Chunk input, std::string& placeholder) {
+  base64::Impl<base64::EncodingType::Canonical>::EncodeInto(reinterpret_cast<const uint8_t*>(input.c_str()),
+                                                            input.length(),
+                                                            placeholder);
   return placeholder;
 }
 
@@ -176,8 +176,8 @@ inline std::string Base64Decode(const std::string& input) {
   return base64::Impl<base64::EncodingType::Canonical>::Decode(input.c_str(), input.size());
 }
 
-inline strings::Chunk ZeroCopyBase64Decode(strings::Chunk chunk, std::string& placeholder) {
-  base64::Impl<base64::EncodingType::Canonical>::ZeroCopyDecode(chunk.c_str(), chunk.length(), placeholder);
+inline strings::Chunk Base64DecodeInto(strings::Chunk chunk, std::string& placeholder) {
+  base64::Impl<base64::EncodingType::Canonical>::DecodeInto(chunk.c_str(), chunk.length(), placeholder);
   return placeholder;
 }
 
