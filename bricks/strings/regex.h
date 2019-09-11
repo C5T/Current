@@ -100,13 +100,29 @@ class NamedRegexCapturer {
 
   // The real match.
   struct MatchResult {
-    const std::string string;
+    std::unique_ptr<std::string> owned_string;
     std::shared_ptr<NamedRegexCapturer::Data> data;
     std::smatch match;
 
-    MatchResult() = delete;
     MatchResult(std::string input_string, std::shared_ptr<NamedRegexCapturer::Data> data)
-        : string(std::move(input_string)), data(std::move(data)) {}
+        : owned_string(std::make_unique<std::string>(std::move(input_string))),
+          data(std::move(data)) {}
+
+    MatchResult() = delete;
+    MatchResult(MatchResult const&) = delete;
+    MatchResult& operator=(MatchResult const&) = delete;
+
+    MatchResult(MatchResult&& rhs)
+        : owned_string(std::move(rhs.owned_string)),
+          data(rhs.data),
+          match(std::move(rhs.match)) {}
+
+    MatchResult& operator=(MatchResult&& rhs) {
+      owned_string = std::move(rhs.owned_string);
+      data = rhs.data;
+      match = std::move(rhs.match);
+      return *this;
+    }
 
     bool empty() const { return match.empty(); }
     size_t size() const { return match.size(); }
@@ -139,7 +155,7 @@ class NamedRegexCapturer {
   template <typename S>
   MatchResult Match(S&& string) const {
     MatchResult result(std::forward<S>(string), data_);
-    std::regex_match(result.string, result.match, data_->transformed_re);
+    std::regex_match(*result.owned_string, result.match, data_->transformed_re);
     return result;
   }
 
