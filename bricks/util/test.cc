@@ -267,6 +267,12 @@ TEST(Util, Base64) {
   EXPECT_EQ("0<>", Base64Decode("MDw+"));
   EXPECT_EQ("0<>", Base64URLDecode("MDw-"));
 
+  EXPECT_EQ("fw==", Base64Encode("\x7f"));
+  EXPECT_EQ("gA==", Base64Encode("\x80"));
+
+  EXPECT_EQ("\x7f", Base64Decode("fw=="));
+  EXPECT_EQ("\x80", Base64Decode("gA=="));
+
   std::string all_chars;
   all_chars.resize(256);
   for (int i = 0; i < 256; ++i) {
