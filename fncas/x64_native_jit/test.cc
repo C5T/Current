@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// NOTE(dkorolev): This header file is `#include`-d by other tests, so keep it safe from ODR.
+
+#ifndef X64_NATIVE_JIT_TEST_CC_INCLUDED
+#define X64_NATIVE_JIT_TEST_CC_INCLUDED
+
 #include "../../3rdparty/gtest/gtest-main.h"
 
 #include "x64_native_jit.h"
@@ -426,3 +431,5 @@ TEST(X64NativeJIT, LogExpFunctionsCombination) {
 }
 
 #endif  // FNCAS_X64_NATIVE_JIT_ENABLED
+
+#endif  // X64_NATIVE_JIT_TEST_CC_INCLUDED
