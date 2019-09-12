@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_STRINGS_REGEX_H
 
 #include <regex>
+#include <memory>  // For `std::make_unique<>`.
 #include <string>
 #include <unordered_map>
 
