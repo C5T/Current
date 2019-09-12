@@ -69,9 +69,9 @@ inline std::string Printf(const char *fmt, ...) {
   va_start(ap, fmt);
   const int res = _vsnprintf_s(buffer, max_string_length_for_static_buffer + 1, max_string_length_for_static_buffer, fmt, ap);
   va_end(ap);
-  if (errno == ERANGE) {
+  if (res < 0 || errno == ERANGE) {
     va_start(ap, fmt);
-    const int large_buffer_length = std::min(_vscprintf(fmt, ap) + 1, max_formatted_output_length);
+    const int large_buffer_length = std::min(_vscprintf(fmt, ap) + 1, max_formatted_output_length + 1);
     va_end(ap);
     std::vector<char> large_buffer(large_buffer_length);
     va_start(ap, fmt);
