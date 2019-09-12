@@ -12,10 +12,12 @@ int main() {
     // Basic VT100 demo.
     using namespace current::vt100;
 
-    std::cout << "Default, " << bold << "bold" << off(bold) << ", " << dim << "dim" << off(dim) << ", done."
+    std::cout << "Default, " << bold << "bold" << normal << ", " << dim << "dim" << normal << ", done."
               << std::endl;
-    std::cout << "Default, " << italic << "italic" << off(italic) << '.' << std::endl;
-    std::cout << "Default, " << underlined << "underlined" << off(underlined) << '.' << std::endl;
+    std::cout << "Default, " << italic << "italic" << noitalic << '.' << std::endl;
+    std::cout << "Default, " << underlined << "underlined" << nounderlined << '.' << std::endl;
+    std::cout << "Default, " << doubleunderlined << "double underlined" << nounderlined << '.' << std::endl;
+    std::cout << "Default, " << strikeout << "strikeout" << nostrikeout << '.' << std::endl;
     std::cout << "Default, " << bold << italic << underlined << "bold & italic & underlined" << reset << '.'
               << std::endl;
 
@@ -33,10 +35,12 @@ int main() {
               << "cyan" << sep << "done." << std::endl;
 
     std::cout << "Default, " << background(red) << blue << bold << "blue on red " << reverse << " reversed "
-              << off(reverse) << " back to blue on red" << reset << '.' << std::endl;
+              << noreverse << " back to blue on red" << reset << '.' << std::endl;
 
     std::cout << "Default, " << strikeout << "no " << red << "red" << bold << " bold" << italic << " italic"
-              << off(italic) << off(bold) << default_color << " style" << off(strikeout) << '.' << std::endl;
+              << noitalic << ' ' << underlined << "underlined" << nounderlined << ' ' << doubleunderlined
+              << "doubleunderlined" << nounderlined << normal << default_color << " style" << nostrikeout
+              << '.' << reset << std::endl;
   }
 
   {
@@ -56,6 +60,7 @@ int main() {
   }
   {
     // Cyrillic.
+    // Does not work on Windows. -- D.K.
     std::cout << "Test2> ";
     {
       current::ProgressLine progress;
@@ -68,10 +73,11 @@ int main() {
     }
     std::cout << "Done." << std::endl;
   }
-  {
-    // Variable length characters.
+
+  if (false) {
     // NOTE(dkorolev): This fails on my Linux. :/ Prints `Test3> tttesting ... OK`, then `Test3> ttDone.` at the end.
-    std::cout << "Test3> ";
+    // Variable length characters.
+    std::cout << "Test*> ";
     {
       current::ProgressLine progress;
       progress << "testing ...";
@@ -88,7 +94,7 @@ int main() {
 
   {
     // VT100 decorations.
-    std::cout << "Test4> ";
+    std::cout << "Test3> ";
     {
       using namespace current::vt100;
       current::ProgressLine progress;

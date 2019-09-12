@@ -52,14 +52,23 @@ const static E reset(0);
 
 const static E bold(1);
 const static E dim(2);
-const static E italic(3);  // Non-standard, it seems. -- D.K.
+const static E italic(3);  // Not supported on Windows. -- D.K.
 const static E underlined(4);
-// const static E blink(5); -- commented out as not supported. -- D.K.
 const static E reverse(7);
 const static E hidden(8);
-const static E strikeout(9);  // Non-standard, it seems. -- D.K.
+const static E strikeout(9);  // Not supported on Windows. -- D.K.
 
-inline E off(E e) { return E(e.code + 20); }  // Turns off bold/dim/underlined/reverse/hidden.
+// NOTE(dkorolev): Per `https://en.wikipedia.org/wiki/ANSI_escape_code`, "off bold" is "double underline".
+const static E doubleunderlined(21);  // Not supported on Windows. -- D.K.
+
+const static E normal(22);  // Bold off, dim off.
+const static E noitalic(23);
+const static E nounderlined(24);
+const static E noreverse(27);
+const static E nostrikeout(29);
+
+// NOTE(dkorolev): Per `https://en.wikipedia.org/wiki/ANSI_escape_code`, removing `off()`.
+// inline E off(E e) { return E(e.code + 20); }  // Turns off bold/dim/underlined/reverse/hidden. -- WRONG. -- D.K.
 
 #define DEFINE_VT100(id, color) const static Color color(id)
 DEFINE_VT100(39, default_color);
@@ -87,7 +96,7 @@ inline E background(Color c) { return E(c.code + 10); }
 }  // namespace current
 
 inline std::ostream& operator<<(std::ostream& os, const current::vt100::E& e) {
-  os << "\e[" << e.code << 'm';
+  os << "\x1b[" << e.code << 'm';  // `\x1b` is same as `\e`, but the latter is not suppored by Visual Studio. -- D.K.
   return os;
 }
 
