@@ -17,14 +17,24 @@ DEFINE_double(max_seconds_of_silence, 1.5, "Terminate the connection if it sends
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
+  using namespace current::net;
+  using namespace current::vt100;
+
+#ifndef NDEBUG
+  {
+    std::cout << yellow << bold << "warning" << reset << ": unoptimized build";
+#if defined(CURRENT_POSIX) || defined(CURRENT_APPLE)
+    std::cout << ", run " << cyan << "NDEBUG=1 make clean all";
+#endif
+    std::cout << std::endl;
+  }
+#endif
+
   std::chrono::microseconds const t_window_size(static_cast<int64_t>(FLAGS_window_size_seconds * 1e6));
   size_t const window_size_bytes = static_cast<size_t>(FLAGS_window_size_gb * 1e9);
   std::chrono::microseconds const t_output_frequency(static_cast<int64_t>(FLAGS_output_frequency * 1e6));
 
   std::vector<uint8_t> buffer(static_cast<size_t>(1e9 * FLAGS_receive_buffer_gb));
-
-  using namespace current::net;
-  using namespace current::vt100;
 
   current::ProgressLine progress;
 
