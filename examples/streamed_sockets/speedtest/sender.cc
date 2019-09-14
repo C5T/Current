@@ -9,7 +9,7 @@
 
 DEFINE_string(host, "127.0.0.1", "The destination address to send data to.");
 DEFINE_uint16(port, 9001, "The destination port to send data to.");
-DEFINE_double(buffer_size_gb, 2.0, "Write buffer size.");
+DEFINE_double(send_buffer_mb, 2.0, "Write buffer size.");
 DEFINE_double(window_size_seconds, 5.0, "The length of sliding window the throughput within which is reported.");
 DEFINE_double(window_size_gb, 20.0, "The maximum amount of data per the sliding window to report the throughput.");
 DEFINE_double(output_frequency, 0.1, "The minimim amount of time, in seconds, between terminal updates.");
@@ -27,19 +27,13 @@ int main(int argc, char** argv) {
 
   current::ProgressLine progress;
 
-  progress << current::strings::Printf("allocating %.1lfGB", FLAGS_buffer_size_gb);
-  size_t const buffer_size = static_cast<size_t>(1e9 * FLAGS_buffer_size_gb);
+  progress << current::strings::Printf("allocating %.1lfMB", FLAGS_send_buffer_mb);
+  size_t const buffer_size = static_cast<size_t>(1e6 * FLAGS_send_buffer_mb);
   std::vector<char> data(buffer_size);
 
-  progress << current::strings::Printf("initializing %.1lfGB", FLAGS_buffer_size_gb);
-  memset(&data[0], '.', buffer_size);
-  {
-    // A poor man's way of creating a somewhat random buffer by not spending much time doing it. -- D.K.
-    uint8_t tmp = 0;
-    for (size_t i = 0; i < buffer_size; i += (rand() & 0xff)) {
-      data[i] = 'a' + tmp;
-      tmp = (tmp + 1) % 26;
-    }
+  progress << current::strings::Printf("initializing %.1lfMB", FLAGS_send_buffer_mb);
+  for (char& c : data) {
+    c = 'a' + (rand() % 256);
   }
 
   progress << "preparing to send";
