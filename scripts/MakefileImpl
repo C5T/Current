@@ -74,12 +74,18 @@ ifeq ($(OS),Darwin)
   PERMSIGN= +
 endif
 
+ifeq (${SRC}, "test.cc")
+default: test
+else
 default: all
-	if [ -f test.cc ] ; then \
-		make test ;\
-	else \
-		find .current/ -perm ${PERMSIGN}111 -type f -exec "{}" ";" ; \
-	fi
+ifeq ($(words ${SRC}), 1)
+	@${BIN}  # Linux-way, execute the binary with no extra output whatsoever.
+else
+	@echo -e '\033[32m\033[1mSuccess:\033[0m' ${SRC}
+	@echo 'The default `make` target runs the test and/or the only binary if there is only one `.cc` file in the current directory.'
+	@echo 'Since the current directory contains more than one `.cc` file, run them manually from the `.current/` dir.'
+endif
+endif
 
 test: .current/test
 	.current/test --current_runtime_arch=${OS}
@@ -94,7 +100,7 @@ endif
 docu_impl: README.md
 
 README.md:
-	${CURRENT_SCRIPTS_DIR_FULL_PATH}/gen-readme.sh
+	@${CURRENT_SCRIPTS_DIR_FULL_PATH}/gen-readme.sh
 
 debug: phony_current_build
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)
