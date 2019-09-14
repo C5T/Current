@@ -72,9 +72,9 @@ int main(int argc, char** argv) {
             }
             double const gb = 1e-9 * (history.back().second - history.front().second);
             double const s = 1e-6 * (history.back().first - history.front().first).count();
-            progress << bold << green << current::strings::Printf("%.2lfGB/s", gb / s) << reset << ", " << bold
-                     << yellow << current::strings::Printf("%.2lfGB", gb) << reset << '/' << bold << blue
-                     << current::strings::Printf("%.1lfs", s) << reset << ", " << magenta
+            progress << bold << green << current::strings::Printf("%.3lfGB/s", gb / s) << reset << ", " << bold
+                     << yellow << current::strings::Printf("%.3lfGB", gb) << reset << '/' << bold << blue
+                     << current::strings::Printf("%.2lfs", s) << reset << ", " << magenta
                      << connection.LocalIPAndPort().ip << ':' << connection.LocalIPAndPort().port << reset << " => "
                      << cyan << connection.RemoteIPAndPort().ip << ':' << connection.RemoteIPAndPort().port << reset;
           }
