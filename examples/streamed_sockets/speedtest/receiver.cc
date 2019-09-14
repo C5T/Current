@@ -8,7 +8,7 @@
 #include "../../../bricks/time/chrono.h"
 
 DEFINE_uint16(port, 9001, "The port to use.");
-DEFINE_double(buffer_size_gb, 2.0, "The size of the buffer the read the data into.");
+DEFINE_double(receive_buffer_gb, 0.5, "The size of the buffer the read the data into.");
 DEFINE_double(window_size_seconds, 5.0, "The length of sliding window the throughput within which is reported.");
 DEFINE_double(window_size_gb, 20.0, "The maximum amount of data per the sliding window to report the throughput.");
 DEFINE_double(output_frequency, 0.1, "The minimim amount of time, in seconds, between terminal updates.");
@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
   size_t const window_size_bytes = static_cast<size_t>(FLAGS_window_size_gb * 1e9);
   std::chrono::microseconds const t_output_frequency(static_cast<int64_t>(FLAGS_output_frequency * 1e6));
 
-  std::vector<uint8_t> buffer(static_cast<size_t>(1e9 * FLAGS_buffer_size_gb));
+  std::vector<uint8_t> buffer(static_cast<size_t>(1e9 * FLAGS_receive_buffer_gb));
 
   using namespace current::net;
   using namespace current::vt100;
