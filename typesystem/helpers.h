@@ -51,6 +51,7 @@ SOFTWARE.
 #include "../port.h"
 
 #include <memory>
+#include <type_traits>
 
 #include "types.h"
 #include "typename.h"

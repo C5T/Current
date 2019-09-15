@@ -56,6 +56,7 @@ SOFTWARE.
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include "../typesystem/struct.h"

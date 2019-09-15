@@ -29,6 +29,7 @@ SOFTWARE.
 #include <map>
 #include <set>
 #include <typeindex>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 

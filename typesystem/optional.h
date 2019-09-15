@@ -38,6 +38,7 @@ SOFTWARE.
 #include "../port.h"  // `make_unique<>`.
 
 #include <memory>
+#include <type_traits>
 
 #include "types.h"
 #include "exceptions.h"

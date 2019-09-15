@@ -46,6 +46,8 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <type_traits>
+
 // The `current_build.h` file from this local `Current/Karl` dir makes no sense for external users of Karl.
 // Nonetheless, top-level `make test` and `make check` should pass out of the box.
 #ifdef CURRENT_MAKE_CHECK_MODE
