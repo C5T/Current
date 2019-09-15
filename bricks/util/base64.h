@@ -33,9 +33,11 @@ SOFTWARE.
 
 namespace current {
 
+#ifndef NDEBUG
 struct Base64DecodeException : Exception {
   using Exception::Exception;
 };
+#endif  // NDEBUG
 
 namespace base64 {
 
