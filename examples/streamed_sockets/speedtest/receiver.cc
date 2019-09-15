@@ -54,9 +54,9 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  std::chrono::microseconds const t_window_size(static_cast<int64_t>(FLAGS_window_size_seconds * 1e6));
-  size_t const window_size_bytes = static_cast<size_t>(FLAGS_window_size_gb * 1e9);
-  std::chrono::microseconds const t_output_frequency(static_cast<int64_t>(FLAGS_output_frequency * 1e6));
+  const std::chrono::microseconds t_window_size(static_cast<int64_t>(FLAGS_window_size_seconds * 1e6));
+  const size_t window_size_bytes = static_cast<size_t>(FLAGS_window_size_gb * 1e9);
+  const std::chrono::microseconds t_output_frequency(static_cast<int64_t>(FLAGS_output_frequency * 1e6));
 
   std::vector<uint8_t> buffer(static_cast<size_t>(1e9 * FLAGS_receive_buffer_gb));
 
@@ -79,14 +79,14 @@ int main(int argc, char** argv) {
       std::chrono::microseconds t_next_output = current::time::Now() + t_output_frequency;
       std::chrono::microseconds t_last_successful_receive = current::time::Now();
       while (true) {
-        size_t const size = connection.BlockingRead(&buffer[0], buffer.size());
-        std::chrono::microseconds const t_now = current::time::Now();
+        const size_t size = connection.BlockingRead(&buffer[0], buffer.size());
+        const std::chrono::microseconds t_now = current::time::Now();
         if (size) {
           total_bytes_received += size;
           t_last_successful_receive = t_now;
           history.emplace_back(t_now, total_bytes_received);
-          std::chrono::microseconds const t_cutoff = t_now - t_window_size;
-          size_t const size_cutoff =
+          const std::chrono::microseconds t_cutoff = t_now - t_window_size;
+          const size_t size_cutoff =
               (total_bytes_received > window_size_bytes ? total_bytes_received - window_size_bytes : 0);
           if (t_now >= t_next_output) {
             if (history.size() >= 2) {
@@ -94,8 +94,8 @@ int main(int argc, char** argv) {
                      (history.front().first <= t_cutoff || history.front().second <= size_cutoff)) {
                 history.pop_front();
               }
-              double const gb = 1e-9 * (history.back().second - history.front().second);
-              double const s = 1e-6 * (history.back().first - history.front().first).count();
+              const double gb = 1e-9 * (history.back().second - history.front().second);
+              const double s = 1e-6 * (history.back().first - history.front().first).count();
               progress << bold << green << current::strings::Printf("%.3lfGB/s", gb / s) << reset << ", " << bold
                        << yellow << current::strings::Printf("%.3lfGB", gb) << reset << '/' << bold << blue
                        << current::strings::Printf("%.2lfs", s) << reset << ", " << cyan
@@ -108,8 +108,8 @@ int main(int argc, char** argv) {
         } else {
           std::this_thread::yield();
           if (t_now >= t_next_output) {
-            double const seconds_of_silence = 1e-6 * (t_now - t_last_successful_receive).count();
-            double const seconds_timeout = std::max(0.0, FLAGS_max_seconds_of_silence - seconds_of_silence);
+            const double seconds_of_silence = 1e-6 * (t_now - t_last_successful_receive).count();
+            const double seconds_timeout = std::max(0.0, FLAGS_max_seconds_of_silence - seconds_of_silence);
             progress << "dropping connection in " << bold << red << current::strings::Printf("%.1lfs", seconds_timeout)
                      << reset;
             t_next_output = t_now + t_output_frequency;
@@ -120,10 +120,10 @@ int main(int argc, char** argv) {
           }
         }
       }
-    } catch (current::net::SocketBindException const&) {
+    } catch (const current::net::SocketBindException&) {
       progress << "can not bind to " << red << bold << "localhost:" << FLAGS_port << reset
                << ", check for other apps holding the post";
-    } catch (current::Exception const& e) {
+    } catch (const current::Exception& e) {
       progress << red << bold << "error" << reset << ": " << e.OriginalDescription() << reset;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));  // Don't eat up 100% CPU when unable to connect.

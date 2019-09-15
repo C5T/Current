@@ -55,14 +55,14 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  std::chrono::microseconds const t_window_size(static_cast<int64_t>(FLAGS_window_size_seconds * 1e6));
-  size_t const window_size_bytes = static_cast<size_t>(FLAGS_window_size_gb * 1e9);
-  std::chrono::microseconds const t_output_frequency(static_cast<int64_t>(FLAGS_output_frequency * 1e6));
+  const std::chrono::microseconds t_window_size(static_cast<int64_t>(FLAGS_window_size_seconds * 1e6));
+  const size_t window_size_bytes = static_cast<size_t>(FLAGS_window_size_gb * 1e9);
+  const std::chrono::microseconds t_output_frequency(static_cast<int64_t>(FLAGS_output_frequency * 1e6));
 
   current::ProgressLine progress;
 
   progress << current::strings::Printf("allocating %.1lfMB", FLAGS_send_buffer_mb);
-  size_t const buffer_size = static_cast<size_t>(1e6 * FLAGS_send_buffer_mb);
+  const size_t buffer_size = static_cast<size_t>(1e6 * FLAGS_send_buffer_mb);
   std::vector<char> data(buffer_size);
 
   progress << current::strings::Printf("initializing %.1lfMB", FLAGS_send_buffer_mb);
@@ -82,20 +82,20 @@ int main(int argc, char** argv) {
       std::chrono::microseconds t_next_output = current::time::Now() + t_output_frequency;
       std::chrono::microseconds t_last_successful_receive = current::time::Now();
       while (true) {
-        connection.BlockingWrite(reinterpret_cast<void const*>(&data[0]), data.size(), true);
-        std::chrono::microseconds const t_now = current::time::Now();
+        connection.BlockingWrite(reinterpret_cast<const void*>(&data[0]), data.size(), true);
+        const std::chrono::microseconds t_now = current::time::Now();
         total_bytes_sent += data.size();
         t_last_successful_receive = t_now;
         history.emplace_back(t_now, total_bytes_sent);
-        std::chrono::microseconds const t_cutoff = t_now - t_window_size;
-        size_t const size_cutoff = (total_bytes_sent > window_size_bytes ? total_bytes_sent - window_size_bytes : 0);
+        const std::chrono::microseconds t_cutoff = t_now - t_window_size;
+        const size_t size_cutoff = (total_bytes_sent > window_size_bytes ? total_bytes_sent - window_size_bytes : 0);
         if (t_now >= t_next_output) {
           if (history.size() >= 2) {
             while (history.size() > 2 && (history.front().first <= t_cutoff || history.front().second <= size_cutoff)) {
               history.pop_front();
             }
-            double const gb = 1e-9 * (history.back().second - history.front().second);
-            double const s = 1e-6 * (history.back().first - history.front().first).count();
+            const double gb = 1e-9 * (history.back().second - history.front().second);
+            const double s = 1e-6 * (history.back().first - history.front().first).count();
             progress << bold << green << current::strings::Printf("%.3lfGB/s", gb / s) << reset << ", " << bold
                      << yellow << current::strings::Printf("%.3lfGB", gb) << reset << '/' << bold << blue
                      << current::strings::Printf("%.2lfs", s) << reset << ", " << magenta
@@ -105,9 +105,9 @@ int main(int argc, char** argv) {
           t_next_output = t_now + t_output_frequency;
         }
       }
-    } catch (current::net::SocketConnectException const&) {
+    } catch (const current::net::SocketConnectException&) {
       progress << "can not connect to " << red << bold << FLAGS_host << ':' << FLAGS_port << reset;
-    } catch (current::Exception const& e) {
+    } catch (const current::Exception& e) {
       progress << red << bold << "error" << reset << ": " << e.OriginalDescription() << reset;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));  // Don't eat up 100% CPU when unable to connect.
