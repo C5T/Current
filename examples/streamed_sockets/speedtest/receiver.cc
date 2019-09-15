@@ -126,5 +126,6 @@ int main(int argc, char** argv) {
     } catch (current::Exception const& e) {
       progress << red << bold << "error" << reset << ": " << e.OriginalDescription() << reset;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));  // Don't eat up 100% CPU when unable to connect.
   }
 }
