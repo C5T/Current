@@ -133,12 +133,5 @@ matrix:
       compiler: "native clang++, Job: make check"
       os: osx
 
-    - script:
-      - make typesystem_schema_typescript_tests
-      compiler: "# TypeScript"
-      env:
-      - TEST_SCHEMA_COMPILATION=1
-      os: linux
-
 notifications:
   slack: currentio:e74oLGvcTRa0yJWg5Q6JjzCk
