@@ -9,7 +9,7 @@ set -u -e
 
 EXTRA_INCLUDE_DIR="${1:-.}"
 
-CPPFLAGS="-std=c++11 -g -Wall -W -DCURRENT_MAKE_CHECK_MODE -fPIC"
+CPPFLAGS="-std=c++17 -Wall -W -DCURRENT_MAKE_CHECK_MODE -fPIC"
 LDFLAGS="-pthread"
 
 if [ $(uname) = "Darwin" ] ; then
@@ -42,9 +42,9 @@ for i in $(ls *.h | grep -v ".cc.h$" | grep -v "^current_build.h") ; do
     ln -sf "$PWD/$i" "$HEADER_GCC"
     ln -sf "$PWD/$i" "$HEADER_CLANG"
 
-    g++ -I "$EXTRA_INCLUDE_DIR" $CPPFLAGS -c "$HEADER_GCC" -o "${HEADER_GCC}.o" $LDFLAGS \
+    g++ -idirafter "$EXTRA_INCLUDE_DIR" $CPPFLAGS -c "$HEADER_GCC" -o "${HEADER_GCC}.o" $LDFLAGS \
       >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-    clang++ -I "$EXTRA_INCLUDE_DIR" $CPPFLAGS -c "$HEADER_CLANG" -o "${HEADER_CLANG}.o" $LDFLAGS \
+    clang++ -idirafter "$EXTRA_INCLUDE_DIR" $CPPFLAGS -c "$HEADER_CLANG" -o "${HEADER_CLANG}.o" $LDFLAGS \
       >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
     ld -r "${HEADER_GCC}.o" "${HEADER_CLANG}.o" -o "${COMBINED_OBJECT}.o"
   fi
@@ -53,9 +53,9 @@ echo
 
 echo -e -n "\033[0m\033[1mLinking\033[0m:\033[0m\033[31m "
 echo -e '#include <cstdio>\nint main() { printf("OK\\n"); }\n' >"${SOURCE_FILE}.cc"
-g++ -I "$EXTRA_INCLUDE_DIR" -c $CPPFLAGS -o "${SOURCE_FILE}.o" "${SOURCE_FILE}.cc" $LDFLAGS \
+g++ -idirafter "$EXTRA_INCLUDE_DIR" -c $CPPFLAGS -o "${SOURCE_FILE}.o" "${SOURCE_FILE}.cc" $LDFLAGS \
   >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-g++ -I "$EXTRA_INCLUDE_DIR" -o "$SOURCE_FILE" "$PWD"/.current_*.o $LDFLAGS \
+g++ -idirafter "$EXTRA_INCLUDE_DIR" -o "$SOURCE_FILE" "$PWD"/.current_*.o $LDFLAGS \
   >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
 echo -e -n "\033[1m\033[32m"
 
