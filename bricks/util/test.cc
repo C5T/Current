@@ -281,8 +281,11 @@ TEST(Util, Base64) {
   EXPECT_EQ(all_chars, Base64Decode(Base64Encode(all_chars)));
   EXPECT_EQ(all_chars, Base64URLDecode(Base64URLEncode(all_chars)));
 
+#ifndef NDEBUG
+  // The very `Base64DecodeException` is debug mode only.
   EXPECT_THROW(Base64Decode("MDw-"), current::Base64DecodeException);
   EXPECT_THROW(Base64URLDecode("MDw+"), current::Base64DecodeException);
+#endif
 
   const std::string golden_file = current::FileSystem::ReadFileAsString("golden/base64test.txt");
   EXPECT_EQ(golden_file, Base64Decode(current::FileSystem::ReadFileAsString("golden/base64test.base64")));

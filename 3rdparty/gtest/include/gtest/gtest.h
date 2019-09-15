@@ -1441,7 +1441,8 @@ AssertionResult CmpHelperEQ(const char* lhs_expression,
                             const char* rhs_expression,
                             const T1& lhs,
                             const T2& rhs) {
-  if (lhs == rhs) {
+  if (::gtest::CustomComparator<typename std::decay<T1>::type,
+                                typename std::decay<T2>::type>::EXPECT_EQ_IMPL(lhs, rhs)) {
     return AssertionSuccess();
   }
 
@@ -1455,6 +1456,35 @@ GTEST_API_ AssertionResult CmpHelperEQ(const char* lhs_expression,
                                        const char* rhs_expression,
                                        BiggestInt lhs,
                                        BiggestInt rhs);
+
+// NOTE(dkorolev): Manually copy-pasted the above for `_NE` as well as for `_EQ`, for custom comparators.
+#if 1
+template <typename T1, typename T2>
+AssertionResult CmpHelperNEFailure(const char* lhs_expression,
+                                   const char* rhs_expression,
+                                   const T1& lhs, const T2& rhs) {
+  return NeFailure(lhs_expression,
+                   rhs_expression,
+                   FormatForComparisonFailureMessage(lhs, rhs),
+                   FormatForComparisonFailureMessage(rhs, lhs),
+                   false);
+}
+template <typename T1, typename T2>
+AssertionResult CmpHelperNE(const char* lhs_expression,
+                            const char* rhs_expression,
+                            const T1& lhs,
+                            const T2& rhs) {
+  if (::gtest::CustomComparator<typename std::decay<T1>::type,
+                                typename std::decay<T2>::type>::EXPECT_NE_IMPL(lhs, rhs)) {
+    return AssertionSuccess();
+  }
+  return CmpHelperNEFailure(lhs_expression, rhs_expression, lhs, rhs);
+}
+GTEST_API_ AssertionResult CmpHelperNE(const char* lhs_expression,
+                                       const char* rhs_expression,
+                                       BiggestInt lhs,
+                                       BiggestInt rhs);
+#endif
 
 // The helper class for {ASSERT|EXPECT}_EQ.  The template argument
 // lhs_is_null_literal is true iff the first argument to ASSERT_EQ()
@@ -1570,7 +1600,8 @@ GTEST_API_ AssertionResult CmpHelper##op_name(\
 // INTERNAL IMPLEMENTATION - DO NOT USE IN A USER PROGRAM.
 
 // Implements the helper function for {ASSERT|EXPECT}_NE
-GTEST_IMPL_CMP_HELPER_(NE, !=);
+// NOTE(dkorolev): Commented out, as it is defined explicitly above.
+// GTEST_IMPL_CMP_HELPER_(NE, !=);
 // Implements the helper function for {ASSERT|EXPECT}_LE
 GTEST_IMPL_CMP_HELPER_(LE, <=);
 // Implements the helper function for {ASSERT|EXPECT}_LT

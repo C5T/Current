@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef THIRDPARTY_GTEST_H
 #define THIRDPARTY_GTEST_H
 
+#include "gtest-custom-comparators.h"   // Must be the first header `#include`-d. -- D.K.
+
 #define GTEST_HAS_TR1_TUPLE 0  // Suppress Visual Studio warnings.
 
 #include "src/gtest-all.cc"
