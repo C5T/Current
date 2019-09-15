@@ -38,7 +38,6 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
-            - llvm-toolchain-trusty-6.0
           packages:
             - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-6.0
@@ -71,7 +70,6 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
-            - llvm-toolchain-trusty-6.0
           packages:
             - g++-5  # To install the dreaded `#include <codecvt>`.
             - clang-6.0
@@ -117,7 +115,6 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-6.0
           packages:
             - g++-5
             - clang-6.0
