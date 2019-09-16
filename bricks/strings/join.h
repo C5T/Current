@@ -31,7 +31,6 @@ SOFTWARE.
 
 #include "util.h"
 
-#include "../template/enable_if.h"
 #include "../template/decay.h"
 
 namespace current {
@@ -49,7 +48,7 @@ struct StringLengthOrOneForCharImpl<std::string> {
 
 template <size_t N>
 struct StringLengthOrOneForCharImpl<const char[N]> {
-  inline static ENABLE_IF<(N > 0), size_t> Length(const char[N]) { return N - 1; }
+  inline static std::enable_if_t<(N > 0), size_t> Length(const char[N]) { return N - 1; }
 };
 
 template <>

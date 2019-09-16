@@ -43,7 +43,6 @@ SOFTWARE.
 #include "types.h"
 #include "exceptions.h"
 
-#include "../bricks/template/enable_if.h"
 #include "../bricks/template/decay.h"
 
 namespace current {

@@ -29,12 +29,12 @@ SOFTWARE.
 
 #include <map>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "base.h"
 
 #include "../bricks/template/decay.h"
-#include "../bricks/template/enable_if.h"
 #include "../bricks/template/pod.h"
 #include "../bricks/template/variadic_indexes.h"
 

@@ -26,9 +26,9 @@ SOFTWARE.
 #define BRICKS_TEMPLATE_COMBINE_H
 
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
-#include "enable_if.h"
 #include "typelist.h"
 #include "weed.h"
 
@@ -51,12 +51,13 @@ struct dispatch {
       : instance(args...) {}
 
   template <typename... XS>
-  ENABLE_IF<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>> operator()(XS&&... params) {
+  std::enable_if_t<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>> operator()(XS&&... params) {
     return instance(std::forward<XS>(params)...);
   }
 
   template <typename... XS>
-  ENABLE_IF<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>> operator()(XS&&... params) const {
+  std::enable_if_t<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>>
+  operator()(XS&&... params) const {
     return instance(std::forward<XS>(params)...);
   }
 

@@ -30,12 +30,12 @@ SOFTWARE.
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 #include "is_string_type.h"
 
 #include "chunk.h"
 
-#include "../template/enable_if.h"
 #include "../template/decay.h"
 
 namespace current {
@@ -70,7 +70,7 @@ constexpr auto HasMemberFromString(int) -> decltype(std::declval<T>().FromString
 template <typename DECAYED_T, bool HAS_MEMBER_TO_STRING, bool IS_ENUM>
 struct ToStringImpl {
   template <bool B = std::is_arithmetic<DECAYED_T>::value>
-  static ENABLE_IF<B, std::string> DoIt(DECAYED_T value) {
+  static std::enable_if_t<B, std::string> DoIt(DECAYED_T value) {
     return std::to_string(value);
   }
 };
@@ -272,7 +272,7 @@ inline OUTPUT FromString(INPUT&& input) {
 inline std::string FromString(const std::string& input) { return input; }
 
 template <size_t N>
-constexpr ENABLE_IF<(N > 0), size_t> CompileTimeStringLength(char const(&)[N]) {
+constexpr std::enable_if_t<(N > 0), size_t> CompileTimeStringLength(char const(&)[N]) {
   return N - 1;
 }
 

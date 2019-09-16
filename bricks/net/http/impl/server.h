@@ -29,6 +29,7 @@ SOFTWARE.
 #include <memory>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "../body_requirement.h"
@@ -42,8 +43,6 @@ SOFTWARE.
 #include "../../exceptions.h"
 
 #include "../../tcp/tcp.h"
-
-#include "../../../template/enable_if.h"
 
 #include "../../../../typesystem/serialization/json.h"
 #include "../../../../typesystem/struct.h"
@@ -139,7 +138,7 @@ struct HTTPResponder {
 
   // Only support STL containers of chars and bytes, this does not yet cover std::string.
   template <typename T>
-  static ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       Connection& connection,
       const T& begin,
       const T& end,
@@ -149,7 +148,7 @@ struct HTTPResponder {
     SendHTTPResponseImpl(connection, begin, end, code, headers, content_type);
   }
   template <typename T>
-  static ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       Connection& connection,
       T&& container,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -169,7 +168,7 @@ struct HTTPResponder {
 
   // Support `CURRENT_STRUCT`-s and `CURRENT_VARIANT`-s.
   template <class T>
-  static ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(current::decay<T>)> SendHTTPResponse(
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay<T>)> SendHTTPResponse(
       Connection& connection,
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -638,9 +637,9 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
       template <typename T>
-      inline ENABLE_IF<std::is_same<typename T::value_type, char>::value ||
-                       std::is_same<typename T::value_type, uint8_t>::value ||
-                       std::is_same<typename T::value_type, int8_t>::value>
+      inline std::enable_if_t<std::is_same<typename T::value_type, char>::value ||
+                             std::is_same<typename T::value_type, uint8_t>::value ||
+                             std::is_same<typename T::value_type, int8_t>::value>
       Send(T&& data, ChunkFlush flush) {
         SendImpl(std::forward<T>(data), flush);
       }
@@ -650,7 +649,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
+      inline std::enable_if_t<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
         SendImpl(JSON(std::forward<T>(object)) + '\n', flush);
       }
 

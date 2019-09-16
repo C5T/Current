@@ -33,7 +33,6 @@ SOFTWARE.
 #include <typeindex>
 #include <type_traits>
 
-#include "../bricks/template/enable_if.h"
 #include "../bricks/util/singleton.h"
 
 namespace current {

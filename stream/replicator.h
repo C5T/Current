@@ -30,6 +30,7 @@ SOFTWARE.
 #include <functional>
 #include <string>
 #include <thread>
+#include <type_traits>
 
 #include "exceptions.h"
 #include "stream.h"
@@ -174,7 +175,7 @@ class SubscribableRemoteStream final {
 
    private:
     template <ReplicationMode MODE = RM>
-    ENABLE_IF<MODE == ReplicationMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
+    std::enable_if_t<MODE == ReplicationMode::Checked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto split = current::strings::Split(raw_log_line, '\t');
       if (split.empty()) {
         CURRENT_THROW(RemoteStreamMalformedChunkException());
@@ -210,7 +211,7 @@ class SubscribableRemoteStream final {
     }
 
     template <ReplicationMode MODE = RM>
-    ENABLE_IF<MODE == ReplicationMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
+    std::enable_if_t<MODE == ReplicationMode::Unchecked> PassEntryToSubscriber(const std::string& raw_log_line) {
       const auto tab_pos = raw_log_line.find('\t');
       if (tab_pos != std::string::npos) {
         if (subscriber_(raw_log_line, next_expected_index_, unused_idxts_) == ss::EntryResponse::Done) {
@@ -840,13 +841,13 @@ class MasterFlipController final {
 
    private:
     template <ReplicationMode MODE = RM>
-    ENABLE_IF<MODE == ReplicationMode::Checked, std::unique_ptr<SubscriberScope>> Subscribe(
+    std::enable_if_t<MODE == ReplicationMode::Checked, std::unique_ptr<SubscriberScope>> Subscribe(
         uint64_t start_idx, std::chrono::microseconds from_us) {
       using scope_t = typename remote_stream_t::template RemoteSubscriberScope<replicator_t>;
       return std::make_unique<scope_t>(remote_stream_.Subscribe(replicator_, start_idx, from_us, subscription_mode_));
     }
     template <ReplicationMode MODE = RM>
-    ENABLE_IF<MODE == ReplicationMode::Unchecked, std::unique_ptr<SubscriberScope>> Subscribe(
+    std::enable_if_t<MODE == ReplicationMode::Unchecked, std::unique_ptr<SubscriberScope>> Subscribe(
         uint64_t start_idx, std::chrono::microseconds from_us) {
       using scope_t = typename remote_stream_t::template RemoteSubscriberScopeUnchecked<replicator_t>;
       return std::make_unique<scope_t>(

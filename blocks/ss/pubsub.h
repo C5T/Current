@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef BLOCKS_SS_PUBSUB_H
 #define BLOCKS_SS_PUBSUB_H
 
+#include <type_traits>
+
 #include "../../port.h"
 
 #include "idx_ts.h"
@@ -57,14 +59,14 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
             typename E,
-            class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
+            class = std::enable_if_t<CanPublish<current::decay<E>, ENTRY>::value>>
   idxts_t Publish(E&& e) {
     return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), current::time::DefaultTimeArgument());
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
             typename E,
-            class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
+            class = std::enable_if_t<CanPublish<current::decay<E>, ENTRY>::value>>
   idxts_t Publish(E&& e, std::chrono::microseconds us) {
     return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), us);
   }

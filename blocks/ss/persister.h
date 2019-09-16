@@ -30,6 +30,8 @@ SOFTWARE.
 #ifndef BLOCKS_SS_PERSISTER_H
 #define BLOCKS_SS_PERSISTER_H
 
+#include <type_traits>
+
 #include "idx_ts.h"
 #include "types.h"
 
@@ -57,14 +59,14 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock,
             typename E,
-            class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
+            class = std::enable_if_t<CanPublish<current::decay<E>, ENTRY>::value>>
   idxts_t Publish(E&& e, current::time::DefaultTimeArgument = current::time::DefaultTimeArgument()) {
     return IMPL::template PersisterPublishImpl<MLS>(std::forward<E>(e), current::time::DefaultTimeArgument());
   }
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock,
             typename E,
-            class = ENABLE_IF<CanPublish<current::decay<E>, ENTRY>::value>>
+            class = std::enable_if_t<CanPublish<current::decay<E>, ENTRY>::value>>
   idxts_t Publish(E&& e, std::chrono::microseconds us) {
     return IMPL::template PersisterPublishImpl<MLS>(std::forward<E>(e), us);
   }

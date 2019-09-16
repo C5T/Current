@@ -29,6 +29,8 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_PLAIN_H
 #define CURRENT_STORAGE_REST_PLAIN_H
 
+#include <type_traits>
+
 #include "sfinae.h"
 
 #include "../api_types.h"
@@ -175,12 +177,12 @@ struct Plain {
       return RunImpl<INPUT, sfinae::HasInitializeOwnKey<decltype(std::declval<INPUT>().entry)>(0)>(input);
     }
     template <class INPUT, bool B>
-    ENABLE_IF<!B, Response> RunImpl(const INPUT& input) const {
+    std::enable_if_t<!B, Response> RunImpl(const INPUT& input) const {
       return Plain::ErrorMethodNotAllowed(
           "POST", "Storage field `" + input.field_name + "` does not support key initialization.");
     }
     template <class INPUT, bool B>
-    ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
+    std::enable_if_t<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
       const auto entry_key = field_type_dependent_t<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
       if (input.overwrite || !Exists(input.field[entry_key])) {
