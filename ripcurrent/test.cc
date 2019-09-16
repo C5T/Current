@@ -265,8 +265,8 @@ TEST(RipCurrent, MoreTypeSystemGuarantees) {
   using namespace ripcurrent_unittest;
 
   EXPECT_EQ("RCEmit", RCEmit::UnitTestClassName());
-  static_assert(std::is_same<RCEmit::input_t, current::ripcurrent::LHSTypes<>>::value, "");
-  static_assert(std::is_same<RCEmit::output_t, current::ripcurrent::RHSTypes<Integer>>::value, "");
+  static_assert(std::is_same_v<RCEmit::input_t, current::ripcurrent::LHSTypes<>>, "");
+  static_assert(std::is_same_v<RCEmit::output_t, current::ripcurrent::RHSTypes<Integer>>, "");
 
   EXPECT_EQ("RCEmit", RIPCURRENT_UNDERLYING_TYPE(RCEmit())::UnitTestClassName());
 
@@ -274,8 +274,8 @@ TEST(RipCurrent, MoreTypeSystemGuarantees) {
   EXPECT_EQ("RCEmit", RIPCURRENT_UNDERLYING_TYPE(emit)::UnitTestClassName());
 
   EXPECT_EQ("RCMult", RCMult::UnitTestClassName());
-  static_assert(std::is_same<RCMult::input_t, current::ripcurrent::LHSTypes<Integer>>::value, "");
-  static_assert(std::is_same<RCMult::output_t, current::ripcurrent::RHSTypes<Integer>>::value, "");
+  static_assert(std::is_same_v<RCMult::input_t, current::ripcurrent::LHSTypes<Integer>>, "");
+  static_assert(std::is_same_v<RCMult::output_t, current::ripcurrent::RHSTypes<Integer>>, "");
 
   EXPECT_EQ("RCMult", RIPCURRENT_UNDERLYING_TYPE(RCMult())::UnitTestClassName());
 
@@ -283,8 +283,8 @@ TEST(RipCurrent, MoreTypeSystemGuarantees) {
   EXPECT_EQ("RCMult", RIPCURRENT_UNDERLYING_TYPE(mult)::UnitTestClassName());
 
   EXPECT_EQ("RCDump", RCDump::UnitTestClassName());
-  static_assert(std::is_same<RCDump::input_t, current::ripcurrent::LHSTypes<Integer>>::value, "");
-  static_assert(std::is_same<RCDump::output_t, current::ripcurrent::RHSTypes<>>::value, "");
+  static_assert(std::is_same_v<RCDump::input_t, current::ripcurrent::LHSTypes<Integer>>, "");
+  static_assert(std::is_same_v<RCDump::output_t, current::ripcurrent::RHSTypes<>>, "");
 
   EXPECT_EQ("RCDump", RIPCURRENT_UNDERLYING_TYPE(RCDump())::UnitTestClassName());
 
@@ -301,55 +301,55 @@ TEST(RipCurrent, MoreTypeSystemGuarantees) {
   const auto emit_mult_mult_dump_3 = ((emit | mult) | mult) | dump;
   const auto emit_mult_mult_dump_4 = emit | (mult | (mult | dump));
 
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::input_t, current::ripcurrent::LHSTypes<>>::value,
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::input_t, current::ripcurrent::LHSTypes<>>,
                 "");
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::output_t, current::ripcurrent::RHSTypes<Integer>>::value, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::output_t, current::ripcurrent::RHSTypes<Integer>>, "");
 
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::input_t, current::ripcurrent::LHSTypes<Integer>>::value, "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::output_t, current::ripcurrent::RHSTypes<>>::value,
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::input_t, current::ripcurrent::LHSTypes<Integer>>, "");
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::output_t, current::ripcurrent::RHSTypes<>>,
                 "");
 
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::input_t, current::ripcurrent::LHSTypes<>>::value,
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::input_t, current::ripcurrent::LHSTypes<>>,
                 "");
-  static_assert(std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::output_t, current::ripcurrent::RHSTypes<>>::value,
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::output_t, current::ripcurrent::RHSTypes<>>,
                 "");
 
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>::value, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>, "");
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>::value, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>, "");
 
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>::value, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>, "");
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>::value, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>, "");
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>::value,
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>,
       "");
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>::value,
-      "");
-
-  static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>::value,
-      "");
-  static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>::value,
-      "");
-  static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::input_t, current::ripcurrent::LHSTypes<>>::value,
-      "");
-  static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::output_t, current::ripcurrent::RHSTypes<>>::value,
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>,
       "");
 
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::input_t, current::ripcurrent::LHSTypes<>>::value,
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>,
       "");
   static_assert(
-      std::is_same<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::output_t, current::ripcurrent::RHSTypes<>>::value,
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>,
+      "");
+  static_assert(
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::input_t, current::ripcurrent::LHSTypes<>>,
+      "");
+  static_assert(
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::output_t, current::ripcurrent::RHSTypes<>>,
+      "");
+
+  static_assert(
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::input_t, current::ripcurrent::LHSTypes<>>,
+      "");
+  static_assert(
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::output_t, current::ripcurrent::RHSTypes<>>,
       "");
 
   emit_mult.Dismiss();

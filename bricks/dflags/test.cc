@@ -34,8 +34,8 @@ TEST(DFlags, DefinesAFlag) {
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_int8(foo, 42, "");
   DEFINE_uint8(bar, 42, "");
-  static_assert(std::is_same<decltype(FLAGS_foo), int8_t>::value, "");
-  static_assert(std::is_same<decltype(FLAGS_bar), uint8_t>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_foo), int8_t>, "");
+  static_assert(std::is_same_v<decltype(FLAGS_bar), uint8_t>, "");
   EXPECT_EQ(42, FLAGS_foo);
   EXPECT_EQ(42, FLAGS_bar);
   FLAGS_foo = -1;
@@ -50,7 +50,7 @@ TEST(DFlags, ParsesAFlagUsingSingleDash) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_int16(foo, 1, "");
-  static_assert(std::is_same<decltype(FLAGS_foo), int16_t>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_foo), int16_t>, "");
   EXPECT_EQ(1, FLAGS_foo);
   int argc = 3;
   char p1[] = "./ParsesAFlagUsingSingleDash";
@@ -68,7 +68,7 @@ TEST(DFlags, ParsesAFlagUsingDoubleDash) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_uint16(bar, 1, "");
-  static_assert(std::is_same<decltype(FLAGS_bar), uint16_t>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_bar), uint16_t>, "");
   EXPECT_EQ(1, FLAGS_bar);
   int argc = 3;
   char p1[] = "./ParsesAFlagUsingDoubleDash";
@@ -86,7 +86,7 @@ TEST(DFlags, ParsesAFlagUsingSingleDashEquals) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_int32(baz, 1, "");
-  static_assert(std::is_same<decltype(FLAGS_baz), int32_t>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_baz), int32_t>, "");
   EXPECT_EQ(1, FLAGS_baz);
   int argc = 2;
   char p1[] = "./ParsesAFlagUsingSingleDashEquals";
@@ -103,7 +103,7 @@ TEST(DFlags, ParsesAFlagUsingDoubleDashEquals) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_uint32(meh, 1, "");
-  static_assert(std::is_same<decltype(FLAGS_meh), uint32_t>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_meh), uint32_t>, "");
   EXPECT_EQ(1u, FLAGS_meh);
   int argc = 2;
   char p1[] = "./ParsesAFlagUsingDoubleDashEquals";
@@ -136,12 +136,12 @@ TEST(DFlags, ParsesMultipleFlags) {
   DEFINE_int64(flag_int64, 0, "");
   DEFINE_uint64(flag_uint64, 0u, "");
   DEFINE_size_t(flag_size_t, 0u, "");
-  static_assert(std::is_same<decltype(FLAGS_flag_string), std::string>::value, "");
-  static_assert(std::is_same<decltype(FLAGS_flag_bool1), bool>::value, "");
-  static_assert(std::is_same<decltype(FLAGS_flag_bool2), bool>::value, "");
-  static_assert(std::is_same<decltype(FLAGS_flag_int64), int64_t>::value, "");
-  static_assert(std::is_same<decltype(FLAGS_flag_uint64), uint64_t>::value, "");
-  static_assert(std::is_same<decltype(FLAGS_flag_size_t), size_t>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_flag_string), std::string>, "");
+  static_assert(std::is_same_v<decltype(FLAGS_flag_bool1), bool>, "");
+  static_assert(std::is_same_v<decltype(FLAGS_flag_bool2), bool>, "");
+  static_assert(std::is_same_v<decltype(FLAGS_flag_int64), int64_t>, "");
+  static_assert(std::is_same_v<decltype(FLAGS_flag_uint64), uint64_t>, "");
+  static_assert(std::is_same_v<decltype(FLAGS_flag_size_t), size_t>, "");
   EXPECT_EQ("", FLAGS_flag_string);
   EXPECT_FALSE(FLAGS_flag_bool1);
   EXPECT_TRUE(FLAGS_flag_bool2);
@@ -176,7 +176,7 @@ TEST(DFlags, ParsesEmptyString) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_string(empty_string, "not yet", "");
-  static_assert(std::is_same<decltype(FLAGS_empty_string), std::string>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_empty_string), std::string>, "");
   EXPECT_EQ("not yet", FLAGS_empty_string);
   int argc = 3;
   char p1[] = "./ParsesEmptyString";
@@ -192,7 +192,7 @@ TEST(DFlags, ParsesEmptyStringUsingEquals) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_string(empty_string, "not yet", "");
-  static_assert(std::is_same<decltype(FLAGS_empty_string), std::string>::value, "");
+  static_assert(std::is_same_v<decltype(FLAGS_empty_string), std::string>, "");
   EXPECT_EQ("not yet", FLAGS_empty_string);
   int argc = 2;
   char p1[] = "./ParsesEmptyStringUsingEquals";

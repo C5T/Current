@@ -71,7 +71,7 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::unordered_map<std:
 template <class JSON_FORMAT, typename TK, typename TV, class HASH, class EQ, class ALLOCATOR, class J>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_map<TK, TV, HASH, EQ, ALLOCATOR>, J> {
   template <typename K = TK>
-  static std::enable_if_t<std::is_same<std::string, K>::value> DoDeserialize(
+  static std::enable_if_t<std::is_same_v<std::string, K>> DoDeserialize(
       json::JSONParser<JSON_FORMAT>& json_parser, std::unordered_map<TK, TV, HASH, EQ, ALLOCATOR>& destination) {
     if (json_parser && json_parser.Current().IsObject()) {
       destination.clear();
@@ -90,7 +90,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::unordered_map<TK, TV,
   }
 
   template <typename K = TK>
-  static std::enable_if_t<!std::is_same<std::string, K>::value> DoDeserialize(
+  static std::enable_if_t<!std::is_same_v<std::string, K>> DoDeserialize(
       json::JSONParser<JSON_FORMAT>& json_parser, std::unordered_map<TK, TV, HASH, EQ, ALLOCATOR>& destination) {
     if (json_parser && json_parser.Current().IsArray()) {
       destination.clear();

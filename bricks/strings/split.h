@@ -129,7 +129,7 @@ struct DefaultSeparator<ByLines> {
 }  // namespace impl
 
 template <typename SEPARATOR, typename PROCESSOR>
-inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+inline std::enable_if_t<!std::is_same_v<PROCESSOR, EmptyFields>, size_t> Split(
     const std::string& s,
     SEPARATOR&& separator,
     PROCESSOR&& processor,
@@ -186,7 +186,7 @@ inline size_t Split(char* s,
 
 // `Split(std::string&, ...)` maps to `Split(char*, size_t, ...)`.
 template <typename SEPARATOR, typename PROCESSOR>
-inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+inline std::enable_if_t<!std::is_same_v<PROCESSOR, EmptyFields>, size_t> Split(
     std::string& string,
     SEPARATOR&& separator,
     PROCESSOR&& processor,
@@ -214,7 +214,7 @@ inline size_t Split(char* string,
 }
 
 template <typename SEPARATOR, typename PROCESSOR>
-inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+inline std::enable_if_t<!std::is_same_v<PROCESSOR, EmptyFields>, size_t> Split(
     const char* string,
     SEPARATOR&& separator,
     PROCESSOR&& processor,
@@ -228,7 +228,7 @@ inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Sp
 // Special case for `Chunk`: Treat even the `const` Chunk-s as mutable.
 // We assume the users of `Chunk` a) expect performance, and b) know what they are doing.
 template <typename SEPARATOR, typename PROCESSOR>
-inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+inline std::enable_if_t<!std::is_same_v<PROCESSOR, EmptyFields>, size_t> Split(
     const Chunk& chunk,
     SEPARATOR&& separator,
     PROCESSOR&& processor,
@@ -251,7 +251,7 @@ inline size_t Split(STRING&& s, PROCESSOR&& processor, EmptyFields empty_fields_
 
 // The version returning an `std::vector<Chunk>`, which is somewhat performant.
 template <typename SEPARATOR>
-inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same_v<SEPARATOR, EmptyFields>,
                         std::vector<Chunk>>
 SplitIntoChunks(Chunk chunk,
                 SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
@@ -265,7 +265,7 @@ SplitIntoChunks(Chunk chunk,
 }
 
 template <typename SEPARATOR>
-inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same_v<SEPARATOR, EmptyFields>,
                         std::vector<Chunk>>
 SplitIntoChunks(char* s,
                 SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
@@ -274,7 +274,7 @@ SplitIntoChunks(char* s,
 }
 
 template <typename SEPARATOR>
-inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same_v<SEPARATOR, EmptyFields>,
                         std::vector<Chunk>>
 SplitIntoChunks(const std::string& s,
                 SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
@@ -284,7 +284,7 @@ SplitIntoChunks(const std::string& s,
 
 // The versions returning an `std::vector<std::string>`, for those not caring about performance.
 template <typename SEPARATOR, typename STRING>
-inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same<SEPARATOR, EmptyFields>::value,
+inline std::enable_if_t<impl::IsValidSeparator<SEPARATOR>::value && !std::is_same_v<SEPARATOR, EmptyFields>,
                         std::vector<std::string>>
 Split(STRING&& s,
       SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),

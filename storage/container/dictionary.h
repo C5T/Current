@@ -136,7 +136,7 @@ class GenericDictionary {
   template <typename E = entry_t>
   std::enable_if_t<HasPatch<E>(), bool>::type Patch(sfinae::CF<key_t> key,
                                                     const typename E::patch_object_t patch_object) {
-    static_assert(std::is_same<E, entry_t>::value, "");
+    static_assert(std::is_same_v<E, entry_t>, "");
     const auto now = current::time::Now();
     const auto map_iterator = map_.find(key);
     if (map_iterator != map_.end()) {

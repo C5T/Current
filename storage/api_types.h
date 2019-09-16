@@ -276,8 +276,8 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
 // A dedicated "GETInput" for the GETs over row or col of a matrix container.
 template <typename STORAGE, typename INCOMPLETE_KEY_TYPE, typename FIELD>
 struct RESTfulGETRowColInput : RESTfulGenericInput<STORAGE> {
-  static_assert(std::is_same<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialRowKey>::value ||
-                    std::is_same<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialColKey>::value,
+  static_assert(std::is_same_v<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialRowKey> ||
+                    std::is_same_v<INCOMPLETE_KEY_TYPE, semantics::key_completeness::PartialColKey>,
                 "");
 
   using field_t = FIELD;

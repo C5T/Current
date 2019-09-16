@@ -735,13 +735,13 @@ namespace storage_docu {
     struct RESTfulDataHandler : SUPER::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY> {
       using ACTUAL_SUPER = SUPER::RESTfulDataHandler<HTTP_VERB, OPERATION, PARTICULAR_FIELD, ENTRY, KEY>;
 
-      template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
+      template <class INPUT, bool IS_GET = std::is_same_v<HTTP_VERB, GET>>
       std::enable_if_t<!IS_GET, Response> Run(const INPUT& input) const {
         input.fields.SetTransactionMetaField("who", "unittest");
         return this->ACTUAL_SUPER::template Run<INPUT>(input);
       }
 
-      template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
+      template <class INPUT, bool IS_GET = std::is_same_v<HTTP_VERB, GET>>
       std::enable_if_t<IS_GET, Response> Run(const INPUT& input) const {
         return this->ACTUAL_SUPER::template Run<INPUT>(input);
       }

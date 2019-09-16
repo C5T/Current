@@ -98,7 +98,7 @@ struct IsContainerOfStringsImpl<T, false> {
 
 template <typename T>
 struct IsContainerOfStringsImpl<T, true> {
-  enum { value = std::is_same<std::string, current::decay<decltype(*std::declval<T>().begin())>>::value };
+  enum { value = std::is_same_v<std::string, current::decay<decltype(*std::declval<T>().begin())>> };
 };
 
 template <typename T>

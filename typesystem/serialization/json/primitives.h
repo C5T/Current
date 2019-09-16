@@ -79,7 +79,7 @@ template <class JSON_FORMAT, typename T>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
                        T,
                        std::enable_if_t<std::numeric_limits<T>::is_integer && !std::numeric_limits<T>::is_signed &&
-                                        !std::is_same<T, bool>::value>> {
+                                        !std::is_same_v<T, bool>>> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
     if (json_parser && json_parser.Current().IsUint64()) {
       destination = static_cast<T>(json_parser.Current().GetUint64());

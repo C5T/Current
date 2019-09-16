@@ -215,22 +215,22 @@ struct RecursiveTypeTraverser {
 
  private:
   template <typename T>
-  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<!std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     return CurrentTypeID_<SuperType<T>>();
   }
 
   template <typename T>
-  std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<!std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     return CurrentTypeID_<TemplateInnerType<T>>();
   }
 };
@@ -475,23 +475,23 @@ struct ReflectorImpl {
 
  private:
   template <typename T>
-  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<!std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     ReflectType<SuperType<T>>();
     return CurrentTypeID<SuperType<T>>();
   }
 
   template <typename T>
-  std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<!std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     ReflectType<TemplateInnerType<T>>();  // NOTE(dkorolev): Unnecessary, but why not keep it in the schema output?
     return CurrentTypeID<TemplateInnerType<T>>();
   }

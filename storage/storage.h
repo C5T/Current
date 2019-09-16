@@ -583,7 +583,7 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
   void operator()(const entry_name::persisted_event_2_t& e2) { field_name(e2); }                               \
   struct DummyPlaceholderForPatchEvent##field_name {};                                                         \
   void operator()(                                                                                             \
-      const typename std::conditional<!std::is_same<typename entry_name::persisted_event_3_t, void>::value,    \
+      const typename std::conditional<!std::is_same_v<typename entry_name::persisted_event_3_t, void>,         \
                                       typename entry_name::persisted_event_3_t,                                \
                                       DummyPlaceholderForPatchEvent##field_name>::type& e3) {                  \
     field_name(e3);                                                                                            \

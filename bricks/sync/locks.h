@@ -42,8 +42,8 @@ template <MutexLockStatus MLS, class MUTEX = std::mutex>
 using SmartMutexLockGuard =
     typename std::conditional<MLS == MutexLockStatus::NeedToLock, std::lock_guard<MUTEX>, NoOpLock>::type;
 
-static_assert(std::is_same<std::lock_guard<std::mutex>, SmartMutexLockGuard<MutexLockStatus::NeedToLock>>::value, "");
-static_assert(std::is_same<NoOpLock, SmartMutexLockGuard<MutexLockStatus::AlreadyLocked>>::value, "");
+static_assert(std::is_same_v<std::lock_guard<std::mutex>, SmartMutexLockGuard<MutexLockStatus::NeedToLock>>, "");
+static_assert(std::is_same_v<NoOpLock, SmartMutexLockGuard<MutexLockStatus::AlreadyLocked>>, "");
 
 }  // namespace locks
 }  // namespace current

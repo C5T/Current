@@ -32,11 +32,12 @@
 
 #define FNCAS_JIT_COMPILED
 
+#include <iostream>
 #include <sstream>
 #include <stack>
 #include <string>
+#include <type_traits>
 #include <vector>
-#include <iostream>
 
 #include <dlfcn.h>
 
@@ -51,7 +52,7 @@
 namespace fncas {
 namespace impl {
 
-static_assert(std::is_same<double, double_t>::value, "FnCAS JIT assumes `double_t` is the native double.");
+static_assert(std::is_same_v<double, double_t>, "FnCAS JIT assumes `double_t` is the native double.");
 
 // Linux- and Mac-friendly code to compile into .so and link against it at runtime.
 // Not portable.

@@ -3125,7 +3125,7 @@ TEST(TransactionalStorage, UseExternallyProvidedStreamStreamOfBroaderType) {
   using pre_storage_t = TestStorage<StreamInMemoryStreamPersister>;
   using transaction_t = typename pre_storage_t::transaction_t;
 
-  static_assert(std::is_same<transaction_t, typename pre_storage_t::persister_t::transaction_t>::value, "");
+  static_assert(std::is_same_v<transaction_t, typename pre_storage_t::persister_t::transaction_t>, "");
 
   using storage_t = TestStorage<StreamInMemoryStreamPersister,
                                 current::storage::transaction_policy::Synchronous,
@@ -3392,7 +3392,7 @@ TEST(TransactionalStorage, PatchMutation) {
 
   using storage_t = PatchTestStorage<StreamInMemoryStreamPersister>;
 
-  static_assert(std::is_same<typename storage_t::transaction_t, typename storage_t::stream_t::entry_t>::value, "");
+  static_assert(std::is_same_v<typename storage_t::transaction_t, typename storage_t::stream_t::entry_t>, "");
   // clang-format off
   EXPECT_STREQ("Transaction<Variant<NonPatchableXDictionaryUpdated, PatchableYDictionaryUpdated, NonPatchableXDictionaryDeleted, PatchableYDictionaryDeleted, PatchableYDictionaryPatched>>",
                current::reflection::CurrentTypeName<typename storage_t::transaction_t>());
