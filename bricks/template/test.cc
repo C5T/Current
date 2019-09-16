@@ -138,10 +138,10 @@ TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
   using current::variadic_indexes::indexes;
   using current::variadic_indexes::generate_indexes;
 
-  static_assert(std::is_same<indexes<>, generate_indexes<0>>::value, "");
-  static_assert(std::is_same<indexes<0>, generate_indexes<1>>::value, "");
-  static_assert(std::is_same<indexes<0, 1>, generate_indexes<2>>::value, "");
-  static_assert(std::is_same<indexes<0, 1, 2>, generate_indexes<3>>::value, "");
+  static_assert(std::is_same_v<indexes<>, generate_indexes<0>>, "");
+  static_assert(std::is_same_v<indexes<0>, generate_indexes<1>>, "");
+  static_assert(std::is_same_v<indexes<0, 1>, generate_indexes<2>>, "");
+  static_assert(std::is_same_v<indexes<0, 1, 2>, generate_indexes<3>>, "");
 }
 
 TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
@@ -151,12 +151,12 @@ TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
   struct C {};
   struct D {};
   struct E {};
-  static_assert(std::is_same<TypeList<>, EvensOnly<TypeList<>>>::value, "");
-  static_assert(std::is_same<TypeList<A>, EvensOnly<TypeList<A>>>::value, "");
-  static_assert(std::is_same<TypeList<A>, EvensOnly<TypeList<A, B>>>::value, "");
-  static_assert(std::is_same<TypeList<A, C>, EvensOnly<TypeList<A, B, C>>>::value, "");
-  static_assert(std::is_same<TypeList<A, C>, EvensOnly<TypeList<A, B, C, D>>>::value, "");
-  static_assert(std::is_same<TypeList<A, C, E>, EvensOnly<TypeList<A, B, C, D, E>>>::value, "");
+  static_assert(std::is_same_v<TypeList<>, EvensOnly<TypeList<>>>, "");
+  static_assert(std::is_same_v<TypeList<A>, EvensOnly<TypeList<A>>>, "");
+  static_assert(std::is_same_v<TypeList<A>, EvensOnly<TypeList<A, B>>>, "");
+  static_assert(std::is_same_v<TypeList<A, C>, EvensOnly<TypeList<A, B, C>>>, "");
+  static_assert(std::is_same_v<TypeList<A, C>, EvensOnly<TypeList<A, B, C, D>>>, "");
+  static_assert(std::is_same_v<TypeList<A, C, E>, EvensOnly<TypeList<A, B, C, D, E>>>, "");
 };
 
 TEST(TemplateMetaprogrammingInternalTest, CallIf) {
