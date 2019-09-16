@@ -108,9 +108,9 @@ namespace storage {
     using key_t = ::current::storage::sfinae::entry_key_t<entry_type>;                              \
     using update_event_t = entry_name##Updated;                                                     \
     using delete_event_t = entry_name##Deleted;                                                     \
-    using patch_event_t = std::conditional<current::HasPatch<entry_type>(),                         \
-                                           entry_name##Patched,                                     \
-                                           void>::type;                                             \
+    using patch_event_t = std::conditional_t<current::HasPatch<entry_type>(),                       \
+                                             entry_name##Patched,                                   \
+                                             void>;                                                 \
     using persisted_event_1_t = update_event_t;                                                     \
     using persisted_event_2_t = delete_event_t;                                                     \
     using persisted_event_3_t = patch_event_t;                                                      \

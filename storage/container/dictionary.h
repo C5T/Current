@@ -179,9 +179,9 @@ class GenericDictionary {
   }
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
   struct DummyStructForNonExistentPatch {};  // Essential, as can't form a reference to `void` even if disabled.
-  void operator()(const typename std::conditional<HasPatch<entry_t>(),
-                                                  PATCH_EVENT_OR_VOID,
-                                                  DummyStructForNonExistentPatch>::type& e) {
+  void operator()(const typename std::conditional_t<HasPatch<entry_t>(),
+                                                    PATCH_EVENT_OR_VOID,
+                                                    DummyStructForNonExistentPatch>& e) {
     auto it = map_.find(e.key);
     if (it != map_.end()) {
       last_modified_[e.key] = e.us;
