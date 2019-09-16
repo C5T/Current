@@ -582,7 +582,7 @@ template <typename... LHS_TYPES, typename... RHS_TYPES, typename USER_CLASS>
 class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_CLASS>
     : public AbstractCurrent<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> {
  public:
-  static_assert(std::is_base_of<UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>, USER_CLASS>::value,
+  static_assert(std::is_base_of_v<UserCodeBase<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>>, USER_CLASS>,
                 "User class for RipCurrent data processor should use `RIPCURRENT_NODE()` + `RIPCURRENT_MACRO()`.");
 
   using instantiator_input_t = LHSTypes<LHS_TYPES...>;

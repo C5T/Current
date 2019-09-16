@@ -56,9 +56,9 @@ struct CurrentStruct : CurrentSuper {};
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::crnt::CurrentStruct, ::current::decay<T>>::value)
-#define IS_CURRENT_VARIANT(T) (std::is_base_of<::crnt::CurrentVariant, ::current::decay<T>>::value)
-#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of<::crnt::CurrentSuper, ::current::decay<T>>::value)
+#define IS_CURRENT_STRUCT(T) (std::is_base_of_v<::crnt::CurrentStruct, ::current::decay<T>>)
+#define IS_CURRENT_VARIANT(T) (std::is_base_of_v<::crnt::CurrentVariant, ::current::decay<T>>)
+#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of_v<::crnt::CurrentSuper, ::current::decay<T>>)
 
 #define IS_EMPTY_CURRENT_STRUCT(T) (::current::reflection::IsEmptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value)
 

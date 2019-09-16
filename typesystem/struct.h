@@ -508,7 +508,7 @@ constexpr bool HasPatch() { return HasPatchObjectImpl<T>(0); }
 
 template <class B, class D>
 struct is_same_or_base_of {
-  constexpr static bool value = std::is_base_of<B, D>::value;
+  constexpr static bool value = std::is_base_of_v<B, D>;
 };
 template <class C>
 struct is_same_or_base_of<C, C> {
