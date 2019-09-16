@@ -624,12 +624,12 @@ struct CollectFieldValues {
   std::vector<std::string>& output_;
 
   template <typename T>
-  std::enable_if_t<!std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
+  std::enable_if_t<!std::is_enum_v<T>> operator()(const std::string&, const T& value) const {
     output_.push_back(current::ToString(value));
   }
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
+  std::enable_if_t<std::is_enum_v<T>> operator()(const std::string&, const T& value) const {
     output_.push_back(current::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
   }
 

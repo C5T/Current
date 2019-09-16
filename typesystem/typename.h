@@ -75,7 +75,7 @@ struct CurrentTypeNameCaller {
                                      T,
                                      IS_CURRENT_STRUCT(T),
                                      IS_CURRENT_VARIANT(T),
-                                     std::is_enum<T>::value,
+                                     std::is_enum_v<T>,
                                      current::metaprogramming::is_std_tuple<T>::value>;
   static const char* CallGetCurrentTypeName() {
     static const std::string value = impl_t::GetCurrentTypeName();

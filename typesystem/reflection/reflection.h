@@ -131,7 +131,7 @@ struct RecursiveTypeTraverser {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value, TypeID> operator()(TypeSelector<T>) {
+  std::enable_if_t<std::is_enum_v<T>, TypeID> operator()(TypeSelector<T>) {
     return ReflectedType_Enum(EnumName<T>(), CurrentTypeID_<typename std::underlying_type<T>::type>()).type_id;
   }
 
@@ -368,7 +368,7 @@ struct ReflectorImpl {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value, ReflectedType> operator()(TypeSelector<T>) {
+  std::enable_if_t<std::is_enum_v<T>, ReflectedType> operator()(TypeSelector<T>) {
     ReflectType<typename std::underlying_type<T>::type>();
     return ReflectedType(ReflectedType_Enum(EnumName<T>(), CurrentTypeID<typename std::underlying_type<T>::type>()));
   }

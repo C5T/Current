@@ -49,7 +49,7 @@ struct IsJSONSerializableImpl;
 template <typename T>
 struct IsJSONSerializable {
   constexpr static bool value =
-      IsJSONSerializableImpl<IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum<T>::value, T>::value &&
+      IsJSONSerializableImpl<IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum_v<T>, T>::value &&
       !std::is_same_v<T, CurrentStruct> && !std::is_same_v<T, CurrentStruct>;
 };
 

@@ -40,12 +40,12 @@ namespace reflection {
 
 struct EnumNameSingletonImpl {
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value> Register(const char* name) {
+  std::enable_if_t<std::is_enum_v<T>> Register(const char* name) {
     names_[std::type_index(typeid(T))] = name;
   }
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value, std::string> GetName() const {
+  std::enable_if_t<std::is_enum_v<T>, std::string> GetName() const {
     const std::type_index type_index = std::type_index(typeid(T));
     if (names_.count(type_index) != 0u) {
       return names_.at(type_index);
@@ -62,12 +62,12 @@ struct EnumNameSingletonImpl {
 };
 
 template <typename T>
-inline std::enable_if_t<std::is_enum<T>::value> RegisterEnum(const char* name) {
+inline std::enable_if_t<std::is_enum_v<T>> RegisterEnum(const char* name) {
   current::Singleton<EnumNameSingletonImpl>().Register<T>(name);
 };
 
 template <typename T>
-inline std::enable_if_t<std::is_enum<T>::value, std::string> EnumName() {
+inline std::enable_if_t<std::is_enum_v<T>, std::string> EnumName() {
   return current::Singleton<EnumNameSingletonImpl>().GetName<T>();
 }
 
