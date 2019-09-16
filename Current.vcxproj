@@ -282,7 +282,6 @@
     <ClInclude Include="Bricks\strings\util.h" />
     <ClInclude Include="Bricks\template\combine.h" />
     <ClInclude Include="Bricks\template\decay.h" />
-    <ClInclude Include="Bricks\template\enable_if.h" />
     <ClInclude Include="Bricks\template\tuple.h" />
     <ClInclude Include="Bricks\template\mapreduce.h" />
     <ClInclude Include="Bricks\template\metaprogramming.h" />

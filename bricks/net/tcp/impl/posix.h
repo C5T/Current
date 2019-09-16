@@ -27,17 +27,7 @@ SOFTWARE.
 #ifndef BRICKS_NET_TCP_IMPL_POSIX_H
 #define BRICKS_NET_TCP_IMPL_POSIX_H
 
-#include "../../exceptions.h"
-
-#include "../../debug_log.h"
-
-#include "../../../util/singleton.h"
-#include "../../../template/enable_if.h"
-
-#include <cstring>
-#include <string>
-#include <utility>
-#include <vector>
+#include <type_traits>
 
 #ifndef CURRENT_WINDOWS
 
@@ -60,6 +50,17 @@ typedef int SOCKET;
 #pragma comment(lib, "Ws2_32.lib")
 
 #endif
+
+#include "../../exceptions.h"
+
+#include "../../debug_log.h"
+
+#include "../../../util/singleton.h"
+
+#include <cstring>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace current {
 namespace net {
@@ -258,9 +259,10 @@ class Connection : public SocketHandle {
   // which will cause BlockingRead() to keep reading more data until all `max_elements` are read.
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
-  inline ENABLE_IF<sizeof(T) == 1, size_t> BlockingRead(T* output_buffer,
-                                                        size_t max_length,
-                                                        BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
+  inline std::enable_if_t<sizeof(T) == 1, size_t> BlockingRead(
+      T* output_buffer,
+      size_t max_length,
+      BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     if (max_length == 0) {
       return 0;  // LCOV_EXCL_LINE
     } else {
@@ -408,9 +410,9 @@ class Connection : public SocketHandle {
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
-  // The `std::enable_if<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
+  // The `std::enable_if_t<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
-  inline ENABLE_IF<sizeof(typename T::value_type) != 0> BlockingWrite(const T& container, bool more) {
+  inline std::enable_if_t<sizeof(typename T::value_type) != 0> BlockingWrite(const T& container, bool more) {
     BlockingWrite(container.begin(), container.end(), more);
   }
 

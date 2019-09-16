@@ -35,6 +35,7 @@ SOFTWARE.
 #include "../port.h"  // `make_unique`.
 
 #include <memory>
+#include <type_traits>
 
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 // For runtime, not compile-time, extra checks.

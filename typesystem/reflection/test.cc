@@ -29,6 +29,7 @@ SOFTWARE.
 #define CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
 
 #include <cstdint>
+#include <type_traits>
 
 #include "reflection.h"
 

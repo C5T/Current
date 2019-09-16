@@ -31,8 +31,8 @@ SOFTWARE.
 #include <map>
 #include <string>
 #include <typeindex>
+#include <type_traits>
 
-#include "../bricks/template/enable_if.h"
 #include "../bricks/util/singleton.h"
 
 namespace current {

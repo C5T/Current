@@ -36,7 +36,6 @@ SOFTWARE.
 
 #include "../exception.h"
 #include "../template/decay.h"
-#include "../template/enable_if.h"
 #include "../template/weed.h"
 
 namespace current {

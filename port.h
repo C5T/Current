@@ -189,20 +189,6 @@ static_assert(std::numeric_limits<double>::is_iec559, "`double` type is not IEC-
 static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
 static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 
-// `std::make_unique` exists in C++14, but for Current we'd like to see it "supported" in C++11. -- D.K.
-namespace add_some_of_cpp14_into_cpp11 {
-template <typename T, typename... PARAMS>
-std::unique_ptr<T> make_unique(PARAMS&&... params) {
-  return std::unique_ptr<T>(new T(std::forward<PARAMS>(params)...));
-}
-template <bool B, class T = void>
-using enable_if_t = typename std::enable_if<B, T>::type;
-}  // namespace add_some_of_cpp14_into_cpp11
-
-namespace std {
-using namespace add_some_of_cpp14_into_cpp11;
-}  // namespace std
-
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
 template <typename T1, typename T2>

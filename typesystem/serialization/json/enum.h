@@ -30,8 +30,6 @@ SOFTWARE.
 
 #include "primitives.h"
 
-#include "../../../bricks/template/enable_if.h"
-
 namespace current {
 namespace serialization {
 

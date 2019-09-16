@@ -40,7 +40,6 @@ SOFTWARE.
 #include "../variant.h"
 
 #include "../../bricks/strings/util.h"
-#include "../../bricks/template/enable_if.h"
 #include "../../bricks/util/crc32.h"
 #include "../../bricks/util/rol.h"
 

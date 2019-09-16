@@ -25,15 +25,15 @@ SOFTWARE.
 #ifndef BLOCKS_XTERM_PROGRESS_H
 #define BLOCKS_XTERM_PROGRESS_H
 
+#include <iostream>
+#include <sstream>
+#include <type_traits>
+
 #include "../../bricks/strings/util.h"
 #include "../../bricks/template/decay.h"
-#include "../../bricks/template/enable_if.h"
 #include "../../port.h"
 
 #include "vt100.h"
-
-#include <iostream>
-#include <sstream>
 
 namespace current {
 
@@ -70,8 +70,8 @@ class ProgressLine final {
       return *this;
     }
 
-    // The `ENABLE_IF` is necessary, as well as `current::decay`, because of `vt100::Color`. -- D.K.
-    template <typename T, class = ENABLE_IF<!std::is_base_of<vt100::E, current::decay<T>>::value>>
+    // The `std::enable_if_t` is necessary, as well as `current::decay`, because of `vt100::Color`. -- D.K.
+    template <typename T, class = std::enable_if_t<!std::is_base_of<vt100::E, current::decay<T>>::value>>
     Status& operator<<(T&& whatever) {
       oss_text << whatever;
       oss_text_with_no_vt100_escape_sequences << whatever;

@@ -25,8 +25,9 @@ SOFTWARE.
 #ifndef BLOCKS_HTTP_REQUEST_H
 #define BLOCKS_HTTP_REQUEST_H
 
-#include <vector>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 #include "../url/url.h"
 
@@ -96,7 +97,7 @@ struct Request final {
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   template <typename T, typename... TS>
-  ENABLE_IF<!std::is_base_of<IHasDoRespondViaHTTP, current::decay<T>>::value>
+  std::enable_if_t<!std::is_base_of<IHasDoRespondViaHTTP, current::decay<T>>::value>
   operator()(T&& arg, TS&&... args) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
@@ -106,7 +107,7 @@ struct Request final {
 
   // Support `Response`, as well as custom objects with user-defined HTTP response handlers.
   template <class T>
-  ENABLE_IF<std::is_base_of<IHasDoRespondViaHTTP, current::decay<T>>::value> operator()(T&& response) {
+  std::enable_if_t<std::is_base_of<IHasDoRespondViaHTTP, current::decay<T>>::value> operator()(T&& response) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }

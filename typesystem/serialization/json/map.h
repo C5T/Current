@@ -31,8 +31,6 @@ SOFTWARE.
 
 #include "json.h"
 
-#include "../../../bricks/template/enable_if.h"
-
 namespace current {
 namespace serialization {
 

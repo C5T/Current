@@ -33,6 +33,7 @@ SOFTWARE.
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
 
 #include "exceptions.h"
 #include "stream_impl.h"
@@ -336,9 +337,9 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Checked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
-                                                                                            uint64_t index,
-                                                                                            uint64_t size) {
+    std::enable_if_t<MODE == SubscriptionMode::Checked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
+                                                                                                   uint64_t index,
+                                                                                                   uint64_t size) {
       for (const auto& e : impl.persister.Iterate(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;
@@ -359,9 +360,9 @@ class Stream final {
     }
 
     template <SubscriptionMode MODE = SM>
-    ENABLE_IF<MODE == SubscriptionMode::Unchecked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
-                                                                                              uint64_t index,
-                                                                                              uint64_t size) {
+    std::enable_if_t<MODE == SubscriptionMode::Unchecked, ss::EntryResponse> PassEntriesToSubscriber(const impl_t& impl,
+                                                                                                     uint64_t index,
+                                                                                                     uint64_t size) {
       for (const auto& e : impl.persister.IterateUnsafe(index, size)) {
         if (!terminate_sent_ && terminate_signal_) {
           terminate_sent_ = true;

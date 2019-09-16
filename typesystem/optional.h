@@ -38,11 +38,11 @@ SOFTWARE.
 #include "../port.h"  // `make_unique<>`.
 
 #include <memory>
+#include <type_traits>
 
 #include "types.h"
 #include "exceptions.h"
 
-#include "../bricks/template/enable_if.h"
 #include "../bricks/template/decay.h"
 
 namespace current {

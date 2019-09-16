@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_TRANSACTION_POLICY_H
 #define CURRENT_STORAGE_TRANSACTION_POLICY_H
 
+#include <type_traits>
+
 #include "base.h"
 #include "exceptions.h"
 #include "transaction_result.h"

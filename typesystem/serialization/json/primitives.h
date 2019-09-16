@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <string>
 #include <chrono>
+#include <type_traits>
 
 #include "json.h"
 

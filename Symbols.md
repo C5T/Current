@@ -140,9 +140,7 @@ StreamStreamPersister
 ### Metaprogramming
 
 ```
-ENABLE_IF<PREDICATE, TYPE>  // using = typename std::enable_if<...>::type
-
-current::decay<T>
+current::decay<T>  // NOTE(dkorolev): This should eventually be replaced by `std::decay_t<T>`.
 
 current::copy_free<T>  // == T for POD and const T& for non-POD.
 

@@ -25,6 +25,8 @@
 #ifndef BRICKS_UTIL_ITERATOR_H
 #define BRICKS_UTIL_ITERATOR_H
 
+#include <type_traits>
+
 #include "../../port.h"
 
 #include "../template/pod.h"

@@ -27,9 +27,10 @@ SOFTWARE.
 #define FNCAS_FNCAS_OPTIMIZE_H
 
 #include <algorithm>
-#include <numeric>
 #include <map>
+#include <numeric>
 #include <string>
+#include <type_traits>
 
 #include "base.h"
 #include "differentiate.h"

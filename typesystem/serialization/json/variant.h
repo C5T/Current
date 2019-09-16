@@ -35,7 +35,6 @@ SOFTWARE.
 #include "../../reflection/reflection.h"
 
 #include "../../../bricks/template/call_all_constructors.h"
-#include "../../../bricks/template/enable_if.h"
 #include "../../../bricks/template/mapreduce.h"
 
 // JSON format for `Variant` objects:

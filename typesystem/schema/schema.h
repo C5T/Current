@@ -29,10 +29,11 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include <functional>
 #include <set>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
-#include <functional>
 
 #include "json_schema_format.h"
 
