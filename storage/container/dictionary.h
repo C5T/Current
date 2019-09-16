@@ -134,9 +134,8 @@ class GenericDictionary {
   // NOTE(dkorolev): The `patch_object` parameter should be passed by value, 
   // as otherwise it won't be valid during the possible rollback.
   template <typename E = entry_t>
-  typename std::enable_if<HasPatch<E>(), bool>::type Patch(
-      sfinae::CF<key_t> key,
-      const typename E::patch_object_t patch_object) {
+  std::enable_if_t<HasPatch<E>(), bool>::type Patch(sfinae::CF<key_t> key,
+                                                    const typename E::patch_object_t patch_object) {
     static_assert(std::is_same<E, entry_t>::value, "");
     const auto now = current::time::Now();
     const auto map_iterator = map_.find(key);
@@ -159,12 +158,12 @@ class GenericDictionary {
   }
 
   template <typename E = entry_t, typename... ARGS>
-  typename std::enable_if<HasPatch<E>(), bool>::type Patch(sfinae::CF<key_t> key, ARGS&&... args) {
+  std::enable_if_t<HasPatch<E>(), bool> Patch(sfinae::CF<key_t> key, ARGS&&... args) {
     return Patch(key, typename E::patch_object_t(std::forward<ARGS>(args)...));
   }
 
   template <typename E = entry_t, typename... ARGS>
-  typename std::enable_if<HasPatch<E>(), bool>::type Patch(const entry_t& entry, ARGS&&... args) {
+  std::enable_if_t<HasPatch<E>(), bool> Patch(const entry_t& entry, ARGS&&... args) {
     return Patch(sfinae::GetKey(entry), typename E::patch_object_t(std::forward<ARGS>(args)...));
   }
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT

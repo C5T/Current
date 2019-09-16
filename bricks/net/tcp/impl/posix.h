@@ -410,7 +410,7 @@ class Connection : public SocketHandle {
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
-  // The `std::enable_if<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
+  // The `std::enable_if_t<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
   inline std::enable_if_t<sizeof(typename T::value_type) != 0> BlockingWrite(const T& container, bool more) {
     BlockingWrite(container.begin(), container.end(), more);

@@ -53,8 +53,8 @@ inline bool IsNormal(double_t arg) { return (std::isnormal(arg) || arg == 0.0); 
 namespace impl {
 
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                       const std::vector<T>& b) {
+std::enable_if_t<std::is_arithmetic<T>::value, std::vector<T>> SumVectors(std::vector<T> a,
+                                                                          const std::vector<T>& b) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -69,9 +69,9 @@ typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumV
 }
 
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                       const std::vector<T>& b,
-                                                                                       double_t kb) {
+std::enable_if_t<std::is_arithmetic<T>::value, std::vector<T>>SumVectors(std::vector<T> a,
+                                                                         const std::vector<T>& b,
+                                                                         double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -86,9 +86,9 @@ typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumV
 }
 
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(std::vector<T> a,
-                                                                                       const std::vector<T>& b,
-                                                                                       double_t ka,
+std::enable_if_t<std::is_arithmetic<T>::value, std::vector<T>> SumVectors(std::vector<T> a,
+                                                                          const std::vector<T>& b,
+                                                                          double_t ka,
                                                                                        double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
@@ -104,8 +104,7 @@ typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumV
 }
 
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
-                                                                          const std::vector<T>& v2) {
+std::enable_if_t<std::is_arithmetic<T>::value, T> DotProduct(const std::vector<T>& v1, const std::vector<T>& v2) {
 #ifndef NDEBUG
   CURRENT_ASSERT(v1.size() == v2.size());
 #endif
@@ -113,12 +112,12 @@ typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const 
 }
 
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T>& v) {
+std::enable_if_t<std::is_arithmetic<T>::value, T> L2Norm(const std::vector<T>& v) {
   return DotProduct(v, v);
 }
 
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value>::type FlipSign(std::vector<T>& v) {
+std::enable_if_t<std::is_arithmetic<T>::value> FlipSign(std::vector<T>& v) {
   std::transform(std::begin(v), std::end(v), std::begin(v), std::negate<T>());
 }
 

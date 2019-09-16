@@ -176,7 +176,7 @@ class MMQImpl {
 
   // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW, typename TIMESTAMP>
-  std::enable_if<DROP && time::IsTimestamp<TIMESTAMP>::value, std::pair<bool, size_t>> CircularBufferAllocate(
+  std::enable_if_t<DROP && time::IsTimestamp<TIMESTAMP>::value, std::pair<bool, size_t>> CircularBufferAllocate(
       const TIMESTAMP user_timestamp) {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
@@ -203,8 +203,8 @@ class MMQImpl {
   // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW,
             typename TIMESTAMP,
-            class = std::enable_if<time::IsTimestamp<TIMESTAMP>::value>>
-  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate(const TIMESTAMP user_timestamp) {
+            class = std::enable_if_t<time::IsTimestamp<TIMESTAMP>::value>>
+  std::enable_if_t<!DROP, std::pair<bool, size_t>> CircularBufferAllocate(const TIMESTAMP user_timestamp) {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
