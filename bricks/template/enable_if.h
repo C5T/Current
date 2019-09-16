@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_TEMPLATE_ENABLE_IF_H
 
 #include <utility>
+#include <type_traits>
 
 template <bool B, typename T = void>
 using ENABLE_IF = typename std::enable_if<B, T>::type;
