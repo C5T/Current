@@ -69,7 +69,7 @@ constexpr auto HasMemberFromString(int) -> decltype(std::declval<T>().FromString
 // Default implepentation for arithmetic types calling `std::to_string`.
 template <typename DECAYED_T, bool HAS_MEMBER_TO_STRING, bool IS_ENUM>
 struct ToStringImpl {
-  template <bool B = std::is_arithmetic<DECAYED_T>::value>
+  template <bool B = std::is_arithmetic_v<DECAYED_T>>
   static std::enable_if_t<B, std::string> DoIt(DECAYED_T value) {
     return std::to_string(value);
   }

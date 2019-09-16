@@ -164,14 +164,14 @@ class OptimizerParameters {
 
   template <typename T>
   OptimizerParameters& SetValue(std::string name, T value) {
-    static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
+    static_assert(std::is_arithmetic_v<T>, "Value must be numeric");
     params_[name] = value;
     return *this;
   }
 
   template <typename T>
   const T GetValue(std::string name, T default_value) const {
-    static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
+    static_assert(std::is_arithmetic_v<T>, "Value must be numeric");
     if (params_.count(name)) {
       return static_cast<T>(params_.at(name));
     } else {
