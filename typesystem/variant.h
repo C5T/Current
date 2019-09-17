@@ -251,12 +251,12 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
   template <typename X>
-  std::enable_if_t<!std::is_same<X, current::variant::object_base_t>::value, bool> VariantExistsImpl() const {
+  std::enable_if_t<!std::is_same_v<X, current::variant::object_base_t>, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
   template <typename X>
-  std::enable_if_t<!std::is_same<X, current::variant::object_base_t>::value, X&> VariantValueImpl() {
+  std::enable_if_t<!std::is_same_v<X, current::variant::object_base_t>, X&> VariantValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -276,7 +276,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
   }
 
   template <typename X>
-  std::enable_if_t<std::is_same<X, VariantImpl>::value, const VariantImpl&> VariantValueImpl() const {
+  std::enable_if_t<std::is_same_v<X, VariantImpl>, const VariantImpl&> VariantValueImpl() const {
     if (ExistsImpl()) {
       return *this;
     } else {

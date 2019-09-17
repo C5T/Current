@@ -68,7 +68,7 @@ static_assert(std::is_same<fncas::term_vector_t, std::vector<fncas::term_t>>::va
 
 // And the `fncas::impl::X` type is the lifetime of the function to thread-locally analyze.
 // It's derived from the now-custom `std::vector<fncas::term_t>`.
-static_assert(std::is_base_of<fncas::term_vector_t, fncas::variables_vector_t>::value, "");
+static_assert(std::is_base_of_v<fncas::term_vector_t, fncas::variables_vector_t>, "");
 
 TEST(FnCAS, ReallyNativeComputationJustToBeSure) {
   EXPECT_EQ(25, SimpleFunction(std::vector<fncas::double_t>({1, 2})));

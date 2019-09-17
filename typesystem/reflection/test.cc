@@ -80,40 +80,40 @@ CURRENT_ENUM(Enum, uint32_t) { Value1 = 1u, Value2 = 2u };
 
 using current::reflection::Reflector;
 
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<uint64_t>,
-                           decltype(Foo::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<uint64_t>,
+                             decltype(Foo::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 0>()))>,
               "");
 
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<uint64_t>>,
-                           decltype(Bar::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<std::vector<uint64_t>>,
+                             decltype(Bar::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 0>()))>,
               "");
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<Foo>>,
-                           decltype(Bar::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<std::vector<Foo>>,
+                             decltype(Bar::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 1>()))>,
               "");
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::vector<std::vector<Foo>>>,
-                           decltype(Bar::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 2>()))>::value,
-              "");
-
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::string>,
-                           decltype(Templated<uint64_t>::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
-              "");
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<uint64_t>,
-                           decltype(Templated<uint64_t>::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<std::vector<std::vector<Foo>>>,
+                             decltype(Bar::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 2>()))>,
               "");
 
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<std::string>,
-                           decltype(Templated<Foo>::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 0>()))>::value,
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<std::string>,
+                             decltype(Templated<uint64_t>::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 0>()))>,
               "");
-static_assert(std::is_same<current::reflection::FieldTypeWrapper<Foo>,
-                           decltype(Templated<Foo>::CURRENT_REFLECTION(
-                               current::reflection::Index<current::reflection::FieldType, 1>()))>::value,
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<uint64_t>,
+                             decltype(Templated<uint64_t>::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 1>()))>,
+              "");
+
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<std::string>,
+                             decltype(Templated<Foo>::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 0>()))>,
+              "");
+static_assert(std::is_same_v<current::reflection::FieldTypeWrapper<Foo>,
+                             decltype(Templated<Foo>::CURRENT_REFLECTION(
+                                 current::reflection::Index<current::reflection::FieldType, 1>()))>,
               "");
 
 }  // namespace reflection_test
@@ -427,7 +427,7 @@ TEST(Reflection, TemplatedTypeIDs) {
   const auto templated_struct_typeid = static_cast<uint64_t>(CurrentTypeID<Templated<Foo>>());
   EXPECT_EQ(9204032299541411163ull, templated_struct_typeid);
 
-  static_assert(std::is_same<current::reflection::TemplateInnerType<Templated<Foo>>, Foo>::value, "");
+  static_assert(std::is_same_v<current::reflection::TemplateInnerType<Templated<Foo>>, Foo>, "");
   EXPECT_EQ(foo_typeid, static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<Templated<Foo>>>()));
 
   EXPECT_EQ(templated_struct_typeid, static_cast<uint64_t>(CurrentTypeID<Templated<Foo>>()));
@@ -439,7 +439,7 @@ TEST(Reflection, TemplatedTypeIDs) {
   EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_same::Templated<Foo>>());
   EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_same::Templated<Foo>, NameFormat::Z>()));
   EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<templated_same::Templated<Foo>, NameFormat::AsIdentifier>()));
-  static_assert(std::is_same<current::reflection::TemplateInnerType<templated_same::Templated<Foo>>, Foo>::value, "");
+  static_assert(std::is_same_v<current::reflection::TemplateInnerType<templated_same::Templated<Foo>>, Foo>, "");
   EXPECT_EQ(
       foo_typeid,
       static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<templated_same::Templated<Foo>>>()));
@@ -463,7 +463,7 @@ TEST(Reflection, TemplatedTypeIDs) {
   EXPECT_STREQ("Templated<Foo>", CurrentTypeName<templated_as_exported::Templated>());
   EXPECT_STREQ("Templated_Z", (CurrentTypeName<templated_as_exported::Templated, NameFormat::Z>()));
   EXPECT_STREQ("Templated_T_Foo", (CurrentTypeName<templated_as_exported::Templated, NameFormat::AsIdentifier>()));
-  static_assert(std::is_same<current::reflection::TemplateInnerType<templated_as_exported::Templated>, Foo>::value, "");
+  static_assert(std::is_same_v<current::reflection::TemplateInnerType<templated_as_exported::Templated>, Foo>, "");
   EXPECT_EQ(
       foo_typeid,
       static_cast<uint64_t>(CurrentTypeID<current::reflection::TemplateInnerType<templated_as_exported::Templated>>()));
@@ -477,8 +477,8 @@ TEST(Reflection, TemplatedTypeIDs) {
       "Templated_T_Foo",
       (CurrentTypeName<original_name_does_not_matter_when_exporting::BlahBlahBlah, NameFormat::AsIdentifier>()));
   static_assert(
-      std::is_same<current::reflection::TemplateInnerType<original_name_does_not_matter_when_exporting::BlahBlahBlah>,
-                   Foo>::value,
+      std::is_same_v<current::reflection::TemplateInnerType<original_name_does_not_matter_when_exporting::BlahBlahBlah>,
+                     Foo>,
       "");
   EXPECT_EQ(foo_typeid,
             static_cast<uint64_t>(CurrentTypeID<
@@ -530,10 +530,10 @@ namespace explicitly_declared_named_variant_two {
 CURRENT_VARIANT(Variant_B_A_X_Y_E, A, X, Y);
 }  // namespace reflection_test::explicitly_declared_named_variant_two
 
-static_assert(!std::is_same<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E, Variant<A, X, Y>>::value, "");
-static_assert(!std::is_same<explicitly_declared_named_variant_two::Variant_B_A_X_Y_E, Variant<A, X, Y>>::value, "");
-static_assert(!std::is_same<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E,
-                            explicitly_declared_named_variant_two::Variant_B_A_X_Y_E>::value,
+static_assert(!std::is_same_v<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E, Variant<A, X, Y>>, "");
+static_assert(!std::is_same_v<explicitly_declared_named_variant_two::Variant_B_A_X_Y_E, Variant<A, X, Y>>, "");
+static_assert(!std::is_same_v<explicitly_declared_named_variant_one::Variant_B_A_X_Y_E,
+                              explicitly_declared_named_variant_two::Variant_B_A_X_Y_E>,
               "");
 
 }  // namespace reflection_test
@@ -554,7 +554,7 @@ TEST(Reflection, CurrentStructInternals) {
   using namespace reflection_test;
   using namespace current::reflection;
 
-  static_assert(std::is_same<SuperType<Foo>, ::current::CurrentStruct>::value, "");
+  static_assert(std::is_same_v<SuperType<Foo>, ::current::CurrentStruct>, "");
   EXPECT_EQ(1u, FieldCounter<Foo>::value + 0u);
 
   Foo::CURRENT_REFLECTION([](TypeSelector<uint64_t>, const std::string& name) { EXPECT_EQ("i", name); },
@@ -573,13 +573,13 @@ TEST(Reflection, CurrentStructInternals) {
   }, Index<FieldNameAndMutableValue, 0>());
   EXPECT_EQ(123u, foo.i);
 
-  static_assert(std::is_same<SuperType<Bar>, ::current::CurrentStruct>::value, "");
+  static_assert(std::is_same_v<SuperType<Bar>, ::current::CurrentStruct>, "");
   EXPECT_EQ(4u, FieldCounter<Bar>::value + 0u);
-  static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
+  static_assert(std::is_same_v<SuperType<DerivedFromFoo>, Foo>, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value + 0u);
 
-  static_assert(std::is_same<TemplateInnerType<Bar>, void>::value, "");
-  static_assert(std::is_same<TemplateInnerType<Templated<Bar>>, Bar>::value, "");
+  static_assert(std::is_same_v<TemplateInnerType<Bar>, void>, "");
+  static_assert(std::is_same_v<TemplateInnerType<Templated<Bar>>, Bar>, "");
 }
 
 namespace reflection_test {
@@ -624,12 +624,12 @@ struct CollectFieldValues {
   std::vector<std::string>& output_;
 
   template <typename T>
-  std::enable_if_t<!std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
+  std::enable_if_t<!std::is_enum_v<T>> operator()(const std::string&, const T& value) const {
     output_.push_back(current::ToString(value));
   }
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
+  std::enable_if_t<std::is_enum_v<T>> operator()(const std::string&, const T& value) const {
     output_.push_back(current::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
   }
 

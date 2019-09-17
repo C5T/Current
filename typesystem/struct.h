@@ -410,24 +410,24 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   static ::crnt::r::FieldTypeWrapper<CURRENT_REMOVE_PARENTHESES(type)> CURRENT_REFLECTION(                             \
       ::current::reflection::Index<::current::reflection::FieldType, idx>);
 
-#define CURRENT_CONSTRUCTOR(s)                                                                                        \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
-            class =                                                                                                   \
-                std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_CONSTRUCTOR(s)                                                                                   \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                               \
+            class =                                                                                              \
+                std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
   CSI_##s
 
-#define CURRENT_ASSIGN_OPER(s)                                                                                        \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
-            class =                                                                                                   \
-                std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_ASSIGN_OPER(s)                                                                                   \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                               \
+            class =                                                                                              \
+                std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
   CSI_##s& operator=
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
-#define CURRENT_CONSTRUCTOR_T(s)                                                                                      \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                    \
-            class =                                                                                                   \
-                std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+#define CURRENT_CONSTRUCTOR_T(s)                                                                                 \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                               \
+            class =                                                                                              \
+                std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
   CSTI_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR_T(s) CURRENT_CONSTRUCTOR_T(s)()
@@ -445,15 +445,15 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // which means for different INSTANTIATION_TYPEs it isn't actually a base to the "s" struct.
 // Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
 // as they are always the base class to the "s" regardless of what the INSTANTIATION_TYPE is.
-#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                        \
-  using CRNT_super_t =                                                                                          \
-      typename std::conditional<std::is_same<INSTANTIATION_TYPE, ::crnt::r::DF>::value, SUPER, CSSH_##s>::type; \
+#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                   \
+  using CRNT_super_t =                                                                                     \
+      typename std::conditional<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, SUPER, CSSH_##s>::type; \
   using CRNT_super_t::CRNT_super_t
 
-#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                               \
-  using CRNT_super_t = typename std::conditional<std::is_same<INSTANTIATION_TYPE, ::crnt::r::DF>::value, \
-                                                 SUPER,                                                  \
-                                                 CURRENT_STRUCT_T_SUPER_HELPER_##s>::type;               \
+#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                          \
+  using CRNT_super_t = typename std::conditional<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, \
+                                                 SUPER,                                             \
+                                                 CURRENT_STRUCT_T_SUPER_HELPER_##s>::type;          \
   using CRNT_super_t::CRNT_super_t
 #else
 // I sure hope this is how it should be. -- D.K.
@@ -472,7 +472,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     using subtype = int;                                          \
   };                                                              \
   using exported_subtype = typename std::                         \
-      conditional<std::is_same<T, ::crnt::r::DummyT>::value, CRNT_##exported_subtype##_helper_t, T>::type::subtype
+      conditional<std::is_same_v<T, ::crnt::r::DummyT>, CRNT_##exported_subtype##_helper_t, T>::type::subtype
 
 #define CETS_IMPL1(a) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, a)
 #define CETS_IMPL2(a, b) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, b)
@@ -508,7 +508,7 @@ constexpr bool HasPatch() { return HasPatchObjectImpl<T>(0); }
 
 template <class B, class D>
 struct is_same_or_base_of {
-  constexpr static bool value = std::is_base_of<B, D>::value;
+  constexpr static bool value = std::is_base_of_v<B, D>;
 };
 template <class C>
 struct is_same_or_base_of<C, C> {

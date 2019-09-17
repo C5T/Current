@@ -108,9 +108,9 @@ namespace storage {
     using key_t = ::current::storage::sfinae::entry_key_t<entry_type>;                              \
     using update_event_t = entry_name##Updated;                                                     \
     using delete_event_t = entry_name##Deleted;                                                     \
-    using patch_event_t = std::conditional<current::HasPatch<entry_type>(),                         \
-                                           entry_name##Patched,                                     \
-                                           void>::type;                                             \
+    using patch_event_t = std::conditional_t<current::HasPatch<entry_type>(),                       \
+                                             entry_name##Patched,                                   \
+                                             void>;                                                 \
     using persisted_event_1_t = update_event_t;                                                     \
     using persisted_event_2_t = delete_event_t;                                                     \
     using persisted_event_3_t = patch_event_t;                                                      \
@@ -583,7 +583,7 @@ using transaction_t = typename STORAGE<persister::NullStoragePersister,
   void operator()(const entry_name::persisted_event_2_t& e2) { field_name(e2); }                               \
   struct DummyPlaceholderForPatchEvent##field_name {};                                                         \
   void operator()(                                                                                             \
-      const typename std::conditional<!std::is_same<typename entry_name::persisted_event_3_t, void>::value,    \
+      const typename std::conditional<!std::is_same_v<typename entry_name::persisted_event_3_t, void>,         \
                                       typename entry_name::persisted_event_3_t,                                \
                                       DummyPlaceholderForPatchEvent##field_name>::type& e3) {                  \
     field_name(e3);                                                                                            \

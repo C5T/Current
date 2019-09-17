@@ -16,15 +16,15 @@ matrix:
     - script: make individual_tests
       env:
       - NDEBUG=0
-      - CPLUSPLUS=g++-5
-      compiler: "g++-5, Job: make individual_tests"
+      - CPLUSPLUS=g++-7
+      compiler: "g++-7, Job: make individual_tests"
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-5
+            - g++-7
             - nasm
             - gnuplot
 
@@ -39,7 +39,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
           packages:
-            - g++-5  # To install the dreaded `#include <codecvt>`.
+            - g++-7  # To install the dreaded `#include <codecvt>`.
             - clang-6.0
             - libstdc++-7-dev
             - nasm
@@ -48,15 +48,15 @@ matrix:
     - script: make individual_tests
       env:
       - NDEBUG=1
-      - CPLUSPLUS=g++-5
-      compiler: "g++-5, Job: make individual_tests"
+      - CPLUSPLUS=g++-7
+      compiler: "g++-7, Job: make individual_tests"
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-5
+            - g++-7
             - nasm
             - gnuplot
 
@@ -71,7 +71,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test  # `apt-get` on Travis fails to install `clang-3.6 gnuplot` w/o this.
           packages:
-            - g++-5  # To install the dreaded `#include <codecvt>`.
+            - g++-7  # To install the dreaded `#include <codecvt>`.
             - clang-6.0
             - libstdc++-7-dev
             - nasm
@@ -103,20 +103,20 @@ matrix:
 
     - script:
       - mkdir local_bin
-      - ln -sf $(which g++-5) local_bin/g++
+      - ln -sf $(which g++-7) local_bin/g++
       - ln -sf $(which clang++-6.0) local_bin/clang++
       - export PATH=$PWD/local_bin:$PATH
       - make check
       env:
       - MAKE_CHECK=1
-      compiler: "g++-5 && clang++-6.0, Job: make check"
+      compiler: "g++-7 && clang++-6.0, Job: make check"
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-5
+            - g++-7
             - clang-6.0
             - libstdc++-7-dev
             - nasm

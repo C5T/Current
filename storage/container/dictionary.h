@@ -136,7 +136,7 @@ class GenericDictionary {
   template <typename E = entry_t>
   std::enable_if_t<HasPatch<E>(), bool>::type Patch(sfinae::CF<key_t> key,
                                                     const typename E::patch_object_t patch_object) {
-    static_assert(std::is_same<E, entry_t>::value, "");
+    static_assert(std::is_same_v<E, entry_t>, "");
     const auto now = current::time::Now();
     const auto map_iterator = map_.find(key);
     if (map_iterator != map_.end()) {
@@ -179,9 +179,9 @@ class GenericDictionary {
   }
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
   struct DummyStructForNonExistentPatch {};  // Essential, as can't form a reference to `void` even if disabled.
-  void operator()(const typename std::conditional<HasPatch<entry_t>(),
-                                                  PATCH_EVENT_OR_VOID,
-                                                  DummyStructForNonExistentPatch>::type& e) {
+  void operator()(const typename std::conditional_t<HasPatch<entry_t>(),
+                                                    PATCH_EVENT_OR_VOID,
+                                                    DummyStructForNonExistentPatch>& e) {
     auto it = map_.find(e.key);
     if (it != map_.end()) {
       last_modified_[e.key] = e.us;

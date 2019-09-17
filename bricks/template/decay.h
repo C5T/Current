@@ -136,87 +136,87 @@ template <typename T>
 using decay = rmconst<rmref<T>>;
 
 template <typename A, typename B>
-using is_same = std::is_same<A, B>;
+inline constexpr bool is_same_v = std::is_same_v<A, B>;
 
-static_assert(is_same<int, rmref<int>>::value, "");
-static_assert(is_same<int, rmref<int&>>::value, "");
-static_assert(is_same<int, rmref<int&&>>::value, "");
-static_assert(is_same<const int, rmref<const int>>::value, "");
-static_assert(is_same<const int, rmref<const int&>>::value, "");
-static_assert(is_same<const int, rmref<const int&&>>::value, "");
+static_assert(is_same_v<int, rmref<int>>, "");
+static_assert(is_same_v<int, rmref<int&>>, "");
+static_assert(is_same_v<int, rmref<int&&>>, "");
+static_assert(is_same_v<const int, rmref<const int>>, "");
+static_assert(is_same_v<const int, rmref<const int&>>, "");
+static_assert(is_same_v<const int, rmref<const int&&>>, "");
 
-static_assert(is_same<std::string, rmconst<std::string>>::value, "");
-static_assert(is_same<std::string, rmconst<const std::string>>::value, "");
+static_assert(is_same_v<std::string, rmconst<std::string>>, "");
+static_assert(is_same_v<std::string, rmconst<const std::string>>, "");
 
-static_assert(is_same<int, decay<int>>::value, "");
-static_assert(is_same<int, decay<int&>>::value, "");
-static_assert(is_same<int, decay<int&&>>::value, "");
-static_assert(is_same<int, decay<const int>>::value, "");
-static_assert(is_same<int, decay<const int&>>::value, "");
-static_assert(is_same<int, decay<const int&&>>::value, "");
+static_assert(is_same_v<int, decay<int>>, "");
+static_assert(is_same_v<int, decay<int&>>, "");
+static_assert(is_same_v<int, decay<int&&>>, "");
+static_assert(is_same_v<int, decay<const int>>, "");
+static_assert(is_same_v<int, decay<const int&>>, "");
+static_assert(is_same_v<int, decay<const int&&>>, "");
 
-static_assert(is_same<std::string, decay<std::string>>::value, "");
-static_assert(is_same<std::string, decay<std::string&>>::value, "");
-static_assert(is_same<std::string, decay<std::string&&>>::value, "");
-static_assert(is_same<std::string, decay<const std::string>>::value, "");
-static_assert(is_same<std::string, decay<const std::string&>>::value, "");
-static_assert(is_same<std::string, decay<const std::string&&>>::value, "");
+static_assert(is_same_v<std::string, decay<std::string>>, "");
+static_assert(is_same_v<std::string, decay<std::string&>>, "");
+static_assert(is_same_v<std::string, decay<std::string&&>>, "");
+static_assert(is_same_v<std::string, decay<const std::string>>, "");
+static_assert(is_same_v<std::string, decay<const std::string&>>, "");
+static_assert(is_same_v<std::string, decay<const std::string&&>>, "");
 
-static_assert(is_same<std::tuple<int, int, int, int>, decay<std::tuple<int, int, int, int>>>::value, "");
-static_assert(is_same<std::tuple<int, int, int, int>, decay<std::tuple<const int, int&, const int&, int&&>>>::value,
+static_assert(is_same_v<std::tuple<int, int, int, int>, decay<std::tuple<int, int, int, int>>>, "");
+static_assert(is_same_v<std::tuple<int, int, int, int>, decay<std::tuple<const int, int&, const int&, int&&>>>,
               "");
 
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string&>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<std::string&>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<std::string&&>>>::value, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<const std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<const std::string&>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<std::string&>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<std::string&&>>>, "");
 
-static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<std::string>&>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string&>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string&>&>>::value, "");
-static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string&>&&>>::value, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<const std::tuple<std::string>&>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<const std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<const std::tuple<const std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<const std::tuple<const std::string&>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<const std::tuple<const std::string&>&>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay<std::tuple<const std::string&>&&>>, "");
 
-static_assert(is_same<char[5], decay<decltype("test")>>::value, "");
+static_assert(is_same_v<char[5], decay<decltype("test")>>, "");
 
 // YO DAWG! I HEARD YOU LIKE TUPLES!
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string>>>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string>>>>,
               "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string&>>>>::value, "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string&>>>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string&>>>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string&>>>>,
               "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string&&>>>>::value, "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string>>>>::value, "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string>>&>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string&&>>>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string>>>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string>>&>>,
               "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string>&>&>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string>&>&>>,
               "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string&>&>&>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string&>&>&>>,
               "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string&&>&>&>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string&&>&>&>>,
               "");
-static_assert(is_same<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<int>, std::tuple<int>>,
-                      decay<std::tuple<const std::tuple<const int>,
-                                       std::tuple<int&>&,
-                                       const std::tuple<const int&>&,
-                                       std::tuple<int&&>&&>>>::value,
+static_assert(is_same_v<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<int>, std::tuple<int>>,
+                        decay<std::tuple<const std::tuple<const int>,
+                                         std::tuple<int&>&,
+                                         const std::tuple<const int&>&,
+                                         std::tuple<int&&>&&>>>,
               "");
 
 // `current::decay<>` is different from `std::decay<>`, as pointers and some `const`-ness are kept. -- D.K.
-static_assert(is_same<char*, decay<char*>>::value, "");
-static_assert(is_same<char*, decay<char*&>>::value, "");
-static_assert(is_same<char*, decay<char*&&>>::value, "");
-static_assert(is_same<const char*, decay<const char*>>::value, "");
-static_assert(is_same<const char*, decay<char const*>>::value, "");
-static_assert(is_same<char*, decay<char* const>>::value, "");
-static_assert(is_same<const char*, decay<const char*&>>::value, "");
-static_assert(is_same<const char*, decay<char const*&>>::value, "");
-static_assert(is_same<char*, decay<char* const&>>::value, "");
-static_assert(is_same<const char*, decay<const char*&&>>::value, "");
-static_assert(is_same<const char*, decay<char const*&&>>::value, "");
-static_assert(is_same<char*, decay<char* const&&>>::value, "");
+static_assert(is_same_v<char*, decay<char*>>, "");
+static_assert(is_same_v<char*, decay<char*&>>, "");
+static_assert(is_same_v<char*, decay<char*&&>>, "");
+static_assert(is_same_v<const char*, decay<const char*>>, "");
+static_assert(is_same_v<const char*, decay<char const*>>, "");
+static_assert(is_same_v<char*, decay<char* const>>, "");
+static_assert(is_same_v<const char*, decay<const char*&>>, "");
+static_assert(is_same_v<const char*, decay<char const*&>>, "");
+static_assert(is_same_v<char*, decay<char* const&>>, "");
+static_assert(is_same_v<const char*, decay<const char*&&>>, "");
+static_assert(is_same_v<const char*, decay<char const*&&>>, "");
+static_assert(is_same_v<char*, decay<char* const&&>>, "");
 
 }  // namespace current
 

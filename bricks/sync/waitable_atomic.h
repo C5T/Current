@@ -139,9 +139,9 @@ class WaitableAtomicImpl {
         bool mark_as_unmodified_;
       };
 
-      using impl_t = typename std::conditional<std::is_const<POINTER>::value,
-                                               ImmutableAccessorDoesNotNotify,
-                                               MutableAccessorDoesNotify>::type;
+      using impl_t = typename std::conditional_t<std::is_const<POINTER>::value,
+                                                 ImmutableAccessorDoesNotNotify,
+                                                 MutableAccessorDoesNotify>;
     };
 
     // A generic implementation for both mutable and immutable scoped accessors.
@@ -150,9 +150,9 @@ class WaitableAtomicImpl {
      public:
       using parent_t = PARENT;
       using optional_notifier_t = typename NotifyIfMutable<PARENT>::impl_t;
-      using data_t = typename std::conditional<std::is_const<parent_t>::value,
-                                               const typename parent_t::data_t,
-                                               typename parent_t::data_t>::type;
+      using data_t = typename std::conditional_t<std::is_const<parent_t>::value,
+                                                 const typename parent_t::data_t,
+                                                 typename parent_t::data_t>;
 
       explicit ScopedAccessorImpl(parent_t* parent)
           : ScopedUniqueLock(parent->data_mutex_), optional_notifier_t(parent), pdata_(&parent->data_) {}
@@ -342,7 +342,7 @@ class WaitableAtomicImpl {
     IntrusiveImpl(IntrusiveImpl&&) = delete;
   };
 
-  using type = typename std::conditional<INTRUSIVE, IntrusiveImpl, BasicImpl>::type;
+  using type = typename std::conditional_t<INTRUSIVE, IntrusiveImpl, BasicImpl>;
 };
 
 template <typename DATA, bool INTRUSIVE = false>

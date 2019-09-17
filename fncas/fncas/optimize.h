@@ -164,14 +164,14 @@ class OptimizerParameters {
 
   template <typename T>
   OptimizerParameters& SetValue(std::string name, T value) {
-    static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
+    static_assert(std::is_arithmetic_v<T>, "Value must be numeric");
     params_[name] = value;
     return *this;
   }
 
   template <typename T>
   const T GetValue(std::string name, T default_value) const {
-    static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
+    static_assert(std::is_arithmetic_v<T>, "Value must be numeric");
     if (params_.count(name)) {
       return static_cast<T>(params_.at(name));
     } else {
@@ -228,7 +228,7 @@ class Optimizer : impl::noncopyable {
   Optimizer(const OptimizerParameters& parameters, F& f) : f_reference_(f), parameters_(parameters) {}
 
   template <typename ARG,
-            class = std::enable_if_t<!std::is_same<current::decay<ARG>, OptimizerParameters>::value>,
+            class = std::enable_if_t<!std::is_same_v<current::decay<ARG>, OptimizerParameters>>,
             typename... ARGS>
   Optimizer(ARG&& arg, ARGS&&... args)
       : f_instance_(std::make_unique<F>(std::forward<ARG>(arg), std::forward<ARGS>(args)...)),

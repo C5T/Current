@@ -34,14 +34,14 @@ namespace current {
 namespace serialization {
 
 template <class JSON_FORMAT, typename T>
-struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, T, std::enable_if_t<std::is_enum<T>::value>> {
+struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, T, std::enable_if_t<std::is_enum_v<T>>> {
   static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const T enum_value) {
     json_stringifier = static_cast<typename std::underlying_type<T>::type>(enum_value);
   }
 };
 
 template <class JSON_FORMAT, typename T>
-struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<std::is_enum<T>::value>> {
+struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<std::is_enum_v<T>>> {
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
     if (json_parser && json_parser.Current().IsNumber()) {
       if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {

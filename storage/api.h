@@ -318,8 +318,8 @@ struct PerFieldRESTfulHandlerGenerator {
 
   template <typename ENTRY_TYPE_WRAPPER, typename PARTIAL_KEY_OPERATION>
   std::function<void(Request)> GenerateRowOrColHandler(const std::string& field_name) {
-    static_assert(std::is_same<PARTIAL_KEY_OPERATION, semantics::rest::operation::OnMatrixRow>::value ||
-                      std::is_same<PARTIAL_KEY_OPERATION, semantics::rest::operation::OnMatrixCol>::value,
+    static_assert(std::is_same_v<PARTIAL_KEY_OPERATION, semantics::rest::operation::OnMatrixRow> ||
+                      std::is_same_v<PARTIAL_KEY_OPERATION, semantics::rest::operation::OnMatrixCol>,
                   "");
     auto& storage = this->storage;
     const std::string restful_url_prefix = this->restful_url_prefix;

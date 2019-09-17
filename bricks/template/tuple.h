@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include <string>
 #include <tuple>
+#include <type_traits>
 
 namespace current {
 namespace metaprogramming {
@@ -62,10 +63,10 @@ struct wrapped_into_tuple_impl<std::tuple<TS...>> {
 template <typename T>
 using wrapped_into_tuple_t = typename wrapped_into_tuple_impl<T>::tuple_t;
 
-static_assert(std::is_same<std::tuple<>, wrapped_into_tuple_t<std::tuple<>>>::value, "");
-static_assert(std::is_same<std::tuple<int>, wrapped_into_tuple_t<int>>::value, "");
-static_assert(std::is_same<std::tuple<int>, wrapped_into_tuple_t<std::tuple<int>>>::value, "");
-static_assert(std::is_same<std::tuple<char, double>, wrapped_into_tuple_t<std::tuple<char, double>>>::value, "");
+static_assert(std::is_same_v<std::tuple<>, wrapped_into_tuple_t<std::tuple<>>>, "");
+static_assert(std::is_same_v<std::tuple<int>, wrapped_into_tuple_t<int>>, "");
+static_assert(std::is_same_v<std::tuple<int>, wrapped_into_tuple_t<std::tuple<int>>>, "");
+static_assert(std::is_same_v<std::tuple<char, double>, wrapped_into_tuple_t<std::tuple<char, double>>>, "");
 
 template <class LHS, class RHS>
 struct tuple_cat_type_impl;
@@ -78,12 +79,12 @@ struct tuple_cat_type_impl<std::tuple<LHS_TS...>, std::tuple<RHS_TS...>> {
 template <typename LHS, typename RHS>
 using tuple_cat_t = typename tuple_cat_type_impl<wrapped_into_tuple_t<LHS>, wrapped_into_tuple_t<RHS>>::tuple_t;
 
-static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<char, double>>::value, "");
-static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<char>, double>>::value, "");
-static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<char, std::tuple<double>>>::value, "");
-static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<char>, std::tuple<double>>>::value, "");
-static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<char, double>, std::tuple<>>>::value, "");
-static_assert(std::is_same<std::tuple<char, double>, tuple_cat_t<std::tuple<>, std::tuple<char, double>>>::value, "");
+static_assert(std::is_same_v<std::tuple<char, double>, tuple_cat_t<char, double>>, "");
+static_assert(std::is_same_v<std::tuple<char, double>, tuple_cat_t<std::tuple<char>, double>>, "");
+static_assert(std::is_same_v<std::tuple<char, double>, tuple_cat_t<char, std::tuple<double>>>, "");
+static_assert(std::is_same_v<std::tuple<char, double>, tuple_cat_t<std::tuple<char>, std::tuple<double>>>, "");
+static_assert(std::is_same_v<std::tuple<char, double>, tuple_cat_t<std::tuple<char, double>, std::tuple<>>>, "");
+static_assert(std::is_same_v<std::tuple<char, double>, tuple_cat_t<std::tuple<>, std::tuple<char, double>>>, "");
 
 }  // namespace metaprogramming
 }  // namespace current

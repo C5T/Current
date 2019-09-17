@@ -69,7 +69,7 @@ constexpr auto HasMemberFromString(int) -> decltype(std::declval<T>().FromString
 // Default implepentation for arithmetic types calling `std::to_string`.
 template <typename DECAYED_T, bool HAS_MEMBER_TO_STRING, bool IS_ENUM>
 struct ToStringImpl {
-  template <bool B = std::is_arithmetic<DECAYED_T>::value>
+  template <bool B = std::is_arithmetic_v<DECAYED_T>>
   static std::enable_if_t<B, std::string> DoIt(DECAYED_T value) {
     return std::to_string(value);
   }
@@ -148,7 +148,7 @@ struct ToStringImpl<strings::Chunk, false, false> {
 template <typename T>
 inline std::string ToString(T&& something) {
   using decayed_t = current::decay<T>;
-  return ToStringImpl<decayed_t, sfinae::HasMemberToString<decayed_t>(0), std::is_enum<decayed_t>::value>::DoIt(
+  return ToStringImpl<decayed_t, sfinae::HasMemberToString<decayed_t>(0), std::is_enum_v<decayed_t>>::DoIt(
       std::forward<T>(something));
 }
 
@@ -258,7 +258,7 @@ inline const std::string& FromString(INPUT&& input, std::string& output) {
 
 template <typename OUTPUT, typename INPUT = std::string>
 inline const OUTPUT& FromString(INPUT&& input, OUTPUT& output) {
-  return FromStringImpl<INPUT, OUTPUT, sfinae::HasMemberFromString<OUTPUT>(0), std::is_enum<OUTPUT>::value>::Go(
+  return FromStringImpl<INPUT, OUTPUT, sfinae::HasMemberFromString<OUTPUT>(0), std::is_enum_v<OUTPUT>>::Go(
       std::forward<INPUT>(input), output);
 }
 

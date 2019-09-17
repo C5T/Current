@@ -279,11 +279,11 @@ TEST(TypeSystemTest, ValueOfMutableAndImmutableObjects) {
   int& x_ref = x;
   const int& x_cref = x;
   const int cx = 1;
-  static_assert(std::is_same<decltype(Value(x)), int&>::value, "");
-  static_assert(std::is_same<decltype(Value(x_ref)), int&>::value, "");
-  static_assert(std::is_same<decltype(Value(x_cref)), const int&>::value, "");
-  static_assert(std::is_same<decltype(Value(std::move(x))), int&&>::value, "");
-  static_assert(std::is_same<decltype(Value(cx)), const int&>::value, "");
+  static_assert(std::is_same_v<decltype(Value(x)), int&>, "");
+  static_assert(std::is_same_v<decltype(Value(x_ref)), int&>, "");
+  static_assert(std::is_same_v<decltype(Value(x_cref)), const int&>, "");
+  static_assert(std::is_same_v<decltype(Value(std::move(x))), int&&>, "");
+  static_assert(std::is_same_v<decltype(Value(cx)), const int&>, "");
 
   Foo foo(42);
   EXPECT_TRUE(Exists<Foo>(foo));
@@ -422,10 +422,10 @@ TEST(TypeSystemTest, ImmutableOptional) {
   {
     ImmutableOptional<int> foo(100);
     const ImmutableOptional<int>& foo_cref = foo;
-    static_assert(std::is_same<decltype(Value(foo)), int>::value, "");
-    static_assert(std::is_same<decltype(Value(foo_cref)), int>::value, "");
+    static_assert(std::is_same_v<decltype(Value(foo)), int>, "");
+    static_assert(std::is_same_v<decltype(Value(foo_cref)), int>, "");
     const ImmutableOptional<int> bar(200);
-    static_assert(std::is_same<decltype(Value(bar)), int>::value, "");
+    static_assert(std::is_same_v<decltype(Value(bar)), int>, "");
   }
   {
     ImmutableOptional<int> foo(100);
@@ -448,10 +448,10 @@ TEST(TypeSystemTest, ImmutableOptional) {
   {
     ImmutableOptional<Foo> foo(100);
     const ImmutableOptional<Foo>& foo_cref = foo;
-    static_assert(std::is_same<decltype(Value(foo)), const Foo&>::value, "");
-    static_assert(std::is_same<decltype(Value(foo_cref)), const Foo&>::value, "");
+    static_assert(std::is_same_v<decltype(Value(foo)), const Foo&>, "");
+    static_assert(std::is_same_v<decltype(Value(foo_cref)), const Foo&>, "");
     const ImmutableOptional<Foo> bar(200);
-    static_assert(std::is_same<decltype(Value(bar)), const Foo&>::value, "");
+    static_assert(std::is_same_v<decltype(Value(bar)), const Foo&>, "");
   }
   {
     ImmutableOptional<Foo> meh(nullptr);
@@ -500,11 +500,11 @@ TEST(TypeSystemTest, Optional) {
   {
     Optional<int> foo(200);
     const Optional<int>& foo_cref = foo;
-    static_assert(std::is_same<decltype(Value(foo)), int&>::value, "");
-    static_assert(std::is_same<decltype(Value(foo_cref)), int>::value, "");
-    static_assert(std::is_same<decltype(Value(std::move(foo))), int&>::value, "");
+    static_assert(std::is_same_v<decltype(Value(foo)), int&>, "");
+    static_assert(std::is_same_v<decltype(Value(foo_cref)), int>, "");
+    static_assert(std::is_same_v<decltype(Value(std::move(foo))), int&>, "");
     const Optional<int> bar(200);
-    static_assert(std::is_same<decltype(Value(bar)), int>::value, "");
+    static_assert(std::is_same_v<decltype(Value(bar)), int>, "");
   }
   // POD version: Initialize in ctor.
   {
@@ -568,10 +568,10 @@ TEST(TypeSystemTest, Optional) {
   {
     Optional<Foo> foo(200);
     const Optional<Foo>& foo_cref = foo;
-    static_assert(std::is_same<decltype(Value(foo)), Foo&>::value, "");
-    static_assert(std::is_same<decltype(Value(foo_cref)), const Foo&>::value, "");
+    static_assert(std::is_same_v<decltype(Value(foo)), Foo&>, "");
+    static_assert(std::is_same_v<decltype(Value(foo_cref)), const Foo&>, "");
     const Optional<Foo> bar(200);
-    static_assert(std::is_same<decltype(Value(bar)), const Foo&>::value, "");
+    static_assert(std::is_same_v<decltype(Value(bar)), const Foo&>, "");
   }
   // Non-POD version: Construct from `Foo&`.
   {

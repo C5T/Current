@@ -131,7 +131,7 @@ struct RecursiveTypeTraverser {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value, TypeID> operator()(TypeSelector<T>) {
+  std::enable_if_t<std::is_enum_v<T>, TypeID> operator()(TypeSelector<T>) {
     return ReflectedType_Enum(EnumName<T>(), CurrentTypeID_<typename std::underlying_type<T>::type>()).type_id;
   }
 
@@ -215,22 +215,22 @@ struct RecursiveTypeTraverser {
 
  private:
   template <typename T>
-  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<!std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     return CurrentTypeID_<SuperType<T>>();
   }
 
   template <typename T>
-  std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<!std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     return CurrentTypeID_<TemplateInnerType<T>>();
   }
 };
@@ -368,7 +368,7 @@ struct ReflectorImpl {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
   template <typename T>
-  std::enable_if_t<std::is_enum<T>::value, ReflectedType> operator()(TypeSelector<T>) {
+  std::enable_if_t<std::is_enum_v<T>, ReflectedType> operator()(TypeSelector<T>) {
     ReflectType<typename std::underlying_type<T>::type>();
     return ReflectedType(ReflectedType_Enum(EnumName<T>(), CurrentTypeID<typename std::underlying_type<T>::type>()));
   }
@@ -475,23 +475,23 @@ struct ReflectorImpl {
 
  private:
   template <typename T>
-  std::enable_if_t<std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<SuperType<T>, CurrentStruct>::value, Optional<TypeID>> ReflectSuper() {
+  std::enable_if_t<!std::is_same_v<SuperType<T>, CurrentStruct>, Optional<TypeID>> ReflectSuper() {
     ReflectType<SuperType<T>>();
     return CurrentTypeID<SuperType<T>>();
   }
 
   template <typename T>
-  std::enable_if_t<std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     return nullptr;
   }
 
   template <typename T>
-  std::enable_if_t<!std::is_same<TemplateInnerType<T>, void>::value, Optional<TypeID>> ReflectTemplateInnerType() {
+  std::enable_if_t<!std::is_same_v<TemplateInnerType<T>, void>, Optional<TypeID>> ReflectTemplateInnerType() {
     ReflectType<TemplateInnerType<T>>();  // NOTE(dkorolev): Unnecessary, but why not keep it in the schema output?
     return CurrentTypeID<TemplateInnerType<T>>();
   }

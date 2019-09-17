@@ -27,15 +27,16 @@
 #define FNCAS_FNCAS_NODE_H
 
 #include <cmath>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <map>
 #include <stack>
 #include <string>
 #include <sstream>
-#include <vector>
-#include <exception>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #include "base.h"
 #include "exceptions.h"
@@ -327,7 +328,7 @@ struct GenericV : node_index_allocator {
   // Template is used here as a form of forward declaration.
   template <typename TX>
   GenericV differentiate(const TX& x_ref, size_t variable_index) const {
-    static_assert(std::is_same<TX, X>::value, "V::differentiate(const x& x, size_t variable_index);");
+    static_assert(std::is_same_v<TX, X>, "V::differentiate(const x& x, size_t variable_index);");
     // Note: This method will not build unless `fncas_differentiate.h` is included.
     return node_differentiate_impl<TX>::differentiate(x_ref, index_, variable_index);
   }
@@ -475,7 +476,7 @@ struct f_impl<JIT::Blueprint> final : f_super {
   // Template is used here as a form of forward declaration.
   template <typename TX>
   V differentiate(const TX& x_ref, size_t variable_index) const {
-    static_assert(std::is_same<TX, X>::value,
+    static_assert(std::is_same_v<TX, X>,
                   "f_impl<JIT::Blueprint>::differentiate(const x& x, size_t variable_index);");
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
     CURRENT_ASSERT(variable_index >= 0);

@@ -51,6 +51,7 @@ SOFTWARE.
 #include <limits>  // For data type implementation details.
 #include <string>  // For architecture names.
 #include <memory>  // For `std::unique_ptr`.
+#include <type_traits> // For `std::is_same_v`
 
 #ifdef CURRENT_PORT_COUNT
 #error "`CURRENT_PORT_COUNT` should not be defined for port.h"
@@ -193,7 +194,7 @@ static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
 template <typename T1, typename T2>
 struct is_same_or_compile_error {
-  enum { value = std::is_same<T1, T2>::value };
+  enum { value = std::is_same_v<T1, T2> };
   char is_same_static_assert_failed[value ? 1 : -1];
 };
 

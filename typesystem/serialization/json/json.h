@@ -49,8 +49,8 @@ struct IsJSONSerializableImpl;
 template <typename T>
 struct IsJSONSerializable {
   constexpr static bool value =
-      IsJSONSerializableImpl<IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum<T>::value, T>::value &&
-      !std::is_same<T, CurrentStruct>::value && !std::is_same<T, CurrentStruct>::value;
+      IsJSONSerializableImpl<IS_CURRENT_STRUCT(T), IS_CURRENT_VARIANT(T), std::is_enum_v<T>, T>::value &&
+      !std::is_same_v<T, CurrentStruct> && !std::is_same_v<T, CurrentStruct>;
 };
 
 // Helper logic for `IsJSONSerializable`.

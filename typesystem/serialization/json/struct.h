@@ -80,7 +80,7 @@ struct SerializeStructImpl<JSON_FORMAT, CurrentStruct> {
 template <class JSON_FORMAT, typename T>
 struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>,
                      T,
-                     std::enable_if_t<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
+                     std::enable_if_t<IS_CURRENT_STRUCT(T) && !std::is_same_v<T, CurrentStruct>>> {
   static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const T& value) {
     json_stringifier.Current().SetObject();
     json::JSONStructFieldsSerializer<JSON_FORMAT> visitor(json_stringifier);
@@ -96,7 +96,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, CurrentStruct> {
 template <class JSON_FORMAT, typename T>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
                        T,
-                       std::enable_if_t<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
+                       std::enable_if_t<IS_CURRENT_STRUCT(T) && !std::is_same_v<T, CurrentStruct>>> {
   class DeserializeSingleField {
    public:
     explicit DeserializeSingleField(json::JSONParser<JSON_FORMAT>& json_parser) : json_parser_(json_parser) {}
@@ -121,7 +121,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
     using super_t = current::reflection::SuperType<decayed_t>;
 
     if (json_parser && json_parser.Current().IsObject()) {
-      if (!std::is_same<super_t, CurrentStruct>::value) {
+      if (!std::is_same_v<super_t, CurrentStruct>) {
         Deserialize(json_parser, static_cast<super_t&>(destination));
       }
       current::reflection::VisitAllFields<decayed_t, current::reflection::FieldNameAndMutableValue>::WithObject(

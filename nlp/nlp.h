@@ -153,7 +153,7 @@ struct OrImplWithVariant {
 
 template <typename ANNOTATED_QUERY_TERM, class LHS_IMPL, class RHS_IMPL, typename TYPE>
 struct OrImplSameType {
-  static_assert(!std::is_same<TYPE, Unit>::value, "");
+  static_assert(!std::is_same_v<TYPE, Unit>, "");
   using annotated_query_term_t = ANNOTATED_QUERY_TERM;
   using emitted_t = TYPE;
   const LHS_IMPL& lhs_impl_;
@@ -297,8 +297,8 @@ struct SeqImpl;
 
 template <typename ANNOTATED_QUERY_TERM, class LHS_IMPL, class RHS_IMPL, typename LHS_TYPE, typename RHS_TYPE>
 struct SeqImpl<L2R, ANNOTATED_QUERY_TERM, LHS_IMPL, RHS_IMPL, LHS_TYPE, RHS_TYPE> {
-  static_assert(!std::is_same<LHS_TYPE, Unit>::value, "");
-  static_assert(!std::is_same<RHS_TYPE, Unit>::value, "");
+  static_assert(!std::is_same_v<LHS_TYPE, Unit>, "");
+  static_assert(!std::is_same_v<RHS_TYPE, Unit>, "");
   using annotated_query_term_t = ANNOTATED_QUERY_TERM;
   using emitted_t = current::metaprogramming::tuple_cat_t<LHS_TYPE, RHS_TYPE>;
   const LHS_IMPL& lhs_impl_;
@@ -321,8 +321,8 @@ struct SeqImpl<L2R, ANNOTATED_QUERY_TERM, LHS_IMPL, RHS_IMPL, LHS_TYPE, RHS_TYPE
 
 template <typename ANNOTATED_QUERY_TERM, class LHS_IMPL, class RHS_IMPL, typename LHS_TYPE, typename RHS_TYPE>
 struct SeqImpl<R2L, ANNOTATED_QUERY_TERM, LHS_IMPL, RHS_IMPL, LHS_TYPE, RHS_TYPE> {
-  static_assert(!std::is_same<LHS_TYPE, Unit>::value, "");
-  static_assert(!std::is_same<RHS_TYPE, Unit>::value, "");
+  static_assert(!std::is_same_v<LHS_TYPE, Unit>, "");
+  static_assert(!std::is_same_v<RHS_TYPE, Unit>, "");
   using annotated_query_term_t = ANNOTATED_QUERY_TERM;
   using emitted_t = current::metaprogramming::tuple_cat_t<LHS_TYPE, RHS_TYPE>;
   const LHS_IMPL& lhs_impl_;
@@ -345,7 +345,7 @@ struct SeqImpl<R2L, ANNOTATED_QUERY_TERM, LHS_IMPL, RHS_IMPL, LHS_TYPE, RHS_TYPE
 
 template <typename ANNOTATED_QUERY_TERM, class LHS_IMPL, class RHS_IMPL, typename LHS_TYPE>
 struct SeqImplUnitInRHS {
-  static_assert(!std::is_same<LHS_TYPE, Unit>::value, "");
+  static_assert(!std::is_same_v<LHS_TYPE, Unit>, "");
   using annotated_query_term_t = ANNOTATED_QUERY_TERM;
   using emitted_t = LHS_TYPE;
   const LHS_IMPL& lhs_impl_;
@@ -367,7 +367,7 @@ struct SeqImplUnitInRHS {
 
 template <typename ANNOTATED_QUERY_TERM, class LHS_IMPL, class RHS_IMPL, typename RHS_TYPE>
 struct SeqImplUnitInLHS {
-  static_assert(!std::is_same<RHS_TYPE, Unit>::value, "");
+  static_assert(!std::is_same_v<RHS_TYPE, Unit>, "");
   using annotated_query_term_t = ANNOTATED_QUERY_TERM;
   using emitted_t = RHS_TYPE;
   const LHS_IMPL& lhs_impl_;

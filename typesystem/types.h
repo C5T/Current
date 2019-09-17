@@ -56,9 +56,9 @@ struct CurrentStruct : CurrentSuper {};
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::crnt::CurrentStruct, ::current::decay<T>>::value)
-#define IS_CURRENT_VARIANT(T) (std::is_base_of<::crnt::CurrentVariant, ::current::decay<T>>::value)
-#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of<::crnt::CurrentSuper, ::current::decay<T>>::value)
+#define IS_CURRENT_STRUCT(T) (std::is_base_of_v<::crnt::CurrentStruct, ::current::decay<T>>)
+#define IS_CURRENT_VARIANT(T) (std::is_base_of_v<::crnt::CurrentVariant, ::current::decay<T>>)
+#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of_v<::crnt::CurrentSuper, ::current::decay<T>>)
 
 #define IS_EMPTY_CURRENT_STRUCT(T) (::current::reflection::IsEmptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value)
 
@@ -297,7 +297,7 @@ struct VisitAllFields {
     static current::variadic_indexes::indexes<NS...> remaining_indexes;
     t.CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
     // `WithObjectImpl()` is called only from `WithObject()`, and by this point `TT` is `T`.
-    static_assert(std::is_same<current::decay<TT>, T>::value, "");  // To be on the safe side.
+    static_assert(std::is_same_v<current::decay<TT>, T>, "");  // To be on the safe side.
     WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), remaining_indexes);
   }
 

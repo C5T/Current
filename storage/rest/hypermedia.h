@@ -94,7 +94,7 @@ struct HypermediaResponseFormatter {
                                            const std::string& url_collection,
                                            const ENTRY& entry) {
     using brief_t = sfinae::brief_of_t<ENTRY>;
-    if (std::is_same<ENTRY, brief_t>::value) {
+    if (std::is_same_v<ENTRY, brief_t>) {
       return Response(HypermediaRESTSingleRecordResponse<ENTRY>(url, url_collection, entry));
     } else {
       if (!context.brief) {
@@ -112,7 +112,7 @@ struct HypermediaResponseFormatter {
                                               const std::string& collection_url,
                                               ITERABLE&& span) {
     using inner_element_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
-    using collection_element_t = typename std::conditional<std::is_same<INNER_HYPERMEDIA_TYPE, inner_element_t>::value,
+    using collection_element_t = typename std::conditional<std::is_same_v<INNER_HYPERMEDIA_TYPE, inner_element_t>,
                                                            HypermediaRESTFullCollectionRecord<inner_element_t>,
                                                            HypermediaRESTBriefCollectionRecord<inner_element_t>>::type;
 

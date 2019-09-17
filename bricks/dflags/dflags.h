@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
 #include <map>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "../util/singleton.h"
@@ -272,7 +273,7 @@ class FlagRegisterer : public FlagRegistererBase {
     }
   }
 
-  bool IsBooleanFlag() const override { return std::is_same<FLAG_TYPE, bool>::value; }
+  bool IsBooleanFlag() const override { return std::is_same_v<FLAG_TYPE, bool>; }
 
   std::string TypeAsString() const override { return type_; }
 

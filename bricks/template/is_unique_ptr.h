@@ -59,10 +59,10 @@ template <typename T>
 using is_unique_ptr = is_unique_ptr_impl<decay<T>>;
 
 static_assert(!is_unique_ptr<int>::value, "");
-static_assert(std::is_same<int, typename is_unique_ptr<int>::underlying_type>::value, "");
+static_assert(std::is_same_v<int, typename is_unique_ptr<int>::underlying_type>, "");
 
 static_assert(is_unique_ptr<std::unique_ptr<int>>::value, "");
-static_assert(std::is_same<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>::value, "");
+static_assert(std::is_same_v<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>, "");
 
 }  // namespace current
 
