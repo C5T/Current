@@ -36,6 +36,7 @@ SOFTWARE.
 #include <dlfcn.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 namespace current {
@@ -178,7 +179,9 @@ class JITCompiledCPP final {
 #ifdef NDEBUG
     cppflags += " -O3";
 #endif
-    std::string cmdline = "g++ " + cppflags + ' ' + source_file_name_ + " -o " + library_file_name_;
+    const char* const env_cpp = std::getenv("CPLUSPLUS");
+    const std::string compiler = env_cpp ? std::string(env_cpp) : "g++";
+    std::string cmdline = compiler + ' ' + cppflags + ' ' + source_file_name_ + " -o " + library_file_name_;
 
 #if 1
     // Try to capture the compilation error message into the exception body.
