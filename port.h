@@ -51,6 +51,7 @@ SOFTWARE.
 #include <limits>  // For data type implementation details.
 #include <string>  // For architecture names.
 #include <memory>  // For `std::unique_ptr`.
+#include <type_traits> // For `std::is_same_v`
 
 #ifdef CURRENT_PORT_COUNT
 #error "`CURRENT_PORT_COUNT` should not be defined for port.h"
