@@ -445,15 +445,15 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // which means for different INSTANTIATION_TYPEs it isn't actually a base to the "s" struct.
 // Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
 // as they are always the base class to the "s" regardless of what the INSTANTIATION_TYPE is.
-#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                   \
-  using CRNT_super_t =                                                                                     \
-      typename std::conditional<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, SUPER, CSSH_##s>::type; \
+#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                      \
+  using CRNT_super_t =                                                                        \
+      std::conditional_t<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, SUPER, CSSH_##s>; \
   using CRNT_super_t::CRNT_super_t
 
-#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                          \
-  using CRNT_super_t = typename std::conditional<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, \
-                                                 SUPER,                                             \
-                                                 CURRENT_STRUCT_T_SUPER_HELPER_##s>::type;          \
+#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                   \
+  using CRNT_super_t = std::conditional_t<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, \
+                                                   SUPER,                                    \
+                                                   CURRENT_STRUCT_T_SUPER_HELPER_##s>;       \
   using CRNT_super_t::CRNT_super_t
 #else
 // I sure hope this is how it should be. -- D.K.
@@ -467,12 +467,14 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define CURRENT_USE_T_BASE_CONSTRUCTORS(s) using SUPER::SUPER
 #endif
 
-#define CURRENT_EXTRACT_T_SUBTYPE_IMPL(subtype, exported_subtype) \
-  struct CRNT_##exported_subtype##_helper_t {                     \
-    using subtype = int;                                          \
-  };                                                              \
-  using exported_subtype = typename std::                         \
-      conditional<std::is_same_v<T, ::crnt::r::DummyT>, CRNT_##exported_subtype##_helper_t, T>::type::subtype
+#define CURRENT_EXTRACT_T_SUBTYPE_IMPL(subtype, exported_subtype)     \
+  struct CRNT_##exported_subtype##_helper_t {                         \
+    using subtype = int;                                              \
+  };                                                                  \
+  using exported_subtype =                                            \
+    typename std::conditional_t<std::is_same_v<T, ::crnt::r::DummyT>, \
+                                CRNT_##exported_subtype##_helper_t,   \
+                                T>::subtype
 
 #define CETS_IMPL1(a) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, a)
 #define CETS_IMPL2(a, b) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, b)
