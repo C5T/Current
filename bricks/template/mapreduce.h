@@ -73,7 +73,7 @@ template <template <typename> class F, typename... RESULT_SO_FAR, typename T, ty
 struct filter_impl<F, std::tuple<RESULT_SO_FAR...>, std::tuple<T, TS...>> {
   using result = typename filter_impl<
       F,
-      typename std::conditional_t<F<T>::filter, std::tuple<RESULT_SO_FAR..., T>, std::tuple<RESULT_SO_FAR...>>,
+      std::conditional_t<F<T>::filter, std::tuple<RESULT_SO_FAR..., T>, std::tuple<RESULT_SO_FAR...>>,
       std::tuple<TS...>>::result;
 };
 
@@ -86,7 +86,7 @@ template <template <typename> class F, typename... RESULT_SO_FAR, typename T, ty
 struct filter_impl<F, TypeListImpl<RESULT_SO_FAR...>, TypeListImpl<T, TS...>> {
   using result = typename filter_impl<
       F,
-      typename std::conditional_t<F<T>::filter, TypeListImpl<RESULT_SO_FAR..., T>, TypeListImpl<RESULT_SO_FAR...>>,
+      std::conditional_t<F<T>::filter, TypeListImpl<RESULT_SO_FAR..., T>, TypeListImpl<RESULT_SO_FAR...>>,
       TypeListImpl<TS...>>::result;
 };
 

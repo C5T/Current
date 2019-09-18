@@ -112,9 +112,9 @@ struct HypermediaResponseFormatter {
                                               const std::string& collection_url,
                                               ITERABLE&& span) {
     using inner_element_t = sfinae::brief_of_t<INNER_HYPERMEDIA_TYPE>;
-    using collection_element_t = typename std::conditional<std::is_same_v<INNER_HYPERMEDIA_TYPE, inner_element_t>,
-                                                           HypermediaRESTFullCollectionRecord<inner_element_t>,
-                                                           HypermediaRESTBriefCollectionRecord<inner_element_t>>::type;
+    using collection_element_t = std::conditional_t<std::is_same_v<INNER_HYPERMEDIA_TYPE, inner_element_t>,
+                                                    HypermediaRESTFullCollectionRecord<inner_element_t>,
+                                                    HypermediaRESTBriefCollectionRecord<inner_element_t>>;
 
     HypermediaRESTCollectionResponse<collection_element_t> response;
     response.url_directory = collection_url;
