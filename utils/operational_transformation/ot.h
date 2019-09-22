@@ -45,7 +45,7 @@ static std::string AsUTF8String(const std::deque<wchar_t>& rope) {
 }
 
 template <typename PROCESSOR>
-typename std::result_of<decltype(&PROCESSOR::GenerateOutput)(PROCESSOR*, const std::deque<wchar_t>&, bool)>::type OT(
+std::result_of_t<decltype(&PROCESSOR::GenerateOutput)(PROCESSOR*, const std::deque<wchar_t>&, bool)> OT(
     const std::string& json, PROCESSOR&& processor) {
   rapidjson::Document document;
   if (document.Parse<0>(&json[0]).HasParseError()) {
