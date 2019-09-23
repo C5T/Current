@@ -83,7 +83,7 @@ struct SinkOf<State> {
   static size_t Get(const State& state) { return std::min(state.saved, state.sent); }
 };
 
-inline void RunPassthrough() {
+inline void RunForwrad() {
   const size_t min_n = std::max(static_cast<size_t>(8u), static_cast<size_t>(1e6 * FLAGS_buffer_mb) / sizeof(Blob));
   const size_t actual_n = [min_n]() {
     size_t min_power_of_to_ge_min_n = 1u;
@@ -128,5 +128,5 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  current::examples::streamed_sockets::RunPassthrough();
+  current::examples::streamed_sockets::RunForwrad();
 }
