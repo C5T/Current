@@ -22,10 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "workers/indexer.h"
 #include "blob.h"
 #include "next_ripcurrent.h"
-#include "workers/indexer.h"
 #include "workers/receiver.h"
+#include "workers/saver.h"
 #include "workers/sender.h"
 
 #include "../../../blocks/xterm/vt100.h"
@@ -40,6 +41,13 @@ DEFINE_string(host2, "127.0.0.1", "The destination address to send data to.");
 DEFINE_uint16(port2, 9008, "The destination port to send data to.");
 DEFINE_double(buffer_mb, 32.0, "The size of the circular buffer to use, in megabytes.");
 DEFINE_uint64(max_index_block, 512, "Index max. this many entries per state mutex lock, throttling.");
+DEFINE_string(dirname, ".current", "The dir name for the stored data files.");
+DEFINE_string(filebase, "idx.", "The filename prefix for the stored data files.");
+DEFINE_uint64(blobs_per_file,
+              (1 << 28) / sizeof(current::examples::streamed_sockets::Blob),
+              "The number of blobs per file saved, defaults to 256MB files.");
+DEFINE_uint32(max_total_files, 4u, "The maximum number of data files to keep, defaults to four files, for 1GB total.");
+DEFINE_bool(wipe_files_at_startup, true, "Unset to not wipe the files from the previous run.");
 
 namespace current::examples::streamed_sockets {
 
@@ -49,6 +57,7 @@ struct Two;
 struct State {
   volatile size_t read = 0u;
   volatile size_t indexed = 0u;
+  volatile size_t saved = 0u;
   volatile size_t sent1 = 0u;
   volatile size_t sent2 = 0u;
 };
@@ -61,6 +70,11 @@ struct OutputOf<State, ReceivingWorker> {
 template <>
 struct InputOf<State, IndexingWorker> {
   static size_t Get(const State& state) { return state.read; }
+};
+
+template <>
+struct InputOf<State, SavingWorker> {
+  static size_t Get(const State& state) { return state.indexed; }
 };
 
 template <>
@@ -79,6 +93,11 @@ struct OutputOf<State, IndexingWorker> {
 };
 
 template <>
+struct OutputOf<State, SavingWorker> {
+  static void Set(State& state, size_t value) { state.saved = value; }
+};
+
+template <>
 struct OutputOf<State, SendingWorker<One>> {
   static void Set(State& state, size_t value) { state.sent1 = value; }
 };
@@ -90,7 +109,7 @@ struct OutputOf<State, SendingWorker<Two>> {
 
 template <>
 struct SinkOf<State> {
-  static size_t Get(const State& state) { return std::min(state.sent1, state.sent2); }
+  static size_t Get(const State& state) { return std::min(state.saved, std::min(state.sent1, state.sent2)); }
 };
 
 inline void RunIndexer() {
@@ -109,11 +128,19 @@ inline void RunIndexer() {
 
   std::thread t_source = SpawnThreadSource<ReceivingWorker>(buffer, mutable_state, FLAGS_listen_port);
   std::thread t_indexing = SpawnThreadWorker<IndexingWorker>(buffer, mutable_state, FLAGS_max_index_block);
+  std::thread t_save = SpawnThreadWorker<SavingWorker>(buffer,
+                                                       mutable_state,
+                                                       FLAGS_dirname,
+                                                       FLAGS_filebase,
+                                                       FLAGS_blobs_per_file,
+                                                       FLAGS_max_total_files,
+                                                       FLAGS_wipe_files_at_startup);
   std::thread t_send1 = SpawnThreadWorker<SendingWorker<One>>(buffer, mutable_state, FLAGS_host1, FLAGS_port1);
   std::thread t_send2 = SpawnThreadWorker<SendingWorker<Two>>(buffer, mutable_state, FLAGS_host2, FLAGS_port2);
 
   t_source.join();
   t_indexing.join();
+  t_save.join();
   t_send1.join();
   t_send2.join();
 }

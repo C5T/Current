@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_BLOB_H
 #define EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_BLOB_H
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace current::examples::streamed_sockets {
 

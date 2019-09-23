@@ -25,6 +25,7 @@ SOFTWARE.
 #include "blob.h"
 #include "next_ripcurrent.h"
 #include "workers/receiver.h"
+#include "workers/saver.h"
 #include "workers/sender.h"
 
 #include "../../../blocks/xterm/vt100.h"
@@ -36,12 +37,20 @@ DEFINE_uint16(listen_port, 9009, "The local port to listen on.");
 DEFINE_string(host, "127.0.0.1", "The destination address to send data to.");
 DEFINE_uint16(port, 9001, "The destination port to send data to.");
 DEFINE_double(buffer_mb, 32.0, "The size of the circular buffer to use, in megabytes.");
+DEFINE_string(dirname, ".current", "The dir name for the stored data files.");
+DEFINE_string(filebase, "fwd.", "The filename prefix for the stored data files.");
+DEFINE_uint64(blobs_per_file,
+              (1 << 28) / sizeof(current::examples::streamed_sockets::Blob),
+              "The number of blobs per file saved, defaults to 256MB files.");
+DEFINE_uint32(max_total_files, 4u, "The maximum number of data files to keep, defaults to four files, for 1GB total.");
+DEFINE_bool(wipe_files_at_startup, true, "Unset to not wipe the files from the previous run.");
 
 namespace current::examples::streamed_sockets {
 
 struct State {
   volatile size_t read = 0u;
-  volatile size_t done = 0u;
+  volatile size_t saved = 0u;
+  volatile size_t sent = 0u;
 };
 
 template <>
@@ -50,18 +59,28 @@ struct OutputOf<State, ReceivingWorker> {
 };
 
 template <>
+struct InputOf<State, SavingWorker> {
+  static size_t Get(const State& state) { return state.read; }
+};
+
+template <>
 struct InputOf<State, SendingWorker<>> {
   static size_t Get(const State& state) { return state.read; }
 };
 
 template <>
+struct OutputOf<State, SavingWorker> {
+  static void Set(State& state, size_t value) { state.saved = value; }
+};
+
+template <>
 struct OutputOf<State, SendingWorker<>> {
-  static void Set(State& state, size_t value) { state.done = value; }
+  static void Set(State& state, size_t value) { state.sent = value; }
 };
 
 template <>
 struct SinkOf<State> {
-  static size_t Get(const State& state) { return state.done; }
+  static size_t Get(const State& state) { return std::min(state.saved, state.sent); }
 };
 
 inline void RunPassthrough() {
@@ -79,9 +98,17 @@ inline void RunPassthrough() {
   current::WaitableAtomic<State> mutable_state;
 
   std::thread t_source = SpawnThreadSource<ReceivingWorker>(buffer, mutable_state, FLAGS_listen_port);
+  std::thread t_save = SpawnThreadWorker<SavingWorker>(buffer,
+                                                       mutable_state,
+                                                       FLAGS_dirname,
+                                                       FLAGS_filebase,
+                                                       FLAGS_blobs_per_file,
+                                                       FLAGS_max_total_files,
+                                                       FLAGS_wipe_files_at_startup);
   std::thread t_send = SpawnThreadWorker<SendingWorker<>>(buffer, mutable_state, FLAGS_host, FLAGS_port);
 
   t_source.join();
+  t_save.join();
   t_send.join();
 }
 
