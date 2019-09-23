@@ -22,32 +22,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_BLOB_H
-#define EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_BLOB_H
+#ifndef EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_WORKERS_PROCESSOR_H
+#define EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_WORKERS_PROCESSOR_H
 
-#include <cstddef>
-#include <cstdint>
+#include <cstdlib>
+#include <iostream>
+
+#include "../blob.h"
+
+#include "../../../../bricks/time/chrono.h"
 
 namespace current::examples::streamed_sockets {
 
-struct Blob {
-  uint64_t index;
-  uint64_t request_origin;
-  uint64_t request_sequence_id;
-  uint64_t extra2;
+struct ProcessingWorker {
+  ProcessingWorker() {}  // uint64_t max_index_block) : max_index_block(max_index_block) {}
+
+  uint64_t next_expected_total_index = static_cast<uint64_t>(-1);
+  const Blob* DoWork(Blob* begin, Blob* end) {
+    while (begin != end) {
+      if (next_expected_total_index == static_cast<uint64_t>(-1)) {
+        next_expected_total_index = begin->index;
+      } else if (begin->index != next_expected_total_index) {
+        std::cerr << "Broken index continuity; exiting.\n";
+        std::exit(-1);
+      }
+      if (begin->request_origin == request_origin_latencytest) {
+        // std::cerr << current::time::Now().count() << '\t' << begin->request_sequence_id << '\n';
+      }
+      ++begin;
+      ++next_expected_total_index;
+    }
+    return end;
+  }
 };
-
-static_assert(sizeof(Blob) == 32);
-static_assert((sizeof(Blob) & (sizeof(Blob) - 1u)) == 0u, "`sizeof(Blob)` should be a power of two for this example.");
-static_assert(offsetof(Blob, index) == 0);
-static_assert(offsetof(Blob, request_origin) == 8);
-
-// clang-format off
-constexpr static uint64_t request_origin_range_lo    = 0x00000000ff;
-constexpr static uint64_t request_origin_range_hi    = 0x00ffffffff;
-constexpr static uint64_t request_origin_latencytest = 0xaaffffffff;
-// clang-format on
 
 }  // namespace current::examples::streamed_sockets
 
-#endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_BLOB_H
+#endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_WORKERS_PROCESSOR_H

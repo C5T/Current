@@ -63,10 +63,12 @@ int main(int argc, char** argv) {
 
   progress << current::strings::Printf("initializing %.1lfMB", real_mb);
   for (Blob& b : data) {
-    b.request_id = current::random::RandomUInt64(0x00000000, 0xffffffff);
+    using namespace current::examples::streamed_sockets;
+    b.request_origin = current::random::RandomUInt64(request_origin_range_lo, request_origin_range_hi);
   }
 
   progress << "preparing to send";
+  uint64_t request_sequence_id = 0;
   while (true) {
     try {
       current::net::Connection connection(current::net::ClientSocket(FLAGS_host, FLAGS_port));
@@ -76,8 +78,23 @@ int main(int argc, char** argv) {
       while (true) {
         const uint64_t begin_index = current::random::RandomUInt64(0, N / 4);
         const uint64_t end_index = N - current::random::RandomUInt64(0, N / 4);
+        const uint64_t a = begin_index;
+        const uint64_t b = end_index - 1u;
+        const uint64_t request_origin_a_save = data[a].request_origin;
+        const uint64_t request_origin_b_save = data[b].request_origin;
+        data[a].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
+        data[b].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
+        data[a].request_sequence_id = request_sequence_id;
+        data[b].request_sequence_id = request_sequence_id + 1u;
+        // const int64_t t_begin = current::time::Now().count();
         connection.BlockingWrite(
             reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), true);
+        // const int64_t t_end = current::time::Now().count();
+        data[a].request_origin = request_origin_a_save;
+        data[b].request_origin = request_origin_b_save;
+        // std::cerr << t_begin << '\t' << request_sequence_id << '\n';
+        // std::cerr << t_end << '\t' << request_sequence_id + 1 << '\n';
+        request_sequence_id += 2;
       }
     } catch (const current::net::SocketConnectException&) {
       progress << "connecting to " << red << bold << FLAGS_host << ':' << FLAGS_port << reset;
