@@ -50,12 +50,12 @@ struct OutputOf<State, ReceivingWorker> {
 };
 
 template <>
-struct InputOf<State, SendingWorker> {
+struct InputOf<State, SendingWorker<>> {
   static size_t Get(const State& state) { return state.read; }
 };
 
 template <>
-struct OutputOf<State, SendingWorker> {
+struct OutputOf<State, SendingWorker<>> {
   static void Set(State& state, size_t value) { state.done = value; }
 };
 
@@ -79,7 +79,7 @@ inline void RunPassthrough() {
   current::WaitableAtomic<State> mutable_state;
 
   std::thread t_source = SpawnThreadSource<ReceivingWorker>(buffer, mutable_state, FLAGS_listen_port);
-  std::thread t_send = SpawnThreadWorker<SendingWorker>(buffer, mutable_state, FLAGS_host, FLAGS_port);
+  std::thread t_send = SpawnThreadWorker<SendingWorker<>>(buffer, mutable_state, FLAGS_host, FLAGS_port);
 
   t_source.join();
   t_send.join();

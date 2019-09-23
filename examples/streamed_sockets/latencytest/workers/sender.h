@@ -32,6 +32,7 @@ SOFTWARE.
 
 namespace current::examples::streamed_sockets {
 
+template <typename = void>
 struct SendingWorker {
   struct SendingWorkedImpl {
     current::net::Connection connection;

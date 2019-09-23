@@ -34,17 +34,23 @@ SOFTWARE.
 #include "../../../bricks/time/chrono.h"
 
 DEFINE_uint16(listen_port, 9010, "The local port to listen on.");
-DEFINE_string(host, "127.0.0.1", "The destination address to send data to.");
-DEFINE_uint16(port, 9009, "The destination port to send data to.");
+DEFINE_string(host1, "127.0.0.1", "The destination address to send data to.");
+DEFINE_uint16(port1, 9009, "The destination port to send data to.");
+DEFINE_string(host2, "127.0.0.1", "The destination address to send data to.");
+DEFINE_uint16(port2, 9008, "The destination port to send data to.");
 DEFINE_double(buffer_mb, 32.0, "The size of the circular buffer to use, in megabytes.");
 DEFINE_uint64(max_index_block, 512, "Index max. this many entries per state mutex lock, throttling.");
 
 namespace current::examples::streamed_sockets {
 
+struct One;
+struct Two;
+
 struct State {
   volatile size_t read = 0u;
   volatile size_t indexed = 0u;
-  volatile size_t done = 0u;
+  volatile size_t sent1 = 0u;
+  volatile size_t sent2 = 0u;
 };
 
 template <>
@@ -58,7 +64,12 @@ struct InputOf<State, IndexingWorker> {
 };
 
 template <>
-struct InputOf<State, SendingWorker> {
+struct InputOf<State, SendingWorker<One>> {
+  static size_t Get(const State& state) { return state.indexed; }
+};
+
+template <>
+struct InputOf<State, SendingWorker<Two>> {
   static size_t Get(const State& state) { return state.indexed; }
 };
 
@@ -68,13 +79,18 @@ struct OutputOf<State, IndexingWorker> {
 };
 
 template <>
-struct OutputOf<State, SendingWorker> {
-  static void Set(State& state, size_t value) { state.done = value; }
+struct OutputOf<State, SendingWorker<One>> {
+  static void Set(State& state, size_t value) { state.sent1 = value; }
+};
+
+template <>
+struct OutputOf<State, SendingWorker<Two>> {
+  static void Set(State& state, size_t value) { state.sent2 = value; }
 };
 
 template <>
 struct SinkOf<State> {
-  static size_t Get(const State& state) { return state.done; }
+  static size_t Get(const State& state) { return std::min(state.sent1, state.sent2); }
 };
 
 inline void RunIndexer() {
@@ -93,11 +109,13 @@ inline void RunIndexer() {
 
   std::thread t_source = SpawnThreadSource<ReceivingWorker>(buffer, mutable_state, FLAGS_listen_port);
   std::thread t_indexing = SpawnThreadWorker<IndexingWorker>(buffer, mutable_state, FLAGS_max_index_block);
-  std::thread t_send = SpawnThreadWorker<SendingWorker>(buffer, mutable_state, FLAGS_host, FLAGS_port);
+  std::thread t_send1 = SpawnThreadWorker<SendingWorker<One>>(buffer, mutable_state, FLAGS_host1, FLAGS_port1);
+  std::thread t_send2 = SpawnThreadWorker<SendingWorker<Two>>(buffer, mutable_state, FLAGS_host2, FLAGS_port2);
 
   t_source.join();
   t_indexing.join();
-  t_send.join();
+  t_send1.join();
+  t_send2.join();
 }
 
 }  // namespace current::examples::streamed_sockets
