@@ -27,7 +27,7 @@ SOFTWARE.
 //
 // The default flags assumes `./.current/forward` is run, and localhost:9001 is forwared back to localhost:9002.
 //
-// To run, first start this tool, and then `./.current/forward`. They would both terminate afterwards.
+// To run, first start `./.current/forward`, and then this tool. They would both terminate automatically.
 
 #include <cstdlib>
 #include <thread>
