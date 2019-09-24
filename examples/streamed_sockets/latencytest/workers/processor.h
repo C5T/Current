@@ -30,29 +30,47 @@ SOFTWARE.
 
 #include "../blob.h"
 
+#include "../../../../bricks/net/tcp/tcp.h"
 #include "../../../../bricks/time/chrono.h"
 
 namespace current::examples::streamed_sockets {
 
 struct ProcessingWorker {
-  ProcessingWorker() {}  // uint64_t max_index_block) : max_index_block(max_index_block) {}
+  struct ProcessingWorkedImpl {
+    current::net::Connection connection;
+    ProcessingWorkedImpl(const std::string& host, uint16_t port) : connection(current::net::ClientSocket(host, port)) {}
+  };
+  std::unique_ptr<ProcessingWorkedImpl> impl;
+
+  const std::string host;
+  const uint16_t port;
+  ProcessingWorker(std::string host, uint16_t port) : host(std::move(host)), port(port) {}
 
   uint64_t next_expected_total_index = static_cast<uint64_t>(-1);
   const Blob* DoWork(Blob* begin, Blob* end) {
-    while (begin != end) {
-      if (next_expected_total_index == static_cast<uint64_t>(-1)) {
-        next_expected_total_index = begin->index;
-      } else if (begin->index != next_expected_total_index) {
-        std::cerr << "Broken index continuity; exiting.\n";
-        std::exit(-1);
+    try {
+      while (begin != end) {
+        if (next_expected_total_index == static_cast<uint64_t>(-1)) {
+          next_expected_total_index = begin->index;
+        } else if (begin->index != next_expected_total_index) {
+          std::cerr << "Broken index continuity; exiting.\n";
+          std::exit(-1);
+        }
+        if (begin->request_origin == request_origin_latencytest) {
+          if (!impl) {
+            impl = std::make_unique<ProcessingWorkedImpl>(host, port);
+          }
+          impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), sizeof(Blob), true);
+          // std::cerr << current::time::Now().count() << '\t' << begin->request_sequence_id << '\n';
+        }
+        ++begin;
+        ++next_expected_total_index;
       }
-      if (begin->request_origin == request_origin_latencytest) {
-        // std::cerr << current::time::Now().count() << '\t' << begin->request_sequence_id << '\n';
-      }
-      ++begin;
-      ++next_expected_total_index;
+    } catch (const current::net::SocketException&) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Don't eat up 100% CPU when unable to connect.
+    } catch (const current::Exception&) {
     }
-    return end;
+    return begin;
   }
 };
 

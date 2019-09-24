@@ -34,11 +34,11 @@ SOFTWARE.
 #include "../../../bricks/net/tcp/tcp.h"
 #include "../../../bricks/time/chrono.h"
 
-DEFINE_uint16(listen_port, 9010, "The local port to listen on.");
+DEFINE_uint16(listen_port, 8001, "The local port to listen on.");
 DEFINE_string(host1, "127.0.0.1", "The destination address to send data to.");
-DEFINE_uint16(port1, 9009, "The destination port to send data to.");
+DEFINE_uint16(port1, 8002, "The destination port to send data to.");
 DEFINE_string(host2, "127.0.0.1", "The destination address to send data to.");
-DEFINE_uint16(port2, 9008, "The destination port to send data to.");
+DEFINE_uint16(port2, 8003, "The destination port to send data to.");
 DEFINE_double(buffer_mb, 32.0, "The size of the circular buffer to use, in megabytes.");
 DEFINE_uint64(max_index_block, 512, "Index max. this many entries per state mutex lock, throttling.");
 DEFINE_string(dirname, ".current", "The dir name for the stored data files.");
