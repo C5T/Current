@@ -63,7 +63,7 @@ class ScopedUniqueLock {
   void operator=(const ScopedUniqueLock&) = delete;
 };
 
-class IntrusiveClient {
+class IntrusiveClient final {
  public:
   class Interface {
    public:
@@ -146,7 +146,7 @@ class WaitableAtomicImpl {
 
     // A generic implementation for both mutable and immutable scoped accessors.
     template <class PARENT>
-    class ScopedAccessorImpl : private ScopedUniqueLock, public NotifyIfMutable<PARENT>::impl_t {
+    class ScopedAccessorImpl final : private ScopedUniqueLock, public NotifyIfMutable<PARENT>::impl_t {
      public:
       using parent_t = PARENT;
       using optional_notifier_t = typename NotifyIfMutable<PARENT>::impl_t;
@@ -210,13 +210,13 @@ class WaitableAtomicImpl {
     }
 
     template <typename F>
-    typename std::result_of<F(const data_t&)>::type ImmutableUse(F&& f) const {
+    std::result_of_t<F(const data_t&)> ImmutableUse(F&& f) const {
       auto scope = ImmutableScopedAccessor();
       return f(*scope);
     }
 
     template <typename F>
-    typename std::result_of<F(data_t&)>::type MutableUse(F&& f) {
+    std::result_of_t<F(data_t&)> MutableUse(F&& f) {
       auto scope = MutableScopedAccessor();
       return f(*scope);
     }
