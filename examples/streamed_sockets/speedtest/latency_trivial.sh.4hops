@@ -1,0 +1,12 @@
+#!/bin/bash
+
+trap "kill 0" EXIT
+
+NDEBUG=1 make -j .current/forward .current/latency_trivial
+
+./.current/forward --listen_port 9004 &
+./.current/forward --listen_port 9003 --sendto_port 9004 &
+./.current/forward --sendto_port 9003 &
+./.current/latency_trivial &
+
+wait

@@ -48,10 +48,10 @@ DEFINE_uint64(n, 1 << 20, "Buffer size, in bytes.");
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  current::net::Connection sendto(current::net::ClientSocket(FLAGS_sendto_host, FLAGS_sendto_port));
-
   current::net::Socket socket(FLAGS_listen_port);
   current::net::Connection recvfrom(socket.Accept());
+
+  current::net::Connection sendto(current::net::ClientSocket(FLAGS_sendto_host, FLAGS_sendto_port));
 
   std::vector<uint8_t> buffer(FLAGS_n);
   while (true) {
