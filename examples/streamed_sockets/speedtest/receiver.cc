@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
       }
     } catch (const current::net::SocketBindException&) {
       progress << "can not bind to " << red << bold << "localhost:" << FLAGS_port << reset
-               << ", check for other apps holding the post";
+               << ", check for other apps holding the port";
     } catch (const current::Exception& e) {
       progress << red << bold << "error" << reset << ": " << e.OriginalDescription() << reset;
     }

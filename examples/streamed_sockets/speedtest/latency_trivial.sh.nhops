@@ -1,0 +1,16 @@
+#!/bin/bash
+
+N=${1:-4}
+
+trap "kill 0" EXIT
+
+NDEBUG=1 make -j .current/forward .current/latency_trivial
+
+echo "Running for $N hops."
+
+for i in $(seq 2 $N); do
+  ./.current/forward --listen_port $((9001 + N - i)) --sendto_port $((9002 + N - i)) &
+done
+./.current/latency_trivial --sendto_port 9001 --listen_port $((9000 + N)) &
+
+wait
