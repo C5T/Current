@@ -118,7 +118,7 @@ inline void RelaxQueues(deques_t& dqs, current::ProgressLine& progress) {
     const uint64_t req_id = dqs.first.front().first;
     const int64_t ts_sent = dqs.first.front().second;
     const int64_t ts_received = dqs.second.front().second;
-    // std::cerr << req_id << '\t' << ts_received - ts_sent << '\n';
+
     dqs.first.pop_front();
     dqs.second.pop_front();
 
@@ -158,17 +158,14 @@ int main(int argc, char** argv) {
 
   const size_t N = std::max(static_cast<size_t>(8u),
                             static_cast<size_t>((1e6 * FLAGS_send_buffer_mb + sizeof(Blob) - 1) / sizeof(Blob)));
-  // const double real_mb = 1e-6 * N * sizeof(Blob);
 
   std::cout << "Format: " << (FLAGS_evensodds ? "{ all, evens, odds } * " : "")
             << "\"$(average) + $(p01) / $(p10) / $(median) / $(p90) / $(p99) + N=$(sample size)\"." << std::endl;
 
   current::ProgressLine progress;
 
-  // progress << current::strings::Printf("allocating %.1lfMB", real_mb);
   std::vector<Blob> data(N);
 
-  // progress << current::strings::Printf("initializing %.1lfMB", real_mb);
   for (Blob& b : data) {
     using namespace current::examples::streamed_sockets;
     b.request_origin = current::random::RandomUInt64(request_origin_range_lo, request_origin_range_hi);
@@ -192,20 +189,14 @@ int main(int argc, char** argv) {
         dqs.second.emplace_back(blob.request_sequence_id, t_now);
         RelaxQueues(dqs, progress);
       });
-      // std::cerr << "<< " << t_now << '\t' << blob.request_sequence_id << '\n';
     }
   });
 
   // The code that originate requests.
-  // progress << "preparing to send";
   uint64_t request_sequence_id = 0;
   while (true) {
     try {
       current::net::Connection connection(current::net::ClientSocket(FLAGS_host, FLAGS_port));
-      // progress
-      //   << "connected, " << magenta << connection.LocalIPAndPort().ip << ':' << connection.LocalIPAndPort().port
-      //   << reset << " => " << cyan << connection.RemoteIPAndPort().ip << ':' << connection.RemoteIPAndPort().port
-      //   << reset;
       while (true) {
         const uint64_t begin_index = current::random::RandomUInt64(0, N / 4);
         const uint64_t end_index = N - current::random::RandomUInt64(0, N / 4);
@@ -222,8 +213,6 @@ int main(int argc, char** argv) {
             reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), false);
         data[a].request_origin = request_origin_a_save;
         data[b].request_origin = request_origin_b_save;
-        // std::cerr << ">> " << t_write << '\t' << request_sequence_id << '\n';
-        // std::cerr << "<< " << t_end << '\t' << request_sequence_id + 1 << '\n';
         timestamps.MutableUse([t_write, request_sequence_id, &progress](deques_t& dqs) {
           dqs.first.emplace_back(request_sequence_id, t_write);
           dqs.first.emplace_back(request_sequence_id + 1, t_write);
@@ -232,9 +221,7 @@ int main(int argc, char** argv) {
         request_sequence_id += 2;
       }
     } catch (const current::net::SocketConnectException&) {
-      // progress << "connecting to " << red << bold << FLAGS_host << ':' << FLAGS_port << reset;
-    } catch (const current::Exception& e) {
-      // progress << red << bold << "error" << reset << ": " << e.OriginalDescription() << reset;
+    } catch (const current::Exception&) {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));  // Don't eat up 100% CPU when unable to connect.
   }
