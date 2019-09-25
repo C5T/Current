@@ -39,8 +39,9 @@ DEFINE_string(host, "127.0.0.1", "The destination address to send data to.");
 DEFINE_uint16(port, 8001, "The destination port to send data to.");
 DEFINE_double(send_buffer_mb, 5.0, "Send buffer size.");
 DEFINE_uint16(listen_port, 8005, "The port to listen for the confirmations of own requests, to measure latency.");
-DEFINE_double(latency_output_frequency, 2, "The frequency of latency outputs, in seconds.");
-DEFINE_double(latency_measurement_time_window, 10, "The width of the latency measurement time window, in seconds.");
+DEFINE_double(latency_output_frequency, 0.1, "The frequency of latency outputs, in seconds.");
+DEFINE_double(latency_measurement_time_window, 5.0, "The width of the latency measurement time window, in seconds.");
+DEFINE_bool(evensodds, false, "Set to measure latencies of first and last blob per block separately.");
 
 struct LatencyTracker {
   const std::chrono::microseconds t_time_window_width;
@@ -75,6 +76,14 @@ struct LatencyTracker {
 
       os << current::strings::Printf("%.1lfms", 1e-3 * (sum / n));
 
+      p = n / 100;
+      std::nth_element(b, b + p, e);
+      os << current::strings::Printf(" + %.1lfms", 1e-3 * b[p]);
+
+      p = n / 10;
+      std::nth_element(b, b + p, e);
+      os << current::strings::Printf(" / %.1lfms", 1e-3 * b[p]);
+
       p = n / 2;
       std::nth_element(b, b + p, e);
       os << current::strings::Printf(" / %.1lfms", 1e-3 * b[p]);
@@ -87,7 +96,7 @@ struct LatencyTracker {
       std::nth_element(b, b + p, e);
       os << current::strings::Printf(" / %.1lfms", 1e-3 * b[p]);
 
-      os << " / N=" << n;
+      os << " + N=" << n;
 
       return os.str();
     }
@@ -116,12 +125,16 @@ inline void RelaxQueues(deques_t& dqs, current::ProgressLine& progress) {
     const std::chrono::microseconds t_now = current::time::Now();
     all.Add(t_now, ts_received - ts_sent);
     if (req_id & 1) {
-      evens.Add(t_now, ts_received - ts_sent);
-    } else {
       odds.Add(t_now, ts_received - ts_sent);
+    } else {
+      evens.Add(t_now, ts_received - ts_sent);
     }
     if (t_now >= t_next_output) {
-      progress << all.State() << " | " << evens.State() << " | " << odds.State();
+      if (!FLAGS_evensodds) {
+        progress << odds.State();  // The `odds` ones are the slowest ones. -- D.K.
+      } else {
+        progress << all.State() << " | " << evens.State() << " | " << odds.State();
+      }
       t_next_output = t_now + t_output_frequency;
     }
   }
@@ -147,8 +160,8 @@ int main(int argc, char** argv) {
                             static_cast<size_t>((1e6 * FLAGS_send_buffer_mb + sizeof(Blob) - 1) / sizeof(Blob)));
   // const double real_mb = 1e-6 * N * sizeof(Blob);
 
-  std::cout << "Format: { all, evens, odds } * \"$(average) / $(median) / $(p90) / $(p99) / N=$(sample size)\"."
-            << std::endl;
+  std::cout << "Format: " << (FLAGS_evensodds ? "{ all, evens, odds } * " : "")
+            << "\"$(average) + $(p01) / $(p10) / $(median) / $(p90) / $(p99) + N=$(sample size)\"." << std::endl;
 
   current::ProgressLine progress;
 
@@ -204,17 +217,16 @@ int main(int argc, char** argv) {
         data[b].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
         data[a].request_sequence_id = request_sequence_id;
         data[b].request_sequence_id = request_sequence_id + 1;
-        const int64_t t_begin = current::time::Now().count();
+        const int64_t t_write = current::time::Now().count();
         connection.BlockingWrite(
             reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), false);
-        const int64_t t_end = current::time::Now().count();
         data[a].request_origin = request_origin_a_save;
         data[b].request_origin = request_origin_b_save;
-        // std::cerr << ">> " << t_begin << '\t' << request_sequence_id << '\n';
+        // std::cerr << ">> " << t_write << '\t' << request_sequence_id << '\n';
         // std::cerr << "<< " << t_end << '\t' << request_sequence_id + 1 << '\n';
-        timestamps.MutableUse([t_begin, t_end, request_sequence_id, &progress](deques_t& dqs) {
-          dqs.first.emplace_back(request_sequence_id, t_begin);
-          dqs.first.emplace_back(request_sequence_id + 1, t_end);
+        timestamps.MutableUse([t_write, request_sequence_id, &progress](deques_t& dqs) {
+          dqs.first.emplace_back(request_sequence_id, t_write);
+          dqs.first.emplace_back(request_sequence_id + 1, t_write);
           RelaxQueues(dqs, progress);
         });
         request_sequence_id += 2;
