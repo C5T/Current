@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     }
     for (size_t k = 0u; k < FLAGS_k; ++k) {
       send_begin[k] = current::time::Now();
-      sendto.BlockingWrite(&buffer[0], buffer.size(), true);
+      sendto.BlockingWrite(&buffer[0], buffer.size(), false);  // `false` is no `MSG_MORE`.
       send_end[k] = current::time::Now();
       sent_done = k + 1u;
     }
