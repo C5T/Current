@@ -60,7 +60,7 @@ struct ProcessingWorker {
           if (!impl) {
             impl = std::make_unique<ProcessingWorkedImpl>(host, port);
           }
-          impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), sizeof(Blob), true);
+          impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), sizeof(Blob), false);
           // std::cerr << current::time::Now().count() << '\t' << begin->request_sequence_id << '\n';
         }
         ++begin;

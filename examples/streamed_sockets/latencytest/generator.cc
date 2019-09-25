@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
         data[b].request_sequence_id = request_sequence_id + 1;
         const int64_t t_begin = current::time::Now().count();
         connection.BlockingWrite(
-            reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), true);
+            reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), false);
         const int64_t t_end = current::time::Now().count();
         data[a].request_origin = request_origin_a_save;
         data[b].request_origin = request_origin_b_save;

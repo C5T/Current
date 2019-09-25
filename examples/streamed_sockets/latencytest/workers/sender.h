@@ -50,7 +50,7 @@ struct SendingWorker {
         if (!impl) {
           impl = std::make_unique<SendingWorkedImpl>(host, port);
         }
-        impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), (end - begin) * sizeof(Blob), true);
+        impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), (end - begin) * sizeof(Blob), false);
         return end;
       } catch (const current::net::SocketException&) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Don't eat up 100% CPU when unable to connect.
