@@ -98,11 +98,13 @@ struct SavingWorker {
     const Blob* end_blob = begin + blobs_left_in_block;
     if (end_blob < end) {
       // Write the currently open file (to close it and repen a new one, on the very next call to `DoWork()`).
-      fwrite(begin, blobs_left_in_block, sizeof(Blob), current_file);
+      // TODO(dkorolev): Uncomment this!
+      // fwrite(begin, blobs_left_in_block, sizeof(Blob), current_file);
       return end_blob;
     } else {
       // The whole [begin, end) range is part of the blob that is currenyly being written.
-      fwrite(begin, end - begin, sizeof(Blob), current_file);
+      // TODO(dkorolev): Uncomment this!
+      // fwrite(begin, end - begin, sizeof(Blob), current_file);
       return end;
     }
     return end;
