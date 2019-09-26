@@ -34,7 +34,7 @@ struct Blob {
   uint64_t index;
   uint64_t request_origin;
   uint64_t request_sequence_id;
-  uint64_t extra2;
+  uint64_t unused_extra_8bytes;
 };
 
 static_assert(sizeof(Blob) == 32);
