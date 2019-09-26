@@ -6,8 +6,8 @@ NDEBUG=1 make -j .current/generator .current/indexer .current/forward .current/p
 
 ./.current/terminator --silent &
 ./.current/processor &
-./.current/forward &
-./.current/indexer &
+./.current/forward $* &
+./.current/indexer $* &
 ./.current/generator &
 
 wait

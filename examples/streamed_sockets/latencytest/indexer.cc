@@ -48,6 +48,7 @@ DEFINE_uint64(blobs_per_file,
               "The number of blobs per file saved, defaults to 256MB files.");
 DEFINE_uint32(max_total_files, 4u, "The maximum number of data files to keep, defaults to four files, for 1GB total.");
 DEFINE_bool(wipe_files_at_startup, true, "Unset to not wipe the files from the previous run.");
+DEFINE_bool(skip_fwrite, false, "Set to not `fwrite()` into the files; for network perftesting only.");
 
 namespace current::examples::streamed_sockets {
 
@@ -134,7 +135,8 @@ inline void RunIndexer() {
                                                        FLAGS_filebase,
                                                        FLAGS_blobs_per_file,
                                                        FLAGS_max_total_files,
-                                                       FLAGS_wipe_files_at_startup);
+                                                       FLAGS_wipe_files_at_startup,
+                                                       FLAGS_skip_fwrite);
   std::thread t_send1 = SpawnThreadWorker<SendingWorker<One>>(buffer, mutable_state, FLAGS_host1, FLAGS_port1);
   std::thread t_send2 = SpawnThreadWorker<SendingWorker<Two>>(buffer, mutable_state, FLAGS_host2, FLAGS_port2);
 

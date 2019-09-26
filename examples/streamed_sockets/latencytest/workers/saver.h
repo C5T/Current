@@ -44,6 +44,7 @@ struct SavingWorker {
   const std::string filebase;
   const size_t blobs_per_file;
   const size_t max_total_files;
+  const bool skip_fwrite;
   uint64_t next_anticipated_index = 0u;
   std::queue<uint64_t> written_files_indexes;  // Unique `uint64_t`, `file_index` == `begin->index / blobs_per_file`.
   FILE* current_file = nullptr;                // The handle of the file for block `written_file_indexes.back()`.
@@ -51,11 +52,13 @@ struct SavingWorker {
                std::string input_filebase,
                size_t blobs_per_file,
                size_t max_total_files,
-               bool wipe_files_at_startup)
+               bool wipe_files_at_startup,
+               bool skip_fwrite)
       : dirname(std::move(input_dirname)),
         filebase(std::move(input_filebase)),
         blobs_per_file(blobs_per_file),
-        max_total_files(max_total_files) {
+        max_total_files(max_total_files),
+        skip_fwrite(skip_fwrite) {
     if (wipe_files_at_startup && !dirname.empty() && !filebase.empty()) {
       std::vector<std::string> files_to_remove;
       FileSystem::ScanDir(dirname, [this, &files_to_remove](const FileSystem::ScanDirItemInfo& info) {
@@ -98,11 +101,15 @@ struct SavingWorker {
     const Blob* end_blob = begin + blobs_left_in_block;
     if (end_blob < end) {
       // Write the currently open file (to close it and repen a new one, on the very next call to `DoWork()`).
-      fwrite(begin, blobs_left_in_block, sizeof(Blob), current_file);
+      if (!skip_fwrite) {
+        fwrite(begin, blobs_left_in_block, sizeof(Blob), current_file);
+      }
       return end_blob;
     } else {
       // The whole [begin, end) range is part of the blob that is currenyly being written.
-      fwrite(begin, end - begin, sizeof(Blob), current_file);
+      if (!skip_fwrite) {
+        fwrite(begin, end - begin, sizeof(Blob), current_file);
+      }
       return end;
     }
     return end;
