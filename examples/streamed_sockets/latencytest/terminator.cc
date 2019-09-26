@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// NOTE(dkorolev): The copy-past of `../speedtest/receiver.cc`, with port changed, to keep everyhing in a single dir.
+// NOTE(dkorolev): The copy-paste of `../speedtest/receiver.cc`, with port changed, to keep everything in a single dir.
 
 #include <deque>
 
