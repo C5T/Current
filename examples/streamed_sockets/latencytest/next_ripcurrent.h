@@ -25,7 +25,7 @@ SOFTWARE.
 // TODO(dkorolev): RipCurrent style:
 // 1) Clean syntax (macros and metaprogramming) to define sources and workers.
 // 2) Clean syntax (macros and metaprogramming) to define pipelines.
-// 3) Lazy instantiation with of sources and workers, with pre-provided constructer parameters.
+// 3) Lazy instantiation with of sources and workers, with pre-provided constructor parameters.
 // 4) The HTTP/HTML/gnuplot/graphviz status page.
 
 #ifndef EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_NEXT_RIPCURRENT_H
