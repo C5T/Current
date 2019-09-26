@@ -175,7 +175,6 @@ int main(int argc, char** argv) {
 
   // The code to listen to the confirmations of own requests.
   std::thread t_listener([&timestamps, &progress]() {
-
     progress << "listening, to measure latency, on localhost:" << FLAGS_listen_port;
     current::net::Socket socket(FLAGS_listen_port);
     progress << "accepting connections, to measure latency, on localhost:" << FLAGS_listen_port;
@@ -192,7 +191,7 @@ int main(int argc, char** argv) {
     }
   });
 
-  // The code that originate requests.
+  // The code that originates the requests.
   uint64_t request_sequence_id = 0;
   while (true) {
     try {
