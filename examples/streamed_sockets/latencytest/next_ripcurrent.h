@@ -109,8 +109,8 @@ std::thread SpawnThreadSource(std::vector<T_BLOB>& buffer, T_WAITABLE_ATOMIC_STA
           const size_t candidate_total_blobs_read_value = updating_total_bytes_read / sizeof(T_BLOB);
           if (candidate_total_blobs_read_value != updating_total_blobs_read) {
             updating_total_blobs_read = candidate_total_blobs_read_value;
-            mutable_state.MutableUse([candidate_total_blobs_read_value](state_t& state) {
-              OutputOf<state_t, T_SOURCE>::Set(state, candidate_total_blobs_read_value);
+            mutable_state.MutableUse([updating_total_blobs_read](state_t& state) {
+              OutputOf<state_t, T_SOURCE>::Set(state, updating_total_blobs_read);
             });
           }
         }

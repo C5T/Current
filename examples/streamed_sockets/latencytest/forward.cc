@@ -87,11 +87,11 @@ struct SinkOf<State> {
 inline void RunForwarder() {
   const size_t min_n = std::max(static_cast<size_t>(8u), static_cast<size_t>(1e6 * FLAGS_buffer_mb) / sizeof(Blob));
   const size_t actual_n = [min_n]() {
-    size_t min_power_of_to_ge_min_n = 1u;
-    while (min_power_of_to_ge_min_n < min_n) {
-      min_power_of_to_ge_min_n *= 2u;
+    size_t min_power_of_two_greater_than_or_equals_to_min_n = 1u;
+    while (min_power_of_two_greater_than_or_equals_to_min_n < min_n) {
+      min_power_of_two_greater_than_or_equals_to_min_n *= 2u;
     }
-    return min_power_of_to_ge_min_n;
+    return min_power_of_two_greater_than_or_equals_to_min_n;
   }();
 
   std::vector<Blob> buffer(actual_n);
