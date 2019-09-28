@@ -39,7 +39,7 @@ SOFTWARE.
 
 namespace current::examples::streamed_sockets {
 
-struct SavingWorker {
+struct SavingWorker final {
   const std::string dirname;
   const std::string filebase;
   const size_t blobs_per_file;
@@ -82,6 +82,12 @@ struct SavingWorker {
   }
 
   const Blob* DoWork(const Blob* begin, const Blob* end) {
+    // NOTE(dkorolev): Save in blocks of the size up to 512KB.
+    constexpr static size_t block_size_in_blobs = (1 << 19) / sizeof(Blob);
+    static_assert(block_size_in_blobs > 0);
+    if (end > begin + block_size_in_blobs) {
+      end = begin + block_size_in_blobs;
+    }
     const uint64_t begin_blob_index = begin->index / blobs_per_file;
     if (written_files_indexes.empty() || !(written_files_indexes.back() == begin_blob_index)) {
       if (current_file) {

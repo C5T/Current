@@ -29,15 +29,14 @@ SOFTWARE.
 
 namespace current::examples::streamed_sockets {
 
-struct IndexingWorker {
-  const uint64_t max_index_block;
-  explicit IndexingWorker(uint64_t max_index_block) : max_index_block(max_index_block) {}
-
+struct IndexingWorker final {
   uint64_t total_index = 0u;
   const Blob* DoWork(Blob* begin, Blob* end) {
-    if (end > begin + max_index_block) {
-      // NOTE(dkorolev): The only purpose of this `if` is state mutex throttling.
-      end = begin + max_index_block;
+    // NOTE(dkorolev): Index in blocks of the size up to 32KB.
+    constexpr static size_t block_size_in_blobs = (1 << 15) / sizeof(Blob);
+    static_assert(block_size_in_blobs > 0);
+    if (end > begin + block_size_in_blobs) {
+      end = begin + block_size_in_blobs;
     }
     while (begin != end) {
       (*begin++).index = total_index++;

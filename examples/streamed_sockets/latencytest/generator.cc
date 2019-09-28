@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
                             static_cast<size_t>((1e6 * FLAGS_send_buffer_mb + sizeof(Blob) - 1) / sizeof(Blob)));
 
   std::cout << "Format: " << (FLAGS_evensodds ? "{ all, evens, odds } * " : "")
-            << "\"$(average) + $(p01) / $(p10) / $(median) / $(p90) / $(p99) + N=$(sample size)\"." << std::endl;
+            << "\"$(average) + $(p01) / $(p10) / $(median) / $(p90) / $(p99) + N=$(sample size)\"" << std::endl;
 
   current::ProgressLine progress;
 
@@ -193,36 +193,29 @@ int main(int argc, char** argv) {
 
   // The code that originates the requests.
   uint64_t request_sequence_id = 0;
+  current::net::Connection connection(current::net::ClientSocket(FLAGS_host, FLAGS_port));
   while (true) {
-    try {
-      current::net::Connection connection(current::net::ClientSocket(FLAGS_host, FLAGS_port));
-      while (true) {
-        const uint64_t begin_index = current::random::RandomUInt64(0, N / 4);
-        const uint64_t end_index = N - current::random::RandomUInt64(0, N / 4);
-        const uint64_t a = begin_index;
-        const uint64_t b = end_index - 1u;
-        const uint64_t request_origin_a_save = data[a].request_origin;
-        const uint64_t request_origin_b_save = data[b].request_origin;
-        data[a].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
-        data[b].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
-        data[a].request_sequence_id = request_sequence_id;
-        data[b].request_sequence_id = request_sequence_id + 1;
-        const int64_t t_write = current::time::Now().count();
-        connection.BlockingWrite(
-            reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), false);
-        data[a].request_origin = request_origin_a_save;
-        data[b].request_origin = request_origin_b_save;
-        timestamps.MutableUse([t_write, request_sequence_id, &progress](deques_t& dqs) {
-          dqs.first.emplace_back(request_sequence_id, t_write);
-          dqs.first.emplace_back(request_sequence_id + 1, t_write);
-          RelaxQueues(dqs, progress);
-        });
-        request_sequence_id += 2;
-      }
-    } catch (const current::net::SocketConnectException&) {
-    } catch (const current::Exception&) {
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));  // Don't eat up 100% CPU when unable to connect.
+    const uint64_t begin_index = current::random::RandomUInt64(0, N / 4);
+    const uint64_t end_index = N - current::random::RandomUInt64(0, N / 4);
+    const uint64_t a = begin_index;
+    const uint64_t b = end_index - 1u;
+    const uint64_t request_origin_a_save = data[a].request_origin;
+    const uint64_t request_origin_b_save = data[b].request_origin;
+    data[a].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
+    data[b].request_origin = current::examples::streamed_sockets::request_origin_latencytest;
+    data[a].request_sequence_id = request_sequence_id;
+    data[b].request_sequence_id = request_sequence_id + 1;
+    const int64_t t_write = current::time::Now().count();
+    connection.BlockingWrite(
+        reinterpret_cast<const void*>(&data[begin_index]), (end_index - begin_index) * sizeof(Blob), false);
+    data[a].request_origin = request_origin_a_save;
+    data[b].request_origin = request_origin_b_save;
+    timestamps.MutableUse([t_write, request_sequence_id, &progress](deques_t& dqs) {
+      dqs.first.emplace_back(request_sequence_id, t_write);
+      dqs.first.emplace_back(request_sequence_id + 1, t_write);
+      RelaxQueues(dqs, progress);
+    });
+    request_sequence_id += 2;
   }
 
   t_listener.join();

@@ -33,7 +33,7 @@ SOFTWARE.
 namespace current::examples::streamed_sockets {
 
 template <typename = void>
-struct SendingWorker {
+struct SendingWorker final {
   struct SendingWorkedImpl {
     current::net::Connection connection;
     SendingWorkedImpl(const std::string& host, uint16_t port) : connection(current::net::ClientSocket(host, port)) {}
@@ -44,20 +44,19 @@ struct SendingWorker {
   const uint16_t port;
   SendingWorker(std::string host, uint16_t port) : host(std::move(host)), port(port) {}
 
-  const Blob* DoWork(Blob* const begin, Blob* const end) {
+  const Blob* DoWork(const Blob* begin, const Blob* end) {
+    // NOTE(dkorolev): Send in blocks of the size up to 256KB.
+    constexpr static size_t block_size_in_blobs = (1 << 18) / sizeof(Blob);
+    static_assert(block_size_in_blobs > 0);
+    if (end > begin + block_size_in_blobs) {
+      end = begin + block_size_in_blobs;
+    }
     while (true) {
-      try {
-        if (!impl) {
-          impl = std::make_unique<SendingWorkedImpl>(host, port);
-        }
-        impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), (end - begin) * sizeof(Blob), false);
-        return end;
-      } catch (const current::net::SocketException&) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Don't eat up 100% CPU when unable to connect.
-      } catch (const current::Exception&) {
+      if (!impl) {
+        impl = std::make_unique<SendingWorkedImpl>(host, port);
       }
-      impl = nullptr;
-      return begin;
+      impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), (end - begin) * sizeof(Blob), false);
+      return end;
     }
   }
 };
