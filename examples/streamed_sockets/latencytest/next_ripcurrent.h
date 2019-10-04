@@ -60,7 +60,7 @@ std::thread SpawnThreadSource(std::vector<T_BLOB>& buffer, T_WAITABLE_ATOMIC_STA
       std::exit(-1);
     }
 
-    const size_t total_buffer_size_in_bytes = buffer.size() * sizeof(T_BLOB);
+    const size_t total_buffer_size_in_bytes = total_buffer_size * sizeof(T_BLOB);
     const size_t total_buffer_size_in_bytes_minus_one = total_buffer_size_in_bytes - 1u;
     if ((total_buffer_size_in_bytes & total_buffer_size_in_bytes_minus_one) != 0u) {
       std::cerr << "Internal error, must be a power of two." << std::endl;
@@ -100,8 +100,6 @@ std::thread SpawnThreadSource(std::vector<T_BLOB>& buffer, T_WAITABLE_ATOMIC_STA
         });
       }
 
-      const size_t bgn = (updating_total_bytes_read & total_buffer_size_in_bytes_minus_one);
-      const size_t end = (trailing_total_bytes_aval & total_buffer_size_in_bytes_minus_one);
       const auto DoWorkOverCircularBufferInBytes = [&](size_t bgn, size_t end) {
         const size_t bytes_read = worker->DoGetInput(buffer_in_bytes + bgn, buffer_in_bytes + end);
         if (bytes_read) {
@@ -115,6 +113,9 @@ std::thread SpawnThreadSource(std::vector<T_BLOB>& buffer, T_WAITABLE_ATOMIC_STA
           }
         }
       };
+
+      const size_t bgn = (updating_total_bytes_read & total_buffer_size_in_bytes_minus_one);
+      const size_t end = (trailing_total_bytes_aval & total_buffer_size_in_bytes_minus_one);
       if (bgn < end) {
         DoWorkOverCircularBufferInBytes(bgn, end);
       } else {
@@ -173,7 +174,7 @@ std::thread SpawnThreadWorker(std::vector<T_BLOB>& buffer, T_WAITABLE_ATOMIC_STA
       if (bgn < end) {
         DoWorkOverCircularBuffer(bgn, end);
       } else {
-        DoWorkOverCircularBuffer(bgn, buffer.size());
+        DoWorkOverCircularBuffer(bgn, total_buffer_size);
       }
     }
   });

@@ -39,8 +39,7 @@ DEFINE_string(host1, "127.0.0.1", "The destination address to send data to.");
 DEFINE_uint16(port1, 8002, "The destination port to send data to.");
 DEFINE_string(host2, "127.0.0.1", "The destination address to send data to.");
 DEFINE_uint16(port2, 8003, "The destination port to send data to.");
-DEFINE_double(buffer_mb, 32.0, "The size of the circular buffer to use, in megabytes.");
-DEFINE_uint64(max_index_block, 512, "Index max. this many entries per state mutex lock, throttling.");
+DEFINE_double(buffer_mb, 512.0, "The size of the circular buffer to use, in megabytes.");
 DEFINE_string(dirname, ".current", "The dir name for the stored data files.");
 DEFINE_string(filebase, "idx.", "The filename prefix for the stored data files.");
 DEFINE_uint64(blobs_per_file,
@@ -128,7 +127,7 @@ inline void RunIndexer() {
   current::WaitableAtomic<State> mutable_state;
 
   std::thread t_source = SpawnThreadSource<ReceivingWorker>(buffer, mutable_state, FLAGS_listen_port);
-  std::thread t_indexing = SpawnThreadWorker<IndexingWorker>(buffer, mutable_state, FLAGS_max_index_block);
+  std::thread t_indexing = SpawnThreadWorker<IndexingWorker>(buffer, mutable_state);
   std::thread t_save = SpawnThreadWorker<SavingWorker>(buffer,
                                                        mutable_state,
                                                        FLAGS_dirname,

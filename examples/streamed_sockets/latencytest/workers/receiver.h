@@ -32,7 +32,7 @@ SOFTWARE.
 
 namespace current::examples::streamed_sockets {
 
-struct ReceivingWorker {
+struct ReceivingWorker final {
   struct ReceivingWorkerImpl {
     current::net::Socket socket;
     current::net::Connection connection;
@@ -44,17 +44,16 @@ struct ReceivingWorker {
   explicit ReceivingWorker(uint16_t port) : port(port) {}
 
   size_t DoGetInput(uint8_t* begin, uint8_t* end) {
-    try {
-      if (!impl) {
-        impl = std::make_unique<ReceivingWorkerImpl>(port);
-      }
-      return impl->connection.BlockingRead(begin, end - begin);
-    } catch (const current::net::SocketException&) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Don't eat up 100% CPU when unable to connect.
-    } catch (const current::Exception&) {
+    // NOTE(dkorolev): My experiment show that latency is sensitive to the socket read block size,
+    // and the block size of 32K is good enough, as it both doesn't hurt throughput and results in low latency.
+    constexpr static size_t block_size_in_bytes = (1 << 15);
+    if (end > begin + block_size_in_bytes) {
+      end = begin + block_size_in_bytes;
     }
-    impl = nullptr;
-    return 0u;
+    if (!impl) {
+      impl = std::make_unique<ReceivingWorkerImpl>(port);
+    }
+    return impl->connection.BlockingRead(begin, end - begin);
   }
 };
 

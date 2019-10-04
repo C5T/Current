@@ -33,7 +33,7 @@ SOFTWARE.
 DEFINE_uint16(listen_port, 8004, "The local port to listen on.");
 DEFINE_string(host, "127.0.0.1", "The destination address to send the confirmations to.");
 DEFINE_uint16(port, 8005, "The destination port to send the confirmations to.");
-DEFINE_double(buffer_mb, 32.0, "The size of the circular buffer to use, in megabytes.");
+DEFINE_double(buffer_mb, 512.0, "The size of the circular buffer to use, in megabytes.");
 
 namespace current::examples::streamed_sockets {
 

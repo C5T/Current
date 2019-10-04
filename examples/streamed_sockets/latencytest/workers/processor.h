@@ -35,7 +35,7 @@ SOFTWARE.
 
 namespace current::examples::streamed_sockets {
 
-struct ProcessingWorker {
+struct ProcessingWorker final {
   struct ProcessingWorkedImpl {
     current::net::Connection connection;
     ProcessingWorkedImpl(const std::string& host, uint16_t port) : connection(current::net::ClientSocket(host, port)) {}
@@ -48,27 +48,28 @@ struct ProcessingWorker {
 
   uint64_t next_expected_total_index = static_cast<uint64_t>(-1);
   const Blob* DoWork(Blob* begin, Blob* end) {
-    try {
-      while (begin != end) {
-        if (next_expected_total_index == static_cast<uint64_t>(-1)) {
-          next_expected_total_index = begin->index;
-        } else if (begin->index != next_expected_total_index) {
-          std::cerr << "Broken index continuity; exiting.\n";
-          std::exit(-1);
-        }
-        if (begin->request_origin == request_origin_latencytest) {
-          if (!impl) {
-            impl = std::make_unique<ProcessingWorkedImpl>(host, port);
-          }
-          impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), sizeof(Blob), false);
-          // std::cerr << current::time::Now().count() << '\t' << begin->request_sequence_id << '\n';
-        }
-        ++begin;
-        ++next_expected_total_index;
+    // NOTE(dkorolev): Process in blocks of the size up to 512KB.
+    constexpr static size_t block_size_in_blobs = (1 << 19) / sizeof(Blob);
+    static_assert(block_size_in_blobs > 0);
+    if (end > begin + block_size_in_blobs) {
+      end = begin + block_size_in_blobs;
+    }
+    while (begin != end) {
+      if (next_expected_total_index == static_cast<uint64_t>(-1)) {
+        next_expected_total_index = begin->index;
+      } else if (begin->index != next_expected_total_index) {
+        std::cerr << "Broken index continuity; exiting.\n";
+        std::exit(-1);
       }
-    } catch (const current::net::SocketException&) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Don't eat up 100% CPU when unable to connect.
-    } catch (const current::Exception&) {
+      if (begin->request_origin == request_origin_latencytest) {
+        if (!impl) {
+          impl = std::make_unique<ProcessingWorkedImpl>(host, port);
+        }
+        // NOTE(dkorolev): This call should most certainly not be a synchronous `BlockingWrite`.
+        impl->connection.BlockingWrite(reinterpret_cast<const void*>(begin), sizeof(Blob), false);
+      }
+      ++begin;
+      ++next_expected_total_index;
     }
     return begin;
   }
