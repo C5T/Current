@@ -49,7 +49,7 @@ struct LazyInstantiatorAbstract<T, void> {
 };
 
 template <typename T, typename EXTRA_PARAMETER, typename... ARGS>
-class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, EXTRA_PARAMETER> {
+class LazyInstantiatorPerType final : public LazyInstantiatorAbstract<T, EXTRA_PARAMETER> {
  public:
   template <typename PASSED_IN_TUPLE>
   LazyInstantiatorPerType(PASSED_IN_TUPLE&& args_as_tuple)
@@ -80,7 +80,7 @@ class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, EXTRA_PARAMET
 };
 
 template <typename T, typename... ARGS>
-class LazyInstantiatorPerType<T, void, ARGS...> : public LazyInstantiatorAbstract<T, void> {
+class LazyInstantiatorPerType<T, void, ARGS...> final : public LazyInstantiatorAbstract<T, void> {
  public:
   template <typename PASSED_IN_TUPLE>
   LazyInstantiatorPerType(PASSED_IN_TUPLE&& args_as_tuple)
@@ -111,8 +111,10 @@ class LazyInstantiatorPerType<T, void, ARGS...> : public LazyInstantiatorAbstrac
 enum class LazyInstantiationStrategy { Flexible = 0, ShouldNotBeInitialized, ShouldAlreadyBeInitialized };
 
 template <typename T, typename EXTRA_PARAMETER = void>
-class LazilyInstantiated {
+class LazilyInstantiated final {
  public:
+  using lazily_instantiated_t = T;
+
   LazilyInstantiated(std::unique_ptr<LazyInstantiatorAbstract<T, EXTRA_PARAMETER>>&& impl) : impl_(std::move(impl)) {}
 
   // Instantiates as a `shared_ptr<T>`.
