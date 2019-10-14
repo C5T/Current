@@ -68,7 +68,7 @@ template <typename ENTRY>
 struct impl_key_accessor_t<ENTRY, true> {
   // CF return type by design.
   using cf_key_t = decltype(std::declval<ENTRY>().key());
-  using key_t = current::decay<cf_key_t>;
+  using key_t = current::decay_t<cf_key_t>;
   static_assert(std::is_same_v<cf_key_t, CF<key_t>>, "");
 
   static cf_key_t GetKey(const ENTRY& entry) { return entry.key(); }
@@ -131,7 +131,7 @@ struct impl_row_accessor_t<ENTRY, false> {
 template <typename ENTRY>
 struct impl_row_accessor_t<ENTRY, true> {
   using cf_row_t = decltype(std::declval<ENTRY>().row());
-  using row_t = current::decay<cf_row_t>;
+  using row_t = current::decay_t<cf_row_t>;
   static_assert(std::is_same_v<cf_row_t, CF<row_t>>, "");
 
   static cf_row_t GetRow(const ENTRY& entry) { return entry.row(); }
@@ -140,8 +140,8 @@ struct impl_row_accessor_t<ENTRY, true> {
 
 template <typename ROW, typename COL>
 struct impl_row_accessor_t<std::pair<ROW, COL>, false> {
-  static_assert(std::is_same_v<ROW, current::decay<ROW>>, "");
-  static_assert(std::is_same_v<COL, current::decay<COL>>, "");
+  static_assert(std::is_same_v<ROW, current::decay_t<ROW>>, "");
+  static_assert(std::is_same_v<COL, current::decay_t<COL>>, "");
   using pair_t = std::pair<ROW, COL>;
   using row_t = ROW;
   using cf_row_t = CF<ROW>;
@@ -202,7 +202,7 @@ struct impl_col_accessor_t<ENTRY, false> {
 template <typename ENTRY>
 struct impl_col_accessor_t<ENTRY, true> {
   using cf_col_t = decltype(std::declval<ENTRY>().col());
-  using col_t = current::decay<cf_col_t>;
+  using col_t = current::decay_t<cf_col_t>;
   static_assert(std::is_same_v<cf_col_t, CF<col_t>>, "");
 
   static cf_col_t GetCol(const ENTRY& entry) { return entry.col(); }
@@ -211,8 +211,8 @@ struct impl_col_accessor_t<ENTRY, true> {
 
 template <typename ROW, typename COL>
 struct impl_col_accessor_t<std::pair<ROW, COL>, false> {
-  static_assert(std::is_same_v<ROW, current::decay<ROW>>, "");
-  static_assert(std::is_same_v<COL, current::decay<COL>>, "");
+  static_assert(std::is_same_v<ROW, current::decay_t<ROW>>, "");
+  static_assert(std::is_same_v<COL, current::decay_t<COL>>, "");
   using pair_t = std::pair<ROW, COL>;
   using col_t = COL;
   using cf_col_t = CF<COL>;

@@ -139,7 +139,7 @@ struct HypermediaResponseFormatter {
         collection_element_t& record = response.data.back();
 
         record.url = collection_url + '/' + ComposeRESTfulKey<PARTICULAR_FIELD, ENTRY>(iterator);
-        PopulateCollectionRecord<ENTRY, typename current::decay<typename iterator_t::value_t>>::DoIt(
+        PopulateCollectionRecord<ENTRY, typename current::decay_t<typename iterator_t::value_t>>::DoIt(
             record.DataOrBriefByRef(), iterator);
       } else if (current_index < context.query_i) {
         has_previous_page = true;

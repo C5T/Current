@@ -139,7 +139,7 @@ class JSONStringifier final {
 
   template <typename T>
   void operator=(T&& x) {
-    JSONValueAssignerImpl<current::decay<T>>::AssignValue(*current_, std::forward<T>(x));
+    JSONValueAssignerImpl<current::decay_t<T>>::AssignValue(*current_, std::forward<T>(x));
   }
 
   // Serialize another object, in an inner scope. The object is guaranteed to result in a valid value.

@@ -713,7 +713,7 @@ RIPCURRENT_NODE(ManuallyImplementedGenericPassThrough1, (Integer, String), (Inte
 RIPCURRENT_NODE(ManuallyImplementedGenericPassThrough2, (Integer, String), (Integer, String)) {
  template <typename X>
  void f(X && x) {
-   emit<current::decay<X>>(std::forward<X>(x));
+   emit<current::decay_t<X>>(std::forward<X>(x));
   }
 };
 #define ManuallyImplementedGenericPassThrough2(...) \

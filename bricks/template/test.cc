@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2019 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "variadic_indexes.h"
-#include "call_if.h"
 #include "call_all_constructors.h"
+#include "call_if.h"
+#include "is_unique_ptr.h"
+#include "variadic_indexes.h"
 
 // The internal test uses `std::tuple<>`, and not a single `TypeList`.
 // The one that goes into the documentation uses `TypeList<>`, and not a single `std::tuple<>`.
@@ -274,3 +276,89 @@ TEST(TemplateMetaprogrammingInternalTest, NonemptyConstructorForCombiner) {
   EXPECT_EQ("foo", joined("test"));
   EXPECT_EQ(42, joined(0));
 }
+
+// ********************************************************************************
+// * `current::decay_t` test, moved here from `decay.h`.
+// ********************************************************************************
+template <typename A, typename B>
+inline constexpr bool is_same_v = std::is_same_v<A, B>;
+
+using namespace current;
+
+static_assert(is_same_v<int, decay_t<int>>, "");
+static_assert(is_same_v<int, decay_t<int&>>, "");
+static_assert(is_same_v<int, decay_t<int&&>>, "");
+static_assert(is_same_v<int, decay_t<const int>>, "");
+static_assert(is_same_v<int, decay_t<const int&>>, "");
+static_assert(is_same_v<int, decay_t<const int&&>>, "");
+
+static_assert(is_same_v<std::string, decay_t<std::string>>, "");
+static_assert(is_same_v<std::string, decay_t<std::string&>>, "");
+static_assert(is_same_v<std::string, decay_t<std::string&&>>, "");
+static_assert(is_same_v<std::string, decay_t<const std::string>>, "");
+static_assert(is_same_v<std::string, decay_t<const std::string&>>, "");
+static_assert(is_same_v<std::string, decay_t<const std::string&&>>, "");
+
+static_assert(is_same_v<char*, decay_t<char*>>, "");
+static_assert(is_same_v<char*, decay_t<char*&>>, "");
+static_assert(is_same_v<char*, decay_t<char*&&>>, "");
+static_assert(is_same_v<const char*, decay_t<const char*>>, "");
+static_assert(is_same_v<const char*, decay_t<char const*>>, "");
+static_assert(is_same_v<char*, decay_t<char* const>>, "");
+static_assert(is_same_v<const char*, decay_t<const char*&>>, "");
+static_assert(is_same_v<const char*, decay_t<char const*&>>, "");
+static_assert(is_same_v<char*, decay_t<char* const&>>, "");
+static_assert(is_same_v<const char*, decay_t<const char*&&>>, "");
+static_assert(is_same_v<const char*, decay_t<char const*&&>>, "");
+static_assert(is_same_v<char*, decay_t<char* const&&>>, "");
+// NOTE(mzhurovich): Previous implementation was decaying literal to `char[n]`.
+static_assert(is_same_v<const char*, decay_t<decltype("test")>>, "");
+
+// `current::decay_t` + `std::tuple`.
+static_assert(is_same_v<std::tuple<int, int, int, int>, decay_t<std::tuple<int, int, int, int>>>, "");
+static_assert(is_same_v<std::tuple<int, int, int, int>, decay_t<std::tuple<const int, int&, const int&, int&&>>>,
+              "");
+
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<const std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<const std::string&>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<std::string&>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<std::string&&>>>, "");
+
+static_assert(is_same_v<std::tuple<std::string>, decay_t<const std::tuple<std::string>&>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<const std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<const std::tuple<const std::string>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<const std::tuple<const std::string&>>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<const std::tuple<const std::string&>&>>, "");
+static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<const std::string&>&&>>, "");
+
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<const std::string>>>>,
+              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<std::string&>>>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<const std::string&>>>>,
+              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<std::string&&>>>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<std::string>>>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string>>&>>,
+              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string>&>&>>,
+              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string&>&>&>>,
+              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string&&>&>&>>,
+              "");
+static_assert(is_same_v<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<int>, std::tuple<int>>,
+                        decay_t<std::tuple<const std::tuple<const int>,
+                                           std::tuple<int&>&,
+                                           const std::tuple<const int&>&,
+                                           std::tuple<int&&>&&>>>,
+              "");
+
+// ********************************************************************************
+// * `current::is_unique_ptr` test, moved here from `is_unique_ptr.h`.
+// ********************************************************************************
+static_assert(!is_unique_ptr<int>::value, "");
+static_assert(std::is_same_v<int, typename is_unique_ptr<int>::underlying_type>, "");
+
+static_assert(is_unique_ptr<std::unique_ptr<int>>::value, "");
+static_assert(std::is_same_v<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>, "");

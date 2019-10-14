@@ -51,7 +51,7 @@ struct ExtractTimestampFunctor {
   ExtractTimestampFunctor(std::chrono::microseconds& result) : result(result) {}
   template <typename T>
   void operator()(T&& x) {
-    TimestampAccessorImpl<current::decay<T>>::ExtractDirectlyOrFromVariant(*this, std::forward<T>(x));
+    TimestampAccessorImpl<current::decay_t<T>>::ExtractDirectlyOrFromVariant(*this, std::forward<T>(x));
   }
 };
 
@@ -60,7 +60,7 @@ struct UpdateTimestampFunctor {
   UpdateTimestampFunctor(std::chrono::microseconds value) : value(value) {}
   template <typename T>
   void operator()(T&& x) {
-    TimestampAccessorImpl<current::decay<T>>::UpdateDirectlyOrInVariant(*this, std::forward<T>(x));
+    TimestampAccessorImpl<current::decay_t<T>>::UpdateDirectlyOrInVariant(*this, std::forward<T>(x));
   }
 };
 

@@ -77,7 +77,7 @@ struct is_string_type_impl<const char[N]> {
 
 template <typename T>
 struct is_string_type {
-  constexpr static bool value = is_string_type_impl<decay<T>>::value;
+  constexpr static bool value = is_string_type_impl<decay_t<T>>::value;
 };
 
 }  // namespace strings

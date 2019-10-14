@@ -981,7 +981,7 @@ struct PassImpl final : UserCode<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImp
   using super_t = UserCode<LHSTypes<T, TS...>, RHSTypes<T, TS...>, PassImplClassName<T, TS...>>;
   template <typename X>
   void f(X&& x) {
-    super_t::template emit<current::decay<X>>(std::forward<X>(x));
+    super_t::template emit<current::decay_t<X>>(std::forward<X>(x));
   }
 };
 

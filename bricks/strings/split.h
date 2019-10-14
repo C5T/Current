@@ -35,7 +35,6 @@ SOFTWARE.
 #include "chunk.h"
 
 #include "../exception.h"
-#include "../template/decay.h"
 #include "../template/weed.h"
 
 namespace current {
@@ -92,7 +91,7 @@ struct MatchImpl<const char[N]> {
 
 template <typename T>
 inline std::enable_if_t<!weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
-  return MatchImpl<rmref<T>>::Match(a, std::forward<T>(b));
+  return MatchImpl<std::remove_reference_t<T>>::Match(a, std::forward<T>(b));
 }
 
 template <typename T>
@@ -111,7 +110,8 @@ struct IsValidSeparatorImpl<false, T> {
 };
 
 template <typename T>
-struct IsValidSeparator : IsValidSeparatorImpl<MatchImpl<rmref<T>>::valid_separator, rmref<T>> {};
+struct IsValidSeparator
+    : IsValidSeparatorImpl<MatchImpl<std::remove_reference_t<T>>::valid_separator, std::remove_reference_t<T>> {};
 
 template <typename T>
 struct DefaultSeparator {};

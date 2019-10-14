@@ -147,7 +147,7 @@ struct ToStringImpl<strings::Chunk, false, false> {
 
 template <typename T>
 inline std::string ToString(T&& something) {
-  using decayed_t = current::decay<T>;
+  using decayed_t = current::decay_t<T>;
   return ToStringImpl<decayed_t, sfinae::HasMemberToString<decayed_t>(0), std::is_enum_v<decayed_t>>::DoIt(
       std::forward<T>(something));
 }

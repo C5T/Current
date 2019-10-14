@@ -59,14 +59,14 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
             typename E,
-            class = std::enable_if_t<CanPublish<current::decay<E>, ENTRY>::value>>
+            class = std::enable_if_t<CanPublish<current::decay_t<E>, ENTRY>::value>>
   idxts_t Publish(E&& e) {
     return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), current::time::DefaultTimeArgument());
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
             typename E,
-            class = std::enable_if_t<CanPublish<current::decay<E>, ENTRY>::value>>
+            class = std::enable_if_t<CanPublish<current::decay_t<E>, ENTRY>::value>>
   idxts_t Publish(E&& e, std::chrono::microseconds us) {
     return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), us);
   }
@@ -104,21 +104,21 @@ class StreamPublisher : public GenericStreamPublisher<ENTRY>, public EntryPublis
   using EntryPublisher<IMPL, ENTRY>::EntryPublisher;
 };
 
-// For `static_assert`-s. Must `decay<>` for template xvalue references support.
+// For `static_assert`-s. Must `decay_t<>` for template xvalue references support.
 // TODO(dkorolev): `Variant` stream types, and publishing those?
 template <typename T>
 struct IsPublisher {
-  static constexpr bool value = std::is_base_of_v<GenericPublisher, current::decay<T>>;
+  static constexpr bool value = std::is_base_of_v<GenericPublisher, current::decay_t<T>>;
 };
 
 template <typename T, typename E>
 struct IsEntryPublisher {
-  static constexpr bool value = std::is_base_of_v<GenericEntryPublisher<current::decay<E>>, current::decay<T>>;
+  static constexpr bool value = std::is_base_of_v<GenericEntryPublisher<current::decay_t<E>>, current::decay_t<T>>;
 };
 
 template <typename T, typename E>
 struct IsStreamPublisher {
-  static constexpr bool value = std::is_base_of_v<GenericStreamPublisher<current::decay<E>>, current::decay<T>>;
+  static constexpr bool value = std::is_base_of_v<GenericStreamPublisher<current::decay_t<E>>, current::decay_t<T>>;
 };
 
 enum class EntryResponse { Done = 0, More = 1 };
@@ -161,20 +161,20 @@ class StreamSubscriber : public GenericStreamSubscriber<ENTRY>, public EntrySubs
   using EntrySubscriber<IMPL, ENTRY>::EntrySubscriber;
 };
 
-// For `static_assert`-s. Must `decay<>` for template xvalue references support.
+// For `static_assert`-s. Must `decay_t<>` for template xvalue references support.
 template <typename T>
 struct IsSubscriber {
-  static constexpr bool value = std::is_base_of_v<GenericSubscriber, current::decay<T>>;
+  static constexpr bool value = std::is_base_of_v<GenericSubscriber, current::decay_t<T>>;
 };
 
 template <typename T, typename E>
 struct IsEntrySubscriber {
-  static constexpr bool value = std::is_base_of_v<GenericEntrySubscriber<current::decay<E>>, current::decay<T>>;
+  static constexpr bool value = std::is_base_of_v<GenericEntrySubscriber<current::decay_t<E>>, current::decay_t<T>>;
 };
 
 template <typename T, typename E>
 struct IsStreamSubscriber {
-  static constexpr bool value = std::is_base_of_v<GenericStreamSubscriber<current::decay<E>>, current::decay<T>>;
+  static constexpr bool value = std::is_base_of_v<GenericStreamSubscriber<current::decay_t<E>>, current::decay_t<T>>;
 };
 
 namespace impl {

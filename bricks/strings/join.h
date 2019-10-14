@@ -31,8 +31,6 @@ SOFTWARE.
 
 #include "util.h"
 
-#include "../template/decay.h"
-
 namespace current {
 namespace strings {
 
@@ -58,7 +56,7 @@ struct StringLengthOrOneForCharImpl<char> {
 
 template <typename T>
 inline size_t StringLengthOrOneForChar(T&& param) {
-  return StringLengthOrOneForCharImpl<rmref<T>>::Length(param);
+  return StringLengthOrOneForCharImpl<std::remove_reference_t<T>>::Length(param);
 }
 
 namespace sfinae {

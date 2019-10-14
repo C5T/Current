@@ -168,7 +168,7 @@ struct HTTPResponder {
 
   // Support `CURRENT_STRUCT`-s and `CURRENT_VARIANT`-s.
   template <class T>
-  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay<T>)> SendHTTPResponse(
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> SendHTTPResponse(
       Connection& connection,
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -649,7 +649,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline std::enable_if_t<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, ChunkFlush flush) {
+      inline std::enable_if_t<IS_CURRENT_STRUCT(current::decay_t<T>)> Send(T&& object, ChunkFlush flush) {
         SendImpl(JSON(std::forward<T>(object)) + '\n', flush);
       }
 

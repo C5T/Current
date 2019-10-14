@@ -169,16 +169,16 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
   }
 
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
-  template <typename X, class = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
+  template <typename X, class = std::enable_if_t<IS_CURRENT_STRUCT(current::decay_t<X>)>>
   VariantImpl(X&& input) {
-    using decayed_t = current::decay<X>;
+    using decayed_t = current::decay_t<X>;
     variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_t>();
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
   }
 #else
-  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay_t<X>>::value>>
   VariantImpl(X&& input) {
-    using decayed_t = current::decay<X>;
+    using decayed_t = current::decay_t<X>;
     object_ = std::make_unique<decayed_t>(std::forward<X>(input));
   }
 #endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
@@ -196,12 +196,12 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
   }
 
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
-  template <typename X, class ENABLE = std::enable_if_t<IS_CURRENT_STRUCT(current::decay<X>)>>
+  template <typename X, class ENABLE = std::enable_if_t<IS_CURRENT_STRUCT(current::decay_t<X>)>>
 #else
-  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay<X>>::value>>
+  template <typename X, class ENABLE = std::enable_if_t<TypeListContains<typelist_t, current::decay_t<X>>::value>>
 #endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   VariantImpl& operator=(X&& input) {
-    using decayed_t = current::decay<X>;
+    using decayed_t = current::decay_t<X>;
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_t>();
 #endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
@@ -292,19 +292,19 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     template <typename U>
     void operator()(const U& instance) {
-      using decayed_u = current::decay<U>;
+      using decayed_u = current::decay_t<U>;
       variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_u>();
       into = std::make_unique<decayed_u>(instance);
     }
 #else
     template <typename U>
-    std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U& instance) {
-      into = std::make_unique<current::decay<U>>(instance);
+    std::enable_if_t<TypeListContains<typelist_t, current::decay_t<U>>::value> operator()(const U& instance) {
+      into = std::make_unique<current::decay_t<U>>(instance);
     }
 
     template <typename U>
-    std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(const U&) {
-      CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
+    std::enable_if_t<!TypeListContains<typelist_t, current::decay_t<U>>::value> operator()(const U&) {
+      CURRENT_THROW(IncompatibleVariantTypeException<current::decay_t<U>>());
     }
 #endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   };
@@ -320,19 +320,19 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : IHasUncheckedMoveFromUniquePt
 #ifdef VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
     template <typename U>
     void operator()(U&&) {
-      using decayed_u = current::decay<U>;
+      using decayed_u = current::decay_t<U>;
       variant::RuntimeTypeListHelpers<typelist_t>::template AssertContains<decayed_u>();
       into = std::move(from);
     }
 #else
     template <typename U>
-    std::enable_if_t<TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
+    std::enable_if_t<TypeListContains<typelist_t, current::decay_t<U>>::value> operator()(U&&) {
       into = std::move(from);
     }
 
     template <typename U>
-    std::enable_if_t<!TypeListContains<typelist_t, current::decay<U>>::value> operator()(U&&) {
-      CURRENT_THROW(IncompatibleVariantTypeException<current::decay<U>>());
+    std::enable_if_t<!TypeListContains<typelist_t, current::decay_t<U>>::value> operator()(U&&) {
+      CURRENT_THROW(IncompatibleVariantTypeException<current::decay_t<U>>());
     }
 #endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
   };
