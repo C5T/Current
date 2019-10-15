@@ -280,10 +280,10 @@ TEST(TemplateMetaprogrammingInternalTest, NonemptyConstructorForCombiner) {
 // ********************************************************************************
 // * `current::decay_t` test, moved here from `decay.h`.
 // ********************************************************************************
-template <typename A, typename B>
-inline constexpr bool is_same_v = std::is_same_v<A, B>;
+namespace current_decay_t_test {
 
-using namespace current;
+using current::decay_t;
+using std::is_same_v;
 
 static_assert(is_same_v<int, decay_t<int>>, "");
 static_assert(is_same_v<int, decay_t<int&>>, "");
@@ -354,11 +354,19 @@ static_assert(is_same_v<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<
                                            std::tuple<int&&>&&>>>,
               "");
 
+}  // namespace current_decay_t_test
+
 // ********************************************************************************
 // * `current::is_unique_ptr` test, moved here from `is_unique_ptr.h`.
 // ********************************************************************************
+namespace current_is_unique_ptr_test {
+
+using current::is_unique_ptr;
+
 static_assert(!is_unique_ptr<int>::value, "");
 static_assert(std::is_same_v<int, typename is_unique_ptr<int>::underlying_type>, "");
 
 static_assert(is_unique_ptr<std::unique_ptr<int>>::value, "");
 static_assert(std::is_same_v<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>, "");
+
+}  // namespace current_is_unique_ptr_test

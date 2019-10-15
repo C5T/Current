@@ -69,18 +69,22 @@ struct is_container<T, std::void_t<decltype(std::declval<T>().begin()),
                                    decltype(std::declval<T>().end()),
                                    typename T::value_type>> : std::true_type {};
 template <typename T>
-constexpr bool is_container_v = is_container<T>::value;
+constexpr bool is_container_of_strings() {
+  if constexpr (is_container<T>::value) {
+    return std::is_same_v<typename T::value_type, std::string>;
+  }
+  return false;
+}
 
 template <typename T>
-constexpr bool is_container_of_strings =
-    is_container_v<T> && std::is_same_v<typename T::value_type, std::string>;
+constexpr bool is_container_of_strings_v = is_container_of_strings<T>();
 
 }  // namespace sfinae
 
 template <typename CONTAINER, typename SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
   // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
-  if constexpr(sfinae::is_container_of_strings<CONTAINER>) {
+  if constexpr(sfinae::is_container_of_strings_v<CONTAINER>) {
     size_t length = 0;
     for (const auto& cit : components) {
       length += cit.length();
