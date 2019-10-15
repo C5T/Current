@@ -85,12 +85,14 @@ template <typename CONTAINER, typename SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
   // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
   if constexpr(sfinae::is_container_of_strings_v<CONTAINER>) {
-    size_t length = 0;
-    for (const auto& cit : components) {
-      length += cit.length();
+    if (!components.empty()) {
+      size_t length = 0;
+      for (const auto& cit : components) {
+        length += cit.length();
+      }
+      length += impl::StringLengthOrOneForChar(separator) * (components.size() - 1);
+      output.reserve(length);
     }
-    length += impl::StringLengthOrOneForChar(separator) * (components.size() - 1);
-    output.reserve(length);
   }
 }
 
