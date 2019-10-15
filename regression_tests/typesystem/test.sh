@@ -19,7 +19,7 @@ TEST_LIST=(
 )
 
 CPLUSPLUS=${CPLUSPLUS:-g++}
-CPPFLAGS=${CPPFLAGS:- -std=c++11 -ftemplate-backtrace-limit=0  -ftemplate-depth=10000}
+CPPFLAGS=${CPPFLAGS:- -std=c++17 -ftemplate-backtrace-limit=0  -ftemplate-depth=10000}
 OS=$(uname)
 if [[ ""$OS != "Darwin" ]]; then
 	LDFLAGS=${LDFLAGS:- -pthread}
