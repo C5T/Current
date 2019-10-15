@@ -55,12 +55,12 @@ struct TypeListSizeExtractor<TypeListImpl<TS...>> {
 
 // `TypeListSize<TypeListImpl<TS...>>::value` is the number of types in `TS...`.
 template <typename T>
-using TypeListSize = TypeListSizeExtractor<T>;
+inline constexpr static int TypeListSize = TypeListSizeExtractor<T>::value;
 
-static_assert(TypeListSize<TypeListImpl<>>::value == 0, "");
-static_assert(TypeListSize<TypeListImpl<int>>::value == 1, "");
-static_assert(TypeListSize<TypeListImpl<int, int>>::value == 2, "");
-static_assert(TypeListSize<TypeListImpl<int, int, int>>::value == 3, "");
+static_assert(TypeListSize<TypeListImpl<>> == 0, "");
+static_assert(TypeListSize<TypeListImpl<int>> == 1, "");
+static_assert(TypeListSize<TypeListImpl<int, int>> == 2, "");
+static_assert(TypeListSize<TypeListImpl<int, int, int>> == 3, "");
 
 // `DuplicateTypeInTypeList` and `ConfirmTypeListContainsNoDuplicates` are just compile-error-readable names
 // for two helper classes that wrap contained types and inherit from all the wrapped types respectively.
