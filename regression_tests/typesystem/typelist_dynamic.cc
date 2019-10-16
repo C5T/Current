@@ -48,7 +48,7 @@ TEST(TypeTest, TypeListImpl) {
   using current::metaprogramming::Flatten;
   typedef Flatten<map<ST, DATA_TYPES>> STORAGE_TYPES;
 
-  static_assert(TypeListSize<STORAGE_TYPES>::value == TypeListSize<DATA_TYPES>::value * 2, "");
+  static_assert(TypeListSize<STORAGE_TYPES> == TypeListSize<DATA_TYPES> * 2, "");
 }
 
 #endif  // CURRENT_COVERAGE_REPORT_MODE

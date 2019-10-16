@@ -38,13 +38,13 @@ TEST(TemplateMetaprogramming, Map) {
   struct C { enum { x = 3 }; };
   
   typedef TypeList<A, B, C> TYPELIST_BEFORE;
-  static_assert(TypeListSize<TYPELIST_BEFORE>::value == 3, "");
+  static_assert(TypeListSize<TYPELIST_BEFORE> == 3, "");
   static_assert(TypeListElement<0, TYPELIST_BEFORE>::x == 1, "");
   static_assert(TypeListElement<1, TYPELIST_BEFORE>::x == 2, "");
   static_assert(TypeListElement<2, TYPELIST_BEFORE>::x == 3, "");
   
   typedef current::metaprogramming::map<add_100, TYPELIST_BEFORE> TYPELIST_AFTER;
-  static_assert(TypeListSize<TYPELIST_AFTER>::value == 3, "");
+  static_assert(TypeListSize<TYPELIST_AFTER> == 3, "");
   static_assert(TypeListElement<0, TYPELIST_AFTER>::x == 101, "");
   static_assert(TypeListElement<1, TYPELIST_AFTER>::x == 102, "");
   static_assert(TypeListElement<2, TYPELIST_AFTER>::x == 103, "");
@@ -59,13 +59,13 @@ TEST(TemplateMetaprogramming, Filter) {
   struct C { enum { y = 20 }; };
  
   typedef TypeList<A, B, C> TYPELIST_BEFORE;
-  static_assert(TypeListSize<TYPELIST_BEFORE>::value == 3, "");
+  static_assert(TypeListSize<TYPELIST_BEFORE> == 3, "");
   static_assert(TypeListElement<0, TYPELIST_BEFORE>::y == 10, "");
   static_assert(TypeListElement<1, TYPELIST_BEFORE>::y == 15, "");
   static_assert(TypeListElement<2, TYPELIST_BEFORE>::y == 20, "");
   
   typedef current::metaprogramming::filter<y_is_even, TYPELIST_BEFORE> TYPELIST_AFTER;
-  static_assert(TypeListSize<TYPELIST_AFTER>::value == 2, "");
+  static_assert(TypeListSize<TYPELIST_AFTER> == 2, "");
   static_assert(TypeListElement<0, TYPELIST_AFTER>::y == 10, "");
   static_assert(TypeListElement<1, TYPELIST_AFTER>::y == 20, "");
 }
