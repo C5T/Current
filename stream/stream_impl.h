@@ -135,7 +135,7 @@ class StreamPublisherImpl {
   template <current::locks::MutexLockStatus MLS,
             typename E,
             typename TIMESTAMP,
-            class = std::enable_if_t<ss::CanPublish<current::decay_t<E>, ENTRY>::value>>
+            class = std::enable_if_t<ss::can_publish_v<current::decay_t<E>, ENTRY>>>
   idxts_t PublisherPublishImpl(E&& e, TIMESTAMP&& timestamp) {
     const auto result =
         data_->persister.template PersisterPublishImpl<MLS>(std::forward<E>(e), std::forward<TIMESTAMP>(timestamp));

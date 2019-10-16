@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2017 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2019 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,39 +26,13 @@ SOFTWARE.
 #ifndef BLOCKS_SS_TYPES_H
 #define BLOCKS_SS_TYPES_H
 
-#include "../../port.h"
-
-#include "../../typesystem/variant.h"
-#include "../../bricks/time/chrono.h"
-#include "../../bricks/sync/locks.h"
+#include <type_traits>
 
 namespace current {
 namespace ss {
 
 template <typename ENTRY, typename STREAM_ENTRY>
-struct CanPublish {
-  constexpr static bool value = false;
-};
-
-template <typename E>
-struct CanPublish<E, E> {
-  constexpr static bool value = true;
-};
-
-template <typename E, typename NAME, typename... TS>
-struct CanPublish<E, VariantImpl<NAME, TypeListImpl<TS...>>> {
-  constexpr static bool value = TypeListContains<TypeListImpl<TS...>, E>::value;
-};
-
-// Special case, mostly for unit tests: can publish C-strings as C++ strings.
-template <>
-struct CanPublish<char*, std::string> {
-  constexpr static bool value = true;
-};
-template <int N>
-struct CanPublish<char[N], std::string> {
-  constexpr static bool value = true;
-};
+inline constexpr bool can_publish_v = std::is_constructible_v<STREAM_ENTRY, ENTRY>;
 
 }  // namespace current::ss
 }  // namespace current

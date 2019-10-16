@@ -59,14 +59,14 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
             typename E,
-            class = std::enable_if_t<CanPublish<current::decay_t<E>, ENTRY>::value>>
+            class = std::enable_if_t<can_publish_v<current::decay_t<E>, ENTRY>>>
   idxts_t Publish(E&& e) {
     return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), current::time::DefaultTimeArgument());
   }
 
   template <MutexLockStatus MLS = MutexLockStatus::NeedToLock,
             typename E,
-            class = std::enable_if_t<CanPublish<current::decay_t<E>, ENTRY>::value>>
+            class = std::enable_if_t<can_publish_v<current::decay_t<E>, ENTRY>>>
   idxts_t Publish(E&& e, std::chrono::microseconds us) {
     return IMPL::template PublisherPublishImpl<MLS>(std::forward<E>(e), us);
   }
