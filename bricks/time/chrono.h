@@ -189,7 +189,7 @@ struct IsTimestampImpl<DefaultTimeArgument> {
 };
 
 template <typename T>
-using IsTimestamp = IsTimestampImpl<decay<T>>;
+using IsTimestamp = IsTimestampImpl<decay_t<T>>;
 
 template <time::TimeRepresentation T = time::TimeRepresentation::Local>
 inline std::tm& FillStructTM(std::chrono::microseconds t, std::tm& output_tm) {

@@ -237,8 +237,8 @@ struct RTTIDynamicCallWrapper {
 
 template <typename TYPELIST, typename BASE, typename... REST>
 void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
-  RTTIDynamicCallWrapper<TYPELIST, current::decay<BASE>>::RunHandle(std::forward<BASE>(ref),
-                                                                    std::forward<REST>(rest)...);
+  RTTIDynamicCallWrapper<TYPELIST, current::decay_t<BASE>>::RunHandle(std::forward<BASE>(ref),
+                                                                      std::forward<REST>(rest)...);
 }
 
 }  // namespace metaprogramming

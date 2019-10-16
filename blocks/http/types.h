@@ -121,7 +121,7 @@ struct FillBody<REQUEST, true> {
 template <typename REQUEST>
 struct FillBody<REQUEST, false> {
   template <typename T>
-  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay<T>)> Fill(
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> Fill(
       REQUEST& request, T&& object, const std::string& content_type) {
     request.body = JSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultJSONContentType;

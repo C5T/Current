@@ -31,8 +31,6 @@ SOFTWARE.
 
 #include "util.h"
 
-#include "../template/decay.h"
-
 namespace current {
 namespace strings {
 
@@ -58,61 +56,44 @@ struct StringLengthOrOneForCharImpl<char> {
 
 template <typename T>
 inline size_t StringLengthOrOneForChar(T&& param) {
-  return StringLengthOrOneForCharImpl<rmref<T>>::Length(param);
+  return StringLengthOrOneForCharImpl<std::remove_reference_t<T>>::Length(param);
 }
-
-template <bool CAN_GET_LENGTH>
-struct OptionallyReserveOutputBufferImpl {
-  template <typename CONTAINER, typename SEPARATOR>
-  static void Impl(std::string&, const CONTAINER&, SEPARATOR&&) {}
-};
-
-template <>
-struct OptionallyReserveOutputBufferImpl<true> {
-  template <typename CONTAINER, typename SEPARATOR>
-  static void Impl(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
-    size_t length = 0;
-    for (const auto& cit : components) {
-      length += cit.length();
-    }
-    length += impl::StringLengthOrOneForChar(separator) * (components.size() - 1);
-    output.reserve(length);
-  }
-};
 
 namespace sfinae {
 
-template <typename T>
-struct HasBegin {
-  static constexpr bool CompileTimeCheck(char) { return false; }
-  static constexpr auto CompileTimeCheck(int) -> decltype(std::declval<T>().begin(), bool()) { return true; }
-};
-
-template <typename T, bool IS_CONTAINER>
-struct IsContainerOfStringsImpl {};
+template <typename T, typename = void>
+struct is_container : std::false_type {};
 
 template <typename T>
-struct IsContainerOfStringsImpl<T, false> {
-  enum { value = false };
-};
+struct is_container<T, std::void_t<decltype(std::declval<T>().begin()),
+                                   decltype(std::declval<T>().end()),
+                                   typename T::value_type>> : std::true_type {};
+template <typename T>
+constexpr bool is_container_of_strings() {
+  if constexpr (is_container<T>::value) {
+    return std::is_same_v<typename T::value_type, std::string>;
+  }
+  return false;
+}
 
 template <typename T>
-struct IsContainerOfStringsImpl<T, true> {
-  enum { value = std::is_same_v<std::string, current::decay<decltype(*std::declval<T>().begin())>> };
-};
-
-template <typename T>
-struct IsContainerOfStrings {
-  enum { value = IsContainerOfStringsImpl<T, HasBegin<T>::CompileTimeCheck(0)>::value };
-};
+constexpr bool is_container_of_strings_v = is_container_of_strings<T>();
 
 }  // namespace sfinae
 
 template <typename CONTAINER, typename SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
   // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
-  OptionallyReserveOutputBufferImpl<sfinae::IsContainerOfStrings<CONTAINER>::value>::Impl(
-      output, components, separator);
+  if constexpr(sfinae::is_container_of_strings_v<CONTAINER>) {
+    if (!components.empty()) {
+      size_t length = 0;
+      for (const auto& cit : components) {
+        length += cit.length();
+      }
+      length += impl::StringLengthOrOneForChar(separator) * (components.size() - 1);
+      output.reserve(length);
+    }
+  }
 }
 
 template <typename CONTAINER, typename SEPARATOR>

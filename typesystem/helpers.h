@@ -107,8 +107,8 @@ struct DefaultExistsInvocation {};
 template <typename TEST = DefaultExistsInvocation, typename T>
 bool Exists(T&& x) {
   return ExistsImplCaller<
-      std::conditional_t<std::is_same_v<TEST, DefaultExistsInvocation>, current::decay<T>, TEST>,
-      current::decay<T>>::CallExistsImpl(std::forward<T>(x));
+      std::conditional_t<std::is_same_v<TEST, DefaultExistsInvocation>, current::decay_t<T>, TEST>,
+      current::decay_t<T>>::CallExistsImpl(std::forward<T>(x));
 }
 
 template <typename OUTPUT, typename INPUT, bool HAS_VALUE_IMPL_METHOD>
@@ -122,22 +122,22 @@ struct PowerfulValueImplCaller {
 // For `OUTPUT == INPUT`, it's either plain `return x;`, or `return x.ValueImpl()`.
 template <typename T>
 struct PowerfulValueImplCaller<T, T, false> {
-  using DECAYED_T = current::decay<T>;
-  static const DECAYED_T& AccessValue(const DECAYED_T& x) { return x; }
-  static DECAYED_T& AccessValue(DECAYED_T& x) { return x; }
-  static DECAYED_T&& AccessValue(DECAYED_T&& x) { return std::move(x); }
+  using decayed_t = current::decay_t<T>;
+  static const decayed_t& AccessValue(const decayed_t& x) { return x; }
+  static decayed_t& AccessValue(decayed_t& x) { return x; }
+  static decayed_t&& AccessValue(decayed_t&& x) { return std::move(x); }
 };
 
 template <typename T>
 struct PowerfulValueImplCaller<T, T&, false> {
-  using DECAYED_T = current::decay<T>;
-  static DECAYED_T& AccessValue(DECAYED_T& x) { return x; }
+  using decayed_t = current::decay_t<T>;
+  static decayed_t& AccessValue(decayed_t& x) { return x; }
 };
 
 template <typename T>
 struct PowerfulValueImplCaller<T, const T&, false> {
-  using DECAYED_T = current::decay<T>;
-  static const DECAYED_T& AccessValue(const DECAYED_T& x) { return x; }
+  using decayed_t = current::decay_t<T>;
+  static const decayed_t& AccessValue(const decayed_t& x) { return x; }
 };
 
 template <typename T>

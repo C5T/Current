@@ -459,7 +459,7 @@ class FilePersister {
     // Explicit `MakeSureTheRightTypeIsSerialized` is essential, otherwise the `Variant`'s case
     // would be serialized in an unwrapped way when passed directly.
     file_persister_impl_->file_appender_ << JSON(idxts) << '\t'
-                                         << JSON(MakeSureTheRightTypeIsSerialized<ENTRY, decay<E>>::DoIt(
+                                         << JSON(MakeSureTheRightTypeIsSerialized<ENTRY, decay_t<E>>::DoIt(
                                                 std::forward<E>(entry))) << std::endl;
     ++iterator.next_index;
     file_persister_impl_->head_offset_ = 0;

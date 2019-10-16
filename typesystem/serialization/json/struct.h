@@ -60,7 +60,7 @@ class JSONStructFieldsSerializer {
 template <class JSON_FORMAT, typename T>
 struct SerializeStructImpl {
   static void SerializeStruct(JSONStructFieldsSerializer<JSON_FORMAT>& visitor, const T& source) {
-    using decayed_t = current::decay<T>;
+    using decayed_t = current::decay_t<T>;
     using super_t = current::reflection::SuperType<decayed_t>;
 
     SerializeStructImpl<JSON_FORMAT, super_t>::SerializeStruct(visitor, source);
@@ -117,7 +117,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>,
   };
 
   static void DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser, T& destination) {
-    using decayed_t = current::decay<T>;
+    using decayed_t = current::decay_t<T>;
     using super_t = current::reflection::SuperType<decayed_t>;
 
     if (json_parser && json_parser.Current().IsObject()) {

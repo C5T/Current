@@ -228,7 +228,7 @@ class Optimizer : impl::noncopyable {
   Optimizer(const OptimizerParameters& parameters, F& f) : f_reference_(f), parameters_(parameters) {}
 
   template <typename ARG,
-            class = std::enable_if_t<!std::is_same_v<current::decay<ARG>, OptimizerParameters>>,
+            class = std::enable_if_t<!std::is_same_v<current::decay_t<ARG>, OptimizerParameters>>,
             typename... ARGS>
   Optimizer(ARG&& arg, ARGS&&... args)
       : f_instance_(std::make_unique<F>(std::forward<ARG>(arg), std::forward<ARGS>(args)...)),

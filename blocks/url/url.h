@@ -314,7 +314,7 @@ struct URLParametersExtractor {
     template <typename T, FillObjectMode MODE>
     struct FillObjectImpl {
       static void DoIt(const std::map<std::string, std::string>& parameters, T& object) {
-        using decayed_t = current::decay<T>;
+        using decayed_t = current::decay_t<T>;
         using super_t = current::reflection::SuperType<decayed_t>;
         FillObjectImpl<super_t, MODE>::DoIt(parameters, static_cast<super_t&>(object));
         QueryParametersObjectFiller<T, MODE> parser{parameters};
