@@ -47,11 +47,11 @@ DEFINE_bool(skip_fwrite, false, "Set to not `fwrite()` into the files; for netwo
 
 PIPELINE_MAIN(BlockSource<ReceivingWorker>(FLAGS_listen_port),
               BlockWorker<IndexingWorker>(),
-              BlockWorker<SavingWorker>(FLAGS_dirname,
-                                        FLAGS_filebase,
-                                        FLAGS_blobs_per_file,
-                                        FLAGS_max_total_files,
-                                        FLAGS_wipe_files_at_startup,
-                                        FLAGS_skip_fwrite),
-              BlockWorker<SendingWorker>(FLAGS_host1, FLAGS_port1),
-              BlockWorker<SendingWorker>(FLAGS_host2, FLAGS_port2));
+              ParallelPipeline(BlockWorker<SavingWorker>(FLAGS_dirname,
+                                                         FLAGS_filebase,
+                                                         FLAGS_blobs_per_file,
+                                                         FLAGS_max_total_files,
+                                                         FLAGS_wipe_files_at_startup,
+                                                         FLAGS_skip_fwrite),
+                               BlockWorker<SendingWorker>(FLAGS_host1, FLAGS_port1),
+                               BlockWorker<SendingWorker>(FLAGS_host2, FLAGS_port2)));

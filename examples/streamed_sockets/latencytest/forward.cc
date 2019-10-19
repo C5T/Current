@@ -43,10 +43,10 @@ DEFINE_bool(wipe_files_at_startup, true, "Unset to not wipe the files from the p
 DEFINE_bool(skip_fwrite, false, "Set to not `fwrite()` into the files; for network perftesting only.");
 
 PIPELINE_MAIN(BlockSource<ReceivingWorker>(FLAGS_listen_port),
-              BlockWorker<SavingWorker>(FLAGS_dirname,
-                                        FLAGS_filebase,
-                                        FLAGS_blobs_per_file,
-                                        FLAGS_max_total_files,
-                                        FLAGS_wipe_files_at_startup,
-                                        FLAGS_skip_fwrite),
-              BlockWorker<SendingWorker>(FLAGS_host, FLAGS_port));
+              ParallelPipeline(BlockWorker<SavingWorker>(FLAGS_dirname,
+                                                         FLAGS_filebase,
+                                                         FLAGS_blobs_per_file,
+                                                         FLAGS_max_total_files,
+                                                         FLAGS_wipe_files_at_startup,
+                                                         FLAGS_skip_fwrite),
+                               BlockWorker<SendingWorker>(FLAGS_host, FLAGS_port)));
