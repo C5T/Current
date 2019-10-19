@@ -90,6 +90,7 @@ using BlockSource = BlockSourceOrWorker<SourceOrWorker::Source, T>;
 
 template <class T>
 using BlockWorker = BlockSourceOrWorker<SourceOrWorker::Worker, T>;
+
 template <class T>
 struct IsBlockSource final {
   inline constexpr static bool value = false;
@@ -127,7 +128,7 @@ using extract_worker_impl_t = typename IsBlockWorker<T>::worker_impl_t;
 // `PipelineWorker` is the worker wrapped into the assembled pipeline.
 //
 // `I` is the 1-based index of this worker, with 0 is reserved for the source. The `I`-s of all workers are distinct,
-// and there is one `volatile size_t` counter kept per worked in ths state. This `volatile size_t` keeps track of the
+// and there is one `volatile size_t` counter kept per worked in pipeline state. This counter keeps track of the
 // number of entries processed so far by this worker.
 //
 // `[U, V]` is the range of (1-based) indexes of workers that should complete in order for it to be acceptable
@@ -274,8 +275,8 @@ struct WorkersInstantiatorImpl<N, N, WORKERS_TYPELIST> {
  protected:
   WorkersInstantiatorImpl() {}
   WorkersInstantiatorImpl(WorkersInstantiatorImplConstructSequential) {}
-  template <int M, class PWS>
-  WorkersInstantiatorImpl(WorkersInstantiatorImplConstructParallel<M, M>, PWS) {}
+  template <int M, class UNUSED_PARALLEL_WORKERS>
+  WorkersInstantiatorImpl(WorkersInstantiatorImplConstructParallel<M, M>, UNUSED_PARALLEL_WORKERS&&) {}
 
  public:
   template <class PIPELINE>
@@ -287,6 +288,7 @@ using WorkersInstantiator = WorkersInstantiatorImpl<1, TypeListSize<WORKERS_TYPE
 
 template <class IMPL>
 struct PipelineRunner;
+
 template <class IMPL, typename BLOB>
 struct PipelineRunContext;
 
@@ -407,7 +409,7 @@ using CompileTimeFixedSizeFixedAccessorArray = CompileTimeFixedSizeFixedAccessor
 
 template <int U, int V, class A>
 struct CompileTimeMinimumArrayElementFromRange final {
-  static size_t Compute(const A& a) {
+  static size_t Compute(const volatile A& a) {
     const size_t lhs = a.CompileTimeFixedSizeFixedAccessorArrayElement<U>::element;
     const size_t rhs = CompileTimeMinimumArrayElementFromRange<U + 1, V, A>::Compute(a);
     return std::min(lhs, rhs);
@@ -416,7 +418,7 @@ struct CompileTimeMinimumArrayElementFromRange final {
 
 template <int I, class A>
 struct CompileTimeMinimumArrayElementFromRange<I, I, A> final {
-  static size_t Compute(const A& a) { return a.CompileTimeFixedSizeFixedAccessorArrayElement<I>::element; }
+  static size_t Compute(const volatile A& a) { return a.CompileTimeFixedSizeFixedAccessorArrayElement<I>::element; }
 };
 
 template <int, class...>
@@ -460,7 +462,7 @@ class PipelineState<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>> final {
   total_ready_t total_ready;
 
   template <int I>
-  size_t InternalReadyCountFor() const {
+  size_t InternalReadyCountFor() const volatile {
     // NOTE(dkorolev): Per the comment above, the "real" implementation should be minimum over a set, not over a range,
     // of indexes of what should be "ready" before worker `I` (or source `0`) can run further along the circular buffer.
     using UV = UVPerI<I, WORKERS...>;
@@ -471,14 +473,14 @@ class PipelineState<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>> final {
   size_t GrandTotalProcessedCount() const { return InternalReadyCountFor<N - 1>(); }
 
   template <int I>
-  size_t ReadyCountFor() const {
+  size_t ReadyCountFor() const volatile {
     // NOTE(dkorolev): Per the comment above, the "real" implementation would be different from "`U - 1` for this `I`".
     return InternalReadyCountFor<(N + UVPerI<I, WORKERS...>::U - 1) % N>();  // `ReadyCountFor<0>()` == grand total.
   }
 
+  // NOTE(dkorolev): Only one thread runs each particular worker/source, so this call can be thread-unsafe by design.
   template <int I>
   void UpdateOutput(size_t value) {
-// NOTE(dkorolev): Only one thread runs each particular worker/source, so this call can be thread-unsafe by design.
 #ifndef NDEBUG
     if (!(value >= total_ready.CompileTimeFixedSizeFixedAccessorArrayElement<I>::element)) {
       std::cerr << "Internal error: The " << (I ? "worker" : "source")
@@ -540,7 +542,8 @@ struct PipelineWorkerThread<I, N, PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>
 
  private:
   void WorkerThread() {
-    const state_t& volatile_immutable_state = state.ImmutableUse([](const state_t& value) { return value; });
+    const volatile state_t& volatile_state_reference =
+        state.ImmutableUse([](const state_t& value) -> const state_t& { return value; });
 
     const size_t total_buffer_size = buffer.size();
     const size_t total_buffer_size_minus_one = total_buffer_size - 1u;
@@ -554,7 +557,7 @@ struct PipelineWorkerThread<I, N, PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>
     size_t updating_total_blobs_done = 0u;
     size_t trailing_total_blobs_read = 0u;
     bool terminate_requested = false;
-    const auto Update = [&trailing_total_blobs_read, &terminate_requested](const state_t& state) {
+    const auto Update = [&trailing_total_blobs_read, &terminate_requested](const volatile state_t& state) {
       trailing_total_blobs_read = std::max(trailing_total_blobs_read, state.template ReadyCountFor<I>());
       terminate_requested |= state.terminate_requested;
     };
@@ -563,7 +566,7 @@ struct PipelineWorkerThread<I, N, PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>
     };
 
     while (true) {
-      Update(volatile_immutable_state);
+      Update(volatile_state_reference);
       if (!IsReady()) {
         state.Wait([&IsReady, &Update](const state_t& value) {
           Update(value);
@@ -643,7 +646,8 @@ struct PipelineSourceThread<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>, BLOB
 
  private:
   void SourceThread() {
-    const state_t& volatile_immutable_state = state.ImmutableUse([](const state_t& value) { return value; });
+    const volatile state_t& volatile_state_reference =
+        state.ImmutableUse([](const state_t& value) -> const state_t& { return value; });
 
     const size_t total_buffer_size = buffer.size();
     if ((total_buffer_size & (total_buffer_size - 1u)) != 0u) {
@@ -675,7 +679,7 @@ struct PipelineSourceThread<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>, BLOB
     const auto Update = [&trailing_total_bytes_aval,
                          total_buffer_size_in_bytes,
                          &trailing_total_blobs_done,
-                         &terminate_requested](const state_t& state) {
+                         &terminate_requested](const volatile state_t& state) {
       trailing_total_blobs_done = std::max(trailing_total_blobs_done, state.template ReadyCountFor<0>());
       trailing_total_bytes_aval = (trailing_total_blobs_done * sizeof(BLOB) + total_buffer_size_in_bytes);
       terminate_requested |= state.terminate_requested;
@@ -687,7 +691,7 @@ struct PipelineSourceThread<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>, BLOB
     };
 
     while (true) {
-      Update(volatile_immutable_state);
+      Update(volatile_state_reference);
       if (!IsReady()) {
         state.Wait([&IsReady, &Update](const state_t& value) {
           Update(value);
