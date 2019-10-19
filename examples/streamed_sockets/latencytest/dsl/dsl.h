@@ -832,6 +832,8 @@ struct PipelineRunContext<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>, BLOB> 
     impl->DoJoinAllThreads();
   }
 
+  PipelineRunContext() = default;
+
   PipelineRunContext(const self_t& self, const PipelineRunParams<BLOB>& params)
       : impl(std::make_shared<PipelineRunContextImpl>(self, params)) {}
 };

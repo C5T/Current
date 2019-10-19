@@ -27,6 +27,7 @@ SOFTWARE.
 #include "dsl.h"
 
 #include "../../../../3rdparty/gtest/gtest-main.h"
+#include "../../../../bricks/strings/join.h"
 
 namespace current::examples::streamed_sockets {
 struct SourceA {};
@@ -424,18 +425,26 @@ TEST(NextRipcurrent, ParallelProcessingTypes) {
 
 namespace current::examples::streamed_sockets {
 
-struct TestBlob {
+struct TestBlob final {
   uint64_t x[4];
 };
 
-struct TestBlobSource {
+struct TestObjectsLifetimeTracker final {
+  std::vector<std::string> log;
+  void Reset() { log.clear(); }
+};
+
+struct TestBlobSource final {
   int foo = 100;  // For the test to make sure just one instance of `TestBlobSource` was created per pipeline.
   std::array<uint64_t, 4> value;
   const std::array<uint64_t, 4> delta;
   TestBlob blob;
-  TestBlobSource(std::array<uint64_t, 4> init, std::array<uint64_t, 4> delta) : value(init), delta(delta) {}
+  TestBlobSource(std::array<uint64_t, 4> init, std::array<uint64_t, 4> delta) : value(init), delta(delta) {
+    Singleton<TestObjectsLifetimeTracker>().log.push_back("Source()");
+  }
+  ~TestBlobSource() { Singleton<TestObjectsLifetimeTracker>().log.push_back("~Source()"); }
   size_t DoGetInput(uint8_t* begin, uint8_t* end) {
-    size_t count = (end - begin) / sizeof(TestBlob);
+    const size_t count = (end - begin) / sizeof(TestBlob);
     TestBlob* ptr = reinterpret_cast<TestBlob*>(begin);
     for (size_t i = 0; i < count; ++i) {
       for (size_t i = 0; i < 4; ++i) {
@@ -449,10 +458,15 @@ struct TestBlobSource {
 };
 
 template <int I>
-struct TestBlobCollector {
+struct TestBlobCollector final {
   int bar = 200;  // For the test to make sure just one instance of `TestBlobCollector` is created per pipeline block.
   std::vector<uint64_t>& output;
-  explicit TestBlobCollector(std::vector<uint64_t>& output) : output(output) {}
+  explicit TestBlobCollector(std::vector<uint64_t>& output) : output(output) {
+    Singleton<TestObjectsLifetimeTracker>().log.push_back(current::strings::Printf("Collector(%d)", I));
+  }
+  ~TestBlobCollector() {
+    Singleton<TestObjectsLifetimeTracker>().log.push_back(current::strings::Printf("~Collector(%d)", I));
+  }
   TestBlob* DoWork(TestBlob* begin, TestBlob* end) {
     while (begin != end) {
       output.push_back(begin->x[I]);
@@ -462,11 +476,18 @@ struct TestBlobCollector {
   }
 };
 
-struct TestBlobModifier {
+struct TestBlobModifier final {
   const size_t i;
   const uint64_t k;
   const uint64_t b;
-  TestBlobModifier(size_t i, uint64_t k, uint64_t b) : i(i), k(k), b(b) {}
+  TestBlobModifier(size_t i, uint64_t k, uint64_t b) : i(i), k(k), b(b) {
+    Singleton<TestObjectsLifetimeTracker>().log.push_back(
+        current::strings::Printf("Modifier(%d, %d, %d)", int(i), int(k), int(b)));
+  }
+  ~TestBlobModifier() {
+    Singleton<TestObjectsLifetimeTracker>().log.push_back(
+        current::strings::Printf("~Modifier(%d, %d, %d)", int(i), int(k), int(b)));
+  }
   TestBlob* DoWork(TestBlob* begin, TestBlob* end) {
     while (begin != end) {
       begin->x[i] = begin->x[i] * k + b;
@@ -482,68 +503,87 @@ void RunProcessingTest(std::array<uint64_t, 4>& init,
                        std::array<std::vector<uint64_t>, 4>& output,
                        PROCESSING_PIPELINE pipeline) {
   {
-    // The smoke test.
-    init = {100, 100, 100, 100};
-    step = {1, 2, 3, 4};
-    for (std::vector<uint64_t>& output_vector : output) {
-      output_vector.clear();
-    }
+    decltype(pipeline.Run(PipelineRunParams<TestBlob>())) save_context;
 
-    auto context = pipeline.Run(PipelineRunParams<TestBlob>());
-
-    EXPECT_EQ(5u, context.N);
-
-    static_assert(sizeof(is_same_or_compile_error<TestBlobSource&, decltype(context.Source())>));
-    static_assert(sizeof(is_same_or_compile_error<TestBlobCollector<0>&, decltype(context.template Worker<1>())>));
-
-    const auto immutable_context = context;
-
-    static_assert(sizeof(is_same_or_compile_error<const TestBlobSource&, decltype(immutable_context.Source())>));
-    static_assert(sizeof(
-        is_same_or_compile_error<const TestBlobCollector<1>&, decltype(immutable_context.template Worker<2>())>));
-    static_assert(sizeof(
-        is_same_or_compile_error<const TestBlobCollector<2>&, decltype(immutable_context.template Worker<3>())>));
-    static_assert(sizeof(
-        is_same_or_compile_error<const TestBlobCollector<3>&, decltype(immutable_context.template Worker<4>())>));
-
-    EXPECT_EQ(100, context.Source().foo);
-    EXPECT_EQ(200, context.template Worker<1>().bar);
-    EXPECT_EQ(200, context.template Worker<2>().bar);
-    EXPECT_EQ(200, context.template Worker<3>().bar);
-    EXPECT_EQ(200, context.template Worker<4>().bar);
-    EXPECT_EQ(100, immutable_context.Source().foo);
-    EXPECT_EQ(200, immutable_context.template Worker<1>().bar);
-    ++context.Source().foo;
-    context.template Worker<1>().bar += 2;
-    context.template Worker<2>().bar += 3;
-    context.template Worker<3>().bar += 4;
-    context.template Worker<4>().bar += 5;
-    EXPECT_EQ(101, context.Source().foo);
-    EXPECT_EQ(202, context.template Worker<1>().bar);
-    EXPECT_EQ(101, immutable_context.Source().foo);
-    EXPECT_EQ(202, immutable_context.template Worker<1>().bar);
-    EXPECT_EQ(203, immutable_context.template Worker<2>().bar);
-    EXPECT_EQ(204, immutable_context.template Worker<3>().bar);
-    EXPECT_EQ(205, immutable_context.template Worker<4>().bar);
-
-    while (context.GrandTotalProcessedCount() < 100u) {
-      std::this_thread::yield();
-    }
-
-    context.ForceStop();
-
-    ASSERT_GE(context.GrandTotalProcessedCount(), 100u);
-    ASSERT_GE(output[0].size(), 100u);
-    ASSERT_GE(output[1].size(), 100u);
-    ASSERT_GE(output[2].size(), 100u);
-    ASSERT_GE(output[3].size(), 100u);
-
-    for (size_t t = 0; t < 4; ++t) {
-      for (size_t i = 0; i < output[t].size(); ++i) {
-        EXPECT_EQ(output[t][i], init[t] + i * step[t]);
+    {
+      // The smoke test.
+      init = {100, 100, 100, 100};
+      step = {1, 2, 3, 4};
+      for (std::vector<uint64_t>& output_vector : output) {
+        output_vector.clear();
       }
+
+      EXPECT_EQ("", current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
+      auto context = pipeline.Run(PipelineRunParams<TestBlob>());
+      EXPECT_EQ("Collector(3) Collector(2) Collector(1) Collector(0) Source()",
+                current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
+
+      EXPECT_EQ(5u, context.N);
+
+      static_assert(sizeof(is_same_or_compile_error<TestBlobSource&, decltype(context.Source())>));
+      static_assert(sizeof(is_same_or_compile_error<TestBlobCollector<0>&, decltype(context.template Worker<1>())>));
+
+      const auto immutable_context = context;
+
+      static_assert(sizeof(is_same_or_compile_error<const TestBlobSource&, decltype(immutable_context.Source())>));
+      static_assert(sizeof(
+          is_same_or_compile_error<const TestBlobCollector<1>&, decltype(immutable_context.template Worker<2>())>));
+      static_assert(sizeof(
+          is_same_or_compile_error<const TestBlobCollector<2>&, decltype(immutable_context.template Worker<3>())>));
+      static_assert(sizeof(
+          is_same_or_compile_error<const TestBlobCollector<3>&, decltype(immutable_context.template Worker<4>())>));
+
+      EXPECT_EQ(100, context.Source().foo);
+      EXPECT_EQ(200, context.template Worker<1>().bar);
+      EXPECT_EQ(200, context.template Worker<2>().bar);
+      EXPECT_EQ(200, context.template Worker<3>().bar);
+      EXPECT_EQ(200, context.template Worker<4>().bar);
+      EXPECT_EQ(100, immutable_context.Source().foo);
+      EXPECT_EQ(200, immutable_context.template Worker<1>().bar);
+      ++context.Source().foo;
+      context.template Worker<1>().bar += 2;
+      context.template Worker<2>().bar += 3;
+      context.template Worker<3>().bar += 4;
+      context.template Worker<4>().bar += 5;
+      EXPECT_EQ(101, context.Source().foo);
+      EXPECT_EQ(202, context.template Worker<1>().bar);
+      EXPECT_EQ(101, immutable_context.Source().foo);
+      EXPECT_EQ(202, immutable_context.template Worker<1>().bar);
+      EXPECT_EQ(203, immutable_context.template Worker<2>().bar);
+      EXPECT_EQ(204, immutable_context.template Worker<3>().bar);
+      EXPECT_EQ(205, immutable_context.template Worker<4>().bar);
+
+      while (context.GrandTotalProcessedCount() < 100u) {
+        std::this_thread::yield();
+      }
+
+      context.ForceStop();
+
+      ASSERT_GE(context.GrandTotalProcessedCount(), 100u);
+      ASSERT_GE(output[0].size(), 100u);
+      ASSERT_GE(output[1].size(), 100u);
+      ASSERT_GE(output[2].size(), 100u);
+      ASSERT_GE(output[3].size(), 100u);
+
+      for (size_t t = 0; t < 4; ++t) {
+        for (size_t i = 0; i < output[t].size(); ++i) {
+          EXPECT_EQ(output[t][i], init[t] + i * step[t]);
+        }
+      }
+
+      // Delay calling the destructors for a bit.
+      save_context = context;
     }
+    // No destructors should be called by now.
+    EXPECT_EQ("Collector(3) Collector(2) Collector(1) Collector(0) Source()",
+              current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
   }
+
+  // The destructors should be called by now, in the reverse order of construction.
+  EXPECT_EQ(
+      "Collector(3) Collector(2) Collector(1) Collector(0) Source() ~Source() ~Collector(0) ~Collector(1) "
+      "~Collector(2) ~Collector(3)",
+      current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
 
   {
     // The performance test.
@@ -553,7 +593,15 @@ void RunProcessingTest(std::array<uint64_t, 4>& init,
       output_vector.clear();
     }
 
+    EXPECT_EQ(
+        "Collector(3) Collector(2) Collector(1) Collector(0) Source() ~Source() ~Collector(0) ~Collector(1) "
+        "~Collector(2) ~Collector(3)",
+        current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
     auto context = pipeline.Run(PipelineRunParams<TestBlob>().SetCircularBufferSize(1ull << 29));  // 512MB.
+    EXPECT_EQ(
+        "Collector(3) Collector(2) Collector(1) Collector(0) Source() ~Source() ~Collector(0) ~Collector(1) "
+        "~Collector(2) ~Collector(3) Collector(3) Collector(2) Collector(1) Collector(0) Source()",
+        current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
 
 #ifdef NDEBUG
     constexpr static size_t N = 50'000'000u;
@@ -579,6 +627,12 @@ void RunProcessingTest(std::array<uint64_t, 4>& init,
       }
     }
   }
+  EXPECT_EQ(
+      "Collector(3) Collector(2) Collector(1) Collector(0) Source() ~Source() ~Collector(0) ~Collector(1) "
+      "~Collector(2) ~Collector(3)"
+      " Collector(3) Collector(2) Collector(1) Collector(0) Source() ~Source() ~Collector(0) ~Collector(1) "
+      "~Collector(2) ~Collector(3)",
+      current::strings::Join(current::Singleton<TestObjectsLifetimeTracker>().log, ' '));
 }
 
 }  // namespace current::examples::streamed_sockets
@@ -586,6 +640,7 @@ void RunProcessingTest(std::array<uint64_t, 4>& init,
 TEST(NextRipcurrent, SequentialProcessing) {
   using namespace current::examples::streamed_sockets;
 
+  current::Singleton<TestObjectsLifetimeTracker>().Reset();
   std::array<uint64_t, 4> init;
   std::array<uint64_t, 4> step;
   std::array<std::vector<uint64_t>, 4> output;
@@ -602,6 +657,7 @@ TEST(NextRipcurrent, SequentialProcessing) {
 TEST(NextRipcurrent, ParallelProcessing) {
   using namespace current::examples::streamed_sockets;
 
+  current::Singleton<TestObjectsLifetimeTracker>().Reset();
   std::array<uint64_t, 4> init;
   std::array<uint64_t, 4> step;
   std::array<std::vector<uint64_t>, 4> output;
