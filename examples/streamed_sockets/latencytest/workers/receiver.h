@@ -44,7 +44,7 @@ struct ReceivingWorker final {
   explicit ReceivingWorker(uint16_t port) : port(port) {}
 
   size_t DoGetInput(uint8_t* begin, uint8_t* end) {
-    // NOTE(dkorolev): My experiment show that latency is sensitive to the socket read block size,
+    // NOTE(dkorolev): My experiments show that latency is sensitive to the socket read block size,
     // and the block size of 32K is good enough, as it both doesn't hurt throughput and results in low latency.
     constexpr static size_t block_size_in_bytes = (1 << 15);
     if (end > begin + block_size_in_bytes) {
