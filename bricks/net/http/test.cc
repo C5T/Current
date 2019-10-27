@@ -423,11 +423,22 @@ TEST(PosixHTTPServerTest, SmokePOSTBodyTooLong) {
     }
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
-  connection.BlockingWrite("Host: localhost\r\n", true);
-  connection.BlockingWrite("Content-Length: 987654321000\r\n", true);
-  connection.BlockingWrite("\r\n", true);
-  connection.BlockingWrite("\r\n", false);
+  try {
+    connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+    connection.BlockingWrite("Host: localhost\r\n", true);
+    connection.BlockingWrite("Content-Length: 987654321000\r\n", true);
+    connection.BlockingWrite("\r\n", true);
+    connection.BlockingWrite("\r\n", true);
+    // Intentionally send large enough payload to trigger race condition between
+    // server closing the socket and client still sending the data.
+    char dummy_buffer[1024 * 1024];
+    connection.BlockingWrite(dummy_buffer, sizeof(dummy_buffer), false);
+  } catch (current::net::SocketWriteException&) {
+    // When server gets the `Content-Length` that exceeds the supported maximum
+    // it closes the connection (see https://tools.ietf.org/html/rfc7231#section-6.5.11).
+    // Thus, client may face a situation when it still tries to write to the socket
+    // already closed by server, so it needs to properly handle this expected behavior.
+  }
   ExpectToReceive(
       "HTTP/1.1 413 Request Entity Too Large\r\n"
       "Content-Type: text/html; charset=utf-8\r\n"
