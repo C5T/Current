@@ -66,7 +66,7 @@ namespace current {
 namespace net {
 
 const size_t kMaxServerQueuedConnections = 1024;
-const bool kDisableNagleAlgorithmByDefault = false;
+const bool kDisableNagleAlgorithmByDefault = true;
 
 struct SocketSystemInitializer {
 #ifdef CURRENT_WINDOWS
