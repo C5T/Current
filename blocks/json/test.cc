@@ -95,6 +95,23 @@ TEST(UniversalJSON, Object) {
   EXPECT_EQ("a : 101", results[0]);
   EXPECT_EQ("c : \"the order is preserved\"", results[1]);
   EXPECT_EQ("b : null", results[2]);
+
+  JSONValue mutable_parsed = parsed;
+  EXPECT_EQ(json, AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).erase("z");
+  EXPECT_EQ(json, AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).erase("a");
+  EXPECT_EQ("{\"c\":\"the order is preserved\",\"b\":null}", AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).push_back("a", JSONNumber(101));
+  EXPECT_EQ("{\"c\":\"the order is preserved\",\"b\":null,\"a\":101}", AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).erase("b").erase("c").push_back("c", JSONString("foo")).push_back("b", JSONNull());
+  EXPECT_EQ("{\"a\":101,\"c\":\"foo\",\"b\":null}", AsJSON(mutable_parsed));
+
+  using JO = JSONObject;
+  using JN = JSONNumber;
+  EXPECT_EQ(
+      "{\"x\":42,\"y\":{\"a\":1,\"b\":2}}",
+      AsJSON(JO().push_back("x", JN(42)).push_back("y", JO().push_back("a", JN(1)).push_back("b", JN(2)))));
 }
 
 TEST(UniversalJSON, FloatingPoint) {
