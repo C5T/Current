@@ -159,6 +159,16 @@ CURRENT_STRUCT(JSONObject) {
     const auto cit = fields.find(key);
     return cit != fields.end() ? cit->second : null;
   }
+  JSONObject& push_back(const std::string& name, const JSONValue& value) {
+    keys.push_back(name);
+    fields.emplace(name, value);
+    return *this;
+  }
+  JSONObject& erase(const std::string& name) {
+    keys.erase(std::remove(keys.begin(), keys.end(), name), keys.end());
+    fields.erase(name);
+    return *this;
+  }
   void DoAppendToJSON(std::ostream& os) const {
     os << '{';
     bool first = true;
