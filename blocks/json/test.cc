@@ -56,8 +56,8 @@ TEST(UniversalJSON, Numbers) {
   EXPECT_EQ("-0.98765", AsJSON(ParseJSONUniversally("-0.98765")));
   EXPECT_EQ("-12345", AsJSON(ParseJSONUniversally("-12345")));
   EXPECT_EQ("98765", AsJSON(ParseJSONUniversally("98765")));
-  EXPECT_EQ("1e+15", AsJSON(ParseJSONUniversally("1e+15")));
-  EXPECT_EQ("1e-25", AsJSON(ParseJSONUniversally("1e-25")));
+  EXPECT_EQ("1000000000000000", AsJSON(ParseJSONUniversally("1e+15")));
+  EXPECT_EQ("1e-15", AsJSON(ParseJSONUniversally("1e-15")));
 }
 
 TEST(UniversalJSON, Array) {
@@ -95,4 +95,19 @@ TEST(UniversalJSON, Object) {
   EXPECT_EQ("a : 101", results[0]);
   EXPECT_EQ("c : \"the order is preserved\"", results[1]);
   EXPECT_EQ("b : null", results[2]);
+}
+
+TEST(UniversalJSON, FloatingPoint) {
+  {
+    const std::string json = "{\"x\":1234.56}";
+    EXPECT_EQ(json, AsJSON(ParseJSONUniversally(json)));
+  }
+  {
+    const std::string json = "{\"y\":12345.67}";
+    EXPECT_EQ(json, AsJSON(ParseJSONUniversally(json)));
+  }
+  {
+    const std::string json = "{\"z\":9876543210}";
+    EXPECT_EQ(json, AsJSON(ParseJSONUniversally(json)));
+  }
 }

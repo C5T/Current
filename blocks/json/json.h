@@ -82,7 +82,17 @@ CURRENT_STRUCT(JSONNumber) {
   CURRENT_FIELD(number, double);
   CURRENT_CONSTRUCTOR(JSONNumber)(double number = 0) : number(number) {}
   operator double() const { return number; }
-  void DoAppendToJSON(std::ostream& os) const { os << number; }
+  void DoAppendToJSON(std::ostream& os) const {
+    if (number == std::floor(number)) {
+      if (number < 0) {
+        os << JSON(static_cast<int64_t>(number));
+      } else {
+        os << JSON(static_cast<uint64_t>(number));
+      }
+    } else {
+      os << JSON(number);
+    }
+  }
 };
 
 CURRENT_STRUCT(JSONBoolean) {
