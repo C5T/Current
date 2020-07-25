@@ -32,8 +32,8 @@ SOFTWARE.
 #include "../url/url.h"
 
 #include "../../bricks/net/http/http.h"
-#include "../../bricks/time/chrono.h"
 #include "../../bricks/template/decay.h"
+#include "../../bricks/time/chrono.h"
 
 namespace current {
 namespace http {
@@ -97,8 +97,7 @@ struct Request final {
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   template <typename T, typename... TS>
-  std::enable_if_t<!std::is_base_of_v<IHasDoRespondViaHTTP, current::decay_t<T>>>
-  operator()(T&& arg, TS&&... args) {
+  std::enable_if_t<!std::is_base_of_v<IHasDoRespondViaHTTP, current::decay_t<T>>> operator()(T&& arg, TS&&... args) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }
