@@ -106,6 +106,12 @@ TEST(UniversalJSON, Object) {
   EXPECT_EQ("{\"c\":\"the order is preserved\",\"b\":null,\"a\":101}", AsJSON(mutable_parsed));
   Value<JSONObject>(mutable_parsed).erase("b").erase("c").push_back("c", JSONString("foo")).push_back("b", JSONNull());
   EXPECT_EQ("{\"a\":101,\"c\":\"foo\",\"b\":null}", AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).push_back("c", JSONString("bar"));
+  EXPECT_EQ("{\"a\":101,\"b\":null,\"c\":\"bar\"}", AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).push_back("a", JSONNumber(888));
+  EXPECT_EQ("{\"b\":null,\"c\":\"bar\",\"a\":888}", AsJSON(mutable_parsed));
+  Value<JSONObject>(mutable_parsed).push_back("a", JSONNumber(999));
+  EXPECT_EQ("{\"b\":null,\"c\":\"bar\",\"a\":999}", AsJSON(mutable_parsed));
 
   using JO = JSONObject;
   using JN = JSONNumber;

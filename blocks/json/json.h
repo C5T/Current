@@ -160,8 +160,20 @@ CURRENT_STRUCT(JSONObject) {
     return cit != fields.end() ? cit->second : null;
   }
   JSONObject& push_back(const std::string& name, const JSONValue& value) {
-    keys.push_back(name);
-    fields.emplace(name, value);
+    auto it_field = fields.find(name);
+    if (it_field == std::end(fields)) {
+      keys.push_back(name);
+      fields.emplace(name, value);
+    } else {
+      auto it_list = std::find(std::begin(keys), std::end(keys), name);
+      auto it_list_next = it_list;
+      while (++it_list_next != std::end(keys)) {
+        *it_list = *it_list_next;
+        ++it_list;
+      }
+      *it_list = name;
+      it_field->second = value;
+    }
     return *this;
   }
   JSONObject& erase(const std::string& name) {
