@@ -111,11 +111,11 @@ CURRENT_STRUCT(ServerDirective, BlockDirective) {
   }
 
   LocationDirective& CreateLocation(const std::string& location) {
-    return SUPER::Create(LocationDirective(location));
+    return BlockDirective::Create(LocationDirective(location));
   }
 
   LocationDirective& CreateProxyPassLocation(const std::string& location, const std::string& proxy_pass_to) {
-    return SUPER::Create(ProxyPassLocationDirective(location, proxy_pass_to));
+    return BlockDirective::Create(ProxyPassLocationDirective(location, proxy_pass_to));
   }
 };
 
@@ -123,12 +123,12 @@ CURRENT_STRUCT(HttpDirective, BlockDirective) {
   CURRENT_DEFAULT_CONSTRUCTOR(HttpDirective) : SUPER("http") {}
 
   ServerDirective& CreateServer(uint16_t port) {
-    for (const auto& d : SUPER::directives) {
+    for (const auto& d : BlockDirective::directives) {
       if (Exists<ServerDirective>(d) && Value<ServerDirective>(d).port == port) {
          CURRENT_THROW(PortAlreadyUsedException(port));
       }
     }
-    return SUPER::Create(ServerDirective(port));
+    return BlockDirective::Create(ServerDirective(port));
   }
 };
 // clang-format on
