@@ -168,7 +168,6 @@ CURRENT_STRUCT(JSONObject) {
       it_field->second = value;
       auto it_list = std::find(std::begin(keys), std::end(keys), name);
       std::rotate(it_list, it_list + 1u, std::end(keys));
-      keys.back() = name;
     }
     return *this;
   }
