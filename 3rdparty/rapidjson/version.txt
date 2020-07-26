@@ -1,3 +1,10 @@
+Updated from https://github.com/Tencent/rapidjson.
+Commit: f56928de85d56add3ca6ae7cf7f119a42ee1585b
+Cut by @dkorolev July 25th 2020.
+This directory is the `include/rapidjson` one, with the `license.txt` file copied over.
+
+* * *
+
 Origin: https://github.com/C5T/rapidjson, C5T fork kept up to date with https://github.com/miloyip/rapidjson.git
 Commit: 67d8a99477b4e1b638b920cc9b02f8910dfb05e7
 

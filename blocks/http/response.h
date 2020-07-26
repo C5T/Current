@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../../bricks/net/exceptions.h"
 #include "../../bricks/net/http/http.h"
 #include "../../bricks/strings/is_string_type.h"
+#include "../../bricks/template/decay.h"
 
 namespace current {
 namespace http {
@@ -79,17 +80,14 @@ struct Response final : IHasDoRespondViaHTTP {
   Response() : body(""), code(HTTPResponseCode.OK), content_type(net::constants::kDefaultContentType) {}
 
   Response(const Response&) = default;
-  Response(Response&) = default;  // Apparently, required to return a dot-constructed `Response` from a function.
   Response(Response&&) = default;
 
   Response& operator=(const Response&) = default;
-  Response& operator=(Response&) = default;
   Response& operator=(Response&&) = default;
 
-  template <typename... ARGS>
-  Response(ARGS&&... args)
-      : initialized(true) {
-    Construct(std::forward<ARGS>(args)...);
+  template <typename ARG, typename... ARGS, class = std::enable_if_t<!std::is_same_v<Response, current::decay_t<ARG>>>>
+  Response(ARG&& arg, ARGS&&... args) : initialized(true) {
+    Construct(std::forward<ARG>(arg), std::forward<ARGS>(args)...);
   }
 
   void Construct(const Response& rhs) {

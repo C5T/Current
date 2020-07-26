@@ -166,7 +166,6 @@ struct SuperTypeImpl {
 template <typename T>
 using SuperType = typename SuperTypeImpl<T>::type;
 
-#ifndef CURRENT_WINDOWS
 template <typename T, typename INTERNAL>
 struct TemplateInnerTypeImplExtractor;
 
@@ -186,14 +185,6 @@ struct TemplateInnerTypeImpl {
                 "`TemplateInnerType` must be called with the type defined via `CURRENT_STRUCT` macro.");
   using type = typename TemplateInnerTypeImplExtractor<T, typename T::template_inner_t_internal>::type;
 };
-#else
-template <typename T>
-struct TemplateInnerTypeImpl {
-  static_assert(IS_CURRENT_STRUCT(T),
-                "`TemplateInnerType` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  using type = typename T::template_inner_t;
-};
-#endif  // CURRENT_WINDOWS
 
 template <typename T>
 using TemplateInnerType = typename TemplateInnerTypeImpl<T>::type;

@@ -54,30 +54,21 @@ struct SUPER_SELECTOR<DF, T> {
 };
 
 template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T, typename TEMPLATE_INNER>
-#ifndef CURRENT_WINDOWS
 struct SUPER_IMPL : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
-#else
-struct SUPER_IMPL : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
-#endif
   using super_t = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
 
-  SUPER_IMPL() = default;
-  SUPER_IMPL(const super_t& rhs) : super_t(rhs) {}
-  SUPER_IMPL(super_t&& rhs) : super_t(std::move(rhs)) {}
+  template <class IT = INSTANTIATION_TYPE, class = std::enable_if_t<std::is_same_v<IT, DF>>>
+  SUPER_IMPL(const super_t& self) : super_t(self) {}
+
+  template <class IT = INSTANTIATION_TYPE, class = std::enable_if_t<std::is_same_v<IT, DF>>>
+  SUPER_IMPL(super_t&& self) : super_t(self) {}
+
   using super_t::super_t;
 
-#ifndef CURRENT_WINDOWS
   using template_inner_t_internal = TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
-#else
-  using template_inner_t = TEMPLATE_INNER;  // To extract `Bar` from `CURRENT_STRUCT_T(Foo)` => `Foo<Bar>`.
-#endif
   constexpr static const char* CURRENT_STRUCT_NAME() { return REFLECTION_HELPER::CURRENT_STRUCT_NAME(); }
   using CURRENT_FIELD_COUNT_STRUCT = typename REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
   static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }
-#ifdef CURRENT_WINDOWS
-  using FIELD_INDEX_BASE = typename REFLECTION_HELPER::FIELD_INDEX_BASE;
-  using SUPER = SUPER_IMPL;
-#endif
 };
 
 template <typename T>
@@ -170,8 +161,6 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   using s = CSI_##s<::crnt::r::DF>
 
 // Current structure implementation.
-#ifndef CURRENT_WINDOWS
-
 #define CURRENT_STRUCT_HELPERS(s, super)                                           \
   template <typename INSTANTIATION_TYPE>                                           \
   struct CSI_##s;                                                                  \
@@ -187,10 +176,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   };                                                                               \
   struct CSSH_##s {                                                                \
     using FIELD_INDEX_BASE = typename CRH<s>::FIELD_INDEX_BASE;                    \
-    using SUPER = ::crnt::r::SUPER_IMPL<CRH<s>,                                    \
-                                        ::crnt::r::DF,                             \
-                                        super,                                     \
-                                        std::false_type>;                          \
+    using INTERNAL_SUPER = super;                                                  \
     using template_inner_t_0 = void;                                               \
   }
 
@@ -210,53 +196,15 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   };                                                                               \
   struct CURRENT_STRUCT_T_SUPER_HELPER_##s {                                       \
     using FIELD_INDEX_BASE = typename CRTH<s>::FIELD_INDEX_BASE;                   \
-    using SUPER = ::crnt::r::SUPER_IMPL<CRTH<s>,                                   \
-                                        ::crnt::r::DF,                             \
-                                        super,                                     \
-                                        std::true_type>;                           \
+    using INTERNAL_SUPER_T = super;                                                \
   };                                                                               \
   template <typename T>                                                            \
   struct CURRENT_STRUCT_T_TEMPLATE_INNER_TYPE_EXTRACTOR_##s {                      \
     using template_inner_t_impl = T;                                               \
   }
 
-#else  // CURRENT_WINDOWS
-
-#define CURRENT_STRUCT_HELPERS(s, super)                                 \
-  template <typename INSTANTIATION_TYPE>                                 \
-  struct CSI_##s;                                                        \
-  using s = CSI_##s<::crnt::r::DF>;                                      \
-  template <typename>                                                    \
-  struct CRH;                                                            \
-  template <>                                                            \
-  struct CRH<s> {                                                        \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__; \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }    \
-    typedef CSI_##s<::crnt::r::FC> CURRENT_FIELD_COUNT_STRUCT;           \
-    using FIELD_INDEX_BASE = ::crnt::r::FIELD_INDEX_BASE_IMPL<CRH<s>>;   \
-  }
-
-#define CURRENT_STRUCT_T_HELPERS(s, super)                                         \
-  template <typename T, typename INSTANTIATION_TYPE>                               \
-  struct CSTI_##s;                                                                 \
-  template <typename T>                                                            \
-  using s = CSTI_##s<T, ::crnt::r::DF>;                                            \
-  template <template <typename> class>                                             \
-  struct CRTH;                                                                     \
-  template <>                                                                      \
-  struct CRTH<s> {                                                                 \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE_IMPL = __COUNTER__;           \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s "_Z"; }         \
-    typedef CSTI_##s<::crnt::r::DummyT, ::crnt::r::FC> CURRENT_FIELD_COUNT_STRUCT; \
-    using FIELD_INDEX_BASE = ::crnt::r::FIELD_INDEX_BASE_IMPL<CRTH<s>>;            \
-  }
-
-#endif  // CURRENT_WINDOWS
-
 // `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`,
 // and its scope resolution for derived structs differs between Visual C++ and g++/clang++. -- D.K.
-
-#ifndef CURRENT_WINDOWS
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)               \
   CURRENT_STRUCT_HELPERS(s, ::crnt::CurrentStruct); \
@@ -285,35 +233,6 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   struct CSTI_##s : CURRENT_STRUCT_T_SUPER_HELPER_##s,                     \
                     CURRENT_STRUCT_T_TEMPLATE_INNER_TYPE_EXTRACTOR_##s<T>, \
                     ::crnt::r::SUPER_IMPL<CRTH<s>, INSTANTIATION_TYPE, base, std::true_type>
-
-#else  // CURRENT_WINDOWS
-
-#define CURRENT_STRUCT_NOT_DERIVED(s)               \
-  CURRENT_STRUCT_HELPERS(s, ::crnt::CurrentStruct); \
-  template <typename INSTANTIATION_TYPE>            \
-  struct CSI_##s : ::crnt::r::SUPER_IMPL<CRH<s>, INSTANTIATION_TYPE, ::crnt::CurrentStruct, void>
-
-#define CURRENT_STRUCT_T_NOT_DERIVED(s)               \
-  CURRENT_STRUCT_T_HELPERS(s, ::crnt::CurrentStruct); \
-  template <typename T, typename INSTANTIATION_TYPE>  \
-  struct CSTI_##s : ::crnt::r::SUPER_IMPL<CRTH<s>, INSTANTIATION_TYPE, ::crnt::CurrentStruct, T>
-
-#define CURRENT_STRUCT_DERIVED(s, base)                                                   \
-  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
-  CURRENT_STRUCT_HELPERS(s, base);                                                        \
-  template <typename INSTANTIATION_TYPE>                                                  \
-  struct CSI_##s : ::crnt::r::SUPER_IMPL<CRH<s>, INSTANTIATION_TYPE, base, void>
-
-// TODO(dkorolev): I've sacrificed the `static_assert(IS_CURRENT_STRUCT(base), #base " must be ...");` for now.
-// TODO(dkorolev): It can be re-inserted back via a helper class to inherit from. Not now. -- D.K.
-// ===>  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`.");  <===
-
-#define CURRENT_STRUCT_T_DERIVED(s, base)            \
-  CURRENT_STRUCT_T_HELPERS(s, base);                 \
-  template <typename T, typename INSTANTIATION_TYPE> \
-  struct CSTI_##s : ::crnt::r::SUPER_IMPL<CRTH<s>, INSTANTIATION_TYPE, base, T>
-
-#endif  // CURRENT_WINDOWS
 
 // `CURRENT_FIELD` related macros and implementation.
 #define CF_IMPL2(a, b) CURRENT_FIELD_WITH_NO_VALUE(a, b)
@@ -411,9 +330,11 @@ struct CurrentStructFieldsConsistency<T, 0u> {
       ::current::reflection::Index<::current::reflection::FieldType, idx>);
 
 #define CURRENT_CONSTRUCTOR(s)                                                                                   \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                               \
-            class =                                                                                              \
-                std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
+  template <                                                                                                     \
+      class SUPER =                                                                                              \
+          ::crnt::r::SUPER_IMPL<CRH<s>, INSTANTIATION_TYPE, typename CSSH_##s::INTERNAL_SUPER, std::false_type>, \
+      typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                     \
+      class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>>   \
   CSI_##s
 
 #define CURRENT_ASSIGN_OPER(s)                                                                                   \
@@ -424,10 +345,13 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
-#define CURRENT_CONSTRUCTOR_T(s)                                                                                 \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                               \
-            class =                                                                                              \
-                std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
+#define CURRENT_CONSTRUCTOR_T(s)                                                                                     \
+  template <class SUPER = ::crnt::r::SUPER_IMPL<CRTH<s>,                                                             \
+                                                INSTANTIATION_TYPE,                                                  \
+                                                typename CURRENT_STRUCT_T_SUPER_HELPER_##s::INTERNAL_SUPER_T,        \
+                                                std::true_type>,                                                     \
+            typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                   \
+            class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
   CSTI_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR_T(s) CURRENT_CONSTRUCTOR_T(s)()
@@ -435,7 +359,6 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 #define IS_VALID_CURRENT_STRUCT(s) \
   ::current::reflection::CurrentStructFieldsConsistency<s, ::current::reflection::FieldCounter<s>::value>::Check()
 
-#ifndef CURRENT_WINDOWS
 #define CURRENT_EXPORTED_TEMPLATED_STRUCT(original_struct_name, original_template_inner_type)        \
   constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
   using template_inner_t_internal = std::true_type;                                                  \
@@ -445,27 +368,18 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // which means for different INSTANTIATION_TYPEs it isn't actually a base to the "s" struct.
 // Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
 // as they are always the base class to the "s" regardless of what the INSTANTIATION_TYPE is.
-#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                      \
-  using CRNT_super_t =                                                                        \
-      std::conditional_t<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, SUPER, CSSH_##s>; \
+
+#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                             \
+  using CRNT_super_t = ::crnt::r::SUPER_IMPL<CRH<s>, INSTANTIATION_TYPE, CSSH_##s::INTERNAL_SUPER, std::false_type>; \
   using CRNT_super_t::CRNT_super_t
 
-#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                   \
-  using CRNT_super_t = std::conditional_t<std::is_same_v<INSTANTIATION_TYPE, ::crnt::r::DF>, \
-                                                   SUPER,                                    \
-                                                   CURRENT_STRUCT_T_SUPER_HELPER_##s>;       \
+#define CURRENT_USE_T_BASE_CONSTRUCTORS(s)                                                                   \
+  using CRNT_super_t =                                                                                       \
+                         ::crnt::r::SUPER_IMPL<CRTH<s>,                                                      \
+                                               INSTANTIATION_TYPE,                                           \
+                                               typename CURRENT_STRUCT_T_SUPER_HELPER_##s::INTERNAL_SUPER_T, \
+                                               std::true_type>;                                              \
   using CRNT_super_t::CRNT_super_t
-#else
-// I sure hope this is how it should be. -- D.K.
-#define CURRENT_EXPORTED_TEMPLATED_STRUCT(original_struct_name, original_template_inner_type)        \
-  constexpr static const char* CURRENT_EXPORTED_STRUCT_NAME() { return #original_struct_name "_Z"; } \
-  using template_inner_t = original_template_inner_type
-
-// A "simple" solution with using SUPER::SUPER works only for Windows,
-// as SUPER always corresponds to the base type no matter what INSTANTIATION_TYPE is.
-#define CURRENT_USE_BASE_CONSTRUCTORS(s) using SUPER::SUPER
-#define CURRENT_USE_T_BASE_CONSTRUCTORS(s) using SUPER::SUPER
-#endif
 
 #define CURRENT_EXTRACT_T_SUBTYPE_IMPL(subtype, exported_subtype)     \
   struct CRNT_##exported_subtype##_helper_t {                         \

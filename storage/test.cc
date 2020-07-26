@@ -1963,7 +1963,7 @@ CURRENT_STRUCT(SimpleLikeBase) {
 };
 
 CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
-  using brief_t = SUPER;
+  using brief_t = SimpleLikeBase;
   CURRENT_FIELD(details, Optional<std::string>);
   CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who = "", const std::string& what = "") : SUPER(who, what) {}
   CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who, const std::string& what, const std::string& details)
@@ -2307,7 +2307,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
         "{\"success\":true,\"url\":\"http://unittest.current.ai/data/like/max/beer\",\"url_full\":\"http://"
         "unittest.current.ai/data/like/max/beer?full\",\"url_brief\":\"http://unittest.current.ai/data/like/"
         "max/beer?brief\",\"url_directory\":\"http://unittest.current.ai/data/"
-        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\",\"row\":\"max\"}}\n",
+        "like\",\"data\":{\"row\":\"max\",\"col\":\"beer\"}}\n",
         HTTP(GET(base_url + "/api_hypermedia/data/like/max/beer?fields=brief")).body);
 
     // GET matrix as the collection, all records.
