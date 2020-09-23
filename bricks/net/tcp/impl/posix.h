@@ -489,15 +489,9 @@ class Socket final : public SocketHandle {
     return Connection(SocketHandle::FromHandle(handle), std::move(local), std::move(remote));
   }
 
-  // Note: The copy constructor is left public and default.
-  // On Windows builds, it's implemented as a clone of a move constructor for the base class.
-  // This turned out to be required since the `std::thread t([](Socket s) { ... }, Socket(port))` construct
-  // works fine in g++/clang++ but does not compile in Visual Studio
-  // I'll have to investigate it further one day -- D.K.
-  Socket(const Socket& rhs) = default;
-
  private:
   Socket() = delete;
+  Socket(const Socket& rhs) = delete;
   void operator=(const Socket&) = delete;
   void operator=(Socket&&) = delete;
 };
