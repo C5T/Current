@@ -94,8 +94,10 @@ struct Header final {
 
   Header(const Header&) = default;
   Header(Header&&) = default;
-  Header& operator=(const Header&) = default;
-  Header& operator=(Header&&) = default;
+
+  // Deleted, as the `header` field is `const`.
+  Header& operator=(const Header&) = delete;
+  Header& operator=(Header&&) = delete;
 
   Header& operator=(const std::string& rhs) {
     value = rhs;

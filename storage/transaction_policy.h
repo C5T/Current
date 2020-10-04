@@ -109,9 +109,9 @@ class Synchronous final {
       try {
         f_result = f();
         successful = true;
-      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+      } catch (StorageRollbackExceptionWithValue<result_t>& e) {
         promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
-      } catch (StorageRollbackExceptionWithNoValue) {
+      } catch (const StorageRollbackExceptionWithNoValue&) {
         promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
       } catch (...) {  // The exception is captured with `std::current_exception()` below.
         // LCOV_EXCL_START
@@ -147,7 +147,7 @@ class Synchronous final {
         f();
         journal_.AfterTransaction();
         successful = true;
-      } catch (StorageRollbackExceptionWithNoValue) {
+      } catch (const StorageRollbackExceptionWithNoValue&) {
         journal_.Rollback();
         promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
       } catch (...) {  // The exception is captured with `std::current_exception()` below.
@@ -182,7 +182,7 @@ class Synchronous final {
       try {
         f();
         successful = true;
-      } catch (StorageRollbackExceptionWithNoValue) {
+      } catch (const StorageRollbackExceptionWithNoValue&) {
         promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
       } catch (...) {  // The exception is captured with `std::current_exception()` below.
         // LCOV_EXCL_START
@@ -220,12 +220,12 @@ class Synchronous final {
         PersistJournal();
         f2(std::move(f1_result));
         promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+      } catch (const StorageRollbackExceptionWithValue<result_t>& e) {
         // The transaction was rolled back, but returned a value, which we try to pass again to `f2`.
         journal_.Rollback();
         f2(std::move(e.value));
         promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
-      } catch (StorageRollbackExceptionWithNoValue) {
+      } catch (const StorageRollbackExceptionWithNoValue&) {
         // The transaction was rolled back and returned nothing we can pass to `f2`.
         journal_.Rollback();
         promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
@@ -257,11 +257,11 @@ class Synchronous final {
       try {
         f2(f1());
         promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-      } catch (StorageRollbackExceptionWithValue<result_t> e) {
+      } catch (StorageRollbackExceptionWithValue<result_t>& e) {
         // The transaction was rolled back, but returned a value, which we try to pass again to `f2`.
         f2(std::move(e.value));
         promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
-      } catch (StorageRollbackExceptionWithNoValue) {
+      } catch (const StorageRollbackExceptionWithNoValue&) {
         // The transaction was rolled back and returned nothing we can pass to `f2`.
         promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
       } catch (...) {  // The exception is captured with `std::current_exception()` below.

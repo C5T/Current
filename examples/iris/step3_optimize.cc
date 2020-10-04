@@ -208,7 +208,6 @@ Response PlotAccuracy(const std::vector<IrisFlower>& flowers,
           if (bin == N) {
             bin = N - 1;
           }
-          CURRENT_ASSERT(bin >= 0);
           CURRENT_ASSERT(bin < N);
           ++count[bin];
         }

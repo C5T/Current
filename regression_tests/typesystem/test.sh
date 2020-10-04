@@ -11,7 +11,7 @@ TEST_LIST=(
     'variant'
     'json_variant_stringify'
     'json_variant_stringify_and_parse'
-    'json_variant_stringify_and_parse_and_test'
+    'json_variant_stringify_and_parse_and_check'
     'stream_memory'
     'stream_file'
     'storage_with_stream_persister'
