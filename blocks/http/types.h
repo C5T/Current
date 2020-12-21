@@ -100,6 +100,22 @@ struct ChunkedGET {
       : url(url), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
 };
 
+struct ChunkedPOST {
+  const std::string url;
+  const std::string body;
+  const std::string content_type;
+  std::function<void(const std::string&, const std::string&)> header_callback;
+  std::function<void(const std::string&)> chunk_callback;
+  std::function<void()> done_callback;
+  explicit ChunkedPOST(std::string url,
+                       const std::string body,
+                       const std::string content_type,
+                       std::function<void(const std::string&, const std::string&)> header_callback,
+                       std::function<void(const std::string&)> chunk_callback,
+                       std::function<void()> done_callback = []() {})
+      : url(std::move(url)), body(std::move(body)), content_type(std::move(content_type)), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
+};
+
 struct HEAD : HTTPRequestBase<HEAD> {
   explicit HEAD(const std::string& url) : HTTPRequestBase(url) {}
 };
@@ -282,6 +298,22 @@ struct HTTPImpl {
       return HTTPResponseCode.InvalidCode;
     }
   }
+
+  inline net::HTTPResponseCodeValue operator()(const ChunkedPOST& request_params) const {
+    typename chunked_client_impl_t::http_helper_t::ConstructionParams impl_params(
+        request_params.header_callback, request_params.chunk_callback, request_params.done_callback);
+    chunked_client_impl_t impl(impl_params);
+    impl.request_method_ = "POST";
+    impl.request_url_ = request_params.url;
+    impl.request_body_content_type_ = request_params.content_type;
+    impl.request_body_contents_ = request_params.body;
+
+    if (impl.Go()) {
+      return impl.response_code_;
+    } else {
+      return HTTPResponseCode.InvalidCode;
+    }
+  }
 };
 
 }  // namespace http
@@ -296,5 +328,6 @@ using current::http::PATCH;
 using current::http::DELETE;
 
 using current::http::ChunkedGET;
+using current::http::ChunkedPOST;
 
 #endif  // BLOCKS_HTTP_TYPES_H
