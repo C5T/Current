@@ -756,7 +756,6 @@ TEST(HTTPAPI, ChunkedResponseWithHeaders) {
   EXPECT_EQ("yeah", response.headers.Get("header"));
 }
 
-// A hacky way to get back the response chunk by chunk. TODO(dkorolev): `ChunkedGET`.
 TEST(HTTPAPI, GetByChunksPrototype) {
   // Handler returning the result chunk by chunk.
   const auto scope = HTTP(FLAGS_net_api_test_port)
