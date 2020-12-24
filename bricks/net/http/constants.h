@@ -42,6 +42,7 @@ constexpr char kDefaultJSONContentType[] = "application/json; charset=utf-8";
 constexpr char kDefaultHTMLContentType[] = "text/html; charset=utf-8";
 constexpr char kDefaultSVGContentType[] = "image/svg+xml; charset=utf-8";
 constexpr char kDefaultPNGContentType[] = "image/png";
+constexpr char kDefaultJSONStreamContentType[] = "application/stream+json; charset=utf-8";
 
 constexpr char kHeaderKeyValueSeparator = ':';
 
