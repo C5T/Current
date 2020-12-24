@@ -88,32 +88,51 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
-struct ChunkedGET {
+template <typename T>
+struct ChunkedBase {
   const std::string url;
   std::function<void(const std::string&, const std::string&)> header_callback;
   std::function<void(const std::string&)> chunk_callback;
   std::function<void()> done_callback;
-  explicit ChunkedGET(const std::string& url,
+  explicit ChunkedBase(std::string url) : url(std::move(url)) {}
+  explicit ChunkedBase(std::string url,
                       std::function<void(const std::string&, const std::string&)> header_callback,
                       std::function<void(const std::string&)> chunk_callback,
                       std::function<void()> done_callback = []() {})
-      : url(url), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
+      : url(std::move(url)),
+        header_callback(header_callback),
+        chunk_callback(chunk_callback),
+        done_callback(done_callback) {}
+  T& OnHeader(std::function<void(const std::string&, const std::string&)> header_callback) {
+    this->header_callback = header_callback;
+    return static_cast<T&>(*this);
+  }
+  T& OnChunk(std::function<void(const std::string&)> chunk_callback) {
+    this->chunk_callback = chunk_callback;
+    return static_cast<T&>(*this);
+  }
+  T& OnDone(std::function<void()> done_callback) {
+    this->done_callback = done_callback;
+    return static_cast<T&>(*this);
+  }
 };
 
-struct ChunkedPOST {
-  const std::string url;
+struct ChunkedGET final : ChunkedBase<ChunkedGET> {
+  using ChunkedBase::ChunkedBase;
+};
+
+struct ChunkedPOST final : ChunkedBase<ChunkedPOST> {
   const std::string body;
   const std::string content_type;
-  std::function<void(const std::string&, const std::string&)> header_callback;
-  std::function<void(const std::string&)> chunk_callback;
-  std::function<void()> done_callback;
   explicit ChunkedPOST(std::string url,
                        const std::string body,
                        const std::string content_type,
                        std::function<void(const std::string&, const std::string&)> header_callback,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback = []() {})
-      : url(std::move(url)), body(std::move(body)), content_type(std::move(content_type)), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
+      : ChunkedBase(std::move(url), header_callback, chunk_callback, done_callback),
+        body(std::move(body)),
+        content_type(std::move(content_type)) {}
 };
 
 struct HEAD : HTTPRequestBase<HEAD> {
