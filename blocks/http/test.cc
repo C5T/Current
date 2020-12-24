@@ -872,37 +872,36 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
     auto response = r.connection.SendChunkedHTTPResponse(HTTPResponseCode.OK,
                                                          Headers({{"TestHeaderName", "TestHeaderValue"}}),
                                                          current::net::constants::kDefaultJSONStreamContentType);
+    std::string const bar = r.method == "POST" ? r.body : "bar";
     response.Send("{\"s\":");  // Lines intentionally broken into chunks the wrong way.
     response.Send("\"foo\"");
-    response.Send("}\n{\"s\":\"bar\"}\n");
+    response.Send("}\n{\"s\":\"" + bar + "\"}\n");
     response.Send("{\"s\":\"baz\"}");  // No newline by design.
   });
 
   const string url = Printf("http://localhost:%d/test", FLAGS_net_api_test_port);
 
   {
-    std::vector<std::string> headers;
-    std::vector<std::string> chunk_by_chunk_response;
-
-    const auto response = HTTP(ChunkedGET(url)
-        .OnHeader([&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); })
-        .OnChunk([&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); })
-        .OnDone([&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); }));
-    EXPECT_EQ(200, static_cast<int>(response));
-    EXPECT_EQ(
-        "{\"s\":|\"foo\"|}\n{\"s\":\"bar\"}\n|{\"s\":\"baz\"}|DONE",
-        current::strings::Join(chunk_by_chunk_response, '|'));
-    EXPECT_EQ(4u, headers.size());
-    EXPECT_EQ("Content-Type=application/stream+json; charset=utf-8|Connection=keep-alive"
-              "|TestHeaderName=TestHeaderValue|Transfer-Encoding=chunked",
-              current::strings::Join(headers, '|'));
-  }
-
-  {
     const auto response = HTTP(GET(url));
     EXPECT_EQ(200, static_cast<int>(response.code));
     using S = HTTPAPITestStructWithS;
     EXPECT_EQ(JSON(S("foo")) + '\n' + JSON(S("bar")) + '\n' + JSON(S("baz")), response.body);
+    EXPECT_EQ(4u, response.headers.size());
+    EXPECT_EQ(
+        "{"
+        "\"Connection\":\"keep-alive\","
+        "\"Content-Type\":\"application/stream+json; charset=utf-8\","
+        "\"TestHeaderName\":\"TestHeaderValue\","
+        "\"Transfer-Encoding\":\"chunked\""
+        "}",
+        JSON(response.headers.AsMap()));
+  }
+
+  {
+    const auto response = HTTP(POST(url, "blah"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    using S = HTTPAPITestStructWithS;
+    EXPECT_EQ(JSON(S("foo")) + '\n' + JSON(S("blah")) + '\n' + JSON(S("baz")), response.body);
     EXPECT_EQ(4u, response.headers.size());
     EXPECT_EQ(
         "{"
@@ -923,6 +922,42 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
                         [&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); },
                         [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); },
                         [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); }));
+    EXPECT_EQ(200, static_cast<int>(response));
+    EXPECT_EQ(
+        "{\"s\":|\"foo\"|}\n{\"s\":\"bar\"}\n|{\"s\":\"baz\"}|DONE",
+        current::strings::Join(chunk_by_chunk_response, '|'));
+    EXPECT_EQ(4u, headers.size());
+    EXPECT_EQ("Content-Type=application/stream+json; charset=utf-8|Connection=keep-alive"
+              "|TestHeaderName=TestHeaderValue|Transfer-Encoding=chunked",
+              current::strings::Join(headers, '|'));
+  }
+
+  {
+    std::vector<std::string> headers;
+    std::vector<std::string> chunk_by_chunk_response;
+
+    const auto response = HTTP(ChunkedGET(url)
+        .OnHeader([&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); })
+        .OnChunk([&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); })
+        .OnDone([&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); }));
+    EXPECT_EQ(200, static_cast<int>(response));
+    EXPECT_EQ(
+        "{\"s\":|\"foo\"|}\n{\"s\":\"bar\"}\n|{\"s\":\"baz\"}|DONE",
+        current::strings::Join(chunk_by_chunk_response, '|'));
+    EXPECT_EQ(4u, headers.size());
+    EXPECT_EQ("Content-Type=application/stream+json; charset=utf-8|Connection=keep-alive"
+              "|TestHeaderName=TestHeaderValue|Transfer-Encoding=chunked",
+              current::strings::Join(headers, '|'));
+  }
+
+  {
+    std::vector<std::string> headers;
+    std::vector<std::string> chunk_by_chunk_response;
+
+    const auto response = HTTP(ChunkedPOST(url, "blah")
+        .OnHeader([&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); })
+        .OnChunk([&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); })
+        .OnDone([&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); }));
     EXPECT_EQ(200, static_cast<int>(response));
     EXPECT_EQ(
         "{\"s\":|\"foo\"|}\n{\"s\":\"bar\"}\n|{\"s\":\"baz\"}|DONE",

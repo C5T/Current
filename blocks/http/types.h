@@ -125,14 +125,16 @@ struct ChunkedPOST final : ChunkedBase<ChunkedPOST> {
   const std::string body;
   const std::string content_type;
   explicit ChunkedPOST(std::string url,
-                       const std::string body,
-                       const std::string content_type,
+                       std::string body,
+                       std::string content_type,
                        std::function<void(const std::string&, const std::string&)> header_callback,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback = []() {})
       : ChunkedBase(std::move(url), header_callback, chunk_callback, done_callback),
         body(std::move(body)),
         content_type(std::move(content_type)) {}
+  explicit ChunkedPOST(std::string url, std::string body, std::string content_type = "")
+      : ChunkedBase(std::move(url)), body(std::move(body)), content_type(std::move(content_type)) {}
 };
 
 struct HEAD : HTTPRequestBase<HEAD> {
