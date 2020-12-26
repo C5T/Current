@@ -93,7 +93,7 @@ CURRENT_STRUCT(HTTPAPITestObject) {
 
 CURRENT_STRUCT(HTTPAPITestStructWithS) {
   CURRENT_FIELD(s, std::string);
-  CURRENT_CONSTRUCTOR(HTTPAPITestStructWithS)(std::string s) : s(std::move(s)) {}
+  CURRENT_CONSTRUCTOR(HTTPAPITestStructWithS)(std::string s = "") : s(std::move(s)) {}
 };
 
 #if !defined(CURRENT_COVERAGE_REPORT_MODE) && !defined(CURRENT_WINDOWS)
@@ -983,6 +983,18 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
     EXPECT_EQ("Content-Type=application/stream+json; charset=utf-8|Connection=keep-alive"
               "|TestHeaderName=TestHeaderValue|Transfer-Encoding=chunked",
               current::strings::Join(headers, '|'));
+  }
+
+  {
+    std::vector<std::string> headers;
+    std::vector<std::string> parsed_body_pieces;
+    using S = HTTPAPITestStructWithS;
+
+    const auto response = HTTP(ChunkedPOST(url, "meh").OnLine([&parsed_body_pieces](const std::string& piece) {
+      parsed_body_pieces.push_back(ParseJSON<S>(piece).s);
+    }));
+    EXPECT_EQ(200, static_cast<int>(response));
+    EXPECT_EQ("foo,meh,baz", current::strings::Join(parsed_body_pieces, ','));
   }
 }
 
