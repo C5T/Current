@@ -32,13 +32,13 @@ namespace current {
 namespace strings {
 
 template <typename F = std::function<void(const char*)>>
-class StatefulGroupByLines final {
+class GenericStatefulGroupByLines final {
  private:
   F f_;
   std::string residual_;
 
  public:
-  explicit StatefulGroupByLines(F&& f) : f_(std::move(f)) {}
+  explicit GenericStatefulGroupByLines(F&& f) : f_(std::move(f)) {}
   void Feed(const std::string& s) {
     Feed(s.c_str());
   }
@@ -56,12 +56,14 @@ class StatefulGroupByLines final {
       }
     }
   }
-  ~StatefulGroupByLines() {
+  ~GenericStatefulGroupByLines() {
     if (!residual_.empty()) {
       f_(residual_.c_str());
     }
   }
 };
+
+using StatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(const char*)>>;
 
 }  // namespace strings
 }  // namespace current
