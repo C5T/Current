@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2020 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,21 +22,48 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifndef BRICKS_STRINGS_GROUP_BY_LINES_H
+#define BRICKS_STRINGS_GROUP_BY_LINES_H
 
-#include "chunk.h"
-#include "distance.h"
-#include "escape.h"
-#include "fixed_size_serializer.h"
-#include "group_by_lines.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "regex.h"
-#include "rounding.h"
-#include "split.h"
-#include "time.h"
-#include "util.h"
+#include <functional>
+#include <string>
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+namespace current {
+namespace strings {
+
+template <typename F = std::function<void(const char*)>>
+class StatefulGroupByLines final {
+ private:
+  F f_;
+  std::string residual_;
+
+ public:
+  explicit StatefulGroupByLines(F&& f) : f_(std::move(f)) {}
+  void Feed(const std::string& s) {
+    Feed(s.c_str());
+  }
+  void Feed(char const* s) {
+    while (true) {
+      while (*s && *s != '\n') {
+        residual_ += *s++;
+      }
+      if (*s == '\n') {
+        f_(residual_.c_str());
+        residual_.clear();
+        ++s;
+      } else {
+        return;
+      }
+    }
+  }
+  ~StatefulGroupByLines() {
+    if (!residual_.empty()) {
+      f_(residual_.c_str());
+    }
+  }
+};
+
+}  // namespace strings
+}  // namespace current
+
+#endif  // BRICKS_STRINGS_GROUP_BY_LINES_H
