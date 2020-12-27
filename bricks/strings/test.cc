@@ -995,7 +995,7 @@ TEST(UTF8StringLength, Smoke) {
 
 TEST(StatefulGroupByLines, SmokeTrivial) {
   std::vector<std::string> lines;
-  StatefulGroupByLines splitter([&lines](const char* line) { lines.push_back(std::move(line)); });
+  StatefulGroupByLines splitter([&lines](const std::string& line) { lines.push_back(line); });
   splitter.Feed("foo\n");
   splitter.Feed("bar\n");
   splitter.Feed("baz\n");
@@ -1008,7 +1008,7 @@ TEST(StatefulGroupByLines, SmokeTrivial) {
 TEST(StatefulGroupByLines, Smoke) {
   std::vector<std::string> lines;
   {
-    StatefulGroupByLines splitter([&lines](const char* line) { lines.push_back(std::move(line)); });
+    StatefulGroupByLines splitter([&lines](const std::string& line) { lines.push_back(line); });
     splitter.Feed("fo");
     splitter.Feed("o\nbar\nb");
     ASSERT_EQ(2u, lines.size());

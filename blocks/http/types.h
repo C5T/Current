@@ -133,9 +133,9 @@ struct ChunkedBase {
   }
 
   // TODO(dkorolev): Move this to `Chunk`-s if performance becomes the bottleneck.
-  T& OnLine(std::function<void(const char*)> line_callback) {
+  T& OnLine(std::function<void(const std::string&)> line_callback) {
     group_by_lines_.emplace_back(std::make_unique<current::strings::StatefulGroupByLines>(
-          [line_callback](const char* line) { line_callback(line); }));
+          [line_callback](const std::string& line) { line_callback(line); }));
     return static_cast<T&>(*this);
   }
 

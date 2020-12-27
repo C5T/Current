@@ -42,7 +42,9 @@ class GenericStatefulGroupByLines final {
   void Feed(const std::string& s) {
     Feed(s.c_str());
   }
-  void Feed(char const* s) {
+  void Feed(const char* s) {
+    // NOTE: `Feed`() will only call the callback upon seeing the newline in the input data block. If the last line
+    // does not end with a newline, it will not be forwarded until the `StatefulGroupByLines` instance is destroyed.
     while (true) {
       while (*s && *s != '\n') {
         residual_ += *s++;
@@ -58,12 +60,13 @@ class GenericStatefulGroupByLines final {
   }
   ~GenericStatefulGroupByLines() {
     if (!residual_.empty()) {
+      // Upon destruction, process the the last incomplete line, if necessary.
       f_(residual_.c_str());
     }
   }
 };
 
-using StatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(const char*)>>;
+using StatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(const std::string&)>>;
 
 }  // namespace strings
 }  // namespace current
