@@ -29,6 +29,7 @@ SOFTWARE.
 #include "distance.h"
 #include "escape.h"
 #include "fixed_size_serializer.h"
+#include "group_by_lines.h"
 #include "is_string_type.h"
 #include "join.h"
 #include "printf.h"

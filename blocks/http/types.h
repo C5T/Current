@@ -88,16 +88,97 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
-struct ChunkedGET {
+template <typename T>
+struct ChunkedBase {
   const std::string url;
-  std::function<void(const std::string&, const std::string&)> header_callback;
-  std::function<void(const std::string&)> chunk_callback;
-  std::function<void()> done_callback;
-  explicit ChunkedGET(const std::string& url,
-                      std::function<void(const std::string&, const std::string&)> header_callback,
-                      std::function<void(const std::string&)> chunk_callback,
-                      std::function<void()> done_callback = []() {})
-      : url(url), header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
+
+  const std::function<void(const std::string&, const std::string&)> header_callback;
+  const std::function<void(const std::string&)> chunk_callback;
+  const std::function<void()> done_callback;
+
+  std::vector<std::unique_ptr<current::strings::StatefulGroupByLines>> group_by_lines_;
+
+  std::function<void(const std::string&, const std::string&)> header_callback_impl;
+  std::function<void(const std::string&)> chunk_callback_impl;
+  std::function<void()> done_callback_impl;
+
+  explicit ChunkedBase(std::string url)
+    : url(std::move(url)),
+      header_callback([this](const std::string& k, const std::string& v) { header_callback_wrapper(k, v); }),
+      chunk_callback([this](const std::string& c) { chunk_callback_wrapper(c); }),
+      done_callback([this]() { done_callback_wrapper(); }) {}
+
+  explicit ChunkedBase(std::string url,
+                       std::function<void(const std::string&, const std::string&)> header_callback,
+                       std::function<void(const std::string&)> chunk_callback,
+                       std::function<void()> done_callback = []() {})
+      : ChunkedBase(std::move(url)) {
+    header_callback_impl = header_callback;
+    chunk_callback_impl = chunk_callback;
+    done_callback_impl = done_callback;
+  }
+
+  T& OnHeader(std::function<void(const std::string&, const std::string&)> header_callback) {
+    this->header_callback_impl = header_callback;
+    return static_cast<T&>(*this);
+  }
+  T& OnChunk(std::function<void(const std::string&)> chunk_callback) {
+    this->chunk_callback_impl = chunk_callback;
+    return static_cast<T&>(*this);
+  }
+  T& OnDone(std::function<void()> done_callback) {
+    this->done_callback_impl = done_callback;
+    group_by_lines_.clear();
+    return static_cast<T&>(*this);
+  }
+
+  // TODO(dkorolev): Move this to `Chunk`-s if performance becomes the bottleneck.
+  T& OnLine(std::function<void(const std::string&)> line_callback) {
+    group_by_lines_.emplace_back(std::make_unique<current::strings::StatefulGroupByLines>(
+          [line_callback](const std::string& line) { line_callback(line); }));
+    return static_cast<T&>(*this);
+  }
+
+  void header_callback_wrapper(const std::string& k, const std::string& v) {
+    if (header_callback_impl) {
+      header_callback_impl(k, v);
+    }
+  }
+
+  void chunk_callback_wrapper(const std::string& c) {
+    for (std::unique_ptr<current::strings::StatefulGroupByLines>& g : group_by_lines_) {
+      g->Feed(c);
+    }
+    if (chunk_callback_impl) {
+      chunk_callback_impl(c);
+    }
+  }
+
+  void done_callback_wrapper() {
+    if (done_callback_impl) {
+      done_callback_impl();
+    }
+  }
+};
+
+struct ChunkedGET final : ChunkedBase<ChunkedGET> {
+  using ChunkedBase::ChunkedBase;
+};
+
+struct ChunkedPOST final : ChunkedBase<ChunkedPOST> {
+  const std::string body;
+  const std::string content_type;
+  explicit ChunkedPOST(std::string url,
+                       std::string body,
+                       std::string content_type,
+                       std::function<void(const std::string&, const std::string&)> header_callback,
+                       std::function<void(const std::string&)> chunk_callback,
+                       std::function<void()> done_callback = []() {})
+      : ChunkedBase(std::move(url), header_callback, chunk_callback, done_callback),
+        body(std::move(body)),
+        content_type(std::move(content_type)) {}
+  explicit ChunkedPOST(std::string url, std::string body, std::string content_type = "")
+      : ChunkedBase(std::move(url)), body(std::move(body)), content_type(std::move(content_type)) {}
 };
 
 struct HEAD : HTTPRequestBase<HEAD> {
@@ -282,6 +363,22 @@ struct HTTPImpl {
       return HTTPResponseCode.InvalidCode;
     }
   }
+
+  inline net::HTTPResponseCodeValue operator()(const ChunkedPOST& request_params) const {
+    typename chunked_client_impl_t::http_helper_t::ConstructionParams impl_params(
+        request_params.header_callback, request_params.chunk_callback, request_params.done_callback);
+    chunked_client_impl_t impl(impl_params);
+    impl.request_method_ = "POST";
+    impl.request_url_ = request_params.url;
+    impl.request_body_content_type_ = request_params.content_type;
+    impl.request_body_contents_ = request_params.body;
+
+    if (impl.Go()) {
+      return impl.response_code_;
+    } else {
+      return HTTPResponseCode.InvalidCode;
+    }
+  }
 };
 
 }  // namespace http
@@ -296,5 +393,6 @@ using current::http::PATCH;
 using current::http::DELETE;
 
 using current::http::ChunkedGET;
+using current::http::ChunkedPOST;
 
 #endif  // BLOCKS_HTTP_TYPES_H

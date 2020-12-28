@@ -44,6 +44,7 @@ using current::strings::Join;
 using current::strings::Split;
 using current::strings::SplitIntoChunks;
 using current::strings::SplitIntoKeyValuePairs;
+using current::strings::StatefulGroupByLines;
 using current::strings::EmptyFields;
 using current::strings::KeyValueParsing;
 using current::strings::KeyValueNoValueException;
@@ -990,4 +991,35 @@ TEST(Regex, SubstringIterationSmokeTest) {
 TEST(UTF8StringLength, Smoke) {
   EXPECT_EQ(4u, current::strings::UTF8StringLength("test"));
   EXPECT_EQ(4u, current::strings::UTF8StringLength("тест"));
+}
+
+TEST(StatefulGroupByLines, SmokeTrivial) {
+  std::vector<std::string> lines;
+  StatefulGroupByLines splitter([&lines](const std::string& line) { lines.push_back(line); });
+  splitter.Feed("foo\n");
+  splitter.Feed("bar\n");
+  splitter.Feed("baz\n");
+  ASSERT_EQ(3u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("bar", lines[1]);
+  EXPECT_EQ("baz", lines[2]);
+}
+
+TEST(StatefulGroupByLines, Smoke) {
+  std::vector<std::string> lines;
+  {
+    StatefulGroupByLines splitter([&lines](const std::string& line) { lines.push_back(line); });
+    splitter.Feed("fo");
+    splitter.Feed("o\nbar\nb");
+    ASSERT_EQ(2u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    EXPECT_EQ("bar", lines[1]);
+    splitter.Feed("a");
+    splitter.Feed("z");
+    ASSERT_EQ(2u, lines.size());
+  }
+  ASSERT_EQ(3u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("bar", lines[1]);
+  EXPECT_EQ("baz", lines[2]);
 }
