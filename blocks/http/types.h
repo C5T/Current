@@ -128,7 +128,6 @@ struct ChunkedBase {
   }
   T& OnDone(std::function<void()> done_callback) {
     this->done_callback_impl = done_callback;
-    group_by_lines_.clear();
     return static_cast<T&>(*this);
   }
 
@@ -155,6 +154,7 @@ struct ChunkedBase {
   }
 
   void done_callback_wrapper() {
+    group_by_lines_.clear();
     if (done_callback_impl) {
       done_callback_impl();
     }
