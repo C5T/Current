@@ -32,16 +32,23 @@ SOFTWARE.
 class ChunkByChunkHTTPResponseReceiver {
  public:
   struct ConstructionParams {
-    std::function<void(const std::string&, const std::string&)> header_callback;
+    std::function<void(const std::string&, const std::string&, bool&)> header_callback;
     std::function<void(const std::string&)> chunk_callback;
     std::function<void()> done_callback;
 
     ConstructionParams() = delete;
 
-    ConstructionParams(std::function<void(const std::string&, const std::string&)> header_callback,
+    ConstructionParams(std::function<void(const std::string&, const std::string&, bool&)> header_callback,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback)
         : header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
+
+    ConstructionParams(std::function<void(const std::string&, const std::string&)> header_callback_param,
+                       std::function<void(const std::string&)> chunk_callback,
+                       std::function<void()> done_callback)
+        : header_callback([header_callback_param](const std::string& k, const std::string& v, bool&) {
+            header_callback_param(k, v);
+          }), chunk_callback(chunk_callback), done_callback(done_callback) {}
 
     ConstructionParams(const ConstructionParams& rhs) = default;
   };
@@ -55,7 +62,11 @@ class ChunkByChunkHTTPResponseReceiver {
   const current::net::http::Headers& headers() const { return headers_; }
 
  protected:
-  inline void OnHeader(const char* key, const char* value) { params.header_callback(key, value); }
+  inline void OnHeader(const char* key,
+                       const char* value,
+                       bool& expecting_chunked_response) {
+    params.header_callback(key, value, expecting_chunked_response);
+  }
 
   inline void OnChunk(const char* chunk, size_t length) { params.chunk_callback(std::string(chunk, length)); }
 

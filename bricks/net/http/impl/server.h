@@ -193,7 +193,7 @@ class HTTPDefaultHelper {
  protected:
   HTTPDefaultHelper() = default;
 
-  inline void OnHeader(const char* key, const char* value) { headers_.SetHeaderOrCookie(key, value); }
+  inline void OnHeader(const char* key, const char* value, bool&) { headers_.SetHeaderOrCookie(key, value); }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 
@@ -380,7 +380,7 @@ class GenericHTTPRequestData : public HELPER {
             }
             *next_crlf_ptr = '\0';
 
-            HELPER::OnHeader(key, value);
+            HELPER::OnHeader(key, value, chunked_transfer_encoding);
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
               if (body_length > constants::kMaxHTTPPayloadSizeInBytes) {

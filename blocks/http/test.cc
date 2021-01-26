@@ -794,13 +794,13 @@ TEST(HTTPAPI, GetByChunksPrototype) {
     class ChunkByChunkHTTPResponseReceiver {
      public:
       struct ConstructionParams {
-        std::function<void(const std::string&, const std::string&)> header_callback;
+        std::function<void(const std::string&, const std::string&, bool&)> header_callback;
         std::function<void(const std::string&)> chunk_callback;
         std::function<void()> done_callback;
 
         ConstructionParams() = delete;
 
-        ConstructionParams(std::function<void(const std::string&, const std::string&)> header_callback,
+        ConstructionParams(std::function<void(const std::string&, const std::string&, bool&)> header_callback,
                            std::function<void(const std::string&)> chunk_callback,
                            std::function<void()> done_callback)
             : header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
@@ -817,7 +817,9 @@ TEST(HTTPAPI, GetByChunksPrototype) {
       const current::net::http::Headers& headers() const { return headers_; }
 
      protected:
-      inline void OnHeader(const char* key, const char* value) { params.header_callback(key, value); }
+      inline void OnHeader(const char* key, const char* value, bool& expecting_chunked_response) {
+        params.header_callback(key, value, expecting_chunked_response);
+      }
 
       inline void OnChunk(const char* chunk, size_t length) { params.chunk_callback(std::string(chunk, length)); }
 
@@ -834,7 +836,7 @@ TEST(HTTPAPI, GetByChunksPrototype) {
     std::vector<std::string> headers;
     std::vector<std::string> chunk_by_chunk_response;
     const auto header_callback =
-        [&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); };
+        [&headers](const std::string& k, const std::string& v, bool&) { headers.push_back(k + '=' + v); };
     const auto chunk_callback =
         [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); };
     const auto done_callback = [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); };
@@ -1100,6 +1102,17 @@ TEST(HTTPAPI, CanUnderstandMalformedDockerResponse) {
       .OnLine([&lines_ok](const std::string& s) { lines_ok.push_back(s); }));
   EXPECT_EQ(200, static_cast<int>(response_ok));
   EXPECT_EQ("[\"foo\",\"bar\",\"baz\"]", JSON(lines_ok));
+
+  std::vector<std::string> lines_fixed;
+  const auto response_fixed = HTTP(ChunkedGET(base + "/potentially_malformed")
+      .OnHeader([](const std::string& k, const std::string& v, bool& expecting_chunked_response) {
+        if (k == "Content-Type" && v == "application/vnd.docker.raw-stream") {
+          expecting_chunked_response = true;
+        }
+      })
+      .OnLine([&lines_fixed](const std::string& s) { lines_fixed.push_back(s); }));
+  EXPECT_EQ(200, static_cast<int>(response_fixed));
+  EXPECT_EQ("[\"foo\",\"bar\",\"baz\"]", JSON(lines_fixed));
 }
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {

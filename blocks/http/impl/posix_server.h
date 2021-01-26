@@ -404,8 +404,8 @@ class HTTPServerPOSIX final {
     // TODO(dkorolev): Benchmark QPS.
     while (!terminating_) {
       try {
-        std::unique_ptr<current::net::HTTPServerConnection> connection(
-            new current::net::HTTPServerConnection(socket.Accept()));
+        std::unique_ptr<current::net::HTTPServerConnection> connection =
+          std::make_unique<current::net::HTTPServerConnection>(socket.Accept());
         if (terminating_) {
           // Already terminating. Will not send the response, and this
           // lack of response should not result in an exception.

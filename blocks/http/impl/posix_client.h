@@ -50,11 +50,11 @@ struct HTTPRedirectHelper : current::net::HTTPDefaultHelper {
 
   std::string location = "";
 
-  inline void OnHeader(const char* key, const char* value) {
+  inline void OnHeader(const char* key, const char* value, bool& expecting_chunked_response) {
     if (std::string("Location") == key) {
       location = value;
     }
-    current::net::HTTPDefaultHelper::OnHeader(key, value);
+    current::net::HTTPDefaultHelper::OnHeader(key, value, expecting_chunked_response);
   }
 };
 }  // namespace current::http::impl
@@ -134,7 +134,7 @@ class GenericHTTPClientPOSIX final {
       } else {
         connection.BlockingWrite("\r\n", false);
       }
-      http_request_.reset(new CustomHTTPRequestData(connection, request_data_construction_params_));
+      http_request_ = std::make_unique<CustomHTTPRequestData>(connection, request_data_construction_params_);
       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       // Elaboration:
       // HTTP request  message is: `GET /path HTTP/1.1`, "/path" is the second component of it.

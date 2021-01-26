@@ -92,25 +92,37 @@ template <typename T>
 struct ChunkedBase {
   const std::string url;
 
-  const std::function<void(const std::string&, const std::string&)> header_callback;
+  const std::function<void(const std::string&, const std::string&, bool&)> header_callback;
   const std::function<void(const std::string&)> chunk_callback;
   const std::function<void()> done_callback;
 
   std::vector<std::function<void(const std::string&)>> line_callbacks_;
   std::unique_ptr<current::strings::StatefulGroupByLines> lines_builder_;
 
-  std::function<void(const std::string&, const std::string&)> header_callback_impl;
+  std::function<void(const std::string&, const std::string&, bool&)> header_callback_impl;
   std::function<void(const std::string&)> chunk_callback_impl;
   std::function<void()> done_callback_impl;
 
   explicit ChunkedBase(std::string url)
     : url(std::move(url)),
-      header_callback([this](const std::string& k, const std::string& v) { header_callback_wrapper(k, v); }),
+      header_callback([this](const std::string& k, const std::string& v, bool& b) { header_callback_wrapper(k, v, b); }),
       chunk_callback([this](const std::string& c) { chunk_callback_wrapper(c); }),
       done_callback([this]() { done_callback_wrapper(); }) {}
 
   explicit ChunkedBase(std::string url,
                        std::function<void(const std::string&, const std::string&)> header_callback,
+                       std::function<void(const std::string&)> chunk_callback,
+                       std::function<void()> done_callback = []() {})
+      : ChunkedBase(std::move(url)) {
+    header_callback_impl = [header_callback](const std::string& k, const std::string& v, bool&) {
+      header_callback(k, v);
+    };
+    chunk_callback_impl = chunk_callback;
+    done_callback_impl = done_callback;
+  }
+
+  explicit ChunkedBase(std::string url,
+                       std::function<void(const std::string&, const std::string&, bool&)> header_callback,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback = []() {})
       : ChunkedBase(std::move(url)) {
@@ -120,15 +132,21 @@ struct ChunkedBase {
   }
 
   T& OnHeader(std::function<void(const std::string&, const std::string&)> header_callback) {
-    this->header_callback_impl = header_callback;
+    header_callback_impl = [header_callback](const std::string& k, const std::string& v, bool&) {
+      header_callback(k, v);
+    };
+    return static_cast<T&>(*this);
+  }
+  T& OnHeader(std::function<void(const std::string&, const std::string&, bool&)> header_callback) {
+    header_callback_impl = header_callback;
     return static_cast<T&>(*this);
   }
   T& OnChunk(std::function<void(const std::string&)> chunk_callback) {
-    this->chunk_callback_impl = chunk_callback;
+    chunk_callback_impl = chunk_callback;
     return static_cast<T&>(*this);
   }
   T& OnDone(std::function<void()> done_callback) {
-    this->done_callback_impl = done_callback;
+    done_callback_impl = done_callback;
     return static_cast<T&>(*this);
   }
 
@@ -145,9 +163,9 @@ struct ChunkedBase {
     return static_cast<T&>(*this);
   }
 
-  void header_callback_wrapper(const std::string& k, const std::string& v) {
+  void header_callback_wrapper(const std::string& k, const std::string& v, bool& expecting_chunked_response) {
     if (header_callback_impl) {
-      header_callback_impl(k, v);
+      header_callback_impl(k, v, expecting_chunked_response);
     }
   }
 
