@@ -149,8 +149,9 @@ CURRENT_STRUCT(ExampleMeta) {
 };
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
-int main() {
-  HTTP(FLAGS_port)
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
+  const auto scope_layout = HTTP(FLAGS_port)
       .Register("/layout",
                 [](Request r) {
                   LayoutItem layout;
@@ -162,7 +163,7 @@ int main() {
                     Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
                     "application/json; charset=utf-8");
                 });
-  HTTP(FLAGS_port)
+  const auto scope_meta = HTTP(FLAGS_port)
       .Register("/meta",
                 [](Request r) {
                   r(ExampleMeta(),
@@ -171,7 +172,7 @@ int main() {
                     Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
                     "application/json; charset=utf-8");
                 });
-  HTTP(FLAGS_port)
+  const auto scope_data = HTTP(FLAGS_port)
       .Register("/data",
                 [](Request r) {
                   std::thread([](Request&& r) {
