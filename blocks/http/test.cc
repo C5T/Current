@@ -1032,7 +1032,74 @@ TEST(HTTPAPI, CanUnderstandMalformedDockerResponse) {
                                      c.BlockingWrite("foo", true);
                                      c.BlockingWrite("\r\n", false);
                                    });
-  EXPECT_EQ("foo", HTTP(GET(Printf("http://localhost:%d/correct", FLAGS_net_api_test_port))).body);
+  const auto scope_malformed = HTTP(FLAGS_net_api_test_port)
+                         .Register("/potentially_malformed",
+                                   [](Request r) {
+                                     EXPECT_EQ("GET", r.method);
+                                     EXPECT_EQ("", r.body);
+                                     r.connection.DoNotSendAnyResponse();  // For no "no response sent" exception.
+                                     auto& c = r.connection.RawConnection();
+
+                                     // Without `Transfer-Encoding: chunked` header this is a malformed response.
+                                     // Current then assumes no data would be available.
+                                     // At the same time, Docker Daemon is guilty :-/
+                                     std::vector<std::string> header = {
+                                       "HTTP/1.1 200 OK",
+                                       "Content-Type: application/vnd.docker.raw-stream",
+                                       "Api-Version: 1.41",
+                                       "Docker-Experimental: false",
+                                       "Ostype: linux",
+                                       "Server: Docker/20.10.2 (linux)",
+                                      };
+                                      for (const std::string& s : header) {
+                                        c.BlockingWrite(s + "\r\n", true);
+                                      }
+
+                                      // These two lines are missing from the response from a Docker daemon.
+                                      if (r.url.query.has("ok")) {
+                                        c.BlockingWrite("Connection: keep-alive\r\n", true);
+                                        c.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+                                      }
+
+                                      c.BlockingWrite("\r\n", true);
+                                      std::vector<std::string> chunks = {
+                                        "foo\n",
+                                        "bar\n",
+                                        "baz\n"
+                                      };
+                                      for (const std::string& s : chunks) {
+                                        c.BlockingWrite(current::strings::Printf("%x\r\n",
+                                              static_cast<int>(s.length())), true);
+                                        c.BlockingWrite(s, true);
+                                        c.BlockingWrite("\r\n", true);
+                                      }
+                                      c.BlockingWrite("0\r\n", true);
+                                      c.BlockingWrite("\r\n", false);
+                                   });
+
+  const std::string base = Printf("http://localhost:%d", FLAGS_net_api_test_port);
+  EXPECT_EQ("foo", HTTP(GET(base + "/correct")).body);
+  EXPECT_EQ("", HTTP(GET(base + "/potentially_malformed")).body);
+  EXPECT_EQ("foo\nbar\nbaz\n", HTTP(GET(base + "/potentially_malformed?ok")).body);
+
+  std::vector<std::string> lines_malformed;
+  std::string header_malformed;
+  const auto response_malformed = HTTP(ChunkedGET(base + "/potentially_malformed")
+      .OnHeader([&header_malformed](const std::string& k, const std::string& v) {
+        if (k == "Content-Type") {
+          header_malformed = v;
+        }
+      })
+      .OnLine([&lines_malformed](const std::string& s) { lines_malformed.push_back(s); }));
+  EXPECT_EQ(200, static_cast<int>(response_malformed));
+  EXPECT_EQ("[]", JSON(lines_malformed));
+  EXPECT_EQ("application/vnd.docker.raw-stream", header_malformed);
+
+  std::vector<std::string> lines_ok;
+  const auto response_ok = HTTP(ChunkedGET(base + "/potentially_malformed?ok")
+      .OnLine([&lines_ok](const std::string& s) { lines_ok.push_back(s); }));
+  EXPECT_EQ(200, static_cast<int>(response_ok));
+  EXPECT_EQ("[\"foo\",\"bar\",\"baz\"]", JSON(lines_ok));
 }
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {
