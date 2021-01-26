@@ -96,7 +96,8 @@ struct ChunkedBase {
   const std::function<void(const std::string&)> chunk_callback;
   const std::function<void()> done_callback;
 
-  std::vector<std::unique_ptr<current::strings::StatefulGroupByLines>> group_by_lines_;
+  std::vector<std::function<void(const std::string&)>> line_callbacks_;
+  std::unique_ptr<current::strings::StatefulGroupByLines> lines_builder_;
 
   std::function<void(const std::string&, const std::string&)> header_callback_impl;
   std::function<void(const std::string&)> chunk_callback_impl;
@@ -133,8 +134,14 @@ struct ChunkedBase {
 
   // TODO(dkorolev): Move this to `Chunk`-s if performance becomes the bottleneck.
   T& OnLine(std::function<void(const std::string&)> line_callback) {
-    group_by_lines_.emplace_back(std::make_unique<current::strings::StatefulGroupByLines>(
-          [line_callback](const std::string& line) { line_callback(line); }));
+    if (!lines_builder_) {
+      lines_builder_ = std::make_unique<current::strings::StatefulGroupByLines>([this](const std::string& line) {
+        for (const std::function<void(const std::string& line)>& cb : line_callbacks_) {
+          cb(line);
+        }
+      });
+    }
+    line_callbacks_.push_back(line_callback);
     return static_cast<T&>(*this);
   }
 
@@ -145,8 +152,8 @@ struct ChunkedBase {
   }
 
   void chunk_callback_wrapper(const std::string& c) {
-    for (std::unique_ptr<current::strings::StatefulGroupByLines>& g : group_by_lines_) {
-      g->Feed(c);
+    if (lines_builder_) {
+      lines_builder_->Feed(c);
     }
     if (chunk_callback_impl) {
       chunk_callback_impl(c);
@@ -154,7 +161,7 @@ struct ChunkedBase {
   }
 
   void done_callback_wrapper() {
-    group_by_lines_.clear();
+    lines_builder_ = nullptr;
     if (done_callback_impl) {
       done_callback_impl();
     }
