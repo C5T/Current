@@ -1017,6 +1017,24 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
   }
 }
 
+TEST(HTTPAPI, CanUnderstandMalformedDockerResponse) {
+  const auto scope_correct = HTTP(FLAGS_net_api_test_port)
+                         .Register("/correct",
+                                   [](Request r) {
+                                     EXPECT_EQ("GET", r.method);
+                                     EXPECT_EQ("", r.body);
+                                     r.connection.DoNotSendAnyResponse();  // For no "no response sent" exception.
+                                     auto& c = r.connection.RawConnection();
+                                     c.BlockingWrite("HTTP/1.1 200 OK\r\n", true);
+                                     c.BlockingWrite("Host: localhost\r\n", true);
+                                     c.BlockingWrite("Content-Length: 3\r\n", true);
+                                     c.BlockingWrite("\r\n", true);
+                                     c.BlockingWrite("foo", true);
+                                     c.BlockingWrite("\r\n", false);
+                                   });
+  EXPECT_EQ("foo", HTTP(GET(Printf("http://localhost:%d/correct", FLAGS_net_api_test_port))).body);
+}
+
 TEST(HTTPAPI, PostFromBufferToBuffer) {
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/post",
