@@ -875,6 +875,9 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
                                                          Headers({{"TestHeaderName", "TestHeaderValue"}}),
                                                          current::net::constants::kDefaultJSONStreamContentType);
     std::string const bar = r.method == "POST" ? r.body : "bar";
+    if (r.headers.Has("testheader")) {
+      response.Send("HEADER: " + r.headers.Get("testheader") + '\n');
+    }
     response.Send("{\"s\":");  // Lines intentionally broken into chunks the wrong way.
     response.Send("\"foo\"");
     response.Send("}\n{\"s\":\"" + bar + "\"}\n");
@@ -888,6 +891,25 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
     EXPECT_EQ(200, static_cast<int>(response.code));
     using S = HTTPAPITestStructWithS;
     EXPECT_EQ(JSON(S("foo")) + '\n' + JSON(S("bar")) + '\n' + JSON(S("baz")), response.body);
+    EXPECT_EQ(4u, response.headers.size());
+    EXPECT_EQ(
+        "{"
+        "\"Connection\":\"keep-alive\","
+        "\"Content-Type\":\"application/stream+json; charset=utf-8\","
+        "\"TestHeaderName\":\"TestHeaderValue\","
+        "\"Transfer-Encoding\":\"chunked\""
+        "}",
+        JSON(response.headers.AsMap()));
+  }
+
+  {
+    const auto response = HTTP(GET(url).SetHeader("testheader", "Test Header Value"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    using S = HTTPAPITestStructWithS;
+    EXPECT_EQ(
+        "HEADER: Test Header Value\n" +
+        JSON(S("foo")) + '\n' + JSON(S("bar")) + '\n' + JSON(S("baz")),
+        response.body);
     EXPECT_EQ(4u, response.headers.size());
     EXPECT_EQ(
         "{"
