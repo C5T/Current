@@ -42,11 +42,12 @@ SOFTWARE.
 #include "../../typesystem/struct.h"
 
 #include "../../bricks/dflags/dflags.h"
+#include "../../bricks/exception.h"
+#include "../../bricks/file/file.h"
 #include "../../bricks/strings/join.h"
 #include "../../bricks/strings/printf.h"
+#include "../../bricks/sync/waitable_atomic.h"
 #include "../../bricks/util/singleton.h"
-#include "../../bricks/file/file.h"
-#include "../../bricks/exception.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -1078,9 +1079,10 @@ TEST(HTTPAPI, CanUnderstandMalformedDockerResponse) {
                                      c.BlockingWrite("foo", true);
                                      c.BlockingWrite("\r\n", false);
                                    });
+  current::WaitableAtomic<bool> wait_after_foo_signal(false);
   const auto scope_malformed = HTTP(FLAGS_net_api_test_port)
                          .Register("/potentially_malformed",
-                                   [](Request r) {
+                                   [&wait_after_foo_signal](Request r) {
                                      EXPECT_EQ("GET", r.method);
                                      EXPECT_EQ("", r.body);
                                      r.connection.DoNotSendAnyResponse();  // For no "no response sent" exception.
@@ -1103,24 +1105,26 @@ TEST(HTTPAPI, CanUnderstandMalformedDockerResponse) {
 
                                       // These two lines are missing from the response from a Docker daemon.
                                       if (r.url.query.has("ok")) {
-                                        c.BlockingWrite("Connection: keep-alive\r\n", true);
-                                        c.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+                                        c.BlockingWrite("Connection: upgrade\r\n", true);
+                                        c.BlockingWrite("Upgrade: DoCkErSuCkS =)\r\n", true);
                                       }
 
                                       c.BlockingWrite("\r\n", true);
                                       std::vector<std::string> chunks = {
-                                        "foo\n",
+                                        "fo",
+                                        "o\n",
                                         "bar\n",
                                         "baz\n"
                                       };
+
+                                      const bool wait_after_foo = r.url.query.has("wait_after_foo");
                                       for (const std::string& s : chunks) {
-                                        c.BlockingWrite(current::strings::Printf("%x\r\n",
-                                              static_cast<int>(s.length())), true);
                                         c.BlockingWrite(s, true);
-                                        c.BlockingWrite("\r\n", true);
+                                        if (s == "foo" && wait_after_foo) {
+                                          wait_after_foo_signal.Wait([](bool b) { return b; });
+                                        }
                                       }
-                                      c.BlockingWrite("0\r\n", true);
-                                      c.BlockingWrite("\r\n", false);
+                                      c.BlockingWrite("", false);
                                    });
 
   const std::string base = Printf("http://localhost:%d", FLAGS_net_api_test_port);
@@ -1141,22 +1145,34 @@ TEST(HTTPAPI, CanUnderstandMalformedDockerResponse) {
   EXPECT_EQ("[]", JSON(lines_malformed));
   EXPECT_EQ("application/vnd.docker.raw-stream", header_malformed);
 
-  std::vector<std::string> lines_ok;
-  const auto response_ok = HTTP(ChunkedGET(base + "/potentially_malformed?ok")
-      .OnLine([&lines_ok](const std::string& s) { lines_ok.push_back(s); }));
-  EXPECT_EQ(200, static_cast<int>(response_ok));
-  EXPECT_EQ("[\"foo\",\"bar\",\"baz\"]", JSON(lines_ok));
-
   std::vector<std::string> lines_fixed;
   const auto response_fixed = HTTP(ChunkedGET(base + "/potentially_malformed")
       .OnHeader([](const std::string& k, const std::string& v, current::net::HTTPResponseKind& response_kind) {
         if (k == "Content-Type" && v == "application/vnd.docker.raw-stream") {
-          response_kind.MarkAsChunked();
+          response_kind.MarkAsUpgraded();
         }
       })
-      .OnLine([&lines_fixed](const std::string& s) { lines_fixed.push_back(s); }));
+      .OnLine([&lines_fixed](const std::string& s) {
+        lines_fixed.push_back(s);
+      }));
   EXPECT_EQ(200, static_cast<int>(response_fixed));
   EXPECT_EQ("[\"foo\",\"bar\",\"baz\"]", JSON(lines_fixed));
+
+  std::vector<std::string> lines_with_wait;
+  const auto response_with_wait = HTTP(ChunkedGET(base + "/potentially_malformed?wait_after_foo")
+      .OnHeader([](const std::string& k, const std::string& v, current::net::HTTPResponseKind& response_kind) {
+        if (k == "Content-Type" && v == "application/vnd.docker.raw-stream") {
+          response_kind.MarkAsUpgraded();
+        }
+      })
+      .OnLine([&lines_with_wait, &wait_after_foo_signal](const std::string& s) {
+        if (s == "foo") {
+          *wait_after_foo_signal.MutableScopedAccessor() = true;
+        }
+        lines_with_wait.push_back(s);
+      }));
+  EXPECT_EQ(200, static_cast<int>(response_with_wait));
+  EXPECT_EQ("[\"foo\",\"bar\",\"baz\"]", JSON(lines_with_wait));
 }
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {

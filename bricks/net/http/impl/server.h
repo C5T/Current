@@ -412,24 +412,29 @@ class GenericHTTPRequestData : public HELPER {
           CURRENT_BRICKS_LOG_HTTP_EVENT("http header is parsed\n");
           // The blank line is what separates HTTP headers from HTTP body.
           if (response_kind.IsUpgraded()) {
+            const size_t body_begin_offset = next_line_offset;
             try {
-              body_buffer_begin_ = &buffer_[body_offset];
-              if (offset > body_offset) {
-                HELPER::OnChunk(&buffer_[body_offset], offset - body_offset);
+              body_buffer_begin_ = &buffer_[body_begin_offset];
+              if (offset > body_begin_offset) {
+                HELPER::OnChunk(&buffer_[body_begin_offset], offset - body_begin_offset);
               }
               while (true) {
-                // NOTE(dkorolev): Not growing the buffer here, this is to be revisited
-                // in an unlikely scenario this code is *really* used in a high-performance setup.
-                const size_t n = c.BlockingRead(&buffer_[0], buffer_.size());
+                // NOTE(dkorolev): Just 2x resizing, because meh.
+                if (buffer_.size() < offset * 2) {
+                  buffer_.resize(offset * 2);
+                }
+                const size_t n = c.BlockingRead(&buffer_[offset], buffer_.size() - offset);
                 if (!n) {
                   break;
                 }
-                HELPER::OnChunk(&buffer_[0], n);
+                HELPER::OnChunk(&buffer_[offset], n);
+                offset += n;
               }
             } catch (const current::net::NetworkException&) {
             }
-            // NOTE(dkorolev): In `Upgraded` mode there's no `body_buffer_end_`, as it's potentially infinite.
-            HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_begin_);
+            body_buffer_begin_ = &buffer_[body_begin_offset];
+            body_buffer_end_ = &buffer_[0] + offset;
+            HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_end_);
             return;
           } else if (response_kind.IsChunked()) {
             receiving_body_in_chunks = true;
