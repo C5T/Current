@@ -28,11 +28,12 @@ SOFTWARE.
 #ifndef BLOCKS_HTTP_IMPL_POSIX_CLIENT_H
 #define BLOCKS_HTTP_IMPL_POSIX_CLIENT_H
 
-#include "../types.h"
-
 #include <memory>
 #include <string>
 #include <set>
+
+#include "../types.h"
+#include "../chunked_response_parser.h"
 
 #include "../../url/url.h"
 
@@ -244,6 +245,26 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_url_ = request.url;
     client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     client.request_headers_ = request.custom_headers;
+    client.allow_redirects_ = request.allow_redirects;
+  }
+
+  inline static void PrepareInput(const ChunkedGET& request,
+                                  current::http::GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver>& client) {
+    client.request_method_ = "GET";
+    client.request_url_ = request.url;
+    client.request_user_agent_ = request.custom_user_agent;
+    client.request_headers_ = request.custom_headers;
+    client.allow_redirects_ = request.allow_redirects;
+  }
+
+  inline static void PrepareInput(const ChunkedPOST& request,
+                                  current::http::GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver>& client) {
+    client.request_method_ = "POST";
+    client.request_url_ = request.url;
+    client.request_user_agent_ = request.custom_user_agent;
+    client.request_headers_ = request.custom_headers;
+    client.request_body_contents_ = request.body;
+    client.request_body_content_type_ = request.content_type;
     client.allow_redirects_ = request.allow_redirects;
   }
 

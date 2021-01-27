@@ -1010,6 +1010,24 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
   }
 
   {
+    std::vector<std::string> headers;
+    std::vector<std::string> line_by_line_response;
+
+    const auto response = HTTP(ChunkedPOST(url, "passed")
+        .SetHeader("testheader", "Test Header Value")
+        .OnHeader([&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); })
+        .OnLine([&line_by_line_response](const std::string& s) { line_by_line_response.push_back(s); }));
+    EXPECT_EQ(200, static_cast<int>(response));
+    EXPECT_EQ(
+        "HEADER: Test Header Value|{\"s\":\"foo\"}|{\"s\":\"passed\"}|{\"s\":\"baz\"}",
+        current::strings::Join(line_by_line_response, '|'));
+    EXPECT_EQ(4u, headers.size());
+    EXPECT_EQ("Content-Type=application/stream+json; charset=utf-8|Connection=keep-alive"
+              "|TestHeaderName=TestHeaderValue|Transfer-Encoding=chunked",
+              current::strings::Join(headers, '|'));
+  }
+
+  {
     // This test is to test the fix for the bug where `.OnDone()` clears previously set `.OnLine()` handlers.
     std::vector<std::string> headers;
     std::vector<std::string> line_by_line_response;

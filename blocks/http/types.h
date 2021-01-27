@@ -89,8 +89,8 @@ struct GET : HTTPRequestBase<GET> {
 };
 
 template <typename T>
-struct ChunkedBase {
-  const std::string url;
+struct ChunkedBase : HTTPRequestBase<T> {
+  using super_t = HTTPRequestBase<T>;
 
   const std::function<void(const std::string&, const std::string&, bool&)> header_callback;
   const std::function<void(const std::string&)> chunk_callback;
@@ -104,7 +104,7 @@ struct ChunkedBase {
   std::function<void()> done_callback_impl;
 
   explicit ChunkedBase(std::string url)
-    : url(std::move(url)),
+    : super_t(std::move(url)),
       header_callback([this](const std::string& k, const std::string& v, bool& b) { header_callback_wrapper(k, v, b); }),
       chunk_callback([this](const std::string& c) { chunk_callback_wrapper(c); }),
       done_callback([this]() { done_callback_wrapper(); }) {}
@@ -187,10 +187,13 @@ struct ChunkedBase {
 };
 
 struct ChunkedGET final : ChunkedBase<ChunkedGET> {
-  using ChunkedBase::ChunkedBase;
+  using super_t = ChunkedBase<ChunkedGET>;
+  using super_t::super_t;
 };
 
 struct ChunkedPOST final : ChunkedBase<ChunkedPOST> {
+  using super_t = ChunkedBase<ChunkedPOST>;
+  using super_t::super_t;
   const std::string body;
   const std::string content_type;
   explicit ChunkedPOST(std::string url,
@@ -379,9 +382,7 @@ struct HTTPImpl {
     typename chunked_client_impl_t::http_helper_t::ConstructionParams impl_params(
         request_params.header_callback, request_params.chunk_callback, request_params.done_callback);
     chunked_client_impl_t impl(impl_params);
-    impl.request_method_ = "GET";
-    impl.request_url_ = request_params.url;
-
+    ImplWrapper<client_impl_t>::PrepareInput(request_params, impl);
     if (impl.Go()) {
       return impl.response_code_;
     } else {
@@ -393,11 +394,7 @@ struct HTTPImpl {
     typename chunked_client_impl_t::http_helper_t::ConstructionParams impl_params(
         request_params.header_callback, request_params.chunk_callback, request_params.done_callback);
     chunked_client_impl_t impl(impl_params);
-    impl.request_method_ = "POST";
-    impl.request_url_ = request_params.url;
-    impl.request_body_content_type_ = request_params.content_type;
-    impl.request_body_contents_ = request_params.body;
-
+    ImplWrapper<client_impl_t>::PrepareInput(request_params, impl);
     if (impl.Go()) {
       return impl.response_code_;
     } else {
