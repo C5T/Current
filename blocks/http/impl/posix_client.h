@@ -51,11 +51,11 @@ struct HTTPRedirectHelper : current::net::HTTPDefaultHelper {
 
   std::string location = "";
 
-  inline void OnHeader(const char* key, const char* value, bool& expecting_chunked_response) {
+  inline void OnHeader(const char* key, const char* value, current::net::HTTPResponseKind& response_kind) {
     if (std::string("Location") == key) {
       location = value;
     }
-    current::net::HTTPDefaultHelper::OnHeader(key, value, expecting_chunked_response);
+    current::net::HTTPDefaultHelper::OnHeader(key, value, response_kind);
   }
 };
 }  // namespace current::http::impl

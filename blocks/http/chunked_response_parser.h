@@ -27,18 +27,21 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include "../../bricks/net/http/response_kind.h"
 #include "../../bricks/net/http/headers/headers.h"
 
 class ChunkByChunkHTTPResponseReceiver {
  public:
   struct ConstructionParams {
-    std::function<void(const std::string&, const std::string&, bool&)> header_callback;
+    std::function<void(const std::string&, const std::string&, current::net::HTTPResponseKind&)> header_callback;
     std::function<void(const std::string&)> chunk_callback;
     std::function<void()> done_callback;
 
     ConstructionParams() = delete;
 
-    ConstructionParams(std::function<void(const std::string&, const std::string&, bool&)> header_callback,
+    ConstructionParams(std::function<void(const std::string&,
+                                          const std::string&,
+                                          current::net::HTTPResponseKind&)> header_callback,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback)
         : header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
@@ -46,7 +49,9 @@ class ChunkByChunkHTTPResponseReceiver {
     ConstructionParams(std::function<void(const std::string&, const std::string&)> header_callback_param,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback)
-        : header_callback([header_callback_param](const std::string& k, const std::string& v, bool&) {
+        : header_callback([header_callback_param](const std::string& k,
+                                                  const std::string& v,
+                                                  current::net::HTTPResponseKind&) {
             header_callback_param(k, v);
           }), chunk_callback(chunk_callback), done_callback(done_callback) {}
 
@@ -64,8 +69,8 @@ class ChunkByChunkHTTPResponseReceiver {
  protected:
   inline void OnHeader(const char* key,
                        const char* value,
-                       bool& expecting_chunked_response) {
-    params.header_callback(key, value, expecting_chunked_response);
+                       current::net::HTTPResponseKind& response_kind) {
+    params.header_callback(key, value, response_kind);
   }
 
   inline void OnChunk(const char* chunk, size_t length) { params.chunk_callback(std::string(chunk, length)); }

@@ -37,6 +37,7 @@ SOFTWARE.
 #include "../constants.h"
 #include "../default_messages.h"
 #include "../mime_type.h"
+#include "../response_kind.h"
 
 #include "../headers/headers.h"
 
@@ -193,7 +194,9 @@ class HTTPDefaultHelper {
  protected:
   HTTPDefaultHelper() = default;
 
-  inline void OnHeader(const char* key, const char* value, bool&) { headers_.SetHeaderOrCookie(key, value); }
+  inline void OnHeader(const char* key, const char* value, current::net::HTTPResponseKind&) {
+    headers_.SetHeaderOrCookie(key, value);
+  }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 
@@ -245,8 +248,8 @@ class GenericHTTPRequestData : public HELPER {
     // `first_line_parsed` denotes whether the line being parsed is not the first one, with method and URL.
     bool first_line_parsed = false;
 
-    // `chunked_transfer_encoding` is set when body should be received in chunks insted of a single read.
-    bool chunked_transfer_encoding = false;
+    // `response_kind` indicates whether the HTTP response is regular, chunked, or upgraded.
+    HTTPResponseKind response_kind;
 
     // `receiving_body_in_chunks` is set to true when the parsing is already in the "receive body" mode.
     bool receiving_body_in_chunks = false;
@@ -380,7 +383,7 @@ class GenericHTTPRequestData : public HELPER {
             }
             *next_crlf_ptr = '\0';
 
-            HELPER::OnHeader(key, value, chunked_transfer_encoding);
+            HELPER::OnHeader(key, value, response_kind);
             if (HeaderNameEquals(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
               if (body_length > constants::kMaxHTTPPayloadSizeInBytes) {
@@ -395,14 +398,42 @@ class GenericHTTPRequestData : public HELPER {
               method_ = current::strings::ToUpper(value);
             } else if (HeaderNameEquals(key, constants::kTransferEncodingHeaderKey)) {
               if (HeaderNameEquals(value, constants::kTransferEncodingChunkedValue)) {
-                chunked_transfer_encoding = true;
+                response_kind.MarkAsChunked();
+              }
+            } else if (HeaderNameEquals(key, constants::kUpgradeHeaderKey)) {
+              response_kind.MarkAsUpgraded();
+            } else if (HeaderNameEquals(key, constants::kConnectionHeaderKey)) {
+              if (HeaderNameEquals(value, constants::kConnectionUpgradeChunkedValue)) {
+                response_kind.MarkAsUpgraded();
               }
             }
           }
         } else {
           CURRENT_BRICKS_LOG_HTTP_EVENT("http header is parsed\n");
           // The blank line is what separates HTTP headers from HTTP body.
-          if (!chunked_transfer_encoding) {
+          if (response_kind.IsUpgraded()) {
+            try {
+              body_buffer_begin_ = &buffer_[body_offset];
+              if (offset > body_offset) {
+                HELPER::OnChunk(&buffer_[body_offset], offset - body_offset);
+              }
+              while (true) {
+                // NOTE(dkorolev): Not growing the buffer here, this is to be revisited
+                // in an unlikely scenario this code is *really* used in a high-performance setup.
+                const size_t n = c.BlockingRead(&buffer_[0], buffer_.size());
+                if (!n) {
+                  break;
+                }
+                HELPER::OnChunk(&buffer_[0], n);
+              }
+            } catch (const current::net::NetworkException&) {
+            }
+            // NOTE(dkorolev): In `Upgraded` mode there's no `body_buffer_end_`, as it's potentially infinite.
+            HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_begin_);
+            return;
+          } else if (response_kind.IsChunked()) {
+            receiving_body_in_chunks = true;
+          } else {
             // HTTP body starts right after this last CRLF.
             body_offset = next_line_offset;
             // Non-chunked encoding. Assume BODY follows as raw data.
@@ -434,8 +465,6 @@ class GenericHTTPRequestData : public HELPER {
               }
               return;
             }
-          } else {
-            receiving_body_in_chunks = true;
           }
         }
         current_line_offset = next_line_offset;

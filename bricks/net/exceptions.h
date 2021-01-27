@@ -102,6 +102,7 @@ struct HTTPRedirectLoopException : HTTPException {
 struct HTTPPayloadTooLarge : HTTPException {};
 struct HTTPRequestBodyLengthNotProvided : HTTPException {};
 struct ChunkSizeNotAValidHEXValue : HTTPException {};
+struct ChunkedOrUpgradedHTTPResponseRequestedMismatch : HTTPException {};
 
 // AttemptedToSendHTTPResponseMoreThanOnce is a user code exception; not really an HTTP one.
 struct AttemptedToSendHTTPResponseMoreThanOnce : Exception {};

@@ -51,6 +51,10 @@ constexpr char kTransferEncodingHeaderKey[] = "Transfer-Encoding";
 constexpr char kTransferEncodingChunkedValue[] = "chunked";
 constexpr char kHTTPMethodOverrideHeaderKey[] = "X-HTTP-Method-Override";
 
+constexpr char kUpgradeHeaderKey[] = "Upgrade";
+constexpr char kConnectionHeaderKey[] = "Connection";
+constexpr char kConnectionUpgradeChunkedValue[] = "upgrade";  // For `Connection: upgrade` to work as `Upgrade: ...`.
+
 // By default:
 // * HTTP responses that use `struct Response` will have the CORS header set.
 //   It can be unset with `.DisableCORS()`. There is also `EnableCORS()` to add it back.

@@ -92,20 +92,22 @@ template <typename T>
 struct ChunkedBase : HTTPRequestBase<T> {
   using super_t = HTTPRequestBase<T>;
 
-  const std::function<void(const std::string&, const std::string&, bool&)> header_callback;
+  const std::function<void(const std::string&, const std::string&, current::net::HTTPResponseKind&)> header_callback;
   const std::function<void(const std::string&)> chunk_callback;
   const std::function<void()> done_callback;
 
   std::vector<std::function<void(const std::string&)>> line_callbacks_;
   std::unique_ptr<current::strings::StatefulGroupByLines> lines_builder_;
 
-  std::function<void(const std::string&, const std::string&, bool&)> header_callback_impl;
+  std::function<void(const std::string&, const std::string&, current::net::HTTPResponseKind&)> header_callback_impl;
   std::function<void(const std::string&)> chunk_callback_impl;
   std::function<void()> done_callback_impl;
 
   explicit ChunkedBase(std::string url)
     : super_t(std::move(url)),
-      header_callback([this](const std::string& k, const std::string& v, bool& b) { header_callback_wrapper(k, v, b); }),
+      header_callback([this](const std::string& k, const std::string& v, current::net::HTTPResponseKind& rk) {
+        header_callback_wrapper(k, v, rk);
+      }),
       chunk_callback([this](const std::string& c) { chunk_callback_wrapper(c); }),
       done_callback([this]() { done_callback_wrapper(); }) {}
 
@@ -114,7 +116,9 @@ struct ChunkedBase : HTTPRequestBase<T> {
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback = []() {})
       : ChunkedBase(std::move(url)) {
-    header_callback_impl = [header_callback](const std::string& k, const std::string& v, bool&) {
+    header_callback_impl = [header_callback](const std::string& k,
+                                             const std::string& v,
+                                             current::net::HTTPResponseKind&) {
       header_callback(k, v);
     };
     chunk_callback_impl = chunk_callback;
@@ -122,7 +126,9 @@ struct ChunkedBase : HTTPRequestBase<T> {
   }
 
   explicit ChunkedBase(std::string url,
-                       std::function<void(const std::string&, const std::string&, bool&)> header_callback,
+                       std::function<void(const std::string&,
+                                          const std::string&,
+                                          current::net::HTTPResponseKind&)> header_callback,
                        std::function<void(const std::string&)> chunk_callback,
                        std::function<void()> done_callback = []() {})
       : ChunkedBase(std::move(url)) {
@@ -132,12 +138,16 @@ struct ChunkedBase : HTTPRequestBase<T> {
   }
 
   T& OnHeader(std::function<void(const std::string&, const std::string&)> header_callback) {
-    header_callback_impl = [header_callback](const std::string& k, const std::string& v, bool&) {
+    header_callback_impl = [header_callback](const std::string& k,
+                                             const std::string& v,
+                                             current::net::HTTPResponseKind&) {
       header_callback(k, v);
     };
     return static_cast<T&>(*this);
   }
-  T& OnHeader(std::function<void(const std::string&, const std::string&, bool&)> header_callback) {
+  T& OnHeader(std::function<void(const std::string&,
+                                 const std::string&,
+                                 current::net::HTTPResponseKind&)> header_callback) {
     header_callback_impl = header_callback;
     return static_cast<T&>(*this);
   }
@@ -163,9 +173,9 @@ struct ChunkedBase : HTTPRequestBase<T> {
     return static_cast<T&>(*this);
   }
 
-  void header_callback_wrapper(const std::string& k, const std::string& v, bool& expecting_chunked_response) {
+  void header_callback_wrapper(const std::string& k, const std::string& v, current::net::HTTPResponseKind& rk) {
     if (header_callback_impl) {
-      header_callback_impl(k, v, expecting_chunked_response);
+      header_callback_impl(k, v, rk);
     }
   }
 
