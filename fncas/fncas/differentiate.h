@@ -291,7 +291,7 @@ struct g_impl<JIT::NativeWrapper> : g_super {
   g_impl(std::function<double_t(const std::vector<double_t>&)> f, size_t dim) : f_(f), dim_(dim) {}
   g_impl(g_impl&& rhs) : f_(rhs.f_) {}
   g_impl() = default;
-  g_impl(const g_impl&) = default;
+  g_impl(const g_impl&) = delete;
   void operator=(const g_impl& rhs) {
     f_ = rhs.f_;
     dim_ = rhs.dim_;

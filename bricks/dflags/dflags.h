@@ -102,7 +102,7 @@ class FlagsRegistererSingleton {
  protected:
   virtual void PrintHelp(const std::map<std::string, FlagRegistererBase*>& flags, std::ostream& os) const {
     os << flags.size() << " flags registered.\n";
-    for (const auto cit : flags) {
+    for (const auto& cit : flags) {
       os << "\t--" << cit.first << " , " << cit.second->TypeAsString() << "\n\t\t" << cit.second->DescriptionAsString()
          << "\n\t\t"
          << "Default value: " << cit.second->DefaultValueAsString() << '\n';

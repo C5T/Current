@@ -294,7 +294,7 @@ struct MemberFunctionWithReferences {
     const auto dy = x[1] - b;
     return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
   }
-  MemberFunctionWithReferences() = default;
+  MemberFunctionWithReferences() = delete;
   MemberFunctionWithReferences(const MemberFunctionWithReferences&) = delete;
 };
 
