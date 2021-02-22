@@ -40,7 +40,7 @@ TEST(Time, SmokeTest) {
 #if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE) && !defined(CURRENT_CI)
   const int64_t allowed_skew = 3000;
 #else
-  const int64_t allowed_skew = 100000;  // Travis is slow there days. -- D.K.
+  const int64_t allowed_skew = 250000;  // NOTE(dkorolev): As of Feb 2021 Travis can be veeery slow.
 #endif
   EXPECT_GE(dt, 50000 - allowed_skew);
   EXPECT_LE(dt, 50000 + allowed_skew);

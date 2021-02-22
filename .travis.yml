@@ -79,8 +79,7 @@ matrix:
 
     - script:
       - brew update
-      - brew install nasm
-      - brew install gnuplot
+      - brew install nasm  # Don't install `gnuplot`, it kills Travis and is unnecessary for the test.
       - clang++ -v
       - clang++ --version
       - make individual_tests
@@ -91,8 +90,7 @@ matrix:
 
     - script:
       - brew update
-      - brew install nasm
-      - brew install gnuplot
+      - brew install nasm  # Don't install `gnuplot`, it kills Travis and is unnecessary for the test.
       - clang++ -v
       - clang++ --version
       - make individual_tests
