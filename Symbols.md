@@ -107,8 +107,6 @@ current::Singleton, current::ThreadLocalSingleton
 
 current::DelayedInstantiateFromTuple
 current::DelayedInstantiateWithExtraParameterFromTuple
-
-std::make_unique<T>(...)  // Until c++14 is mainstream, we injected our own.
 ```
 
 ### Enum classes
