@@ -198,13 +198,19 @@ class HTTPDefaultHelper {
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 
   inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
-    begin = body_.data();
-    end = begin + body_.length();
+    if (body_.empty()) {
+      begin = &dummy_;
+      end = &dummy_;
+    } else {
+      begin = body_.c_str();
+      end = begin + body_.length();
+    }
   }
 
  private:
   http::Headers headers_;
   std::string body_;
+  char dummy_ = '\0';
 };
 
 // In constructor, GenericHTTPRequestData parses HTTP response from `Connection&` is was provided with.
@@ -617,8 +623,11 @@ class GenericHTTPServerConnection final : public HTTPResponder {
               } else {
                 ::memcpy(data_cache_ + cache_size_, chunk_header.c_str(), chunk_header.size());
                 cache_size_ += chunk_header.size();
-                ::memcpy(data_cache_ + cache_size_, data.data(), data.size());
-                cache_size_ += data.size();
+                const size_t data_size = data.size();
+                if (data_size > 0u) {
+                  ::memcpy(data_cache_ + cache_size_, &data[0], data_size);
+                  cache_size_ += data_size;
+                }
                 ::memcpy(data_cache_ + cache_size_, constants::kCRLF, constants::kCRLFLength);
                 cache_size_ += constants::kCRLFLength;
               }
