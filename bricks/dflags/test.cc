@@ -26,7 +26,7 @@ SOFTWARE.
 
 // NOTE(dkorolev): As of Feb 2021 validating the message fails on Travis -- but it also is unnecessary! :-)
 #ifdef DFLAGS_TEST_REGEX
-#error "Name collision, the `DFLAGS_TEST_REGEX` macro should not be defined before the `bricks/dflags/test.cc` test.
+#error "Name collision, the `DFLAGS_TEST_REGEX` macro should not be defined before the `bricks/dflags/test.cc` test."
 #endif
 #define DFLAGS_TEST_REGEX(re) ".*"  // re
 
