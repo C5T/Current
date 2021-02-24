@@ -316,9 +316,9 @@ TEST(WaitableAtomic, Smoke) {
 // Both threads should have had enough time to increment their counters at least by a bit.
 // Technically, the EXPECT-s below make the test flaky, but the range is generous enough.
 #if !defined(CURRENT_CI) && !defined(CURRENT_COVERAGE_REPORT_MODE)
-  EXPECT_GT(copy_of_object.x, 10u);
+  EXPECT_GT(copy_of_object.x, 7u);
   EXPECT_LT(copy_of_object.x, 100u);
-  EXPECT_GT(copy_of_object.y, 10u);
+  EXPECT_GT(copy_of_object.y, 7u);
   EXPECT_LT(copy_of_object.y, 100u);
 #else
   // Travis is slow these days. No need to make the tests red because of that. -- D.K.
