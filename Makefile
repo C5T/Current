@@ -8,6 +8,15 @@ test:
 individual_tests:
 	./scripts/individual-tests.sh
 
+individual_tests_1_of_3:
+	./scripts/individual-tests.sh 0 3
+
+individual_tests_2_of_3:
+	./scripts/individual-tests.sh 1 3
+
+individual_tests_3_of_3:
+	./scripts/individual-tests.sh 2 3
+
 storage_perftest:
 	(cd examples/Benchmark/generic ; ./run_storage_tests.sh)
 

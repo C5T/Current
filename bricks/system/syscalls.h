@@ -33,7 +33,9 @@ SOFTWARE.
 #include "../file/file.h"
 #include "../strings/util.h"
 
+#ifndef CURRENT_WINDOWS
 #include <dlfcn.h>
+#endif  // CURRENT_WINDOWS
 
 #include <cstdio>
 #include <cstdlib>
@@ -55,6 +57,7 @@ struct SystemCallException final : SystemException {
   using SystemException::SystemException;
 };
 
+#ifndef CURRENT_WINDOWS
 class SystemCallReadPipe final {
  private:
   const std::string command_;
@@ -101,6 +104,7 @@ class SystemCallReadPipe final {
   // `false` if the `popen()` call failed, or is the previous `fgets()` call returned a null pointer.
   operator bool() const { return f_; }
 };
+#endif  // CURRENT_WINDOES
 
 template <typename S>
 int SystemCall(S&& input_command) {
@@ -134,6 +138,7 @@ struct DLSymException final : ExternalLibraryException {
   using ExternalLibraryException::ExternalLibraryException;
 };
 
+#ifndef CURRENT_WINDOWS
 class JITCompiledCPP final {
  private:
   const std::string dir_name_;
@@ -233,6 +238,7 @@ class JITCompiledCPP final {
     }
   }
 };
+#endif  // CURRENT_WINDOWS
 
 }  // namespace current::bricks::system
 }  // namespace current::bricks

@@ -112,7 +112,7 @@ class FlowTool final {
               error.path = '/' + current::strings::Join(path, '/');
               error.message = "The internal filesystem contains an invalid entry.";
               error.error_component = path[i];
-              error.error_component_zero_based_index = i;
+              error.error_component_zero_based_index = static_cast<uint32_t>(i);
               return NodeSearchResult(Response(error, HTTPResponseCode.InternalServerError));
             }
             const auto& next_node = Value(optional_next_node);
@@ -126,7 +126,7 @@ class FlowTool final {
                   error.path = '/' + current::strings::Join(path, '/');
                   error.message = "The internal filesystem contains an invalid entry.";
                   error.file_component = path[i];
-                  error.file_component_zero_based_index = i;
+                  error.file_component_zero_based_index = static_cast<uint32_t>(i);
                   return NodeSearchResult(Response(error, HTTPResponseCode.BadRequest));
                 } else {
                   next_ptr = &Value<db::Dir>(next_node.data);
@@ -144,7 +144,7 @@ class FlowTool final {
         api::error::ErrorPathNotFound error;
         error.path = '/' + current::strings::Join(path, '/');
         error.not_found_component = path[i];
-        error.not_found_component_zero_based_index = i;
+        error.not_found_component_zero_based_index = static_cast<uint32_t>(i);
         return NodeSearchResult(Response(error, HTTPResponseCode.NotFound));
       }
     }

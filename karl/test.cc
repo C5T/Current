@@ -65,7 +65,8 @@ DEFINE_string(karl_nginx_config_file,
 DEFINE_string(karl_test_stream_persistence_file, ".current/stream", "Local file to store Karl's keepalives.");
 DEFINE_string(karl_test_storage_persistence_file, ".current/storage", "Local file to store Karl's status.");
 #else
-#error "Sorry bro, you're out of luck. Karl works fine though; we checked. Ah, TODO(dkorolev), of course."
+DEFINE_string(karl_test_stream_persistence_file, "./stream.tmp", "Local file to store Karl's keepalives.");
+DEFINE_string(karl_test_storage_persistence_file, "./storage.tmp", "Local file to store Karl's status.");
 #endif
 
 DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test forever.");
@@ -411,7 +412,7 @@ TEST(Karl, DeregisterWithNginx) {
             status = ParseJSON<current::karl::ClaireStatus>(response.body);
             break;
           }
-        } catch (const current::net::NetworkException& e) {
+        } catch (const current::net::NetworkException&) {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
@@ -448,7 +449,7 @@ TEST(Karl, DeregisterWithNginx) {
               status = ParseJSON<current::karl::ClaireStatus>(response.body);
               break;
             }
-          } catch (const current::net::NetworkException& e) {
+          } catch (const current::net::NetworkException&) {
           }
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -592,7 +593,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
           EXPECT_EQ("GOTIT\n", response.body);
           break;
         }
-      } catch (const current::net::NetworkException& e) {
+      } catch (const current::net::NetworkException&) {
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -618,7 +619,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
         if (response.code == HTTPResponseCode.NotFound) {
           break;
         }
-      } catch (const current::net::NetworkException& e) {
+      } catch (const current::net::NetworkException&) {
         break;
       }
     }

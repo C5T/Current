@@ -362,12 +362,12 @@ class StorageImpl {
 
   // Used for applying updates by dispatching corresponding events.
   template <typename... ARGS>
-  std::result_of_t<FIELDS(ARGS...)> operator()(ARGS&&... args) {
+  std::invoke_result_t<FIELDS, ARGS...> operator()(ARGS&&... args) {
     return fields_(std::forward<ARGS>(args)...);
   }
 
   template <typename F>
-  using f_result_t = std::result_of_t<F(fields_by_ref_t)>;
+  using f_result_t = std::invoke_result_t<F, fields_by_ref_t>;
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock, typename F>
   ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict>

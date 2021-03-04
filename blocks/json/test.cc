@@ -26,9 +26,9 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using namespace current::json;
-
 TEST(UniversalJSON, Primitives) {
+  using namespace current::json;
+
   EXPECT_TRUE(Exists<JSONString>(ParseJSONUniversally("\"foo\"")));
   EXPECT_EQ("\"foo\"", AsJSON(ParseJSONUniversally("\"foo\"")));
 
@@ -49,6 +49,8 @@ TEST(UniversalJSON, Primitives) {
 }
 
 TEST(UniversalJSON, Numbers) {
+  using namespace current::json;
+
   EXPECT_EQ("0", AsJSON(ParseJSONUniversally("0")));
   EXPECT_EQ("0.5", AsJSON(ParseJSONUniversally("0.5")));
   EXPECT_EQ("-0.15", AsJSON(ParseJSONUniversally("-0.15")));
@@ -61,6 +63,8 @@ TEST(UniversalJSON, Numbers) {
 }
 
 TEST(UniversalJSON, Array) {
+  using namespace current::json;
+
   const std::string json = "[1,\"bar\",null,true,[],{}]";
   const JSONValue parsed = ParseJSONUniversally(json);
   EXPECT_TRUE(Exists<JSONArray>(parsed));
@@ -81,6 +85,8 @@ TEST(UniversalJSON, Array) {
 }
 
 TEST(UniversalJSON, Object) {
+  using namespace current::json;
+
   const std::string json = "{\"a\":101,\"c\":\"the order is preserved\",\"b\":null}";
   const JSONValue parsed = ParseJSONUniversally(json);
   EXPECT_TRUE(Exists<JSONObject>(parsed));
@@ -121,6 +127,8 @@ TEST(UniversalJSON, Object) {
 }
 
 TEST(UniversalJSON, FloatingPoint) {
+  using namespace current::json;
+
   {
     const std::string json = "{\"x\":1234.56}";
     EXPECT_EQ(json, AsJSON(ParseJSONUniversally(json)));

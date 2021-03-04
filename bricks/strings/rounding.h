@@ -56,7 +56,7 @@ inline std::string RoundDoubleToString(double value, size_t n_digits, bool plus_
   const int log10_multiplier = static_cast<int>(n_digits) - dim;
   uint64_t integerized = static_cast<uint64_t>(value * std::pow(10.0, log10_multiplier) + 0.5);
 
-  int digit_index = n_digits - log10_multiplier;
+  int digit_index = static_cast<int>(n_digits - log10_multiplier);
 
   if (integerized >= mod) {
     // The corner case of `1.0 - 1e-7`.

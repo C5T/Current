@@ -490,7 +490,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           if (qs.has("confirm") && qs.has("port")) {
             const std::string url = "http://" + remote_ip + ':' + qs["port"] + "/.current";
             // Send a GET request, with a random component in the URL to prevent caching.
-            return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9)))).body;
+            return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(static_cast<uint32_t>(1e9), static_cast<uint32_t>(2e9))))).body;
           } else {
             return r.body;
           }

@@ -59,7 +59,7 @@ VECTOR_TYPE& growing_vector_access(std::vector<VECTOR_TYPE>& vector, node_index_
   if (static_cast<node_index_t>(vector.size()) <= index) {
     vector.resize(static_cast<size_t>(index + 1), fill);
   }
-  return vector[index];
+  return vector[static_cast<size_t>(index)];
 }
 
 enum class NodeType : uint8_t { variable, value, operation, function };

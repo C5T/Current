@@ -2040,7 +2040,7 @@ TEST(Stream, SubscribingToJustTailDoesTheJob) {
   const auto scope = HTTP(FLAGS_stream_http_test_port).Register("/tail", *exposed_stream);
 
   std::thread initial_publisher([&]() {
-    for (size_t i = 0; i <= 2; ++i) {
+    for (int i = 0; i <= 2; ++i) {
       exposed_stream->Publisher()->Publish(Record(i * 10), std::chrono::microseconds(i));
     }
   });
@@ -2057,7 +2057,7 @@ TEST(Stream, SubscribingToJustTailDoesTheJob) {
     while (!http_subscriber_started) {
       ;  // Spin lock, begin publishing only once the HTTP subscriber has started.
     }
-    for (size_t i = 3; i <= 5; ++i) {
+    for (int i = 3; i <= 5; ++i) {
       exposed_stream->Publisher()->Publish(Record(i * 10), std::chrono::microseconds(i));
     }
   });

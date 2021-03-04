@@ -412,7 +412,7 @@ class GenericClaire final : private DummyClaireNotifiable {
       // TODO(dkorolev): Parameter or named constant for keepalive frequency?
       const std::chrono::microseconds projected_next_keepalive =
           last_keepalive_attempt_result_.timestamp +
-          std::chrono::microseconds(current::random::CSRandomUInt64(20e6 * 0.9, 20e6 * 1.1));
+          std::chrono::microseconds(current::random::CSRandomUInt64(static_cast<uint64_t>(20e6 * 0.9), static_cast<uint64_t>(20e6 * 1.1)));
 
       const std::chrono::microseconds now = current::time::Now();
 

@@ -69,8 +69,6 @@ using current::net::HTTPRedirectNotAllowedException;
 using current::net::HTTPRedirectLoopException;
 using current::net::SocketResolveAddressException;
 
-using namespace current::http;
-
 DEFINE_int32(net_api_test_port,
              PickPortForUnitTest(),
              "Local port to use for the test API-based HTTP server. NOTE: This port should be different from "
@@ -102,6 +100,7 @@ TEST(ArchitectureTest, CURRENT_ARCH_UNAME_AS_IDENTIFIER) { ASSERT_EQ(CURRENT_ARC
 
 // Test the features of HTTP server.
 TEST(HTTPAPI, Register) {
+  using namespace current::http;
   const auto scope = HTTP(FLAGS_net_api_test_port).Register("/get", [](Request r) { r("OK"); });
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", nullptr), HandlerAlreadyExistsException);
   const string url = Printf("http://localhost:%d/get", FLAGS_net_api_test_port);
@@ -113,6 +112,7 @@ TEST(HTTPAPI, Register) {
 }
 
 TEST(HTTPAPI, RegisterExceptions) {
+  using namespace current::http;
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("no_slash", nullptr), PathDoesNotStartWithSlash);
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/wrong_slash/", nullptr), PathEndsWithSlash);
   // The curly brackets are not necessarily wrong, but `URL::IsPathValidToRegister()` is `false` for them.
@@ -120,6 +120,8 @@ TEST(HTTPAPI, RegisterExceptions) {
 }
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
+  using namespace current::http;
+
   const auto handler = [](Request r) {
     r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ") " +
       (r.url_path_had_trailing_slash ? "url_path_had_trailing_slash" : ""));
@@ -392,7 +394,7 @@ TEST(HTTPAPI, RespondsWithObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
-struct GoodStuff : IHasDoRespondViaHTTP {
+struct GoodStuff : current::http::IHasDoRespondViaHTTP {
   void DoRespondViaHTTP(Request r) const override {
     r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
   }
@@ -635,6 +637,8 @@ TEST(HTTPAPI, FourOhFiveMethodNotAllowed) {
 }
 
 TEST(HTTPAPI, AnyMethodAllowed) {
+  using namespace current::http;
+
   const auto scope = HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r(r.method); });
   const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
   // A slightly more internal version to allow custom HTTP verb (request method).
@@ -705,6 +709,8 @@ struct ShouldReduceDelayBetweenChunksSingleton {
 };
 // Test various HTTP client modes.
 TEST(HTTPAPI, GetToFile) {
+  using namespace current::http;
+
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/stars",
                                    [](Request r) {
@@ -762,6 +768,8 @@ TEST(HTTPAPI, ChunkedResponseWithHeaders) {
 }
 
 TEST(HTTPAPI, GetByChunksPrototype) {
+  using namespace current::http;
+
   // Handler returning the result chunk by chunk.
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/chunks",
@@ -1141,6 +1149,8 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
 }
 
 TEST(HTTPAPI, PostFromBufferToFile) {
+  using namespace current::http;
+
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/post",
                                    [](Request r) {
@@ -1157,6 +1167,8 @@ TEST(HTTPAPI, PostFromBufferToFile) {
 }
 
 TEST(HTTPAPI, PostFromFileToFile) {
+  using namespace current::http;
+
   const auto scope = HTTP(FLAGS_net_api_test_port)
                          .Register("/post",
                                    [](Request r) {
@@ -1412,6 +1424,8 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
+  using namespace current::http;
+
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1488,6 +1502,8 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRelative) {
+  using namespace current::http;
+
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1571,6 +1587,8 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbsolute) {
+  using namespace current::http;
+
   ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
@@ -1659,18 +1677,24 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixWithTrailingSlash) {
+  using namespace current::http;
+
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/"}),
                PathEndsWithSlash);
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsEmptyPublicRoutePrefix) {
+  using namespace current::http;
+
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{""}),
                PathDoesNotStartWithSlash);
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomIndexFiles) {
+  using namespace current::http;
+
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1683,6 +1707,8 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomIndexFiles) {
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOnlyServesOneIndexFilePerDirectory) {
+  using namespace current::http;
+
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FLAGS_net_api_test_tmpdir + "/more_than_one_index";
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1694,6 +1720,8 @@ TEST(HTTPAPI, ServeStaticFilesFromOnlyServesOneIndexFilePerDirectory) {
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOnlyServesFilesOfKnownMIMEType) {
+  using namespace current::http;
+
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FLAGS_net_api_test_tmpdir + "/wrong_static_files";
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);

@@ -34,6 +34,7 @@ static const char* const kDefaultPathToIrisDataset = "golden/dataset.json";
 DEFINE_string(dlopen_example_test_input_filename, kDefaultPathToIrisDataset, "The input Irises dataset.");
 DEFINE_uint16(dlopen_example_test_port, PickPortForUnitTest(), "");
 
+#ifndef CURRENT_WINDOWS
 TEST(DLOpenExample, Smoke) {
   DynamicDLOpenIrisExampleImpl impl(FLAGS_dlopen_example_test_input_filename, FLAGS_dlopen_example_test_port);
 
@@ -136,3 +137,4 @@ TEST(DLOpenExample, Smoke) {
 
   EXPECT_EQ("2", HTTP(GET(current::strings::Printf("http://localhost:%d/", port))).headers.Get("X-Total"));
 }
+#endif  // CURRENT_WINDOWS

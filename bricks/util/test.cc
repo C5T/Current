@@ -773,7 +773,7 @@ TEST(CustomHashFunction, Smoke) {
 struct ObjectWithInterface {
   int calls = 0;
   int total_calls() { return ++calls; }
-  int add(int a, int b) const { return a + b; }  // `static` won't work with the inner `std::result_of_t<>`. -- D.K.
+  static int add(int a, int b) { return a + b; }
 };
 
 CURRENT_OBJECT_INTERFACE(ObjectWithInterface) {
@@ -806,7 +806,7 @@ namespace object_with_interface_test_namespace {
 struct NamespacedObjectWithInterface {
   int calls = 0;
   int total_calls() { return ++calls; }
-  int add(int a, int b) const { return a + b; }  // `static` won't work with the inner `std::result_of_t<>`. -- D.K.
+  int add(int a, int b) { return a + b; }
 };
 
 CURRENT_OBJECT_INTERFACE(NamespacedObjectWithInterface) {

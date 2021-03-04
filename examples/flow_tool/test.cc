@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(flow_tool_test_port, PickPortForUnitTest(), "Local port to run the test against.");
+DEFINE_uint16(flow_tool_test_port, PickPortForUnitTest(), "Local port to run the test against.");
 
 TEST(FlowTool, Healthz) {
   current::time::ResetToZero();

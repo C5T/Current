@@ -52,8 +52,8 @@ TEST(InMemoryMQ, SmokeTest) {
     ConsumerImpl() : processed_messages_(0u) {}
     EntryResponse operator()(const std::string& s, idxts_t current, idxts_t) {
       EXPECT_GE(current.index, expected_next_message_index_);
-      dropped_messages_ += (current.index - expected_next_message_index_);
-      expected_next_message_index_ = (current.index + 1);
+      dropped_messages_ += static_cast<size_t>(current.index - expected_next_message_index_);
+      expected_next_message_index_ = static_cast<size_t>(current.index + 1);
       messages_ += s + '\n';
       ++processed_messages_;
       EXPECT_EQ(expected_next_message_index_ - processed_messages_ - 1, dropped_messages_);
@@ -111,14 +111,14 @@ struct SuspendableConsumerImpl {
     }
     messages_.push_back(s);
     EXPECT_GE(last.index, total_messages_accepted_by_the_queue_);
-    total_messages_accepted_by_the_queue_ = last.index;
+    total_messages_accepted_by_the_queue_ = static_cast<size_t>(last.index);
     if (processing_delay_ms_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(processing_delay_ms_));
     }
     ++processed_messages_;
     return EntryResponse::More;
   }
-  void SetProcessingDelayMillis(uint64_t delay_ms) { processing_delay_ms_ = delay_ms; }
+  void SetProcessingDelayMillis(uint64_t delay_ms) { processing_delay_ms_ = static_cast<size_t>(delay_ms); }
 };
 
 using SuspendableConsumer = current::ss::EntrySubscriber<SuspendableConsumerImpl, std::string>;

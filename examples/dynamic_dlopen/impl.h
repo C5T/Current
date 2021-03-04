@@ -10,6 +10,7 @@
 
 #include "../iris/data/dataset.h"
 
+#ifndef CURRENT_WINDOWS
 class DynamicDLOpenIrisExampleImpl {
  private:
   using F = void (*)(const Schema&, std::ostringstream&);
@@ -86,5 +87,6 @@ class DynamicDLOpenIrisExampleImpl {
 
   size_t TotalFlowers() const { return data_.size(); }
 };
+#endif  // CURRENT_WINDOWS
 
 #endif  // EXAMPLES_DYNAMIC_DLOPEN_IMPL_H

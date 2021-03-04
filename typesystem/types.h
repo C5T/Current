@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SFINAE_H
-#define CURRENT_TYPE_SYSTEM_SFINAE_H
+#ifndef CURRENT_TYPE_SYSTEM_TYPES_H
+#define CURRENT_TYPE_SYSTEM_TYPES_H
 
 #include "../port.h"
 
@@ -42,7 +42,10 @@ namespace crnt {
 
 // The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
 struct CurrentSuper {
-  virtual ~CurrentSuper() = default;
+  // "Implementing" an empty destructor here, as `= default;` makes this destructor `noexcept`,
+  // which causes problems with the Windows build, as some other destructors are not `noexcept`.
+  // TODO(dkorolev): I'll fix this one day, but not today.
+  virtual ~CurrentSuper() {}
 };
 
 // For `unique_ptr<>`-s.
@@ -307,4 +310,4 @@ using ::crnt::sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME;
 
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SFINAE_H
+#endif  // CURRENT_TYPE_SYSTEM_TYPES_H

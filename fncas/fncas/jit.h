@@ -28,6 +28,8 @@
 #ifndef FNCAS_FNCAS_JIT_H
 #define FNCAS_FNCAS_JIT_H
 
+#ifndef CURRENT_WINDOWS
+
 #ifndef FNCAS_USE_LONG_DOUBLE
 
 #define FNCAS_JIT_COMPILED
@@ -1091,5 +1093,7 @@ struct g_impl_selector<JIT::X64NativeJIT> {
 }  // namespace fncas
 
 #endif  // FNCAS_USE_LONG_DOUBLE
+
+#endif  // !CURRENT_WINDOWS
 
 #endif  // #ifndef FNCAS_FNCAS_JIT_H

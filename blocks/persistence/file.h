@@ -360,7 +360,7 @@ class FilePersister {
     // The range-based for-loop works fine. -- D.K.
     std::string operator*() const {
       if (current_entry_.empty()) {
-        const auto offset = file_persister_impl_->record_offset_[i_];
+        const auto offset = file_persister_impl_->record_offset_[static_cast<size_t>(i_)];
         if (offset != current_offset_) {
           fi_->seekg(offset, std::ios_base::beg);
           current_offset_ = offset;
@@ -630,7 +630,7 @@ class FilePersister {
     // ">" is OK, as this call is multithreading-friendly, and more entries could have been added during this call.
     CURRENT_ASSERT(file_persister_impl_->record_offset_.size() >= current_size);
 
-    return ITERABLE(file_persister_impl_, begin_index, end_index, file_persister_impl_->record_offset_[begin_index]);
+    return ITERABLE(file_persister_impl_, static_cast<size_t>(begin_index), static_cast<size_t>(end_index), file_persister_impl_->record_offset_[static_cast<size_t>(begin_index)]);
   }
 
   template <current::locks::MutexLockStatus MLS, typename ITERABLE>

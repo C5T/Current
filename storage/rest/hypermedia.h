@@ -124,7 +124,7 @@ struct HypermediaResponseFormatter {
     bool has_previous_page = false;
     bool has_next_page = false;
     uint64_t current_index = 0;
-    response.data.reserve(context.query_n);
+    response.data.reserve(static_cast<size_t>(context.query_n));
     for (auto iterator = span.begin(); iterator != span.end(); ++iterator) {
       using iterator_t = decltype(iterator);
       // NOTE(dkorolev): This `iterator` can be of more than three different kinds, among which are:

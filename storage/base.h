@@ -156,12 +156,12 @@ struct TypeListMapperImpl;
 template <typename FIELDS, int... NS>
 struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
-  using result = TypeList<typename std::result_of_t<FIELDS(FieldInfoByIndex<NS>)>::update_event_t...,
-                          typename std::result_of_t<FIELDS(FieldInfoByIndex<NS>)>::delete_event_t...,
-                          typename std::result_of_t<FIELDS(FieldInfoByIndex<NS>)>::patch_event_t...>;
+  using result = TypeList<typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
+                          typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...,
+                          typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::patch_event_t...>;
 #else
-  using result = TypeList<typename std::result_of_t<FIELDS(FieldInfoByIndex<NS>)>::update_event_t...,
-                          typename std::result_of_t<FIELDS(FieldInfoByIndex<NS>)>::delete_event_t...>;
+  using result = TypeList<typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
+                          typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...>;
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT
 };
 

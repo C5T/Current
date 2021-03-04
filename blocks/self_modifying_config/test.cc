@@ -88,10 +88,10 @@ TEST(SelfModifyingConfig, ReadFileException) {
   current::time::SetNow(
       current::IMFFixDateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
 
-  ASSERT_THROW(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename),
+  ASSERT_THROW(static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
                current::SelfModifyingConfigReadFileException);
   try {
-    std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
+    static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename));
   } catch (const current::SelfModifyingConfigReadFileException& e) {
     EXPECT_EQ("SelfModifyingConfigReadFileException(filename_)", e.Caller());
     EXPECT_EQ(".current/ReadFileExceptionConfig", e.OriginalDescription());
@@ -115,10 +115,10 @@ TEST(SelfModifyingConfig, ParseJSONException) {
 
   current::FileSystem::WriteStringToFile("De Louboutin.", config_filename.c_str());
 
-  ASSERT_THROW(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename),
+  ASSERT_THROW(static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
                current::SelfModifyingConfigParseJSONException);
   try {
-    std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
+    static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename));
   } catch (const current::SelfModifyingConfigParseJSONException& e) {
     EXPECT_EQ("SelfModifyingConfigParseJSONException(what)", e.Caller());
     EXPECT_EQ("File doesn't contain a valid JSON: 'De Louboutin.'", e.OriginalDescription());
@@ -144,10 +144,10 @@ TEST(SelfModifyingConfig, WriteFileException) {
 
   current::FileSystem::WriteStringToFile(JSON(UnitTestSelfModifyingConfig(4)), config_filename.c_str());
 
-  ASSERT_THROW(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename),
+  ASSERT_THROW(static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
                current::SelfModifyingConfigWriteFileException);
   try {
-    std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename);
+    static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename));
   } catch (const current::SelfModifyingConfigWriteFileException& e) {
     EXPECT_EQ("SelfModifyingConfigWriteFileException(new_filename)", e.Caller());
     EXPECT_EQ(".current/WriteFileExceptionConfig.19830816-000000", e.OriginalDescription());
