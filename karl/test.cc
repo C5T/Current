@@ -221,6 +221,7 @@ TEST(Karl, SmokeAnnotator) {
   }
 }
 
+#ifndef CURRENT_TRAVIS
 TEST(Karl, SmokeFilter) {
   current::time::ResetToZero();
 
@@ -277,6 +278,7 @@ TEST(Karl, SmokeFilter) {
     EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
   }
 }
+#endif  // !CURRENT_TRAVIS
 
 TEST(Karl, Deregister) {
   current::time::ResetToZero();
