@@ -49,7 +49,7 @@ template <class JSON_FORMAT, typename TA>
 struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::vector<bool, TA>> {
   static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, const std::vector<bool, TA>& value) {
     json_stringifier.Current().SetArray();
-    for (const auto& element : value) {
+    for (const auto&& element : value) {
       rapidjson::Value element_to_push;
       const bool tmp = element;
       json_stringifier.Inner(&element_to_push, tmp);
