@@ -49,7 +49,7 @@ typedef int SOCKET;
 #include <corecrt_io.h>
 #pragma comment(lib, "Ws2_32.lib")
 
-#endif
+#endif  // CURRENT_WINDOWS
 
 #include "../../exceptions.h"
 
@@ -81,7 +81,7 @@ struct SocketSystemInitializer {
     }
   };
   SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
-#endif
+#endif  // CURRENT_WINDOWS
 };
 
 class SocketHandle : private SocketSystemInitializer {
@@ -104,7 +104,7 @@ class SocketHandle : private SocketSystemInitializer {
     int just_one = 1;
 #else
     u_long just_one = 1;
-#endif
+#endif  // CURRENT_WINDOWS
 
     // LCOV_EXCL_START
     if (disable_nagle_algorithm) {
@@ -112,7 +112,7 @@ class SocketHandle : private SocketSystemInitializer {
       if (::setsockopt(socket_, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
 #else
       if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
-#endif
+#endif  // CURRENT_WINDOWS
       {
         CURRENT_THROW(SocketCreateException());
       }
@@ -155,7 +155,7 @@ class SocketHandle : private SocketSystemInitializer {
 #else
       ::shutdown(socket, SD_BOTH);
       ::closesocket(socket_);
-#endif
+#endif  // CURRENT_WINDOWS
       CURRENT_BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
     }
   }
@@ -171,7 +171,7 @@ class SocketHandle : private SocketSystemInitializer {
   SOCKET socket_;
 #else
   mutable SOCKET socket_;  // Need to support taking the handle away from a non-move constructor.
-#endif
+#endif  // CURRENT_WINDOWS
 
  public:
   // The `ReadOnlyValidSocketAccessor socket` members provide simple read-only access to `socket_` via `socket`.
@@ -210,7 +210,7 @@ class SocketHandle : private SocketSystemInitializer {
   SocketHandle(const SocketHandle& rhs) : socket_(static_cast<SOCKET>(-1)) { std::swap(socket_, rhs.socket_); }
 
  private:
-#endif
+#endif  // CURRENT_WINDOWS
 };
 
 struct IPAndPort {
@@ -286,7 +286,7 @@ class Connection : public SocketHandle {
 #else
         const int retval =
             ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), flags);
-#endif
+#endif  // CURRENT_WINDOWS
         CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d, errno = %d.\n",
                                static_cast<SOCKET>(socket),
                                static_cast<int>(retval),
@@ -300,20 +300,18 @@ class Connection : public SocketHandle {
           }
         }
 
-#ifdef CURRENT_WINDOWS
-        wsa_last_error = ::WSAGetLastError();
-#endif
-
 #ifndef CURRENT_WINDOWS
         if (errno == EAGAIN) {  // LCOV_EXCL_LINE
           continue;             // LCOV_EXCL_LINE
         }
 #else
+        wsa_last_error = ::WSAGetLastError();
         if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS || wsa_last_error == WSAENETDOWN) {
           // Effectively, `errno == EAGAIN`.
           continue;
         }
-#endif
+#endif  // CURRENT_WINDOWS
+
         // Only keep looping via `continue`.
         // There are two ways:
         // 1) `EAGAIN` or a Windows equivalent has been returned.
@@ -365,7 +363,7 @@ class Connection : public SocketHandle {
           CURRENT_THROW(EmptySocketReadException());
         }
       }
-#endif
+#endif  // CURRENT_WINDOWS
       // LCOV_EXCL_STOP
     }
   }
@@ -467,7 +465,7 @@ class Socket final : public SocketHandle {
 #else
     int addr_client_length = sizeof(sockaddr_in);
     const auto invalid_socket = INVALID_SOCKET;
-#endif
+#endif  // CURRENT_WINDOWS
     const SOCKET handle = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (handle == invalid_socket) {
       CURRENT_BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
@@ -480,7 +478,7 @@ class Socket final : public SocketHandle {
     socklen_t addr_serv_length = sizeof(sockaddr_in);
 #else
     int addr_serv_length = sizeof(sockaddr_in);
-#endif
+#endif  // CURRENT_WINDOWS
     if (::getsockname(handle, reinterpret_cast<struct sockaddr*>(&addr_serv), &addr_serv_length) != 0) {
       CURRENT_THROW(SocketGetSockNameException());
     }
@@ -558,7 +556,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       socklen_t addr_client_length = sizeof(sockaddr_in);
 #else
       int addr_client_length = sizeof(sockaddr_in);
-#endif
+#endif  // CURRENT_WINDOWS
       sockaddr_in addr_client;
       if (::getsockname(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length) != 0) {
         CURRENT_THROW(SocketGetSockNameException());
