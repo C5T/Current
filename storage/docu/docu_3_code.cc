@@ -49,8 +49,6 @@ DEFINE_string(client_storage_test_tmpdir, ".current", "Local path for the test t
 DEFINE_string(client_storage_test_tmpdir, "Debug", "Local path for the test to create temporary files in.");
 #endif
 
-DEFINE_int32(client_storage_test_port, PickPortForUnitTest(), "");
-
 // Need custom indent to keep the `docu` clean. -- D.K.
 // clang-format off
 
@@ -92,15 +90,20 @@ using namespace current::storage::rest;
 using namespace storage_docu;
   using TestStorage = StorageOfClients<StreamInMemoryStreamPersister>;
   auto storage = TestStorage::CreateMasterStorage();
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
   
   const auto rest1 =
-      RESTfulStorage<TestStorage>(*storage, FLAGS_client_storage_test_port, "/api1", "http://example.current.ai/api1");
+      RESTfulStorage<TestStorage>(*storage, port, "/api1", "http://example.current.ai/api1");
   const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
-      *storage, FLAGS_client_storage_test_port, "/api2", "http://example.current.ai/api2");
+      *storage, port, "/api2", "http://example.current.ai/api2");
   const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
-      *storage, FLAGS_client_storage_test_port, "/api3", "http://example.current.ai/api3");
+      *storage, port, "/api3", "http://example.current.ai/api3");
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
   
   // Top-level.
   {
@@ -453,12 +456,17 @@ using namespace storage_docu;
   using TestStorage = StorageOfClients<StreamInMemoryStreamPersister>;
   auto storage = TestStorage::CreateMasterStorage();
   
-  const auto basic_rest = RESTfulStorage<TestStorage>(
-      *storage, FLAGS_client_storage_test_port, "/api_basic", "http://example.current.ai/api_basic");
-  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
-      *storage, FLAGS_client_storage_test_port, "/api", "http://example.current.ai/api");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
   
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
+  const auto basic_rest = RESTfulStorage<TestStorage>(
+      *storage, port, "/api_basic", "http://example.current.ai/api_basic");
+  const auto rest = RESTfulStorage<TestStorage, current::storage::rest::Simple>(
+      *storage, port, "/api", "http://example.current.ai/api");
+  
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
   
   // POST one record.
   const auto publish_time_1 = current::IMFFixDateTimeStringToTimestamp("Fri, 01 Jul 2016 09:00:00 GMT");
@@ -760,12 +768,18 @@ using namespace storage_docu;
   
   const std::string client_storage_file_name =
       current::FileSystem::JoinPath(FLAGS_client_storage_test_tmpdir, "client_with_meta");
-const auto client_storage_file_remover = current::FileSystem::ScopedRmFile(client_storage_file_name);
+  const auto client_storage_file_remover = current::FileSystem::ScopedRmFile(client_storage_file_name);
+
   auto storage = TestStorage::CreateMasterStorage(client_storage_file_name);
   
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+  
   const auto rest = RESTfulStorage<TestStorage, RESTWithMeta>(
-      *storage, FLAGS_client_storage_test_port, "/api", "http://example.current.ai/api");
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
+      *storage, port, "/api", "http://example.current.ai/api");
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
   
   // Add client.
   current::time::SetNow(std::chrono::microseconds(1024));

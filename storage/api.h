@@ -515,7 +515,7 @@ class RESTfulStorage {
   void SwitchHTTPEndpointsTo503s() {
     data_->up_status_ = false;
     for (auto& route : data_->handler_routes_) {
-      HTTP(data_->port_)
+      HTTP(current::net::BarePort(data_->port_))
           .template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
     }
   }
@@ -565,7 +565,7 @@ class RESTfulStorage {
     const auto path = data_->route_prefix_ + '/' + route.resource_prefix +
                       (field_name.empty() ? "" : '/' + field_name) + route.resource_suffix;
     data_->handler_routes_.emplace_back(path, route.resource_args_mask);
-    data_->handlers_scope_ += HTTP(data_->port_).Register(path, route.resource_args_mask, route.handler);
+    data_->handlers_scope_ += HTTP(current::net::BarePort(data_->port_)).Register(path, route.resource_args_mask, route.handler);
   }
 
   template <typename T, url::FillObjectMode MODE>
