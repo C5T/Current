@@ -36,7 +36,7 @@ struct ReceivingWorker final {
   struct ReceivingWorkerImpl {
     current::net::Socket socket;
     current::net::Connection connection;
-    ReceivingWorkerImpl(uint16_t port) : socket(port), connection(socket.Accept()) {}
+    ReceivingWorkerImpl(uint16_t port) : socket(current::net::BarePort(port)), connection(socket.Accept()) {}
   };
   std::unique_ptr<ReceivingWorkerImpl> impl;
 
