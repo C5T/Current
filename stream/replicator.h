@@ -552,10 +552,12 @@ class MasterFlipController final {
     exposed_via_http_ = std::make_unique<ExposedStreamState>(
         port, route, std::move(restrictions), flip_started, flip_finished, flip_canceled);
     exposed_via_http_->routes_scope_ +=
-        HTTP(port).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream_)) +
-        HTTP(port).Register(route + "/control/flip_to_master",
-                            URLPathArgs::CountMask::None,
-                            [this](Request r) { MasterFlipRequest(std::move(r)); });
+        HTTP(current::net::BarePort(port)).Register(route,
+                                                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                                    *Value(stream_)) +
+        HTTP(current::net::BarePort(port)).Register(route + "/control/flip_to_master",
+                                                    URLPathArgs::CountMask::None,
+                                                    [this](Request r) { MasterFlipRequest(std::move(r)); });
     return exposed_via_http_->flip_key_;
   }
 

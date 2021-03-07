@@ -47,7 +47,6 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(stream_http_test_port, PickPortForUnitTest(), "Local port to use for Stream unit test.");
 DEFINE_string(stream_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 namespace stream_unittest {
@@ -504,13 +503,18 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
   auto exposed_stream = current::stream::Stream<RecordWithTimestamp>::CreateStreamWithCustomNamespaceName(
       current::ss::StreamNamespaceName("Stream", "Transaction"));
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   // Expose stream via HTTP.
-  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
+  const std::string base_url = Printf("http://localhost:%d/exposed", port);
   const auto scope =
-      HTTP(FLAGS_stream_http_test_port).Register("/exposed", *exposed_stream) +
-      HTTP(FLAGS_stream_http_test_port)
+      HTTP(port).Register("/exposed", *exposed_stream) +
+      HTTP(port)
           .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *exposed_stream);
-  const std::string base_url_with_args = Printf("http://localhost:%d/exposed_more", FLAGS_stream_http_test_port);
+  const std::string base_url_with_args = Printf("http://localhost:%d/exposed_more", port);
 
   {
     // Test that verbs other than "GET" result in '405 Method not allowed' error.
@@ -893,10 +897,15 @@ TEST(Stream, HTTPSubscriptionCanBeTerminated) {
 
   using namespace stream_unittest;
 
-  auto exposed_stream = current::stream::Stream<Record>::CreateStream();
-  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
 
-  const auto scope = HTTP(FLAGS_stream_http_test_port).Register("/exposed", *exposed_stream);
+  auto exposed_stream = current::stream::Stream<Record>::CreateStream();
+  const std::string base_url = Printf("http://localhost:%d/exposed", port);
+
+  const auto scope = HTTP(port).Register("/exposed", *exposed_stream);
 
   std::atomic_bool keep_publishing(true);
   std::thread slow_publisher([&exposed_stream, &keep_publishing]() {
@@ -1117,11 +1126,17 @@ TEST(Stream, UncheckedVsCheckedSubscription) {
   };
 
   current::FileSystem::WriteStringToFile(CombineFileContents(), persistence_file_name.c_str());
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto exposed_stream =
       current::stream::Stream<Record, current::persistence::File>::CreateStream(persistence_file_name);
 
-  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_stream_http_test_port);
-  const auto scope = HTTP(FLAGS_stream_http_test_port).Register("/exposed", *exposed_stream);
+  const std::string base_url = Printf("http://localhost:%d/exposed", port);
+  const auto scope = HTTP(port).Register("/exposed", *exposed_stream);
 
   const auto CollectSubscriptionResult = [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
     rows.clear();
@@ -1296,13 +1311,18 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   using stream_t = current::stream::Stream<Record, current::persistence::File>;
   using RemoteStreamReplicator = current::stream::StreamReplicator<stream_t>;
   auto replicated_stream = stream_t::CreateStream(persistence_file_name);
 
   // Simulate subscription to stream stream.
   const auto scope =
-      HTTP(FLAGS_stream_http_test_port)
+      HTTP(port)
           .Register("/log",
                     URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                     [](Request r) {
@@ -1337,7 +1357,7 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
 
   // Replicate data via subscription to the fake stream.
   current::stream::SubscribableRemoteStream<Record> remote_stream(
-      Printf("http://localhost:%d/log", FLAGS_stream_http_test_port), "Record", "Namespace");
+      Printf("http://localhost:%d/log", port), "Record", "Namespace");
 
   auto replicator = RemoteStreamReplicator(replicated_stream);
 
@@ -1354,6 +1374,16 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
 TEST(Stream, MasterFollowerFlip) {
   current::time::ResetToZero();
 
+  auto reserved_port1 = current::net::ReserveLocalPort();
+  const int port1 = reserved_port1;
+  auto& http_server1 = HTTP(std::move(reserved_port1));
+  static_cast<void>(http_server1);
+
+  auto reserved_port2 = current::net::ReserveLocalPort();
+  const int port2 = reserved_port2;
+  auto& http_server2 = HTTP(std::move(reserved_port2));
+  static_cast<void>(http_server2);
+
   using namespace stream_unittest;
   using stream_t = current::stream::Stream<Record, current::persistence::File>;
 
@@ -1363,8 +1393,6 @@ TEST(Stream, MasterFollowerFlip) {
   const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
   const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
   const auto stream3_file_remover = current::FileSystem::ScopedRmFile(stream3_file_name);
-  const auto port1 = FLAGS_stream_http_test_port;
-  const auto port2 = FLAGS_stream_http_test_port + 1;
   const std::string base_url1 = Printf("http://localhost:%d/exposed", port1);
   const std::string base_url2 = Printf("http://localhost:%d/exposed", port2);
 
@@ -1407,8 +1435,17 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
   const std::string stream1_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream1");
   const std::string stream2_file_name = current::FileSystem::JoinPath(FLAGS_stream_test_tmpdir, "stream2");
   const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
-  const auto port1 = FLAGS_stream_http_test_port;
-  const auto port2 = FLAGS_stream_http_test_port + 1;
+
+  auto reserved_port1 = current::net::ReserveLocalPort();
+  const int port1 = reserved_port1;
+  auto& http_server1 = HTTP(std::move(reserved_port1));
+  static_cast<void>(http_server1);
+
+  auto reserved_port2 = current::net::ReserveLocalPort();
+  const int port2 = reserved_port2;
+  auto& http_server2 = HTTP(std::move(reserved_port2));
+  static_cast<void>(http_server2);
+
   const std::string base_url1 = Printf("http://localhost:%d/exposed", port1);
   const std::string base_url2 = Printf("http://localhost:%d/exposed", port2);
 
@@ -1705,8 +1742,16 @@ TEST(Stream, MasterFollowerFlipExceptions) {
   const auto stream1_file_remover = current::FileSystem::ScopedRmFile(stream1_file_name);
   const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
   const auto stream3_file_remover = current::FileSystem::ScopedRmFile(stream3_file_name);
-  const auto port1 = FLAGS_stream_http_test_port;
-  const auto port2 = FLAGS_stream_http_test_port + 1;
+
+  auto reserved_port1 = current::net::ReserveLocalPort();
+  const int port1 = reserved_port1;
+  auto& http_server1 = HTTP(std::move(reserved_port1));
+  static_cast<void>(http_server1);
+
+  auto reserved_port2 = current::net::ReserveLocalPort();
+  const int port2 = reserved_port2;
+  auto& http_server2 = HTTP(std::move(reserved_port2));
+  static_cast<void>(http_server2);
 
   current::FileSystem::WriteStringToFile(stream_golden_data, stream1_file_name.c_str());
   current::stream::MasterFlipController<stream_t> stream1(stream_t::CreateStream(stream1_file_name));
@@ -2035,9 +2080,14 @@ TEST(Stream, ReleaseAndAcquirePublisher) {
 TEST(Stream, SubscribingToJustTailDoesTheJob) {
   using namespace stream_unittest;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto exposed_stream = current::stream::Stream<Record>::CreateStream();
-  const std::string base_url = Printf("http://localhost:%d/tail", FLAGS_stream_http_test_port);
-  const auto scope = HTTP(FLAGS_stream_http_test_port).Register("/tail", *exposed_stream);
+  const std::string base_url = Printf("http://localhost:%d/tail", port);
+  const auto scope = HTTP(port).Register("/tail", *exposed_stream);
 
   std::thread initial_publisher([&]() {
     for (int i = 0; i <= 2; ++i) {
