@@ -33,8 +33,6 @@ SOFTWARE.
 #include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_server_port_04, PickPortForUnitTest(), "");
-
 using current::strings::Printf;
 
   // An input record that would be passed in as a JSON.
@@ -53,9 +51,10 @@ using current::strings::Printf;
   }; 
   
 TEST(Docu, HTTPServer04) {
-const auto port = FLAGS_docu_net_server_port_04;
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
   // Doing Penny-level arithmetics for fun and performance testing.
-  const auto scope = HTTP(port).Register("/penny", [](Request r) {
+  const auto scope = HTTP(std::move(reserved_port)).Register("/penny", [](Request r) {
     try {
       const auto input = ParseJSON<PennyInput>(r.body);
       if (input.op == "add") {

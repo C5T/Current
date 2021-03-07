@@ -69,17 +69,6 @@ using current::net::HTTPRedirectNotAllowedException;
 using current::net::HTTPRedirectLoopException;
 using current::net::SocketResolveAddressException;
 
-DEFINE_int32(net_api_test_port,
-             PickPortForUnitTest(),
-             "Local port to use for the test API-based HTTP server. NOTE: This port should be different from "
-             "ports in other network-based tests, since API-driven HTTP server will hold it open for the whole "
-             "lifetime of the binary.");
-DEFINE_int32(net_api_test_port_secondary,
-             PickPortForUnitTest(),
-             "Local port to use for the test API-based HTTP server for multi-port tests. NOTE: This port should be "
-             "different from "
-             "ports in other network-based tests, since API-driven HTTP server will hold it open for the whole "
-             "lifetime of the binary.");
 DEFINE_string(net_api_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 CURRENT_STRUCT(HTTPAPITestObject) {
@@ -101,47 +90,56 @@ TEST(ArchitectureTest, CURRENT_ARCH_UNAME_AS_IDENTIFIER) { ASSERT_EQ(CURRENT_ARC
 // Test the features of HTTP server.
 TEST(HTTPAPI, Register) {
   using namespace current::http;
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/get", [](Request r) { r("OK"); });
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", nullptr), HandlerAlreadyExistsException);
-  const string url = Printf("http://localhost:%d/get", FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  const auto scope = HTTP(std::move(reserved_port)).Register("/get", [](Request r) { r("OK"); });
+  ASSERT_THROW(HTTP(port).Register("/get", nullptr), HandlerAlreadyExistsException);
+  const string url = Printf("http://localhost:%d/get", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+  EXPECT_EQ(1u, HTTP(port).PathHandlersCount());
 }
 
 TEST(HTTPAPI, RegisterExceptions) {
   using namespace current::http;
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("no_slash", nullptr), PathDoesNotStartWithSlash);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/wrong_slash/", nullptr), PathEndsWithSlash);
+  auto reserved_port = current::net::ReserveLocalPort();
+  auto& http_server = HTTP(std::move(reserved_port));
+  ASSERT_THROW(http_server.Register("no_slash", nullptr), PathDoesNotStartWithSlash);
+  ASSERT_THROW(http_server.Register("/wrong_slash/", nullptr), PathEndsWithSlash);
   // The curly brackets are not necessarily wrong, but `URL::IsPathValidToRegister()` is `false` for them.
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/{}", nullptr), PathContainsInvalidCharacters);
+  ASSERT_THROW(http_server.Register("/{}", nullptr), PathContainsInvalidCharacters);
 }
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
   using namespace current::http;
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+
+  auto& http_server = HTTP(std::move(reserved_port));
+  EXPECT_EQ(port, static_cast<int>(http_server.LocalPort()));
 
   const auto handler = [](Request r) {
     r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ") " +
       (r.url_path_had_trailing_slash ? "url_path_had_trailing_slash" : ""));
   };
 
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler) +
-                     HTTP(FLAGS_net_api_test_port)
+  const auto scope = HTTP(port).Register("/", URLPathArgs::CountMask::Any, handler) +
+                     HTTP(port)
                          .Register("/user", URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two, handler) +
-                     HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler) +
-                     HTTP(FLAGS_net_api_test_port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
+                     HTTP(port).Register("/user/a", URLPathArgs::CountMask::One, handler) +
+                     HTTP(port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
 
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/", handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user", URLPathArgs::CountMask::Two, handler),
+  ASSERT_THROW(HTTP(port).Register("/", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(port).Register("/user", URLPathArgs::CountMask::Two, handler),
                HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler),
+  ASSERT_THROW(HTTP(port).Register("/user/a", URLPathArgs::CountMask::One, handler),
                HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(port).Register("/user/a/1", handler), HandlerAlreadyExistsException);
 
-  const auto run = [](const std::string& path) -> std::string {
-    return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
+  const auto run = [port](const std::string& path) -> std::string {
+    return HTTP(GET(Printf("http://localhost:%d", port) + path)).body;
   };
 
   EXPECT_EQ("/ () url_path_had_trailing_slash", run("/"));
@@ -186,18 +184,21 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
 }
 
 TEST(HTTPAPI, ComposeURLPathWithURLPathArgs) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const auto handler = [](Request r) {
     r(r.url.path + " (" + r.url_path_args.ComposeURLPathFromArgs() + ", " + r.url_path_args.ComposeURLPath() + ")");
   };
 
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler) +
-                     HTTP(FLAGS_net_api_test_port)
-                         .Register("/user", URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two, handler) +
-                     HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler) +
-                     HTTP(FLAGS_net_api_test_port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
+  const auto scope = http_server.Register("/", URLPathArgs::CountMask::Any, handler) +
+                     http_server.Register("/user", URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two, handler) +
+                     http_server.Register("/user/a", URLPathArgs::CountMask::One, handler) +
+                     http_server.Register("/user/a/1", URLPathArgs::CountMask::None, handler);
 
-  const auto run = [](const std::string& path) -> std::string {
-    return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
+  const auto run = [port](const std::string& path) -> std::string {
+    return HTTP(GET(Printf("http://localhost:%d", port) + path)).body;
   };
 
   EXPECT_EQ("/ (/, /)", run("/"));
@@ -235,86 +236,110 @@ TEST(HTTPAPI, ComposeURLPathWithURLPathArgs) {
 }
 
 TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {
-  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
 
-  HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("bar"); });
-  // DIMA
-  // ASSERT_THROW(HTTP(FLAGS_net_api_test_port).UnRegister("/foo"), HandlerDoesNotExistException);
+  const string url = Printf("http://localhost:%d/foo", port);
+
+  http_server.Register("/foo", [](Request r) { r("bar"); });
+  // DIMA DIMA
+  // ASSERT_THROW(http_server.UnRegister("/foo"), HandlerDoesNotExistException);
 }
 
 TEST(HTTPAPI, ScopedUnRegister) {
-  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const string url = Printf("http://localhost:%d/foo", port);
 
   {
-    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
-    HTTPRoutesScope registerer = HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("bar"); });
-    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+    EXPECT_EQ(0u, http_server.PathHandlersCount());
+    HTTPRoutesScope registerer = http_server.Register("/foo", [](Request r) { r("bar"); });
+    EXPECT_EQ(1u, http_server.PathHandlersCount());
 
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
     EXPECT_EQ("bar", HTTP(GET(url)).body);
   }
 
   {
-    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+    EXPECT_EQ(0u, http_server.PathHandlersCount());
     HTTPRoutesScope registerer;
-    registerer += HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("baz"); });
-    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+    registerer += http_server.Register("/foo", [](Request r) { r("baz"); });
+    EXPECT_EQ(1u, http_server.PathHandlersCount());
 
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
     EXPECT_EQ("baz", HTTP(GET(url)).body);
   }
 
   {
-    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+    EXPECT_EQ(0u, http_server.PathHandlersCount());
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
   }
 }
 
 TEST(HTTPAPI, ScopeCanBeAssignedNullPtr) {
-  auto scope = HTTP(FLAGS_net_api_test_port).Register("/are_we_there_yet", [](Request r) { r("So far."); });
-  const string url = Printf("http://localhost:%d/are_we_there_yet", FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  auto scope = http_server.Register("/are_we_there_yet", [](Request r) { r("So far."); });
+  const string url = Printf("http://localhost:%d/are_we_there_yet", port);
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
   scope = nullptr;
   EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
 }
 
 TEST(HTTPAPI, URLParameters) {
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/query", [](Request r) { r("x=" + r.url.query["x"]); });
-  EXPECT_EQ("x=", HTTP(GET(Printf("http://localhost:%d/query", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("x=42", HTTP(GET(Printf("http://localhost:%d/query?x=42", FLAGS_net_api_test_port))).body);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/query", [](Request r) { r("x=" + r.url.query["x"]); });
+  EXPECT_EQ("x=", HTTP(GET(Printf("http://localhost:%d/query", port))).body);
+  EXPECT_EQ("x=42", HTTP(GET(Printf("http://localhost:%d/query?x=42", port))).body);
   EXPECT_EQ("x=test passed",
-            HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", port))).body);
   EXPECT_EQ("x=test passed",
-            HTTP(GET(Printf("http://localhost:%d/query?x=test%%20passed", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%20passed", port))).body);
   EXPECT_EQ("x=test/passed",
-            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2fpassed", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2fpassed", port))).body);
   EXPECT_EQ("x=test/passed",
-            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2Fpassed", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/query?x=test%%2Fpassed", port))).body);
 }
 
 TEST(HTTPAPI, InvalidHEXInURLParameters) {
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/qod", [](Request r) { r("wtf=" + r.url.query["wtf"]); });
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/qod", [](Request r) { r("wtf=" + r.url.query["wtf"]); });
   {
-    const auto ok1 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=OK", FLAGS_net_api_test_port)));
+    const auto ok1 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=OK", port)));
     EXPECT_EQ("wtf=OK", ok1.body);
     EXPECT_EQ(200, static_cast<int>(ok1.code));
   }
   {
     // Hexadecimal `4F4B` is 'OK'. Test both uppercase and lowercase.
-    const auto ok2 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%4F%%4b", FLAGS_net_api_test_port)));
+    const auto ok2 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%4F%%4b", port)));
     EXPECT_EQ("wtf=OK", ok2.body);
     EXPECT_EQ(200, static_cast<int>(ok2.code));
   }
   {
     // The presence of `%OK`, which is obviously wrong HEX code, in the URL should not kill the server.
-    const auto ok3 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%OK", FLAGS_net_api_test_port)));
+    const auto ok3 = HTTP(GET(Printf("http://localhost:%d/qod?wtf=%%OK", port)));
     EXPECT_EQ(Printf("wtf=%%OK"), ok3.body);
     EXPECT_EQ(200, static_cast<int>(ok3.code));
   }
 }
 
 TEST(HTTPAPI, HeadersAndCookies) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/headers_and_cookies",
                                    [](Request r) {
                                      EXPECT_TRUE(r.headers.Has("Header1"));
@@ -329,7 +354,7 @@ TEST(HTTPAPI, HeadersAndCookies) {
                                      response.SetCookie("cookie2", "value2");
                                      r(response);
                                    });
-  const auto response = HTTP(GET(Printf("http://localhost:%d/headers_and_cookies", FLAGS_net_api_test_port))
+  const auto response = HTTP(GET(Printf("http://localhost:%d/headers_and_cookies", port))
                                  .SetHeader("Header1", "foo")
                                  .SetCookie("x", "1")
                                  .SetCookie("y", "2")
@@ -343,42 +368,54 @@ TEST(HTTPAPI, HeadersAndCookies) {
 }
 
 TEST(HTTPAPI, ConnectionIPAndPort) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/foo",
-                                   [](Request r) {
+                                   [port](Request r) {
                                      const auto& c = r.connection;
                                      EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
-                                     EXPECT_EQ(FLAGS_net_api_test_port, c.LocalIPAndPort().port);
+                                     EXPECT_EQ(port, c.LocalIPAndPort().port);
                                      EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
                                      EXPECT_LT(0, c.RemoteIPAndPort().port);
                                      r("bar", HTTPResponseCode.OK);
                                    });
-  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/foo", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("bar", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+  EXPECT_EQ(1u, http_server.PathHandlersCount());
 }
 
 TEST(HTTPAPI, RespondsWithString) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const auto scope =
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/responds_with_string",
                     [](Request r) {
                       r("test_string", HTTPResponseCode.OK, Headers({{"foo", "bar"}}), "application/json");
                     });
-  const string url = Printf("http://localhost:%d/responds_with_string", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/responds_with_string", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("bar", response.headers.Get("foo"));
   EXPECT_EQ("test_string", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+  EXPECT_EQ(1u, http_server.PathHandlersCount());
 }
 
 TEST(HTTPAPI, RespondsWithObject) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/responds_with_object",
                                    [](Request r) {
                                      r(HTTPAPITestObject(),
@@ -386,12 +423,12 @@ TEST(HTTPAPI, RespondsWithObject) {
                                        Headers({{"foo", "bar"}}),
                                        "application/json");
                                    });
-  const string url = Printf("http://localhost:%d/responds_with_object", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/responds_with_object", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+  EXPECT_EQ(1u, http_server.PathHandlersCount());
 }
 
 struct GoodStuff : current::http::IHasDoRespondViaHTTP {
@@ -401,23 +438,31 @@ struct GoodStuff : current::http::IHasDoRespondViaHTTP {
 };
 
 TEST(HTTPAPI, RespondsWithCustomObject) {
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/dude_this_is_awesome", [](Request r) { r(GoodStuff()); });
-  const string url = Printf("http://localhost:%d/dude_this_is_awesome", FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/dude_this_is_awesome", [](Request r) { r(GoodStuff()); });
+  const string url = Printf("http://localhost:%d/dude_this_is_awesome", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(762, static_cast<int>(response.code));
   EXPECT_EQ("Good stuff.", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+  EXPECT_EQ(1u, http_server.PathHandlersCount());
 }
 
 TEST(HTTPAPI, HandlesRespondTwiceWithString) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/respond_twice",
                                    [](Request r) {
                                      r("OK");
                                      r("FAIL");
                                    });
-  const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/respond_twice", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
@@ -425,9 +470,13 @@ TEST(HTTPAPI, HandlesRespondTwiceWithString) {
 }
 
 TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   std::string result = "";
   std::atomic_bool result_ready(false);
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  const auto scope = http_server
                          .Register("/respond_twice",
                                    [&result, &result_ready](Request r) {
                                      r(Response("OK", HTTPResponseCode.OK));
@@ -440,7 +489,7 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
                                        result_ready = true;
                                      }
                                    });
-  const string url = Printf("http://localhost:%d/respond_twice", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/respond_twice", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
@@ -455,7 +504,11 @@ TEST(HTTPAPI, HandlesRespondTwiceWithResponse) {
 #if !defined(CURRENT_APPLE) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, RedirectToRelativeURL) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/from",
                                    [](Request r) {
                                      r("",
@@ -463,55 +516,61 @@ TEST(HTTPAPI, RedirectToRelativeURL) {
                                        Headers({{"Location", "/to"}}),
                                        current::net::constants::kDefaultHTMLContentType);
                                    }) +
-                     HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
+                     http_server.Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", port))), HTTPRedirectNotAllowedException);
   // Redirect allowed when `.AllowRedirects()` is set.
-  const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
+  const auto response = HTTP(GET(Printf("http://localhost:%d/from", port)).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Done.", response.body);
   EXPECT_EQ((
-    FLAGS_net_api_test_port == 80
+    port == 80
       ? "http://localhost/to"
-      : Printf("http://localhost:%d/to", FLAGS_net_api_test_port)
+      : Printf("http://localhost:%d/to", port)
   ), response.url);
 }
 
 TEST(HTTPAPI, RedirectToFullURL) {
-  ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  auto second_reserved_port = current::net::ReserveLocalPort();
+  const int second_port = second_reserved_port;
+
   // Need a live port for the redirect target because the HTTP client is following the redirect
   // and tries to connect to the redirect target, otherwise throws a `SocketConnectException`.
-  const auto scope_redirect_to = HTTP(FLAGS_net_api_test_port_secondary).Register("/to", [](Request r) { r("Done."); });
+  const auto scope_redirect_to = HTTP(std::move(second_reserved_port)).Register("/to", [](Request r) { r("Done."); });
   const auto scope =
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/from",
-                    [](Request r) {
+                    [second_port](Request r) {
                       r("",
                         HTTPResponseCode.Found,
-                        Headers({{"Location", Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary)}}),
+                        Headers({{"Location", Printf("http://localhost:%d/to", second_port)}}),
                         current::net::constants::kDefaultHTMLContentType);
                     });
   // Redirect not allowed by default.
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", port))), HTTPRedirectNotAllowedException);
   // Redirect allowed when `.AllowRedirects()` is set.
-  const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
+  const auto response = HTTP(GET(Printf("http://localhost:%d/from", port)).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Done.", response.body);
-  EXPECT_EQ((
-    FLAGS_net_api_test_port_secondary == 80
-      ? "http://localhost/to"
-      : Printf("http://localhost:%d/to", FLAGS_net_api_test_port_secondary)
-  ), response.url);
+  EXPECT_EQ((second_port == 80 ? "http://localhost/to" : Printf("http://localhost:%d/to", second_port)), response.url);
 }
 
-#if 0
-TEST(HTTPAPI, RedirectToFullURLWithoutPort) {
+#if 0  // NOTE(dkorolev): Testing this too.
+TEST(HTTPAPI, RedirectToFullURLWithoutPortRequiresRootAndOpenPort80) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   // WARNING: This test requires root access to bind to the reserved port `80`.
   // Need a live port for the redirect target because the HTTP client is following the redirect
   // and tries to connect to the redirect target, otherwise throws a `SocketConnectException`.
   const uint16_t default_http_port = 80;
-  const auto scope_redirect_to = HTTP(default_http_port).Register("/to", [](Request r) { r("Done."); });
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  const auto scope_redirect_to = HTTP(current::net::BarePort(default_http_port)).Register("/to", [](Request r) { r("Done."); });
+  const auto scope = http_server
                          .Register("/from",
                                    [](Request r) {
                                      r("",
@@ -520,9 +579,9 @@ TEST(HTTPAPI, RedirectToFullURLWithoutPort) {
                                        current::net::constants::kDefaultHTMLContentType);
                                    });
   // Redirect not allowed by default.
-  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port))), HTTPRedirectNotAllowedException);
+  ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/from", port))), HTTPRedirectNotAllowedException);
   // Redirect allowed when `.AllowRedirects()` is set.
-  const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
+  const auto response = HTTP(GET(Printf("http://localhost:%d/from", port)).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Done.", response.body);
   EXPECT_EQ("http://localhost/to", response.url);
@@ -530,7 +589,11 @@ TEST(HTTPAPI, RedirectToFullURLWithoutPort) {
 #endif
 
 TEST(HTTPAPI, RedirectLoop) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/p1",
                                    [](Request r) {
                                      r("",
@@ -538,7 +601,7 @@ TEST(HTTPAPI, RedirectLoop) {
                                        Headers({{"Location", "/p2"}}),
                                        current::net::constants::kDefaultHTMLContentType);
                                    }) +
-                     HTTP(FLAGS_net_api_test_port)
+                     http_server
                          .Register("/p2",
                                    [](Request r) {
                                      r("",
@@ -546,7 +609,7 @@ TEST(HTTPAPI, RedirectLoop) {
                                        Headers({{"Location", "/p3"}}),
                                        current::net::constants::kDefaultHTMLContentType);
                                    }) +
-                     HTTP(FLAGS_net_api_test_port)
+                     http_server
                          .Register("/p3",
                                    [](Request r) {
                                      r("",
@@ -557,20 +620,20 @@ TEST(HTTPAPI, RedirectLoop) {
   {
     bool thrown = false;
     try {
-      HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port)).AllowRedirects());
+      HTTP(GET(Printf("http://localhost:%d/p1", port)).AllowRedirects());
     } catch (HTTPRedirectLoopException& e) {
       thrown = true;
       std::string loop;
-      if (FLAGS_net_api_test_port == 80) {
+      if (port == 80) {
         loop += Printf("http://localhost/p1") + " ";
         loop += Printf("http://localhost/p2") + " ";
         loop += Printf("http://localhost/p3") + " ";
         loop += Printf("http://localhost/p1");
       } else {
-        loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port) + " ";
-        loop += Printf("http://localhost:%d/p2", FLAGS_net_api_test_port) + " ";
-        loop += Printf("http://localhost:%d/p3", FLAGS_net_api_test_port) + " ";
-        loop += Printf("http://localhost:%d/p1", FLAGS_net_api_test_port);
+        loop += Printf("http://localhost:%d/p1", port) + " ";
+        loop += Printf("http://localhost:%d/p2", port) + " ";
+        loop += Printf("http://localhost:%d/p3", port) + " ";
+        loop += Printf("http://localhost:%d/p1", port);
       }
       EXPECT_EQ(loop, e.OriginalDescription());
     }
@@ -580,12 +643,16 @@ TEST(HTTPAPI, RedirectLoop) {
 #endif
 
 TEST(HTTPAPI, ResponseDotNotation) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/response_dot_notation",
                                    [](Request r) {
                                      r(Response("OK").Code(HTTPResponseCode.Created).SetHeader("X-Foo", "bar"));
                                    });
-  const auto response = HTTP(GET(Printf("http://localhost:%d/response_dot_notation", FLAGS_net_api_test_port)));
+  const auto response = HTTP(GET(Printf("http://localhost:%d/response_dot_notation", port)));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(201, static_cast<int>(response.code));
   EXPECT_TRUE(response.headers.Has("X-Foo"));
@@ -597,13 +664,17 @@ static Response BuildResponse() {
 }
 
 TEST(HTTPAPI, ResponseDotNotationReturnedFromAFunction) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/response_returned_from_function",
                                    [](Request r) {
                                      r(BuildResponse());
                                    });
   const auto response =
-      HTTP(GET(Printf("http://localhost:%d/response_returned_from_function", FLAGS_net_api_test_port)));
+      HTTP(GET(Printf("http://localhost:%d/response_returned_from_function", port)));
   EXPECT_EQ("", response.body);
   EXPECT_EQ(204, static_cast<int>(response.code));
   EXPECT_TRUE(response.headers.Has("X-Meh"));
@@ -611,8 +682,14 @@ TEST(HTTPAPI, ResponseDotNotationReturnedFromAFunction) {
 }
 
 TEST(HTTPAPI, FourOhFourNotFound) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+
+  auto& http_server = HTTP(std::move(reserved_port));  // Start the server and do not register any handlers.
+  static_cast<void>(http_server);
+
   EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultNotFoundMessage());
-  const string url = Printf("http://localhost:%d/ORLY", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/ORLY", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(404, static_cast<int>(response.code));
   EXPECT_EQ(DefaultNotFoundMessage(), response.body);
@@ -620,8 +697,12 @@ TEST(HTTPAPI, FourOhFourNotFound) {
 }
 
 TEST(HTTPAPI, FourOhFiveMethodNotAllowed) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n", DefaultMethodNotAllowedMessage());
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  const auto scope = http_server
                          .Register("/method_not_allowed",
                                    [](Request r) {
                                      r(DefaultMethodNotAllowedMessage(),
@@ -629,7 +710,7 @@ TEST(HTTPAPI, FourOhFiveMethodNotAllowed) {
                                        current::net::http::Headers(),
                                        current::net::constants::kDefaultHTMLContentType);
                                    });
-  const string url = Printf("http://localhost:%d/method_not_allowed", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/method_not_allowed", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(405, static_cast<int>(response.code));
   EXPECT_EQ(DefaultMethodNotAllowedMessage(), response.body);
@@ -639,8 +720,12 @@ TEST(HTTPAPI, FourOhFiveMethodNotAllowed) {
 TEST(HTTPAPI, AnyMethodAllowed) {
   using namespace current::http;
 
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r(r.method); });
-  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/foo", [](Request r) { r(r.method); });
+  const string url = Printf("http://localhost:%d/foo", port);
   // A slightly more internal version to allow custom HTTP verb (request method).
   HTTPClientPOSIX client((current::http::impl::HTTPRedirectHelper::ConstructionParams()));
   client.request_method_ = "ANYTHING";
@@ -652,14 +737,18 @@ TEST(HTTPAPI, AnyMethodAllowed) {
 }
 
 TEST(HTTPAPI, DefaultInternalServerErrorCausedByExceptionInHandler) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  const auto scope = http_server
                          .Register("/oh_snap",
                                    [](Request) {
                                      // Only `current::Exception` is caught and handled.
                                      CURRENT_THROW(current::Exception());
                                    });
-  const string url = Printf("http://localhost:%d/oh_snap", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/oh_snap", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(500, static_cast<int>(response.code));
   EXPECT_EQ(DefaultInternalServerErrorMessage(), response.body);
@@ -667,6 +756,10 @@ TEST(HTTPAPI, DefaultInternalServerErrorCausedByExceptionInHandler) {
 }
 
 TEST(HTTPAPI, HandlerIsCapturedByReference) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   struct Helper {
     size_t counter = 0u;
     void operator()(Request r) {
@@ -678,16 +771,16 @@ TEST(HTTPAPI, HandlerIsCapturedByReference) {
   Helper copy(helper);
   EXPECT_EQ(0u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/incr", helper) +
-                     HTTP(FLAGS_net_api_test_port).Register("/incr_same", helper) +
-                     HTTP(FLAGS_net_api_test_port).Register("/incr_copy", copy);
-  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr", FLAGS_net_api_test_port))).body);
+  const auto scope = http_server.Register("/incr", helper) +
+                     http_server.Register("/incr_same", helper) +
+                     http_server.Register("/incr_copy", copy);
+  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr", port))).body);
   EXPECT_EQ(1u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr_same", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr_same", port))).body);
   EXPECT_EQ(2u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr_copy", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr_copy", port))).body);
   EXPECT_EQ(2u, helper.counter);
   EXPECT_EQ(1u, copy.counter);
 }
@@ -697,10 +790,15 @@ TEST(HTTPAPI, HandlerSupportsStaticMethods) {
     static void Foo(Request r) { r("foo"); }
     static void Bar(Request r) { r("bar"); }
   };
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/foo", Static::Foo) +
-                     HTTP(FLAGS_net_api_test_port).Register("/bar", Static::Bar);
-  EXPECT_EQ("foo", HTTP(GET(Printf("http://localhost:%d/foo", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("bar", HTTP(GET(Printf("http://localhost:%d/bar", FLAGS_net_api_test_port))).body);
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/foo", Static::Foo) +
+                     http_server.Register("/bar", Static::Bar);
+  EXPECT_EQ("foo", HTTP(GET(Printf("http://localhost:%d/foo", port))).body);
+  EXPECT_EQ("bar", HTTP(GET(Printf("http://localhost:%d/bar", port))).body);
 }
 
 // Don't wait 10 x 10ms beyond the 1st run when running tests in a loop.
@@ -711,7 +809,11 @@ struct ShouldReduceDelayBetweenChunksSingleton {
 TEST(HTTPAPI, GetToFile) {
   using namespace current::http;
 
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/stars",
                                    [](Request r) {
                                      const size_t n = atoi(r.url.query["n"].c_str());
@@ -741,7 +843,7 @@ TEST(HTTPAPI, GetToFile) {
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
-  const string url = Printf("http://localhost:%d/stars?n=3", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/stars?n=3", port);
   const auto response = HTTP(GET(url), SaveResponseToFile(file_name));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(file_name, response.body_file_name);
@@ -750,7 +852,11 @@ TEST(HTTPAPI, GetToFile) {
 }
 
 TEST(HTTPAPI, ChunkedResponseWithHeaders) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/chunked_with_header",
                                    [](Request r) {
                                      EXPECT_EQ("GET", r.method);
@@ -760,7 +866,7 @@ TEST(HTTPAPI, ChunkedResponseWithHeaders) {
                                      response.Send("B");
                                      response.Send("C");
                                    });
-  const auto response = HTTP(GET(Printf("http://localhost:%d/chunked_with_header", FLAGS_net_api_test_port)));
+  const auto response = HTTP(GET(Printf("http://localhost:%d/chunked_with_header", port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("ABC", response.body);
   ASSERT_TRUE(response.headers.Has("header"));
@@ -770,8 +876,12 @@ TEST(HTTPAPI, ChunkedResponseWithHeaders) {
 TEST(HTTPAPI, GetByChunksPrototype) {
   using namespace current::http;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   // Handler returning the result chunk by chunk.
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  const auto scope = http_server
                          .Register("/chunks",
                                    [](Request r) {
                                      auto response = r.connection.SendChunkedHTTPResponse(
@@ -780,7 +890,7 @@ TEST(HTTPAPI, GetByChunksPrototype) {
                                      response.Send("23\n");
                                      response.Send("456\n");
                                    });
-  const string url = Printf("http://localhost:%d/chunks", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/chunks", port);
   {
     // A conventional GET, ignoring chunk boundaries and concatenating all the data together.
     const auto response = HTTP(GET(url));
@@ -876,7 +986,11 @@ TEST(HTTPAPI, GetByChunksPrototype) {
 }
 
 TEST(HTTPAPI, ChunkedBodySemantics) {
-  const auto scope = HTTP(FLAGS_net_api_test_port).Register("/test", [](Request r) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/test", [](Request r) {
     auto response = r.connection.SendChunkedHTTPResponse(HTTPResponseCode.OK,
                                                          Headers({{"TestHeaderName", "TestHeaderValue"}}),
                                                          current::net::constants::kDefaultJSONStreamContentType);
@@ -887,7 +1001,7 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
     response.Send("{\"s\":\"baz\"}");  // No newline by design.
   });
 
-  const string url = Printf("http://localhost:%d/test", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/test", port);
 
   {
     const auto response = HTTP(GET(url));
@@ -1007,19 +1121,27 @@ TEST(HTTPAPI, ChunkedBodySemantics) {
 }
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
                                      r("Data: " + r.body);
                                    });
   const auto response =
-      HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
+      HTTP(POST(Printf("http://localhost:%d/post", port), "No shit!", "application/octet-stream"));
   EXPECT_EQ("Data: No shit!", response.body);
 }
 
 TEST(HTTPAPI, PostAStringAsString) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post_string",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
@@ -1027,13 +1149,17 @@ TEST(HTTPAPI, PostAStringAsString) {
                                      r(r.body);
                                    });
   EXPECT_EQ("std::string",
-            HTTP(POST(Printf("http://localhost:%d/post_string", FLAGS_net_api_test_port),
+            HTTP(POST(Printf("http://localhost:%d/post_string", port),
                       std::string("std::string"),
                       "text/plain")).body);
 }
 
 TEST(HTTPAPI, PostAStringAsConstCharPtr) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post_const_char_ptr",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
@@ -1041,24 +1167,32 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
                                      r(r.body);
                                    });
   EXPECT_EQ("const char*",
-            HTTP(POST(Printf("http://localhost:%d/post_const_char_ptr", FLAGS_net_api_test_port),
+            HTTP(POST(Printf("http://localhost:%d/post_const_char_ptr", port),
                       static_cast<const char*>("const char*"),
                       "text/plain")).body);
 }
 
 TEST(HTTPAPI, PostWithEmptyBodyMustSetZeroContentLength) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post",
                                    [](Request r) {
                                      ASSERT_TRUE(r.body.empty());
                                      r("Yo!\n");
                                    });
-  const auto response = HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ""));
+  const auto response = HTTP(POST(Printf("http://localhost:%d/post", port), ""));
   EXPECT_EQ("Yo!\n", response.body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsString) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/respond_with_std_string",
                                    [](Request r) {
                                      EXPECT_EQ("POST", r.method);
@@ -1066,23 +1200,31 @@ TEST(HTTPAPI, RespondWithStringAsString) {
                                      r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
                                    });
   EXPECT_EQ("std::string",
-            HTTP(POST(Printf("http://localhost:%d/respond_with_std_string", FLAGS_net_api_test_port), "")).body);
+            HTTP(POST(Printf("http://localhost:%d/respond_with_std_string", port), "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const auto scope =
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/respond_with_const_char_ptr",
                     [](Request r) {
                       EXPECT_EQ("", r.body);
                       r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
                     });
   EXPECT_EQ("const char*",
-            HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port), "")).body);
+            HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", port), "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/respond_with_std_string_via_request_directly",
                                    [](Request r) {
                                      EXPECT_EQ("", r.body);
@@ -1090,12 +1232,16 @@ TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
                                    });
   EXPECT_EQ(
       "std::string",
-      HTTP(POST(Printf("http://localhost:%d/respond_with_std_string_via_request_directly", FLAGS_net_api_test_port),
+      HTTP(POST(Printf("http://localhost:%d/respond_with_std_string_via_request_directly", port),
                 "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/respond_with_const_char_ptr_via_request_directly",
                                    [](Request r) {
                                      EXPECT_EQ("", r.body);
@@ -1103,7 +1249,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
                                    });
   EXPECT_EQ(
       "const char*",
-      HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr_via_request_directly", FLAGS_net_api_test_port),
+      HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr_via_request_directly", port),
                 "")).body);
 }
 
@@ -1125,14 +1271,25 @@ TEST(HTTPAPI, PostFromInvalidFile) {
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = FileSystem::ScopedRmFile(non_existent_file_name);
+
+  const int port = []() {
+    auto reserved_port = current::net::ReserveLocalPort();
+    const int port = reserved_port;
+    return port;
+  }();
+
   ASSERT_THROW(HTTP(POSTFromFile(
-                   Printf("http://localhost:%d/foo", FLAGS_net_api_test_port), non_existent_file_name, "text/plain")),
+                   Printf("http://localhost:%d/foo", port), non_existent_file_name, "text/plain")),
                FileException);
 }
 #endif
 
 TEST(HTTPAPI, PostFromFileToBuffer) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
@@ -1141,7 +1298,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
-  const string url = Printf("http://localhost:%d/post", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/post", port);
   FileSystem::WriteStringToFile("No shit detected.", file_name.c_str());
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -1151,7 +1308,11 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
 TEST(HTTPAPI, PostFromBufferToFile) {
   using namespace current::http;
 
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
@@ -1160,7 +1321,7 @@ TEST(HTTPAPI, PostFromBufferToFile) {
   current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
-  const string url = Printf("http://localhost:%d/post", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/post", port);
   const auto response = HTTP(POST(url, "TEST BODY", "text/plain"), SaveResponseToFile(file_name));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Meh: TEST BODY", FileSystem::ReadFileAsString(response.body_file_name));
@@ -1169,7 +1330,11 @@ TEST(HTTPAPI, PostFromBufferToFile) {
 TEST(HTTPAPI, PostFromFileToFile) {
   using namespace current::http;
 
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/post",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
@@ -1180,7 +1345,7 @@ TEST(HTTPAPI, PostFromFileToFile) {
   const string response_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
   const auto input_file_scope = FileSystem::ScopedRmFile(request_file_name);
   const auto output_file_scope = FileSystem::ScopedRmFile(response_file_name);
-  const string url = Printf("http://localhost:%d/post", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/post", port);
   const string post_body = "Hi, this text should pass from one file to another. Mahalo!";
   FileSystem::WriteStringToFile(post_body, request_file_name.c_str());
   const auto response =
@@ -1191,14 +1356,18 @@ TEST(HTTPAPI, PostFromFileToFile) {
 }
 
 TEST(HTTPAPI, HeadRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/head",
                                    [](Request r) {
                                      EXPECT_EQ("HEAD", r.method);
                                      ASSERT_TRUE(r.body.empty());
                                      r("", HTTPResponseCode.OK, Headers({{"foo", "bar"}}), "text/html");
                                    });
-  const auto response = HTTP(HEAD(Printf("http://localhost:%d/head", FLAGS_net_api_test_port)));
+  const auto response = HTTP(HEAD(Printf("http://localhost:%d/head", port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_TRUE(response.body.empty());
   ASSERT_TRUE(response.headers.Has("foo"));
@@ -1206,7 +1375,11 @@ TEST(HTTPAPI, HeadRequest) {
 }
 
 TEST(HTTPAPI, DeleteRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/delete",
                                    [](Request r) {
                                      EXPECT_EQ("DELETE", r.method);
@@ -1214,28 +1387,36 @@ TEST(HTTPAPI, DeleteRequest) {
                                      SerializableObject object;
                                      r(object);
                                    });
-  const auto response = HTTP(DELETE(Printf("http://localhost:%d/delete", FLAGS_net_api_test_port)));
+  const auto response = HTTP(DELETE(Printf("http://localhost:%d/delete", port)));
   EXPECT_EQ("42:foo", ParseJSON<SerializableObject>(response.body).AsString());
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, PatchRequest) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/patch",
                                    [](Request r) {
                                      EXPECT_EQ("PATCH", r.method);
                                      EXPECT_EQ("test", r.body);
                                      r("Patch OK.");
                                    });
-  const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", FLAGS_net_api_test_port), "test"));
+  const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", port), "test"));
   EXPECT_EQ("Patch OK.", response.body);
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, UserAgent) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/ua", [](Request r) { r("TODO(dkorolev): Actually get passed in user agent."); });
-  const string url = Printf("http://localhost:%d/ua", FLAGS_net_api_test_port);
+  const string url = Printf("http://localhost:%d/ua", port);
   const auto response = HTTP(GET(url).UserAgent("Blah"));
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -1283,11 +1464,15 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
   FileSystem::WriteStringToFile("", FileSystem::JoinPath(dir, ".DS_Store").c_str());
   FileSystem::WriteStringToFile("", FileSystem::JoinPath(sub_dir, ".file_hidden").c_str());
 
-  const auto scope = HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.ServeStaticFilesFrom(dir);
 
   // Root index file.
   {
-    const auto root_response = HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port)));
+    const auto root_response = HTTP(GET(Printf("http://localhost:%d/", port)));
     EXPECT_EQ(200, static_cast<int>(root_response.code));
     ASSERT_TRUE(root_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", root_response.headers.Get("Content-Type"));
@@ -1296,7 +1481,7 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
 
   // Root index file direct link.
   {
-    const auto root_index_response = HTTP(GET(Printf("http://localhost:%d/index.html", FLAGS_net_api_test_port)));
+    const auto root_index_response = HTTP(GET(Printf("http://localhost:%d/index.html", port)));
     EXPECT_EQ(200, static_cast<int>(root_index_response.code));
     ASSERT_TRUE(root_index_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", root_index_response.headers.Get("Content-Type"));
@@ -1305,21 +1490,21 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
 
   // Misc files.
   {
-    const auto html_response = HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port)));
+    const auto html_response = HTTP(GET(Printf("http://localhost:%d/file.html", port)));
     EXPECT_EQ(200, static_cast<int>(html_response.code));
     ASSERT_TRUE(html_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", html_response.headers.Get("Content-Type"));
     EXPECT_EQ("<h1>HTML file</h1>", html_response.body);
   }
   {
-    const auto text_response = HTTP(GET(Printf("http://localhost:%d/file.txt", FLAGS_net_api_test_port)));
+    const auto text_response = HTTP(GET(Printf("http://localhost:%d/file.txt", port)));
     EXPECT_EQ(200, static_cast<int>(text_response.code));
     ASSERT_TRUE(text_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/plain", text_response.headers.Get("Content-Type"));
     EXPECT_EQ("This is text.", text_response.body);
   }
   {
-    const auto png_response = HTTP(GET(Printf("http://localhost:%d/file.png", FLAGS_net_api_test_port)));
+    const auto png_response = HTTP(GET(Printf("http://localhost:%d/file.png", port)));
     EXPECT_EQ(200, static_cast<int>(png_response.code));
     ASSERT_TRUE(png_response.headers.Has("Content-Type"));
     EXPECT_EQ("image/png", png_response.headers.Get("Content-Type"));
@@ -1328,30 +1513,30 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
 
   // Redirect from directory without trailing slash to directory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_dir_response =
-        HTTP(GET(Printf("http://localhost:%d/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/sub_dir", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/sub_dir/"
-        : Printf("http://localhost:%d/sub_dir/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/sub_dir/", port)
     ), sub_dir_response.url);
     ASSERT_TRUE(sub_dir_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", sub_dir_response.headers.Get("Content-Type"));
     EXPECT_EQ("<h1>HTML sub_dir index</h1>", sub_dir_response.body);
   }
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/sub_dir/sub_sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/sub_dir/sub_sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_sub_dir_response =
-        HTTP(GET(Printf("http://localhost:%d/sub_dir/sub_sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/sub_dir/sub_sub_dir", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/sub_dir/sub_sub_dir/"
-        : Printf("http://localhost:%d/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/sub_dir/sub_sub_dir/", port)
     ), sub_sub_dir_response.url);
     ASSERT_TRUE(sub_sub_dir_response.headers.Has("Content-Type"));
     EXPECT_EQ("text/html", sub_sub_dir_response.headers.Get("Content-Type"));
@@ -1360,67 +1545,67 @@ TEST(HTTPAPI, ServeStaticFilesFrom) {
 
   // Subdirectory index file.
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/sub_dir/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir/", port))).body);
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm", port))).body);
 
   // File in subdirectory.
   EXPECT_EQ("alert('JavaScript')",
-            HTTP(GET(Printf("http://localhost:%d/sub_dir/file_in_sub_dir.js", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir/file_in_sub_dir.js", port))).body);
 
   // Trailing slash for files should result in HTTP 404.
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/index.html/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/index.html/", port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir/index.htm/", port))).body);
 
   // Hidden files should result in HTTP 404.
-  EXPECT_EQ(DefaultNotFoundMessage(), HTTP(GET(Printf("http://localhost:%d/.DS_Store", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(DefaultNotFoundMessage(), HTTP(GET(Printf("http://localhost:%d/.DS_Store", port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/sub_dir/.file_hidden", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir/.file_hidden", port))).body);
 
   // Missing index file should result in HTTP 404.
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index", port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/sub_dir_no_index/", port))).body);
 
   // Hidden directory should result in HTTP 404.
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/", port))).body);
   EXPECT_EQ(DefaultNotFoundMessage(),
-            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/index.html", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden/index.html", port))).body);
   EXPECT_EQ(404,
-            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", FLAGS_net_api_test_port))).code));
+            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/.sub_dir_hidden", port))).code));
   EXPECT_EQ(
       404,
       static_cast<int>(
-          HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden/index.html", FLAGS_net_api_test_port), "")).code));
+          HTTP(POST(Printf("http://localhost:%d/.sub_dir_hidden/index.html", port), "")).code));
 
   // POST to file URL.
   EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
+            HTTP(POST(Printf("http://localhost:%d/file.html", port), "")).body);
   EXPECT_EQ(405,
-            static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
+            static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", port), "")).code));
 
   // PUT to file URL.
   EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(PUT(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
+            HTTP(PUT(Printf("http://localhost:%d/file.html", port), "")).body);
   EXPECT_EQ(405,
-            static_cast<int>(HTTP(PUT(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
+            static_cast<int>(HTTP(PUT(Printf("http://localhost:%d/file.html", port), "")).code));
 
   // PATCH to file URL.
   EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(PATCH(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
+            HTTP(PATCH(Printf("http://localhost:%d/file.html", port), "")).body);
   EXPECT_EQ(405,
-            static_cast<int>(HTTP(PATCH(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
+            static_cast<int>(HTTP(PATCH(Printf("http://localhost:%d/file.html", port), "")).code));
 
   // DELETE to file URL.
   EXPECT_EQ(DefaultMethodNotAllowedMessage(),
-            HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+            HTTP(DELETE(Printf("http://localhost:%d/file.html", port))).body);
+  EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(Printf("http://localhost:%d/file.html", port))).code));
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
@@ -1439,43 +1624,47 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
   FileSystem::WriteStringToFile("<h1>HTML sub_sub_dir index</h1>",
                                 FileSystem::JoinPath(sub_sub_dir, "index.html").c_str());
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const auto scope =
-      HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/something"});
+      http_server.ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/something"});
 
   // Root index file.
   EXPECT_EQ("<h1>HTML index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/static/something/", port))).body);
 
   // Redirect from directory without trailing slash to directory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", port))),
                  HTTPRedirectNotAllowedException);
     const auto dir_response =
-        HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/static/something", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/static/something/"
-        : Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/static/something/", port)
     ), dir_response.url);
     EXPECT_EQ("<h1>HTML index</h1>", dir_response.body);
   }
 
   // Subdirectory index file.
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", port))).body);
 
   // Redirect from subdirectory without trailing slash to subdirectory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_dir_response =
-        HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/static/something/sub_dir/"
-        : Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/static/something/sub_dir/", port)
     ), sub_dir_response.url);
     EXPECT_EQ("<h1>HTML sub_dir index</h1>", sub_dir_response.body);
   }
@@ -1483,19 +1672,19 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefix) {
   // Subsubdirectory index file.
   EXPECT_EQ(
       "<h1>HTML sub_sub_dir index</h1>",
-      HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", port))).body);
 
   // Redirect from subsubdirectory without trailing slash to subsubdirectory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir",
-                                                      FLAGS_net_api_test_port)).AllowRedirects());
+                                                      port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/static/something/sub_dir/sub_sub_dir/"
-        : Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", port)
     ), sub_sub_dir_response.url);
     EXPECT_EQ("<h1>HTML sub_sub_dir index</h1>", sub_sub_dir_response.body);
   }
@@ -1517,50 +1706,54 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
   FileSystem::WriteStringToFile("<h1>HTML sub_sub_dir index</h1>",
                                 FileSystem::JoinPath(sub_sub_dir, "index.html").c_str());
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   // Below, use `localhost` and the secondary test port, not arbitrary domain name and port,
   // because the HTTP client follows the redirect and tries to resolve its target domain name and connect to the port.
   // This use case is for when there is a proxy, but we haven't set up one,
   // so after redirects, the response code and body are always HTTP 200 with "Done.", not the targeted content.
   const auto scope_redirect_to =
-      HTTP(FLAGS_net_api_test_port).Register("/anything", URLPathArgs::CountMask::Any, [](Request r) { r("Done."); });
+      http_server.Register("/anything", URLPathArgs::CountMask::Any, [](Request r) { r("Done."); });
 
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  const auto scope = http_server
                          .ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/something", "/anything"});
 
   // Root index file.
   EXPECT_EQ("<h1>HTML index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/static/something/", port))).body);
 
   // Redirect from directory without trailing slash to directory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", port))),
                  HTTPRedirectNotAllowedException);
     const auto dir_response =
-        HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/static/something", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/anything/"
-        : Printf("http://localhost:%d/anything/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/anything/", port)
     ), dir_response.url);
     EXPECT_EQ("Done.", dir_response.body);
   }
 
   // Subdirectory index file.
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", port))).body);
 
   // Redirect from subdirectory without trailing slash to subdirectory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_dir_response =
-        HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/anything/sub_dir/"
-        : Printf("http://localhost:%d/anything/sub_dir/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/anything/sub_dir/", port)
     ), sub_dir_response.url);
     EXPECT_EQ("Done.", sub_dir_response.body);
   }
@@ -1568,19 +1761,19 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
   // Subsubdirectory index file.
   EXPECT_EQ(
       "<h1>HTML sub_sub_dir index</h1>",
-      HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", port))).body);
 
   // Redirect from subsubdirectory without trailing slash to subsubdirectory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir",
-                                                      FLAGS_net_api_test_port)).AllowRedirects());
+                                                      port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port == 80
+      port == 80
         ? "http://localhost/anything/sub_dir/sub_sub_dir/"
-        : Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port)
+        : Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", port)
     ), sub_sub_dir_response.url);
     EXPECT_EQ("Done.", sub_sub_dir_response.body);
   }
@@ -1589,7 +1782,6 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixRela
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbsolute) {
   using namespace current::http;
 
-  ASSERT_NE(FLAGS_net_api_test_port_secondary, FLAGS_net_api_test_port);
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
   const auto dir_remover = current::FileSystem::ScopedRmDir(dir);
@@ -1603,54 +1795,61 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
   FileSystem::WriteStringToFile("<h1>HTML sub_sub_dir index</h1>",
                                 FileSystem::JoinPath(sub_sub_dir, "index.html").c_str());
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  auto second_reserved_port = current::net::ReserveLocalPort();
+  const int second_port = second_reserved_port;
+
   // Below, use `localhost` and the secondary test port, not arbitrary domain name and port,
   // because the HTTP client follows the redirect and tries to resolve its target domain name and connect to the port.
   // This use case is for when there is a proxy, but we haven't set up one,
   // so after redirects, the response code and body are always HTTP 200 with "Done.", not the targeted content.
   const auto scope_redirect_to =
-      HTTP(FLAGS_net_api_test_port_secondary).Register("/", URLPathArgs::CountMask::Any, [](Request r) { r("Done."); });
+      HTTP(std::move(second_reserved_port)).Register("/", URLPathArgs::CountMask::Any, [](Request r) { r("Done."); });
 
   const auto scope =
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .ServeStaticFilesFrom(
               dir,
               ServeStaticFilesFromOptions{"/static/something",
-                                          Printf("http://localhost:%d/anything", FLAGS_net_api_test_port_secondary)});
+                                          Printf("http://localhost:%d/anything", second_port)});
 
   // Root index file.
   EXPECT_EQ("<h1>HTML index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/something/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/static/something/", port))).body);
 
   // Redirect from directory without trailing slash to directory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something", port))),
                  HTTPRedirectNotAllowedException);
     const auto dir_response =
-        HTTP(GET(Printf("http://localhost:%d/static/something", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/static/something", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port_secondary == 80
+      second_port == 80
         ? "http://localhost/anything/"
-        : Printf("http://localhost:%d/anything/", FLAGS_net_api_test_port_secondary)
+        : Printf("http://localhost:%d/anything/", second_port)
     ), dir_response.url);
     EXPECT_EQ("Done.", dir_response.body);
   }
 
   // Subdirectory index file.
   EXPECT_EQ("<h1>HTML sub_dir index</h1>",
-            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", FLAGS_net_api_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/", port))).body);
 
   // Redirect from subdirectory without trailing slash to subdirectory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_dir_response =
-        HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", FLAGS_net_api_test_port)).AllowRedirects());
+        HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir", port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port_secondary == 80
+      second_port == 80
         ? "http://localhost/anything/sub_dir/"
-        : Printf("http://localhost:%d/anything/sub_dir/", FLAGS_net_api_test_port_secondary)
+        : Printf("http://localhost:%d/anything/sub_dir/", second_port)
     ), sub_dir_response.url);
     EXPECT_EQ("Done.", sub_dir_response.body);
   }
@@ -1658,19 +1857,19 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
   // Subsubdirectory index file.
   EXPECT_EQ(
       "<h1>HTML sub_sub_dir index</h1>",
-      HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir/", port))).body);
 
   // Redirect from subsubdirectory without trailing slash to subsubdirectory with trailing slash.
   {
-    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", FLAGS_net_api_test_port))),
+    ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir", port))),
                  HTTPRedirectNotAllowedException);
     const auto sub_sub_dir_response = HTTP(GET(Printf("http://localhost:%d/static/something/sub_dir/sub_sub_dir",
-                                                      FLAGS_net_api_test_port)).AllowRedirects());
+                                                      port)).AllowRedirects());
     EXPECT_EQ(200, static_cast<int>(sub_sub_dir_response.code));
     EXPECT_EQ((
-      FLAGS_net_api_test_port_secondary == 80
+      second_port == 80
         ? "http://localhost/anything/sub_dir/sub_sub_dir/"
-        : Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", FLAGS_net_api_test_port_secondary)
+        : Printf("http://localhost:%d/anything/sub_dir/sub_sub_dir/", second_port)
     ), sub_sub_dir_response.url);
     EXPECT_EQ("Done.", sub_sub_dir_response.body);
   }
@@ -1679,21 +1878,31 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixAndPublicUrlPrefixAbso
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomRoutePrefixWithTrailingSlash) {
   using namespace current::http;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/"}),
+  ASSERT_THROW(http_server.ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/static/"}),
                PathEndsWithSlash);
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsEmptyPublicRoutePrefix) {
   using namespace current::http;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{""}),
+  ASSERT_THROW(http_server.ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{""}),
                PathDoesNotStartWithSlash);
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomIndexFiles) {
   using namespace current::http;
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
 
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FileSystem::JoinPath(FLAGS_net_api_test_tmpdir, "static");
@@ -1701,13 +1910,16 @@ TEST(HTTPAPI, ServeStaticFilesFromOptionsCustomIndexFiles) {
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("TXT index", FileSystem::JoinPath(dir, "index.txt").c_str());
   const auto scope =
-      HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/", "", {"index.txt"}});
-  EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/index.txt", FLAGS_net_api_test_port))).body);
+      http_server.ServeStaticFilesFrom(dir, ServeStaticFilesFromOptions{"/", "", {"index.txt"}});
+  EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/", port))).body);
+  EXPECT_EQ("TXT index", HTTP(GET(Printf("http://localhost:%d/index.txt", port))).body);
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOnlyServesOneIndexFilePerDirectory) {
   using namespace current::http;
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  auto& http_server = HTTP(std::move(reserved_port));
 
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FLAGS_net_api_test_tmpdir + "/more_than_one_index";
@@ -1715,12 +1927,15 @@ TEST(HTTPAPI, ServeStaticFilesFromOnlyServesOneIndexFilePerDirectory) {
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("<h1>HTML index 1</h1>", FileSystem::JoinPath(dir, "index.html").c_str());
   FileSystem::WriteStringToFile("<h1>HTML index 2</h1>", FileSystem::JoinPath(dir, "index.htm").c_str());
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir),
+  ASSERT_THROW(http_server.ServeStaticFilesFrom(dir),
                ServeStaticFilesFromCannotServeMoreThanOneIndexFile);
 }
 
 TEST(HTTPAPI, ServeStaticFilesFromOnlyServesFilesOfKnownMIMEType) {
   using namespace current::http;
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  auto& http_server = HTTP(std::move(reserved_port));
 
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FLAGS_net_api_test_tmpdir + "/wrong_static_files";
@@ -1728,62 +1943,66 @@ TEST(HTTPAPI, ServeStaticFilesFromOnlyServesFilesOfKnownMIMEType) {
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
   FileSystem::WriteStringToFile("TXT is okay.", FileSystem::JoinPath(dir, "file.txt").c_str());
   FileSystem::WriteStringToFile("FOO is not! ", FileSystem::JoinPath(dir, "file.foo").c_str());
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir),
+  ASSERT_THROW(http_server.ServeStaticFilesFrom(dir),
                ServeStaticFilesFromCanNotServeStaticFilesOfUnknownMIMEType);
 }
 
 TEST(HTTPAPI, ResponseSmokeTest) {
   const auto send_response = [](const Response& response, Request request) { request(response); };
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const auto scope =
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response1", [send_response](Request r) { send_response(Response("foo"), std::move(r)); }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register(
               "/response2",
               [send_response](Request r) { send_response(Response("bar", HTTPResponseCode.Accepted), std::move(r)); }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response3",
                     [send_response](Request r) {
                       send_response(Response("baz", HTTPResponseCode.NotFound, "text/blah"), std::move(r));
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response4",
                     [send_response](Request r) {
                       send_response(Response(SerializableObject(), HTTPResponseCode.Accepted), std::move(r));
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response5",
                     [send_response](Request r) {
                       send_response(Response(SerializableObject(), "meh").Code(HTTPResponseCode.Created), std::move(r));
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response6",
                     [send_response](Request r) {
                       send_response(Response().Body("OK").Code(HTTPResponseCode.OK), std::move(r));
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response7",
                     [send_response](Request r) {
                       send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK),
                                     std::move(r));
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response8",
                     [send_response](Request r) { send_response(Response(HTTPResponseCode.Created), std::move(r)); }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response9",
                     [send_response](Request r) {
                       send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response10",
                     [](Request r) {
                       SerializableVariant v;
                       v.template Construct<SerializableObject>();
                       r(v);
                     }) +
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register("/response11",
                     [send_response](Request r) {
                       // Test both a direct response (`Request::operator()`) and a response via `Respose`.
@@ -1792,47 +2011,47 @@ TEST(HTTPAPI, ResponseSmokeTest) {
                       send_response(v, std::move(r));
                     });
 
-  const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", FLAGS_net_api_test_port)));
+  const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", port)));
   EXPECT_EQ(200, static_cast<int>(response1.code));
   EXPECT_EQ("foo", response1.body);
 
-  const auto response2 = HTTP(GET(Printf("http://localhost:%d/response2", FLAGS_net_api_test_port)));
+  const auto response2 = HTTP(GET(Printf("http://localhost:%d/response2", port)));
   EXPECT_EQ(202, static_cast<int>(response2.code));
   EXPECT_EQ("bar", response2.body);
 
-  const auto response3 = HTTP(GET(Printf("http://localhost:%d/response3", FLAGS_net_api_test_port)));
+  const auto response3 = HTTP(GET(Printf("http://localhost:%d/response3", port)));
   EXPECT_EQ(404, static_cast<int>(response3.code));
   EXPECT_EQ("baz", response3.body);
 
-  const auto response4 = HTTP(GET(Printf("http://localhost:%d/response4", FLAGS_net_api_test_port)));
+  const auto response4 = HTTP(GET(Printf("http://localhost:%d/response4", port)));
   EXPECT_EQ(202, static_cast<int>(response4.code));
   EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response4.body);
 
-  const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", FLAGS_net_api_test_port)));
+  const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", port)));
   EXPECT_EQ(201, static_cast<int>(response5.code));
   EXPECT_EQ("{\"meh\":{\"x\":42,\"s\":\"foo\"}}\n", response5.body);
 
-  const auto response6 = HTTP(GET(Printf("http://localhost:%d/response6", FLAGS_net_api_test_port)));
+  const auto response6 = HTTP(GET(Printf("http://localhost:%d/response6", port)));
   EXPECT_EQ(200, static_cast<int>(response6.code));
   EXPECT_EQ("OK", response6.body);
 
-  const auto response7 = HTTP(GET(Printf("http://localhost:%d/response7", FLAGS_net_api_test_port)));
+  const auto response7 = HTTP(GET(Printf("http://localhost:%d/response7", port)));
   EXPECT_EQ(200, static_cast<int>(response7.code));
   EXPECT_EQ("{\"magic\":{\"x\":42,\"s\":\"foo\"}}\n", response7.body);
 
-  const auto response8 = HTTP(GET(Printf("http://localhost:%d/response8", FLAGS_net_api_test_port)));
+  const auto response8 = HTTP(GET(Printf("http://localhost:%d/response8", port)));
   EXPECT_EQ(201, static_cast<int>(response8.code));
   EXPECT_EQ("", response8.body);
 
-  const auto response9 = HTTP(GET(Printf("http://localhost:%d/response9", FLAGS_net_api_test_port)));
+  const auto response9 = HTTP(GET(Printf("http://localhost:%d/response9", port)));
   EXPECT_EQ(500, static_cast<int>(response9.code));
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response9.body);
 
-  const auto response10 = HTTP(GET(Printf("http://localhost:%d/response10", FLAGS_net_api_test_port)));
+  const auto response10 = HTTP(GET(Printf("http://localhost:%d/response10", port)));
   EXPECT_EQ(200, static_cast<int>(response10.code));
   EXPECT_EQ("{\"SerializableObject\":{\"x\":42,\"s\":\"foo\"},\"\":\"T9201749777787913665\"}\n", response10.body);
 
-  const auto response11 = HTTP(GET(Printf("http://localhost:%d/response11", FLAGS_net_api_test_port)));
+  const auto response11 = HTTP(GET(Printf("http://localhost:%d/response11", port)));
   EXPECT_EQ(200, static_cast<int>(response11.code));
   EXPECT_EQ("{\"SerializableObject\":{\"x\":42,\"s\":\"foo\"},\"\":\"T9201749777787913665\"}\n", response11.body);
 
@@ -1845,7 +2064,11 @@ TEST(HTTPAPI, ResponseSmokeTest) {
 }
 
 TEST(HTTPAPI, PayloadTooLarge) {
-  const auto scope = HTTP(FLAGS_net_api_test_port)
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server
                          .Register("/enough_is_enough",
                                    [](Request r) {
                                      ASSERT_FALSE(r.body.empty());
@@ -1858,7 +2081,7 @@ TEST(HTTPAPI, PayloadTooLarge) {
     ASSERT_EQ(current::net::constants::kMaxHTTPPayloadSizeInBytes, size_ok);
 
     const auto response =
-        HTTP(POST(Printf("http://localhost:%d/enough_is_enough", FLAGS_net_api_test_port), std::string(size_ok, '.')));
+        HTTP(POST(Printf("http://localhost:%d/enough_is_enough", port), std::string(size_ok, '.')));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("Fits.\n", response.body);
   }
@@ -1867,7 +2090,7 @@ TEST(HTTPAPI, PayloadTooLarge) {
     ASSERT_GT(size_too_much, current::net::constants::kMaxHTTPPayloadSizeInBytes);
 
     const auto response = HTTP(
-        POST(Printf("http://localhost:%d/enough_is_enough", FLAGS_net_api_test_port), std::string(size_too_much, '.')));
+        POST(Printf("http://localhost:%d/enough_is_enough", port), std::string(size_too_much, '.')));
     EXPECT_EQ(413, static_cast<int>(response.code));
     EXPECT_EQ("<h1>ENTITY TOO LARGE</h1>\n", response.body);
   }
@@ -1881,8 +2104,12 @@ CURRENT_STRUCT_T(HTTPAPITemplatedTestObject) {
 struct HTTPAPINonSerializableObject {};
 
 TEST(HTTPAPI, ResponseGeneratorForSerializableAndNonSerializableTypes) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   const auto scope =
-      HTTP(FLAGS_net_api_test_port)
+      http_server
           .Register(
               "/maybe_json",
               [](Request r) {
@@ -1899,42 +2126,46 @@ TEST(HTTPAPI, ResponseGeneratorForSerializableAndNonSerializableTypes) {
                 }
               });
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/maybe_json?json", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/maybe_json?json", port)));
     EXPECT_EQ("{\"text\":\"OK\",\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n", response.body);
     EXPECT_EQ(200, static_cast<int>(response.code));
   }
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/maybe_json", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/maybe_json", port)));
     EXPECT_EQ("", response.body);
     EXPECT_EQ(200, static_cast<int>(response.code));
   }
 }
 
 TEST(HTTPAPI, JSONDoesNotHaveCORSHeaderByDefaultWhenSentViaRequest) {
-  {
-    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(SerializableObject()); });
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
 
-    const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
+  {
+    const auto scope = http_server.Register("/json1", [](Request r) { r(SerializableObject()); });
+
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json1", port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
     EXPECT_FALSE(response.headers.Has("Access-Control-Allow-Origin"));
   }
   {
-    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json2", [](Request r) {
+    const auto scope = http_server.Register("/json2", [](Request r) {
       r(SerializableObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
     });
-    const auto response = HTTP(GET(Printf("http://localhost:%d/json2", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json2", port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
     ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
     EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
   }
   {
-    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json3", [](Request r) {
+    const auto scope = http_server.Register("/json3", [](Request r) {
       r(SerializableObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader().RemoveCORSHeader());
     });
 
-    const auto response = HTTP(GET(Printf("http://localhost:%d/json3", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json3", port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
     EXPECT_FALSE(response.headers.Has("Access-Control-Allow-Origin"));
@@ -1942,32 +2173,36 @@ TEST(HTTPAPI, JSONDoesNotHaveCORSHeaderByDefaultWhenSentViaRequest) {
 }
 
 TEST(HTTPAPI, JSONDoesHaveCORSHeaderByDefault) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
   {
     const auto scope =
-        HTTP(FLAGS_net_api_test_port).Register("/json1", [](Request r) { r(Response(SerializableObject())); });
+        http_server.Register("/json1", [](Request r) { r(Response(SerializableObject())); });
 
-    const auto response = HTTP(GET(Printf("http://localhost:%d/json1", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json1", port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
     ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));
     EXPECT_EQ("*", response.headers.Get("Access-Control-Allow-Origin"));
   }
   {
-    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json2", [](Request r) {
+    const auto scope = http_server.Register("/json2", [](Request r) {
       r(Response(SerializableObject()).DisableCORS());
     });
 
-    const auto response = HTTP(GET(Printf("http://localhost:%d/json2", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json2", port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
     EXPECT_FALSE(response.headers.Has("Access-Control-Allow-Origin"));
   }
   {
-    const auto scope = HTTP(FLAGS_net_api_test_port).Register("/json3", [](Request r) {
+    const auto scope = http_server.Register("/json3", [](Request r) {
       r(Response(SerializableObject()).DisableCORS().EnableCORS());
     });
 
-    const auto response = HTTP(GET(Printf("http://localhost:%d/json3", FLAGS_net_api_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/json3", port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response.body);
     ASSERT_TRUE(response.headers.Has("Access-Control-Allow-Origin"));

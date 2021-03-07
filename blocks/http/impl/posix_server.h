@@ -162,8 +162,14 @@ class HTTPServerPOSIX final {
   // The constructor starts listening on the specified port.
   // Since instances of `HTTPServerPOSIX` are created via a singleton,
   // a listening thread will only be created once per port, on the first access to that port.
-  explicit HTTPServerPOSIX(uint16_t port)
-      : terminating_(false), port_(port), thread_(&HTTPServerPOSIX::Thread, this, current::net::Socket(port)) {}
+  explicit HTTPServerPOSIX(current::net::BarePort port)
+      : terminating_(false), port_(static_cast<uint16_t>(port)), thread_([this, port]() { Thread(current::net::Socket(port)); }) {}
+  explicit HTTPServerPOSIX(current::net::ReservedLocalPort reserved_port)
+      : terminating_(false),
+        port_(reserved_port),
+        thread_([this](current::net::Socket socket) { Thread(std::move(socket)); }, std::move(reserved_port)) {}
+
+  uint16_t LocalPort() const { return port_; }
 
   // The destructor closes the socket.
   // Note that the destructor will only be run on the shutdown of the binary,
@@ -404,8 +410,7 @@ class HTTPServerPOSIX final {
     // TODO(dkorolev): Benchmark QPS.
     while (!terminating_) {
       try {
-        std::unique_ptr<current::net::HTTPServerConnection> connection(
-            new current::net::HTTPServerConnection(socket.Accept()));
+        auto connection = std::make_unique<current::net::HTTPServerConnection>(socket.Accept());
         if (terminating_) {
           // Already terminating. Will not send the response, and this
           // lack of response should not result in an exception.
