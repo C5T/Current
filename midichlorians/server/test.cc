@@ -44,8 +44,6 @@ SOFTWARE.
 #include "../../bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(midichlorians_server_test_port, PickPortForUnitTest(), "Local port to run the test.");
-
 namespace midichlorians_server_test {
 
 using current::strings::Join;
@@ -191,11 +189,15 @@ class GenericConsumer {
 TEST(midichloriansServer, iOSEventsFromCPPSmokeTest) {
   using namespace midichlorians_server_test;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   current::time::ResetToZero();
   GenericConsumer consumer;
-  midichloriansHTTPServer<GenericConsumer> server(
-      FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
-  const std::string server_url = Printf("http://localhost:%d/log", FLAGS_midichlorians_server_test_port);
+  midichloriansHTTPServer<GenericConsumer> server(port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
+  const std::string server_url = Printf("http://localhost:%d/log", port);
 
   current::time::SetNow(std::chrono::microseconds(12000));
   iOSAppLaunchEvent launch_event;
@@ -248,16 +250,20 @@ TEST(midichloriansServer, iOSEventsFromCPPSmokeTest) {
 TEST(midichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   current::time::ResetToZero();
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   using namespace midichlorians_server_test;
   using namespace current::midichlorians::server;
 
   current::time::ResetToZero();
   GenericConsumer consumer;
-  midichloriansHTTPServer<GenericConsumer> server(
-      FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
+  midichloriansHTTPServer<GenericConsumer> server(port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
 
   NSDictionary* launchOptions = [NSDictionary new];
-  [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", FLAGS_midichlorians_server_test_port]
+  [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", port]
       withLaunchOptions:launchOptions];
 
   current::time::SetNow(std::chrono::microseconds(1000));
@@ -318,6 +324,11 @@ POST MockPOSTRequest(const std::string& base_url,
 TEST(midichloriansServer, WebEventsFromCPPSmokeTest) {
   current::time::ResetToZero();
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   using namespace midichlorians_server_test;
 
   using namespace current::midichlorians::server;
@@ -325,9 +336,8 @@ TEST(midichloriansServer, WebEventsFromCPPSmokeTest) {
 
   current::time::ResetToZero();
   GenericConsumer consumer;
-  midichloriansHTTPServer<GenericConsumer> server(
-      FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
-  const std::string server_url = Printf("http://localhost:%d/log", FLAGS_midichlorians_server_test_port);
+  midichloriansHTTPServer<GenericConsumer> server(port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
+  const std::string server_url = Printf("http://localhost:%d/log", port);
 
   current::time::SetNow(std::chrono::microseconds(1000));
   const auto response1 = HTTP(MockGETRequest(server_url, 1, "Fg"));

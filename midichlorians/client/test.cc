@@ -49,24 +49,24 @@ SOFTWARE.
 #include "../../bricks/strings/join.h"
 #include "../../bricks/template/rtti_dynamic_call.h"
 
-DEFINE_int32(midichlorians_client_test_http_port, PickPortForUnitTest(), "Port to spawn server on.");
 DEFINE_string(midichlorians_client_test_http_route, "/log", "HTTP route of the server.");
 
 class Server {
  public:
   using events_variant_t = Variant<ios_events_t>;
 
-  Server(int http_port, const std::string& http_route)
-      : routes_(HTTP(http_port).Register(http_route,
-                                         [this](Request r) {
-                                           events_variant_t event;
-                                           try {
-                                             event = ParseJSON<events_variant_t>(r.body);
-                                             std::lock_guard<std::mutex> lock(mutex_);
-                                             event.Call(*this);
-                                           } catch (const current::Exception&) {
-                                           }
-                                         })) {}
+  Server(current::net::ReservedPort reserved_port, const std::string& http_route)
+      : http_server_(std::move(reserved_port)),
+        routes_(http_server_.Register(http_route,
+                                       [this](Request r) {
+                                         events_variant_t event;
+                                         try {
+                                           event = ParseJSON<events_variant_t>(r.body);
+                                           std::lock_guard<std::mutex> lock(mutex_);
+                                           event.Call(*this);
+                                         } catch (const current::Exception&) {
+                                         }
+                                       })) {}
 
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());
@@ -114,16 +114,20 @@ class Server {
  private:
   mutable std::mutex mutex_;
   std::vector<std::string> messages_;
+  current::http::HTTPServerPOSIX& http_server_;
   HTTPRoutesScope routes_;
 };
 
 TEST(midichloriansClient, iOSSmokeTest) {
-  Server server(FLAGS_midichlorians_client_test_http_port, FLAGS_midichlorians_client_test_http_route);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+
+  Server server(std::move(reserved_port), FLAGS_midichlorians_client_test_http_route);
 
   current::time::ResetToZero();
   NSDictionary* launchOptions = [NSDictionary new];
   [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d%s",
-                                                  FLAGS_midichlorians_client_test_http_port,
+                                                  port,
                                                   FLAGS_midichlorians_client_test_http_route.c_str()]
       withLaunchOptions:launchOptions];
 
