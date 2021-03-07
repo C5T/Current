@@ -202,7 +202,7 @@ CURRENT_STRUCT(Double) {
     sum_squares = value * value;
   }
   CURRENT_CONSTRUCTOR(Double)(const Integer& integer) {
-    sum = integer.sum;
+    sum = static_cast<double>(integer.sum);
     sum_squares = integer.sum_squares;
     instances = integer.instances;
     nulls = integer.nulls;
@@ -486,7 +486,7 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value, const PATH& 
           if (!IsValidCPPIdentifier(key)) {
             CURRENT_THROW(InferSchemaInvalidCPPIdentifierException(key, path));
           }
-          object.field_index[key] = object.field_schema.size();
+          object.field_index[key] = static_cast<uint32_t>(object.field_schema.size());
           object.field_schema.emplace_back(key, std::move(RecursivelyInferSchema(inner, next_path)));
         }
       }

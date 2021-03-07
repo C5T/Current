@@ -43,9 +43,7 @@ SOFTWARE.
 
 #define CURRENT_FORWARD_METHOD(method)                                                                         \
   template <typename... ARGS>                                                                                  \
-  std::result_of_t<decltype(&CURRENT_IMPLEMENTATION_POINTER_TYPE::method)(CURRENT_IMPLEMENTATION_POINTER_TYPE, \
-                                                                          ARGS...)>                            \
-  method(ARGS&&... args) {                                                                                     \
+  auto method(ARGS&&... args) {                                                                                     \
     return this->CURRENT_IMPLEMENTATION_POINTER->method(std::forward<ARGS>(args)...);                          \
   }
 

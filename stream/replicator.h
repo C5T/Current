@@ -205,7 +205,7 @@ class SubscribableRemoteStream final {
           }
           from_us_ = tsoptidx.us + std::chrono::microseconds(1);
         }
-      } catch (const current::serialization::json::TypeSystemParseJSONException& json_exception) {
+      } catch (const current::serialization::json::TypeSystemParseJSONException&) {
         CURRENT_THROW(RemoteStreamMalformedChunkException());
       }
     }
@@ -228,7 +228,7 @@ class SubscribableRemoteStream final {
             CURRENT_THROW(StreamTerminatedBySubscriber());
           }
           from_us_ = ts.us + std::chrono::microseconds(1);
-        } catch (const current::serialization::json::TypeSystemParseJSONException& json_exception) {
+        } catch (const current::serialization::json::TypeSystemParseJSONException&) {
           CURRENT_THROW(RemoteStreamMalformedChunkException());
         }
       }
@@ -585,7 +585,7 @@ class MasterFlipController final {
           stream_->Data()->CurrentHead() + std::chrono::microseconds(1),
           subscription_mode);
       borrowed_publisher_ = nullptr;
-    } catch (const current::Exception& e) {
+    } catch (const current::Exception&) {
       // Can't follow the remote stream for some reason,
       // restore the stream state and propagate the exception.
       if (has_borrowed_publisher) {
@@ -831,7 +831,7 @@ class MasterFlipController final {
       try {
         remote_stream_.template FlipToMaster<replicator_t, RM>(
             replicator_, stream.Data()->HeadAndLastPublishedIndexAndTimestamp(), secret_flip_key, subscription_mode_);
-      } catch (current::Exception& e) {
+      } catch (current::Exception&) {
         // Restore the subscription if the flip failed.
         subscriber_scope_ =
             Subscribe(stream.Data()->Size(), stream.Data()->CurrentHead() + std::chrono::microseconds(1));

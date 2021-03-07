@@ -127,7 +127,7 @@ class UniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> final : p
   explicit UniqueDefinition(const UniqueDefinition&) = default;
 
   // Can be marked as used in any way.
-  void MarkAs(BlockUsageBit bit) { mask_ = BlockUsageBitMask(size_t(mask_) | (1 << size_t(bit))); }
+  void MarkAs(BlockUsageBit bit) { mask_ = BlockUsageBitMask(size_t(mask_) | (static_cast<size_t>(1) << static_cast<size_t>(bit))); }
 
   // Builds the full description of this `Definition`, down to source code file names and line numbers.
   void FullDescription(std::ostream& os = std::cerr) const {

@@ -507,7 +507,7 @@ struct OptimizeImpl<GradientDescentOptimizerSelector, DIRECTION> {
     logger.Log("GradientDescentOptimizer: Objective function = " + current::ToString(current.value));
 
     OptimizationResult result(current);
-    result.optimization_iterations = iteration;
+    result.optimization_iterations = static_cast<uint32_t>(iteration);
 
     if (track_progress) {
       result.progress = std::move(progress);
@@ -653,7 +653,7 @@ struct OptimizeImpl<GradientDescentOptimizerBTSelector, DIRECTION> {
     logger.Log("GradientDescentOptimizerBT: Objective function = " + current::ToString(current.value));
 
     OptimizationResult result(current);
-    result.optimization_iterations = iteration;
+    result.optimization_iterations = static_cast<uint32_t>(iteration);
 
     if (track_progress) {
       result.progress = std::move(progress);
@@ -814,7 +814,7 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
     logger.Log("ConjugateGradientOptimizer: Objective function = " + current::ToString(current.value));
 
     OptimizationResult result(current);
-    result.optimization_iterations = iteration;
+    result.optimization_iterations = static_cast<uint32_t>(iteration);
 
     if (track_progress) {
       result.progress = std::move(progress);

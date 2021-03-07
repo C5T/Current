@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifdef CURRENT_WINDOWS
+// NOTE(dkorolev): Added in March 2021 while making sure Visual Studio compiles Current fine.
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+#endif
+
 // #define CURRENT_STORAGE_PATCH_SUPPORT
 
 // Cross-platform portability header.
@@ -201,8 +206,8 @@ struct is_same_or_compile_error {
 // Unit test ports begin with 19999 by default and go down from there.
 #define PickPortForUnitTest() PortForUnitTestPicker::PickOne()
 struct PortForUnitTestPicker {
-  static int PickOne() {
-    static int port = 20000;
+  static uint16_t PickOne() {
+    static uint16_t port = 20000;
     return --port;
   }
 };
@@ -263,5 +268,12 @@ inline void CURRENT_ASSERTION_FAILED(const char* text, const char* file, int lin
 #undef _CRT_SECURE_NO_WARNINGS
 #undef CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
 #endif  // CURRENT_PORT_H_CRT_SECURE_NO_WARNINGS_FLAG_REQUIRES_UNSET
+
+// NOTE(dkorolev): Added in March 2021 while making sure Visual Studio compiles Current fine.
+#ifdef CURRENT_WINDOWS
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#pragma warning(disable : 4996)  // Because the above `#define`-s don't do what they should on my Visual Studio. -- D.K.
+#endif
 
 #endif

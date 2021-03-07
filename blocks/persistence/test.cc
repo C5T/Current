@@ -215,7 +215,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
     impl.Publish("2", std::chrono::microseconds(2));
     impl.Publish("3", std::chrono::microseconds(3));
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
-    ASSERT_THROW((impl.template IterateUnsafe(1, 0)), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.IterateUnsafe(1, 0), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW((impl.IterateUnsafe(100, 101)), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
@@ -841,17 +841,17 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
     EXPECT_EQ(0ull, (*impl.Iterate(0, 1).begin()).idx_ts.index);
     EXPECT_EQ(0ll, (*impl.Iterate(0, 1).begin()).idx_ts.us.count());
     EXPECT_EQ("0000000 aaa", (*impl.Iterate(0, 1).begin()).entry.s);
-    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}", (*impl.template IterateUnsafe(0, 1).begin()));
+    EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}", *(impl.IterateUnsafe(0, 1).begin()));
     EXPECT_EQ(10ull, (*impl.Iterate(10, 11).begin()).idx_ts.index);
     EXPECT_EQ(10000ll, (*impl.Iterate(10, 11).begin()).idx_ts.us.count());
     EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(10, 11).begin()).entry.s);
     EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}",
-              (*impl.template IterateUnsafe(10, 11).begin()));
+              (*impl.IterateUnsafe(10, 11).begin()));
     EXPECT_EQ(100ull, (*impl.Iterate(100, 101).begin()).idx_ts.index);
     EXPECT_EQ(100000ll, (*impl.Iterate(100, 101).begin()).idx_ts.us.count());
     EXPECT_EQ("0000100 wwwww", (*impl.Iterate(100, 101).begin()).entry.s);
     EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}",
-              (*impl.template IterateUnsafe(100, 101).begin()));
+              (*impl.IterateUnsafe(100, 101).begin()));
   }
   {
     // By timestamp.
@@ -859,17 +859,17 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
     EXPECT_EQ(0ll, (*impl.Iterate(us_t(0), us_t(1000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000000 aaa", (*impl.Iterate(us_t(0), us_t(1000)).begin()).entry.s);
     EXPECT_EQ("{\"index\":0,\"us\":0}\t{\"s\":\"0000000 aaa\"}",
-              (*impl.template IterateUnsafe(us_t(0), us_t(1000)).begin()));
+              (*impl.IterateUnsafe(us_t(0), us_t(1000)).begin()));
     EXPECT_EQ(10ull, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.index);
     EXPECT_EQ(10000ll, (*impl.Iterate(us_t(10000), us_t(11000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(us_t(10000), us_t(11000)).begin()).entry.s);
     EXPECT_EQ("{\"index\":10,\"us\":10000}\t{\"s\":\"0000010 kkkkkk\"}",
-              (*impl.template IterateUnsafe(us_t(10000), us_t(11000)).begin()));
+              (*impl.IterateUnsafe(us_t(10000), us_t(11000)).begin()));
     EXPECT_EQ(100ull, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.index);
     EXPECT_EQ(100000ll, (*impl.Iterate(us_t(100000), us_t(101000)).begin()).idx_ts.us.count());
     EXPECT_EQ("0000100 wwwww", (*impl.Iterate(us_t(100000), us_t(101000)).begin()).entry.s);
     EXPECT_EQ("{\"index\":100,\"us\":100000}\t{\"s\":\"0000100 wwwww\"}",
-              (*impl.template IterateUnsafe(us_t(100000), us_t(101000)).begin()));
+              (*impl.IterateUnsafe(us_t(100000), us_t(101000)).begin()));
   }
 
   // Perftest the creation of a large number of iterators.
@@ -878,7 +878,7 @@ void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
   for (int i = 0; i < N; ++i) {
     const auto cit = impl.Iterate(i, i + 1).begin();
     const auto& e = *cit;
-    const auto cit_unsafe = impl.template IterateUnsafe(i, i + 1).begin();
+    const auto cit_unsafe = impl.IterateUnsafe(i, i + 1).begin();
     const auto& e_unsafe = *cit_unsafe;
     EXPECT_EQ(JSON(e.idx_ts), JSON((*impl.Iterate(us_t(i * 1000), us_t((i + 1) * 1000)).begin()).idx_ts));
     EXPECT_EQ(static_cast<uint64_t>(i), e.idx_ts.index);

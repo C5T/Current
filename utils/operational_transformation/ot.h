@@ -45,7 +45,7 @@ static std::string AsUTF8String(const std::deque<wchar_t>& rope) {
 }
 
 template <typename PROCESSOR>
-std::result_of_t<decltype(&PROCESSOR::GenerateOutput)(PROCESSOR*, const std::deque<wchar_t>&, bool)> OT(
+std::invoke_result_t<decltype(&PROCESSOR::GenerateOutput), PROCESSOR*, const std::deque<wchar_t>&, bool> OT(
     const std::string& json, PROCESSOR&& processor) {
   rapidjson::Document document;
   if (document.Parse<0>(&json[0]).HasParseError()) {
@@ -88,7 +88,7 @@ std::result_of_t<decltype(&PROCESSOR::GenerateOutput)(PROCESSOR*, const std::deq
         const auto s = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(
             element.GetString(), element.GetString() + element.GetStringLength());
         rope.insert(rope.begin() + caret, s.begin(), s.end());
-        caret += s.length();
+        caret += static_cast<int>(s.length());
       } else {
         if (!element.IsNumber()) {
           CURRENT_THROW(OTParseException("OT element is not a string or number."));

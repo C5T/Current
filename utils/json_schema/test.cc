@@ -163,7 +163,7 @@ TEST(RapidJSON, NullInString) {
     Document document;
     auto& allocator = document.GetAllocator();
     Value s;
-    s.SetString("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided"));
+    s.SetString("terrible\0avoided", static_cast<rapidjson::SizeType>(strlen("terrible") + 1 + strlen("avoided")));
     document.SetObject();
     document.AddMember("s", s, allocator);
 

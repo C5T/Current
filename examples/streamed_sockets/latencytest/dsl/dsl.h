@@ -378,7 +378,7 @@ struct PipelineTypeListBuilder<I, ParallelPipelineWrapper<PARALLEL...>, NEXT...>
 
 template <class SOURCE, class... WORKERS>
 struct PipelineBuilder final {
-  static_assert(sizeof...(WORKERS), "`Pipeline(...)` takes at least two parameters, one source and one worker.");
+  static_assert(sizeof...(WORKERS) >= 1u, "`Pipeline(...)` takes at least two parameters, one source and one worker.");
 
   static_assert(is_block_source_v<SOURCE>);
 

@@ -194,7 +194,7 @@ inline double_t eval_node(node_index_t index,
     const node_index_t dependent_i = ~i;
     if (i > dependent_i) {
       if (!growing_vector_access(B, i, static_cast<int8_t>(false))) {
-        node_impl& f = node_vector_singleton()[i];
+        node_impl& f = node_vector_singleton()[static_cast<size_t>(i)];
         if (f.type() == NodeType::variable) {
           const int32_t v = f.variable();
           CURRENT_ASSERT(v >= 0 && v < static_cast<int32_t>(x.size()));
@@ -217,14 +217,14 @@ inline double_t eval_node(node_index_t index,
         }
       }
     } else {
-      node_impl& f = node_vector_singleton()[dependent_i];
+      node_impl& f = node_vector_singleton()[static_cast<size_t>(dependent_i)];
       if (f.type() == NodeType::operation) {
         growing_vector_access(node_value, dependent_i, 0.0) =
-            apply_operation<double_t>(f.operation(), node_value[f.lhs_index()], node_value[f.rhs_index()]);
+            apply_operation<double_t>(f.operation(), node_value[static_cast<size_t>(f.lhs_index())], node_value[static_cast<size_t>(f.rhs_index())]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == NodeType::function) {
         growing_vector_access(node_value, dependent_i, 0.0) =
-            ::fncas::apply_function<double_t>(f.function(), node_value[f.argument_index()]);
+            ::fncas::apply_function<double_t>(f.function(), node_value[static_cast<size_t>(f.argument_index())]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         CURRENT_ASSERT(false);
@@ -232,8 +232,8 @@ inline double_t eval_node(node_index_t index,
       }
     }
   }
-  CURRENT_ASSERT(B[index]);
-  return node_value[index];
+  CURRENT_ASSERT(B[static_cast<size_t>(index)]);
+  return node_value[static_cast<size_t>(index)];
 }
 
 // The code that deals with nodes directly uses class V as a wrapper to node_impl.
@@ -249,7 +249,7 @@ struct node_index_allocator {
   node_index_t index_;  // non-const since `V` objects can be modified.
   explicit node_index_allocator(from_index i) : index_(static_cast<node_index_t>(i)) {}
   explicit node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
-    node_vector_singleton().resize(index_ + 1);
+    node_vector_singleton().resize(static_cast<size_t>(index_) + 1u);
   }
   node_index_allocator(allocate_for_double, double_t value) {
     std::unordered_map<double_t, node_index_t>& map = internals_singleton().allocated_values_map_;
@@ -259,7 +259,7 @@ struct node_index_allocator {
     } else {
       index_ = node_vector_singleton().size();
       map[value] = index_;
-      node_vector_singleton().resize(index_ + 1);
+      node_vector_singleton().resize(static_cast<size_t>(index_) + 1u);
     }
   }
   node_index_t index() const { return index_; }
@@ -284,23 +284,23 @@ struct GenericV : node_index_allocator {
     value() = x;
   }
   GenericV(from_index i) : node_index_allocator(i) {}
-  NodeType& type() const { return node_vector_singleton()[index_].type(); }
-  int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
-  double_t& value() const { return node_vector_singleton()[index_].value(); }
+  NodeType& type() const { return node_vector_singleton()[static_cast<size_t>(index_)].type(); }
+  int32_t& variable() const { return node_vector_singleton()[static_cast<size_t>(index_)].variable(); }
+  double_t& value() const { return node_vector_singleton()[static_cast<size_t>(index_)].value(); }
   bool is_value() const { return type() == NodeType::value; }
   bool equals_to(double_t expected_value) const { return is_value() && value() == expected_value; }
-  MathOperation& operation() const { return node_vector_singleton()[index_].operation(); }
-  node_index_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
-  node_index_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
-  GenericV lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
-  GenericV rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
-  MathFunction& function() const { return node_vector_singleton()[index_].function(); }
-  node_index_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
-  GenericV argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
+  MathOperation& operation() const { return node_vector_singleton()[static_cast<size_t>(index_)].operation(); }
+  node_index_t& lhs_index() const { return node_vector_singleton()[static_cast<size_t>(index_)].lhs_index(); }
+  node_index_t& rhs_index() const { return node_vector_singleton()[static_cast<size_t>(index_)].rhs_index(); }
+  GenericV lhs() const { return from_index(node_vector_singleton()[static_cast<size_t>(index_)].lhs_index()); }
+  GenericV rhs() const { return from_index(node_vector_singleton()[static_cast<size_t>(index_)].rhs_index()); }
+  MathFunction& function() const { return node_vector_singleton()[static_cast<size_t>(index_)].function(); }
+  node_index_t& argument_index() const { return node_vector_singleton()[static_cast<size_t>(index_)].argument_index(); }
+  GenericV argument() const { return from_index(node_vector_singleton()[static_cast<size_t>(index_)].argument_index()); }
   static GenericV create_variable_node(node_index_t index) {
     GenericV result;
     result.type() = NodeType::variable;
-    result.variable() = index;
+    result.variable() = static_cast<int32_t>(index);
     return result;
   }
   std::string debug_as_string() const {
@@ -423,7 +423,7 @@ struct X final : std::vector<V>, noncopyable {
     // Initialize the actual `vector<V>`.
     super_t::resize(internals_singleton().dim_);
     for (size_t i = 0; i < super_t::size(); ++i) {
-      super_t::operator[](i) = V::create_variable_node(i);
+      super_t::operator[](static_cast<size_t>(i)) = V::create_variable_node(i);
     }
   }
 

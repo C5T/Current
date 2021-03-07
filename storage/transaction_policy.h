@@ -51,7 +51,7 @@ class Synchronous final {
   ~Synchronous() { destructing_ = true; }
 
   template <typename F>
-  using f_result_t = std::result_of_t<F()>;
+  using f_result_t = std::invoke_result_t<F>;
 
   // Read-write transaction returning non-void type.
   template <typename F, class = std::enable_if_t<!std::is_void<f_result_t<F>>::value>>

@@ -74,7 +74,11 @@ class NginxInvokerImpl final {
     const std::string cmd_line = nginx_ + ' ' + args + " >" + FileSystem::NullDeviceName() + " 2>&1";
     std::lock_guard<std::mutex> lock(mutex_);
     int result = bricks::system::SystemCall(cmd_line);
+#ifndef CURRENT_WINDOWS
     return WEXITSTATUS(result);
+#else
+    return result;
+#endif
   }
 
  private:

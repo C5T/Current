@@ -967,7 +967,7 @@ TEST(JSONSerialization, Variant) {
     try {
       ParseJSON<simple_variant_t>("null");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (JSONUninitializedVariantObjectException) {
+    } catch (const JSONUninitializedVariantObjectException&) {
     }
   }
   {

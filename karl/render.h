@@ -93,7 +93,7 @@ class DefaultFleetViewRenderer : public IKarlFleetViewRenderer<INNER_STATUSES_VA
           net::constants::kDefaultHTMLContentType);
       // clang-format on
     } else {
-      return status;
+      return std::move(status);
     }
   }
 

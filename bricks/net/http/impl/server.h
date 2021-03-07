@@ -198,13 +198,19 @@ class HTTPDefaultHelper {
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 
   inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
-    begin = body_.data();
-    end = begin + body_.length();
+    if (body_.empty()) {
+      begin = &dummy_;
+      end = &dummy_;
+    } else {
+      begin = body_.c_str();
+      end = begin + body_.length();
+    }
   }
 
  private:
   http::Headers headers_;
   std::string body_;
+  char dummy_ = '\0';
 };
 
 // In constructor, GenericHTTPRequestData parses HTTP response from `Connection&` is was provided with.
@@ -586,7 +592,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
         if (!can_no_longer_write_) {
           try {
             if (cache_size_) {
-              connection_.BlockingWrite(data_cache_, cache_size_, true);
+              connection_.BlockingWrite(data_cache_, static_cast<size_t>(cache_size_), true);
             }
             connection_.BlockingWrite("0", true);
             // Should send CRLF twice.
@@ -607,7 +613,7 @@ class GenericHTTPServerConnection final : public HTTPResponder {
               const auto chunk_header = strings::Printf("%lX", data.size()) + constants::kCRLF;
               const auto chunk_size = chunk_header.size() + data.size() + constants::kCRLFLength;
               if (cache_size_ && (flush == ChunkFlush::Flush || chunk_size > CACHE_SIZE - cache_size_)) {
-                connection_.BlockingWrite(data_cache_, cache_size_, true);
+                connection_.BlockingWrite(data_cache_, static_cast<size_t>(cache_size_), true);
                 cache_size_ = 0;
               }
               if (flush == ChunkFlush::Flush || chunk_size > CACHE_SIZE) {
@@ -617,13 +623,16 @@ class GenericHTTPServerConnection final : public HTTPResponder {
               } else {
                 ::memcpy(data_cache_ + cache_size_, chunk_header.c_str(), chunk_header.size());
                 cache_size_ += chunk_header.size();
-                ::memcpy(data_cache_ + cache_size_, data.data(), data.size());
-                cache_size_ += data.size();
+                const size_t data_size = data.size();
+                if (data_size > 0u) {
+                  ::memcpy(data_cache_ + cache_size_, &data[0], data_size);
+                  cache_size_ += data_size;
+                }
                 ::memcpy(data_cache_ + cache_size_, constants::kCRLF, constants::kCRLFLength);
                 cache_size_ += constants::kCRLFLength;
               }
             } else {
-              connection_.BlockingWrite(data_cache_, cache_size_, false);
+              connection_.BlockingWrite(data_cache_, static_cast<size_t>(cache_size_), false);
               cache_size_ = 0;
             }
           } catch (const SocketException&) {

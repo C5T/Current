@@ -51,7 +51,7 @@ SOFTWARE.
 template <typename T>
 T ParametrizedFunction(const std::vector<T>& x, size_t c) {
   CURRENT_ASSERT(x.size() == 2u);
-  return (x[0] + x[1] * c) * (x[0] + x[1] * c);
+  return (x[0] + x[1] * static_cast<fncas::double_t>(c)) * (x[0] + x[1] * static_cast<fncas::double_t>(c));
 }
 
 // Need an explicit specialization, as `SimpleFunction<double_t>` is used directly in the test.
@@ -294,7 +294,7 @@ struct MemberFunctionWithReferences {
     const auto dy = x[1] - b;
     return unittest_fncas_namespace::exp(0.01 * (dx * dx + dy * dy));
   }
-  MemberFunctionWithReferences() = default;
+  MemberFunctionWithReferences() = delete;
   MemberFunctionWithReferences(const MemberFunctionWithReferences&) = delete;
 };
 

@@ -210,13 +210,13 @@ class WaitableAtomicImpl {
     }
 
     template <typename F>
-    std::result_of_t<F(const data_t&)> ImmutableUse(F&& f) const {
+    std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f) const {
       auto scope = ImmutableScopedAccessor();
       return f(*scope);
     }
 
     template <typename F>
-    std::result_of_t<F(data_t&)> MutableUse(F&& f) {
+    std::invoke_result_t<F, data_t&> MutableUse(F&& f) {
       auto scope = MutableScopedAccessor();
       return f(*scope);
     }

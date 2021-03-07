@@ -227,7 +227,7 @@ inline node_index_t differentiate_node(node_index_t index, size_t var_index, siz
       stack.pop();
       const node_index_t dependent_i = ~i;
       if (i > dependent_i) {
-        node_impl& f = node_vector_singleton()[i];
+        node_impl& f = node_vector_singleton()[static_cast<size_t>(i)];
         if (f.type() == NodeType::variable && static_cast<size_t>(f.variable()) == var_index) {
           growing_vector_access(df, i, static_cast<node_index_t>(-1)) = one_index;
         } else if (f.type() == NodeType::variable || f.type() == NodeType::value) {
@@ -244,7 +244,7 @@ inline node_index_t differentiate_node(node_index_t index, size_t var_index, siz
           return 0;
         }
       } else {
-        node_impl& f = node_vector_singleton()[dependent_i];
+        node_impl& f = node_vector_singleton()[static_cast<size_t>(dependent_i)];
         if (f.type() == NodeType::operation) {
           const node_index_t a = f.lhs_index();
           const node_index_t b = f.rhs_index();
@@ -291,7 +291,7 @@ struct g_impl<JIT::NativeWrapper> : g_super {
   g_impl(std::function<double_t(const std::vector<double_t>&)> f, size_t dim) : f_(f), dim_(dim) {}
   g_impl(g_impl&& rhs) : f_(rhs.f_) {}
   g_impl() = default;
-  g_impl(const g_impl&) = default;
+  g_impl(const g_impl&) = delete;
   void operator=(const g_impl& rhs) {
     f_ = rhs.f_;
     dim_ = rhs.dim_;

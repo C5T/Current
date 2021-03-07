@@ -68,7 +68,7 @@ NLPSchema(CustomTermAnnotation, CustomlyAnnotatedQueryTerm) {
     CURRENT_FIELD(term_length, uint32_t);
   };
   // clang-format on
-  CustomAnnotation(output.term_length = output.normalized_term.length());
+  CustomAnnotation(output.term_length = static_cast<uint32_t>(output.normalized_term.length()));
 }
 
 TEST(NLP, CustomTermAnnotation) {

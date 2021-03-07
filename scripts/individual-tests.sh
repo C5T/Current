@@ -4,6 +4,9 @@
 
 set -u -e
 
+DESIRED_SHARD=${1:-0}
+DESIRED_MOD=${2:-1}
+
 FAILURES=""
 
 # A space-separated list of relative paths to exclude from the test run. Example: "./blocks/HTTP ./blocks/MMQ".
@@ -11,9 +14,14 @@ EXCLUDE=("")
 
 for i in $(find . -name test.cc | sort) ; do
   DIR=$(dirname $i)
+  MD5=$(echo $DIR | md5sum)
+  HASH=$((0x${MD5%% *}))
+  SHARD=$((((HASH % DESIRED_MOD) + DESIRED_MOD) % DESIRED_MOD))
   echo -e "\n\033[0m\033[1mDir\033[0m: \033[36m${DIR}\033[0m"
   if [[ " ${EXCLUDE[@]} " =~ " $DIR " ]]; then
-    echo "Excluded.";
+    echo "Excluded."
+  elif [[ $SHARD != $DESIRED_SHARD ]]; then
+    echo "In another shard."
   else
     cd $DIR
     if ! make -s test ; then

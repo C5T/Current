@@ -37,6 +37,7 @@ DEFINE_string(current_base_dir_for_dlopen_test,
               "",
               "If set, the top-level `current/` dir for `dlopen`-based integrations to symlink to.");
 
+#ifndef CURRENT_WINDOWS
 TEST(Syscalls, PipedOutputSingleLine) {
   EXPECT_EQ("Hello, World!", current::bricks::system::SystemCallReadPipe("echo 'Hello, World!'").ReadLine());
 }
@@ -51,6 +52,7 @@ TEST(Syscalls, PipedOutputMultipleLines) {
   EXPECT_EQ("", pipe.ReadLine());
   EXPECT_FALSE(pipe);
 }
+#endif  // CURRENT_WINDOWS
 
 #if 0
 TEST(Syscalls, PopenException) {
@@ -71,6 +73,7 @@ TEST(Syscalls, SystemCall) {
   EXPECT_EQ("OK", current::FileSystem::ReadFileAsString(tmp2_file_name));
 }
 
+#ifndef CURRENT_WINDOWS
 TEST(Syscalls, DLOpen) {
   current::bricks::system::JITCompiledCPP lib("int foo() { return 42; }");
   auto foo = lib.template Get<int (*)()>("_Z3foov");  // The C++-mangled name for `foo`, use `objdump -t` if unsure.
@@ -102,3 +105,4 @@ TEST(Syscalls, DLOpenExceptions) {
     ASSERT_THROW(lib.template Get<int (*)()>("bwahaha"), current::bricks::system::DLSymException);
   }
 }
+#endif  // CURRENT_WINDOWS

@@ -95,7 +95,7 @@ class MemoryPersister {
 
     Entry operator*() const {
       std::lock_guard<std::mutex> lock(container_->memory_persister_container_mutex_);
-      return Entry(i_, container_->entries_[i_]);
+      return Entry(i_, container_->entries_[static_cast<size_t>(i_)]);
     }
     Iterator& operator++() {
       ++i_;
@@ -116,7 +116,7 @@ class MemoryPersister {
 
     std::string operator*() const {
       std::lock_guard<std::mutex> lock(container_->memory_persister_container_mutex_);
-      const auto& entry = container_->entries_[i_];
+      const auto& entry = container_->entries_[static_cast<size_t>(i_)];
       return JSON(idxts_t(i_, entry.first)) + '\t' + JSON(entry.second);
     }
     IteratorUnsafe& operator++() {

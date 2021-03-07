@@ -244,7 +244,7 @@ TEST(midichloriansServer, iOSEventsFromCPPSmokeTest) {
   EXPECT_EQ("[12000][Error],[203000][Error]", Join(consumer.Errors(), ','));
 }
 
-#ifdef CURRENT_APPLE
+#if defined(CURRENT_APPLE) && !defined(CURRENT_TRAVIS)
 TEST(midichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   current::time::ResetToZero();
 
@@ -285,7 +285,7 @@ TEST(midichloriansServer, iOSEventsFromNativeClientSmokeTest) {
       "[15000][iOSFocusEvent user_ms=15 gained_focus=false]",
       Join(consumer.Events(), ','));
 }
-#endif  // CURRENT_APPLE
+#endif  // CURRENT_APPLE && !CURRENT_TRAVIS
 
 GET MockGETRequest(const std::string& base_url,
                    uint64_t ms,

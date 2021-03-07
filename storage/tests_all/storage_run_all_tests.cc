@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2021 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,25 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef FASTTSV_GEN_H
-#define FASTTSV_GEN_H
+// NOTE(dkorolev): I broke down the `storage` tests into separate source files,
+// so that Travis doesn't stall on their compilation for 10+ minutes and call it a failure.
+// This is also why this source file is not called `test.cc`, but `storage_run_all_tests.cc`.
 
-#include <vector>
-#include <string>
-#include <random>
+// Uncomment the next line for faster Storage REST development iterations. DIMA_FIXME: Remove it.
+// #define STORAGE_ONLY_RUN_RESTFUL_TESTS
 
-template <typename F>
-inline void CreateTSV(F&& f, size_t rows, size_t cols = 100, double scale = 10, size_t random_seed = 42) {
-  std::mt19937 g(static_cast<unsigned int>(random_seed));
-  std::exponential_distribution<> d(1);
-  auto next_random = [&d, &g, scale]() { return static_cast<size_t>(d(g) * scale); };
-  std::vector<size_t> row(cols);
-  for (size_t i = 0; i < rows; ++i) {
-    for (auto& col : row) {
-      col = next_random();
-    }
-    f(row);
-  }
-}
-
-#endif  // FASTTSV_GEN_H
+#include "../tests_smoke/test.cc"
+#include "../tests_rest/test.cc"
+#include "../tests_flip/test.cc"

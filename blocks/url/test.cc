@@ -29,8 +29,6 @@ SOFTWARE.
 #include "../../typesystem/optional.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using namespace current::url;
-
 TEST(URLTest, SmokeTest) {
   URL u;
 
@@ -681,6 +679,7 @@ TEST(URLTest, ParseQueryString) {
 
 TEST(URLTest, EmptyURLException) {
   // Empty URL should throw.
+  using namespace current::url;
   ASSERT_THROW(URL(""), EmptyURLException);
   ASSERT_THROW(URL("?parameters=only"), EmptyURLException);
   ASSERT_THROW(URL("#fragment-only"), EmptyURLException);
@@ -714,6 +713,7 @@ CURRENT_STRUCT(Tricky, Simple) {
 }  // namespace url_test
 
 TEST(URLTest, FillsCurrentStructsFromURLParameters) {
+  using namespace current::url;
   using namespace url_test;
 
   {
@@ -741,7 +741,7 @@ TEST(URLTest, FillsCurrentStructsFromURLParameters) {
     // When parsing top-level URL parameters, the missing ones are plain ignored.
     Simple simple;
     simple.a = 42;
-    URL("/simple").query.template FillObject(simple);
+    URL("/simple").query.FillObject(simple);
     EXPECT_EQ(42, simple.a);
   }
   {

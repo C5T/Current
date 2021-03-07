@@ -531,9 +531,9 @@ TEST(PosixHTTPServerTest, ChunkedSmoke)
   };
   std::string body;
   std::string chunk(10, '.');
-  for (uint64_t i = 0; i < 10000; ++i) {
-    for (uint64_t j = 0; j < 10; ++j) {
-      chunk[j] = 'A' + ((i + j) % 26);
+  for (int i = 0; i < 10000; ++i) {
+    for (int j = 0; j < 10; ++j) {
+      chunk[j] = static_cast<char>('A' + ((i + j) % 26));
     }
     body += chunk;
   }
@@ -545,7 +545,7 @@ TEST(PosixHTTPServerTest, ChunkedSmoke)
         const uint64_t start = offset + length * i / chunks;
         const uint64_t end = offset + length * (i + 1) / chunks;
         chunked_body +=
-            current::strings::Printf("%llX\r\n", static_cast<long long>(end - start)) + body.substr(start, end - start);
+            current::strings::Printf("%llX\r\n", static_cast<long long>(end - start)) + body.substr(static_cast<size_t>(start), static_cast<size_t>(end - start));
       }
 
       std::thread t(EchoServerThreadEntry, Socket(FLAGS_net_http_test_port));
@@ -563,7 +563,7 @@ TEST(PosixHTTPServerTest, ChunkedSmoke)
                           "Content-Length: %d\r\n"
                           "\r\n",
                           static_cast<int>(length)) +
-                          body.substr(offset),
+                          body.substr(static_cast<size_t>(offset)),
                       connection);
       t.join();
     }

@@ -65,7 +65,7 @@ std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector
       a[i] = 0.0;
     }
   }
-  return std::move(a);
+  return a;
 }
 
 template <typename T>
@@ -82,7 +82,7 @@ std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>>SumVectors(std::vector<
       a[i] = 0.0;
     }
   }
-  return std::move(a);
+  return a;
 }
 
 template <typename T>
@@ -100,7 +100,7 @@ std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector
       a[i] = 0.0;
     }
   }
-  return std::move(a);
+  return a;
 }
 
 template <typename T>
