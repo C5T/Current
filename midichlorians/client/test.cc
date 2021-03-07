@@ -55,8 +55,8 @@ class Server {
  public:
   using events_variant_t = Variant<ios_events_t>;
 
-  Server(current::net::ReservedPort reserved_port, const std::string& http_route)
-      : http_server_(std::move(reserved_port)),
+  Server(current::net::ReservedLocalPort reserved_port, const std::string& http_route)
+      : http_server_(HTTP(std::move(reserved_port))),
         routes_(http_server_.Register(http_route,
                                        [this](Request r) {
                                          events_variant_t event;
