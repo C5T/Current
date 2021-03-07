@@ -45,15 +45,24 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_uint16(karl_test_keepalives_port, PickPortForUnitTest(), "Local test port for the `Karl` keepalive listener.");
-DEFINE_uint16(karl_test_fleet_view_port, PickPortForUnitTest(), "Local test port for the `Karl` fleet view listener.");
-DEFINE_uint16(karl_generator_test_port, PickPortForUnitTest(), "Local test port for the `generator` service.");
-DEFINE_uint16(karl_is_prime_test_port, PickPortForUnitTest(), "Local test port for the `is_prime` service.");
-DEFINE_uint16(karl_annotator_test_port, PickPortForUnitTest(), "Local test port for the `annotator` service.");
-DEFINE_uint16(karl_filter_test_port, PickPortForUnitTest(), "Local test port for the `filter` service.");
+inline uint16_t MimicPickPortForUnitTest() {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const uint16_t port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+  return port;
+}
+
+DEFINE_uint16(karl_test_keepalives_port, MimicPickPortForUnitTest(), "Local test port for the `Karl` keepalive listener.");
+DEFINE_uint16(karl_test_fleet_view_port, MimicPickPortForUnitTest(), "Local test port for the `Karl` fleet view listener.");
+DEFINE_uint16(karl_generator_test_port, MimicPickPortForUnitTest(), "Local test port for the `generator` service.");
+DEFINE_uint16(karl_is_prime_test_port, MimicPickPortForUnitTest(), "Local test port for the `is_prime` service.");
+DEFINE_uint16(karl_annotator_test_port, MimicPickPortForUnitTest(), "Local test port for the `annotator` service.");
+DEFINE_uint16(karl_filter_test_port, MimicPickPortForUnitTest(), "Local test port for the `filter` service.");
+
 #ifndef CURRENT_CI
 DEFINE_uint16(karl_nginx_port,
-              PickPortForUnitTest(),
+              MimicPickPortForUnitTest(),
               "Local port for Nginx to listen for proxying requests to Claires.");
 
 DEFINE_string(karl_nginx_config_file,
@@ -563,9 +572,9 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   current::karl::ClaireStatus claire;
   claire.service = "unittest";
   claire.codename = "ABCDEF";
-  claire.local_port = PickPortForUnitTest();
+  claire.local_port = MimicPickPortForUnitTest();
   // Register a fake service.
-  auto http_scope = HTTP(claire.local_port).Register("/.current", [](Request r) { r("GOTIT\n"); });
+  auto http_scope = HTTP(current::net::BarePort(claire.local_port)).Register("/.current", [](Request r) { r("GOTIT\n"); });
 
   {
     const std::string keepalive_url = Printf(
@@ -641,8 +650,8 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
 
   // Start secondary `Karl`.
   current::karl::KarlParameters secondary_karl_params;
-  secondary_karl_params.keepalives_port = PickPortForUnitTest();
-  secondary_karl_params.fleet_view_port = PickPortForUnitTest();
+  secondary_karl_params.keepalives_port = MimicPickPortForUnitTest();
+  secondary_karl_params.fleet_view_port = MimicPickPortForUnitTest();
   secondary_karl_params.stream_persistence_file = params.stream_persistence_file + "_secondary";
   secondary_karl_params.storage_persistence_file = params.storage_persistence_file + "_secondary";
   const auto secondary_stream_file_remover =
@@ -775,7 +784,7 @@ TEST(Karl, ChangeDependenciesInClaire) {
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
   const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
-  const uint16_t claire_port = PickPortForUnitTest();
+  const uint16_t claire_port = MimicPickPortForUnitTest();
   current::karl::Claire claire(karl_locator, "unittest", claire_port, {"http://127.0.0.1:12345"});
   // Register with no custom status filler and wait for the confirmation from Karl.
   claire.Register(nullptr, true);
@@ -802,7 +811,7 @@ TEST(Karl, ChangeDependenciesInClaire) {
   const int claire_to_depend_on_update_ts = 1000;
   current::time::SetNow(std::chrono::microseconds(claire_to_depend_on_update_ts),
                         std::chrono::microseconds(claire_to_depend_on_update_ts + 100));
-  const uint16_t claire_to_depend_on_port = PickPortForUnitTest();
+  const uint16_t claire_to_depend_on_port = MimicPickPortForUnitTest();
   current::karl::Claire claire_to_depend_on(karl_locator, "unittest", claire_to_depend_on_port);
   // Register with no custom status filler and wait for the confirmation from Karl.
   claire_to_depend_on.Register(nullptr, true);
@@ -861,7 +870,7 @@ TEST(Karl, ClaireNotifiesUserObject) {
 
   current::karl::Locator karl("http://localhost:12345/");
   ClaireNotifiable claire_notifications_receiver;
-  const uint16_t claire_port = PickPortForUnitTest();
+  const uint16_t claire_port = MimicPickPortForUnitTest();
   current::karl::Claire claire(karl, "unittest", claire_port, claire_notifications_receiver);
 
   // Switch Claire's Karl locator via HTTP request.
@@ -893,7 +902,7 @@ TEST(Karl, ModifiedClaireBoilerplateStatus) {
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(params.storage_persistence_file);
   const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
-  const uint16_t claire_port = PickPortForUnitTest();
+  const uint16_t claire_port = MimicPickPortForUnitTest();
   current::karl::Claire claire(karl_locator, "unittest", claire_port);
   claire.BoilerplateStatus().cloud_instance_name = "test_instance";
   claire.BoilerplateStatus().cloud_availability_group = "us-west-1";

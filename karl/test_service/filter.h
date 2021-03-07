@@ -44,8 +44,8 @@ class ServiceFilter final {
       : source_annotated_numbers_stream_(service_annotated + "/annotated"),
         stream_primes_(current::stream::Stream<Number>::CreateStream()),
         stream_composites_(current::stream::Stream<Number>::CreateStream()),
-        http_scope_(HTTP(port).Register("/primes", *stream_primes_) +
-                    HTTP(port).Register("/composites", *stream_composites_)),
+        http_scope_(HTTP(current::net::BarePort(port)).Register("/primes", *stream_primes_) +
+                    HTTP(current::net::BarePort(port)).Register("/composites", *stream_composites_)),
         http_stream_subscriber_(source_annotated_numbers_stream_,
                                 [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {

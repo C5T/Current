@@ -111,7 +111,7 @@ class GenericClaire final : private DummyClaireNotifiable {
         karl_keepalive_route_(KarlKeepaliveRoute(karl_, codename_, port_)),
         notifiable_ref_(notifiable),
         us_start_(current::time::Now()),
-        http_scope_(HTTP(port).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
+        http_scope_(HTTP(current::net::BarePort(port)).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
         destructing_(false),
         keepalive_thread_force_wakeup_(false),
         keepalive_thread_running_(false) {}

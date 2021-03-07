@@ -281,27 +281,27 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           state_update_thread_running_ = true;
           StateUpdateThread();
         }),
-        http_scope_(HTTP(parameters_.keepalives_port)
+        http_scope_(HTTP(current::net::BarePort(parameters_.keepalives_port))
                         .Register(parameters_.keepalives_url,
                                   URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                   [this](Request r) { AcceptKeepaliveViaHTTP(std::move(r)); }) +
-                    HTTP(parameters_.fleet_view_port)
+                    HTTP(current::net::BarePort(parameters_.fleet_view_port))
                         .Register(parameters_.fleet_view_url,
                                   URLPathArgs::CountMask::None,
                                   [this](Request r) { ServeFleetStatus(std::move(r)); }) +
-                    HTTP(parameters_.fleet_view_port)
+                    HTTP(current::net::BarePort(parameters_.fleet_view_port))
                         .Register(parameters_.fleet_view_url + "status",
                                   URLPathArgs::CountMask::None,
                                   [this](Request r) { ServeKarlStatus(std::move(r)); }) +
-                    HTTP(parameters_.fleet_view_port)
+                    HTTP(current::net::BarePort(parameters_.fleet_view_port))
                         .Register(parameters_.fleet_view_url + "build",
                                   URLPathArgs::CountMask::One,
                                   [this](Request r) { ServeBuild(std::move(r)); }) +
-                    HTTP(parameters_.fleet_view_port)
+                    HTTP(current::net::BarePort(parameters_.fleet_view_port))
                         .Register(parameters_.fleet_view_url + "snapshot",
                                   URLPathArgs::CountMask::One,
                                   [this](Request r) { ServeSnapshot(std::move(r)); }) +
-                    HTTP(parameters_.fleet_view_port)
+                    HTTP(current::net::BarePort(parameters_.fleet_view_port))
                         .Register(parameters_.fleet_view_url + "favicon.png", http::CurrentFaviconHandler())) {
     while (!state_update_thread_running_) {
       // Starting Karl is a rare operation, and it may take a while on an overloaded CPU.
