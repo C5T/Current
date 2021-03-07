@@ -372,7 +372,7 @@ class vector<::fncas::impl::V> {
     const value_type* v;
     size_t i;
     const_iterator(const value_type* v, size_t i) : v(v), i(i) {}
-    value_type operator*() const { return v[i]; }
+    const value_type& operator*() const { return v[i]; }
     bool operator==(const const_iterator& rhs) const { return i == rhs.i; }
     bool operator!=(const const_iterator& rhs) const { return i != rhs.i; }
     void operator++() { ++i; }
