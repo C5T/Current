@@ -33,8 +33,6 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_uint16(html_http_test_port, PickPortForUnitTest(), "Local port to use for the HTML/HTTP integration unit test.");
-
 TEST(HTMLTest, Smoke) {
   {
     std::ostringstream oss;
@@ -251,7 +249,9 @@ TEST(HTMLTest, ThreadIsolation) {
 }
 
 TEST(HTMLTest, HTTPIntegration) {
-  const auto http_route_scope = HTTP(FLAGS_html_http_test_port).Register("/", [](Request r) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  const auto http_route_scope = HTTP(std::move(reserved_port)).Register("/", [](Request r) {
     const current::html::HTMLGeneratorHTTPResponseScope html_scope(std::move(r));
     HTML(html);
     {
@@ -274,7 +274,7 @@ TEST(HTMLTest, HTTPIntegration) {
       HTML(_) << '.';
     }
   });
-  const std::string url = Printf("http://localhost:%d/", static_cast<int>(FLAGS_html_http_test_port));
+  const std::string url = Printf("http://localhost:%d/", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(
