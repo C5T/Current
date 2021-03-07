@@ -38,15 +38,18 @@ DEFINE_string(event_store_test_tmpdir, ".current", "Local path for the test to c
 DEFINE_string(event_store_test_tmpdir, ".", "Local path for the test to create temporary files in.");
 #endif
 
-DEFINE_int32(event_store_test_port, PickPortForUnitTest(), "Local port to run the test against.");
-
 TEST(EventStore, SmokeWithInMemoryEventStore) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   current::time::ResetToZero();
 
   using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, StreamInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
-  event_store_t event_store(FLAGS_event_store_test_port, "");
+  event_store_t event_store(port, "");
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister->Size());
 
@@ -83,6 +86,11 @@ TEST(EventStore, SmokeWithInMemoryEventStore) {
 }
 
 TEST(EventStore, SmokeWithDiskPersistedEventStore) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   current::time::ResetToZero();
 
   const std::string persistence_file_name =
@@ -93,7 +101,7 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
   using db_t = event_store_t::event_store_storage_t;
 
   {
-    event_store_t event_store(FLAGS_event_store_test_port, "", persistence_file_name);
+    event_store_t event_store(port, "", persistence_file_name);
 
     EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister->Size());
 
@@ -130,7 +138,7 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
   }
 
   {
-    event_store_t resumed_event_store(FLAGS_event_store_test_port, "", persistence_file_name);
+    event_store_t resumed_event_store(port, "", persistence_file_name);
 
     const auto verify_persisted_result =
         resumed_event_store.event_store_storage->ReadOnlyTransaction([](ImmutableFields<db_t> fields) {
@@ -143,17 +151,22 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
 }
 
 TEST(EventStore, SmokeWithHTTP) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   current::time::ResetToZero();
 
   using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, StreamInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
-  event_store_t event_store(FLAGS_event_store_test_port, "");
+  event_store_t event_store(port, "");
 
-  EXPECT_EQ("UP!\n", HTTP(GET(Printf("http://localhost:%d/up", FLAGS_event_store_test_port))).body);
+  EXPECT_EQ("UP!\n", HTTP(GET(Printf("http://localhost:%d/up", port))).body);
 
   EXPECT_EQ(404,
-            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/event/http1", FLAGS_event_store_test_port))).code));
+            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/event/http1", port))).code));
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister->Size());
 
@@ -167,13 +180,13 @@ TEST(EventStore, SmokeWithHTTP) {
   EXPECT_TRUE(WasCommitted(add_event_result));
 
   {
-    const auto result = HTTP(GET(Printf("http://localhost:%d/event/http1", FLAGS_event_store_test_port)));
+    const auto result = HTTP(GET(Printf("http://localhost:%d/event/http1", port)));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("{\"key\":\"http1\",\"body\":{\"some_event_data\":\"yeah1\"}}\n", result.body);
   }
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister->Size());
-  EXPECT_EQ("0\n", HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", FLAGS_event_store_test_port))).body);
+  EXPECT_EQ("0\n", HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", port))).body);
 
   current::time::SetNow(std::chrono::microseconds(42000), std::chrono::microseconds(42100));
   {
@@ -184,14 +197,14 @@ TEST(EventStore, SmokeWithHTTP) {
     // to timestamp transaction begin/end as well as the mutation itself.
     EXPECT_EQ(
         201,
-        static_cast<int>(HTTP(POST(Printf("http://localhost:%d/event", FLAGS_event_store_test_port), event2)).code));
+        static_cast<int>(HTTP(POST(Printf("http://localhost:%d/event", port), event2)).code));
   }
 
   while (event_store.readonly_nonstorage_event_log_persister->Size() < 1u) {
     std::this_thread::yield();
   }
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister->Size());
-  EXPECT_EQ("1\n", HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", FLAGS_event_store_test_port))).body);
+  EXPECT_EQ("1\n", HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", port))).body);
 
   const auto verify_http_event_added_result =
       event_store.event_store_storage->ReadOnlyTransaction([](ImmutableFields<db_t> fields) {
@@ -206,5 +219,5 @@ TEST(EventStore, SmokeWithHTTP) {
             (*event_store.readonly_nonstorage_event_log_persister->Iterate(0u, 1u).begin()).entry.message);
   // `42003` as the non-storage event is published after the storage one.
   EXPECT_EQ("{\"index\":0,\"us\":42003}\t{\"message\":\"Event added: http2\"}\n",
-            HTTP(GET(Printf("http://localhost:%d/subscribe?i=0&n=1", FLAGS_event_store_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/subscribe?i=0&n=1", port))).body);
 }

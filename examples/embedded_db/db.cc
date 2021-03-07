@@ -31,8 +31,6 @@ using namespace current;
 DEFINE_string(db_dir, ".current", "Local path to the data storage location.");
 DEFINE_string(db_filename, "data.json", "File name for the persisted data.");
 
-DEFINE_int32(db_demo_port, PickPortForUnitTest(), "Local port to spawn the server on.");
-
 DEFINE_bool(legend, true, "Print example usage patterns.");
 
 DEFINE_bool(verbose, true, "Dump extra information to stderr.");
@@ -108,12 +106,18 @@ struct UserNicknamesReadModel {
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
+  // NOTE(dkorolev): The below code is wrong as it doesn't save the scope of HTTP handlers, duh.
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto stream = current::stream::Stream<Event, current::persistence::File>::CreateStream(
       FileSystem::JoinPath(FLAGS_db_dir, FLAGS_db_filename));
 
   // Example command lines to get started.
   if (FLAGS_legend) {
-    const auto url = "localhost:" + current::ToString(FLAGS_db_demo_port);
+    const auto url = "localhost:" + current::ToString(port);
 
     std::cerr << "Health check:\n\tcurl " << url << "/healthz" << std::endl;
     std::cerr << "Schema as F#:\n\tcurl " << url << "/schema.fs" << std::endl;
@@ -133,17 +137,17 @@ int main(int argc, char** argv) {
 
     std::cerr << "Read model:\n\tcurl '" << url << "/nickname?id=skywalker'" << std::flush << std::endl;
   } else {
-    std::cerr << "Demo Embedded Event Log DB running on localhost:" << FLAGS_db_demo_port << std::flush << std::endl;
+    std::cerr << "Demo Embedded Event Log DB running on localhost:" << port << std::flush << std::endl;
   }
 
-  HTTP(FLAGS_db_demo_port).Register("/healthz", [](Request r) { r("OK\n"); });
+  HTTP(port).Register("/healthz", [](Request r) { r("OK\n"); });
 
   // Schema.
   using reflection::SchemaInfo;
   using reflection::StructSchema;
   using reflection::Language;
 
-  HTTP(FLAGS_db_demo_port)
+  HTTP(port)
       .Register(
           "/schema.h",
           [](Request r) {
@@ -152,7 +156,7 @@ int main(int argc, char** argv) {
             r(schema.GetSchemaInfo().Describe<Language::CPP>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
           });
 
-  HTTP(FLAGS_db_demo_port)
+  HTTP(port)
       .Register(
           "/schema.fs",
           [](Request r) {
@@ -161,7 +165,7 @@ int main(int argc, char** argv) {
             r(schema.GetSchemaInfo().Describe<Language::FSharp>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
           });
 
-  HTTP(FLAGS_db_demo_port)
+  HTTP(port)
       .Register("/schema.json",
                 [](Request r) {
                   StructSchema schema;
@@ -170,10 +174,10 @@ int main(int argc, char** argv) {
                 });
 
   // Subscribe.
-  HTTP(FLAGS_db_demo_port).Register("/data", *stream);
+  HTTP(port).Register("/data", *stream);
 
   // Publish.
-  HTTP(FLAGS_db_demo_port)
+  HTTP(port)
       .Register("/publish",
                 [&stream](Request r) {
                   if (r.method == "POST") {
@@ -191,9 +195,9 @@ int main(int argc, char** argv) {
                 });
 
   // Read model.
-  current::ss::StreamSubscriber<UserNicknamesReadModel, Event> read_model(FLAGS_db_demo_port);
+  current::ss::StreamSubscriber<UserNicknamesReadModel, Event> read_model(port);
   const auto subscriber_scope = stream->Subscribe(read_model);
 
   // Run forever.
-  HTTP(FLAGS_db_demo_port).Join();
+  HTTP(port).Join();
 }

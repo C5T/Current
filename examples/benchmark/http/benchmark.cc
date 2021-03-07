@@ -32,7 +32,6 @@ DEFINE_double(seconds, 2.5, "Run the load test for this many seconds.");
 DEFINE_string(url,
               "http://localhost:%d/add",
               "The URL for the load test, default to `http://localhost:${FLAGS_port}`.");
-DEFINE_int32(port, PickPortForUnitTest(), "The port to use, if `--url` includes it.");
 
 DEFINE_int32(threads,
              100,
@@ -45,19 +44,19 @@ int main(int argc, char** argv) {
 
   class Worker {
    public:
-    explicit Worker(double seconds) : seconds_(seconds), queries_(0u), thread_(&Worker::Thread, this) {}
+    Worker(int port, double seconds) : seconds_(seconds), queries_(0u), thread_(&Worker::Thread, this, port) {}
     void Join() { thread_.join(); }
     size_t TotalQueries() const { return queries_; }
 
    private:
     static double NowInSeconds() { return 1e-6 * static_cast<double>(time::Now().count()); }
-    void Thread() {
+    void Thread(int port) {
       const double timestamp_end = NowInSeconds() + seconds_;
       while (NowInSeconds() < timestamp_end) {
         const int a = current::random::RandomIntegral(-1000000, +1000000);
         const int b = current::random::RandomIntegral(-1000000, +1000000);
         const auto r =
-            HTTP(GET(strings::Printf(FLAGS_url.c_str(), FLAGS_port) + strings::Printf("?a=%d&b=%d", a, b)));
+            HTTP(GET(strings::Printf(FLAGS_url.c_str(), port) + strings::Printf("?a=%d&b=%d", a, b)));
         CURRENT_ASSERT(r.code == HTTPResponseCode.OK);
         CURRENT_ASSERT(ParseJSON<AddResult>(r.body).sum == a + b);
         ++queries_;
@@ -69,9 +68,14 @@ int main(int argc, char** argv) {
     std::thread thread_;
   };
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   std::vector<std::unique_ptr<Worker>> threads(FLAGS_threads);
   for (auto& t : threads) {
-    t = std::make_unique<Worker>(FLAGS_seconds);
+    t = std::make_unique<Worker>(port, FLAGS_seconds);
   }
 
   for (auto& t : threads) {

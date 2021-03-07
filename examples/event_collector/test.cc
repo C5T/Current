@@ -38,8 +38,6 @@ SOFTWARE.
 #include "../../bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(event_collector_test_port, PickPortForUnitTest(), "Local port to run the test.");
-
 using current::strings::Printf;
 
 struct EventReceiver {
@@ -59,8 +57,12 @@ TEST(EventCollector, Smoke) {
   std::ostringstream os;
   EventReceiver er;
 
-  current::time::SetNow(std::chrono::microseconds(0));
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port,
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  EventCollectorHTTPServer collector(port,
                                      os,
                                      std::chrono::milliseconds(100),
                                      "/log",
@@ -68,7 +70,7 @@ TEST(EventCollector, Smoke) {
                                      std::bind(&EventReceiver::OnEvent, &er, std::placeholders::_1));
 
   current::time::SetNow(std::chrono::microseconds(12000));
-  const auto get_response = HTTP(GET(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port)));
+  const auto get_response = HTTP(GET(Printf("http://localhost:%d/log", port)));
   EXPECT_EQ(200, static_cast<int>(get_response.code));
   EXPECT_EQ("OK\n", get_response.body);
 
@@ -78,7 +80,7 @@ TEST(EventCollector, Smoke) {
   }
 
   current::time::SetNow(std::chrono::microseconds(178000));
-  const auto post_response = HTTP(POST(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port), "meh"));
+  const auto post_response = HTTP(POST(Printf("http://localhost:%d/log", port), "meh"));
   EXPECT_EQ(200, static_cast<int>(post_response.code));
   EXPECT_EQ("OK\n", post_response.body);
 
@@ -107,9 +109,14 @@ TEST(EventCollector, Smoke) {
 }
 
 TEST(EventCollector, QueryParameters) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/foo", "+");
-  EXPECT_EQ("+", HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
+  EventCollectorHTTPServer collector(port, os, std::chrono::microseconds(0), "/foo", "+");
+  EXPECT_EQ("+", HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", port))).body);
   auto e = ParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ(2u, e.q.size());
   EXPECT_EQ("v", e.q["k"]);
@@ -117,17 +124,27 @@ TEST(EventCollector, QueryParameters) {
 }
 
 TEST(EventCollector, Body) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/bar", "y");
-  EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
+  EventCollectorHTTPServer collector(port, os, std::chrono::microseconds(0), "/bar", "y");
+  EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", port), "Yay!")).body);
   EXPECT_EQ("Yay!", ParseJSON<LogEntryWithHeaders>(os.str()).b);
 }
 
 TEST(EventCollector, Headers) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/ctfo", "=");
+  EventCollectorHTTPServer collector(port, os, std::chrono::microseconds(0), "/ctfo", "=");
   EXPECT_EQ("=",
-            HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
+            HTTP(GET(Printf("http://localhost:%d/ctfo", port))
                      .SetHeader("foo", "bar")
                      .SetHeader("baz", "meh")).body);
   auto e = ParseJSON<LogEntryWithHeaders>(os.str());

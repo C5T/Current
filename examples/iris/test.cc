@@ -50,8 +50,6 @@ using namespace current::gnuplot;
 
 // `using namespace yoda`, as well as `using yoda::Dictionary` conflicts with Storage. -- D.K.
 
-DEFINE_int32(iris_port, PickPortForUnitTest(), "");
-
 DEFINE_bool(run, false, "Set to true to run indefinitely.");
 
 // Flower ID, global and auto-increasing, for test purposes.
@@ -62,9 +60,11 @@ TEST(Iris, Demo) {
   size_t number_of_flowers = 0u;
   std::map<size_t, std::string> dimension_names;
 
-  auto http_scope =
-      HTTP(FLAGS_iris_port)
-          .Register(
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  auto http_scope = http_server.Register(
               "/import",
               [&db, &number_of_flowers, &dimension_names](Request request) {
                 EXPECT_EQ("POST", request.method);
@@ -98,7 +98,7 @@ TEST(Iris, Demo) {
   // The input file is in the `golden` directory for it to be successfully picked up by
   // `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
-            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port),
+            HTTP(POSTFromFile(Printf("http://localhost:%d/import", port),
                               current::FileSystem::JoinPath("golden", "dataset.tsv"),
                               "text/tsv")).body);
 
@@ -106,11 +106,11 @@ TEST(Iris, Demo) {
   // TODO(dkorolev): Re-enable soon.
 
   // Ref.: http://localhost:3000/stream
-  HTTP(FLAGS_iris_port).Register("/stream", db);
+  HTTP(port).Register("/stream", db);
 
   // The very first flower.
   const auto flower1 = ParseJSON<LabeledFlower>(
-      HTTP(GET(Printf("http://localhost:%d/stream?cap=1", FLAGS_iris_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/stream?cap=1", port))).body);
   EXPECT_DOUBLE_EQ(5.1, flower1.SL);
   EXPECT_DOUBLE_EQ(3.5, flower1.SW);
   EXPECT_DOUBLE_EQ(1.4, flower1.PL);
@@ -119,7 +119,7 @@ TEST(Iris, Demo) {
 
   // The very last flower.
   const auto flower2 = ParseJSON<LabeledFlower>(
-      HTTP(GET(Printf("http://localhost:%d/stream?n=1", FLAGS_iris_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/stream?n=1", port))).body);
   EXPECT_DOUBLE_EQ(5.9, flower2.SL);
   EXPECT_DOUBLE_EQ(3.0, flower2.SW);
   EXPECT_DOUBLE_EQ(5.1, flower2.PL);
@@ -127,9 +127,9 @@ TEST(Iris, Demo) {
   EXPECT_EQ("virginica", flower2.label);
 
   // LCOV_EXCL_START
-  if (FLAGS_run) {
+  if (port) {
     // Ref.: http://localhost:3000/get?id=42
-    HTTP(FLAGS_iris_port)
+    HTTP(port)
         .Register("/get",
                   [&api](Request request) {
                     const auto id = current::FromString<size_t>(request.url.query["id"]);
@@ -139,7 +139,7 @@ TEST(Iris, Demo) {
                   });
 
     // Ref.: [POST] http://localhost:3000/add?label=setosa&sl=5&sw=5&pl=5&pw=5
-    HTTP(FLAGS_iris_port)
+    HTTP(port)
         .Register("/add",
                   [&api](Request request) {
                     const std::string label = request.url.query["label"];
@@ -161,7 +161,7 @@ TEST(Iris, Demo) {
 
     // Ref.: http://localhost:3000/viz
     // Ref.: http://localhost:3000/viz?x=1&y=2
-    HTTP(FLAGS_iris_port)
+    HTTP(port)
         .Register("/viz",
                   [&api](Request request) {
                     auto x_dim = std::min(size_t(3), current::FromString<size_t>(request.url.query.get("x", "0")));
@@ -207,7 +207,7 @@ TEST(Iris, Demo) {
                     }, PlotIrises(std::move(request)));
                   });
 
-    HTTP(FLAGS_iris_port).Join();
+    HTTP(port).Join();
   }
   // LCOV_EXCL_STOP
 #endif
