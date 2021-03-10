@@ -291,9 +291,9 @@ TEST(TCPTest, ResolveAddress) {
   }
 }
 
-#if 1  // #ifndef CURRENT_WINDOWS -- NOTE(dkorolev): Testing this again in 2021.
-// Apparently, Windows has no problems opening two sockets on the same port -- D.K.
-// Tested on Visual Studio 2015 Preview.
+#ifndef CURRENT_WINDOWS
+// Apparently, Windows has no problems opening two sockets on the same port.
+// NOTE(dkorolev): Confirmed on Visual Studio 2015 Preview, as well as later in 2021.
 TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
   auto port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;

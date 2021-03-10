@@ -213,15 +213,9 @@ class SocketHandle : private SocketSystemInitializer {
     std::swap(socket_, rhs.socket_);
   }
 
-  // SocketHandle does not expose copy constructor and assignment operator. It should only be moved.
-
  private:
   friend class Socket;
-#if 1  // NOTE(dkorolev): Checking this in 2021, was: #ifndef CURRENT_WINDOWS
   SOCKET socket_;
-#else
-  mutable SOCKET socket_;  // Need to support taking the handle away from a non-move constructor.
-#endif  // CURRENT_WINDOWS
 
  public:
   // The `ReadOnlyValidSocketAccessor socket` members provide simple read-only access to `socket_` via `socket`.
@@ -248,22 +242,12 @@ class SocketHandle : private SocketSystemInitializer {
 
  private:
   SocketHandle() = delete;
+  SocketHandle(const SocketHandle&) = delete;
   void operator=(const SocketHandle&) = delete;
   void operator=(SocketHandle&& rhs) {
     socket_ = rhs.socket_;
     rhs.socket_ = static_cast<SOCKET>(-1);
   }
-
-#if 1  // ndef CURRENT_WINDOWS
-  SocketHandle(const SocketHandle&) = delete;
-#else
- public:
-  // Visual Studio seems to require this constructor, since std::move()-ing away `SocketHandle`-s
-  // as part of `Connection` objects doesn't seem to work. TODO(dkorolev): Investigate this.
-  SocketHandle(const SocketHandle& rhs) : socket_(static_cast<SOCKET>(-1)) { std::swap(socket_, rhs.socket_); }
-
- private:
-#endif  // CURRENT_WINDOWS
 };
 
 struct IPAndPort {
