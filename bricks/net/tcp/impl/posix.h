@@ -80,7 +80,7 @@ namespace net {
 enum class NagleAlgorithm : bool { Disable, Keep };
 
 const size_t kMaxServerQueuedConnections = 1024;
-const NagleAlgorithm kDisableNagleAlgorithmByDefault = NagleAlgorithm::Keep;
+const NagleAlgorithm kDefaultNagleAlgorithmPolicy = NagleAlgorithm::Keep;
 
 struct SocketSystemInitializer {
 #ifdef CURRENT_WINDOWS
@@ -104,7 +104,7 @@ class SocketHandle : private SocketSystemInitializer {
  private:
   struct InternalInit final {};
   explicit SocketHandle(InternalInit,
-                        NagleAlgorithm nagle_algorithm_policy = kDisableNagleAlgorithmByDefault)
+                        NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
     : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
@@ -155,7 +155,7 @@ class SocketHandle : private SocketSystemInitializer {
   struct BindAndListen final {};
   explicit SocketHandle(BindAndListen,
                         BarePort bare_port,
-                        NagleAlgorithm nagle_algorithm_policy = kDisableNagleAlgorithmByDefault,
+                        NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
                         int max_connections = kMaxServerQueuedConnections)
       : SocketHandle(InternalInit(), nagle_algorithm_policy) {
     sockaddr_in addr_server;
@@ -181,7 +181,7 @@ class SocketHandle : private SocketSystemInitializer {
   }
 
   struct DoNotBind final {};
-  explicit SocketHandle(DoNotBind, NagleAlgorithm nagle_algorithm_policy = kDisableNagleAlgorithmByDefault)
+  explicit SocketHandle(DoNotBind, NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
         : SocketHandle(InternalInit(), nagle_algorithm_policy) {}
 
   struct FromAcceptedHandle final {
@@ -372,7 +372,7 @@ class ReserveLocalPortImpl final {
 
 // Pick an available local port.
 [[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
-    NagleAlgorithm nagle_algorithm_policy = kDisableNagleAlgorithmByDefault,
+    NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
     int max_connections = kMaxServerQueuedConnections) {
   return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(nagle_algorithm_policy, max_connections);
 }
@@ -565,7 +565,7 @@ class Connection : public SocketHandle {
 class Socket final : public SocketHandle {
  public:
   explicit Socket(BarePort bare_port,
-                  NagleAlgorithm nagle_algorithm_policy = kDisableNagleAlgorithmByDefault,
+                  NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
                   int max_connections = kMaxServerQueuedConnections)
       : SocketHandle(SocketHandle::BindAndListen(), bare_port, nagle_algorithm_policy, max_connections) {
   }
@@ -659,7 +659,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
    public:
     explicit ClientSocket(const std::string& host,
                           const std::string& serv, 
-                          NagleAlgorithm nagle_algorithm_policy = kDisableNagleAlgorithmByDefault)
+                          NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
         : SocketHandle(SocketHandle::DoNotBind(), nagle_algorithm_policy) {
       CURRENT_BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));
       // Deliberately left non-const because of possible Windows issues. -- M.Z.
