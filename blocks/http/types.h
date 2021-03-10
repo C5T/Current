@@ -312,21 +312,35 @@ struct HTTPImpl {
   typedef CHUNKED_CLIENT_IMPL chunked_client_impl_t;
   typedef SERVER_IMPL server_impl_t;
 
-  server_impl_t& operator()(uint16_t port) {
-    static std::mutex mutex;
-    static std::map<uint16_t, std::unique_ptr<server_impl_t>> servers;
-    std::lock_guard<std::mutex> lock(mutex);
-    std::unique_ptr<server_impl_t>& server = servers[port];
+  struct HandlersSingleton final {
+    std::mutex mutex;
+    std::map<uint16_t, std::unique_ptr<server_impl_t>> servers;
+  };
+
+  [[nodiscard]] server_impl_t& operator()(current::net::BarePort port) {
+    HandlersSingleton& handlers = current::Singleton<HandlersSingleton>();
+    std::lock_guard<std::mutex> lock(handlers.mutex);
+    std::unique_ptr<server_impl_t>& server = handlers.servers[static_cast<size_t>(port)];
     if (!server) {
-      server.reset(new server_impl_t(port));
+      server = std::make_unique<server_impl_t>(port);
+    }
+    return *server;
+  }
+
+  [[nodiscard]] server_impl_t& operator()(current::net::ReservedLocalPort port) {
+    HandlersSingleton& handlers = current::Singleton<HandlersSingleton>();
+    std::lock_guard<std::mutex> lock(handlers.mutex);
+    std::unique_ptr<server_impl_t>& server = handlers.servers[static_cast<uint16_t>(port)];
+    if (!server) {
+      server = std::make_unique<server_impl_t>(std::move(port));
     }
     return *server;
   }
 
   // TODO(dkorolev): Deprecate the below some time in the future. And perhaps add an `http_port_t`.
-  server_impl_t& operator()(int port) {
+  [[nodiscard]] server_impl_t& operator()(int port) {
     CURRENT_ASSERT(port > 0 && port < 65536);
-    return operator()(static_cast<uint16_t>(port));
+    return operator()(current::net::BarePort(static_cast<uint16_t>(port)));
   }
 
   template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS = KeepResponseInMemory>

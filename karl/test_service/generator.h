@@ -47,7 +47,7 @@ class ServiceGenerator final {
   ServiceGenerator(uint16_t port, std::chrono::microseconds sleep_between_numbers, const current::karl::Locator& karl)
       : current_value_(0),
         stream_(current::stream::Stream<Number>::CreateStream()),
-        http_scope_(HTTP(port).Register("/numbers", *stream_)),
+        http_scope_(HTTP(current::net::BarePort(port)).Register("/numbers", *stream_)),
         sleep_between_numbers_(sleep_between_numbers),
         destructing_(false),
         thread_([this]() { Thread(); }),

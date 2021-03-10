@@ -42,7 +42,12 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   auto stream = storage_t::stream_t::CreateStream(persistence_file_name);
   auto storage = storage_t::CreateMasterStorageAtopExistingStream(stream);
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
   // clang-format off
   const std::string golden_user_schema_h =
@@ -120,9 +125,9 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
     auto rest = RESTfulStorage<storage_t>(
-        *storage, FLAGS_transactional_storage_test_port, "/api_plain", "http://unittest.current.ai");
+        *storage, port, "/api_plain", "http://unittest.current.ai");
     const auto hypermedia_rest = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
-        *storage, FLAGS_transactional_storage_test_port, "/api_hypermedia", "http://unittest.current.ai");
+        *storage, port, "/api_hypermedia", "http://unittest.current.ai");
 
     // Confirm the schema is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api_plain/schema/user")).code));
@@ -398,15 +403,20 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
   using namespace current::storage::rest;
   using storage_t = SimpleStorage<StreamInMemoryStreamPersister>;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto storage = storage_t::CreateMasterStorage();
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
-  const auto rest1 = RESTfulStorage<storage_t>(*storage, FLAGS_transactional_storage_test_port, "/plain", "");
+  const auto rest1 = RESTfulStorage<storage_t>(*storage, port, "/plain", "");
   const auto rest2 = RESTfulStorage<storage_t, current::storage::rest::Simple>(
-      *storage, FLAGS_transactional_storage_test_port, "/simple", "");
+      *storage, port, "/simple", "");
   const auto rest3 = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
-      *storage, FLAGS_transactional_storage_test_port, "/hypermedia", "");
+      *storage, port, "/hypermedia", "");
 
   {
     // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
@@ -660,11 +670,16 @@ TEST(TransactionalStorage, CQSTest) {
   using namespace current::storage::rest;
   using storage_t = SimpleStorage<StreamInMemoryStreamPersister>;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto storage = storage_t::CreateMasterStorage();
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
   auto storage_http_interface = RESTfulStorage<storage_t, current::storage::rest::Simple>(
-      *storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+      *storage, port, "/api", "http://unittest.current.ai");
 
   {
     const std::string user_key = ([&]() {
@@ -905,12 +920,17 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   static_assert(current::storage::rest::FieldExposedViaREST<Storage2, SimpleUserPersistedExposed>::exposed, "");
   static_assert(!current::storage::rest::FieldExposedViaREST<Storage2, SimplePostPersistedNotExposed>::exposed, "");
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
   auto rest1 = RESTfulStorage<Storage1, current::storage::rest::Hypermedia>(
-      *storage1, FLAGS_transactional_storage_test_port, "/api1", "http://unittest.current.ai/api1");
+      *storage1, port, "/api1", "http://unittest.current.ai/api1");
   auto rest2 = RESTfulStorage<Storage2, current::storage::rest::Hypermedia>(
-      *storage2, FLAGS_transactional_storage_test_port, "/api2", "http://unittest.current.ai/api2");
+      *storage2, port, "/api2", "http://unittest.current.ai/api2");
 
   const auto fields1 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api1")).body);
   const auto fields2 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api2")).body);
@@ -940,12 +960,17 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   using namespace current::storage::rest;
   using storage_t = SimpleStorage<StreamInMemoryStreamPersister>;
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto storage = storage_t::CreateMasterStorage();
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
   auto rest = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
-      *storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+      *storage, port, "/api", "http://unittest.current.ai");
 
   EXPECT_TRUE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
   EXPECT_TRUE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);

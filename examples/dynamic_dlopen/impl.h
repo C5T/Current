@@ -30,8 +30,8 @@ class DynamicDLOpenIrisExampleImpl {
   };
   std::unordered_map<std::string, std::unique_ptr<CompiledUserFunction>> handlers_;
 
-  HTTPRoutesScope RegisterRoutes(uint16_t port) {
-    return HTTP(port).Register("/", URLPathArgs::CountMask::Any, [this](Request r) { Serve(std::move(r)); });
+  HTTPRoutesScope RegisterRoutes(current::http::HTTPServerPOSIX& http) {
+    return http.Register("/", URLPathArgs::CountMask::Any, [this](Request r) { Serve(std::move(r)); });
   }
 
   void Serve(Request r) {
@@ -81,9 +81,10 @@ class DynamicDLOpenIrisExampleImpl {
   }
 
  public:
-  DynamicDLOpenIrisExampleImpl(Schema data, uint16_t port) : data_(std::move(data)), routes_(RegisterRoutes(port)) {}
-  DynamicDLOpenIrisExampleImpl(std::string filename, uint16_t port)
-      : data_(ParseJSON<Schema>(current::FileSystem::ReadFileAsString(filename))), routes_(RegisterRoutes(port)) {}
+  DynamicDLOpenIrisExampleImpl(Schema data, current::http::HTTPServerPOSIX& http)
+      : data_(std::move(data)), routes_(RegisterRoutes(http)) {}
+  DynamicDLOpenIrisExampleImpl(std::string filename, current::http::HTTPServerPOSIX& http)
+      : data_(ParseJSON<Schema>(current::FileSystem::ReadFileAsString(filename))), routes_(RegisterRoutes(http)) {}
 
   size_t TotalFlowers() const { return data_.size(); }
 };

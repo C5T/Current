@@ -32,13 +32,14 @@ static const char* const kDefaultPathToIrisDataset = "../iris/data/dataset.json"
 static const char* const kDefaultPathToIrisDataset = "golden/dataset.json";
 #endif
 DEFINE_string(dlopen_example_test_input_filename, kDefaultPathToIrisDataset, "The input Irises dataset.");
-DEFINE_uint16(dlopen_example_test_port, PickPortForUnitTest(), "");
 
 #ifndef CURRENT_WINDOWS
 TEST(DLOpenExample, Smoke) {
-  DynamicDLOpenIrisExampleImpl impl(FLAGS_dlopen_example_test_input_filename, FLAGS_dlopen_example_test_port);
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
 
-  const int port = static_cast<int>(FLAGS_dlopen_example_test_port);
+  DynamicDLOpenIrisExampleImpl impl(FLAGS_dlopen_example_test_input_filename, http_server);
 
   EXPECT_EQ(
       // clang-format off

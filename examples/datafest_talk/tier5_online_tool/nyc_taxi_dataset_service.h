@@ -110,7 +110,7 @@ class NYCTaxiDatasetServiceImpl {
   std::unordered_map<std::string, std::unique_ptr<CompiledUserFunction>> handlers_;
 
   HTTPRoutesScope RegisterRoutes(std::string route, uint16_t port) {
-    return HTTP(port).Register(route, URLPathArgs::CountMask::Any, [this](Request r) { Serve(std::move(r)); });
+    return HTTP(current::net::BarePort(port)).Register(route, URLPathArgs::CountMask::Any, [this](Request r) { Serve(std::move(r)); });
   }
 
   std::string ConstructSource(const std::string& body, const std::string& source_name = "code.cc") const {

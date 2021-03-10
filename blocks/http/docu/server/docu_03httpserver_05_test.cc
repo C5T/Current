@@ -34,12 +34,11 @@ SOFTWARE.
 #include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_server_port_05, PickPortForUnitTest(), "");
-
 TEST(Docu, HTTPServer05) {
-const auto port = FLAGS_docu_net_server_port_05;
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
   // Returning a potentially unlimited response chunk by chunk.
-  const auto scope = HTTP(port).Register("/chunked", [](Request r) {
+  const auto scope = HTTP(std::move(reserved_port)).Register("/chunked", [](Request r) {
     const size_t n = atoi(r.url.query["n"].c_str());
     const size_t delay_ms = atoi(r.url.query["delay_ms"].c_str());
       

@@ -27,18 +27,20 @@ SOFTWARE.
 #include "../../../bricks/dflags/dflags.h"
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(benchmark_test_local_port, PickPortForUnitTest(), "The local port to spawn test server on.");
-
 TEST(BenchmarkTest, OneAndOne) {
-  BenchmarkTestServer server(FLAGS_benchmark_test_local_port, "/add");
-  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=1&b=1", FLAGS_benchmark_test_local_port)));
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  BenchmarkTestServer server(std::move(reserved_port), "/add");
+  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=1&b=1", port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(2, ParseJSON<AddResult>(response.body).sum);
 }
 
 TEST(BenchmarkTest, TenAndTen) {
-  BenchmarkTestServer server(FLAGS_benchmark_test_local_port, "/add");
-  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=10&b=10", FLAGS_benchmark_test_local_port)));
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  BenchmarkTestServer server(std::move(reserved_port), "/add");
+  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=10&b=10", port)));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(20, ParseJSON<AddResult>(response.body).sum);
 }

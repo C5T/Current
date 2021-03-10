@@ -202,15 +202,7 @@ struct is_same_or_compile_error {
   enum { value = std::is_same_v<T1, T2> };
   char is_same_static_assert_failed[value ? 1 : -1];
 };
-
-// Unit test ports begin with 19999 by default and go down from there.
-#define PickPortForUnitTest() PortForUnitTestPicker::PickOne()
-struct PortForUnitTestPicker {
-  static uint16_t PickOne() {
-    static uint16_t port = 20000;
-    return --port;
-  }
-};
+#define CURRENT_FAIL_IF_NOT_SAME_TYPE(A,B) static_assert(sizeof(is_same_or_compile_error<A, B>), "")
 
 #ifdef CURRENT_JAVA
 #error "Current has not been tested with Java for a while, and would likely require a bit of TLC. Thank you."

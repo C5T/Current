@@ -30,8 +30,6 @@ SOFTWARE.
 #include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_client_port_02, PickPortForUnitTest(), "");
-
 using current::strings::Printf;
 
 // clang-format off
@@ -41,10 +39,12 @@ CURRENT_STRUCT(SimpleType) {
 };
 
 TEST(Docu, HTTPClient02) {
-const auto scope = HTTP(FLAGS_docu_net_client_port_02).Register("/ok", [](Request r) { r("OK"); });
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
+const auto scope = HTTP(std::move(reserved_port)).Register("/ok", [](Request r) { r("OK"); });
 #if 1
-EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), "BODY", "text/plain")).body);
-EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), SimpleType())).body);
+EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", port), "BODY", "text/plain")).body);
+EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", port), SimpleType())).body);
 #else
   // POST is supported as well.
   EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), "BODY", "text/plain").body);

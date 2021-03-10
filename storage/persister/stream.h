@@ -140,9 +140,10 @@ class StreamStreamPersisterImpl final {
   }
 
   void ExposeRawLogViaHTTP(uint16_t port, const std::string& route) {
-    handlers_scope_ += HTTP(port).Register(route,
-                                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                           [this](Request r) { (*Borrowed<stream_t>(stream_))(std::move(r)); });
+    handlers_scope_ += HTTP(current::net::BarePort(port)).Register(
+        route,
+        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+        [this](Request r) { (*Borrowed<stream_t>(stream_))(std::move(r)); });
   }
 
   Borrowed<stream_t> BorrowStream() const { return stream_; }

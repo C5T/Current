@@ -73,10 +73,15 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data1");
   const auto master_storage_file_remover = current::FileSystem::ScopedRmFile(master_storage_file_name);
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto master_stream = storage_t::stream_t::CreateStream(master_storage_file_name);
   auto master_storage = storage_t::CreateMasterStorageAtopExistingStream(master_stream);
-  master_storage->ExposeRawLogViaHTTP(FLAGS_transactional_storage_test_port, "/raw_log");
-  const std::string base_url = Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port);
+  master_storage->ExposeRawLogViaHTTP(port, "/raw_log");
+  const std::string base_url = Printf("http://localhost:%d/raw_log", port);
 
   // Confirm the storage is available via HTTP.
   {
@@ -137,7 +142,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
   // Replicate data via subscription to master storage raw log.
   current::stream::SubscribableRemoteStream<transaction_t> remote_stream(
-      Printf("http://localhost:%d/raw_log", FLAGS_transactional_storage_test_port));
+      Printf("http://localhost:%d/raw_log", port));
   EXPECT_TRUE(owned_replicated_stream->IsMasterStream());
   auto replicator = std::make_unique<replicator_t>(owned_replicated_stream);
   EXPECT_FALSE(owned_replicated_stream->IsMasterStream());
@@ -278,6 +283,11 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "follower");
   const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   auto owned_follower_stream = stream_t::CreateStream(follower_file_name);
   // Replicator acquires the stream's persister object in its constructor.
   auto replicator = std::make_unique<StreamReplicator>(owned_follower_stream);
@@ -292,11 +302,11 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   EXPECT_TRUE(master_storage->IsMasterStorage());
   EXPECT_FALSE(follower_storage->IsMasterStorage());
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
   // Start RESTful service atop follower storage.
   auto rest = RESTfulStorage<storage_t>(
-      *follower_storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+      *follower_storage, port, "/api", "http://unittest.current.ai");
 
   // Launch the continuous replication process.
   {

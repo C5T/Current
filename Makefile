@@ -1,21 +1,40 @@
 .PHONY: all test individual_tests storage_perftest typesystem_compilation_test check wc clean
+.PHONY: individual_tests_1_of_3 individual_tests_1_of_3 individual_tests_3_of_3
+.PHONY: individual_tests_1_of_8 individual_tests_2_of_8 individual_tests_3_of_8 individual_tests_4_of_8 individual_tests_5_of_8 individual_tests_6_of_8 individual_tests_7_of_8 individual_tests_8_of_8 individual_tests_all_8
 
 all: test check
 
 test:
-	./scripts/full-test.sh
+	@./scripts/full-test.sh
 
 individual_tests:
-	./scripts/individual-tests.sh
+	@./scripts/individual-tests.sh
 
 individual_tests_1_of_3:
-	./scripts/individual-tests.sh 0 3
-
+	@./scripts/individual-tests.sh 0 3
 individual_tests_2_of_3:
-	./scripts/individual-tests.sh 1 3
-
+	@./scripts/individual-tests.sh 1 3
 individual_tests_3_of_3:
-	./scripts/individual-tests.sh 2 3
+	@./scripts/individual-tests.sh 2 3
+
+individual_tests_1_of_8:
+	@./scripts/individual-tests.sh 0 8
+individual_tests_2_of_8:
+	@./scripts/individual-tests.sh 1 8
+individual_tests_3_of_8:
+	@./scripts/individual-tests.sh 2 8
+individual_tests_4_of_8:
+	@./scripts/individual-tests.sh 3 8
+individual_tests_5_of_8:
+	@./scripts/individual-tests.sh 4 8
+individual_tests_6_of_8:
+	@./scripts/individual-tests.sh 5 8
+individual_tests_7_of_8:
+	@./scripts/individual-tests.sh 6 8
+individual_tests_8_of_8:
+	@./scripts/individual-tests.sh 7 8
+
+individual_tests_all_8: individual_tests_1_of_8 individual_tests_2_of_8 individual_tests_3_of_8 individual_tests_4_of_8 individual_tests_5_of_8 individual_tests_6_of_8 individual_tests_7_of_8 individual_tests_8_of_8
 
 storage_perftest:
 	(cd examples/Benchmark/generic ; ./run_storage_tests.sh)
@@ -27,7 +46,7 @@ typesystem_schema_typescript_tests:
 	(cd typesystem/schema ; ./test-c5t-current-schema-ts.sh)
 
 check:
-	./scripts/check-headers.sh
+	@./scripts/check-headers.sh
 
 wc:
 	echo -n "Total files: " ; (find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | grep -v zzz_full_test | grep -v "/sandbox/" | wc -l

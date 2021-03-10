@@ -30,14 +30,13 @@ SOFTWARE.
 #include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_server_port_01, PickPortForUnitTest(), "");
-
 using current::strings::Printf;
 
 TEST(Docu, HTTPServer01) {
-const auto port = FLAGS_docu_net_server_port_01;
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
   // Simple "OK" endpoint.
-  const auto scope = HTTP(port).Register("/ok", [](Request r) {
+  const auto scope = HTTP(std::move(reserved_port)).Register("/ok", [](Request r) {
     r("OK");
   });
 EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", port))).body);

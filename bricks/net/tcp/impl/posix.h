@@ -22,6 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#if 0
+
+# NOTE(dkorolev): I have tested the `ReserveLocalPort` logic in the following way.
+# Step one: build.
+g++ -g -std=c++17 -W -Wall -Wno-strict-aliasing   -o ".current/test" "test.cc" -pthread -ldl
+ulimit -c unlimited
+# Step two: run in two terminals in parallel.
+rm -f core ; while true ; do ./.current/test --gtest_throw_on_failure --gtest_catch_exceptions=0 || break ; done
+
+#endif
+
 // TODO(dkorolev): Add Mac support and find out the right name for this header file.
 
 #ifndef BRICKS_NET_TCP_IMPL_POSIX_H
@@ -49,24 +60,27 @@ typedef int SOCKET;
 #include <corecrt_io.h>
 #pragma comment(lib, "Ws2_32.lib")
 
-#endif
+#endif  // CURRENT_WINDOWS
 
-#include "../../exceptions.h"
-
-#include "../../debug_log.h"
-
-#include "../../../util/singleton.h"
-
+#include <iostream>
 #include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "../../exceptions.h"
+#include "../../debug_log.h"
+
+#include "../../../util/random.h"
+#include "../../../util/singleton.h"
+
 namespace current {
 namespace net {
 
+enum class NagleAlgorithm : bool { Disable, Keep };
+
 const size_t kMaxServerQueuedConnections = 1024;
-const bool kDisableNagleAlgorithmByDefault = false;
+const NagleAlgorithm kDefaultNagleAlgorithmPolicy = NagleAlgorithm::Keep;
 
 struct SocketSystemInitializer {
 #ifdef CURRENT_WINDOWS
@@ -81,20 +95,17 @@ struct SocketSystemInitializer {
     }
   };
   SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
-#endif
+#endif  // CURRENT_WINDOWS
 };
 
-class SocketHandle : private SocketSystemInitializer {
- public:
-  // Two ways to construct SocketHandle: via NewHandle() or FromHandle(SOCKET handle).
-  struct NewHandle final {};
-  struct FromHandle final {
-    SOCKET handle;
-    FromHandle(SOCKET handle) : handle(handle) {}
-  };
+enum class BarePort : uint16_t {};
 
-  inline SocketHandle(NewHandle, const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
-      : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
+class SocketHandle : private SocketSystemInitializer {
+ private:
+  struct InternalInit final {};
+  explicit SocketHandle(InternalInit,
+                        NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
+    : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
@@ -104,20 +115,7 @@ class SocketHandle : private SocketSystemInitializer {
     int just_one = 1;
 #else
     u_long just_one = 1;
-#endif
-
-    // LCOV_EXCL_START
-    if (disable_nagle_algorithm) {
-#ifndef CURRENT_WINDOWS
-      if (::setsockopt(socket_, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
-#else
-      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
-#endif
-      {
-        CURRENT_THROW(SocketCreateException());
-      }
-    }
-    // LCOV_EXCL_STOP
+#endif  // CURRENT_WINDOWS
 
     if (::setsockopt(socket_,
                      SOL_SOCKET,
@@ -137,16 +135,67 @@ class SocketHandle : private SocketSystemInitializer {
       CURRENT_THROW(SocketCreateException());
     }
 #endif
+
+    // LCOV_EXCL_START
+    if (nagle_algorithm_policy == NagleAlgorithm::Disable) {
+#ifndef CURRENT_WINDOWS
+      if (::setsockopt(socket_, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
+#else
+      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
+#endif  // CURRENT_WINDOWS
+      {
+        CURRENT_THROW(SocketCreateException());
+      }
+    }
+    // LCOV_EXCL_STOP
+    
   }
 
-  inline SocketHandle(FromHandle from) : socket_(from.handle) {
+ public:
+  struct BindAndListen final {};
+  explicit SocketHandle(BindAndListen,
+                        BarePort bare_port,
+                        NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+                        int max_connections = kMaxServerQueuedConnections)
+      : SocketHandle(InternalInit(), nagle_algorithm_policy) {
+    sockaddr_in addr_server;
+    memset(&addr_server, 0, sizeof(addr_server));
+    addr_server.sin_family = AF_INET;
+    addr_server.sin_addr.s_addr = INADDR_ANY;
+    // Catch a level 4 warning of MSVS.
+    addr_server.sin_port = htons(static_cast<decltype(std::declval<sockaddr_in>().sin_port)>(bare_port));
+
+    CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
+
+    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == static_cast<SOCKET>(-1)) {
+      CURRENT_THROW(SocketBindException(static_cast<uint16_t>(bare_port)));
+    }
+
+    CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
+
+    if (::listen(socket, max_connections)) {
+      CURRENT_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+    }
+
+    CURRENT_BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
+  }
+
+  struct DoNotBind final {};
+  explicit SocketHandle(DoNotBind, NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
+        : SocketHandle(InternalInit(), nagle_algorithm_policy) {}
+
+  struct FromAcceptedHandle final {
+    SOCKET handle;
+    FromAcceptedHandle(SOCKET handle) : handle(handle) {}
+  };
+  SocketHandle(FromAcceptedHandle from) : socket_(from.handle) {
     if (socket_ < 0) {
       CURRENT_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
     CURRENT_BRICKS_NET_LOG("S%05d == initialized externally.\n", socket_);
   }
 
-  inline ~SocketHandle() {
+  ~SocketHandle() {
     if (socket_ != static_cast<SOCKET>(-1)) {
       CURRENT_BRICKS_NET_LOG("S%05d close() ...\n", socket_);
 #ifndef CURRENT_WINDOWS
@@ -155,23 +204,18 @@ class SocketHandle : private SocketSystemInitializer {
 #else
       ::shutdown(socket, SD_BOTH);
       ::closesocket(socket_);
-#endif
+#endif  // CURRENT_WINDOWS
       CURRENT_BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
     }
   }
 
-  inline explicit SocketHandle(SocketHandle&& rhs) : socket_(static_cast<SOCKET>(-1)) {
+  explicit SocketHandle(SocketHandle&& rhs) : socket_(static_cast<SOCKET>(-1)) {
     std::swap(socket_, rhs.socket_);
   }
 
-  // SocketHandle does not expose copy constructor and assignment operator. It should only be moved.
-
  private:
-#ifndef CURRENT_WINDOWS
+  friend class Socket;
   SOCKET socket_;
-#else
-  mutable SOCKET socket_;  // Need to support taking the handle away from a non-move constructor.
-#endif
 
  public:
   // The `ReadOnlyValidSocketAccessor socket` members provide simple read-only access to `socket_` via `socket`.
@@ -180,7 +224,7 @@ class SocketHandle : private SocketSystemInitializer {
   class ReadOnlyValidSocketAccessor final {
    public:
     explicit ReadOnlyValidSocketAccessor(const SOCKET& ref) : ref_(ref) {}
-    inline operator SOCKET() {
+    operator SOCKET() {
       if (!ref_) {
         CURRENT_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
       }
@@ -198,25 +242,18 @@ class SocketHandle : private SocketSystemInitializer {
 
  private:
   SocketHandle() = delete;
-  void operator=(const SocketHandle&) = delete;
-  void operator=(SocketHandle&&) = delete;
-
-#ifndef CURRENT_WINDOWS
   SocketHandle(const SocketHandle&) = delete;
-#else
- public:
-  // Visual Studio seem to require this constructor, since std::move()-ing away `SocketHandle`-s
-  // as part of `Connection` objects doesn't seem to work. TODO(dkorolev): Investigate this.
-  SocketHandle(const SocketHandle& rhs) : socket_(static_cast<SOCKET>(-1)) { std::swap(socket_, rhs.socket_); }
-
- private:
-#endif
+  void operator=(const SocketHandle&) = delete;
+  void operator=(SocketHandle&& rhs) {
+    socket_ = rhs.socket_;
+    rhs.socket_ = static_cast<SOCKET>(-1);
+  }
 };
 
 struct IPAndPort {
   std::string ip;
-  int port;
-  IPAndPort(const std::string& ip = "", int port = 0) : ip(ip), port(port) {}
+  uint16_t port;
+  IPAndPort(const std::string& ip = "", uint16_t port = 0) : ip(ip), port(port) {}
   IPAndPort(const IPAndPort&) = default;
   IPAndPort(IPAndPort&&) = default;
   IPAndPort& operator=(const IPAndPort&) = default;
@@ -237,6 +274,91 @@ inline std::string InetAddrToString(const struct in_addr* in) {
   } else {
     return std::string(result);
   }
+}
+
+// NOTE(dkorolev): These are magic numbers, might use some SFINAE and DECLARE_* to make them flags-configurable later.
+constexpr static uint16_t kPickFreePortMin = 25000;
+constexpr static uint16_t kPickFreePortMax = 29000;
+
+class ReservedLocalPort final : public current::net::SocketHandle {
+ private:
+  using super_t = current::net::SocketHandle;
+  friend class Socket;
+  uint16_t port_;
+
+ public:
+  struct Construct final {};
+  ReservedLocalPort() = delete;
+  ReservedLocalPort(Construct, uint16_t port, current::net::SocketHandle&& socket) : super_t(std::move(socket)), port_(port) {}
+  ReservedLocalPort(const ReservedLocalPort&) = delete;
+  ReservedLocalPort(ReservedLocalPort&& rhs) : super_t(std::move(rhs)), port_(rhs.port_) {
+    rhs.port_ = 0;
+  }
+  ReservedLocalPort& operator=(const ReservedLocalPort&) = delete;
+  ReservedLocalPort& operator=(ReservedLocalPort&&) = delete;
+  operator uint16_t() const { return port_; }
+
+  // This one is for the tests, for `%d`-s to work in test "URL"-s construction without any `static_cast<>`-s.
+  operator int() const { return static_cast<int>(port_); }
+};
+
+namespace impl {
+
+class ReserveLocalPortImpl final {
+ private:
+  std::vector<uint16_t> order_;
+  size_t index_;
+
+ public:
+  ReserveLocalPortImpl() {
+    for (uint16_t port = kPickFreePortMin; port <= kPickFreePortMax; ++port) {
+      order_.push_back(port);
+    }
+    index_ = 0u;
+  }
+
+  current::net::ReservedLocalPort DoIt(NagleAlgorithm nagle_algorithm_policy, int max_connections) {
+     size_t save_index = index_;
+     do {
+       if (!index_) {
+         std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
+       }
+       const uint16_t candidate_port = order_[index_++];
+       if (index_ == order_.size()) {
+         index_ = 0u;
+       }
+       try {
+         current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
+                                                     BarePort(candidate_port),
+                                                     nagle_algorithm_policy,
+                                                     max_connections);
+         return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
+                                           candidate_port,
+                                           std::move(try_to_hold_port));
+       } catch (const current::net::SocketConnectException&) {
+         // Keep trying.
+         // std::cerr << "Failed in `connect`." << candidate_port << '\n';
+       } catch (const current::net::SocketBindException&) {
+         // Keep trying.
+         // std::cerr << "Failed in `bind`." << candidate_port << '\n';
+       } catch (const current::net::SocketListenException&) {
+         // Keep trying.
+         // std::cerr << "Failed in `listen`." << candidate_port << '\n';
+       }
+       // Consciously fail on other exception types here.
+     } while (index_ != save_index);
+     std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
+     std::exit(-1);
+   }
+};
+
+}  // namespace current::net::impl
+
+// Pick an available local port.
+[[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
+    NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+    int max_connections = kMaxServerQueuedConnections) {
+  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(nagle_algorithm_policy, max_connections);
 }
 
 class Connection : public SocketHandle {
@@ -286,7 +408,7 @@ class Connection : public SocketHandle {
 #else
         const int retval =
             ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), flags);
-#endif
+#endif  // CURRENT_WINDOWS
         CURRENT_BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d, errno = %d.\n",
                                static_cast<SOCKET>(socket),
                                static_cast<int>(retval),
@@ -300,20 +422,18 @@ class Connection : public SocketHandle {
           }
         }
 
-#ifdef CURRENT_WINDOWS
-        wsa_last_error = ::WSAGetLastError();
-#endif
-
 #ifndef CURRENT_WINDOWS
         if (errno == EAGAIN) {  // LCOV_EXCL_LINE
           continue;             // LCOV_EXCL_LINE
         }
 #else
+        wsa_last_error = ::WSAGetLastError();
         if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS || wsa_last_error == WSAENETDOWN) {
           // Effectively, `errno == EAGAIN`.
           continue;
         }
-#endif
+#endif  // CURRENT_WINDOWS
+
         // Only keep looping via `continue`.
         // There are two ways:
         // 1) `EAGAIN` or a Windows equivalent has been returned.
@@ -365,12 +485,12 @@ class Connection : public SocketHandle {
           CURRENT_THROW(EmptySocketReadException());
         }
       }
-#endif
+#endif  // CURRENT_WINDOWS
       // LCOV_EXCL_STOP
     }
   }
 
-  inline Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
+  Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
 #if defined(CURRENT_APPLE) || defined(CURRENT_WINDOWS)
     static_cast<void>(more);  // Supress the 'unused parameter' warning.
 #endif
@@ -395,13 +515,13 @@ class Connection : public SocketHandle {
     return *this;
   }
 
-  inline Connection& BlockingWrite(const char* s, bool more) {
+  Connection& BlockingWrite(const char* s, bool more) {
     CURRENT_ASSERT(s);
     return BlockingWrite(s, strlen(s), more);
   }
 
   template <typename T>
-  inline Connection& BlockingWrite(const T begin, const T end, bool more) {
+  Connection& BlockingWrite(const T begin, const T end, bool more) {
     if (begin != end) {
       return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type), more);
     } else {
@@ -412,7 +532,7 @@ class Connection : public SocketHandle {
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
   // The `std::enable_if_t<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
-  inline std::enable_if_t<sizeof(typename T::value_type) != 0> BlockingWrite(const T& container, bool more) {
+  std::enable_if_t<sizeof(typename T::value_type) != 0> BlockingWrite(const T& container, bool more) {
     BlockingWrite(container.begin(), container.end(), more);
   }
 
@@ -428,35 +548,28 @@ class Connection : public SocketHandle {
 
 class Socket final : public SocketHandle {
  public:
-  inline explicit Socket(const int port,
-                         const int max_connections = kMaxServerQueuedConnections,
-                         const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
-      : SocketHandle(SocketHandle::NewHandle(), disable_nagle_algorithm) {
-    sockaddr_in addr_server;
-    memset(&addr_server, 0, sizeof(addr_server));
-    addr_server.sin_family = AF_INET;
-    addr_server.sin_addr.s_addr = INADDR_ANY;
-    // Catch a level 4 warning of MSVS.
-    addr_server.sin_port = htons(static_cast<decltype(std::declval<sockaddr_in>().sin_port)>(port));
-
-    CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
-
-    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == static_cast<SOCKET>(-1)) {
-      CURRENT_THROW(SocketBindException(port));
-    }
-
-    CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
-
-    if (::listen(socket, max_connections)) {
-      CURRENT_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
-    }
-
-    CURRENT_BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
+  explicit Socket(BarePort bare_port,
+                  NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+                  int max_connections = kMaxServerQueuedConnections)
+      : SocketHandle(SocketHandle::BindAndListen(), bare_port, nagle_algorithm_policy, max_connections) {
   }
 
-  Socket(Socket&&) = default;
+  explicit Socket(ReservedLocalPort&& reserved_port) : SocketHandle(std::move(reserved_port)) {}
 
-  inline Connection Accept() {
+  Socket(SocketHandle&& rhs) : SocketHandle(std::move(rhs)) {}
+  Socket(Socket&& rhs) : SocketHandle(std::move(rhs)) {}
+
+  Socket& operator=(Socket&& rhs) {
+    *static_cast<SocketHandle*>(this) = std::move(rhs);
+    rhs.socket_ = static_cast<SOCKET>(-1);
+    return *this;
+  }
+
+  Socket() = delete;
+  Socket(const Socket&) = delete;
+  Socket& operator=(const Socket&) = delete;
+
+  Connection Accept() {
     CURRENT_BRICKS_NET_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
     sockaddr_in addr_client;
     memset(&addr_client, 0, sizeof(addr_client));
@@ -467,7 +580,7 @@ class Socket final : public SocketHandle {
 #else
     int addr_client_length = sizeof(sockaddr_in);
     const auto invalid_socket = INVALID_SOCKET;
-#endif
+#endif  // CURRENT_WINDOWS
     const SOCKET handle = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (handle == invalid_socket) {
       CURRENT_BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
@@ -480,20 +593,14 @@ class Socket final : public SocketHandle {
     socklen_t addr_serv_length = sizeof(sockaddr_in);
 #else
     int addr_serv_length = sizeof(sockaddr_in);
-#endif
+#endif  // CURRENT_WINDOWS
     if (::getsockname(handle, reinterpret_cast<struct sockaddr*>(&addr_serv), &addr_serv_length) != 0) {
       CURRENT_THROW(SocketGetSockNameException());
     }
     IPAndPort local(InetAddrToString(&addr_serv.sin_addr), ntohs(addr_serv.sin_port));
     IPAndPort remote(InetAddrToString(&addr_client.sin_addr), ntohs(addr_client.sin_port));
-    return Connection(SocketHandle::FromHandle(handle), std::move(local), std::move(remote));
+    return Connection(SocketHandle::FromAcceptedHandle(handle), std::move(local), std::move(remote));
   }
-
- private:
-  Socket() = delete;
-  Socket(const Socket& rhs) = delete;
-  void operator=(const Socket&) = delete;
-  void operator=(Socket&&) = delete;
 };
 
 // Smart wrapper for system-allocated `addrinfo` pointers.
@@ -534,8 +641,10 @@ template <typename T>
 inline Connection ClientSocket(const std::string& host, T port_or_serv) {
   class ClientSocket final : public SocketHandle {
    public:
-    inline explicit ClientSocket(const std::string& host, const std::string& serv)
-        : SocketHandle(SocketHandle::NewHandle()) {
+    explicit ClientSocket(const std::string& host,
+                          const std::string& serv, 
+                          NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
+        : SocketHandle(SocketHandle::DoNotBind(), nagle_algorithm_policy) {
       CURRENT_BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));
       // Deliberately left non-const because of possible Windows issues. -- M.Z.
       auto addr_info = GetAddrInfo(host, serv);
@@ -558,7 +667,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       socklen_t addr_client_length = sizeof(sockaddr_in);
 #else
       int addr_client_length = sizeof(sockaddr_in);
-#endif
+#endif  // CURRENT_WINDOWS
       sockaddr_in addr_client;
       if (::getsockname(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length) != 0) {
         CURRENT_THROW(SocketGetSockNameException());

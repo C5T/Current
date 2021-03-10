@@ -34,19 +34,21 @@ CURRENT_STRUCT(AddResult) {
 
 class BenchmarkTestServer {
  public:
-  BenchmarkTestServer(int port, const std::string& route)
-      : port_(port),
-        scope_(HTTP(port).Register(route,
+  BenchmarkTestServer(current::net::ReservedLocalPort reserved_port, const std::string& route)
+      : port_(reserved_port),
+        http_server_(HTTP(std::move(reserved_port))),
+        scope_(http_server_.Register(route,
                                    [](Request r) {
                                      r(AddResult(current::FromString<int64_t>(r.url.query["a"]) +
                                                  current::FromString<int64_t>(r.url.query["b"])));
                                    }) +
-               HTTP(port).Register("/perftest", [](Request r) { r("perftest ok\n"); })) {}
+               http_server_.Register("/perftest", [](Request r) { r("perftest ok\n"); })) {}
 
-  void Join() { HTTP(port_).Join(); }
+  void Join() { http_server_.Join(); }
 
  private:
-  const int port_;
+  const uint16_t port_;
+  current::http::HTTPServerPOSIX& http_server_;
   HTTPRoutesScope scope_;
 };
 

@@ -45,7 +45,7 @@ class ServiceAnnotator final {
       : source_numbers_stream_(service_generator + "/numbers"),
         is_prime_logic_endpoint_(service_is_prime + "/is_prime"),
         stream_(current::stream::Stream<Number>::CreateStream()),
-        http_scope_(HTTP(port).Register("/annotated", *stream_)),
+        http_scope_(HTTP(current::net::BarePort(port)).Register("/annotated", *stream_)),
         destructing_(false),
         http_stream_subscriber_(source_numbers_stream_, [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "annotator", port, {service_generator, service_is_prime}) {

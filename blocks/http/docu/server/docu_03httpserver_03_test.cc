@@ -30,14 +30,13 @@ SOFTWARE.
 #include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_server_port_03, PickPortForUnitTest(), "");
-
 using current::strings::Printf;
 
 TEST(Docu, HTTPServer03) {
-const auto port = FLAGS_docu_net_server_port_03;
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
   // Constructing a more complex response.
-  const auto scope = HTTP(port).Register("/found", [](Request r) {
+  const auto scope = HTTP(std::move(reserved_port)).Register("/found", [](Request r) {
     r("Yes.",
       HTTPResponseCode.Accepted,
       current::net::http::Headers().Set("custom", "header").Set("another", "one"),

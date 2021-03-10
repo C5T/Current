@@ -44,7 +44,7 @@ class FlowTool final {
   using stream_t = typename storage_t::stream_t;
 
  private:
-  const uint16_t port_;
+  current::http::HTTPServerPOSIX& http_server_;
   const std::chrono::microseconds start_time_epoch_us_;
   std::chrono::microseconds ready_time_epoch_us_;
   current::Owned<stream_t> stream_;
@@ -53,16 +53,16 @@ class FlowTool final {
 
  public:
   template <typename... ARGS>
-  FlowTool(uint16_t port, const std::string& url_prefix, ARGS&&... args)
-      : port_(port),
+  FlowTool(current::http::HTTPServerPOSIX& http_server, const std::string& url_prefix, ARGS&&... args)
+      : http_server_(http_server),
         start_time_epoch_us_(current::time::Now()),
         ready_time_epoch_us_(start_time_epoch_us_),  // To indicate we're still in the `initializing` mode.
         stream_(stream_t::CreateStream(std::forward<ARGS>(args)...)),
         storage_(storage_t::CreateMasterStorageAtopExistingStream(stream_)),
         http_routes_scope_(
-            HTTP(port).Register(url_prefix + "/up", [this](Request r) { ServeHealthz(std::move(r)); }) +
-            HTTP(port).Register(url_prefix + "/healthz", [this](Request r) { ServeHealthz(std::move(r)); }) +
-            HTTP(port).Register(
+            http_server_.Register(url_prefix + "/up", [this](Request r) { ServeHealthz(std::move(r)); }) +
+            http_server_.Register(url_prefix + "/healthz", [this](Request r) { ServeHealthz(std::move(r)); }) +
+            http_server_.Register(
                 url_prefix + "/tree", URLPathArgs::CountMask::Any, [this](Request r) { ServeTree(std::move(r)); })) {
     // Make sure to create the top-level filesystem node of the directory type if or when starting from scratch.
     storage_
@@ -79,7 +79,15 @@ class FlowTool final {
     ready_time_epoch_us_ = current::time::Now();
   }
 
-  void Join() { HTTP(port_).Join(); }
+  template <typename... ARGS>
+  FlowTool(current::net::ReservedLocalPort reserved_port, const std::string& url_prefix, ARGS&&... args)
+      : FlowTool(HTTP(std::move(reserved_port)), url_prefix, std::forward<ARGS>(args)...) {}
+
+  template <typename... ARGS>
+  FlowTool(uint16_t port, const std::string& url_prefix, ARGS&&... args)
+      : FlowTool(HTTP(current::net::BarePort(port)), url_prefix, std::forward<ARGS>(args)...) {}
+
+  void Join() { http_server_.Join(); }
 
   // The filesystem traversal logic.
   struct NodeSearchResult {

@@ -58,8 +58,6 @@ DEFINE_string(transactional_storage_test_tmpdir, ".current", "Local path for the
 DEFINE_string(transactional_storage_test_tmpdir, "Debug", "Local path for the test to create temporary files in.");
 #endif
 
-DEFINE_int32(transactional_storage_test_port, PickPortForUnitTest(), "Local port to run [REST] API tests against.");
-
 #endif  // !CURRENT_MAKE_CHECK_MODE
 
 namespace transactional_storage_test {

@@ -56,7 +56,7 @@ SCENARIO(current_http_server, "Use Current's HTTP stack for simple HTTP client-s
     for (uint16_t port = FLAGS_simple_http_local_port;
          port <= std::max(FLAGS_simple_http_local_top_port, FLAGS_simple_http_local_port);
          ++port) {
-      scope += HTTP(port).Register(FLAGS_simple_http_local_route, handler);
+      scope += HTTP(current::net::BarePort(port)).Register(FLAGS_simple_http_local_route, handler);
       urls.push_back("localhost:" + current::strings::ToString(port) + FLAGS_simple_http_local_route);
     }
   }

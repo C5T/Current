@@ -81,7 +81,7 @@ SCENARIO(stream_replication, "Replicate the Current stream of simple string entr
         entries_count = Value(stream)->Data()->Size();
       }
       stream_url = current::strings::Printf("127.0.0.1:%u", FLAGS_local_port);
-      scope += HTTP(FLAGS_local_port)
+      scope += HTTP(current::net::BarePort(FLAGS_local_port))
                    .Register("/", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *Value(stream));
     } else {
       stream_url = FLAGS_remote_url;

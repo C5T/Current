@@ -30,16 +30,16 @@ SOFTWARE.
 #include "../../../../bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_client_port_01, PickPortForUnitTest(), "");
-
 using current::strings::Printf;
 
 // clang-format off
 
 TEST(Docu, HTTPClient01A) {
-const auto scope = HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
+const auto scope = HTTP(std::move(reserved_port)).Register("/ok", [](Request r) { r("OK"); });
 #if 1
-EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_01))).body);
+EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", port))).body);
 #else
   // Simple GET.
   EXPECT_EQ("OK", HTTP(GET("http://test.tailproduce.org/ok")).body);
@@ -47,10 +47,12 @@ EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_
 }
   
 TEST(Docu, HTTPClient01B) {
-const auto scope = HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
+auto reserved_port = current::net::ReserveLocalPort();
+const int port = reserved_port;
+const auto scope = HTTP(std::move(reserved_port)).Register("/ok", [](Request r) { r("OK"); });
   // More fields.
 #if 1
-const auto response = HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_01)));
+const auto response = HTTP(GET(Printf("http://localhost:%d/ok", port)));
 #else
   const auto response = HTTP(GET("http://test.tailproduce.org/ok"));
 #endif

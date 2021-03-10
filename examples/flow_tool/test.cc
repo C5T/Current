@@ -30,17 +30,20 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_uint16(flow_tool_test_port, PickPortForUnitTest(), "Local port to run the test against.");
-
 TEST(FlowTool, Healthz) {
   current::time::ResetToZero();
 
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/up", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/up", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     EXPECT_TRUE(ParseJSON<flow_tool::api::Healthz>(response.body).up);
   }
@@ -52,7 +55,12 @@ TEST(FlowTool, RootNodeIsCreatedAutomatically) {
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
   using db_t = typename flow_tool_t::storage_t;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   flow_tool.ImmutableDB()
       ->ReadOnlyTransaction([](ImmutableFields<db_t> fields) {
@@ -68,10 +76,15 @@ TEST(FlowTool, GetsAnEmptyDirectory) {
 
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -86,11 +99,16 @@ TEST(FlowTool, GetsAnEmptyDirectory) {
 TEST(FlowTool, Returns404OnNonExistentFile) {
   current::time::ResetToZero();
 
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  flow_tool_t flow_tool(port, "");
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", port)));
     EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
   }
@@ -102,10 +120,15 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
   using db_t = typename flow_tool_t::storage_t;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -117,7 +140,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", port)));
     EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
@@ -152,7 +175,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
       .Wait();
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -165,7 +188,7 @@ TEST(FlowTool, CorrectlyReturnsAManuallyInjectedFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/test.txt", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -182,10 +205,15 @@ TEST(FlowTool, CreatesAFile) {
 
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -197,7 +225,7 @@ TEST(FlowTool, CreatesAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", port)));
     EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
@@ -211,14 +239,14 @@ TEST(FlowTool, CreatesAFile) {
     flow_tool::api::request::PutRequest request_body;
     request_body.template Construct<flow_tool::api::request::PutFileRequest>("Yo, World!");
 
-    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port), request_body));
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/yo.txt", port), request_body));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     // TODO(dkorolev): Response analysis.
     // Add the timestamp created/updated, number of versions already available, and time interval since last update?
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -231,7 +259,7 @@ TEST(FlowTool, CreatesAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/yo.txt", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -248,14 +276,19 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
 
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   {
     flow_tool::api::request::PutRequest request_body;
     request_body.template Construct<flow_tool::api::request::PutDirRequest>();
 
     const auto response =
-        HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar", FLAGS_flow_tool_test_port), request_body));
+        HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar", port), request_body));
     EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
@@ -267,7 +300,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
     flow_tool::api::request::PutRequest request_body;
     request_body.template Construct<flow_tool::api::request::PutDirRequest>();
 
-    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/foo", FLAGS_flow_tool_test_port), request_body));
+    const auto response = HTTP(PUT(Printf("http://localhost:%d/tree/foo", port), request_body));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     // TODO(dkorolev): Response analysis.
     // Add the timestamp created/updated, number of versions already available, and time interval since last update?
@@ -278,7 +311,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
     request_body.template Construct<flow_tool::api::request::PutDirRequest>();
 
     const auto response =
-        HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar", FLAGS_flow_tool_test_port), request_body));
+        HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar", port), request_body));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     // TODO(dkorolev): Response analysis.
     // Add the timestamp created/updated, number of versions already available, and time interval since last update?
@@ -289,14 +322,14 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
     request_body.template Construct<flow_tool::api::request::PutFileRequest>("All good.");
 
     const auto response =
-        HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar/baz.txt", FLAGS_flow_tool_test_port), request_body));
+        HTTP(PUT(Printf("http://localhost:%d/tree/foo/bar/baz.txt", port), request_body));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     // TODO(dkorolev): Response analysis.
     // Add the timestamp created/updated, number of versions already available, and time interval since last update?
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -309,7 +342,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/bar", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/bar", port)));
     EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
@@ -318,7 +351,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -331,7 +364,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/blah", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/blah", port)));
     EXPECT_EQ(404, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("ErrorPathNotFound", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
     const auto error = ParseJSON<flow_tool::api::error::ErrorPathNotFound>(response.body);
@@ -340,7 +373,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/bar", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/bar", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -353,7 +386,7 @@ TEST(FlowTool, CreatesDirectoriesAndAFile) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/bar/baz.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/foo/bar/baz.txt", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -370,13 +403,18 @@ TEST(FlowTool, TrailingSlashesStrictness) {
 
   using flow_tool_t = flow_tool::FlowTool<flow_tool::db::FlowToolDB, StreamInMemoryStreamPersister>;
 
-  flow_tool_t flow_tool(FLAGS_flow_tool_test_port, "");
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
+
+  flow_tool_t flow_tool(port, "");
 
   {
     flow_tool::api::request::PutRequest request_body;
     request_body.template Construct<flow_tool::api::request::PutFileRequest>("Nope.");
     const auto response =
-        HTTP(PUT(Printf("http://localhost:%d/tree/nope.txt/", FLAGS_flow_tool_test_port), request_body));
+        HTTP(PUT(Printf("http://localhost:%d/tree/nope.txt/", port), request_body));
     EXPECT_EQ(400, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("TrailingSlashError", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
   }
@@ -385,12 +423,12 @@ TEST(FlowTool, TrailingSlashesStrictness) {
     flow_tool::api::request::PutRequest request_body;
     request_body.template Construct<flow_tool::api::request::PutFileRequest>("Duh.");
     const auto response =
-        HTTP(PUT(Printf("http://localhost:%d/tree/duh.txt", FLAGS_flow_tool_test_port), request_body));
+        HTTP(PUT(Printf("http://localhost:%d/tree/duh.txt", port), request_body));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/duh.txt", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/duh.txt", port)));
     EXPECT_EQ(200, static_cast<int>(response.code)) << response.body;
     const auto parsed_body = TryParseJSON<flow_tool::api::SuccessfulResponse, JSONFormat::JavaScript>(response.body);
     ASSERT_TRUE(Exists(parsed_body)) << response.body;
@@ -402,7 +440,7 @@ TEST(FlowTool, TrailingSlashesStrictness) {
   }
 
   {
-    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/duh.txt/", FLAGS_flow_tool_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/tree/duh.txt/", port)));
     EXPECT_EQ(400, static_cast<int>(response.code)) << response.body;
     EXPECT_EQ("TrailingSlashError", ParseJSON<flow_tool::api::error::ErrorBase>(response.body).error);
   }

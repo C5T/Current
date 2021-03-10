@@ -39,8 +39,6 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_uint16(ripcurrent_http_test_port, PickPortForUnitTest(), "Local port to use for RipCurrent unit test.");
-
 // `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
 
 // clang-format off
@@ -800,7 +798,7 @@ CURRENT_STRUCT(RequestContainer) {
 
 RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
   RCHTTPAcceptor(uint16_t port)
-      : scope(HTTP(port)
+      : scope(HTTP(current::net::BarePort(port))
                   .Register("/ripcurrent", [this](Request request) { emit<RequestContainer>(std::move(request)); })) {
     const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
     EXPECT_EQ("1\n", HTTP(GET(base_url)).body);
@@ -835,7 +833,11 @@ TEST(RipCurrent, CanHandleHTTPRequests) {
   current::time::ResetToZero();
 
   using namespace ripcurrent_unittest;
-  const uint16_t port = FLAGS_ripcurrent_http_test_port;
+
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+  static_cast<void>(http_server);
 
   std::vector<std::string> calls;
 
@@ -849,7 +851,7 @@ TEST(RipCurrent, CanHandleHTTPRequests) {
   EXPECT_EQ("GET,HEAD,POST OK", current::strings::Join(calls, ','));
 
   // Now make another call and confirm it goes through all the way.
-  EXPECT_EQ("4\n", HTTP(POST(Printf("http://localhost:%d/ripcurrent", static_cast<int>(port)), "ONE MORE")).body);
+  EXPECT_EQ("4\n", HTTP(POST(Printf("http://localhost:%d/ripcurrent", port), "ONE MORE")).body);
   EXPECT_EQ("GET,HEAD,POST OK,POST ONE MORE", current::strings::Join(calls, ','));
 }
 
