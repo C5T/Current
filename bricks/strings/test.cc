@@ -1024,7 +1024,7 @@ TEST(StatefulGroupByLines, Smoke) {
   EXPECT_EQ("baz", lines[2]);
 }
 
-TEST(StatefulGroupByLines, ExceptionFriendliness) {
+TEST(StatefulGroupByLines, ExceptionFriendlinessOne) {
   std::vector<std::string> lines;
   {
     StatefulGroupByLines splitter([&lines](const std::string& line) {
@@ -1034,6 +1034,7 @@ TEST(StatefulGroupByLines, ExceptionFriendliness) {
       lines.push_back(line);
     });
     splitter.Feed("fo");
+    ASSERT_EQ(0u, lines.size());
     ASSERT_THROW(splitter.Feed("o\nbar\nb"), std::logic_error);
     ASSERT_EQ(1u, lines.size());
     EXPECT_EQ("foo", lines[0]);
@@ -1044,4 +1045,52 @@ TEST(StatefulGroupByLines, ExceptionFriendliness) {
   ASSERT_EQ(2u, lines.size());
   EXPECT_EQ("foo", lines[0]);
   EXPECT_EQ("baz", lines[1]);
+}
+
+TEST(StatefulGroupByLines, ExceptionFriendlinessTwo) {
+  std::vector<std::string> lines;
+  {
+    StatefulGroupByLines splitter([&lines](const std::string& line) {
+      if (line == "bar") {
+        throw std::logic_error("Whoa!");
+      }
+      lines.push_back(line);
+    });
+    splitter.Feed("fo");
+    ASSERT_THROW(splitter.Feed("o\nbar\nmeh\nb"), std::logic_error);
+    ASSERT_EQ(1u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    splitter.Feed("");  // Even an empty `Feed` would make the implementation "consume" the next line.
+    ASSERT_EQ(2u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    EXPECT_EQ("meh", lines[1]);
+    splitter.Feed("a");
+    splitter.Feed("z");
+    ASSERT_EQ(2u, lines.size());
+  }
+  ASSERT_EQ(3u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("meh", lines[1]);
+  EXPECT_EQ("baz", lines[2]);
+}
+
+TEST(StatefulGroupByLines, ExceptionFriendlinessThree) {
+  std::vector<std::string> lines;
+  {
+    StatefulGroupByLines splitter([&lines](const std::string& line) {
+      if (line == "bar") {
+        throw std::logic_error("Whoa!");
+      }
+      lines.push_back(line);
+    });
+    splitter.Feed("fo");
+    ASSERT_EQ(0u, lines.size());
+    ASSERT_THROW(splitter.Feed("o\nbar\nb"), std::logic_error);
+    ASSERT_EQ(1u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    // Upon destruction, the last line should get processed, making it `{"foo", "b"}`.
+  }
+  ASSERT_EQ(2u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("b", lines[1]); 
 }
