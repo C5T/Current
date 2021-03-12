@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include <functional>
 #include <string>
+#include <deque>
 
 namespace current {
 namespace strings {
@@ -36,6 +37,17 @@ class GenericStatefulGroupByLines final {
  private:
   F f_;
   std::string residual_;
+  std::deque<std::string> exception_recovery_redisual_;
+  
+  void ProcessExceptionRecoveryResidualIfAny() {
+    if (!exception_recovery_redisual_.empty()) {
+      while (!exception_recovery_redisual_.empty()) {
+        std::string extracted = std::move(exception_recovery_redisual_.front());
+        exception_recovery_redisual_.pop_front();
+        f_(extracted.c_str());
+      }
+    }
+  }
 
  public:
   explicit GenericStatefulGroupByLines(F&& f) : f_(std::move(f)) {}
@@ -43,25 +55,50 @@ class GenericStatefulGroupByLines final {
     Feed(s.c_str());
   }
   void Feed(const char* s) {
-    // NOTE: `Feed`() will only call the callback upon seeing the newline in the input data block. If the last line
-    // does not end with a newline, it will not be forwarded until the `StatefulGroupByLines` instance is destroyed.
-    while (true) {
-      while (*s && *s != '\n') {
-        residual_ += *s++;
+    try {
+      ProcessExceptionRecoveryResidualIfAny();
+      // NOTE: `Feed`() will only call the callback upon seeing the newline in the input data block. If the last line
+      // does not end with a newline, it will not be forwarded until the `StatefulGroupByLines` instance is destroyed.
+      while (true) {
+        while (*s && *s != '\n') {
+          residual_ += *s++;
+        }
+        if (*s == '\n') {
+          ++s;
+          std::string extracted;
+          residual_.swap(extracted);
+          f_(extracted.c_str());
+        } else {
+          break;
+        }
       }
-      if (*s == '\n') {
-        f_(residual_.c_str());
-        residual_.clear();
-        ++s;
-      } else {
-        return;
+    } catch (...) {
+      // The user handler threw an exception. This is bad, and we will let it propagate,
+      // just after scanning the rest of the string to keep the residual up to data if possible,
+      // without calling the user handler.
+      while (true) {
+        while (*s && *s != '\n') {
+          residual_ += *s++;
+        }
+        if (*s == '\n') {
+          ++s;
+          std::string extracted;
+          residual_.swap(extracted);
+          exception_recovery_redisual_.push_back(std::move(extracted));
+        } else {
+          break;
+        }
       }
+      throw;
     }
   }
   ~GenericStatefulGroupByLines() {
+    // Upon destruction, process the the last incomplete line, if necessary.
+    ProcessExceptionRecoveryResidualIfAny();
     if (!residual_.empty()) {
-      // Upon destruction, process the the last incomplete line, if necessary.
-      f_(residual_.c_str());
+      std::string extracted;
+      residual_.swap(extracted);
+      f_(extracted.c_str());
     }
   }
 };
