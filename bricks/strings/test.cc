@@ -1023,3 +1023,25 @@ TEST(StatefulGroupByLines, Smoke) {
   EXPECT_EQ("bar", lines[1]);
   EXPECT_EQ("baz", lines[2]);
 }
+
+TEST(StatefulGroupByLines, ExceptionFriendliness) {
+  std::vector<std::string> lines;
+  {
+    StatefulGroupByLines splitter([&lines](const std::string& line) {
+      if (line == "bar") {
+        throw std::logic_error("Whoa!");
+      }
+      lines.push_back(line);
+    });
+    splitter.Feed("fo");
+    ASSERT_THROW(splitter.Feed("o\nbar\nb"), std::logic_error);
+    ASSERT_EQ(1u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    splitter.Feed("a");
+    splitter.Feed("z");
+    ASSERT_EQ(1u, lines.size());
+  }
+  ASSERT_EQ(2u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("baz", lines[1]);
+}
