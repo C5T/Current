@@ -45,6 +45,7 @@ using current::strings::Split;
 using current::strings::SplitIntoChunks;
 using current::strings::SplitIntoKeyValuePairs;
 using current::strings::StatefulGroupByLines;
+using current::strings::CreateStatefulGroupByLines;
 using current::strings::EmptyFields;
 using current::strings::KeyValueParsing;
 using current::strings::KeyValueNoValueException;
@@ -1050,14 +1051,14 @@ TEST(StatefulGroupByLines, ExceptionFriendlinessOne) {
 TEST(StatefulGroupByLines, ExceptionFriendlinessTwo) {
   std::vector<std::string> lines;
   {
-    StatefulGroupByLines splitter([&lines](const std::string& line) {
-      if (line == "bar") {
-        throw std::logic_error("Whoa!");
+    auto splitter = CreateStatefulGroupByLines([&lines](const char* line) {
+      if (!::strcmp(line, "bar")) {
+        throw false;
       }
       lines.push_back(line);
     });
     splitter.Feed("fo");
-    ASSERT_THROW(splitter.Feed("o\nbar\nmeh\nb"), std::logic_error);
+    ASSERT_THROW(splitter.Feed("o\nbar\nmeh\nb"), bool);
     ASSERT_EQ(1u, lines.size());
     EXPECT_EQ("foo", lines[0]);
     splitter.Feed("");  // Even an empty `Feed` would make the implementation "consume" the next line.

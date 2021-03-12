@@ -28,11 +28,26 @@ SOFTWARE.
 #include <functional>
 #include <string>
 #include <deque>
+#include <type_traits>
 
 namespace current {
 namespace strings {
 
-template <typename F = std::function<void(const char*)>>
+struct GenericStatefulGroupByLinesProcessCPPString final {
+  template <class F>
+  static void DoProcess(std::string&& s, F&& f) {
+    f(std::move(s));
+  }
+};
+
+struct GenericStatefulGroupByLinesProcessCString final {
+  template <class F>
+  static void DoProcess(std::string&& s, F&& f) {
+    f(s.c_str());
+  }
+};
+
+template <class F, class PROCESSOR>
 class GenericStatefulGroupByLines final {
  private:
   F f_;
@@ -44,7 +59,7 @@ class GenericStatefulGroupByLines final {
       while (!exception_recovery_redisual_.empty()) {
         std::string extracted = std::move(exception_recovery_redisual_.front());
         exception_recovery_redisual_.pop_front();
-        f_(extracted.c_str());
+        PROCESSOR::DoProcess(std::move(extracted), f_);
       }
     }
   }
@@ -67,7 +82,7 @@ class GenericStatefulGroupByLines final {
           ++s;
           std::string extracted;
           residual_.swap(extracted);
-          f_(extracted.c_str());
+          PROCESSOR::DoProcess(std::move(extracted), f_);
         } else {
           break;
         }
@@ -98,12 +113,44 @@ class GenericStatefulGroupByLines final {
     if (!residual_.empty()) {
       std::string extracted;
       residual_.swap(extracted);
-      f_(extracted.c_str());
+      PROCESSOR::DoProcess(std::move(extracted), f_);
     }
   }
 };
 
-using StatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(const std::string&)>>;
+using StatefulGroupByLines =
+  GenericStatefulGroupByLines<std::function<void(std::string&&)>,
+                              GenericStatefulGroupByLinesProcessCPPString>;
+using StatefulGroupByLinesCStringProcessing =
+  GenericStatefulGroupByLines<std::function<void(const char*)>,
+                              GenericStatefulGroupByLinesProcessCString>;
+
+template <class F, bool CPP_STRING, bool C_STRING>
+struct CreateStatefulGroupByLinesImpl;
+
+template <class F, bool B>
+struct CreateStatefulGroupByLinesImpl<F, true, B> final {
+  using type_t = StatefulGroupByLines;
+  static type_t DoIt(F&& f) {
+    return type_t(std::forward<F>(f));
+  }
+};
+
+template <class F, bool B>
+struct CreateStatefulGroupByLinesImpl<F, B, true> final {
+  using type_t = StatefulGroupByLinesCStringProcessing;
+  static type_t DoIt(F&& f) {
+    return type_t(std::forward<F>(f));
+  }
+};
+
+template <class F>
+auto CreateStatefulGroupByLines(F&& f) {
+  return CreateStatefulGroupByLinesImpl<
+            F,
+            std::is_invocable<F, std::string&&>::value,
+            std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
+}
 
 }  // namespace strings
 }  // namespace current
