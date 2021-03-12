@@ -55,12 +55,10 @@ class GenericStatefulGroupByLines final {
   std::deque<std::string> exception_recovery_redisual_;
   
   void ProcessExceptionRecoveryResidualIfAny() {
-    if (!exception_recovery_redisual_.empty()) {
-      while (!exception_recovery_redisual_.empty()) {
-        std::string extracted = std::move(exception_recovery_redisual_.front());
-        exception_recovery_redisual_.pop_front();
-        PROCESSOR::DoProcess(std::move(extracted), f_);
-      }
+    while (!exception_recovery_redisual_.empty()) {
+      std::string extracted = std::move(exception_recovery_redisual_.front());
+      exception_recovery_redisual_.pop_front();
+      PROCESSOR::DoProcess(std::move(extracted), f_);
     }
   }
 
@@ -89,7 +87,7 @@ class GenericStatefulGroupByLines final {
       }
     } catch (...) {
       // The user handler threw an exception. This is bad, and we will let it propagate,
-      // just after scanning the rest of the string to keep the residual up to data if possible,
+      // just after scanning the rest of the string to keep the residual up to date if possible,
       // without calling the user handler.
       while (true) {
         while (*s && *s != '\n') {
