@@ -45,6 +45,9 @@ using current::strings::Split;
 using current::strings::SplitIntoChunks;
 using current::strings::SplitIntoKeyValuePairs;
 using current::strings::StatefulGroupByLines;
+using current::strings::CreateStatefulGroupByLines;
+using current::strings::ExceptionFriendlyStatefulGroupByLines;
+using current::strings::CreateExceptionFriendlyStatefulGroupByLines;
 using current::strings::EmptyFields;
 using current::strings::KeyValueParsing;
 using current::strings::KeyValueNoValueException;
@@ -995,7 +998,7 @@ TEST(UTF8StringLength, Smoke) {
 
 TEST(StatefulGroupByLines, SmokeTrivial) {
   std::vector<std::string> lines;
-  StatefulGroupByLines splitter([&lines](const std::string& line) { lines.push_back(line); });
+  StatefulGroupByLines splitter = CreateStatefulGroupByLines([&lines](const std::string& line) { lines.push_back(line); });
   splitter.Feed("foo\n");
   splitter.Feed("bar\n");
   splitter.Feed("baz\n");
@@ -1022,4 +1025,101 @@ TEST(StatefulGroupByLines, Smoke) {
   EXPECT_EQ("foo", lines[0]);
   EXPECT_EQ("bar", lines[1]);
   EXPECT_EQ("baz", lines[2]);
+}
+
+TEST(StatefulGroupByLines, ExceptionStopsProcessingLines) {
+  std::vector<std::string> lines;
+  {
+    ExceptionFriendlyStatefulGroupByLines splitter([&lines](const std::string& line) {
+      if (line == "meh") {
+        throw std::logic_error("meh!");
+      }
+      lines.push_back(line);
+    });
+    splitter.Feed("fo");
+    ASSERT_EQ(0u, lines.size());
+    splitter.Feed("o\nbar\nme");
+    ASSERT_EQ(2u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    EXPECT_EQ("bar", lines[1]);
+    ASSERT_THROW(splitter.Feed("h\nmore\n"), std::logic_error);
+    ASSERT_EQ(2u, lines.size());
+    EXPECT_EQ("foo", lines[0]);
+    EXPECT_EQ("bar", lines[1]);
+    // Must be called on `ExceptionFriendlyStatefulGroupByLines` to prevent throwing exceptions from a destructor,
+    // as the last incomplete line, if it is there, would otherwise have to be processed in the destructor.
+    splitter.Done();
+    // Note that `"more"` is not added.
+  }
+  ASSERT_EQ(2u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("bar", lines[1]);
+  // Note that `"more"` is not added.
+}
+
+TEST(StatefulGroupByLines, DoneMustBeCalledForExceptionFriendlySplitter) {
+  struct RunTest final {
+    std::vector<std::string>& lines;
+    RunTest(std::vector<std::string>& lines) : lines(lines) {}
+    void DoRunTest() {
+      // Wrap the processing into a struct as it would throw in its destructor.
+      auto splitter = CreateExceptionFriendlyStatefulGroupByLines([this](const char* line) {
+        if (!::strcmp(line, "stop")) {
+          throw false;
+        }
+        lines.push_back(line);
+      });
+      splitter.Feed("foo\nba");
+      ASSERT_EQ(1u, lines.size());
+      EXPECT_EQ("foo", lines[0]);
+      splitter.Feed("r\nstop");
+      ASSERT_EQ(2u, lines.size());
+      EXPECT_EQ("foo", lines[0]);
+      EXPECT_EQ("bar", lines[1]);
+      ASSERT_THROW(splitter.Feed("\nstop\n"), bool);
+      ASSERT_EQ(2u, lines.size());
+      EXPECT_EQ("foo", lines[0]);
+      EXPECT_EQ("bar", lines[1]);
+      splitter.Feed("and more\n");  // Ignored, as an exception was already thrown.
+      ASSERT_EQ(2u, lines.size());
+      EXPECT_EQ("foo", lines[0]);
+      EXPECT_EQ("bar", lines[1]);
+      EXPECT_FALSE(splitter.DebugWasDoneCalled());
+    }
+  };
+  std::vector<std::string> lines;
+  bool done_not_called_failure = false;
+  auto& handler = current::Singleton<current::strings::ExceptionFriendlyStatefulGroupByLinesDoneNotCalledHandler>();
+  handler.InjectHandler([&done_not_called_failure]() { done_not_called_failure = true; });
+  {
+    RunTest(lines).DoRunTest();
+  }
+  handler.ResetHandler();
+  ASSERT_TRUE(done_not_called_failure);
+  ASSERT_EQ(2u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("bar", lines[1]);
+}
+
+TEST(StatefulGroupByLines, CanNotCallDoneTwiceOnExceptionFriendlySplitter) {
+  std::vector<std::string> lines;
+  auto splitter = CreateExceptionFriendlyStatefulGroupByLines([&lines](const char* line) {
+    lines.push_back(line);
+  });
+  ASSERT_EQ(0u, lines.size());
+  splitter.Feed("foo\nba");
+  ASSERT_EQ(1u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  splitter.Feed("r");
+  ASSERT_EQ(1u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  splitter.Done();
+  ASSERT_EQ(2u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("bar", lines[1]);
+  ASSERT_THROW(splitter.Feed("blah\n"), current::strings::GroupByLinesFeedCaledAfterDone);
+  ASSERT_THROW(splitter.Done(), current::strings::GroupByLinesDoneCalledTwice);
+  ASSERT_EQ(2u, lines.size());
+  EXPECT_EQ("foo", lines[0]);
+  EXPECT_EQ("bar", lines[1]);
 }
