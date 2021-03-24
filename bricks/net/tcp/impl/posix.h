@@ -320,39 +320,61 @@ class ReserveLocalPortImpl final {
     index_ = 0u;
   }
 
-  current::net::ReservedLocalPort DoIt(NagleAlgorithm nagle_algorithm_policy, int max_connections) {
-     size_t save_index = index_;
-     do {
-       if (!index_) {
-         std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
-       }
-       const uint16_t candidate_port = order_[index_++];
-       if (index_ == order_.size()) {
-         index_ = 0u;
-       }
-       try {
-         current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
-                                                     BarePort(candidate_port),
-                                                     nagle_algorithm_policy,
-                                                     max_connections);
-         return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
-                                           candidate_port,
-                                           std::move(try_to_hold_port));
-       } catch (const current::net::SocketConnectException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `connect`." << candidate_port << '\n';
-       } catch (const current::net::SocketBindException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `bind`." << candidate_port << '\n';
-       } catch (const current::net::SocketListenException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `listen`." << candidate_port << '\n';
-       }
-       // Consciously fail on other exception types here.
-     } while (index_ != save_index);
-     std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
-     std::exit(-1);
-   }
+  struct PortNotAvailableException final {};
+
+  static current::net::ReservedLocalPort TryPort(uint16_t port,
+                                                 NagleAlgorithm nagle_algorithm_policy,
+                                                 int max_connections) {
+    try {
+      current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
+                                                  BarePort(port),
+                                                  nagle_algorithm_policy,
+                                                  max_connections);
+      return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
+                                        port,
+                                        std::move(try_to_hold_port));
+    } catch (const current::net::SocketConnectException&) {
+      // Keep trying.
+      // std::cerr << "Failed in `connect`." << candidate_port << '\n';
+      throw PortNotAvailableException();
+    } catch (const current::net::SocketBindException&) {
+      // Keep trying.
+      // std::cerr << "Failed in `bind`." << candidate_port << '\n';
+      throw PortNotAvailableException();
+    } catch (const current::net::SocketListenException&) {
+      // Keep trying.
+      // std::cerr << "Failed in `listen`." << candidate_port << '\n';
+      throw PortNotAvailableException();
+    }
+    // Consciously fail on other exception types here.
+  }
+
+  current::net::ReservedLocalPort DoIt(NagleAlgorithm nagle_algorithm_policy, int hint_port, int max_connections) {
+    if (hint_port) {
+      try {
+        return TryPort(static_cast<uint16_t>(hint_port), nagle_algorithm_policy, max_connections);
+      } catch (const PortNotAvailableException&) {
+        // Keep trying.
+      }
+    }
+    size_t save_index = index_;
+    do {
+      if (!index_) {
+        std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
+      }
+      const uint16_t candidate_port = order_[index_++];
+      if (index_ == order_.size()) {
+        index_ = 0u;
+      }
+      try {
+        return TryPort(candidate_port, nagle_algorithm_policy, max_connections);
+      } catch (const PortNotAvailableException&) {
+        // Keep trying.
+      }
+    } while (index_ != save_index);
+    std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
+    std::exit(-1);
+  }
 };
 
 }  // namespace current::net::impl
@@ -360,8 +382,10 @@ class ReserveLocalPortImpl final {
 // Pick an available local port.
 [[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
     NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+    int hint_port = 0,
     int max_connections = kMaxServerQueuedConnections) {
-  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(nagle_algorithm_policy, max_connections);
+  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(
+      nagle_algorithm_policy, hint_port, max_connections);
 }
 
 class Connection : public SocketHandle {
