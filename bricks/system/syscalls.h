@@ -33,9 +33,17 @@ SOFTWARE.
 #include "../file/file.h"
 #include "../strings/util.h"
 
+#ifdef WINDOWS_FRIENDLY_PCLOSE
+#error "Should not `#define` `WINDOWS_FRIENDLY_PCLOSE` by this point."
+#endif
+
 #ifndef CURRENT_WINDOWS
 #include <dlfcn.h>
-#endif  // CURRENT_WINDOWS
+#define WINDOWS_FRIENDLY_PCLOSE ::pclose
+#else
+#include <cstdio>
+#define WINDOWS_FRIENDLY_PCLOSE _pclose
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -57,7 +65,6 @@ struct SystemCallException final : SystemException {
   using SystemException::SystemException;
 };
 
-#ifndef CURRENT_WINDOWS
 class SystemCallReadPipe final {
  private:
   const std::string command_;
@@ -76,7 +83,7 @@ class SystemCallReadPipe final {
 
   ~SystemCallReadPipe() {
     if (f_) {
-      ::pclose(f_);
+      WINDOWS_FRIENDLY_PCLOSE(f_);
     }
   }
 
@@ -87,7 +94,7 @@ class SystemCallReadPipe final {
     if (f_) {
       const char* p = ::fgets(&buffer_[0], buffer_.size(), f_);
       if (!p) {
-        ::pclose(f_);
+        WINDOWS_FRIENDLY_PCLOSE(f_);
         f_ = nullptr;
         return "";
       } else {
@@ -104,7 +111,6 @@ class SystemCallReadPipe final {
   // `false` if the `popen()` call failed, or is the previous `fgets()` call returned a null pointer.
   operator bool() const { return f_; }
 };
-#endif  // CURRENT_WINDOES
 
 template <typename S>
 int SystemCall(S&& input_command) {
@@ -243,5 +249,7 @@ class JITCompiledCPP final {
 }  // namespace current::bricks::system
 }  // namespace current::bricks
 }  // namespace current
+
+#undef WINDOWS_FRIENDLY_PCLOSE
 
 #endif  // BRICKS_SYSTEM_SYSCALLS_H
