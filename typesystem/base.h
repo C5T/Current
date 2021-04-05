@@ -86,4 +86,6 @@ using ::crnt::r::TypeSelector;
 }  // namespace current::reflection
 }  // namespace current
 
+#define CRH_FOR(type) decltype(CRHTypeExtractor(std::declval<::crnt::r::TypeSelector<type>>()))
+
 #endif  // CURRENT_TYPE_SYSTEM_BASE_H
