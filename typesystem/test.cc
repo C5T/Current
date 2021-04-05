@@ -1564,3 +1564,19 @@ TEST(TypeSystemTest, Patch) {
   object.PatchWith(delta_object);
   EXPECT_EQ(32, object.y);
 }
+
+namespace struct_definition_test {
+namespace inner_namespace_fails_in_april_2021 {
+namespace when_the_using_declaration_is_used {
+CURRENT_STRUCT(CurrentStructWithinNamespace) {};
+}  // namespace struct_definition_test::inner_namespace_fails_in_april_2021::when_the_using_declaration_is_used
+using namespace when_the_using_declaration_is_used;
+CURRENT_STRUCT(CurrentStructOutsideNamespace) {};
+}  // namespace struct_definition_test::inner_namespace_fails_in_april_2021
+}  // namespace struct_definition_test
+
+TEST(TypeSystemTest, UsingNamespace) {
+  using namespace struct_definition_test::inner_namespace_fails_in_april_2021;
+  CurrentStructWithinNamespace one;
+  CurrentStructOutsideNamespace two;
+}
