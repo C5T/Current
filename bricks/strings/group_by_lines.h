@@ -25,48 +25,190 @@ SOFTWARE.
 #ifndef BRICKS_STRINGS_GROUP_BY_LINES_H
 #define BRICKS_STRINGS_GROUP_BY_LINES_H
 
+#include "../../port.h"
+#include "../exception.h"
+#include "../util/singleton.h"
+
+#include <deque>
 #include <functional>
 #include <string>
+#include <type_traits>
+#include <iostream>
 
 namespace current {
 namespace strings {
 
-template <typename F = std::function<void(const char*)>>
+struct GenericStatefulGroupByLinesProcessCPPString final {
+  template <class F>
+  static void DoProcess(std::string&& s, F&& f) {
+    f(std::move(s));
+  }
+};
+
+struct GenericStatefulGroupByLinesProcessCString final {
+  template <class F>
+  static void DoProcess(std::string&& s, F&& f) {
+    f(s.c_str());
+  }
+};
+
+class ExceptionFriendlyStatefulGroupByLinesDoneNotCalledHandler final {
+ private:
+  static void DefaultHandler() {
+    std::cerr << "Contract failure: no `.Done()` called on an exception-friendly `GroupByLines`." << std::endl;
+    std::exit(-1);
+  }
+  std::function<void()> handler_ = DefaultHandler;
+
+ public:
+  void InjectHandler(std::function<void()> f) { handler_ = f; }
+  void ResetHandler() { handler_ = DefaultHandler; }
+  void Signal() { handler_(); }
+};
+
+enum class GroupByLinesExceptions : bool { Prohibit = false, Allow = true };
+
+struct GroupByLinesFeedCaledAfterDone final : Exception {};
+struct GroupByLinesDoneCalledTwice final : Exception {};
+
+template <class F, GroupByLinesExceptions E, class PROCESSOR>
 class GenericStatefulGroupByLines final {
  private:
   F f_;
   std::string residual_;
+  bool exception_thrown_ = false;
+  bool done_called_ = false;
 
+  void DoDone() {
+    if (!residual_.empty()) {
+      std::string extracted;
+      residual_.swap(extracted);
+      PROCESSOR::DoProcess(std::move(extracted), f_);
+    }
+  }
+  
  public:
   explicit GenericStatefulGroupByLines(F&& f) : f_(std::move(f)) {}
   void Feed(const std::string& s) {
     Feed(s.c_str());
   }
   void Feed(const char* s) {
-    // NOTE: `Feed`() will only call the callback upon seeing the newline in the input data block. If the last line
-    // does not end with a newline, it will not be forwarded until the `StatefulGroupByLines` instance is destroyed.
-    while (true) {
-      while (*s && *s != '\n') {
-        residual_ += *s++;
+    if (done_called_) {
+      CURRENT_THROW(GroupByLinesFeedCaledAfterDone());
+    }
+    if (exception_thrown_) {
+      // Silently ignore further input if the user code has thrown an exception before.
+      return;
+    }
+    try {
+      // NOTE: `Feed`() will only call the callback upon seeing the newline in the input data block.
+      // If the last line does not end with a newline, it will not be forwarded until either
+      // the `GenericStatefulGroupByLines` instance is destroyed (in the `E == GroupByLinesExceptions::Prohibit` mode),
+      // or the `.Done()` method is called (in the `GroupByLinesExceptions::Allow` mode).
+      while (true) {
+        while (*s && *s != '\n') {
+          residual_ += *s++;
+        }
+        if (*s == '\n') {
+          ++s;
+          std::string extracted;
+          residual_.swap(extracted);
+          PROCESSOR::DoProcess(std::move(extracted), f_);
+        } else {
+          break;
+        }
       }
-      if (*s == '\n') {
-        f_(residual_.c_str());
-        residual_.clear();
-        ++s;
-      } else {
-        return;
-      }
+    } catch (...) {
+      exception_thrown_ = true;
+      throw;
     }
   }
+
+  template <bool ENABLE = (E == GroupByLinesExceptions::Allow)>
+  std::enable_if_t<ENABLE> Done() {
+    if (done_called_) {
+      CURRENT_THROW(GroupByLinesDoneCalledTwice());
+    }
+    done_called_ = true;
+    DoDone();
+  }
+
+  template <bool ENABLE = (E == GroupByLinesExceptions::Allow)>
+  std::enable_if_t<ENABLE, bool> DebugWasDoneCalled() {
+    return done_called_;
+  }
+
   ~GenericStatefulGroupByLines() {
-    if (!residual_.empty()) {
+    if constexpr (E == GroupByLinesExceptions::Prohibit) {
       // Upon destruction, process the the last incomplete line, if necessary.
-      f_(residual_.c_str());
+      DoDone();
+    } else {
+      // In exception-friendly mode make sure `Done()` was called before.
+      if (!done_called_) {
+        current::Singleton<ExceptionFriendlyStatefulGroupByLinesDoneNotCalledHandler>().Signal();
+      }
     }
   }
 };
 
-using StatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(const std::string&)>>;
+using StatefulGroupByLines =
+  GenericStatefulGroupByLines<std::function<void(std::string&&)>,
+                              GroupByLinesExceptions::Prohibit,
+                              GenericStatefulGroupByLinesProcessCPPString>;
+using StatefulGroupByLinesCStringProcessing =
+  GenericStatefulGroupByLines<std::function<void(const char*)>,
+                              GroupByLinesExceptions::Prohibit,
+                              GenericStatefulGroupByLinesProcessCString>;
+
+using ExceptionFriendlyStatefulGroupByLines =
+  GenericStatefulGroupByLines<std::function<void(std::string&&)>,
+                              GroupByLinesExceptions::Allow,
+                              GenericStatefulGroupByLinesProcessCPPString>;
+using ExceptionFriendlyStatefulGroupByLinesCStringProcessing =
+  GenericStatefulGroupByLines<std::function<void(const char*)>,
+                              GroupByLinesExceptions::Allow,
+                              GenericStatefulGroupByLinesProcessCString>;
+
+template <class F, GroupByLinesExceptions E, bool CPP_STRING, bool C_STRING>
+struct CreateStatefulGroupByLinesImpl;
+
+template <class F, GroupByLinesExceptions E>
+struct CreateStatefulGroupByLinesImpl<F, E, true, true> final {
+  using type_t = GenericStatefulGroupByLines<std::function<void(std::string&&)>,
+                                             E,
+                                             GenericStatefulGroupByLinesProcessCPPString>;
+  static type_t DoIt(F&& f) {
+    return type_t(std::forward<F>(f));
+  }
+};
+
+template <class F, GroupByLinesExceptions E, bool B>
+struct CreateStatefulGroupByLinesImpl<F, E, false, B> final {
+  using type_t = GenericStatefulGroupByLines<std::function<void(const char*)>,
+                                             E,
+                                             GenericStatefulGroupByLinesProcessCString>;
+  static type_t DoIt(F&& f) {
+    return type_t(std::forward<F>(f));
+  }
+};
+
+template <class F>
+auto CreateStatefulGroupByLines(F&& f) {
+  return CreateStatefulGroupByLinesImpl<
+            F,
+            GroupByLinesExceptions::Prohibit,
+            std::is_invocable<F, std::string&&>::value,
+            std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
+}
+
+template <class F>
+auto CreateExceptionFriendlyStatefulGroupByLines(F&& f) {
+  return CreateStatefulGroupByLinesImpl<
+            F,
+            GroupByLinesExceptions::Allow,
+            std::is_invocable<F, std::string&&>::value,
+            std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
+}
 
 }  // namespace strings
 }  // namespace current
