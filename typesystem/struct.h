@@ -327,12 +327,12 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   static ::crnt::r::FieldTypeWrapper<CURRENT_REMOVE_PARENTHESES(type)> CURRENT_REFLECTION(                             \
       ::current::reflection::Index<::current::reflection::FieldType, idx>);
 
-#define CURRENT_CONSTRUCTOR(s)                                                                                   \
-  template <                                                                                                     \
-      class SUPER =                                                                                              \
+#define CURRENT_CONSTRUCTOR(s)                                                                                    \
+  template <                                                                                                      \
+      class SUPER =                                                                                               \
           ::crnt::r::SUPER_IMPL<CRH_##s, INSTANTIATION_TYPE, typename CSSH_##s::INTERNAL_SUPER, std::false_type>, \
-      typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                     \
-      class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>>   \
+      typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                      \
+      class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>>    \
   CSI_##s
 
 #define CURRENT_ASSIGN_OPER(s)                                                                                   \
@@ -367,7 +367,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 // Use CSSH_##s and CURRENT_STRUCT_T_SUPER_HELPER_##s for this cases instead,
 // as they are always the base class to the "s" regardless of what the INSTANTIATION_TYPE is.
 
-#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                             \
+#define CURRENT_USE_BASE_CONSTRUCTORS(s)                                                                              \
   using CRNT_super_t = ::crnt::r::SUPER_IMPL<CRH_##s, INSTANTIATION_TYPE, CSSH_##s::INTERNAL_SUPER, std::false_type>; \
   using CRNT_super_t::CRNT_super_t
 
