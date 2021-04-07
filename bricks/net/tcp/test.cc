@@ -291,9 +291,6 @@ TEST(TCPTest, ResolveAddress) {
   }
 }
 
-#ifndef CURRENT_WINDOWS
-// Apparently, Windows has no problems opening two sockets on the same port.
-// NOTE(dkorolev): Confirmed on Visual Studio 2015 Preview, as well as later in 2021.
 TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
   auto port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
@@ -301,7 +298,6 @@ TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
   std::unique_ptr<Socket> s2;
   ASSERT_THROW(s2 = std::make_unique<Socket>(current::net::BarePort(port_number)), SocketBindException);
 }
-#endif
 
 #if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
 // NOTE: This test appears to be flaky.
