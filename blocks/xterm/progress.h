@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef BLOCKS_XTERM_PROGRESS_H
 #define BLOCKS_XTERM_PROGRESS_H
 
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <type_traits>
@@ -40,6 +41,7 @@ namespace current {
 class ProgressLine final {
  private:
   std::ostream& os_;
+  std::function<int()> up_;
   std::string current_status_;
   size_t current_status_length_ = 0u;  // W/o VT100 escape sequences. -- D.K.
 
@@ -79,11 +81,20 @@ class ProgressLine final {
     }
   };
 
-  explicit ProgressLine(std::ostream& os = std::cerr) : os_(os) {}
-  ~ProgressLine() {
-    if (current_status_length_) {
-      os_ << ClearString();
+  explicit ProgressLine(std::ostream& os = std::cerr, std::function<int()> up = nullptr) : os_(os), up_(up) {
+    if (up_) {
+      // Move to the next line right away to "allocate" a new line for this "multiline" "progress instance".
+      os << '\n';
     }
+  }
+
+  ~ProgressLine() {
+    if (!up_) {
+      if (current_status_length_) {
+        os_ << ClearString();
+      }
+    }
+    // In multiline mode, keep the last string that was there.
   }
 
   template <typename T>
@@ -97,7 +108,14 @@ class ProgressLine final {
     std::string new_status = status.oss_text.str();
 
     if (new_status != current_status_) {
-      os_ << ClearString() + new_status << vt100::reset << std::flush;
+      if (!up_) {
+        os_ << ClearString() + new_status << vt100::reset << std::flush;
+      } else {
+        // When this progress line may not be the top one, always add `std::endl` at the end,
+        // so that the caret is on the leftmost character.
+        const int n = up_();
+        os_ << vt100::up(n + 1) << WipeString() + new_status << vt100::reset << '\n' << vt100::down(n) << std::flush;
+      }
       current_status_ = new_status;
       current_status_length_ = current::strings::UTF8StringLength(status.oss_text_with_no_vt100_escape_sequences.str());
     }
@@ -106,6 +124,23 @@ class ProgressLine final {
   std::string ClearString() const {
     const size_t n = current_status_length_;
     return std::string(n, '\b') + std::string(n, ' ') + std::string(n, '\b');
+  }
+
+  std::string WipeString() const {
+    const size_t n = current_status_length_;
+    return std::string(n, ' ') + std::string(n, '\b');
+  }
+};
+
+class MultilineProgress final {
+ private:
+  int total_ = 0u;
+
+ public:
+  current::ProgressLine operator()(std::ostream& os = std::cerr) {
+    ++total_;
+    int index = total_;
+    return current::ProgressLine(os, [index, this]() { return total_ - index; });
   }
 };
 

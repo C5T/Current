@@ -126,4 +126,56 @@ int main() {
     std::cout << down(1) << '\n' << "The final line." << std::endl;
     wait();
   }
+
+  {
+    // Progress lines that are "above" the "current" line.
+    using namespace current::vt100;
+    {
+      current::ProgressLine line1(std::cerr, []() { return 1; });
+      current::ProgressLine line2(std::cerr, []() { return 0; });
+      line1 << "Line1: ";
+      line2 << "Line2: ";
+      wait();
+      line1 << "Line1: A";
+      wait();
+      line2 << "Line2: AB";
+      wait();
+      line1 << "Line1: ABC";
+      wait();
+      line2 << "Line2: ABCD";
+      wait();
+      line1 << "Line1: Done.";
+      wait();
+      line2 << "Line2: Done.";
+      wait();
+    }
+    std::cout << "Two static progress lines are done." << std::endl;
+    wait();
+  }
+
+  {
+    // The multiline progress line, with new, dynamically added, lines.
+    using namespace current::vt100;
+    current::MultilineProgress multiline_progress;
+    current::ProgressLine line1 = multiline_progress();
+    line1 << "Line one: foo.";
+    wait();
+    line1 << "Line one: OK";
+    wait();
+    auto line2 = multiline_progress();
+    line2 << "Line two: blah";
+    line1 << "Line one: OK, and now with line two added.";
+    wait();
+    line2 << "Line two: OK";
+    wait();
+    line1 << "Line one: OK";
+    wait();
+    auto line3 = multiline_progress();
+    line3 << "Line three: aaaaaand " << blue << " line " << default_color << bold << " three " << reset << " ...";
+    wait();
+    line3 << "Line three: OK";
+    wait();
+    std::cout << "Three dynamic progress lines are done." << std::endl;
+    wait();
+  }
 }
