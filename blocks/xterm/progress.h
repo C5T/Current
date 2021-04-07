@@ -118,6 +118,8 @@ class ProgressLine final {
     std::string new_status = status.oss_text.str();
 
     if (new_status != current_status_) {
+      const size_t new_status_length =
+        current::strings::UTF8StringLength(status.oss_text_with_no_vt100_escape_sequences.str());
       if (!up_) {
         const auto maybe_lock = MaybeLock();
         os_ << ClearString() + new_status << vt100::reset << std::flush;
@@ -126,21 +128,22 @@ class ProgressLine final {
         // so that the caret is on the leftmost character.
         const int n = up_();
         const auto maybe_lock = MaybeLock();
-        os_ << vt100::up(n + 1) << WipeString() + new_status << vt100::reset << '\n' << vt100::down(n) << std::flush;
+        if (new_status_length > current_status_length_) {
+          os_ << vt100::up(n + 1) << new_status << vt100::reset << '\n' << vt100::down(n) << std::flush;
+        } else {
+          const size_t d = current_status_length_ - new_status_length;
+          os_ << vt100::up(n + 1) << new_status << vt100::reset
+              << std::string(d, ' ') << '\n' << vt100::down(n) << std::flush;
+        }
       }
       current_status_ = new_status;
-      current_status_length_ = current::strings::UTF8StringLength(status.oss_text_with_no_vt100_escape_sequences.str());
+      current_status_length_ = new_status_length;
     }
   }
 
   std::string ClearString() const {
     const size_t n = current_status_length_;
     return std::string(n, '\b') + std::string(n, ' ') + std::string(n, '\b');
-  }
-
-  std::string WipeString() const {
-    const size_t n = current_status_length_;
-    return std::string(n, ' ') + std::string(n, '\b');
   }
 };
 
