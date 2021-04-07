@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <type_traits>
 
@@ -42,8 +43,13 @@ class ProgressLine final {
  private:
   std::ostream& os_;
   std::function<int()> up_;
+  std::mutex* maybe_mutex_;
   std::string current_status_;
   size_t current_status_length_ = 0u;  // W/o VT100 escape sequences. -- D.K.
+
+  std::unique_ptr<std::unique_lock<std::mutex>> MaybeLock() {
+    return maybe_mutex_ ? std::make_unique<std::unique_lock<std::mutex>>(*maybe_mutex_) : nullptr;
+  }
 
  public:
   // Need to keep track of VT100 escape sequences to not `\b`-erase them.
@@ -81,16 +87,20 @@ class ProgressLine final {
     }
   };
 
-  explicit ProgressLine(std::ostream& os = std::cerr, std::function<int()> up = nullptr) : os_(os), up_(up) {
+  explicit ProgressLine(std::ostream& os = std::cerr,
+                        std::function<int()> up = nullptr,
+                        std::mutex* maybe_mutex = nullptr) : os_(os), up_(up), maybe_mutex_(maybe_mutex) {
     if (up_) {
       // Move to the next line right away to "allocate" a new line for this "multiline" "progress instance".
-      os << '\n';
+      const auto maybe_lock = MaybeLock();
+      os_ << '\n';
     }
   }
 
   ~ProgressLine() {
     if (!up_) {
       if (current_status_length_) {
+        const auto maybe_lock = MaybeLock();
         os_ << ClearString();
       }
     }
@@ -109,11 +119,13 @@ class ProgressLine final {
 
     if (new_status != current_status_) {
       if (!up_) {
+        const auto maybe_lock = MaybeLock();
         os_ << ClearString() + new_status << vt100::reset << std::flush;
       } else {
         // When this progress line may not be the top one, always add `std::endl` at the end,
         // so that the caret is on the leftmost character.
         const int n = up_();
+        const auto maybe_lock = MaybeLock();
         os_ << vt100::up(n + 1) << WipeString() + new_status << vt100::reset << '\n' << vt100::down(n) << std::flush;
       }
       current_status_ = new_status;
@@ -135,12 +147,13 @@ class ProgressLine final {
 class MultilineProgress final {
  private:
   int total_ = 0u;
+  std::mutex mutex_;
 
  public:
   current::ProgressLine operator()(std::ostream& os = std::cerr) {
     ++total_;
     int index = total_;
-    return current::ProgressLine(os, [index, this]() { return total_ - index; });
+    return current::ProgressLine(os, [index, this]() { return total_ - index; }, &mutex_);
   }
 };
 
