@@ -44,7 +44,7 @@ struct E {
   E(int code) : code(code) {}
 };
 
-struct Color : E {
+struct Color final : E {
   using E::E;
 };
 
@@ -92,11 +92,34 @@ DEFINE_VT100(97, white);
 
 inline E background(Color c) { return E(c.code + 10); }
 
+// Move the caret up or down.
+struct UD final {
+  const int down = 0;
+  explicit UD(int by) : down(by) {}
+};
+
+inline UD up(int d) {
+  return UD(-d);
+}
+
+inline UD down(int d) {
+  return UD(+d);
+}
+
 }  // namespace current::vt100
 }  // namespace current
 
 inline std::ostream& operator<<(std::ostream& os, const current::vt100::E& e) {
   os << "\x1b[" << e.code << 'm';  // `\x1b` is same as `\e`, but the latter is not suppored by Visual Studio. -- D.K.
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const current::vt100::UD& ud) {
+  if (ud.down < 0) {
+    os << "\x1b[" << -ud.down << 'A';
+  } else if (ud.down > 0) {
+    os << "\x1b[" << ud.down << 'B';
+  }
   return os;
 }
 

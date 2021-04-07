@@ -107,4 +107,16 @@ int main() {
     }
     std::cout << "Done." << std::endl;
   }
+
+  {
+    // Multiline example.
+    using namespace current::vt100;
+    std::cout << "Line one.\nLine two unaltered ...\nLine three.\n" << std::flush;
+    wait();
+    std::cout << up(2);
+    std::cout << "Line two, altered!    \b\b\b\b" << std::flush;
+    wait();
+    std::cout << down(1) << '\n' << "The final line." << std::endl;
+    wait();
+  }
 }
