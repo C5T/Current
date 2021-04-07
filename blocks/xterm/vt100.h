@@ -35,6 +35,10 @@ SOFTWARE.
 
 #include <ostream>
 
+#ifdef CURRENT_WINDOWS
+#include <mutex>
+#endif
+
 namespace current {
 namespace vt100 {
 
@@ -109,12 +113,30 @@ inline UD down(int d) {
 }  // namespace current::vt100
 }  // namespace current
 
+inline void EnableVirtualTerminalProcessing() {
+#ifdef CURRENT_WINDOWS
+  static std::mutex enabled_mutex;
+  static bool enabled = false;
+  std::lock_guard<std::mutex> enabled_lock(enabled_mutex);
+  if (!enabled) {
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    GetConsoleMode(h, &mode);
+    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(h, mode);
+    enabled = true;
+  }
+#endif
+}
+
 inline std::ostream& operator<<(std::ostream& os, const current::vt100::E& e) {
+  EnableVirtualTerminalProcessing();
   os << "\x1b[" << e.code << 'm';  // `\x1b` is same as `\e`, but the latter is not suppored by Visual Studio. -- D.K.
   return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const current::vt100::UD& ud) {
+  EnableVirtualTerminalProcessing();
   if (ud.down < 0) {
     os << "\x1b[" << -ud.down << 'A';
   } else if (ud.down > 0) {

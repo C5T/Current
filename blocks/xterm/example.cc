@@ -14,12 +14,16 @@ int main() {
 
     std::cout << "Default, " << bold << "bold" << normal << ", " << dim << "dim" << normal << ", done."
               << std::endl;
+#ifndef CURRENT_WINDOWS
     std::cout << "Default, " << italic << "italic" << noitalic << '.' << std::endl;
+#endif  // CURRENT_WINDOWS
     std::cout << "Default, " << underlined << "underlined" << nounderlined << '.' << std::endl;
+#ifndef CURRENT_WINDOWS
     std::cout << "Default, " << doubleunderlined << "double underlined" << nounderlined << '.' << std::endl;
     std::cout << "Default, " << strikeout << "strikeout" << nostrikeout << '.' << std::endl;
     std::cout << "Default, " << bold << italic << underlined << "bold & italic & underlined" << reset << '.'
               << std::endl;
+#endif  // CURRENT_WINDOWS
 
     std::ostringstream oss;
     oss << default_color << ", ";
@@ -45,7 +49,7 @@ int main() {
 
   {
     // Smoke test.
-    std::cout << "Test1> ";
+    std::cout << "Test> ";
     {
       current::ProgressLine progress;
       progress << "Hello,";
@@ -58,10 +62,12 @@ int main() {
     }
     std::cout << "Done." << std::endl;
   }
+
+#ifndef CURRENT_WINDOWS
   {
     // Cyrillic.
-    // Does not work on Windows. -- D.K.
-    std::cout << "Test2> ";
+    // Does not work correctly on Windows. -- D.K.
+    std::cout << "Test> ";
     {
       current::ProgressLine progress;
       progress << u8"Привет...";
@@ -73,6 +79,7 @@ int main() {
     }
     std::cout << "Done." << std::endl;
   }
+  #endif
 
   if (false) {
     // NOTE(dkorolev): This fails on my Linux. :/ Prints `Test3> tttesting ... OK`, then `Test3> ttDone.` at the end.
@@ -94,7 +101,7 @@ int main() {
 
   {
     // VT100 decorations.
-    std::cout << "Test3> ";
+    std::cout << "Test> ";
     {
       using namespace current::vt100;
       current::ProgressLine progress;
