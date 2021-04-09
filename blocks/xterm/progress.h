@@ -45,10 +45,18 @@ class ProgressLine final {
   std::function<int()> up_;
   std::mutex* maybe_mutex_;
   std::string current_status_;
+  std::string current_undecorated_status_;
   size_t current_status_length_ = 0u;  // W/o VT100 escape sequences. -- D.K.
 
   std::unique_ptr<std::unique_lock<std::mutex>> MaybeLock() {
     return maybe_mutex_ ? std::make_unique<std::unique_lock<std::mutex>>(*maybe_mutex_) : nullptr;
+  }
+
+  void DoClearString(std::ostream& os) const {
+    const size_t n = current_status_length_;
+    std::string back(n, '\b');
+    std::string forward(n, ' ');
+    os << back << forward << back;
   }
 
  public:
@@ -87,7 +95,7 @@ class ProgressLine final {
     }
   };
 
-  explicit ProgressLine(std::ostream& os = std::cerr,
+  explicit ProgressLine(std::ostream& os = std::cout,
                         std::function<int()> up = nullptr,
                         std::mutex* maybe_mutex = nullptr) : os_(os), up_(up), maybe_mutex_(maybe_mutex) {
     if (up_) {
@@ -101,7 +109,7 @@ class ProgressLine final {
     if (!up_) {
       if (current_status_length_) {
         const auto maybe_lock = MaybeLock();
-        os_ << ClearString();
+        DoClearString(os_);
       }
     }
     // In multiline mode, keep the last string that was there.
@@ -114,15 +122,22 @@ class ProgressLine final {
     return status;
   }
 
+  std::string GetUndecoratedString() const {
+    return current_undecorated_status_;
+  }
+
+ protected:
   void DoUpdate(Status& status) {
     std::string new_status = status.oss_text.str();
+    current_undecorated_status_ = status.oss_text_with_no_vt100_escape_sequences.str();
 
     if (new_status != current_status_) {
       const size_t new_status_length =
         current::strings::UTF8StringLength(status.oss_text_with_no_vt100_escape_sequences.str());
       if (!up_) {
         const auto maybe_lock = MaybeLock();
-        os_ << ClearString() + new_status << vt100::reset << std::flush;
+        DoClearString(os_);
+        os_ << new_status << vt100::reset << std::flush;
       } else {
         // When this progress line may not be the top one, always add `std::endl` at the end,
         // so that the caret is on the leftmost character.
@@ -140,11 +155,6 @@ class ProgressLine final {
       current_status_length_ = new_status_length;
     }
   }
-
-  std::string ClearString() const {
-    const size_t n = current_status_length_;
-    return std::string(n, '\b') + std::string(n, ' ') + std::string(n, '\b');
-  }
 };
 
 class MultilineProgress final {
@@ -153,7 +163,7 @@ class MultilineProgress final {
   std::mutex mutex_;
 
  public:
-  current::ProgressLine operator()(std::ostream& os = std::cerr) {
+  current::ProgressLine operator()(std::ostream& os = std::cout) {
     ++total_;
     int index = total_;
     return current::ProgressLine(os, [index, this]() { return total_ - index; }, &mutex_);

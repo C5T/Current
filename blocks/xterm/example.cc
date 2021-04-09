@@ -5,9 +5,16 @@
 #include "progress.h"
 #include "vt100.h"
 
-inline void wait() { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+#include "../../bricks/dflags/dflags.h"
 
-int main() {
+DEFINE_double(progress_line_delay, 0.5, "The delay, in seconds, between progress updates.");
+
+inline void wait() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int64_t>(1e3 * FLAGS_progress_line_delay)));
+}
+
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
   {
     // Basic VT100 demo.
     using namespace current::vt100;
@@ -131,8 +138,8 @@ int main() {
     // Progress lines that are "above" the "current" line.
     using namespace current::vt100;
     {
-      current::ProgressLine line1(std::cerr, []() { return 1; });
-      current::ProgressLine line2(std::cerr, []() { return 0; });
+      current::ProgressLine line1(std::cout, []() { return 1; });
+      current::ProgressLine line2(std::cout, []() { return 0; });
       line1 << "Line1: ";
       line2 << "Line2: ";
       wait();
