@@ -1,6 +1,7 @@
 .PHONY: all test individual_tests storage_perftest typesystem_compilation_test check wc clean
 .PHONY: individual_tests_1_of_3 individual_tests_1_of_3 individual_tests_3_of_3
 .PHONY: individual_tests_1_of_8 individual_tests_2_of_8 individual_tests_3_of_8 individual_tests_4_of_8 individual_tests_5_of_8 individual_tests_6_of_8 individual_tests_7_of_8 individual_tests_8_of_8 individual_tests_all_8
+.PHONY: gen_vcxprojs
 
 all: test check
 
@@ -47,6 +48,9 @@ typesystem_schema_typescript_tests:
 
 check:
 	@./scripts/check-headers.sh
+
+gen_vcxprojs:
+	@./scripts/gen_all_vcxprojs.sh
 
 wc:
 	echo -n "Total files: " ; (find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | grep -v zzz_full_test | grep -v "/sandbox/" | wc -l
