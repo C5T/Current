@@ -117,17 +117,18 @@ class SocketHandle : private SocketSystemInitializer {
     u_long just_one = 1;
 #endif  // CURRENT_WINDOWS
 
+#ifndef CURRENT_WINDOWS
+    // NOTE(dkorolev): On Windows, `SO_REUSEADDR` is unnecessary.
+    // First, local ports can be reused right away, so it doesn't win anything.
+    // Second, on Windows this setting allows binding the second socket to the same port, which is just bad.
     if (::setsockopt(socket_,
                      SOL_SOCKET,
                      SO_REUSEADDR,
-#ifndef CURRENT_WINDOWS
                      &just_one,
-#else
-                     reinterpret_cast<const char*>(&just_one),
-#endif
                      sizeof(just_one))) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
+#endif
 
 #ifdef CURRENT_APPLE
     // Emulate MSG_NOSIGNAL behavior.
