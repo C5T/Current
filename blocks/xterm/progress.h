@@ -48,8 +48,8 @@ class ProgressLine final {
   std::string current_undecorated_status_;
   size_t current_status_length_ = 0u;  // W/o VT100 escape sequences. -- D.K.
 
-  std::unique_ptr<std::unique_lock<std::mutex>> MaybeLock() {
-    return maybe_mutex_ ? std::make_unique<std::unique_lock<std::mutex>>(*maybe_mutex_) : nullptr;
+  std::unique_lock<std::mutex> MaybeLock() {
+    return maybe_mutex_ ? std::unique_lock<std::mutex>(*maybe_mutex_) : std::unique_lock<std::mutex>();
   }
 
   void DoClearString(std::ostream& os) const {
