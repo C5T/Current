@@ -59,6 +59,19 @@ class ProgressLine final {
     os << back << forward << back;
   }
 
+  // A helper private constructor to accept a reference, not a pointer, to the (optional, member pointer to a) mutex.
+  struct DoConstruct final {};
+  ProgressLine(DoConstruct,
+               std::ostream& os = std::cout,
+               std::function<int()> up = nullptr,
+               std::mutex* maybe_mutex = nullptr) : os_(os), up_(up), maybe_mutex_(maybe_mutex) {
+    if (up_) {
+      // Move to the next line right away to "allocate" a new line for this "multiline" "progress instance".
+      const auto maybe_lock = MaybeLock();
+      os_ << '\n';
+    }
+  }
+
  public:
   // Need to keep track of VT100 escape sequences to not `\b`-erase them.
   // UTF8 characters seem to be doing just fine, I checked. -- D.K.
@@ -95,15 +108,8 @@ class ProgressLine final {
     }
   };
 
-  explicit ProgressLine(std::ostream& os = std::cout,
-                        std::function<int()> up = nullptr,
-                        std::mutex* maybe_mutex = nullptr) : os_(os), up_(up), maybe_mutex_(maybe_mutex) {
-    if (up_) {
-      // Move to the next line right away to "allocate" a new line for this "multiline" "progress instance".
-      const auto maybe_lock = MaybeLock();
-      os_ << '\n';
-    }
-  }
+  ProgressLine(std::ostream& os = std::cout, std::function<int()> up = nullptr) : ProgressLine(DoConstruct(), os, up) {}
+  ProgressLine(std::ostream& os, std::function<int()> up, std::mutex& mx) : ProgressLine(DoConstruct(), os, up, &mx) {}
 
   ~ProgressLine() {
     if (!up_) {
@@ -166,7 +172,7 @@ class MultilineProgress final {
   current::ProgressLine operator()(std::ostream& os = std::cout) {
     ++total_;
     int index = total_;
-    return current::ProgressLine(os, [index, this]() { return total_ - index; }, &mutex_);
+    return current::ProgressLine(os, [index, this]() { return total_ - index; }, mutex_);
   }
 };
 
