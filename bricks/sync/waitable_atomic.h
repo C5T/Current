@@ -204,7 +204,7 @@ class WaitableAtomicImpl {
       std::unique_lock<std::mutex> lock(data_mutex_);
       if (!predicate(data_)) {
         const data_t& data = data_;
-        data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); });
+        return data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); });
       }
       return true;
     }
