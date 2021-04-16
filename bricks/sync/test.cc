@@ -355,3 +355,15 @@ TEST(WaitableAtomic, IntrusiveClientsCanBeTransferred) {
   auto f = [](IntrusiveClient& c) { static_cast<void>(c); };
   std::thread([&f](IntrusiveClient c) { f(c); }, object.RegisterScopedClient()).detach();
 }
+
+TEST(WaitableAtomic, WaitFor) {
+  using current::WaitableAtomic;
+  {
+    WaitableAtomic<bool> b1(true);
+    EXPECT_TRUE(b1.WaitFor([](bool b) { return b; }, std::chrono::milliseconds(1)));
+  }
+  {
+    WaitableAtomic<bool> b2(false);
+    EXPECT_FALSE(b2.WaitFor([](bool b) { return b; }, std::chrono::milliseconds(1)));
+  }
+}
