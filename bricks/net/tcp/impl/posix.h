@@ -51,7 +51,11 @@ rm -f core ; while true ; do ./.current/test --gtest_throw_on_failure --gtest_ca
 
 // Bricks uses `SOCKET` for socket handles in *nix.
 // Makes it easier to have the code run on both Windows and *nix.
+// NOTE(dkorolev): Some irresponsible elements `#define SOCKET int` in their code,
+//                 and we must protect the life forms to which we are superior.
+#ifndef SOCKET
 typedef int SOCKET;
+#endif
 
 #else
 
