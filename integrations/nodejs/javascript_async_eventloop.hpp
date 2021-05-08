@@ -26,7 +26,8 @@ class JSAsyncEventLoopImpl final {
   mutable std::condition_variable cv_;
 
   std::function<bool()> next_function_;
-  bool last_call_result_ = true;  bool terminated_ = false;
+  bool last_call_result_ = true;
+  bool terminated_ = false;
 
   std::thread thread_;
 

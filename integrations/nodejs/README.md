@@ -13,7 +13,7 @@ TL;DR:
 
 In this directory the header files are of `.hpp` extension. This is primarily to make sure they are excluded from Current's top-level `make check` target.
 
-Also node that these header files are in C++14, even though Current itself is C++17. I was having troubles building C++17 with `node-gyp` cross-platform (things vary across `node-gyp`'s build scripts on Linus and macOS, so I decided to stick with C++14 for now, to be safe).
+Also node that these header files are in C++14, even though Current itself is C++17. I was having troubles building C++17 with `node-gyp` cross-platform (things vary across `node-gyp`'s build scripts on Linux and macOS, so I decided to stick with C++14 for now, to be safe).
 
 #### V8 Environments
 
@@ -41,7 +41,7 @@ For asynchronous work, take a look at `JSAsync`. It takes two lambdas as the two
 
 Thus, the C++ heavylifting can be done within the first lambda, and JavaScript functions can be called, and JavaScript promises can be resolved, from within the second one.
 
-Also, in addition to `JSFunction` (which is `JSFunctionReturning<void>`), this integration also provides the `JSScopedFunction = JSScopedFunctionReturning<void>` primitive, for C++ objects corresponding to C++ functions that do not need to cross the sync/async boundary. A `JSFunction` can be used instead of a `JSScopedFunction` anywhere, while, in async contexts, `JSFunction`, not `JSScopedFunction`, shoul dbe used. In simple terms, `JSScopedFunction` does not indicate to the V8 engine that the function may need to be invoked later, and thus it would not have the async call context created for itself.
+Also, in addition to `JSFunction` (which is `JSFunctionReturning<void>`), this integration also provides the `JSScopedFunction = JSScopedFunctionReturning<void>` primitive, for C++ objects corresponding to C++ functions that do not need to cross the sync/async boundary. A `JSFunction` can be used instead of a `JSScopedFunction` anywhere, while, in async contexts, `JSFunction`, not `JSScopedFunction`, should be used. In simple terms, `JSScopedFunction` does not indicate to the V8 engine that the function may need to be invoked later, and thus it would not have the async call context created for itself.
 
 Finally, while `JSAsync` performs one asynchronous operation, `JSAsyncLoop` makes it possible for the C++ code to intertwine with the JavaScript event loop. Use it when JavaScript functions need to be called from within C++, at arbitrary times, as many times as necessary.
 
@@ -57,9 +57,9 @@ Of course, as JavaScript is not a strongly typed language and the integration co
 
 #### More
 
-Here's a non-exhaustive list of other feature that are either done but not documented yet, or work in progress as of this very moment:
+Here's a non-exhaustive list of other features that are either done but not documented yet, or work in progress as of this very moment:
 
-* Linking the user's C++ code with custom `.a` libraries.
-* More Current-native bindings to JavaScript objects and arrays.
+* Support for `vector<uint8_t>` <=> JavaScript mapping.
 * Support for `int64` / `BigInt`, as JavaScript's integers are not full range.
+* Current-native bindings to JavaScript objects and arrays.
 * C++ functions "overloading" for JavaScript.
