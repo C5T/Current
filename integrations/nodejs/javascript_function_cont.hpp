@@ -12,21 +12,21 @@ namespace javascript {
 namespace impl {
 
 template <class T, class ZIPPED_ARGS>
-struct CPPFunction2JSIMpl;
+struct CPPFunction2JSImpl;
 
 template <class LAMBDA>
 struct CPPFunction2JSArgsPacker;
 
 template <typename T, typename... ARG_WITHOUT_INDEX>
 struct CPPFunction2JSArgsPacker<std::function<T(ARG_WITHOUT_INDEX...)>>
-    : CPPFunction2JSIMpl<T, typename ZipArgsWithIndexes<ARG_WITHOUT_INDEX...>::type> {};
+    : CPPFunction2JSImpl<T, typename ZipArgsWithIndexes<ARG_WITHOUT_INDEX...>::type> {};
 
 template <typename T>
 struct LambdaSignatureExtractor : public LambdaSignatureExtractor<decltype(&T::operator())> {};
 
-template <typename ClassType, typename ReturnType, typename... Args>
-struct LambdaSignatureExtractor<ReturnType (ClassType::*)(Args...) const> {
-  using std_function_t = std::function<ReturnType(Args...)>;
+template <typename T, typename R, typename... ARGS>
+struct LambdaSignatureExtractor<R (T::*)(ARGS...) const> {
+  using std_function_t = std::function<R(ARGS...)>;
 };
 
 template <typename F>
@@ -48,12 +48,24 @@ typename T::type CallJS2CPPOnIndexedArg(const Napi::CallbackInfo& info) {
 }
 
 template <typename T, typename... ARG_WITH_INDEX>
-struct CPPFunction2JSIMpl<T, std::tuple<ARG_WITH_INDEX...>> {
+struct CPPFunction2JSImpl<T, std::tuple<ARG_WITH_INDEX...>> {
   template <typename F>
   static Napi::Function DoIt(F&& f) {
     return Napi::Function::New(JSEnv(), [&f](const Napi::CallbackInfo& info) {
       JSEnvScope scope(info.Env());
       return CPP2JS(f(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...));
+    });
+  }
+};
+
+template <typename... ARG_WITH_INDEX>
+struct CPPFunction2JSImpl<void, std::tuple<ARG_WITH_INDEX...>> {
+  template <typename F>
+  static Napi::Function DoIt(F&& f) {
+    return Napi::Function::New(JSEnv(), [&f](const Napi::CallbackInfo& info) {
+      JSEnvScope scope(info.Env());
+      f(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...);
+      return CPP2JS(Undefined());
     });
   }
 };
@@ -75,6 +87,6 @@ struct JSFunctionCallerImpl<T, true> {
   }
 };
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

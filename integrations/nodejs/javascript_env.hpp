@@ -64,6 +64,6 @@ class JSEnvScope final {
   ~JSEnvScope() { JSEnvScopesStack::ThreadLocalSingleton().Pop(this); }
 };
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

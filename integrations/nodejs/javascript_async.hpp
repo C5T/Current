@@ -1,7 +1,6 @@
 #pragma once
 
 #include "javascript_env.hpp"
-#include "napi.h"
 
 namespace current {
 namespace javascript {
@@ -34,6 +33,6 @@ void JSAsync(F&& f, G&& g) {
   (new JSAsyncImpl<F, G>(std::forward<F>(f), std::forward<G>(g)))->Queue();
 }
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

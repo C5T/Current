@@ -87,8 +87,16 @@ struct CPP2JSImpl<false, std::nullptr_t> {
   static type DoIt(std::nullptr_t) { return JSEnv().Null(); }
 };
 
-// NOTE(dkorolev): See also `javascript_cppf2js.hpp` for `CPP2JS` support for lambdas.
+struct Undefined final {};
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+template <>
+struct CPP2JSImpl<false, Undefined> {
+  using type = Napi::Value;
+  static type DoIt(Undefined) { return JSEnv().Undefined(); }
+};
+
+// NOTE(dkorolev): See also `javascript_function_cont.hpp` for `CPP2JS` support for lambdas.
+
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

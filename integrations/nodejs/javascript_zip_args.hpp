@@ -32,11 +32,12 @@ struct ZipArgsWithIndexes final {
   using type = typename ZipArgsWithIndexesImpl<std::tuple<>, 0u, std::tuple<ARGS...>>::type;
 };
 
-static_assert(std::is_same<
-              ZipArgsWithIndexes<int, bool, std::string>::type,
-              std::tuple<ZippedArgWithIndex<0, int>, ZippedArgWithIndex<1, bool>, ZippedArgWithIndex<2, std::string>>>::
-                  value, "");
+static_assert(
+    std::is_same<
+        ZipArgsWithIndexes<int, bool, std::string>::type,
+        std::tuple<ZippedArgWithIndex<0, int>, ZippedArgWithIndex<1, bool>, ZippedArgWithIndex<2, std::string>>>::value,
+    "");
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

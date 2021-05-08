@@ -19,7 +19,7 @@ class JSScopedFunctionReturning final {
 
  public:
   JSScopedFunctionReturning(Napi::Function f) : function_(std::move(f)) {}
-  JSScopedFunctionReturning(Napi::Value f) : function_(std::move(f.As<Napi::Function>())) {}
+  JSScopedFunctionReturning(Napi::Value f) : function_(f.As<Napi::Function>()) {}
 
   template <typename... ARGS, class U = T>
   typename std::enable_if_t<std::is_same<U, void>::value, void> operator()(ARGS&&... args) const {
@@ -64,6 +64,6 @@ class JSFunctionReturning final {
 using JSScopedFunction = JSScopedFunctionReturning<void>;
 using JSFunction = JSFunctionReturning<void>;
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

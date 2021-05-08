@@ -22,15 +22,11 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports["cppSyncSum"] = CPP2JS([](int a, int b) { return a + b; });
 
   // Another simple case: Invoke the callback with the sum as the only argument.
-  exports["cppSyncCallbackSum"] = CPP2JS([](int a, int b, JSScopedFunction f) {
-    f(a + b);
-    return nullptr;
-  });
+  exports["cppSyncCallbackSum"] = CPP2JS([](int a, int b, JSScopedFunction f) { f(a + b); });
 
   // The asynchronous callback must be called from within the right place, where it's legal to call into JavaScript.
   exports["cppAsyncCallbackSum"] = CPP2JS([](int a, int b, JSFunction f) {
     JSAsync([]() { std::this_thread::sleep_for(std::chrono::milliseconds(50)); }, [f, a, b]() { f(a + b); });
-    return nullptr;
   });
 
   // The future can also be only set from the right place.
@@ -40,6 +36,11 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
             [promise, a, b]() { promise = a + b; });
     return promise;
   });
+
+  // Check that `return nullptr;` returns `null` into JavaScript, and returning nothing returns `undefined`.
+  exports["cppReturnsNull"] = CPP2JS([]() { return nullptr; });
+  exports["cppReturnsUndefined"] = CPP2JS([]() {});
+  exports["cppReturnsUndefinedII"] = CPP2JS([]() { return Undefined(); });
 
   // Note: The arguments here can be `JSFunction` or `JSScopedFunction`, as they are only called synchronously,
   // from the "main thread". In such a scenario, `JSScopedFunction` is preferred, as it has a lower overhead.

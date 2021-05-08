@@ -46,6 +46,6 @@ struct JS2CPPImpl<JSFunctionReturning<T>> {
   static JSFunctionReturning<T> DoIt(const Napi::Value& v) { return JSFunctionReturning<T>(v.As<Napi::Function>()); }
 };
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

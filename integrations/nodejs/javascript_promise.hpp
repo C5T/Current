@@ -41,6 +41,6 @@ struct CPP2JSImpl<false, JSPromise> {
   static type DoIt(JSPromise x) { return x.GetNapiPromise(); }
 };
 
-}  // namespace current::javascript::impl
-}  // namespace current::javascript
+}  // namespace impl
+}  // namespace javascript
 }  // namespace current

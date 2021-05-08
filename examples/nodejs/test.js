@@ -21,6 +21,10 @@ test('cppAsyncCallbackSum', (done) => {
   lib.cppAsyncCallbackSum(5, 6, (result) => { expect(result).toBe(11); done(); });
 });
 
+test('cppFutureSum, then', (done) => {
+  lib.cppFutureSum(1, 2).then((x) => { expect(x).toBe(3); done(); });
+});
+
 test('cppFutureSum, expect.resolves.toBe', () => {
   return expect(lib.cppFutureSum(1, 2)).resolves.toBe(3);
 });
@@ -29,13 +33,28 @@ test('cppFutureSum, async/await', async () => {
   expect(await lib.cppFutureSum(3, 4)).toBe(7);
 });
 
+test('cppReturnsNull', () => {
+  expect(lib.cppReturnsNull()).toBe(null);
+  expect(lib.cppReturnsNull()).not.toBe(undefined);
+});
+
+test('cppReturnsUndefined', () => {
+  expect(lib.cppReturnsUndefined()).toBe(undefined);
+  expect(lib.cppReturnsUndefined()).not.toBe(null);
+});
+
+test('cppReturnsUndefinedII', () => {
+  expect(lib.cppReturnsUndefinedII()).toBe(undefined);
+  expect(lib.cppReturnsUndefinedII()).not.toBe(null);
+});
+
 test('cppSyncCallbacksABA', (done) => {
   var r = [];
   lib.cppSyncCallbacksABA(
     (x) => { r.push('a' + x); },
     (x) => { r.push('b' + x); }
   ).then(
-    () => { expect(r.join('-')).toBe('a1-b2-a:three'); done(); }
+    () => { expect(r.join('|')).toBe('a1|b2|a:three'); done(); }
   );
 });
 
@@ -45,7 +64,7 @@ test('cppAsyncCallbacksABA', (done) => {
     (x) => { r.push('a' + x); },
     (x, y, z, p, q) => { r.push('b' + x + y + z + p + q); }
   ).then(
-    () => { expect(r.join('-')).toBe('a-test-b:here:null:3.14:-a-passed'); done(); }
+    () => { expect(r.join('|')).toBe('a-test|b:here:null:3.14:|a-passed'); done(); }
   );
 });
 
@@ -61,4 +80,3 @@ test('cppGetsResultsOfJsFunctions', () => {
 test('cppGetsResultsOfJsFunctionsAsync', async () => {
   expect(await lib.cppGetsResultsOfJsFunctionsAsync(() => { return 'C'; }, () => { return 'D'; })).toBe('CD');
 });
-

@@ -1,13 +1,13 @@
-.PHONY: test full_test full_debug_test clean
+.PHONY: test debug_test indent clean
 
-test:
-	npm i && npm test
-
-full_test:  # NOTE(dkorolev): These extra commands are unnecessary, just keeping them here for the reference.
+test:  # NOTE(dkorolev): The `node-gyp` commands are not optional on Ubuntu but required on CentOS.
 	npm install && node-gyp configure && node-gyp build && npm test
 
-full_debug_test:
+debug_test:
 	npm install && node-gyp configure --debug && node-gyp build --debug && npm test
+
+indent:
+	clang-format-10 -i code.cpp
 
 clean:
 	rm -rf build node_modules core
