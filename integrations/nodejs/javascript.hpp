@@ -1,6 +1,7 @@
 #pragma once
 
 #include "javascript_async.hpp"
+#include "javascript_async_eventloop.hpp"
 #include "javascript_cpp2js.hpp"
 #include "javascript_env.hpp"
 #include "javascript_function.hpp"
@@ -21,6 +22,9 @@ using impl::JSScopedFunction;
 using impl::JSScopedFunctionReturning;
 
 using impl::JSAsync;
+
+using impl::JSAsyncEventLoop;
+using impl::JSAsyncEventLoopRunner;
 
 using impl::JSPromise;
 

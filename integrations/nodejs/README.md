@@ -43,6 +43,8 @@ Thus, the C++ heavylifting can be done within the first lambda, and JavaScript f
 
 Also, in addition to `JSFunction` (which is `JSFunctionReturning<void>`), this integration also provides the `JSScopedFunction = JSScopedFunctionReturning<void>` primitive, for C++ objects corresponding to C++ functions that do not need to cross the sync/async boundary. A `JSFunction` can be used instead of a `JSScopedFunction` anywhere, while, in async contexts, `JSFunction`, not `JSScopedFunction`, shoul dbe used. In simple terms, `JSScopedFunction` does not indicate to the V8 engine that the function may need to be invoked later, and thus it would not have the async call context created for itself.
 
+Finally, while `JSAsync` performs one asynchronous operation, `JSAsyncLoop` makes it possible for the C++ code to intertwine with the JavaScript event loop. Use it when JavaScript functions need to be called from within C++, at arbitrary times, as many times as necessary.
+
 #### Lambdas and Traits
 
 While this integration exports the `CPP2JS` and `JS2CPP` functions, the user would hardly need to use them.
@@ -58,6 +60,6 @@ Of course, as JavaScript is not a strongly typed language and the integration co
 Here's a non-exhaustive list of other feature that are either done but not documented yet, or work in progress as of this very moment:
 
 * Linking the user's C++ code with custom `.a` libraries.
-* Support for proper "reentrant" async, a.k.a. the "user space" `JSAsyncEventLoop`.
 * More Current-native bindings to JavaScript objects and arrays.
 * Support for `int64` / `BigInt`, as JavaScript's integers are not full range.
+* C++ functions "overloading" for JavaScript.

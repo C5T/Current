@@ -1,5 +1,4 @@
 #include <chrono>
-#include <thread>
 
 // This is the `current/intergrations/nodejs/javascript.hpp`, with the path to it set in `binding.gyp`,
 // so that the node-based build and test, which can be run with just `make` from this directory, does the job.
@@ -85,6 +84,65 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
         JSPromise promise;
         JSAsync([]() { std::this_thread::sleep_for(std::chrono::milliseconds(50)); },
                 [a, b, promise]() { promise = a() + b(); });
+        return promise;
+      });
+
+  // Calling back JavaScript code multiple times, at arbitrary times.
+  exports["cppMultipleAsyncCallsAtArbitraryTimes"] =
+      CPP2JS([](JSFunctionReturning<bool> f_cond, JSFunctionReturning<void> f_print) {
+        const auto is_odd_prime = [](int p) {
+          for (int d = 3; d * d <= p; d += 2) {
+            if ((p % d) == 0) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        JSPromise promise;
+
+        JSAsyncEventLoop([f_cond, f_print, promise, is_odd_prime](JSAsyncEventLoopRunner run_in_event_loop) {
+          // Demo that `run_in_event_loop` can take a function returning a `bool`.
+          if (!run_in_event_loop([f_cond, f_print, promise]() {
+                if (!f_cond(1) || !f_cond(2)) {
+                  promise = 0;
+                  return false;
+                } else {
+                  return true;
+                }
+              })) {
+            return;
+          }
+
+          run_in_event_loop([f_print]() { f_print(2); });
+
+          int odd_p = 3;
+          int total_primes_found = 1;
+
+          while (true) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(odd_p));  // Sleep progressively longer.
+            const bool is_odd_p_prime = is_odd_prime(odd_p);
+            if (!run_in_event_loop([f_cond, f_print, is_odd_p_prime, &odd_p, &total_primes_found, promise]() {
+                  if (!f_cond(odd_p)) {
+                    promise = total_primes_found;
+                    return false;
+                  }
+                  if (is_odd_p_prime) {
+                    ++total_primes_found;
+                    f_print(odd_p);
+                  }
+                  if (!f_cond(++odd_p)) {
+                    promise = total_primes_found;
+                    return false;
+                  }
+                  ++odd_p;
+                  return true;
+                })) {
+              return;
+            }
+          }
+        });
+
         return promise;
       });
 

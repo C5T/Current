@@ -80,3 +80,14 @@ test('cppGetsResultsOfJsFunctions', () => {
 test('cppGetsResultsOfJsFunctionsAsync', async () => {
   expect(await lib.cppGetsResultsOfJsFunctionsAsync(() => { return 'C'; }, () => { return 'D'; })).toBe('CD');
 });
+
+test('cppMultipleAsyncCallsAtArbitraryTimes', async () => {
+  var checks = [];
+  var primes = [];
+  const promise = lib.cppMultipleAsyncCallsAtArbitraryTimes(
+    (x) => { checks.push(x); return x < 17; },
+    (x) => { primes.push(x); });
+  await promise;
+  expect(checks).toStrictEqual([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]);
+  expect(primes).toStrictEqual([2,3,5,7,11,13]);
+});
