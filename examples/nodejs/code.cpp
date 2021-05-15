@@ -13,16 +13,26 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
   // Some immediate values.
   exports["valueInt"] = 42;
   exports["valueDouble"] = 3.14;
+
   exports["valueString"] = "The Answer";
+
   exports["valueTrue"] = true;
   exports["valueFalse"] = false;
+
   exports["valueNull"] = nullptr;
   exports["valueUndefined"] = Undefined();
+
   exports["valueObjectOne"] = JSObject().Add("foo", "Foo").Add("bar", 42);
   JSObject valueObjectTwo;
   valueObjectTwo["foo"] = "Two";
   valueObjectTwo["bar"] = true;
   exports["valueObjectTwo"] = valueObjectTwo;
+  JSObject valueObjectNested;
+  valueObjectNested["a"]["aa"] = 0;
+  valueObjectNested["a"]["ab"] = 1;
+  valueObjectNested["b"]["ba"] = 2;
+  valueObjectNested["b"]["bb"] = 3;
+  exports["valueObjectNested"] = valueObjectNested;
 
   // The simple case: Just return the sum.
   exports["cppSyncSum"] = [](int a, int b) { return a + b; };

@@ -12,6 +12,7 @@ test('cppValues', () => {
   expect(lib.valueUndefined).not.toEqual(null);
   expect(lib.valueObjectOne).toEqual({foo: 'Foo', bar: 42});
   expect(lib.valueObjectTwo).toEqual({foo: 'Two', bar: true});
+  expect(lib.valueObjectNested).toEqual({a: { aa: 0, ab: 1 }, b: { ba: 2, bb: 3 }});
 });
 
 test('cppSyncSum', () => {
