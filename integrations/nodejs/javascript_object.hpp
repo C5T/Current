@@ -45,6 +45,10 @@ class JSObject final {
     JS_HELPER(std::string)
 
 #undef JS_HELPER
+    template <typename T>
+    T As() const {
+      return static_cast<T>(*this);
+    }
   };
 
   operator Napi::Object() const { return object_; }

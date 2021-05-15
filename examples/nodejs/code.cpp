@@ -83,6 +83,15 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
     return object;
   };
 
+  // A simple function that modifies an object.
+  exports["cppModifiesObject"] = [](JSObject obj) {
+    int a = obj["a"];
+    auto b = obj["b"].As<int>();  // TODO(dkorolev): Add the `JSValue` type, and use it here.
+    obj["sum"] = a + b;
+    obj["sum_as_string"] = std::to_string(a + b);
+    return obj;
+  };
+
   // A "native" lambda can be "returned", and the magic behind the scenes will work its way.
   exports["cppWrapsFunction"] = [](int x, JSFunctionReturning<std::string> f) {
     // NOTE(dkorolev): Just `return`-ing a lambda compiles, but the JS env garbage-collects that function.

@@ -77,6 +77,12 @@ test('cppReturnsObject', () => {
   expect(lib.cppReturnsObject()).toEqual({supports: "also", dot_notation: true, _null: null, _undefined: undefined });
 });
 
+test('cppModifiesObject', () => {
+  var obj = { a: 1, b: 2};
+  lib.cppModifiesObject(obj);
+  expect(obj).toEqual({a: 1, b: 2, sum: 3, sum_as_string: '3'});
+});
+
 test('cppWrapsFunction', () => {
   expect(lib.cppWrapsFunction(1, (f) => { return f(2); })).toEqual('Outer 1, inner 2.');
   expect(lib.cppWrapsFunction(100, (f) => { return f(42); })).toEqual('Outer 100, inner 42.');
