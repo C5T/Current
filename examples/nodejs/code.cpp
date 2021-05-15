@@ -74,6 +74,15 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
     return promise;
   };
 
+  // A simple function that returns an object.
+  exports["cppReturnsObject"] = []() {
+    JSObject object;
+    object["_null"] = nullptr;
+    object.Add("supports", "also").Add("dot_notation", true);
+    object["_undefined"] = Undefined();
+    return object;
+  };
+
   // A "native" lambda can be "returned", and the magic behind the scenes will work its way.
   exports["cppWrapsFunction"] = [](int x, JSFunctionReturning<std::string> f) {
     // NOTE(dkorolev): Just `return`-ing a lambda compiles, but the JS env garbage-collects that function.

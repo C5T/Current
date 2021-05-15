@@ -73,6 +73,10 @@ test('cppAsyncCallbacksABA', (done) => {
   );
 });
 
+test('cppReturnsObject', () => {
+  expect(lib.cppReturnsObject()).toEqual({supports: "also", dot_notation: true, _null: null, _undefined: undefined });
+});
+
 test('cppWrapsFunction', () => {
   expect(lib.cppWrapsFunction(1, (f) => { return f(2); })).toEqual('Outer 1, inner 2.');
   expect(lib.cppWrapsFunction(100, (f) => { return f(42); })).toEqual('Outer 100, inner 42.');
