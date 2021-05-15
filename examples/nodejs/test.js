@@ -1,51 +1,51 @@
 const lib = require('bindings')('current-nodejs-integration-example') 
 
 test('cppValues', () => {
-  expect(lib.valueInt).toBe(42);
-  expect(lib.valueDouble).toBe(3.14);
-  expect(lib.valueString).toBe("The Answer");
-  expect(lib.valueTrue).toBe(true);
-  expect(lib.valueFalse).toBe(false);
-  expect(lib.valueNull).toBe(null);
+  expect(lib.valueInt).toEqual(42);
+  expect(lib.valueDouble).toEqual(3.14);
+  expect(lib.valueString).toEqual("The Answer");
+  expect(lib.valueTrue).toEqual(true);
+  expect(lib.valueFalse).toEqual(false);
+  expect(lib.valueNull).toEqual(null);
 });
 
 test('cppSyncSum', () => {
-  expect(lib.cppSyncSum(1, 2)).toBe(3);
+  expect(lib.cppSyncSum(1, 2)).toEqual(3);
 });
 
 test('cppSyncCallbackSum', (done) => {
-  lib.cppSyncCallbackSum(3, 4, (result) => { expect(result).toBe(7); done(); });
+  lib.cppSyncCallbackSum(3, 4, (result) => { expect(result).toEqual(7); done(); });
 });
 
 test('cppAsyncCallbackSum', (done) => {
-  lib.cppAsyncCallbackSum(5, 6, (result) => { expect(result).toBe(11); done(); });
+  lib.cppAsyncCallbackSum(5, 6, (result) => { expect(result).toEqual(11); done(); });
 });
 
 test('cppFutureSum, then', (done) => {
-  lib.cppFutureSum(1, 2).then((x) => { expect(x).toBe(3); done(); });
+  lib.cppFutureSum(1, 2).then((x) => { expect(x).toEqual(3); done(); });
 });
 
-test('cppFutureSum, expect.resolves.toBe', () => {
-  return expect(lib.cppFutureSum(1, 2)).resolves.toBe(3);
+test('cppFutureSum, expect.resolves.toEqual', () => {
+  return expect(lib.cppFutureSum(1, 2)).resolves.toEqual(3);
 });
 
 test('cppFutureSum, async/await', async () => {
-  expect(await lib.cppFutureSum(3, 4)).toBe(7);
+  expect(await lib.cppFutureSum(3, 4)).toEqual(7);
 });
 
 test('cppReturnsNull', () => {
-  expect(lib.cppReturnsNull()).toBe(null);
-  expect(lib.cppReturnsNull()).not.toBe(undefined);
+  expect(lib.cppReturnsNull()).toEqual(null);
+  expect(lib.cppReturnsNull()).not.toEqual(undefined);
 });
 
 test('cppReturnsUndefined', () => {
-  expect(lib.cppReturnsUndefined()).toBe(undefined);
-  expect(lib.cppReturnsUndefined()).not.toBe(null);
+  expect(lib.cppReturnsUndefined()).toEqual(undefined);
+  expect(lib.cppReturnsUndefined()).not.toEqual(null);
 });
 
 test('cppReturnsUndefinedII', () => {
-  expect(lib.cppReturnsUndefinedII()).toBe(undefined);
-  expect(lib.cppReturnsUndefinedII()).not.toBe(null);
+  expect(lib.cppReturnsUndefinedII()).toEqual(undefined);
+  expect(lib.cppReturnsUndefinedII()).not.toEqual(null);
 });
 
 test('cppSyncCallbacksABA', (done) => {
@@ -54,7 +54,7 @@ test('cppSyncCallbacksABA', (done) => {
     (x) => { r.push('a' + x); },
     (x) => { r.push('b' + x); }
   ).then(
-    () => { expect(r.join('|')).toBe('a1|b2|a:three'); done(); }
+    () => { expect(r.join('|')).toEqual('a1|b2|a:three'); done(); }
   );
 });
 
@@ -64,21 +64,21 @@ test('cppAsyncCallbacksABA', (done) => {
     (x) => { r.push('a' + x); },
     (x, y, z, p, q) => { r.push('b' + x + y + z + p + q); }
   ).then(
-    () => { expect(r.join('|')).toBe('a-test|b:here:null:3.14:|a-passed'); done(); }
+    () => { expect(r.join('|')).toEqual('a-test|b:here:null:3.14:|a-passed'); done(); }
   );
 });
 
 test('cppWrapsFunction', () => {
-  expect(lib.cppWrapsFunction(1, (f) => { return f(2); })).toBe('Outer 1, inner 2.');
-  expect(lib.cppWrapsFunction(100, (f) => { return f(42); })).toBe('Outer 100, inner 42.');
+  expect(lib.cppWrapsFunction(1, (f) => { return f(2); })).toEqual('Outer 1, inner 2.');
+  expect(lib.cppWrapsFunction(100, (f) => { return f(42); })).toEqual('Outer 100, inner 42.');
 });
 
 test('cppGetsResultsOfJsFunctions', () => {
-  expect(lib.cppGetsResultsOfJsFunctions(() => { return 'A'; }, () => { return 'B'; })).toBe('AB');
+  expect(lib.cppGetsResultsOfJsFunctions(() => { return 'A'; }, () => { return 'B'; })).toEqual('AB');
 });
 
 test('cppGetsResultsOfJsFunctionsAsync', async () => {
-  expect(await lib.cppGetsResultsOfJsFunctionsAsync(() => { return 'C'; }, () => { return 'D'; })).toBe('CD');
+  expect(await lib.cppGetsResultsOfJsFunctionsAsync(() => { return 'C'; }, () => { return 'D'; })).toEqual('CD');
 });
 
 test('cppMultipleAsyncCallsAtArbitraryTimes', async () => {
