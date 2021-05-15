@@ -16,6 +16,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports["valueTrue"] = CPP2JS(true);
   exports["valueFalse"] = CPP2JS(false);
   exports["valueNull"] = CPP2JS(nullptr);
+  exports["valueUndefined"] = CPP2JS(Undefined());
 
   // The simple case: Just return the sum.
   exports["cppSyncSum"] = CPP2JS([](int a, int b) { return a + b; });

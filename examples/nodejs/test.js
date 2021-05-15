@@ -7,6 +7,9 @@ test('cppValues', () => {
   expect(lib.valueTrue).toEqual(true);
   expect(lib.valueFalse).toEqual(false);
   expect(lib.valueNull).toEqual(null);
+  expect(lib.valueNull).not.toEqual(undefined);
+  expect(lib.valueUndefined).toEqual(undefined);
+  expect(lib.valueUndefined).not.toEqual(null);
 });
 
 test('cppSyncSum', () => {
