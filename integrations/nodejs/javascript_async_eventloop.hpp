@@ -102,12 +102,12 @@ struct JSAsyncEventLoopRunnerImpl final {
   JSAsyncEventLoopImpl* worker_;
   explicit JSAsyncEventLoopRunnerImpl(JSAsyncEventLoopImpl* worker) : worker_(worker) {}
 
-  template <class F, class FS = typename LambdaSignatureExtractor<std::decay_t<F>>::std_function_t>
+  template <class F, class FS = typename LambdaSignatureExtractor<typename std::decay<F>::type>::std_function_t>
   typename std::enable_if<std::is_same<FS, std::function<bool()>>::value, bool>::type operator()(F f) const {
     return worker_->InternalSyncRun(f);
   }
 
-  template <class F, class FS = typename LambdaSignatureExtractor<std::decay_t<F>>::std_function_t>
+  template <class F, class FS = typename LambdaSignatureExtractor<typename std::decay<F>::type>::std_function_t>
   typename std::enable_if<std::is_same<FS, std::function<void()>>::value>::type operator()(F f) const {
     worker_->InternalSyncRun([f]() {
       f();

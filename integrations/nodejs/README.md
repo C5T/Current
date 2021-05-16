@@ -41,7 +41,7 @@ For asynchronous work, take a look at `JSAsync`. It takes two lambdas as the two
 
 Thus, the C++ heavylifting can be done within the first lambda, and JavaScript functions can be called, and JavaScript promises can be resolved, from within the second one.
 
-Also, in addition to `JSFunction` (which is `JSFunctionReturning<void>`), this integration also provides the `JSScopedFunction = JSScopedFunctionReturning<void>` primitive, for C++ objects corresponding to C++ functions that do not need to cross the sync/async boundary. A `JSFunction` can be used instead of a `JSScopedFunction` anywhere, while, in async contexts, `JSFunction`, not `JSScopedFunction`, should be used. In simple terms, `JSScopedFunction` does not indicate to the V8 engine that the function may need to be invoked later, and thus it would not have the async call context created for itself.
+Also, in addition to `JSFunction` (which is `JSFunctionReturning<void>`), this integration also provides the `JSFunctionReference = JSFunctionReferenceReturning<void>` primitive, for C++ objects corresponding to C++ functions that do not need to cross the sync/async boundary. A `JSFunction` can be used instead of a `JSFunctionReference` anywhere, while, in async contexts, `JSFunction`, not `JSFunctionReference`, should be used. In simple terms, `JSFunctionReference` does not indicate to the V8 engine that the function may need to be invoked later, and thus it would not have the async call context created for itself.
 
 Finally, while `JSAsync` performs one asynchronous operation, `JSAsyncLoop` makes it possible for the C++ code to intertwine with the JavaScript event loop. Use it when JavaScript functions need to be called from within C++, at arbitrary times, as many times as necessary.
 

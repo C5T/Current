@@ -35,9 +35,9 @@ struct JS2CPPImpl<std::string> {
 };
 
 template <typename T>
-struct JS2CPPImpl<JSScopedFunctionReturning<T>> {
-  static JSScopedFunctionReturning<T> DoIt(const Napi::Value& v) {
-    return JSScopedFunctionReturning<T>(v.As<Napi::Function>());
+struct JS2CPPImpl<JSFunctionReferenceReturning<T>> {
+  static JSFunctionReferenceReturning<T> DoIt(const Napi::Value& v) {
+    return JSFunctionReferenceReturning<T>(v.As<Napi::Function>());
   }
 };
 

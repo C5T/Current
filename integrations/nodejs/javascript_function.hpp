@@ -13,22 +13,23 @@ struct JSFunctionCallerImpl;
 // by values and calling them right away, without declaring the lambdas `mutable`.
 
 template <class T>
-class JSScopedFunctionReturning final {
+class JSFunctionReferenceReturning final {
  private:
-  Napi::Function function_;
+  Napi::FunctionReference function_;
 
  public:
-  JSScopedFunctionReturning(Napi::Function f) : function_(std::move(f)) {}
-  JSScopedFunctionReturning(Napi::Value f) : function_(f.As<Napi::Function>()) {}
+  JSFunctionReferenceReturning(Napi::FunctionReference f) : function_(std::move(f)) {}
+  JSFunctionReferenceReturning(Napi::Function f) : function_(Napi::Weak(f)) {}
+  JSFunctionReferenceReturning(Napi::Value f) : function_(Napi::Weak(f.As<Napi::Function>())) {}
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<std::is_same<U, void>::value, void> operator()(ARGS&&... args) const {
+  typename std::enable_if<std::is_same<U, void>::value, void>::type operator()(ARGS&&... args) const {
     function_.Call({CPP2JS(std::forward<ARGS>(args))...});
   }
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<!std::is_same<U, void>::value, T> operator()(ARGS&&... args) const {
-    return JSFunctionCallerImpl<T, true>::DoItForJSScopedFunctionReturning(function_, std::forward<ARGS>(args)...);
+  typename std::enable_if<!std::is_same<U, void>::value, T>::type operator()(ARGS&&... args) const {
+    return JSFunctionCallerImpl<T, true>::DoItForJSFunctionReferenceReturning(function_, std::forward<ARGS>(args)...);
   }
 };
 
@@ -39,7 +40,7 @@ class JSFunctionReturning final {
     Napi::AsyncContext async_context_;
     Napi::FunctionReference function_reference_;
     explicit AsyncContextHolderImpl(const Napi::Function& f)
-        : async_context_(JSEnv(), "blah"), function_reference_(Napi::Persistent(f)) {}
+        : async_context_(JSEnv(), "CurrentJSBinding"), function_reference_(Napi::Persistent(f)) {}
   };
   std::shared_ptr<AsyncContextHolderImpl> impl_;
 
@@ -50,18 +51,18 @@ class JSFunctionReturning final {
   explicit JSFunctionReturning(const Napi::Function& f) : impl_(std::make_shared<AsyncContextHolderImpl>(f)) {}
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<std::is_same<U, void>::value, void> operator()(ARGS&&... args) const {
+  typename std::enable_if<std::is_same<U, void>::value, void>::type operator()(ARGS&&... args) const {
     GetFunctionReference().MakeCallback(JSEnv().Global(), {CPP2JS(std::forward<ARGS>(args))...}, GetNapiAsyncContext());
   }
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<!std::is_same<U, void>::value, T> operator()(ARGS&&... args) const {
+  typename std::enable_if<!std::is_same<U, void>::value, T>::type operator()(ARGS&&... args) const {
     return JSFunctionCallerImpl<T, true>::DoItForJSFunctionReturning(
         GetFunctionReference(), GetNapiAsyncContext(), std::forward<ARGS>(args)...);
   }
 };
 
-using JSScopedFunction = JSScopedFunctionReturning<void>;
+using JSFunctionReference = JSFunctionReferenceReturning<void>;
 using JSFunction = JSFunctionReturning<void>;
 
 }  // namespace impl
