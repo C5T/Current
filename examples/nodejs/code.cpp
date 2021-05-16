@@ -96,11 +96,45 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
 
   // A simple function that modifies an object.
   exports["cppModifiesObject"] = [](JSObject obj) {
-    int a = obj["a"];
-    auto b = obj["b"].As<int>();  // TODO(dkorolev): Add the `JSValue` type, and use it here.
-    obj["sum"] = a + b;
-    obj["sum_as_string"] = std::to_string(a + b);
+    const int a = obj["a"];
+    const JSAny b = obj["b"];
+    obj["sum"] = a + b.As<int>();
+    obj["sum_as_string"] = std::to_string(a + static_cast<int>(b));
     return obj;
+  };
+
+  exports["cppAcceptsAny"] = [](std::string type, JSAny any) -> std::string {
+    if (type == "i") {
+      return "TwiceInt: " + std::to_string(any.As<int>() * 2);
+    } else if (type == "s") {
+      const std::string s = any;
+      return "TwiceString: " + s + s;
+    } else {
+      return "Error.";
+    }
+  };
+
+  exports["cppAcceptsAnyII"] = [](JSAny any) -> std::string {
+    if (any.IsNumber()) {
+      return "TwiceIntII: " + std::to_string(any.As<int>() * 2);
+    } else if (any.IsString()) {
+      const std::string s = any;
+      return "TwiceStringII: " + s + s;
+    } else {
+      return "ErrorII.";
+    }
+  };
+
+  exports["cppReturnsAny"] = [](std::string t) -> JSAny {
+    if (t == "i") {
+      return 42;
+    } else if (t == "s") {
+      return "42";
+    } else if (t == "o") {
+      return JSObject();
+    } else {
+      return nullptr;
+    }
   };
 
   // A "native" lambda can be "returned", and the magic behind the scenes will work its way.

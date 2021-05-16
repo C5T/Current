@@ -1,5 +1,6 @@
 #pragma once
 
+#include "javascript_any.hpp"
 #include "javascript_async.hpp"
 #include "javascript_async_eventloop.hpp"
 #include "javascript_cpp2js.hpp"
@@ -17,6 +18,7 @@ using impl::CPP2JS;
 using impl::JS2CPP;
 using impl::Undefined;
 
+using impl::JSAny;
 using impl::JSObject;
 
 using impl::JSFunction;

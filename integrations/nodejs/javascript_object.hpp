@@ -48,6 +48,8 @@ class JSObject final {
 
 #undef JS_HELPER
 
+    Napi::Value AsNapiValue() const { return object_.Get(key_); }
+
     operator JSObject() const {
       // NOTE(dkorolev): Would fail if the key already exists and its value itself is not an object.
       Napi::Value value = object_.Get(key_);

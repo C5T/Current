@@ -84,6 +84,25 @@ test('cppModifiesObject', () => {
   expect(obj).toEqual({a: 1, b: 2, sum: 3, sum_as_string: '3'});
 });
 
+test('cppAcceptsAny', () => {
+  expect(lib.cppAcceptsAny('i', 42)).toEqual('TwiceInt: 84');
+  expect(lib.cppAcceptsAny('s', '42')).toEqual('TwiceString: 4242');
+});
+
+test('cppAcceptsAnyII', () => {
+  expect(lib.cppAcceptsAnyII(42)).toEqual('TwiceIntII: 84');
+  expect(lib.cppAcceptsAnyII('42')).toEqual('TwiceStringII: 4242');
+});
+
+test('cppReturnsAny', () => {
+  expect(lib.cppReturnsAny('i')).toEqual(42);
+  expect(lib.cppReturnsAny('i')).not.toEqual('42');
+  expect(lib.cppReturnsAny('s')).toEqual('42');
+  expect(lib.cppReturnsAny('s')).not.toEqual(42);
+  expect(lib.cppReturnsAny('o')).toEqual({});
+  expect(lib.cppReturnsAny('')).toEqual(null);
+});
+
 test('cppWrapsFunction', () => {
   expect(lib.cppWrapsFunction(1, (f) => { return f(2); })).toEqual('Outer 1, inner 2.');
   expect(lib.cppWrapsFunction(100, (f) => { return f(42); })).toEqual('Outer 100, inner 42.');
