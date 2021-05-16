@@ -39,7 +39,7 @@ class JSFunctionReturning final {
     Napi::AsyncContext async_context_;
     Napi::FunctionReference function_reference_;
     explicit AsyncContextHolderImpl(const Napi::Function& f)
-        : async_context_(JSEnv(), "blah"), function_reference_(Napi::Persistent(f)) {}
+        : async_context_(JSEnv(), "CurrentJSBinding"), function_reference_(Napi::Persistent(f)) {}
   };
   std::shared_ptr<AsyncContextHolderImpl> impl_;
 
