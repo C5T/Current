@@ -22,22 +22,41 @@ struct CPPFunction2JSArgsPacker<std::function<T(ARG_WITHOUT_INDEX...)>>
     : CPPFunction2JSImpl<T, typename ZipArgsWithIndexes<ARG_WITHOUT_INDEX...>::type> {};
 
 template <typename T>
-struct LambdaSignatureExtractor : public LambdaSignatureExtractor<decltype(&T::operator())> {};
+struct LambdaSignatureExtractorImpl;
+
+template <typename T>
+struct LambdaSignatureExtractor {
+  using std_function_t = typename LambdaSignatureExtractorImpl<decltype(&T::operator())>::std_function_t;
+};
+
+template <typename R, typename... ARGS>
+struct LambdaSignatureExtractor<std::function<R(ARGS...)>> {
+  using std_function_t = std::function<R(ARGS...)>;
+};
 
 template <typename T, typename R, typename... ARGS>
-struct LambdaSignatureExtractor<R (T::*)(ARGS...) const> {
+struct LambdaSignatureExtractorImpl<R (T::*)(ARGS...)> {
+  using std_function_t = std::function<R(ARGS...)>;
+};
+
+template <typename T, typename R, typename... ARGS>
+struct LambdaSignatureExtractorImpl<R (T::*)(ARGS...) const> {
   using std_function_t = std::function<R(ARGS...)>;
 };
 
 template <typename F>
 Napi::Function CPPFunction2JS(F&& f) {
-  return CPPFunction2JSArgsPacker<typename LambdaSignatureExtractor<F>::std_function_t>::DoIt(std::forward<F>(f));
+  return CPPFunction2JSArgsPacker<typename LambdaSignatureExtractor<std::decay_t<F>>::std_function_t>::DoIt(
+      std::forward<F>(f));
 }
 
 template <typename F>
 struct CPP2JSImpl<true, F> {
   using type = Napi::Function;
-  static type DoIt(F&& f) { return CPPFunction2JS(std::forward<F>(f)); }
+  template <typename FF>
+  static type DoIt(FF&& f) {
+    return CPPFunction2JS(std::forward<FF>(f));
+  }
 };
 
 // NOTE(dkorolev): Here T` is `ZippedArgWithIndex<>`, which has `::index` and `::type`.
@@ -47,37 +66,76 @@ typename T::type CallJS2CPPOnIndexedArg(const Napi::CallbackInfo& info) {
   return JS2CPP<typename T::type>(info[T::index]);
 }
 
+// NOTE(dkorolev): I have confirmed the `CopyableHelper` + `SharedPtrContents` combo does the job with respect
+// to not deleting the user data associated with the function. I have *not* confirmed that
+// the very `SharedPtrContents` is removed once the JavaScript function is being garbage-collected.
+template <typename T>
+struct SharedPtrContents final {
+  T contents;
+
+  SharedPtrContents(const T& cpp) : contents(cpp) {}
+  SharedPtrContents(T&& cpp) : contents(cpp) {}
+
+  SharedPtrContents() = delete;
+  SharedPtrContents& operator=(const SharedPtrContents&) = delete;
+  SharedPtrContents& operator=(SharedPtrContents&&) = delete;
+};
+
+template <typename RETVAL, class F, class... ARG_WITH_INDEX>
+class CopyableHelper final {
+ private:
+  std::shared_ptr<SharedPtrContents<F>> shared_copyable_funciton;
+
+ public:
+  CopyableHelper() = delete;
+
+  CopyableHelper(F&& f) : shared_copyable_funciton(std::make_shared<SharedPtrContents<F>>(std::move(f))) {}
+  CopyableHelper(const F& f) : shared_copyable_funciton(std::make_shared<SharedPtrContents<F>>(f)) {}
+
+  CopyableHelper(const CopyableHelper&) = default;
+  CopyableHelper(CopyableHelper&&) = default;
+  CopyableHelper& operator=(const CopyableHelper&) = default;
+  CopyableHelper& operator=(CopyableHelper&&) = default;
+
+  template <typename R = RETVAL>
+  std::enable_if_t<!std::is_same<R, void>::value, Napi::Value> operator()(const Napi::CallbackInfo& info) {
+    JSEnvScope scope(info.Env());
+    return CPP2JS(shared_copyable_funciton->contents(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...));
+  }
+
+  template <typename R = RETVAL>
+  std::enable_if_t<std::is_same<R, void>::value, Napi::Value> operator()(const Napi::CallbackInfo& info) {
+    JSEnvScope scope(info.Env());
+    shared_copyable_funciton->contents(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...);
+    return CPP2JS(Undefined());
+  }
+};
+
 template <typename T, typename... ARG_WITH_INDEX>
 struct CPPFunction2JSImpl<T, std::tuple<ARG_WITH_INDEX...>> {
   template <typename F>
   static Napi::Function DoIt(F&& f) {
-    return Napi::Function::New(JSEnv(), [&f](const Napi::CallbackInfo& info) {
-      JSEnvScope scope(info.Env());
-      return CPP2JS(f(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...));
-    });
-  }
-};
-
-template <typename... ARG_WITH_INDEX>
-struct CPPFunction2JSImpl<void, std::tuple<ARG_WITH_INDEX...>> {
-  template <typename F>
-  static Napi::Function DoIt(F&& f) {
-    return Napi::Function::New(JSEnv(), [&f](const Napi::CallbackInfo& info) {
-      JSEnvScope scope(info.Env());
-      f(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...);
-      return CPP2JS(Undefined());
-    });
+    return Napi::Function::New(JSEnv(), CopyableHelper<T, std::decay_t<F>, ARG_WITH_INDEX...>(std::forward<F>(f)));
   }
 };
 
 // The specialization of the template defined in `javascript_function.hpp`.
+// NOTE(dkorolev): Effectively, this template and its specialization are the forward declaration.
 template <class T>
 struct JSFunctionCallerImpl<T, true> {
   template <typename... ARGS>
-  static T DoItForJSScopedFunctionReturning(const Napi::Function& function, ARGS&&... args) {
+  static T DoItForJSFunctionReferenceReturning(const Napi::Function& function, ARGS&&... args) {
+    // NOTE(dkorolev): Unused as of now, as I've moved every call to use `FunctionReference`.
     Napi::Value v = function.Call({CPP2JS(std::forward<ARGS>(args))...});
     return JS2CPP<T>(v);
   }
+
+  template <typename... ARGS>
+  static T DoItForJSFunctionReferenceReturning(const Napi::FunctionReference& function, ARGS&&... args) {
+    Napi::Value v = function.MakeCallback(JSEnv().Global(), {CPP2JS(std::forward<ARGS>(args))...});
+    return JS2CPP<T>(v);
+  }
+
   template <typename... ARGS>
   static T DoItForJSFunctionReturning(const Napi::FunctionReference& function_reference,
                                       const Napi::AsyncContext& async_context,

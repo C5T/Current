@@ -13,13 +13,14 @@ struct JSFunctionCallerImpl;
 // by values and calling them right away, without declaring the lambdas `mutable`.
 
 template <class T>
-class JSScopedFunctionReturning final {
+class JSFunctionReferenceReturning final {
  private:
-  Napi::Function function_;
+  Napi::FunctionReference function_;
 
  public:
-  JSScopedFunctionReturning(Napi::Function f) : function_(std::move(f)) {}
-  JSScopedFunctionReturning(Napi::Value f) : function_(f.As<Napi::Function>()) {}
+  JSFunctionReferenceReturning(Napi::FunctionReference f) : function_(std::move(f)) {}
+  JSFunctionReferenceReturning(Napi::Function f) : function_(Napi::Weak(f)) {}
+  JSFunctionReferenceReturning(Napi::Value f) : function_(Napi::Weak(f.As<Napi::Function>())) {}
 
   template <typename... ARGS, class U = T>
   typename std::enable_if_t<std::is_same<U, void>::value, void> operator()(ARGS&&... args) const {
@@ -28,7 +29,7 @@ class JSScopedFunctionReturning final {
 
   template <typename... ARGS, class U = T>
   typename std::enable_if_t<!std::is_same<U, void>::value, T> operator()(ARGS&&... args) const {
-    return JSFunctionCallerImpl<T, true>::DoItForJSScopedFunctionReturning(function_, std::forward<ARGS>(args)...);
+    return JSFunctionCallerImpl<T, true>::DoItForJSFunctionReferenceReturning(function_, std::forward<ARGS>(args)...);
   }
 };
 
@@ -61,7 +62,7 @@ class JSFunctionReturning final {
   }
 };
 
-using JSScopedFunction = JSScopedFunctionReturning<void>;
+using JSFunctionReference = JSFunctionReferenceReturning<void>;
 using JSFunction = JSFunctionReturning<void>;
 
 }  // namespace impl

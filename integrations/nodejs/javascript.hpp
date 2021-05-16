@@ -21,8 +21,9 @@ using impl::JSObject;
 
 using impl::JSFunction;
 using impl::JSFunctionReturning;
-using impl::JSScopedFunction;
-using impl::JSScopedFunctionReturning;
+
+using impl::JSFunctionReference;
+using impl::JSFunctionReferenceReturning;
 
 using impl::JSAsync;
 

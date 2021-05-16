@@ -38,7 +38,7 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
   exports["cppSyncSum"] = [](int a, int b) { return a + b; };
 
   // Another simple case: Invoke the callback with the sum as the only argument.
-  exports["cppSyncCallbackSum"] = [](int a, int b, JSScopedFunction f) { f(a + b); };
+  exports["cppSyncCallbackSum"] = [](int a, int b, JSFunctionReference f) { f(a + b); };
 
   // The asynchronous callback must be called from within the right place, where it's legal to call into JavaScript.
   exports["cppAsyncCallbackSum"] = [](int a, int b, JSFunction f) {
@@ -58,9 +58,10 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
   exports["cppReturnsUndefined"] = []() {};
   exports["cppReturnsUndefinedII"] = []() { return Undefined(); };
 
-  // Note: The arguments here can be `JSFunction` or `JSScopedFunction`, as they are only called synchronously,
-  // from the "main thread". In such a scenario, `JSScopedFunction` is preferred, as it has a lower overhead.
-  exports["cppSyncCallbacksABA"] = [](JSScopedFunction f, JSScopedFunction g) {
+  // NOTE(dkorolev): The arguments here can be `JSFunction` or `JSFunctionReference`,
+  // as they are only called synchronously, from the "main thread".
+  // In such a scenario, `JSFunctionReference` is preferred, as it has a lower overhead.
+  exports["cppSyncCallbacksABA"] = [](JSFunctionReference f, JSFunctionReference g) {
     f(1);
     g(2);
     f(":three");
@@ -71,7 +72,7 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
     return promise;
   };
 
-  // Note: Unlike in `cppSyncCallbacksABA`, these functions should be of type `JSFunction`, not `JSScopedFunction`.
+  // Note: Unlike in `cppSyncCallbacksABA`, these functions should be of type `JSFunction`, not `JSFunctionReference`.
   exports["cppAsyncCallbacksABA"] = [](JSFunction f, JSFunction g) {
     JSPromise promise;
     JSAsync([]() { std::this_thread::sleep_for(std::chrono::milliseconds(50)); },
@@ -104,14 +105,17 @@ Napi::Object Init(Napi::Env env, Napi::Object unwrapped_exports) {
 
   // A "native" lambda can be "returned", and the magic behind the scenes will work its way.
   exports["cppWrapsFunction"] = [](int x, JSFunctionReturning<std::string> f) {
-    // NOTE(dkorolev): Just `return`-ing a lambda compiles, but the JS env garbage-collects that function.
-    // So, use the trick of not leaving the scope of the function.
+    // This test case exposes a function, but only to be called within the call scope of the outer function.
     return f([x](int y) { return "Outer " + std::to_string(x) + ", inner " + std::to_string(y) + '.'; });
+  };
+  exports["cppWrapsFunctionWithState"] = [](int base) {
+    // And this test case returns a function that keeps its own state across calls.
+    return [shared_number = std::make_shared<int>(base)]() { return (*shared_number)++; };
   };
 
   // A C++ code that calls back into JavaScript and analyzes the results of those calls.
-  exports["cppGetsResultsOfJsFunctions"] = [](JSScopedFunctionReturning<std::string> a,
-                                              JSScopedFunctionReturning<std::string> b) { return a() + b(); };
+  exports["cppGetsResultsOfJsFunctions"] = [](JSFunctionReferenceReturning<std::string> a,
+                                              JSFunctionReferenceReturning<std::string> b) { return a() + b(); };
 
   // A C++ code that calls back into JavaScript and analyzes the results of those calls.
   exports["cppGetsResultsOfJsFunctionsAsync"] = [](JSFunctionReturning<std::string> a,

@@ -89,6 +89,18 @@ test('cppWrapsFunction', () => {
   expect(lib.cppWrapsFunction(100, (f) => { return f(42); })).toEqual('Outer 100, inner 42.');
 });
 
+// NOTE(dkorolev): I have confirmed the way `cppWrapsFunctionWithState` is implemented does the state capture part.
+// I have not confirmed (yet) this state is cleared as the very function returned from C++ is garbage-collected in JS.
+test('cppWrapsFunctionWithState', () => {
+  const f = lib.cppWrapsFunctionWithState(100);
+  const g = lib.cppWrapsFunctionWithState(100);
+  expect(f()).toEqual(100);
+  expect(g()).toEqual(100);
+  expect(f()).toEqual(101);
+  expect(f()).toEqual(102);
+  expect(g()).toEqual(101);
+});
+
 test('cppGetsResultsOfJsFunctions', () => {
   expect(lib.cppGetsResultsOfJsFunctions(() => { return 'A'; }, () => { return 'B'; })).toEqual('AB');
 });
