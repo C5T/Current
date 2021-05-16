@@ -34,8 +34,9 @@ template <bool CALLABLE, typename T>
 struct CPP2JSImpl;
 
 template <typename T>
-typename CPP2JSImpl<IsCallable<std::decay_t<T>>::value, std::decay_t<T>>::type CPP2JS(T&& x) {
-  return CPP2JSImpl<IsCallable<std::decay_t<T>>::value, std::decay_t<T>>::DoIt(std::forward<T>(x));
+typename CPP2JSImpl<IsCallable<typename std::decay<T>::type>::value, typename std::decay<T>::type>::type CPP2JS(T&& x) {
+  return CPP2JSImpl<IsCallable<typename std::decay<T>::type>::value, typename std::decay<T>::type>::DoIt(
+      std::forward<T>(x));
 }
 
 template <>

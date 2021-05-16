@@ -46,8 +46,8 @@ struct LambdaSignatureExtractorImpl<R (T::*)(ARGS...) const> {
 
 template <typename F>
 Napi::Function CPPFunction2JS(F&& f) {
-  return CPPFunction2JSArgsPacker<typename LambdaSignatureExtractor<std::decay_t<F>>::std_function_t>::DoIt(
-      std::forward<F>(f));
+  return CPPFunction2JSArgsPacker<
+      typename LambdaSignatureExtractor<typename std::decay<F>::type>::std_function_t>::DoIt(std::forward<F>(f));
 }
 
 template <typename F>
@@ -98,13 +98,13 @@ class CopyableHelper final {
   CopyableHelper& operator=(CopyableHelper&&) = default;
 
   template <typename R = RETVAL>
-  std::enable_if_t<!std::is_same<R, void>::value, Napi::Value> operator()(const Napi::CallbackInfo& info) {
+  typename std::enable_if<!std::is_same<R, void>::value, Napi::Value>::type operator()(const Napi::CallbackInfo& info) {
     JSEnvScope scope(info.Env());
     return CPP2JS(shared_copyable_funciton->contents(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...));
   }
 
   template <typename R = RETVAL>
-  std::enable_if_t<std::is_same<R, void>::value, Napi::Value> operator()(const Napi::CallbackInfo& info) {
+  typename std::enable_if<std::is_same<R, void>::value, Napi::Value>::type operator()(const Napi::CallbackInfo& info) {
     JSEnvScope scope(info.Env());
     shared_copyable_funciton->contents(CallJS2CPPOnIndexedArg<ARG_WITH_INDEX>(info)...);
     return CPP2JS(Undefined());
@@ -115,7 +115,8 @@ template <typename T, typename... ARG_WITH_INDEX>
 struct CPPFunction2JSImpl<T, std::tuple<ARG_WITH_INDEX...>> {
   template <typename F>
   static Napi::Function DoIt(F&& f) {
-    return Napi::Function::New(JSEnv(), CopyableHelper<T, std::decay_t<F>, ARG_WITH_INDEX...>(std::forward<F>(f)));
+    return Napi::Function::New(JSEnv(),
+                               CopyableHelper<T, typename std::decay<F>::type, ARG_WITH_INDEX...>(std::forward<F>(f)));
   }
 };
 

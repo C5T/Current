@@ -23,12 +23,12 @@ class JSFunctionReferenceReturning final {
   JSFunctionReferenceReturning(Napi::Value f) : function_(Napi::Weak(f.As<Napi::Function>())) {}
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<std::is_same<U, void>::value, void> operator()(ARGS&&... args) const {
+  typename std::enable_if<std::is_same<U, void>::value, void>::type operator()(ARGS&&... args) const {
     function_.Call({CPP2JS(std::forward<ARGS>(args))...});
   }
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<!std::is_same<U, void>::value, T> operator()(ARGS&&... args) const {
+  typename std::enable_if<!std::is_same<U, void>::value, T>::type operator()(ARGS&&... args) const {
     return JSFunctionCallerImpl<T, true>::DoItForJSFunctionReferenceReturning(function_, std::forward<ARGS>(args)...);
   }
 };
@@ -51,12 +51,12 @@ class JSFunctionReturning final {
   explicit JSFunctionReturning(const Napi::Function& f) : impl_(std::make_shared<AsyncContextHolderImpl>(f)) {}
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<std::is_same<U, void>::value, void> operator()(ARGS&&... args) const {
+  typename std::enable_if<std::is_same<U, void>::value, void>::type operator()(ARGS&&... args) const {
     GetFunctionReference().MakeCallback(JSEnv().Global(), {CPP2JS(std::forward<ARGS>(args))...}, GetNapiAsyncContext());
   }
 
   template <typename... ARGS, class U = T>
-  typename std::enable_if_t<!std::is_same<U, void>::value, T> operator()(ARGS&&... args) const {
+  typename std::enable_if<!std::is_same<U, void>::value, T>::type operator()(ARGS&&... args) const {
     return JSFunctionCallerImpl<T, true>::DoItForJSFunctionReturning(
         GetFunctionReference(), GetNapiAsyncContext(), std::forward<ARGS>(args)...);
   }
