@@ -4,7 +4,7 @@
 
 set -u -e
 
-CPPFLAGS="-std=c++17 -g -Wall -W -fprofile-arcs -ftest-coverage -DCURRENT_COVERAGE_REPORT_MODE"
+CPPFLAGS="-std=c++14 -g -Wall -W -fprofile-arcs -ftest-coverage -DCURRENT_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
 # NOTE: TMP_DIR must be resolved from the current working directory.

@@ -180,7 +180,7 @@ class JITCompiledCPP final {
     }
     current::FileSystem::WriteStringToFile(current::strings::ConstCharPtr(std::forward<S>(source)),
                                            source_file_name_.c_str());
-    std::string cppflags = "-w -std=c++17 -fPIC -shared";
+    std::string cppflags = "-w -std=c++14 -fPIC -shared";
 #ifdef NDEBUG
     cppflags += " -O3";
 #endif
