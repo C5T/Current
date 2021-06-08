@@ -26,7 +26,7 @@ SOFTWARE.
 
 # NOTE(dkorolev): I have tested the `ReserveLocalPort` logic in the following way.
 # Step one: build.
-g++ -g -std=c++14 -W -Wall -Wno-strict-aliasing   -o ".current/test" "test.cc" -pthread -ldl
+g++ -g -std=c++17 -W -Wall -Wno-strict-aliasing   -o ".current/test" "test.cc" -pthread -ldl
 ulimit -c unlimited
 # Step two: run in two terminals in parallel.
 rm -f core ; while true ; do ./.current/test --gtest_throw_on_failure --gtest_catch_exceptions=0 || break ; done

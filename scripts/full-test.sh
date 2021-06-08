@@ -8,7 +8,7 @@
 
 set -u -e
 
-CPPFLAGS="-std=c++14 -g -Wall -W -fprofile-arcs -ftest-coverage -DCURRENT_COVERAGE_REPORT_MODE"
+CPPFLAGS="-std=c++17 -g -Wall -W -fprofile-arcs -ftest-coverage -DCURRENT_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread -ldl"
 if [ $(uname) = "Darwin" ] ; then
   CPPFLAGS+=" -stdlib=libc++ -x objective-c++ -fobjc-arc"

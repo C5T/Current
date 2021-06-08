@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#define CURRENT_FOR_CPP14
+// #define CURRENT_FOR_CPP14
 
 #ifdef CURRENT_WINDOWS
 // NOTE(dkorolev): Added in March 2021 while making sure Visual Studio compiles Current fine.

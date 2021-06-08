@@ -9,7 +9,7 @@ set -u -e
 
 EXTRA_INCLUDE_DIR="${1:-.}"
 
-CPPFLAGS="-std=c++14 -Wall -W -DCURRENT_MAKE_CHECK_MODE -fPIC"
+CPPFLAGS="-std=c++17 -Wall -W -DCURRENT_MAKE_CHECK_MODE -fPIC"
 LDFLAGS="-pthread"
 
 if [ $(uname) = "Darwin" ] ; then

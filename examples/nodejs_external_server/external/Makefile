@@ -10,4 +10,4 @@ indent:
 
 build/js_external.a: js_external.cc js_external.h
 	mkdir -p build
-	g++ -std=c++14 -o build/js_external.a -c $< -fPIC
+	g++ -std=c++17 -o build/js_external.a -c $< -fPIC

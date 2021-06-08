@@ -23,7 +23,7 @@ LOCAL_HEADERS_LIST=$(shell find . -maxdepth 1 -name '*.h' -exec echo '"{}"' ';' 
 
 CPLUSPLUS?=g++
 
-CPPFLAGS=-std=c++14 -W -Wall
+CPPFLAGS=-std=c++17 -W -Wall
 CPPFLAGS+= -Wno-strict-aliasing  # To suppress FnCAS tight struct packing warnings. -- D.K.
 
 # Disabled as it generates `-Wno-noexcept-type` on clang++. -- D.K.
