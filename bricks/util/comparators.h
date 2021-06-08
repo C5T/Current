@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_COMPARATOR_H
 #define BRICKS_UTIL_COMPARATOR_H
 
+#include "../../port.h"
+
 #include <chrono>
 #include <map>
 #include <unordered_map>

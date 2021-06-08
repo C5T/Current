@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_COMBINE_H
 #define BRICKS_TEMPLATE_COMBINE_H
 
+#include "../../port.h"
+
 #include <tuple>
 #include <type_traits>
 #include <utility>

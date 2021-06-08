@@ -29,6 +29,8 @@ SOFTWARE.
 #include "../../../../3rdparty/gtest/gtest-main.h"
 #include "../../../../bricks/strings/join.h"
 
+#ifndef CURRENT_FOR_CPP14  // NOTE(dkorolev): Excluding this part from the C++14 version of Current.
+
 namespace current::examples::streamed_sockets {
 struct SourceA {};
 struct SourceB {};
@@ -710,3 +712,5 @@ TEST(NextRipcurrent, ProcessingLogicSmokeTest) {
     EXPECT_EQ(308u, output[2]);
   }
 }
+
+#endif  // CURRENT_FOR_CPP14

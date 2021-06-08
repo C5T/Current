@@ -94,6 +94,9 @@ int main(int argc, char** argv) {
         std::cout << "```" << std::endl;
       }
     }
+#ifdef CURRENT_FOR_CPP14
+    using generate_output_result_t = void;
+#endif  // CURRENT_FOR_CPP14
   };
 
   current::utils::ot::OT(current::FileSystem::ReadFileAsString(FLAGS_input), Processor());

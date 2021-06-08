@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef CURRENT_BRICKS_UTIL_LOCK_H
 #define CURRENT_BRICKS_UTIL_LOCK_H
 
+#include "../../port.h"
+
 #include <mutex>
 #include <type_traits>
 

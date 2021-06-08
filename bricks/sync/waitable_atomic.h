@@ -42,6 +42,10 @@ SOFTWARE.
 
 #include "../time/chrono.h"
 
+#ifdef CURRENT_FOR_CPP14
+#include "../template/weed.h"
+#endif  // CURRENT_FOR_CPP14
+
 namespace current {
 
 class CustomWaitableAtomicDestructor {
@@ -209,6 +213,8 @@ class WaitableAtomicImpl {
       return true;
     }
 
+#ifndef CURRENT_FOR_CPP14
+
     template <typename F>
     std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f) const {
       auto scope = ImmutableScopedAccessor();
@@ -220,6 +226,22 @@ class WaitableAtomicImpl {
       auto scope = MutableScopedAccessor();
       return f(*scope);
     }
+
+#else
+
+    template <typename F>
+    weed::call_with_type<F, const data_t&> ImmutableUse(F&& f) const {
+      auto scope = ImmutableScopedAccessor();
+      return f(*scope);
+    }
+
+    template <typename F>
+    weed::call_with_type<F, data_t&> MutableUse(F&& f) {
+      auto scope = MutableScopedAccessor();
+      return f(*scope);
+    }
+
+#endif  // CURRENT_FOR_CPP14
 
     bool PotentiallyMutableUse(std::function<bool(data_t&)> f) {
       auto scope = MutableScopedAccessor();

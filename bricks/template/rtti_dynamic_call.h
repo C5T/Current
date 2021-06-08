@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_RTTI_DYNAMIC_CALL_H
 #define BRICKS_TEMPLATE_RTTI_DYNAMIC_CALL_H
 
+#include "../../port.h"
+
 #include <string>
 #include <tuple>
 #include <typeindex>

@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
   // The code to listen to the confirmations of own requests.
   std::thread t_listener([&timestamps, &progress]() {
     progress << "listening, to measure latency, on localhost:" << FLAGS_listen_port;
-    current::net::Socket socket(FLAGS_listen_port);
+    current::net::Socket socket((current::net::BarePort(FLAGS_listen_port)));
     progress << "accepting connections, to measure latency, on localhost:" << FLAGS_listen_port;
     current::net::Connection connection(socket.Accept());
     progress << "";

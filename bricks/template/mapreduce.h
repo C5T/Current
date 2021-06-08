@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_MAPREDUCE_H
 #define BRICKS_TEMPLATE_MAPREDUCE_H
 
+#include "../../port.h"
+
 #include <cstdlib>
 #include <tuple>
 

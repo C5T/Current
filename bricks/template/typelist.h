@@ -55,7 +55,10 @@ struct TypeListSizeExtractor<TypeListImpl<TS...>> {
 
 // `TypeListSize<TypeListImpl<TS...>>::value` is the number of types in `TS...`.
 template <typename T>
-inline constexpr size_t TypeListSize = TypeListSizeExtractor<T>::value;
+#ifndef CURRENT_FOR_CPP14
+inline
+#endif  // CURRENT_FOR_CPP14
+constexpr size_t TypeListSize = TypeListSizeExtractor<T>::value;
 
 static_assert(TypeListSize<TypeListImpl<>> == 0, "");
 static_assert(TypeListSize<TypeListImpl<int>> == 1, "");

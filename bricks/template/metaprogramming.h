@@ -27,6 +27,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
 #define BRICKS_TEMPLATE_METAPROGRAMMING_H
 
+#include "../../port.h"
+
 #include "combine.h"
 #include "decay.h"
 #include "mapreduce.h"

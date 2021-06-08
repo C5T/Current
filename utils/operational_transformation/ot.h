@@ -29,6 +29,10 @@ SOFTWARE.
 
 #include "../../typesystem/serialization/json.h"
 
+#ifdef CURRENT_FOR_CPP14
+#include "../../bricks/template/weed.h"
+#endif  // CURRENT_FOR_CPP14
+
 #include <deque>
 #include <codecvt>
 
@@ -44,9 +48,14 @@ static std::string AsUTF8String(const std::deque<wchar_t>& rope) {
   return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(std::wstring(rope.begin(), rope.end()));
 }
 
+#ifndef CURRENT_FOR_CPP14
 template <typename PROCESSOR>
 std::invoke_result_t<decltype(&PROCESSOR::GenerateOutput), PROCESSOR*, const std::deque<wchar_t>&, bool> OT(
     const std::string& json, PROCESSOR&& processor) {
+#else
+template <typename PROCESSOR>
+typename PROCESSOR::generate_output_result_t OT(const std::string& json, PROCESSOR&& processor) {
+#endif  // CURRENT_FOR_CPP14
   rapidjson::Document document;
   if (document.Parse<0>(&json[0]).HasParseError()) {
     CURRENT_THROW(OTParseException("Not a valid JSON."));
@@ -118,6 +127,9 @@ inline std::string OT(const std::string& json) {
       static_cast<void>(early_termination);
       return AsUTF8String(rope);
     }
+#ifdef CURRENT_FOR_CPP14
+    using generate_output_result_t = std::string;
+#endif  // CURRENT_FOR_CPP14
   };
   return OT(json, PassthroughProcessor());
 }

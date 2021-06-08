@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_WEED_H
 #define BRICKS_TEMPLATE_WEED_H
 
+#include "../../port.h"
+
 // `weed::call_with<T, XS...>::implemented` => true or false depending on whether
 // and instance of `T` can be invoked (`operator()`) with `XS...` as parameters.
 

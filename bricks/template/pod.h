@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_POD_H
 #define BRICKS_TEMPLATE_POD_H
 
+#include "../../port.h"
+
 #include <string>
 #include <type_traits>
 
