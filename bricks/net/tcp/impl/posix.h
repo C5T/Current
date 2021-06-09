@@ -82,9 +82,10 @@ namespace current {
 namespace net {
 
 enum class NagleAlgorithm : bool { Disable, Keep };
-
-const size_t kMaxServerQueuedConnections = 1024;
 const NagleAlgorithm kDefaultNagleAlgorithmPolicy = NagleAlgorithm::Keep;
+
+enum class MaxServerQueuedConnectionsValue : int {};
+const MaxServerQueuedConnectionsValue kMaxServerQueuedConnections = MaxServerQueuedConnectionsValue(1024);
 
 struct SocketSystemInitializer {
 #ifdef CURRENT_WINDOWS
@@ -161,7 +162,7 @@ class SocketHandle : private SocketSystemInitializer {
   explicit SocketHandle(BindAndListen,
                         BarePort bare_port,
                         NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
-                        int max_connections = kMaxServerQueuedConnections)
+                        MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections)
       : SocketHandle(InternalInit(), nagle_algorithm_policy) {
     sockaddr_in addr_server;
     memset(&addr_server, 0, sizeof(addr_server));
@@ -178,7 +179,7 @@ class SocketHandle : private SocketSystemInitializer {
 
     CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
 
-    if (::listen(socket, max_connections)) {
+    if (::listen(socket, static_cast<int>(max_connections))) {
       CURRENT_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
@@ -322,7 +323,7 @@ class ReserveLocalPortImpl final {
     index_ = 0u;
   }
 
-  current::net::ReservedLocalPort DoIt(NagleAlgorithm nagle_algorithm_policy, int max_connections) {
+  current::net::ReservedLocalPort DoIt(NagleAlgorithm nagle_algorithm_policy, MaxServerQueuedConnectionsValue max_connections) {
      size_t save_index = index_;
      do {
        if (!index_) {
@@ -362,7 +363,7 @@ class ReserveLocalPortImpl final {
 // Pick an available local port.
 [[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
     NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
-    int max_connections = kMaxServerQueuedConnections) {
+    MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
   return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(nagle_algorithm_policy, max_connections);
 }
 
@@ -555,7 +556,7 @@ class Socket final : public SocketHandle {
  public:
   explicit Socket(BarePort bare_port,
                   NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
-                  int max_connections = kMaxServerQueuedConnections)
+                  MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections)
       : SocketHandle(SocketHandle::BindAndListen(), bare_port, nagle_algorithm_policy, max_connections) {
   }
 
