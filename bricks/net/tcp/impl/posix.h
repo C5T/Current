@@ -82,9 +82,10 @@ namespace current {
 namespace net {
 
 enum class NagleAlgorithm : bool { Disable, Keep };
-
-const size_t kMaxServerQueuedConnections = 1024;
 const NagleAlgorithm kDefaultNagleAlgorithmPolicy = NagleAlgorithm::Keep;
+
+enum class MaxServerQueuedConnectionsValue : int {};
+const MaxServerQueuedConnectionsValue kMaxServerQueuedConnections = MaxServerQueuedConnectionsValue(1024);
 
 struct SocketSystemInitializer {
 #ifdef CURRENT_WINDOWS
@@ -161,7 +162,7 @@ class SocketHandle : private SocketSystemInitializer {
   explicit SocketHandle(BindAndListen,
                         BarePort bare_port,
                         NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
-                        int max_connections = kMaxServerQueuedConnections)
+                        MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections)
       : SocketHandle(InternalInit(), nagle_algorithm_policy) {
     sockaddr_in addr_server;
     memset(&addr_server, 0, sizeof(addr_server));
@@ -178,7 +179,7 @@ class SocketHandle : private SocketSystemInitializer {
 
     CURRENT_BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
 
-    if (::listen(socket, max_connections)) {
+    if (::listen(socket, static_cast<int>(max_connections))) {
       CURRENT_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
@@ -322,39 +323,55 @@ class ReserveLocalPortImpl final {
     index_ = 0u;
   }
 
-  current::net::ReservedLocalPort DoIt(NagleAlgorithm nagle_algorithm_policy, int max_connections) {
-     size_t save_index = index_;
-     do {
-       if (!index_) {
-         std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
-       }
-       const uint16_t candidate_port = order_[index_++];
-       if (index_ == order_.size()) {
-         index_ = 0u;
-       }
-       try {
-         current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
-                                                     BarePort(candidate_port),
-                                                     nagle_algorithm_policy,
-                                                     max_connections);
-         return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
-                                           candidate_port,
-                                           std::move(try_to_hold_port));
-       } catch (const current::net::SocketConnectException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `connect`." << candidate_port << '\n';
-       } catch (const current::net::SocketBindException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `bind`." << candidate_port << '\n';
-       } catch (const current::net::SocketListenException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `listen`." << candidate_port << '\n';
-       }
-       // Consciously fail on other exception types here.
-     } while (index_ != save_index);
-     std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
-     std::exit(-1);
-   }
+  current::net::ReservedLocalPort DoIt(
+      uint16_t hint,
+      NagleAlgorithm nagle_algorithm_policy,
+      MaxServerQueuedConnectionsValue max_connections) {
+    size_t save_index = index_;
+    bool keep_searching = true;
+    while (keep_searching) {
+      if (!index_) {
+        std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
+      }
+      const uint16_t candidate_port = [&]() {
+        uint16_t retval;
+        if (hint) {
+          retval = hint;
+          hint = 0u;
+        } else {
+          retval = order_[index_++];
+          if (index_ == order_.size()) {
+            index_ = 0u;
+          }
+          if (index_ == save_index) {
+            keep_searching = false;
+          }
+        }
+        return retval;
+      }();
+      try {
+        current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
+                                                    BarePort(candidate_port),
+                                                    nagle_algorithm_policy,
+                                                    max_connections);
+        return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
+                                          candidate_port,
+                                          std::move(try_to_hold_port));
+      } catch (const current::net::SocketConnectException&) {
+        // Keep trying.
+        // std::cerr << "Failed in `connect`." << candidate_port << '\n';
+      } catch (const current::net::SocketBindException&) {
+        // Keep trying.
+        // std::cerr << "Failed in `bind`." << candidate_port << '\n';
+      } catch (const current::net::SocketListenException&) {
+        // Keep trying.
+        // std::cerr << "Failed in `listen`." << candidate_port << '\n';
+      }
+      // Consciously fail on other exception types here.
+    }
+    std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
+    std::exit(-1);
+  }
 };
 
 }  // namespace current::net::impl
@@ -362,8 +379,15 @@ class ReserveLocalPortImpl final {
 // Pick an available local port.
 [[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
     NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
-    int max_connections = kMaxServerQueuedConnections) {
-  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(nagle_algorithm_policy, max_connections);
+    MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
+  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(0, nagle_algorithm_policy, max_connections);
+}
+
+[[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
+    uint16_t hint,
+    NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+    MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
+  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(hint, nagle_algorithm_policy, max_connections);
 }
 
 class Connection : public SocketHandle {
@@ -555,7 +579,7 @@ class Socket final : public SocketHandle {
  public:
   explicit Socket(BarePort bare_port,
                   NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
-                  int max_connections = kMaxServerQueuedConnections)
+                  MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections)
       : SocketHandle(SocketHandle::BindAndListen(), bare_port, nagle_algorithm_policy, max_connections) {
   }
 

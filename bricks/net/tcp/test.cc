@@ -58,6 +58,8 @@ using current::net::SocketResolveAddressException;
 
 using current::net::ReserveLocalPort;
 
+DEFINE_uint16(port_hint, 27061, "The port to attempt to use.");
+
 static void ExpectFromSocket(const std::string& golden,
                              std::thread& server_thread,
                              const string& host,
@@ -342,4 +344,30 @@ TEST(TCPTest, PickLocalPort) {
     const auto p4 = ReserveLocalPort();
     EXPECT_NE(static_cast<uint16_t>(p3), static_cast<uint16_t>(p4));
   }
+}
+
+#if 0
+# NOTE(dkorolev): This test will fail if the following command is run from two terminals concurrently.
+while true ; do ./.current/test \
+  --gtest_filter=TCPTest.PickLocalPortWithHint \
+  --gtest_throw_on_failure \
+  --gtest_catch_exceptions=0 || break ; done
+# The above test, `TCPTest.PickLocalPort`, would run just fine in such a scenario.
+#endif
+
+TEST(TCPTest, PickLocalPortWithHint) {
+  uint16_t i1;
+  uint16_t i2;
+  const auto p1 = ReserveLocalPort(FLAGS_port_hint);
+  i1 = p1;
+  EXPECT_EQ(i1, FLAGS_port_hint) << "NOTE(dkorolev): This can fail if run in a multithreaded fashion.";
+  const auto p2 = ReserveLocalPort(FLAGS_port_hint);
+  i2 = p2;
+  EXPECT_NE(i2, FLAGS_port_hint);
+  EXPECT_NE(i1, i2);
+  const auto p3 = ReserveLocalPort();
+  const auto p4 = ReserveLocalPort();
+  EXPECT_NE(static_cast<uint16_t>(p3), static_cast<uint16_t>(p4));
+  EXPECT_NE(static_cast<uint16_t>(p3), i1);
+  EXPECT_NE(static_cast<uint16_t>(p3), i2);
 }
