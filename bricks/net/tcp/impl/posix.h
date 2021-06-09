@@ -390,13 +390,6 @@ class ReserveLocalPortImpl final {
   return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(hint, nagle_algorithm_policy, max_connections);
 }
 
-[[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
-    NagleAlgorithm nagle_algorithm_policy,
-    uint16_t hint,
-    MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
-  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(hint, nagle_algorithm_policy, max_connections);
-}
-
 class Connection : public SocketHandle {
  public:
   Connection(SocketHandle&& rhs, IPAndPort&& local_ip_and_port, IPAndPort&& remote_ip_and_port)
