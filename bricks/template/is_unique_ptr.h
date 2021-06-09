@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_IS_UNIQUE_PTR_H
 #define BRICKS_TEMPLATE_IS_UNIQUE_PTR_H
 
+#include "../../port.h"
+
 #include <memory>
 
 #include "decay.h"

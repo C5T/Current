@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_IS_TUPLE_H
 #define BRICKS_TEMPLATE_IS_TUPLE_H
 
+#include "../../port.h"
+
 #include <string>
 #include <tuple>
 #include <type_traits>

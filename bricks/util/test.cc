@@ -469,9 +469,9 @@ TEST(Util, LazyInstantiation) {
   const auto a_2 = DelayedInstantiate<Foo>(v);             // By value.
   const auto a_3 = DelayedInstantiate<Foo>(std::cref(v));  // By reference.
 
-  static_assert(std::is_same_v<typename decltype(a_1)::lazily_instantiated_t, Foo>);
-  static_assert(std::is_same_v<typename decltype(a_2)::lazily_instantiated_t, Foo>);
-  static_assert(std::is_same_v<typename decltype(a_3)::lazily_instantiated_t, Foo>);
+  static_assert(std::is_same_v<typename decltype(a_1)::lazily_instantiated_t, Foo>, "");
+  static_assert(std::is_same_v<typename decltype(a_2)::lazily_instantiated_t, Foo>, "");
+  static_assert(std::is_same_v<typename decltype(a_3)::lazily_instantiated_t, Foo>, "");
 
   const auto b_1 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(1));
   const auto b_2 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(v));             // By value.
@@ -505,7 +505,7 @@ TEST(Util, LazyInstantiation) {
 
   int q = 0;
   const auto bar_1_q = DelayedInstantiate<Bar>(1, std::ref(q));
-  static_assert(std::is_same_v<typename decltype(bar_1_q)::lazily_instantiated_t, Bar>);
+  static_assert(std::is_same_v<typename decltype(bar_1_q)::lazily_instantiated_t, Bar>, "");
 
   q = 2;
   EXPECT_EQ("1:2", bar_1_q.InstantiateAsSharedPtr()->AsString());
@@ -513,7 +513,7 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("1:3", bar_1_q.InstantiateAsSharedPtr()->AsString());
 
   const auto bar_x_q = DelayedInstantiateWithExtraParameter<Bar, int>(std::cref(q));
-  static_assert(std::is_same_v<typename decltype(bar_x_q)::lazily_instantiated_t, Bar>);
+  static_assert(std::is_same_v<typename decltype(bar_x_q)::lazily_instantiated_t, Bar>, "");
 
   q = 4;
   EXPECT_EQ("100:4", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
@@ -527,7 +527,7 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("400:5", bar_x_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
 
   const auto bar_y_q = DelayedInstantiateWithExtraParameterFromTuple<Bar, int>(std::make_tuple(std::cref(q)));
-  static_assert(std::is_same_v<typename decltype(bar_y_q)::lazily_instantiated_t, Bar>);
+  static_assert(std::is_same_v<typename decltype(bar_y_q)::lazily_instantiated_t, Bar>, "");
 
   q = 6;
   EXPECT_EQ("100:6", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());

@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// #define CURRENT_FOR_CPP14
+
 #ifdef CURRENT_WINDOWS
 // NOTE(dkorolev): Added in March 2021 while making sure Visual Studio compiles Current fine.
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
@@ -49,14 +51,42 @@ SOFTWARE.
 #endif  // !_CRT_SECURE_NO_WARNINGS
 #endif
 
-// TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
-// I have not enconutered those yet. Uncomment once we confirm them. -- D.K.
-// #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
-
 #include <limits>  // For data type implementation details.
 #include <string>  // For architecture names.
 #include <memory>  // For `std::unique_ptr`.
 #include <type_traits> // For `std::is_same_v`
+
+#ifdef CURRENT_FOR_CPP14
+namespace current_injected_cpp17 {
+
+template <class T, class U>
+constexpr bool is_same_v = ::std::is_same<T, U>::value;
+
+template <class B, class D>
+constexpr bool is_base_of_v = ::std::is_base_of<B, D>::value;
+
+template <class T>
+constexpr bool is_enum_v = ::std::is_enum<T>::value;
+
+template <class T>
+constexpr bool is_arithmetic_v = ::std::is_arithmetic<T>::value;
+
+template <class T, class... TS>
+constexpr bool is_constructible_v = ::std::is_constructible<T, TS...>::value;
+
+template<typename... TS> struct make_void { typedef void type;};
+template<typename... TS> using void_t = typename make_void<TS...>::type;
+
+}  // namespace current_injected_cpp17
+
+namespace std {
+using namespace current_injected_cpp17;
+}
+#endif  // CURRENT_FOR_CPP14
+
+// TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
+// I have not enconutered those yet. Uncomment once we confirm them. -- D.K.
+// #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
 
 #ifdef CURRENT_PORT_COUNT
 #error "`CURRENT_PORT_COUNT` should not be defined for port.h"

@@ -91,33 +91,45 @@ using BlockSource = BlockSourceOrWorker<SourceOrWorker::Source, T>;
 template <class T>
 using BlockWorker = BlockSourceOrWorker<SourceOrWorker::Worker, T>;
 
+#ifdef INLINE_UNLESS_CPP14
+#error "Must not `#define INLINE_UNLESS_CPP14` by this point."
+#endif
+
+#ifndef CURRENT_FOR_CPP14
+#define INLINE_UNLESS_CPP14 inline
+#else
+#define INLINE_UNLESS_CPP14
+#endif
+
 template <class T>
 struct IsBlockSource final {
-  inline constexpr static bool value = false;
+  INLINE_UNLESS_CPP14 constexpr static bool value = false;
 };
 
 template <class T>
 struct IsBlockWorker final {
-  inline constexpr static bool value = false;
+  INLINE_UNLESS_CPP14 constexpr static bool value = false;
 };
 
 template <class T>
 struct IsBlockSource<BlockSource<T>> final {
-  inline constexpr static bool value = true;
+  INLINE_UNLESS_CPP14 constexpr static bool value = true;
   using source_impl_t = T;
 };
 
 template <class T>
 struct IsBlockWorker<BlockWorker<T>> final {
-  inline constexpr static bool value = true;
+  INLINE_UNLESS_CPP14 constexpr static bool value = true;
   using worker_impl_t = T;
 };
 
 template <class T>
-inline constexpr bool is_block_source_v = IsBlockSource<T>::value;
+INLINE_UNLESS_CPP14 constexpr bool is_block_source_v = IsBlockSource<T>::value;
 
 template <class T>
-inline constexpr bool is_block_worker_v = IsBlockWorker<T>::value;
+INLINE_UNLESS_CPP14 constexpr bool is_block_worker_v = IsBlockWorker<T>::value;
+
+#undef INLINE_UNLESS_CPP14
 
 template <class T>
 using extract_source_impl_t = typename IsBlockSource<T>::source_impl_t;
@@ -757,7 +769,12 @@ struct PipelineRunContext<PipelineImpl<SOURCE, TypeListImpl<WORKERS...>>, BLOB> 
 
   using state_t = PipelineState<self_t>;
 
+#ifndef CURRENT_FOR_CPP14
   constexpr static size_t N = static_cast<size_t>(state_t::N);
+#else
+  enum { N = static_cast<size_t>(state_t::N) };
+#endif
+
   static_assert(N == sizeof...(WORKERS) + 1);
   static_assert(N == TypeListSize<TypeListImpl<block_worker_from_pipeline_worker_t<WORKERS>...>> + 1);
 

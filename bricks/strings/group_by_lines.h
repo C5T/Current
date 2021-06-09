@@ -29,6 +29,10 @@ SOFTWARE.
 #include "../exception.h"
 #include "../util/singleton.h"
 
+#ifdef CURRENT_FOR_CPP14
+#include "../template/weed.h"
+#endif  // CURRENT_FOR_CPP14
+
 #include <deque>
 #include <functional>
 #include <string>
@@ -139,7 +143,11 @@ class GenericStatefulGroupByLines final {
   }
 
   ~GenericStatefulGroupByLines() {
+#ifndef CURRENT_FOR_CPP14
     if constexpr (E == GroupByLinesExceptions::Prohibit) {
+#else
+    if (E == GroupByLinesExceptions::Prohibit) {
+#endif  // CURRENT_FOR_CPP14
       // Upon destruction, process the the last incomplete line, if necessary.
       DoDone();
     } else {
@@ -192,6 +200,7 @@ struct CreateStatefulGroupByLinesImpl<F, E, false, B> final {
   }
 };
 
+#ifndef CURRENT_FOR_CPP14
 template <class F>
 auto CreateStatefulGroupByLines(F&& f) {
   return CreateStatefulGroupByLinesImpl<
@@ -209,6 +218,25 @@ auto CreateExceptionFriendlyStatefulGroupByLines(F&& f) {
             std::is_invocable<F, std::string&&>::value,
             std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
 }
+#else
+template <class F>
+auto CreateStatefulGroupByLines(F&& f) {
+  return CreateStatefulGroupByLinesImpl<
+            F,
+            GroupByLinesExceptions::Prohibit,
+            current::weed::call_with<F, std::string&&>::implemented,
+            current::weed::call_with<F, const char*>::implemented>::DoIt(std::forward<F>(f));
+}
+
+template <class F>
+auto CreateExceptionFriendlyStatefulGroupByLines(F&& f) {
+  return CreateStatefulGroupByLinesImpl<
+            F,
+            GroupByLinesExceptions::Allow,
+            current::weed::call_with<F, std::string&&>::implemented,
+            current::weed::call_with<F, const char*>::implemented>::DoIt(std::forward<F>(f));
+}
+#endif  // CURRENT_FOR_CPP14
 
 }  // namespace strings
 }  // namespace current

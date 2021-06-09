@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
       size_t total_bytes_received = 0ull;
       std::deque<std::pair<std::chrono::microseconds, size_t>> history;  // { unix epoch time, total bytes received }.
 
-      Socket socket(FLAGS_port);
+      Socket socket((current::net::BarePort(FLAGS_port)));
       if (!FLAGS_silent) {
         progress << "listening on " << cyan << bold << "localhost:" << FLAGS_port;
       }

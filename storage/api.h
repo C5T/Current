@@ -403,7 +403,7 @@ class RESTfulStorage {
   using immutable_fields_t = ImmutableFields<STORAGE_IMPL>;
   using mutable_fields_t = MutableFields<STORAGE_IMPL>;
 
-  // TODO(dkorolev): `unique_ptr` and move semantics. Move to `-std=c++14` maybe? :-)
+  // TODO(dkorolev): `unique_ptr` and move semantics. Move to `-std=c++17` maybe? :-)
   // FIXME_DIMA <-- keep this marker for me to find it once we do move to C++14.
   using cqs_universal_parser_t = std::function<std::shared_ptr<CurrentStruct>(Request&)>;
   using cqs_query_handler_t = std::function<Response(

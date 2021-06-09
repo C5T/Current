@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_VARIADIC_INDEXES_H
 #define BRICKS_TEMPLATE_VARIADIC_INDEXES_H
 
+#include "../../port.h"
+
 namespace crnt {
 namespace vi {
 

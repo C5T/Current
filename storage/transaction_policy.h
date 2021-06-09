@@ -50,8 +50,13 @@ class Synchronous final {
 
   ~Synchronous() { destructing_ = true; }
 
+#ifndef CURRENT_FOR_CPP14
   template <typename F>
   using f_result_t = std::invoke_result_t<F>;
+#else
+  template <typename F>
+  using f_result_t = weed::call_with_type<F>;
+#endif  // CURRENT_FOR_CPP14
 
   // Read-write transaction returning non-void type.
   template <typename F, class = std::enable_if_t<!std::is_void<f_result_t<F>>::value>>

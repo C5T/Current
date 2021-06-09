@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_CALL_ALL_CONSTRUCTORS_H
 #define BRICKS_TEMPLATE_CALL_ALL_CONSTRUCTORS_H
 
+#include "../../port.h"
+
 #include "typelist.h"
 
 namespace current {

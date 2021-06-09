@@ -68,6 +68,9 @@ template <typename T>
 struct is_container<T, std::void_t<decltype(std::declval<T>().begin()),
                                    decltype(std::declval<T>().end()),
                                    typename T::value_type>> : std::true_type {};
+
+#ifndef CURRENT_FOR_CPP14
+
 template <typename T>
 constexpr bool is_container_of_strings() {
   if constexpr (is_container<T>::value) {
@@ -79,10 +82,28 @@ constexpr bool is_container_of_strings() {
 template <typename T>
 constexpr bool is_container_of_strings_v = is_container_of_strings<T>();
 
+#else
+
+template <bool, typename>
+struct is_container_of_strings_impl final {
+  constexpr static bool value = false;
+};
+
+template <typename T>
+struct is_container_of_strings_impl<true, T> final {
+  constexpr static bool value = std::is_same_v<typename T::value_type, std::string>;
+};
+
+template <typename T>
+constexpr bool is_container_of_strings_v = is_container_of_strings_impl<is_container<T>::value, T>::value;
+
+#endif  // CURRENT_FOR_CPP14
+
 }  // namespace sfinae
 
 template <typename CONTAINER, typename SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
+#ifndef CURRENT_FOR_CPP14
   // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
   if constexpr(sfinae::is_container_of_strings_v<CONTAINER>) {
     if (!components.empty()) {
@@ -94,6 +115,11 @@ void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& compone
       output.reserve(length);
     }
   }
+#else
+  static_cast<void>(output);
+  static_cast<void>(components);
+  static_cast<void>(separator);
+#endif  // CURRENT_FOR_CPP14
 }
 
 template <typename CONTAINER, typename SEPARATOR>

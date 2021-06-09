@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_BRICKS_TEMPLATE_CALL_IF_H
 #define CURRENT_BRICKS_TEMPLATE_CALL_IF_H
 
+#include "../../port.h"
+
 namespace current {
 namespace metaprogramming {
 

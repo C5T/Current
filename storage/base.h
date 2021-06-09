@@ -40,6 +40,10 @@ SOFTWARE.
 #include "../bricks/template/typelist.h"
 #include "../bricks/template/variadic_indexes.h"
 
+#ifdef CURRENT_FOR_CPP14
+#include "../bricks/template/weed.h"
+#endif  // CURRENT_FOR_CPP14
+
 namespace current {
 namespace storage {
 
@@ -155,6 +159,7 @@ struct TypeListMapperImpl;
 
 template <typename FIELDS, int... NS>
 struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
+#ifndef CURRENT_FOR_CPP14
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
   using result = TypeList<typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
                           typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...,
@@ -163,6 +168,16 @@ struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
   using result = TypeList<typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
                           typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...>;
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT
+#else  // CURRENT_FOR_CPP14
+#ifdef CURRENT_STORAGE_PATCH_SUPPORT
+  using result = TypeList<typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
+                          typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...,
+                          typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::patch_event_t...>;
+#else
+  using result = TypeList<typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
+                          typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...>;
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+#endif  // CURRENT_FOR_CPP14
 };
 
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
