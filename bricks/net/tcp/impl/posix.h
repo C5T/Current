@@ -327,52 +327,51 @@ class ReserveLocalPortImpl final {
       uint16_t hint,
       NagleAlgorithm nagle_algorithm_policy,
       MaxServerQueuedConnectionsValue max_connections) {
-     // NOTE(dkorolev): Whoa, this is indented an extra space, to be fixed in a separate commit.
-     size_t save_index = index_;
-     bool keep_searching = true;
-     while (keep_searching) {
-       if (!index_) {
-         std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
-       }
-       const uint16_t candidate_port = [&]() {
-         uint16_t retval;
-         if (hint) {
-           retval = hint;
-           hint = 0u;
-         } else {
-           retval = order_[index_++];
-           if (index_ == order_.size()) {
-             index_ = 0u;
-           }
-           if (index_ == save_index) {
-             keep_searching = false;
-           }
-         }
-         return retval;
-       }();
-       try {
-         current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
-                                                     BarePort(candidate_port),
-                                                     nagle_algorithm_policy,
-                                                     max_connections);
-         return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
-                                           candidate_port,
-                                           std::move(try_to_hold_port));
-       } catch (const current::net::SocketConnectException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `connect`." << candidate_port << '\n';
-       } catch (const current::net::SocketBindException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `bind`." << candidate_port << '\n';
-       } catch (const current::net::SocketListenException&) {
-         // Keep trying.
-         // std::cerr << "Failed in `listen`." << candidate_port << '\n';
-       }
-       // Consciously fail on other exception types here.
-     }
-     std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
-     std::exit(-1);
-   }
+    size_t save_index = index_;
+    bool keep_searching = true;
+    while (keep_searching) {
+      if (!index_) {
+        std::shuffle(std::begin(order_), std::end(order_), current::random::mt19937_64_tls());
+      }
+      const uint16_t candidate_port = [&]() {
+        uint16_t retval;
+        if (hint) {
+          retval = hint;
+          hint = 0u;
+        } else {
+          retval = order_[index_++];
+          if (index_ == order_.size()) {
+            index_ = 0u;
+          }
+          if (index_ == save_index) {
+            keep_searching = false;
+          }
+        }
+        return retval;
+      }();
+      try {
+        current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
+                                                    BarePort(candidate_port),
+                                                    nagle_algorithm_policy,
+                                                    max_connections);
+        return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
+                                          candidate_port,
+                                          std::move(try_to_hold_port));
+      } catch (const current::net::SocketConnectException&) {
+        // Keep trying.
+        // std::cerr << "Failed in `connect`." << candidate_port << '\n';
+      } catch (const current::net::SocketBindException&) {
+        // Keep trying.
+        // std::cerr << "Failed in `bind`." << candidate_port << '\n';
+      } catch (const current::net::SocketListenException&) {
+        // Keep trying.
+        // std::cerr << "Failed in `listen`." << candidate_port << '\n';
+      }
+      // Consciously fail on other exception types here.
+    }
+    std::cerr << "FATAL ERROR: Failed to pick an available local port." << std::endl;
+    std::exit(-1);
+  }
 };
 
 }  // namespace current::net::impl
