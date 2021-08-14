@@ -1,4 +1,12 @@
 BasedOnStyle: Google
 ColumnLimit: 120
+
 BinPackParameters: false  # Allow either all parameters on one line or one parameter per line, no packing.
 BinPackArguments: false   # The same for function calls.
+
+AllowShortLambdasOnASingleLine: All
+MaxEmptyLinesToKeep: 1
+SpaceInEmptyParentheses: false
+PointerAlignment: Left
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+SpacesBeforeTrailingComments: 2

@@ -42,8 +42,8 @@ Welcome, contributors! Please [start here by signing the CLA](https://github.com
   - **macOS**: `brew install nasm`
 - `geninfo` from `lcov` for coverage report.
   - **macOS**: `brew install lcov`
-- `clang-format-3.6` for code formatting (`make indent`).
-  - **macOS**: Only `clang-format-3.8` is available via Homebrew: `brew install clang-format@3.8 && ln -s /usr/local/bin/clang-format-3.6 /usr/local/opt/clang-format@3.8/bin/clang-format` _(pretend we've got 3.6)_
+- `clang-format-10` for code formatting (`make indent`).
+  - TODO(dkorolev) On **macOS** no `clang-format-3.6` was availably, and the trick was to use `clang-format-3.8` and symlink it: `brew install clang-format@3.8 && ln -s /usr/local/bin/clang-format-3.6 /usr/local/opt/clang-format@3.8/bin/clang-format`, double-checking.
 
 ### Clean the output of the previous builds
 
