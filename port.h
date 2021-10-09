@@ -141,6 +141,8 @@ using namespace current_injected_cpp17;
 #define CURRENT_APPLE
 #elif defined(_WIN32)
 #define CURRENT_WINDOWS
+#elif defined(__EMSCRIPTEN__)
+#define CURRENT_EMSCRIPTEN
 #else
 #error "Could not detect architecture. Please define one of the `CURRENT_*` macros explicitly."
 #endif
@@ -170,6 +172,10 @@ using namespace current_injected_cpp17;
 #elif defined(CURRENT_WINDOWS)
 #define CURRENT_ARCH_UNAME std::string("Windows")
 #define CURRENT_ARCH_UNAME_AS_IDENTIFIER Windows
+#elif defined(CURRENT_EMSCRIPTEN)
+#define CURRENT_ARCH_UNAME std::string("Emscripten")
+#define CURRENT_ARCH_UNAME_AS_IDENTIFIER Emscripten
+#warning "Emscripten support is experimental in Current."
 #else
 #error "Unknown architecture."
 #endif
