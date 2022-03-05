@@ -3,6 +3,7 @@ ColumnLimit: 120
 
 BinPackParameters: false  # Allow either all parameters on one line or one parameter per line, no packing.
 BinPackArguments: false   # The same for function calls.
+SortIncludes: false       # Do not reorder header files and do not insert empty lines there.
 
 AllowShortLambdasOnASingleLine: All
 MaxEmptyLinesToKeep: 1
