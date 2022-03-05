@@ -240,8 +240,8 @@ class JITCompiledCPP final {
 };
 #endif  // CURRENT_WINDOWS
 
-}  // namespace current::bricks::system
-}  // namespace current::bricks
+}  // namespace system
+}  // namespace bricks
 }  // namespace current
 
 #endif  // BRICKS_SYSTEM_SYSCALLS_H

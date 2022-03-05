@@ -43,17 +43,17 @@ namespace semantics {
 namespace rest {
 struct RESTWithSingleKey {};
 struct RESTWithPairedKey {};
-}  // namespace current::storage::semantics::rest
+}  // namespace rest
 
 namespace primary_key {
 struct Key {};
 struct RowCol {};
-}  // namespace current::storage::semantics::primary_key
+}  // namespace primary_key
 
 namespace matrix_dimension_type {
 struct IterableRange {};
 struct SingleElement {};
-}  // namespace current::storage::semantics::matrix_dimension_type
+}  // namespace matrix_dimension_type
 
 struct Dictionary {
   using url_key_t = std::string;
@@ -94,7 +94,7 @@ struct PartialRowKey {
 struct PartialColKey {
   using completeness_family_t = MatrixHalfKey;
 };
-}  // namespace current::storage::semantics::key_completeness
+}  // namespace key_completeness
 
 // TODO(dkorolev): These actually belong to REST, not to storage/container semantics.
 namespace rest {
@@ -131,14 +131,14 @@ template <typename FIELD>
 using top_level_operation_for_field_t =
     typename TopLevelOperationSelector<typename FIELD::semantics_t::primary_key_t>::type;
 
-}  // namespace current::storage::semantics::rest::operation
-}  // namespace current::storage::semantics::rest
+}  // namespace operation
+}  // namespace rest
 
-}  // namespace current::storage::semantics
+}  // namespace semantics
 
 // TODO(dkorolev): `FieldTypeDependentImpl` as `FieldKeyTypeDependentImpl` from `api_types.h` to be moved here.
 
-}  // namespace current::storage
+}  // namespace storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_SEMANTICS_H

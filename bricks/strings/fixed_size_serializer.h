@@ -40,8 +40,9 @@ namespace strings {
 
 struct FixedSizeSerializerEnabler {};
 template <typename T>
-struct FixedSizeSerializer : std::enable_if_t<std::is_unsigned<T>::value && std::is_integral<T>::value && (sizeof(T) > 1),
-                                              FixedSizeSerializerEnabler> {
+struct FixedSizeSerializer
+    : std::enable_if_t<std::is_unsigned<T>::value && std::is_integral<T>::value && (sizeof(T) > 1),
+                       FixedSizeSerializerEnabler> {
   enum { size_in_bytes = std::numeric_limits<T>::digits10 + 1 };
   static std::string PackToString(T x) {
     std::ostringstream os;
@@ -67,7 +68,7 @@ inline const T& UnpackFromString(std::string const& s, T& x) {
   return x;
 }
 
-}  // namespace string
+}  // namespace strings
 }  // namespace current
 
 #endif  // BRICKS_STRINGS_FIXED_SIZE_SERIALIZER_H

@@ -90,12 +90,10 @@ class GenericStatefulGroupByLines final {
       PROCESSOR::DoProcess(std::move(extracted), f_);
     }
   }
-  
+
  public:
   explicit GenericStatefulGroupByLines(F&& f) : f_(std::move(f)) {}
-  void Feed(const std::string& s) {
-    Feed(s.c_str());
-  }
+  void Feed(const std::string& s) { Feed(s.c_str()); }
   void Feed(const char* s) {
     if (done_called_) {
       CURRENT_THROW(GroupByLinesFeedCaledAfterDone());
@@ -159,82 +157,71 @@ class GenericStatefulGroupByLines final {
   }
 };
 
-using StatefulGroupByLines =
-  GenericStatefulGroupByLines<std::function<void(std::string&&)>,
-                              GroupByLinesExceptions::Prohibit,
-                              GenericStatefulGroupByLinesProcessCPPString>;
-using StatefulGroupByLinesCStringProcessing =
-  GenericStatefulGroupByLines<std::function<void(const char*)>,
-                              GroupByLinesExceptions::Prohibit,
-                              GenericStatefulGroupByLinesProcessCString>;
+using StatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(std::string&&)>,
+                                                         GroupByLinesExceptions::Prohibit,
+                                                         GenericStatefulGroupByLinesProcessCPPString>;
+using StatefulGroupByLinesCStringProcessing = GenericStatefulGroupByLines<std::function<void(const char*)>,
+                                                                          GroupByLinesExceptions::Prohibit,
+                                                                          GenericStatefulGroupByLinesProcessCString>;
 
-using ExceptionFriendlyStatefulGroupByLines =
-  GenericStatefulGroupByLines<std::function<void(std::string&&)>,
-                              GroupByLinesExceptions::Allow,
-                              GenericStatefulGroupByLinesProcessCPPString>;
+using ExceptionFriendlyStatefulGroupByLines = GenericStatefulGroupByLines<std::function<void(std::string&&)>,
+                                                                          GroupByLinesExceptions::Allow,
+                                                                          GenericStatefulGroupByLinesProcessCPPString>;
 using ExceptionFriendlyStatefulGroupByLinesCStringProcessing =
-  GenericStatefulGroupByLines<std::function<void(const char*)>,
-                              GroupByLinesExceptions::Allow,
-                              GenericStatefulGroupByLinesProcessCString>;
+    GenericStatefulGroupByLines<std::function<void(const char*)>,
+                                GroupByLinesExceptions::Allow,
+                                GenericStatefulGroupByLinesProcessCString>;
 
 template <class F, GroupByLinesExceptions E, bool CPP_STRING, bool C_STRING>
 struct CreateStatefulGroupByLinesImpl;
 
 template <class F, GroupByLinesExceptions E>
 struct CreateStatefulGroupByLinesImpl<F, E, true, true> final {
-  using type_t = GenericStatefulGroupByLines<std::function<void(std::string&&)>,
-                                             E,
-                                             GenericStatefulGroupByLinesProcessCPPString>;
-  static type_t DoIt(F&& f) {
-    return type_t(std::forward<F>(f));
-  }
+  using type_t =
+      GenericStatefulGroupByLines<std::function<void(std::string&&)>, E, GenericStatefulGroupByLinesProcessCPPString>;
+  static type_t DoIt(F&& f) { return type_t(std::forward<F>(f)); }
 };
 
 template <class F, GroupByLinesExceptions E, bool B>
 struct CreateStatefulGroupByLinesImpl<F, E, false, B> final {
-  using type_t = GenericStatefulGroupByLines<std::function<void(const char*)>,
-                                             E,
-                                             GenericStatefulGroupByLinesProcessCString>;
-  static type_t DoIt(F&& f) {
-    return type_t(std::forward<F>(f));
-  }
+  using type_t =
+      GenericStatefulGroupByLines<std::function<void(const char*)>, E, GenericStatefulGroupByLinesProcessCString>;
+  static type_t DoIt(F&& f) { return type_t(std::forward<F>(f)); }
 };
 
 #ifndef CURRENT_FOR_CPP14
 template <class F>
 auto CreateStatefulGroupByLines(F&& f) {
-  return CreateStatefulGroupByLinesImpl<
-            F,
-            GroupByLinesExceptions::Prohibit,
-            std::is_invocable<F, std::string&&>::value,
-            std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
+  return CreateStatefulGroupByLinesImpl<F,
+                                        GroupByLinesExceptions::Prohibit,
+                                        std::is_invocable<F, std::string&&>::value,
+                                        std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
 }
 
 template <class F>
 auto CreateExceptionFriendlyStatefulGroupByLines(F&& f) {
-  return CreateStatefulGroupByLinesImpl<
-            F,
-            GroupByLinesExceptions::Allow,
-            std::is_invocable<F, std::string&&>::value,
-            std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
+  return CreateStatefulGroupByLinesImpl<F,
+                                        GroupByLinesExceptions::Allow,
+                                        std::is_invocable<F, std::string&&>::value,
+                                        std::is_invocable<F, const char*>::value>::DoIt(std::forward<F>(f));
 }
 #else
 template <class F>
 auto CreateStatefulGroupByLines(F&& f) {
   return CreateStatefulGroupByLinesImpl<
-            F,
-            GroupByLinesExceptions::Prohibit,
-            current::weed::call_with<F, std::string&&>::implemented,
-            current::weed::call_with<F, const char*>::implemented>::DoIt(std::forward<F>(f));
+      F,
+      GroupByLinesExceptions::Prohibit,
+      current::weed::call_with<F, std::string&&>::implemented,
+      current::weed::call_with<F, const char*>::implemented>::DoIt(std::forward<F>(f));
 }
 
 template <class F>
 auto CreateExceptionFriendlyStatefulGroupByLines(F&& f) {
   return CreateStatefulGroupByLinesImpl<
-            F,
-            GroupByLinesExceptions::Allow,
-            current::weed::call_with<F, std::string&&>::implemented,
-            current::weed::call_with<F, const char*>::implemented>::DoIt(std::forward<F>(f));
+      F,
+      GroupByLinesExceptions::Allow,
+      current::weed::call_with<F, std::string&&>::implemented,
+      current::weed::call_with<F, const char*>::implemented>::DoIt(std::forward<F>(f));
 }
 #endif  // CURRENT_FOR_CPP14
 

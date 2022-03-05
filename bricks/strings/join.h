@@ -65,9 +65,10 @@ template <typename T, typename = void>
 struct is_container : std::false_type {};
 
 template <typename T>
-struct is_container<T, std::void_t<decltype(std::declval<T>().begin()),
-                                   decltype(std::declval<T>().end()),
-                                   typename T::value_type>> : std::true_type {};
+struct is_container<
+    T,
+    std::void_t<decltype(std::declval<T>().begin()), decltype(std::declval<T>().end()), typename T::value_type>>
+    : std::true_type {};
 
 #ifndef CURRENT_FOR_CPP14
 
@@ -105,7 +106,7 @@ template <typename CONTAINER, typename SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
 #ifndef CURRENT_FOR_CPP14
   // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
-  if constexpr(sfinae::is_container_of_strings_v<CONTAINER>) {
+  if constexpr (sfinae::is_container_of_strings_v<CONTAINER>) {
     if (!components.empty()) {
       size_t length = 0;
       for (const auto& cit : components) {

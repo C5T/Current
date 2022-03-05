@@ -35,15 +35,16 @@ struct EpochClockGuaranteeingMonotonicity {
 
   inline std::chrono::microseconds Now() const {
     std::lock_guard<std::mutex> lock(mutex);
-    const uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                                std::chrono::system_clock::now().time_since_epoch()).count();
+    const uint64_t now_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     monotonic_now_us = std::max(monotonic_now_us + 1, now_us);
     return std::chrono::microseconds(monotonic_now_us);
   }
 };
 
 inline std::chrono::microseconds Now() { return current::Singleton<EpochClockGuaranteeingMonotonicity>().Now(); }
-}
+}  // namespace current_time_with_mutex
 
 template <typename QUERY>
 std::chrono::microseconds Run() {
@@ -64,16 +65,16 @@ std::chrono::microseconds Run() {
   };
 
   std::vector<std::unique_ptr<Thread>> threads(FLAGS_threads);
-  const auto start = 
-    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
+  const auto start =
+      std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
   for (auto& thread : threads) {
     thread = std::make_unique<Thread>(FLAGS_iterations);
   }
   for (auto& thread : threads) {
     thread->Join();
   }
-  const auto end = 
-    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
+  const auto end =
+      std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch());
   return (end - start) / FLAGS_threads;
 }
 

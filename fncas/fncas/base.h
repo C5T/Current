@@ -93,7 +93,7 @@ class JITImplementation;
 
 enum class OptimizationDirection { Minimize, Maximize };
 
-}  // namespace fncas::impl
+}  // namespace impl
 
 using impl::JIT;
 using impl::OptimizationDirection;

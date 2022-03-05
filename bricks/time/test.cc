@@ -95,14 +95,17 @@ TEST(Time, DateTimeFormatFunctions) {
   EXPECT_EQ(1461461461000000, current::IMFFixDateTimeStringToTimestamp("Sun, 24 Apr 2016 01:31:01 GMT").count());
   EXPECT_EQ(1461461461999999,
             current::IMFFixDateTimeStringToTimestamp("Sun, 24 Apr 2016 01:31:01 GMT",
-                                                     current::time::SecondsToMicrosecondsPadding::Upper).count());
+                                                     current::time::SecondsToMicrosecondsPadding::Upper)
+                .count());
   EXPECT_EQ(0, current::IMFFixDateTimeStringToTimestamp("Not valid string,").count());
-  EXPECT_EQ(0,
-            current::IMFFixDateTimeStringToTimestamp("Not valid string,",
-                                                     current::time::SecondsToMicrosecondsPadding::Upper).count());
+  EXPECT_EQ(
+      0,
+      current::IMFFixDateTimeStringToTimestamp("Not valid string,", current::time::SecondsToMicrosecondsPadding::Upper)
+          .count());
   EXPECT_EQ(1461461461000000, current::RFC850DateTimeStringToTimestamp("Sunday, 24-Apr-16 01:31:01 GMT").count());
   EXPECT_EQ(1461461461999999,
             current::RFC850DateTimeStringToTimestamp("Sunday, 24-Apr-16 01:31:01 GMT",
-                                                     current::time::SecondsToMicrosecondsPadding::Upper).count());
+                                                     current::time::SecondsToMicrosecondsPadding::Upper)
+                .count());
   EXPECT_EQ(0, current::RFC850DateTimeStringToTimestamp("Not valid string,").count());
 }

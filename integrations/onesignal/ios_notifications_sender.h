@@ -184,8 +184,8 @@ server {
   const std::string post_url_;
 };
 
-}  // namespace current::integrations::onesignal
-}  // namespace current::integrations
+}  // namespace onesignal
+}  // namespace integrations
 }  // namespace current
 
 #endif  // INTEGRATIONS_ONESIGNAL_IOS_NOTIFICATIONS_SENDER_H

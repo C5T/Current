@@ -43,9 +43,8 @@ class StreamStreamPersisterImpl final {
  public:
   using variant_t = MUTATIONS_VARIANT;
   using transaction_t = Transaction<variant_t>;
-  using stream_entry_t = std::conditional_t<std::is_same_v<STREAM_RECORD_TYPE, NoCustomPersisterParam>,
-                                            transaction_t,
-                                            STREAM_RECORD_TYPE>;
+  using stream_entry_t =
+      std::conditional_t<std::is_same_v<STREAM_RECORD_TYPE, NoCustomPersisterParam>, transaction_t, STREAM_RECORD_TYPE>;
   using stream_t = stream::Stream<stream_entry_t, UNDERLYING_PERSISTER>;
   using fields_update_function_t = std::function<void(const variant_t&)>;
 
@@ -140,10 +139,10 @@ class StreamStreamPersisterImpl final {
   }
 
   void ExposeRawLogViaHTTP(uint16_t port, const std::string& route) {
-    handlers_scope_ += HTTP(current::net::BarePort(port)).Register(
-        route,
-        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-        [this](Request r) { (*Borrowed<stream_t>(stream_))(std::move(r)); });
+    handlers_scope_ += HTTP(current::net::BarePort(port))
+                           .Register(route,
+                                     URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                     [this](Request r) { (*Borrowed<stream_t>(stream_))(std::move(r)); });
   }
 
   Borrowed<stream_t> BorrowStream() const { return stream_; }

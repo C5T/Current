@@ -34,8 +34,8 @@ namespace constants {
 constexpr static uint16_t kDefaultKarlPort = 7576;           // ASCII { 'K', 'L' }.
 constexpr static uint16_t kDefaultKarlFleetViewPort = 7577;  // ASCII { 'K', 'M' }.
 
-}  // namespace current::karl::constants
-}  // namespace current::karl
+}  // namespace constants
+}  // namespace karl
 }  // namespace current
 
 #endif  // KARL_CONSTANTS_H

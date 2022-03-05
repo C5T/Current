@@ -276,17 +276,17 @@ TEST(DFlags, PrintsHelpDeathTest) {
   char p2[] = "--help";
   char* pp[] = {p1, p2};
   char** argv = pp;
-  EXPECT_DEATH(ParseDFlags(&argc, &argv), DFLAGS_TEST_REGEX(
-               "3 flags registered.\n"
-               "\t--bar , bool\n"
-               "\t\tBar\\.\n"
-               "\t\tDefault value\\: True\n"
-               "\t--foo , std\\:\\:string\n"
-               "\t\tFoo\\.\n"
-               "\t\tDefault value: 'TRUE THIS'\n"
-               "\t--meh , int32_t\n"
-               "\t\tMeh\\.\n"
-               "\t\tDefault value: 42\n"));
+  EXPECT_DEATH(ParseDFlags(&argc, &argv),
+               DFLAGS_TEST_REGEX("3 flags registered.\n"
+                                 "\t--bar , bool\n"
+                                 "\t\tBar\\.\n"
+                                 "\t\tDefault value\\: True\n"
+                                 "\t--foo , std\\:\\:string\n"
+                                 "\t\tFoo\\.\n"
+                                 "\t\tDefault value: 'TRUE THIS'\n"
+                                 "\t--meh , int32_t\n"
+                                 "\t\tMeh\\.\n"
+                                 "\t\tDefault value: 42\n"));
 }
 
 TEST(DFlags, UndefinedFlagDeathTest) {
@@ -319,7 +319,8 @@ TEST(DFlags, TooManyDashesDeathTest) {
   char p2[] = "---whatever42";
   char* pp[] = {p1, p2};
   char** argv = pp;
-  EXPECT_DEATH(ParseDFlags(&argc, &argv), DFLAGS_TEST_REGEX("Parameter: '---whatever42' has too many dashes in front\\."));
+  EXPECT_DEATH(ParseDFlags(&argc, &argv),
+               DFLAGS_TEST_REGEX("Parameter: '---whatever42' has too many dashes in front\\."));
 }
 
 TEST(DFlags, NoValueDeathTest) {

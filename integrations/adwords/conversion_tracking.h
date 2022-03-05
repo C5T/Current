@@ -113,9 +113,9 @@ server {
   const std::string get_url_;
 };
 
-}  // namespace current::integrations::adwords::conversion_tracking
-}  // namespace current::integrations::adwords
-}  // namespace current::integrations
+}  // namespace conversion_tracking
+}  // namespace adwords
+}  // namespace integrations
 }  // namespace current
 
 #endif  // INTEGRATIONS_ADWORDS_CONVERSION_TRACKING_H

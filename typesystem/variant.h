@@ -114,7 +114,7 @@ struct RuntimeTypeListHelpers<TypeListImpl<TS...>> {
 };
 #endif  // VARIANT_CHECKS_AT_RUNTIME_INSTEAD_OF_COMPILE_TIME
 
-}  // namespace current::variant
+}  // namespace variant
 
 struct IHasUncheckedMoveFromUniquePtr : CurrentVariant {
   virtual void UncheckedMoveFromUniquePtr(std::unique_ptr<current::variant::object_base_t>) = 0;

@@ -43,8 +43,8 @@ struct OneSignalPushNotificationException : OneSignalException {
   using OneSignalException::OneSignalException;
 };
 
-}  // namespace current::integrations::onesignal
-}  // namespace current::integrations
+}  // namespace onesignal
+}  // namespace integrations
 }  // namespace current
 
 #endif  // INTEGRATIONS_ONESIGNAL_EXCEPTIONS_H

@@ -35,16 +35,15 @@ DEFINE_bool(regenerate_golden_inferred_schemas, false, "Set to 'true' to re-gene
 static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& dir, const std::string& ext) {
   std::vector<std::string> names;
   const std::string suffix = '.' + ext;
-  current::FileSystem::ScanDir(dir,
-                               [&](const current::FileSystem::ScanDirItemInfo& item_info) {
-                                 const std::string& filename = item_info.basename;
-                                 if (filename.length() >= suffix.length()) {
-                                   const std::string prefix = filename.substr(0, filename.length() - suffix.length());
-                                   if (prefix + suffix == filename) {
-                                     names.push_back(prefix);
-                                   }
-                                 }
-                               });
+  current::FileSystem::ScanDir(dir, [&](const current::FileSystem::ScanDirItemInfo& item_info) {
+    const std::string& filename = item_info.basename;
+    if (filename.length() >= suffix.length()) {
+      const std::string prefix = filename.substr(0, filename.length() - suffix.length());
+      if (prefix + suffix == filename) {
+        names.push_back(prefix);
+      }
+    }
+  });
   return names;
 }
 
@@ -59,7 +58,8 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
       EXPECT_EQ(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name),
                 (ParseJSON<current::utils::impl::Schema, JSONFormat::Minimalistic>(
                     current::FileSystem::ReadFileAsString(filename_prefix + ".raw"))))
-          << "Expected:\n" << current::utils::impl::SchemaFromOneJSONPerLineFile(file_name) << "\nActual:\n"
+          << "Expected:\n"
+          << current::utils::impl::SchemaFromOneJSONPerLineFile(file_name) << "\nActual:\n"
           << JSON<JSONFormat::Minimalistic>(current::utils::impl::SchemaFromOneJSONPerLineFile(file_name))
           << "\nWhile running test case `" << test << "`.";
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),
@@ -83,9 +83,9 @@ TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
 // RapidJSON usage snippets framed as unit tests. Let's keep them in this `test.cc`. -- D.K.
 TEST(RapidJSON, Smoke) {
   using rapidjson::Document;
+  using rapidjson::StringBuffer;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::StringBuffer;
 
   std::string json;
 
@@ -123,9 +123,9 @@ TEST(RapidJSON, Smoke) {
 
 TEST(RapidJSON, Array) {
   using rapidjson::Document;
+  using rapidjson::StringBuffer;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::StringBuffer;
 
   std::string json;
 
@@ -153,9 +153,9 @@ TEST(RapidJSON, Array) {
 
 TEST(RapidJSON, NullInString) {
   using rapidjson::Document;
+  using rapidjson::StringBuffer;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::StringBuffer;
 
   std::string json;
 

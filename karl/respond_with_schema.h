@@ -42,7 +42,7 @@ void RespondWithSchema(Request r) {
   r(schema.GetSchemaInfo().Describe<L>());
 }
 
-}  // namespace current::karl
+}  // namespace karl
 }  // namespace current
 
 #endif  // KARL_RESPOND_WITH_SCHEMA_H

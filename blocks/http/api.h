@@ -78,8 +78,8 @@ inline typename current::weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... par
 
 using current::http::HTTP;
 using current::http::Request;
-using current::http::Response;
 using current::http::ReRegisterRoute;
+using current::http::Response;
 using HTTPRoutesScope = typename HTTP_IMPL::server_impl_t::HTTPRoutesScope;
 using HTTPRoutesScopeEntry = current::http::HTTPServerPOSIX::HTTPRoutesScopeEntry;
 

@@ -152,9 +152,8 @@ inline std::string Base64Encode(const std::string& input) {
 }
 
 inline strings::Chunk Base64EncodeInto(strings::Chunk input, std::string& placeholder) {
-  base64::Impl<base64::EncodingType::Canonical>::EncodeInto(reinterpret_cast<const uint8_t*>(input.c_str()),
-                                                            input.length(),
-                                                            placeholder);
+  base64::Impl<base64::EncodingType::Canonical>::EncodeInto(
+      reinterpret_cast<const uint8_t*>(input.c_str()), input.length(), placeholder);
   return placeholder;
 }
 

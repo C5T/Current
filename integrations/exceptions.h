@@ -34,7 +34,7 @@ struct IntegrationException : Exception {
   using Exception::Exception;
 };
 
-}  // namespace current::integrations
+}  // namespace integrations
 }  // namespace current
 
 #endif  // INTEGRATIONS_EXCEPTIONS_H

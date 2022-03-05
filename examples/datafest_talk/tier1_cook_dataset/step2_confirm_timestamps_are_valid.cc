@@ -9,12 +9,17 @@
 #include "../../../bricks/time/chrono.h"
 
 static std::unordered_map<std::string, int> dow_map{
-  {"Mon", 0}, {"Tue", 1}, {"Wed", 2}, {"Thu", 3}, {"Fri", 4}, {"Sat", 5}, {"Sun", 6},
+    {"Mon", 0},
+    {"Tue", 1},
+    {"Wed", 2},
+    {"Thu", 3},
+    {"Fri", 4},
+    {"Sat", 5},
+    {"Sun", 6},
 };
 
 static const char* const one_based_month_name[13] = {
-  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
+    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 inline void ValidateTimestamp(std::vector<current::strings::Chunk> const& pieces) {
   CURRENT_ASSERT(pieces.size() == 9);
@@ -43,15 +48,14 @@ inline void ValidateTimestamp(std::vector<current::strings::Chunk> const& pieces
 
   CURRENT_ASSERT(epoch_seconds > 0);
 
-  std::string imf_fix_date = 
-                   current::strings::Printf("%s, %2d %s %d %02d:%02d:%02d GMT",
-                                            dow_as_string.c_str(),
-                                            day,
-                                            one_based_month_name[month],
-                                            year,
-                                            hour,
-                                            minute,
-                                            second);
+  std::string imf_fix_date = current::strings::Printf("%s, %2d %s %d %02d:%02d:%02d GMT",
+                                                      dow_as_string.c_str(),
+                                                      day,
+                                                      one_based_month_name[month],
+                                                      year,
+                                                      hour,
+                                                      minute,
+                                                      second);
 
   int const imf_fix_timestamp = current::IMFFixDateTimeStringToTimestamp(imf_fix_date).count() / 1000000;
 

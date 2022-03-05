@@ -124,8 +124,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
-    auto rest = RESTfulStorage<storage_t>(
-        *storage, port, "/api_plain", "http://unittest.current.ai");
+    auto rest = RESTfulStorage<storage_t>(*storage, port, "/api_plain", "http://unittest.current.ai");
     const auto hypermedia_rest = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
         *storage, port, "/api_hypermedia", "http://unittest.current.ai");
 
@@ -277,15 +276,17 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       {
         EXPECT_EQ(200,
                   static_cast<int>(HTTP(PATCH(base_url + "/api_plain/data/like/max/beer",
-                                              SimpleLikeValidPatch(std::string("Cheers!")))).code));
+                                              SimpleLikeValidPatch(std::string("Cheers!"))))
+                                       .code));
         EXPECT_EQ(
             400,
             static_cast<int>(HTTP(PATCH(base_url + "/api_plain/data/like/max/beer", SimpleLikeInvalidPatch())).code));
       }
       {
-        EXPECT_EQ(200,
-                  static_cast<int>(HTTP(PATCH(base_url + "/api_hypermedia/data/like/dima/beer",
-                                              SimpleLikeValidPatch(nullptr))).code));
+        EXPECT_EQ(
+            200,
+            static_cast<int>(
+                HTTP(PATCH(base_url + "/api_hypermedia/data/like/dima/beer", SimpleLikeValidPatch(nullptr))).code));
         EXPECT_EQ(400,
                   static_cast<int>(
                       HTTP(PATCH(base_url + "/api_hypermedia/data/like/dima/beer", SimpleLikeInvalidPatch())).code));
@@ -413,254 +414,252 @@ TEST(TransactionalStorage, RESTfulAPIMatrixTest) {
   const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
   const auto rest1 = RESTfulStorage<storage_t>(*storage, port, "/plain", "");
-  const auto rest2 = RESTfulStorage<storage_t, current::storage::rest::Simple>(
-      *storage, port, "/simple", "");
-  const auto rest3 = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(
-      *storage, port, "/hypermedia", "");
+  const auto rest2 = RESTfulStorage<storage_t, current::storage::rest::Simple>(*storage, port, "/simple", "");
+  const auto rest3 = RESTfulStorage<storage_t, current::storage::rest::Hypermedia>(*storage, port, "/hypermedia", "");
 
   {
     // Create { "!1", "!2", "!3" } x { 1, 2, 3 }, excluding the main diagonal.
     // Try all three REST implementations, as well as both POST and PUT.
     EXPECT_EQ(201,
               static_cast<int>(HTTP(POST(base_url + "/plain/data/composite_m2m",
-                                         SimpleComposite("!1", std::chrono::microseconds(2)))).code));
+                                         SimpleComposite("!1", std::chrono::microseconds(2))))
+                                   .code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(POST(base_url + "/simple/data/composite_m2m",
-                                         SimpleComposite("!1", std::chrono::microseconds(3)))).code));
+                                         SimpleComposite("!1", std::chrono::microseconds(3))))
+                                   .code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(POST(base_url + "/hypermedia/data/composite_m2m",
-                                         SimpleComposite("!2", std::chrono::microseconds(1)))).code));
+                                         SimpleComposite("!2", std::chrono::microseconds(1))))
+                                   .code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(PUT(base_url + "/plain/data/composite_m2m/!2/3",
-                                        SimpleComposite("!2", std::chrono::microseconds(3)))).code));
+                                        SimpleComposite("!2", std::chrono::microseconds(3))))
+                                   .code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(PUT(base_url + "/simple/data/composite_m2m/!3/1",
-                                        SimpleComposite("!3", std::chrono::microseconds(1)))).code));
+                                        SimpleComposite("!3", std::chrono::microseconds(1))))
+                                   .code));
     EXPECT_EQ(201,
               static_cast<int>(HTTP(PUT(base_url + "/hypermedia/data/composite_m2m/!3/2",
-                                        SimpleComposite("!3", std::chrono::microseconds(2)))).code));
+                                        SimpleComposite("!3", std::chrono::microseconds(2))))
+                                   .code));
   }
 
-  {
-    // Browse the collection in various ways using the `Plain` API.
-    {
-      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      // The top-level container is still unordered, so meh.
-      std::vector<std::string> elements = current::strings::Split<current::strings::ByLines>(response.body);
-      std::sort(elements.begin(), elements.end());
-      EXPECT_EQ(
-          "!1\t2\t{\"row\":\"!1\",\"col\":2}\n"
-          "!1\t3\t{\"row\":\"!1\",\"col\":3}\n"
-          "!2\t1\t{\"row\":\"!2\",\"col\":1}\n"
-          "!2\t3\t{\"row\":\"!2\",\"col\":3}\n"
-          "!3\t1\t{\"row\":\"!3\",\"col\":1}\n"
-          "!3\t2\t{\"row\":\"!3\",\"col\":2}",
-          current::strings::Join(elements, '\n'));
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ("!1\t2\n!2\t2\n!3\t2\n", response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ("1\t2\n2\t2\n3\t2\n", response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row/!2"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ("{\"row\":\"!2\",\"col\":1}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col/3"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ("{\"row\":\"!1\",\"col\":3}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
-    }
-  }
+  {// Browse the collection in various ways using the `Plain` API.
+   {const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  // The top-level container is still unordered, so meh.
+  std::vector<std::string> elements = current::strings::Split<current::strings::ByLines>(response.body);
+  std::sort(elements.begin(), elements.end());
+  EXPECT_EQ(
+      "!1\t2\t{\"row\":\"!1\",\"col\":2}\n"
+      "!1\t3\t{\"row\":\"!1\",\"col\":3}\n"
+      "!2\t1\t{\"row\":\"!2\",\"col\":1}\n"
+      "!2\t3\t{\"row\":\"!2\",\"col\":3}\n"
+      "!3\t1\t{\"row\":\"!3\",\"col\":1}\n"
+      "!3\t2\t{\"row\":\"!3\",\"col\":2}",
+      current::strings::Join(elements, '\n'));
+}
+{
+  const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("!1\t2\n!2\t2\n!3\t2\n", response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("1\t2\n2\t2\n3\t2\n", response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.row/!2"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("{\"row\":\"!2\",\"col\":1}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/plain/data/composite_m2m.col/3"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("{\"row\":\"!1\",\"col\":3}\n{\"row\":\"!2\",\"col\":3}\n", response.body);
+}
+}
 
-  {
-    // Browse the collection in various ways using the `Simple` API.
-    {
-      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      using parsed_t = current::storage::rest::simple::SimpleRESTContainerResponse;
-      parsed_t parsed;
-      ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
-      // Don't test the body of `"/simple/data/composite_m2m"`, it's unordered and machine-dependent.
-      std::vector<std::string> strings;
-      for (const auto& resource : parsed.data) {
-        strings.push_back(JSON(resource));
-      }
-      std::sort(strings.begin(), strings.end());
-      EXPECT_EQ(
-          "\"/data/composite_m2m/!1/2\"\n"
-          "\"/data/composite_m2m/!1/3\"\n"
-          "\"/data/composite_m2m/!2/1\"\n"
-          "\"/data/composite_m2m/!2/3\"\n"
-          "\"/data/composite_m2m/!3/1\"\n"
-          "\"/data/composite_m2m/!3/2\"",
-          current::strings::Join(strings, '\n'));
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.row"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1\",\"data\":[\"/"
-          "data/composite_m2m.1/!1\",\"/data/composite_m2m.1/!2\",\"/data/composite_m2m.1/!3\"]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.col"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2\",\"data\":[\"/"
-          "data/composite_m2m.2/1\",\"/data/composite_m2m.2/2\",\"/data/composite_m2m.2/3\"]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.1/!2"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1/!2\",\"data\":[\"/data/"
-          "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.2/3"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2/3\",\"data\":[\"/data/"
-          "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
-          response.body);
-    }
-  }
-  {
-    // Browse the collection in various ways using the `Hypermedia` API.
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      using parsed_t =
-          hypermedia::HypermediaRESTCollectionResponse<hypermedia::HypermediaRESTFullCollectionRecord<SimpleComposite>>;
-      parsed_t parsed;
-      ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
-      std::vector<std::string> strings;
-      for (const auto& resource : parsed.data) {
-        strings.push_back(JSON(resource.data));
-      }
-      std::sort(strings.begin(), strings.end());
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.1?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m.1\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"url\":\"/data/composite_m2m.1/"
-          "!1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!1\",\"col\":3}]}},{"
-          "\"url\":\"/data/composite_m2m.1/"
-          "!2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!2\",\"col\":3}]}},{"
-          "\"url\":\"/data/composite_m2m.1/"
-          "!3\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!3\",\"col\":1},{\"row\":\"!3\",\"col\":2}]}}]}"
-          "\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.2?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m.2\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"url\":\"/data/composite_m2m.2/"
-          "1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!3\",\"col\":1}]}},{"
-          "\"url\":\"/data/composite_m2m.2/"
-          "2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!3\",\"col\":2}]}},{"
-          "\"url\":\"/data/composite_m2m.2/"
-          "3\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":3},{\"row\":\"!2\",\"col\":3}]}}]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"url\":\"/data/composite_m2m/!2/1\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"url\":\"/"
-          "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=0&n=10\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
-          "\"data\":[{\"url\":\"/data/composite_m2m/!1/3\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"url\":\"/"
-          "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
-          response.body);
-    }
-    // And some inner-level pagination tests.
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2?n=1"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=0&n=1\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":0,\"n\":1,\"total\":2,\"url_next_page\":\"/data/composite_m2m.1/"
-          "!2?i=1&n=1\",\"url_previous_page\":null,\"data\":[{\"url\":\"/data/composite_m2m/!2/"
-          "1\",\"data\":{\"row\":\"!2\",\"col\":1}}]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2?n=1&i=1"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=1&n=1\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":1,\"n\":1,\"total\":2,\"url_next_page\":null,\"url_previous_page\":\"/data/"
-          "composite_m2m.1/!2?i=0&n=1\",\"data\":[{\"url\":\"/data/composite_m2m/!2/"
-          "3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3?n=1"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=0&n=1\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":0,\"n\":1,\"total\":2,\"url_next_page\":\"/data/composite_m2m.2/"
-          "3?i=1&n=1\",\"url_previous_page\":null,\"data\":[{\"url\":\"/data/composite_m2m/!1/"
-          "3\",\"data\":{\"row\":\"!1\",\"col\":3}}]}\n",
-          response.body);
-    }
-    {
-      const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3?n=1&i=1"));
-      EXPECT_EQ(200, static_cast<int>(response.code));
-      EXPECT_EQ(
-          "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=1&n=1\",\"url_directory\":\"/data/"
-          "composite_m2m\",\"i\":1,\"n\":1,\"total\":2,\"url_next_page\":null,\"url_previous_page\":\"/data/"
-          "composite_m2m.2/3?i=0&n=1\",\"data\":[{\"url\":\"/data/composite_m2m/!2/"
-          "3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
-          response.body);
-    }
-  }
+{// Browse the collection in various ways using the `Simple` API.
+ {const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m"));
+EXPECT_EQ(200, static_cast<int>(response.code));
+using parsed_t = current::storage::rest::simple::SimpleRESTContainerResponse;
+parsed_t parsed;
+ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
+// Don't test the body of `"/simple/data/composite_m2m"`, it's unordered and machine-dependent.
+std::vector<std::string> strings;
+for (const auto& resource : parsed.data) {
+  strings.push_back(JSON(resource));
+}
+std::sort(strings.begin(), strings.end());
+EXPECT_EQ(
+    "\"/data/composite_m2m/!1/2\"\n"
+    "\"/data/composite_m2m/!1/3\"\n"
+    "\"/data/composite_m2m/!2/1\"\n"
+    "\"/data/composite_m2m/!2/3\"\n"
+    "\"/data/composite_m2m/!3/1\"\n"
+    "\"/data/composite_m2m/!3/2\"",
+    current::strings::Join(strings, '\n'));
+}
+{
+  const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.row"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1\",\"data\":[\"/"
+      "data/composite_m2m.1/!1\",\"/data/composite_m2m.1/!2\",\"/data/composite_m2m.1/!3\"]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.col"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2\",\"data\":[\"/"
+      "data/composite_m2m.2/1\",\"/data/composite_m2m.2/2\",\"/data/composite_m2m.2/3\"]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.1/!2"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.1/!2\",\"data\":[\"/data/"
+      "composite_m2m/!2/1\",\"/data/composite_m2m/!2/3\"]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/simple/data/composite_m2m.2/3"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"message\":null,\"error\":null,\"url\":\"/data/composite_m2m.2/3\",\"data\":[\"/data/"
+      "composite_m2m/!1/3\",\"/data/composite_m2m/!2/3\"]}\n",
+      response.body);
+}
+}
+{// Browse the collection in various ways using the `Hypermedia` API.
+ {const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m"));
+EXPECT_EQ(200, static_cast<int>(response.code));
+using parsed_t =
+    hypermedia::HypermediaRESTCollectionResponse<hypermedia::HypermediaRESTFullCollectionRecord<SimpleComposite>>;
+parsed_t parsed;
+ASSERT_NO_THROW(ParseJSON<parsed_t>(response.body, parsed));
+std::vector<std::string> strings;
+for (const auto& resource : parsed.data) {
+  strings.push_back(JSON(resource.data));
+}
+std::sort(strings.begin(), strings.end());
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.1?i=0&n=10\",\"url_directory\":\"/data/"
+      "composite_m2m.1\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+      "\"data\":[{\"url\":\"/data/composite_m2m.1/"
+      "!1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!1\",\"col\":3}]}},{"
+      "\"url\":\"/data/composite_m2m.1/"
+      "!2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!2\",\"col\":3}]}},{"
+      "\"url\":\"/data/composite_m2m.1/"
+      "!3\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!3\",\"col\":1},{\"row\":\"!3\",\"col\":2}]}}]}"
+      "\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.2?i=0&n=10\",\"url_directory\":\"/data/"
+      "composite_m2m.2\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,"
+      "\"data\":[{\"url\":\"/data/composite_m2m.2/"
+      "1\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!2\",\"col\":1},{\"row\":\"!3\",\"col\":1}]}},{"
+      "\"url\":\"/data/composite_m2m.2/"
+      "2\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":2},{\"row\":\"!3\",\"col\":2}]}},{"
+      "\"url\":\"/data/composite_m2m.2/"
+      "3\",\"data\":{\"total\":2,\"preview\":[{\"row\":\"!1\",\"col\":3},{\"row\":\"!2\",\"col\":3}]}}]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=0&n=10\",\"url_directory\":\"/data/"
+      "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
+      "\"data\":[{\"url\":\"/data/composite_m2m/!2/1\",\"data\":{\"row\":\"!2\",\"col\":1}},{\"url\":\"/"
+      "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=0&n=10\",\"url_directory\":\"/data/"
+      "composite_m2m\",\"i\":0,\"n\":2,\"total\":2,\"url_next_page\":null,\"url_previous_page\":null,"
+      "\"data\":[{\"url\":\"/data/composite_m2m/!1/3\",\"data\":{\"row\":\"!1\",\"col\":3}},{\"url\":\"/"
+      "data/composite_m2m/!2/3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+      response.body);
+}
+// And some inner-level pagination tests.
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2?n=1"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=0&n=1\",\"url_directory\":\"/data/"
+      "composite_m2m\",\"i\":0,\"n\":1,\"total\":2,\"url_next_page\":\"/data/composite_m2m.1/"
+      "!2?i=1&n=1\",\"url_previous_page\":null,\"data\":[{\"url\":\"/data/composite_m2m/!2/"
+      "1\",\"data\":{\"row\":\"!2\",\"col\":1}}]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.1/!2?n=1&i=1"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.1/!2?i=1&n=1\",\"url_directory\":\"/data/"
+      "composite_m2m\",\"i\":1,\"n\":1,\"total\":2,\"url_next_page\":null,\"url_previous_page\":\"/data/"
+      "composite_m2m.1/!2?i=0&n=1\",\"data\":[{\"url\":\"/data/composite_m2m/!2/"
+      "3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3?n=1"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=0&n=1\",\"url_directory\":\"/data/"
+      "composite_m2m\",\"i\":0,\"n\":1,\"total\":2,\"url_next_page\":\"/data/composite_m2m.2/"
+      "3?i=1&n=1\",\"url_previous_page\":null,\"data\":[{\"url\":\"/data/composite_m2m/!1/"
+      "3\",\"data\":{\"row\":\"!1\",\"col\":3}}]}\n",
+      response.body);
+}
+{
+  const auto response = HTTP(GET(base_url + "/hypermedia/data/composite_m2m.2/3?n=1&i=1"));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(
+      "{\"success\":true,\"url\":\"/data/composite_m2m.2/3?i=1&n=1\",\"url_directory\":\"/data/"
+      "composite_m2m\",\"i\":1,\"n\":1,\"total\":2,\"url_next_page\":null,\"url_previous_page\":\"/data/"
+      "composite_m2m.2/3?i=0&n=1\",\"data\":[{\"url\":\"/data/composite_m2m/!2/"
+      "3\",\"data\":{\"row\":\"!2\",\"col\":3}}]}\n",
+      response.body);
+}
+}
 
+{
+  // Test DELETE too.
   {
-    // Test DELETE too.
-    {
-      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
-      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/plain/data/composite_m2m/!1/2")).code));
-      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
-    }
-    {
-      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
-      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/simple/data/composite_m2m/!2/3")).code));
-      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
-    }
-    {
-      EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
-      EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
-      EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
-    }
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/plain/data/composite_m2m/!1/2")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/plain/data/composite_m2m/!1/2")).code));
   }
+  {
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/simple/data/composite_m2m/!2/3")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/simple/data/composite_m2m/!2/3")).code));
+  }
+  {
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/hypermedia/data/composite_m2m/!3/1")).code));
+  }
+}
 }
 
 TEST(TransactionalStorage, CQSTest) {
@@ -678,16 +677,18 @@ TEST(TransactionalStorage, CQSTest) {
   auto storage = storage_t::CreateMasterStorage();
 
   const auto base_url = current::strings::Printf("http://localhost:%d", port);
-  auto storage_http_interface = RESTfulStorage<storage_t, current::storage::rest::Simple>(
-      *storage, port, "/api", "http://unittest.current.ai");
+  auto storage_http_interface =
+      RESTfulStorage<storage_t, current::storage::rest::Simple>(*storage, port, "/api", "http://unittest.current.ai");
 
   {
     const std::string user_key = ([&]() {
       const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("dima", "DK")));
       EXPECT_EQ(201, static_cast<int>(post_response.code));
-      return current::strings::Split(Value(ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(
-                                               post_response.body).resource_url),
-                                     '/').back();
+      return current::strings::Split(
+                 Value(ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(post_response.body)
+                           .resource_url),
+                 '/')
+          .back();
     })();
 
     {
@@ -703,9 +704,11 @@ TEST(TransactionalStorage, CQSTest) {
     const std::string user_key = ([&]() {
       const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
       EXPECT_EQ(201, static_cast<int>(post_response.code));
-      return current::strings::Split(Value(ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(
-                                               post_response.body).resource_url),
-                                     '/').back();
+      return current::strings::Split(
+                 Value(ParseJSON<current::storage::rest::generic::RESTResourceUpdateResponse>(post_response.body)
+                           .resource_url),
+                 '/')
+          .back();
     })();
 
     {
@@ -1005,11 +1008,9 @@ CURRENT_STRUCT(PatchableY) {
   CURRENT_FIELD(key, std::string);
   CURRENT_FIELD(y, int32_t);
   CURRENT_CONSTRUCTOR(PatchableY)(std::string key = "", int32_t y = 0) : key(std::move(key)), y(y) {}
-  
+
   using patch_object_t = PatchToY;
-  void PatchWith(const patch_object_t& patch) {
-    y += patch.dy;
-  }
+  void PatchWith(const patch_object_t& patch) { y += patch.dy; }
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, NonPatchableX, NonPatchableXDictionary);
@@ -1021,7 +1022,6 @@ CURRENT_STORAGE(PatchTestStorage) {
 };
 
 }  // namespace transactional_storage_test
-
 
 TEST(TransactionalStorage, PatchMutation) {
   current::time::ResetToZero();
@@ -1046,121 +1046,143 @@ TEST(TransactionalStorage, PatchMutation) {
   EXPECT_TRUE(storage->IsMasterStorage());
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      EXPECT_FALSE(fields.x.Has("a"));
-      fields.x.Add(NonPatchableX{"a", 1});
-      EXPECT_TRUE(fields.x.Has("a"));
-      EXPECT_TRUE(Exists(fields.x["a"]));
-      EXPECT_EQ(1, Value(fields.x["a"]).x);
-    }).Go();
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              EXPECT_FALSE(fields.x.Has("a"));
+                              fields.x.Add(NonPatchableX{"a", 1});
+                              EXPECT_TRUE(fields.x.Has("a"));
+                              EXPECT_TRUE(Exists(fields.x["a"]));
+                              EXPECT_EQ(1, Value(fields.x["a"]).x);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(1), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      EXPECT_FALSE(fields.y.Has("b"));
-      fields.y.Add(PatchableY{"b", 2});
-      ASSERT_TRUE(fields.y.Has("b"));
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(2, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              EXPECT_FALSE(fields.y.Has("b"));
+                              fields.y.Add(PatchableY{"b", 2});
+                              ASSERT_TRUE(fields.y.Has("b"));
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(2, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(2), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      EXPECT_TRUE(fields.y.Patch("b", PatchToY(+10)));
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(12, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              EXPECT_TRUE(fields.y.Patch("b", PatchToY(+10)));
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(12, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(3), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(12, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(12, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
   }
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      EXPECT_TRUE(fields.y.Patch("b", +100));
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(112, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              EXPECT_TRUE(fields.y.Patch("b", +100));
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(112, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(4), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(112, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(112, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
   }
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      EXPECT_TRUE(fields.y.Patch("b", +333, +333, +334));
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(1112, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              EXPECT_TRUE(fields.y.Patch("b", +333, +333, +334));
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(1112, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(5), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      const auto b = Value(fields.y["b"]);
-      EXPECT_TRUE(fields.y.Patch(b, PatchToY(+1)));
-      EXPECT_TRUE(fields.y.Patch(b, +2));
-      EXPECT_TRUE(fields.y.Patch(b, 0, -1, -2));
-      EXPECT_EQ(1112, Value(fields.y["b"]).y);
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              const auto b = Value(fields.y["b"]);
+                              EXPECT_TRUE(fields.y.Patch(b, PatchToY(+1)));
+                              EXPECT_TRUE(fields.y.Patch(b, +2));
+                              EXPECT_TRUE(fields.y.Patch(b, 0, -1, -2));
+                              EXPECT_EQ(1112, Value(fields.y["b"]).y);
 
-      EXPECT_FALSE(fields.y.Patch("no such key", -1));
-    }).Go();
+                              EXPECT_FALSE(fields.y.Patch("no such key", -1));
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(6), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(1112, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(1112, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
   }
 
   {
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      EXPECT_TRUE(fields.y.Patch("b", PatchToY(+1000000)));
-      CURRENT_STORAGE_THROW_ROLLBACK();
-    }).Go();
+    const auto result = storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              EXPECT_TRUE(fields.y.Patch("b", PatchToY(+1000000)));
+                              CURRENT_STORAGE_THROW_ROLLBACK();
+                            })
+                            .Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_EQ(static_cast<uint64_t>(6), stream->Data()->Size());
   }
 
   {
-    const auto result = storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-      ASSERT_TRUE(Exists(fields.y["b"]));
-      EXPECT_EQ(1112, Value(fields.y["b"]).y);
-    }).Go();
+    const auto result = storage
+                            ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                              ASSERT_TRUE(Exists(fields.y["b"]));
+                              EXPECT_EQ(1112, Value(fields.y["b"]).y);
+                            })
+                            .Go();
 
     EXPECT_TRUE(WasCommitted(result));
   }
@@ -1195,12 +1217,14 @@ TEST(TransactionalStorage, PatchMutation) {
     }
 
     {
-      const auto result = following_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-        ASSERT_TRUE(Exists(fields.x["a"]));
-        EXPECT_EQ(1, Value(fields.x["a"]).x);
-        ASSERT_TRUE(Exists(fields.y["b"]));
-        EXPECT_EQ(1112, Value(fields.y["b"]).y);
-      }).Go();
+      const auto result = following_storage
+                              ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                                ASSERT_TRUE(Exists(fields.x["a"]));
+                                EXPECT_EQ(1, Value(fields.x["a"]).x);
+                                ASSERT_TRUE(Exists(fields.y["b"]));
+                                EXPECT_EQ(1112, Value(fields.y["b"]).y);
+                              })
+                              .Go();
 
       EXPECT_TRUE(WasCommitted(result));
     }

@@ -133,7 +133,7 @@ inline void SleepUntil(T moment) {
 
 #endif  // CURRENT_MOCK_TIME
 
-}  // namespace current::time
+}  // namespace time
 
 namespace strings {
 
@@ -153,7 +153,7 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
   }
 };
 
-}  // namespace current::strings
+}  // namespace strings
 
 namespace time {
 
@@ -218,7 +218,7 @@ inline std::tm FillStructTM(std::chrono::microseconds t) {
   return FillStructTM<T>(t, tm);
 }
 
-}  // namespace current::time
+}  // namespace time
 
 template <time::TimeRepresentation T = time::TimeRepresentation::Local>
 inline std::string FormatDateTime(std::chrono::microseconds t, const char* format_string = "%Y/%m/%d %H:%M:%S") {
@@ -257,8 +257,9 @@ inline std::chrono::microseconds DateTimeStringToTimestamp(
       tm.tm_isdst = 0;
       tt = ::timegm(&tm);
     }
-    const auto result = std::chrono::time_point_cast<std::chrono::microseconds>(
-                            std::chrono::system_clock::from_time_t(tt)).time_since_epoch();
+    const auto result =
+        std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::from_time_t(tt))
+            .time_since_epoch();
     if (padding == time::SecondsToMicrosecondsPadding::Lower) {
       return result;
     } else {
@@ -274,7 +275,8 @@ std::chrono::microseconds UTCDateTimeStringToTimestamp(
     STRING&& datetime,
     const char* format_string,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(std::forward<STRING>(datetime), format_string, padding);
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
+      std::forward<STRING>(datetime), format_string, padding);
 }
 
 template <typename STRING>
@@ -282,21 +284,22 @@ std::chrono::microseconds LocalDateTimeStringToTimestamp(
     STRING&& datetime,
     const char* format_string,
     time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  return DateTimeStringToTimestamp<time::TimeRepresentation::Local>(std::forward<STRING>(datetime), format_string, padding);
+  return DateTimeStringToTimestamp<time::TimeRepresentation::Local>(
+      std::forward<STRING>(datetime), format_string, padding);
 }
 
 template <typename STRING>
 std::chrono::microseconds IMFFixDateTimeStringToTimestamp(
-    STRING&& datetime,
-    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(std::forward<STRING>(datetime), time::DateTimeFmts::IMFFix, padding);
+    STRING&& datetime, time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
+      std::forward<STRING>(datetime), time::DateTimeFmts::IMFFix, padding);
 }
 
 template <typename STRING>
 std::chrono::microseconds RFC850DateTimeStringToTimestamp(
-    STRING&& datetime,
-    time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
-  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(std::forward<STRING>(datetime), time::DateTimeFmts::RFC850, padding);
+    STRING&& datetime, time::SecondsToMicrosecondsPadding padding = time::SecondsToMicrosecondsPadding::Lower) {
+  return DateTimeStringToTimestamp<time::TimeRepresentation::UTC>(
+      std::forward<STRING>(datetime), time::DateTimeFmts::RFC850, padding);
 }
 
 }  // namespace current

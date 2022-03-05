@@ -39,8 +39,8 @@ namespace type_test {
 
 TEST(TypeTest, StructFields) {
   using namespace type_test;
-  using current::reflection::StructSchema;
   using current::reflection::Language;
+  using current::reflection::StructSchema;
 
   StructWithManyFields foo;
   foo.z1 = 42u;

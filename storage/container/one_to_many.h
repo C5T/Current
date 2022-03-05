@@ -46,8 +46,10 @@ template <typename T,
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
           typename PATCH_EVENT_OR_VOID,
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT
-          template <typename...> class ROW_MAP,
-          template <typename...> class COL_MAP>
+          template <typename...>
+          class ROW_MAP,
+          template <typename...>
+          class COL_MAP>
 class GenericOneToMany {
  public:
   using entry_t = T;
@@ -85,10 +87,9 @@ class GenericOneToMany {
       const T& previous_object = *(map_cit->second);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
     } else {
       const auto transposed_cit = transposed_.find(col);
       if (transposed_cit != transposed_.end()) {
@@ -110,11 +111,10 @@ class GenericOneToMany {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
       } else {
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key]() {
-                               last_modified_.erase(key);
-                               DoEraseWithoutTouchingLastModified(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() {
+          last_modified_.erase(key);
+          DoEraseWithoutTouchingLastModified(key);
+        });
       }
     }
     DoUpdateWithLastModified(now, key, object);
@@ -129,10 +129,9 @@ class GenericOneToMany {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -147,10 +146,9 @@ class GenericOneToMany {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -295,36 +293,19 @@ class GenericOneToMany {
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using UnorderedOneToUnorderedMany = GenericOneToMany<T,
-                                                     UPDATE_EVENT,
-                                                     DELETE_EVENT,
-                                                     PATCH_EVENT_OR_VOID,
-                                                     Unordered,
-                                                     Unordered>;
+using UnorderedOneToUnorderedMany =
+    GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using OrderedOneToOrderedMany = GenericOneToMany<T,
-                                                 UPDATE_EVENT,
-                                                 DELETE_EVENT,
-                                                 PATCH_EVENT_OR_VOID,
-                                                 Ordered,
-                                                 Ordered>;
+using OrderedOneToOrderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered, Ordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using UnorderedOneToOrderedMany = GenericOneToMany<T,
-                                                   UPDATE_EVENT,
-                                                   DELETE_EVENT,
-                                                   PATCH_EVENT_OR_VOID,
-                                                   Unordered,
-                                                   Ordered>;
+using UnorderedOneToOrderedMany =
+    GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered, Ordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using OrderedOneToUnorderedMany = GenericOneToMany<T,
-                                                   UPDATE_EVENT,
-                                                   DELETE_EVENT,
-                                                   PATCH_EVENT_OR_VOID,
-                                                   Ordered,
-                                                   Unordered>;
+using OrderedOneToUnorderedMany =
+    GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered, Unordered>;
 
 #else
 
@@ -393,9 +374,9 @@ struct StorageFieldTypeSelector<container::OrderedOneToUnorderedMany<T, E1, E2>>
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedOneToUnorderedMany;
 using current::storage::container::OrderedOneToOrderedMany;
-using current::storage::container::UnorderedOneToOrderedMany;
 using current::storage::container::OrderedOneToUnorderedMany;
+using current::storage::container::UnorderedOneToOrderedMany;
+using current::storage::container::UnorderedOneToUnorderedMany;
 
 #endif  // CURRENT_STORAGE_CONTAINER_ONE_TO_MANY_H

@@ -64,7 +64,7 @@ struct URLParseSpecificObjectAsURLParameterException : URLParseObjectAsURLParame
       : URLParseObjectAsURLParameterException(key, error, DescribeT()) {}
 };
 
-}  // namespace current::url
+}  // namespace url
 }  // namespace current
 
 #endif  // BLOCKS_URL_EXCEPTIONS_H

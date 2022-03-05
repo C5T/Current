@@ -115,18 +115,20 @@ class KarlNginxManager {
       if (first_run || current_stream_head != last_reflected_stream_head_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
         server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));
-        storage_->ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
-          // Proxy status pages of the services via `{route_prefix}/{codename}`.
-          for (const auto& claire : fields.claires) {
-            if (claire.registered_state == ClaireRegisteredState::Active) {
-              auto& location = server.CreateProxyPassLocation(nginx_parameters_.route_prefix + '/' + claire.codename,
-                                                              claire.location.StatusPageURL());
-              // Block all HTTP methods except `GET`.
-              location.Add(nginx::config::BlockDirective(
-                  "limit_except", "GET", {nginx::config::SimpleDirective("deny", "all")}));
-            }
-          }
-        }).Go();
+        storage_
+            ->ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
+              // Proxy status pages of the services via `{route_prefix}/{codename}`.
+              for (const auto& claire : fields.claires) {
+                if (claire.registered_state == ClaireRegisteredState::Active) {
+                  auto& location = server.CreateProxyPassLocation(
+                      nginx_parameters_.route_prefix + '/' + claire.codename, claire.location.StatusPageURL());
+                  // Block all HTTP methods except `GET`.
+                  location.Add(nginx::config::BlockDirective(
+                      "limit_except", "GET", {nginx::config::SimpleDirective("deny", "all")}));
+                }
+              }
+            })
+            .Go();
         nginx_manager_->UpdateConfig(std::move(server));
         last_reflected_stream_head_ = current_stream_head;
         first_run = false;
@@ -252,10 +254,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   using karl_storage_t = KarlStorage<STORAGE_TYPE>;
   using karl_nginx_manager_t = KarlNginxManager<typename karl_storage_t::storage_t>;
   // We need these `using`s because of template base classes :(
-  using karl_storage_t::storage_;
-  using karl_nginx_manager_t::UpdateNginxIfNeeded;
   using karl_nginx_manager_t::has_nginx_config_file_;
   using karl_nginx_manager_t::nginx_parameters_;
+  using karl_nginx_manager_t::UpdateNginxIfNeeded;
+  using karl_storage_t::storage_;
 
   struct PrivateConstructorSelector {};
   template <typename T>
@@ -316,33 +318,37 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       std::exit(-1);
     }
     // Report this Karl as up and running.
-    storage_->ReadWriteTransaction([this](MutableFields<storage_t> fields) {
-      const auto& keepalives_data = keepalives_stream_->Data();
-      KarlInfo self_info;
-      if (!keepalives_data->Empty()) {
-        self_info.persisted_keepalives_info = keepalives_data->LastPublishedIndexAndTimestamp();
-      }
-      fields.karl.Add(self_info);
+    storage_
+        ->ReadWriteTransaction([this](MutableFields<storage_t> fields) {
+          const auto& keepalives_data = keepalives_stream_->Data();
+          KarlInfo self_info;
+          if (!keepalives_data->Empty()) {
+            self_info.persisted_keepalives_info = keepalives_data->LastPublishedIndexAndTimestamp();
+          }
+          fields.karl.Add(self_info);
 
-      const auto now = current::time::Now();
-      // Pre-populate services marked as `Active` due to abrupt shutdown into the cache.
-      // This will help to eventually mark non-active services as `DisconnectedByTimeout`.
-      for (const auto& claire : fields.claires) {
-        if (claire.registered_state == ClaireRegisteredState::Active) {
-          services_keepalive_time_cache_[claire.codename] = now;
-        }
-      }
-    }).Wait();
+          const auto now = current::time::Now();
+          // Pre-populate services marked as `Active` due to abrupt shutdown into the cache.
+          // This will help to eventually mark non-active services as `DisconnectedByTimeout`.
+          for (const auto& claire : fields.claires) {
+            if (claire.registered_state == ClaireRegisteredState::Active) {
+              services_keepalive_time_cache_[claire.codename] = now;
+            }
+          }
+        })
+        .Wait();
   }
 
  public:
   ~GenericKarl() {
     destructing_ = true;
-    storage_->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      KarlInfo self_info;
-      self_info.up = false;
-      fields.karl.Add(self_info);
-    }).Wait();
+    storage_
+        ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+          KarlInfo self_info;
+          self_info.up = false;
+          fields.karl.Add(self_info);
+        })
+        .Wait();
     if (state_update_thread_.joinable()) {
       {
         std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
@@ -388,24 +394,26 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       }
       if (!timeouted_codenames.empty()) {
         auto& notifiable_ref = notifiable_ref_;
-        storage_->ReadWriteTransaction([&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields)
-                                           -> void {
-                                             for (const auto& codename : timeouted_codenames) {
-                                               const auto& current_claire_info = fields.claires[codename];
-                                               // OK to call from within a transaction.
-                                               // The call is fast, and `storage_`'s transaction guarantees thread
-                                               // safety. -- D.K.
-                                               ClaireInfo claire;
-                                               if (Exists(current_claire_info)) {
-                                                 claire = Value(current_claire_info);
-                                                 notifiable_ref.OnTimedOut(now, codename, current_claire_info);
-                                               } else {
-                                                 claire.codename = codename;
-                                               }
-                                               claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
-                                               fields.claires.Add(claire);
-                                             }
-                                           }).Wait();
+        storage_
+            ->ReadWriteTransaction(
+                [&timeouted_codenames, now, &notifiable_ref](MutableFields<storage_t> fields) -> void {
+                  for (const auto& codename : timeouted_codenames) {
+                    const auto& current_claire_info = fields.claires[codename];
+                    // OK to call from within a transaction.
+                    // The call is fast, and `storage_`'s transaction guarantees thread
+                    // safety. -- D.K.
+                    ClaireInfo claire;
+                    if (Exists(current_claire_info)) {
+                      claire = Value(current_claire_info);
+                      notifiable_ref.OnTimedOut(now, codename, current_claire_info);
+                    } else {
+                      claire.codename = codename;
+                    }
+                    claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
+                    fields.claires.Add(claire);
+                  }
+                })
+            .Wait();
       }
       UpdateNginxIfNeeded();
 #ifdef CURRENT_MOCK_TIME
@@ -416,10 +424,9 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         const auto wait_interval =
             parameters_.service_timeout_interval - (current::time::Now() - most_recent_keepalive_time);
         if (wait_interval.count() > 0) {
-          update_thread_condition_variable_.wait_for(
-              lock,
-              wait_interval + std::chrono::microseconds(1),
-              [this]() { return destructing_ || state_update_thread_force_wakeup_; });
+          update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1), [this]() {
+            return destructing_ || state_update_thread_force_wakeup_;
+          });
         }
       } else {
         update_thread_condition_variable_.wait(lock,
@@ -454,21 +461,25 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
         const std::string codename = qs["codename"];
         const auto now = current::time::Now();
         auto& notifiable_ref = notifiable_ref_;
-        storage_->ReadWriteTransaction([codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
-          const auto& current_claire_info = fields.claires[codename];
-          // OK to call from within a transaction.
-          // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-          notifiable_ref.OnDeregistered(now, codename, current_claire_info);
-          ClaireInfo claire;
-          if (Exists(current_claire_info)) {
-            claire = Value(current_claire_info);
-          } else {
-            claire.codename = codename;
-          }
-          claire.registered_state = ClaireRegisteredState::Deregistered;
-          fields.claires.Add(claire);
-          return Response("OK\n");
-        }, std::move(r)).Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
+        storage_
+            ->ReadWriteTransaction(
+                [codename, now, &notifiable_ref](MutableFields<storage_t> fields) -> Response {
+                  const auto& current_claire_info = fields.claires[codename];
+                  // OK to call from within a transaction.
+                  // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                  notifiable_ref.OnDeregistered(now, codename, current_claire_info);
+                  ClaireInfo claire;
+                  if (Exists(current_claire_info)) {
+                    claire = Value(current_claire_info);
+                  } else {
+                    claire.codename = codename;
+                  }
+                  claire.registered_state = ClaireRegisteredState::Deregistered;
+                  fields.claires.Add(claire);
+                  return Response("OK\n");
+                },
+                std::move(r))
+            .Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
         {
           // Delete this `codename` from cache.
           std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
@@ -490,7 +501,10 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           if (qs.has("confirm") && qs.has("port")) {
             const std::string url = "http://" + remote_ip + ':' + qs["port"] + "/.current";
             // Send a GET request, with a random component in the URL to prevent caching.
-            return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(static_cast<uint32_t>(1e9), static_cast<uint32_t>(2e9))))).body;
+            return HTTP(GET(url + "?all&rnd" +
+                            current::ToString(
+                                current::random::CSRandomUInt(static_cast<uint32_t>(1e9), static_cast<uint32_t>(2e9)))))
+                .body;
           } else {
             return r.body;
           }
@@ -551,97 +565,97 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
           auto& notifiable_ref = notifiable_ref_;
           storage_
               ->ReadWriteTransaction(
-                    [now, location, &parsed_status, &detailed_parsed_status, optional_behind_this_by, &notifiable_ref](
-                        MutableFields<storage_t> fields) -> Response {
-                      // OK to call from within a transaction.
-                      // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
-                      notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
+                  [now, location, &parsed_status, &detailed_parsed_status, optional_behind_this_by, &notifiable_ref](
+                      MutableFields<storage_t> fields) -> Response {
+                    // OK to call from within a transaction.
+                    // The call is fast, and `storage_`'s transaction guarantees thread safety. -- D.K.
+                    notifiable_ref.OnKeepalive(now, location, parsed_status.codename, detailed_parsed_status);
 
-                      const auto& service = parsed_status.service;
-                      const auto& codename = parsed_status.codename;
-                      const auto& optional_build = parsed_status.build;
-                      const auto& optional_instance = parsed_status.cloud_instance_name;
-                      const auto& optional_av_group = parsed_status.cloud_availability_group;
+                    const auto& service = parsed_status.service;
+                    const auto& codename = parsed_status.codename;
+                    const auto& optional_build = parsed_status.build;
+                    const auto& optional_instance = parsed_status.cloud_instance_name;
+                    const auto& optional_av_group = parsed_status.cloud_availability_group;
 
-                      // Update per-server information in the `DB`.
-                      ServerInfo server;
-                      server.ip = location.ip;
-                      bool need_to_update_server_info = false;
-                      const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
-                      if (Exists(current_server_info)) {
-                        server = Value(current_server_info);
+                    // Update per-server information in the `DB`.
+                    ServerInfo server;
+                    server.ip = location.ip;
+                    bool need_to_update_server_info = false;
+                    const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
+                    if (Exists(current_server_info)) {
+                      server = Value(current_server_info);
+                    }
+                    // Check the instance name.
+                    if (Exists(optional_instance)) {
+                      if (!Exists(server.cloud_instance_name) ||
+                          Value(server.cloud_instance_name) != Value(optional_instance)) {
+                        server.cloud_instance_name = Value(optional_instance);
+                        need_to_update_server_info = true;
                       }
-                      // Check the instance name.
-                      if (Exists(optional_instance)) {
-                        if (!Exists(server.cloud_instance_name) ||
-                            Value(server.cloud_instance_name) != Value(optional_instance)) {
-                          server.cloud_instance_name = Value(optional_instance);
-                          need_to_update_server_info = true;
-                        }
+                    }
+                    // Check the availability group.
+                    if (Exists(optional_av_group)) {
+                      if (!Exists(server.cloud_availability_group) ||
+                          Value(server.cloud_availability_group) != Value(optional_av_group)) {
+                        server.cloud_availability_group = Value(optional_av_group);
+                        need_to_update_server_info = true;
                       }
-                      // Check the availability group.
-                      if (Exists(optional_av_group)) {
-                        if (!Exists(server.cloud_availability_group) ||
-                            Value(server.cloud_availability_group) != Value(optional_av_group)) {
-                          server.cloud_availability_group = Value(optional_av_group);
-                          need_to_update_server_info = true;
-                        }
+                    }
+                    // Check the time skew.
+                    if (Exists(optional_behind_this_by)) {
+                      const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
+                      const auto time_skew_difference = server.behind_this_by - behind_this_by;
+                      if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
+                          kUpdateServerInfoThresholdByTimeSkewDifference) {
+                        server.behind_this_by = behind_this_by;
+                        need_to_update_server_info = true;
                       }
-                      // Check the time skew.
-                      if (Exists(optional_behind_this_by)) {
-                        const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
-                        const auto time_skew_difference = server.behind_this_by - behind_this_by;
-                        if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
-                            kUpdateServerInfoThresholdByTimeSkewDifference) {
-                          server.behind_this_by = behind_this_by;
-                          need_to_update_server_info = true;
-                        }
-                      }
-                      if (need_to_update_server_info) {
-                        fields.servers.Add(server);
+                    }
+                    if (need_to_update_server_info) {
+                      fields.servers.Add(server);
+                    }
+
+                    // Update the `DB` if the build information was not stored there yet.
+                    const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
+                    if (Exists(optional_build) && (!Exists(current_claire_build_info) ||
+                                                   Value(current_claire_build_info).build != Value(optional_build))) {
+                      ClaireBuildInfo build;
+                      build.codename = codename;
+                      build.build = Value(optional_build);
+                      fields.builds.Add(build);
+                    }
+
+                    // Update the `DB` if "codename", "location", or "dependencies" differ.
+                    const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
+                    if ([&]() {
+                          if (!Exists(current_claire_info)) {
+                            return true;
+                          } else if (Value(current_claire_info).location != location) {
+                            return true;
+                          } else if (Value(current_claire_info).registered_state != ClaireRegisteredState::Active) {
+                            return true;
+                          } else {
+                            return false;
+                          }
+                        }()) {
+                      ClaireInfo claire;
+                      if (Exists(current_claire_info)) {
+                        // Do not overwrite `build` with `null`.
+                        claire = Value(current_claire_info);
                       }
 
-                      // Update the `DB` if the build information was not stored there yet.
-                      const ImmutableOptional<ClaireBuildInfo> current_claire_build_info = fields.builds[codename];
-                      if (Exists(optional_build) && (!Exists(current_claire_build_info) ||
-                                                     Value(current_claire_build_info).build != Value(optional_build))) {
-                        ClaireBuildInfo build;
-                        build.codename = codename;
-                        build.build = Value(optional_build);
-                        fields.builds.Add(build);
-                      }
+                      claire.codename = codename;
+                      claire.service = service;
+                      claire.location = location;
+                      claire.reported_timestamp = now;
+                      claire.url_status_page_direct = location.StatusPageURL();
+                      claire.registered_state = ClaireRegisteredState::Active;
 
-                      // Update the `DB` if "codename", "location", or "dependencies" differ.
-                      const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
-                      if ([&]() {
-                            if (!Exists(current_claire_info)) {
-                              return true;
-                            } else if (Value(current_claire_info).location != location) {
-                              return true;
-                            } else if (Value(current_claire_info).registered_state != ClaireRegisteredState::Active) {
-                              return true;
-                            } else {
-                              return false;
-                            }
-                          }()) {
-                        ClaireInfo claire;
-                        if (Exists(current_claire_info)) {
-                          // Do not overwrite `build` with `null`.
-                          claire = Value(current_claire_info);
-                        }
-
-                        claire.codename = codename;
-                        claire.service = service;
-                        claire.location = location;
-                        claire.reported_timestamp = now;
-                        claire.url_status_page_direct = location.StatusPageURL();
-                        claire.registered_state = ClaireRegisteredState::Active;
-
-                        fields.claires.Add(claire);
-                      }
-                      return Response("OK\n");
-                    },
-                    std::move(r))
+                      fields.claires.Add(claire);
+                    }
+                    return Response("OK\n");
+                  },
+                  std::move(r))
               .Wait();
           {
             std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
@@ -701,15 +715,19 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
   void ServeBuild(Request r) {
     const auto codename = r.url_path_args[0];
-    storage_->ReadOnlyTransaction([codename](ImmutableFields<storage_t> fields) -> Response {
-      const auto result = fields.builds[codename];
-      if (Exists(result)) {
-        return Value(result);
-      } else {
-        return Response(current_service_state::Error("Codename '" + codename + "' not found."),
-                        HTTPResponseCode.NotFound);
-      }
-    }, std::move(r)).Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
+    storage_
+        ->ReadOnlyTransaction(
+            [codename](ImmutableFields<storage_t> fields) -> Response {
+              const auto result = fields.builds[codename];
+              if (Exists(result)) {
+                return Value(result);
+              } else {
+                return Response(current_service_state::Error("Codename '" + codename + "' not found."),
+                                HTTPResponseCode.NotFound);
+              }
+            },
+            std::move(r))
+        .Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
   }
 
   void ServeSnapshot(Request r) {
@@ -863,106 +881,106 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
     }();
 
     const std::string public_url = actual_public_url_;
-    storage_->ReadOnlyTransaction(
-                  [this,
-                   now,
-                   from,
-                   to,
-                   active_only,
-                   response_format,
-                   public_url,
-                   codenames_to_resolve,
-                   report_for_codename,
-                   codenames_per_service,
-                   service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
-                    std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
-                    karl_status_t result;
-                    result.now = now;
-                    result.from = from;
-                    result.to = to;
-                    for (const auto& codename : codenames_to_resolve) {
-                      resolved_codenames[codename] = [&]() -> ClaireServiceKey {
-                        const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
-                        if (Exists(resolved)) {
-                          return Value(resolved).location;
-                        } else {
-                          ClaireServiceKey key;
-                          key.ip = "zombie/" + codename;
-                          key.port = 0;
-                          return key;
-                        }
-                      }();
+    storage_
+        ->ReadOnlyTransaction(
+            [this,
+             now,
+             from,
+             to,
+             active_only,
+             response_format,
+             public_url,
+             codenames_to_resolve,
+             report_for_codename,
+             codenames_per_service,
+             service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
+              std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
+              karl_status_t result;
+              result.now = now;
+              result.from = from;
+              result.to = to;
+              for (const auto& codename : codenames_to_resolve) {
+                resolved_codenames[codename] = [&]() -> ClaireServiceKey {
+                  const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
+                  if (Exists(resolved)) {
+                    return Value(resolved).location;
+                  } else {
+                    ClaireServiceKey key;
+                    key.ip = "zombie/" + codename;
+                    key.port = 0;
+                    return key;
+                  }
+                }();
+              }
+              for (const auto& iterating_over_services : codenames_per_service) {
+                const std::string& service = iterating_over_services.first;
+                for (const auto& codename : iterating_over_services.second) {
+                  ServiceToReport<runtime_status_variant_t> blob;
+                  const auto& rhs = report_for_codename.at(codename);
+                  if (active_only) {
+                    const auto& persisted_claire = fields.claires[codename];
+                    if (Exists(persisted_claire) &&
+                        Value(persisted_claire).registered_state != ClaireRegisteredState::Active) {
+                      continue;
                     }
-                    for (const auto& iterating_over_services : codenames_per_service) {
-                      const std::string& service = iterating_over_services.first;
-                      for (const auto& codename : iterating_over_services.second) {
-                        ServiceToReport<runtime_status_variant_t> blob;
-                        const auto& rhs = report_for_codename.at(codename);
-                        if (active_only) {
-                          const auto& persisted_claire = fields.claires[codename];
-                          if (Exists(persisted_claire) &&
-                              Value(persisted_claire).registered_state != ClaireRegisteredState::Active) {
-                            continue;
-                          }
-                        }
-                        blob.currently = rhs.currently;
-                        blob.service = service;
-                        blob.codename = codename;
-                        blob.location = resolved_codenames[codename];
-                        for (const auto& dep : rhs.dependencies) {
-                          const auto cit = service_key_into_codename.find(dep);
-                          if (cit != service_key_into_codename.end()) {
-                            blob.dependencies.push_back(cit->second);
-                          } else {
-                            blob.unresolved_dependencies.push_back(dep.StatusPageURL());
-                          }
-                        }
+                  }
+                  blob.currently = rhs.currently;
+                  blob.service = service;
+                  blob.codename = codename;
+                  blob.location = resolved_codenames[codename];
+                  for (const auto& dep : rhs.dependencies) {
+                    const auto cit = service_key_into_codename.find(dep);
+                    if (cit != service_key_into_codename.end()) {
+                      blob.dependencies.push_back(cit->second);
+                    } else {
+                      blob.unresolved_dependencies.push_back(dep.StatusPageURL());
+                    }
+                  }
 
-                        {
-                          const auto optional_build = fields.builds[codename];
-                          if (Exists(optional_build)) {
-                            const auto& info = Value(optional_build).build;
-                            blob.build_time = info.build_time;
-                            blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
-                            blob.git_commit = info.git_commit_hash;
-                            blob.git_branch = info.git_branch;
-                            blob.git_dirty = Exists(info.git_dirty_files) && !Value(info.git_dirty_files).empty();
-                          }
-                        }
+                  {
+                    const auto optional_build = fields.builds[codename];
+                    if (Exists(optional_build)) {
+                      const auto& info = Value(optional_build).build;
+                      blob.build_time = info.build_time;
+                      blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
+                      blob.git_commit = info.git_commit_hash;
+                      blob.git_branch = info.git_branch;
+                      blob.git_dirty = Exists(info.git_dirty_files) && !Value(info.git_dirty_files).empty();
+                    }
+                  }
 
-                        if (has_nginx_config_file_) {
-                          blob.url_status_page_proxied =
-                              actual_public_url_ + nginx_parameters_.route_prefix + '/' + codename;
-                        }
-                        blob.url_status_page_direct = blob.location.StatusPageURL();
-                        blob.location = resolved_codenames[codename];
-                        blob.runtime = rhs.runtime;
-                        result.machines[blob.location.ip].services[codename] = std::move(blob);
-                      }
-                    }
-                    // Update per-server information.
-                    for (auto& iterating_over_reported_servers : result.machines) {
-                      const std::string& ip = iterating_over_reported_servers.first;
-                      auto& server = iterating_over_reported_servers.second;
-                      const auto& optional_persisted_server_info = fields.servers[ip];
-                      if (Exists(optional_persisted_server_info)) {
-                        const auto& persisted_server_info = Value(optional_persisted_server_info);
-                        server.cloud_instance_name = persisted_server_info.cloud_instance_name;
-                        server.cloud_availability_group = persisted_server_info.cloud_availability_group;
-                        const int64_t behind_this_by_us = persisted_server_info.behind_this_by.count();
-                        if (std::abs(behind_this_by_us) < 100000) {
-                          server.time_skew = "NTP OK";
-                        } else if (behind_this_by_us > 0) {
-                          server.time_skew = current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
-                        } else {
-                          server.time_skew = current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
-                        }
-                      }
-                    }
-                    result.generation_time = current::time::Now() - now;
-                    return fleet_view_renderer_ref_.RenderResponse(response_format, parameters_, std::move(result));
-                  },
-                  std::move(r))
+                  if (has_nginx_config_file_) {
+                    blob.url_status_page_proxied = actual_public_url_ + nginx_parameters_.route_prefix + '/' + codename;
+                  }
+                  blob.url_status_page_direct = blob.location.StatusPageURL();
+                  blob.location = resolved_codenames[codename];
+                  blob.runtime = rhs.runtime;
+                  result.machines[blob.location.ip].services[codename] = std::move(blob);
+                }
+              }
+              // Update per-server information.
+              for (auto& iterating_over_reported_servers : result.machines) {
+                const std::string& ip = iterating_over_reported_servers.first;
+                auto& server = iterating_over_reported_servers.second;
+                const auto& optional_persisted_server_info = fields.servers[ip];
+                if (Exists(optional_persisted_server_info)) {
+                  const auto& persisted_server_info = Value(optional_persisted_server_info);
+                  server.cloud_instance_name = persisted_server_info.cloud_instance_name;
+                  server.cloud_availability_group = persisted_server_info.cloud_availability_group;
+                  const int64_t behind_this_by_us = persisted_server_info.behind_this_by.count();
+                  if (std::abs(behind_this_by_us) < 100000) {
+                    server.time_skew = "NTP OK";
+                  } else if (behind_this_by_us > 0) {
+                    server.time_skew = current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
+                  } else {
+                    server.time_skew = current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
+                  }
+                }
+              }
+              result.generation_time = current::time::Now() - now;
+              return fleet_view_renderer_ref_.RenderResponse(response_format, parameters_, std::move(result));
+            },
+            std::move(r))
         .Wait();  // NOTE(dkorolev): Could be `.Detach()`, but staying "safe" within Karl for now.
   }
 
@@ -991,7 +1009,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
 
 using Karl = GenericKarl<UseOwnStorage, default_user_status::status>;
 
-}  // namespace current::karl
+}  // namespace karl
 }  // namespace current
 
 #endif  // KARL_KARL_H

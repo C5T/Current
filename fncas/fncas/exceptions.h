@@ -57,7 +57,7 @@ struct BacktrackingException : FnCASOptimizationException {
   using FnCASOptimizationException::FnCASOptimizationException;
 };
 
-}  // namespace fncas::exceptions
+}  // namespace exceptions
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_FNCAS_EXCEPTIONS_H

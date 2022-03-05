@@ -280,7 +280,7 @@ struct Profiler {
     scope += HTTP(port).Register(route, ::current::profiler::Profiler::HTTPRoute); \
   } while (false)
 
-}  // namespace current::profiler
+}  // namespace profiler
 }  // namespace current
 
 #endif

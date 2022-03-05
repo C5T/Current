@@ -45,8 +45,8 @@ CURRENT_STRUCT(SimpleDirective) {
   CURRENT_FIELD(parameters, std::string);
   CURRENT_FIELD_DESCRIPTION(parameters, "Nginx simple directive parameters.");
   CURRENT_DEFAULT_CONSTRUCTOR(SimpleDirective){};
-  CURRENT_CONSTRUCTOR(SimpleDirective)(const std::string& name, const std::string& parameters)
-      : name(name), parameters(parameters) {}
+  CURRENT_CONSTRUCTOR(SimpleDirective)
+  (const std::string& name, const std::string& parameters) : name(name), parameters(parameters) {}
 };
 
 CURRENT_FORWARD_DECLARE_STRUCT(BlockDirective);
@@ -91,8 +91,7 @@ CURRENT_STRUCT(LocationDirective, BlockDirective) {
 };
 // clang-format on
 
-inline LocationDirective ProxyPassLocationDirective(const std::string& location,
-                                                    const std::string& proxy_pass_to) {
+inline LocationDirective ProxyPassLocationDirective(const std::string& location, const std::string& proxy_pass_to) {
   LocationDirective result(location);
   result.Add(SimpleDirective("proxy_pass", proxy_pass_to))
       .Add(SimpleDirective("proxy_set_header", "X-Real-IP $remote_addr"))

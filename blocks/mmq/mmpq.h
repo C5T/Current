@@ -108,11 +108,9 @@ class MMPQImpl {
     while (true) {
       std::unique_lock<std::mutex> lock(mutex_);
 
-      condition_variable_.wait(lock,
-                               [this] {
-                                 return (!queue_.empty() && queue_.begin()->index_timestamp.us <= last_idx_ts_.us) ||
-                                        destructing_;
-                               });
+      condition_variable_.wait(lock, [this] {
+        return (!queue_.empty() && queue_.begin()->index_timestamp.us <= last_idx_ts_.us) || destructing_;
+      });
 
       if (destructing_) {
         return;  // LCOV_EXCL_LINE

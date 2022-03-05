@@ -41,15 +41,15 @@ using std::string;
 using std::to_string;
 using std::vector;
 
-using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
+using std::this_thread::sleep_for;
 
-using current::strings::Printf;
 using current::Singleton;
-using current::net::Socket;
-using current::net::Connection;
 using current::net::ClientSocket;
+using current::net::Connection;
 using current::net::ResolveIPFromHostname;
+using current::net::Socket;
+using current::strings::Printf;
 
 using current::net::AttemptedToUseMovedAwayConnection;
 using current::net::SocketBindException;
@@ -79,44 +79,38 @@ static void ExpectFromSocket(const std::string& golden,
                              const string& host,
                              const uint16_t port,
                              const string& message_to_send_from_client = "") {
-  ExpectFromSocket(golden,
-                   server_thread,
-                   host,
-                   port,
-                   [&message_to_send_from_client](Connection& connection) {
-                     if (!message_to_send_from_client.empty()) {
-                       connection.BlockingWrite(message_to_send_from_client, false);
-                     }
-                   });
+  ExpectFromSocket(golden, server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
+    if (!message_to_send_from_client.empty()) {
+      connection.BlockingWrite(message_to_send_from_client, false);
+    }
+  });
 }
 
 static void ExpectFromSocket(const std::string& golden,
                              std::thread& server_thread,
                              const uint16_t port,
                              const string& message_to_send_from_client = "") {
-  ExpectFromSocket(golden,
-                   server_thread,
-                   "localhost",
-                   port,
-                   [&message_to_send_from_client](Connection& connection) {
-                     if (!message_to_send_from_client.empty()) {
-                       connection.BlockingWrite(message_to_send_from_client, false);
-                     }
-                   });
+  ExpectFromSocket(golden, server_thread, "localhost", port, [&message_to_send_from_client](Connection& connection) {
+    if (!message_to_send_from_client.empty()) {
+      connection.BlockingWrite(message_to_send_from_client, false);
+    }
+  });
 }
 
 TEST(TCPTest, IPAndPort) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
 
-  std::thread server([port_number](Socket socket) {
-    Connection connection = socket.Accept();
-    EXPECT_EQ("127.0.0.1", connection.LocalIPAndPort().ip);
-    EXPECT_EQ(port_number, connection.LocalIPAndPort().port);
-    EXPECT_EQ("127.0.0.1", connection.RemoteIPAndPort().ip);
-    EXPECT_LT(0, connection.RemoteIPAndPort().port);
-    connection.BlockingWrite("42", false);
-  }, Socket(std::move(port_reservation)));
+  std::thread server(
+      [port_number](Socket socket) {
+        Connection connection = socket.Accept();
+        EXPECT_EQ("127.0.0.1", connection.LocalIPAndPort().ip);
+        EXPECT_EQ(port_number, connection.LocalIPAndPort().port);
+        EXPECT_EQ("127.0.0.1", connection.RemoteIPAndPort().ip);
+        EXPECT_LT(0, connection.RemoteIPAndPort().port);
+        connection.BlockingWrite("42", false);
+      },
+      Socket(std::move(port_reservation)));
   Connection client(ClientSocket("127.0.0.1", port_number));
   EXPECT_EQ("127.0.0.1", client.LocalIPAndPort().ip);
   EXPECT_LT(0, client.LocalIPAndPort().port);
@@ -146,12 +140,14 @@ TEST(TCPTest, ReceiveMessageOfTwoParts) {
 TEST(TCPTest, ReceiveDelayedMessage) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server([](Socket socket) {
-    Connection connection = socket.Accept();
-    connection.BlockingWrite("BLA", true);
-    sleep_for(milliseconds(1));
-    connection.BlockingWrite("H", false);
-  }, std::move(port_reservation));
+  std::thread server(
+      [](Socket socket) {
+        Connection connection = socket.Accept();
+        connection.BlockingWrite("BLA", true);
+        sleep_for(milliseconds(1));
+        connection.BlockingWrite("H", false);
+      },
+      std::move(port_reservation));
   Connection client(ClientSocket("localhost", port_number));
   char response[5] = "????";
   ASSERT_EQ(4u, client.BlockingRead(response, 4, Connection::FillFullBuffer));
@@ -162,14 +158,16 @@ TEST(TCPTest, ReceiveDelayedMessage) {
 TEST(TCPTest, ReceiveMessageAsResponse) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server([](Socket socket) {
-    Connection connection = socket.Accept();
-    connection.BlockingWrite("{", true);
-    char buffer[2];  // Wait for three incoming bytes before sending data out.
-    ASSERT_EQ(2u, connection.BlockingRead(buffer, 2, Connection::FillFullBuffer));
-    connection.BlockingWrite(buffer, 2, true);
-    connection.BlockingWrite("}", false);
-  }, std::move(port_reservation));
+  std::thread server(
+      [](Socket socket) {
+        Connection connection = socket.Accept();
+        connection.BlockingWrite("{", true);
+        char buffer[2];  // Wait for three incoming bytes before sending data out.
+        ASSERT_EQ(2u, connection.BlockingRead(buffer, 2, Connection::FillFullBuffer));
+        connection.BlockingWrite(buffer, 2, true);
+        connection.BlockingWrite("}", false);
+      },
+      std::move(port_reservation));
   Connection client(ClientSocket("localhost", port_number));
   client.BlockingWrite("!?", false);
   char response[5] = "????";
@@ -181,12 +179,14 @@ TEST(TCPTest, ReceiveMessageAsResponse) {
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server([](Socket socket) {
-    Connection connection = socket.Accept();
-    char buffer[3];  // Wait for three incoming bytes before sending data out.
-    ASSERT_EQ(3u, connection.BlockingRead(buffer, 3, Connection::FillFullBuffer));
-    connection.BlockingWrite("OK", false);
-  }, std::move(port_reservation));
+  std::thread server(
+      [](Socket socket) {
+        Connection connection = socket.Accept();
+        char buffer[3];  // Wait for three incoming bytes before sending data out.
+        ASSERT_EQ(3u, connection.BlockingRead(buffer, 3, Connection::FillFullBuffer));
+        connection.BlockingWrite("OK", false);
+      },
+      std::move(port_reservation));
   Connection old_connection(ClientSocket("localhost", port_number));
   old_connection.BlockingWrite("1", true);
   Connection new_connection(std::move(old_connection));
@@ -204,59 +204,63 @@ TEST(TCPTest, ReceiveMessageOfTwoUInt16AndTestEndianness) {
   // NOTE(dkorolev): This tests endianness as well.
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server_thread([](Socket socket) {
-    socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233}, false);
-  }, std::move(port_reservation));
+  std::thread server_thread(
+      [](Socket socket) {
+        socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233}, false);
+      },
+      std::move(port_reservation));
   ExpectFromSocket("1032", server_thread, port_number);
 }
 
 TEST(TCPTest, EchoMessage) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server_thread([](Socket socket) {
-    Connection connection(socket.Accept());
-    std::vector<char> s(7);
-    ASSERT_EQ(s.size(), connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
-    connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
-  }, std::move(port_reservation));
+  std::thread server_thread(
+      [](Socket socket) {
+        Connection connection(socket.Accept());
+        std::vector<char> s(7);
+        ASSERT_EQ(s.size(), connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
+        connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
+      },
+      std::move(port_reservation));
   ExpectFromSocket("ECHO: TEST OK", server_thread, port_number, std::string("TEST OK"));
 }
 
 TEST(TCPTest, EchoThreeMessages) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server_thread([](Socket socket) {
-    const size_t block_length = 3;
-    string s(block_length, ' ');
-    Connection connection(socket.Accept());
-    for (int i = 0; i < 3; ++i) {
-      ASSERT_EQ(block_length, connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer));
-      connection.BlockingWrite(i > 0 ? "," : "ECHO: ", true);
-      connection.BlockingWrite(s, false);
-    }
-  }, std::move(port_reservation));
-  ExpectFromSocket("ECHO: FOO,BAR,BAZ",
-                   server_thread,
-                   "localhost",
-                   port_number,
-                   [](Connection& connection) {
-                     connection.BlockingWrite("FOOBARB", true);
-                     sleep_for(milliseconds(1));
-                     connection.BlockingWrite("A", true);
-                     sleep_for(milliseconds(1));
-                     connection.BlockingWrite("Z", false);
-                   });
+  std::thread server_thread(
+      [](Socket socket) {
+        const size_t block_length = 3;
+        string s(block_length, ' ');
+        Connection connection(socket.Accept());
+        for (int i = 0; i < 3; ++i) {
+          ASSERT_EQ(block_length, connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer));
+          connection.BlockingWrite(i > 0 ? "," : "ECHO: ", true);
+          connection.BlockingWrite(s, false);
+        }
+      },
+      std::move(port_reservation));
+  ExpectFromSocket("ECHO: FOO,BAR,BAZ", server_thread, "localhost", port_number, [](Connection& connection) {
+    connection.BlockingWrite("FOOBARB", true);
+    sleep_for(milliseconds(1));
+    connection.BlockingWrite("A", true);
+    sleep_for(milliseconds(1));
+    connection.BlockingWrite("Z", false);
+  });
 }
 
 TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server_thread([](Socket socket) {
-    Connection connection(socket.Accept());
-    std::vector<char> s(10000);
-    ASSERT_EQ(s.size(), connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
-    connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
-  }, std::move(port_reservation));
+  std::thread server_thread(
+      [](Socket socket) {
+        Connection connection(socket.Accept());
+        std::vector<char> s(10000);
+        ASSERT_EQ(s.size(), connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
+        connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
+      },
+      std::move(port_reservation));
   std::string message;
   for (size_t i = 0; i < 10000; ++i) {
     message += '0' + (i % 10);
@@ -309,12 +313,14 @@ TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
 TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   auto port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  std::thread server_thread([](Socket socket) {
-    Connection connection(socket.Accept());
-    char buffer[3];
-    connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
-    connection.BlockingWrite("Done, thanks.\n", false);
-  }, Socket(std::move(port_reservation)));
+  std::thread server_thread(
+      [](Socket socket) {
+        Connection connection(socket.Accept());
+        char buffer[3];
+        connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+        connection.BlockingWrite("Done, thanks.\n", false);
+      },
+      Socket(std::move(port_reservation)));
   // Attempt to send a very long message to ensure it does not fit OS buffers.
   Connection connection(ClientSocket("localhost", port_number));
   ASSERT_THROW(connection.BlockingWrite(std::vector<char>(100 * 1000 * 1000, '!'), true),
@@ -347,12 +353,12 @@ TEST(TCPTest, PickLocalPort) {
 }
 
 #if 0
-# NOTE(dkorolev): This test will fail if the following command is run from two terminals concurrently.
+#NOTE(dkorolev) : This test will fail if the following command is run from two terminals concurrently.
 while true ; do ./.current/test \
   --gtest_filter=TCPTest.PickLocalPortWithHint \
   --gtest_throw_on_failure \
   --gtest_catch_exceptions=0 || break ; done
-# The above test, `TCPTest.PickLocalPort`, would run just fine in such a scenario.
+#The above test, `TCPTest.PickLocalPort`, would run just fine in such a scenario.
 #endif
 
 TEST(TCPTest, PickLocalPortWithHint) {

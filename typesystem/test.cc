@@ -92,8 +92,8 @@ CURRENT_STRUCT_T(Templated) {
 CURRENT_STRUCT_T(TemplatedDerivedFromFoo, Foo) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(t, T);
-  CURRENT_CONSTRUCTOR_T(TemplatedDerivedFromFoo)(const uint32_t x, const std::string& s, const T& t)
-      : SUPER(x * 1000001u), s(s), t(t) {}
+  CURRENT_CONSTRUCTOR_T(TemplatedDerivedFromFoo)
+  (const uint32_t x, const std::string& s, const T& t) : SUPER(x * 1000001u), s(s), t(t) {}
 };
 
 CURRENT_STRUCT(NonTemplateDerivedFromTemplatedDerivedFromFooString, TemplatedDerivedFromFoo<std::string>){
@@ -358,45 +358,44 @@ TEST(TypeSystemTest, ConstructingViaInitializerListIncludingSuper) {
     EXPECT_EQ(124124u, two.i);
   }
 
-  {
-    {
-      TemplatedDerivedFromFoo<uint32_t> test(42u, "foo", 1u);
-      EXPECT_EQ(42000042u, test.i);
-      EXPECT_EQ("foo", test.s);
-      EXPECT_EQ(1u, test.t);
-    }
-    {
-      TemplatedDerivedFromFoo<std::string> test(42u, "foo", "test");
-      EXPECT_EQ(42000042u, test.i);
-      EXPECT_EQ("foo", test.s);
-      EXPECT_EQ("test", test.t);
-    }
-  }
+  {{TemplatedDerivedFromFoo<uint32_t> test(42u, "foo", 1u);
+  EXPECT_EQ(42000042u, test.i);
+  EXPECT_EQ("foo", test.s);
+  EXPECT_EQ(1u, test.t);
+}
+{
+  TemplatedDerivedFromFoo<std::string> test(42u, "foo", "test");
+  EXPECT_EQ(42000042u, test.i);
+  EXPECT_EQ("foo", test.s);
+  EXPECT_EQ("test", test.t);
+}
+}
 
+{
+  NonTemplateDerivedFromTemplatedDerivedFromFooString test(1u, "s", "t");
+  EXPECT_EQ(1000001u, test.i);
+  EXPECT_EQ("s", test.s);
+  EXPECT_EQ("t", test.t);
+}
+
+#ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
+{
   {
-    NonTemplateDerivedFromTemplatedDerivedFromFooString test(1u, "s", "t");
+    TemplateDerivedFromTemplatedDerivedFromFooString<std::string> test(1u, "s", "t");
     EXPECT_EQ(1000001u, test.i);
     EXPECT_EQ("s", test.s);
     EXPECT_EQ("t", test.t);
   }
-
-#ifdef CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
   {
-    {
-      TemplateDerivedFromTemplatedDerivedFromFooString<std::string> test(1u, "s", "t");
-      EXPECT_EQ(1000001u, test.i);
-      EXPECT_EQ("s", test.s);
-      EXPECT_EQ("t", test.t);
-    }
-    {
-      TemplateDerivedFromTemplatedDerivedFromFooString<bool> test(1u, "s", true);
-      EXPECT_EQ(1000001u, test.i);
-      EXPECT_EQ("s", test.s);
-      EXPECT_TRUE(test.t);
-    }
+    TemplateDerivedFromTemplatedDerivedFromFooString<bool> test(1u, "s", true);
+    EXPECT_EQ(1000001u, test.i);
+    EXPECT_EQ("s", test.s);
+    EXPECT_TRUE(test.t);
   }
+}
 #endif  // CURRENT_STRUCTS_SUPPORT_DERIVING_FROM_TEMPLATED_STRUCTS
-};
+}
+;
 
 TEST(TypeSystemTest, ConstructingTemplatedStructs) {
   using namespace struct_definition_test;
@@ -1524,21 +1523,15 @@ TEST(TypeSystemTest, InplaceVariantConstruction) {
 
 namespace struct_definition_test {
 
-CURRENT_STRUCT(DoesNotSupportPatch) {
-  CURRENT_FIELD(x, int32_t, 0);
-};
+CURRENT_STRUCT(DoesNotSupportPatch) { CURRENT_FIELD(x, int32_t, 0); };
 
-CURRENT_STRUCT(PatchToY) {
-  CURRENT_FIELD(dy, int32_t, 0);
-};
+CURRENT_STRUCT(PatchToY) { CURRENT_FIELD(dy, int32_t, 0); };
 
 CURRENT_STRUCT(DoesSupportPatch) {
   CURRENT_FIELD(y, int32_t, 0);
 
   using patch_object_t = PatchToY;
-  void PatchWith(const patch_object_t& patch) {
-    y += patch.dy;
-  }
+  void PatchWith(const patch_object_t& patch) { y += patch.dy; }
 };
 
 }  // namespace struct_definition_test
@@ -1568,11 +1561,11 @@ TEST(TypeSystemTest, Patch) {
 namespace struct_definition_test {
 namespace inner_namespace_fails_in_april_2021 {
 namespace when_the_using_declaration_is_used {
-CURRENT_STRUCT(CurrentStructWithinNamespace) {};
-}  // namespace struct_definition_test::inner_namespace_fails_in_april_2021::when_the_using_declaration_is_used
+CURRENT_STRUCT(CurrentStructWithinNamespace){};
+}  // namespace when_the_using_declaration_is_used
 using namespace when_the_using_declaration_is_used;
-CURRENT_STRUCT(CurrentStructOutsideNamespace) {};
-}  // namespace struct_definition_test::inner_namespace_fails_in_april_2021
+CURRENT_STRUCT(CurrentStructOutsideNamespace){};
+}  // namespace inner_namespace_fails_in_april_2021
 }  // namespace struct_definition_test
 
 TEST(TypeSystemTest, UsingNamespace) {

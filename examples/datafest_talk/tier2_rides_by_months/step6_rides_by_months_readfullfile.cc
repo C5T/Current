@@ -1,5 +1,5 @@
 // To run: g++ -std=c++11 -O3 step6_rides_by_months_readfullfile.cc && time ./a.out | tee >(md5sum)
-// 
+//
 // Count rides by month, print the counters in the lexicographically sorted order of keys.
 // The "read whole file into memory and analyze it" C implementation, still unsafe in a few ways.
 
@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   if (!buffer) {
     return -1;
   }
-  if (::fread(buffer, 1, length,  f) != length) {
+  if (::fread(buffer, 1, length, f) != length) {
     return -1;
   }
   ::fclose(f);

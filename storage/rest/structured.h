@@ -57,24 +57,20 @@ struct Structured {
 
   template <class INPUT>
   static void RegisterTopLevel(const INPUT& input) {
-    input.scope += HTTP(input.port)
-                       .Register(input.route_prefix,
-                                 [input](Request request) {
-                                   const bool up = input.up_status;
-                                   RESTTopLevel response(input.restful_url_prefix, up);
-                                   for (const auto& f : input.field_names) {
-                                     response.url_data[f] =
-                                         input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
-                                   }
-                                   request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
-                                 });
+    input.scope += HTTP(input.port).Register(input.route_prefix, [input](Request request) {
+      const bool up = input.up_status;
+      RESTTopLevel response(input.restful_url_prefix, up);
+      for (const auto& f : input.field_names) {
+        response.url_data[f] = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + f;
+      }
+      request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
+    });
     input.scope +=
         HTTP(input.port)
-            .Register(input.route_prefix == "/" ? "/status" : input.route_prefix + "/status",
-                      [input](Request request) {
-                        const bool up = input.up_status;
-                        request(RESTStatus(up), up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
-                      });
+            .Register(input.route_prefix == "/" ? "/status" : input.route_prefix + "/status", [input](Request request) {
+              const bool up = input.up_status;
+              request(RESTStatus(up), up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
+            });
   }
 
   // Returns `false` on error.
@@ -260,10 +256,9 @@ struct Structured {
         // Pass the same `url` twice, as the collection ("specific row/col") and pagination have the same base URL.
         const std::string url = input.restful_url_prefix + '/' + kRESTfulDataURLComponent + '/' + input.field_name +
                                 '.' + MatrixContainerProxy<KEY_COMPLETENESS>::PartialKeySuffix();
-        return RESPONSE_FORMATTER::template BuildResponseWithCollection<PARTICULAR_FIELD,
-                                                                        ENTRY,
-                                                                        RESTSubCollection<ENTRY>>(
-            context, url, url, GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
+        return RESPONSE_FORMATTER::
+            template BuildResponseWithCollection<PARTICULAR_FIELD, ENTRY, RESTSubCollection<ENTRY>>(
+                context, url, url, GenericMatrixIterator<KEY_COMPLETENESS, FIELD_SEMANTICS>::RowsOrCols(input.field));
       }
     }
 
@@ -514,9 +509,9 @@ struct Structured {
   }
 };
 
-}  // namespace current::storage::rest::generic
-}  // namespace current::storage::rest
-}  // namespace current::storage
+}  // namespace generic
+}  // namespace rest
+}  // namespace storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_REST_STRUCTURED_H

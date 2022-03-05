@@ -57,7 +57,7 @@ struct NginxReloadConfigFailedException : NginxManagerException {
   using NginxManagerException::NginxManagerException;
 };
 
-}  // namespace current::nginx
+}  // namespace nginx
 }  // namespace current
 
 #endif  // CURRENT_UTILS_NGINX_EXCEPTIONS_H

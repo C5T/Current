@@ -86,7 +86,7 @@ class NginxInvokerImpl final {
   mutable std::mutex mutex_;
 };
 
-}  // namespace current::nginx::impl
+}  // namespace impl
 
 inline impl::NginxInvokerImpl& NginxInvoker() { return Singleton<impl::NginxInvokerImpl>(); }
 
@@ -94,10 +94,10 @@ CURRENT_STRUCT(NginxManagerMagicNumbers) {
   CURRENT_FIELD(endpoint_number, std::string);
   CURRENT_FIELD(response_number, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(NginxManagerMagicNumbers)
-      : endpoint_number(SHA256("Random location " +
-                               ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))),
-        response_number(SHA256("Random response " +
-                               ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))) {}
+      : endpoint_number(
+            SHA256("Random location " + ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))),
+        response_number(
+            SHA256("Random response " + ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))) {}
 };
 
 class NginxManager {
@@ -154,8 +154,7 @@ class NginxManager {
       }
     }
     if (!updated) {
-      std::cerr << "Nginx hasn't properly reloaded config file '" << config_file_ << "'\nAborting."
-                << std::endl;
+      std::cerr << "Nginx hasn't properly reloaded config file '" << config_file_ << "'\nAborting." << std::endl;
       std::exit(-1);
     }
   }
@@ -171,7 +170,7 @@ class NginxManager {
   mutable std::mutex mutex_;
 };
 
-}  // namespace current::nginx
+}  // namespace nginx
 }  // namespace current
 
 #endif  // CURRENT_UTILS_NGINX_NGINX_H

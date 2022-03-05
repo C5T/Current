@@ -1,5 +1,5 @@
 // To run: g++ -std=c++11 -O3 step3_rides_by_months_unoptimized.cc && time ./a.out | tee >(md5sum)
-// 
+//
 // Count rides by month, print the counters in the lexicographically sorted order of keys.
 // The "canonical C++" implementation, with extra checks, longer, and slower.
 

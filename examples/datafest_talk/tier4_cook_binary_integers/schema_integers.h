@@ -41,12 +41,12 @@ struct IntegerRide {
   int32_t tolls_amount_cents;
   int32_t improvement_surcharge_cents;
   int32_t total_amount_cents;
-  uint8_t vendor_id;                // Same 1 or 2.
-  char store_and_fwd_flag;          // Same 'N' or 'Y'.
-  uint8_t ratecode_id;              // Integer, { 1, 2, 3, 4, 5, 6, 99 }.
-  uint8_t passenger_count;          // Integer, { 0 .. 9 }.
-  uint8_t payment_type;             // One of { 1, 2, 3, 4, 5 }.
-  uint8_t trip_type;                // Empty = 0, '1', or '2'.
+  uint8_t vendor_id;        // Same 1 or 2.
+  char store_and_fwd_flag;  // Same 'N' or 'Y'.
+  uint8_t ratecode_id;      // Integer, { 1, 2, 3, 4, 5, 6, 99 }.
+  uint8_t passenger_count;  // Integer, { 0 .. 9 }.
+  uint8_t payment_type;     // One of { 1, 2, 3, 4, 5 }.
+  uint8_t trip_type;        // Empty = 0, '1', or '2'.
   uint16_t pu_location_id;
   uint16_t do_location_id;
 };

@@ -51,10 +51,10 @@ DEFINE_string(stream_test_tmpdir, ".current", "Local path for the test to create
 
 namespace stream_unittest {
 
-using current::strings::Join;
-using current::strings::Printf;
 using current::ss::EntryResponse;
 using current::ss::TerminationResponse;
+using current::strings::Join;
+using current::strings::Printf;
 
 // The records we work with.
 CURRENT_STRUCT(Record) {
@@ -65,9 +65,8 @@ CURRENT_STRUCT(Record) {
 CURRENT_STRUCT(RecordWithTimestamp) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(t, std::chrono::microseconds);
-  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
-                                           std::chrono::microseconds t = std::chrono::microseconds(0ull))
-      : s(s), t(t) {}
+  CURRENT_CONSTRUCTOR(RecordWithTimestamp)
+  (std::string s = "", std::chrono::microseconds t = std::chrono::microseconds(0ull)) : s(s), t(t) {}
   CURRENT_USE_FIELD_AS_TIMESTAMP(t);
 };
 
@@ -512,8 +511,7 @@ TEST(Stream, SubscribeToStreamViaHTTP) {
   const std::string base_url = Printf("http://localhost:%d/exposed", port);
   const auto scope =
       HTTP(port).Register("/exposed", *exposed_stream) +
-      HTTP(port)
-          .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *exposed_stream);
+      HTTP(port).Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, *exposed_stream);
   const std::string base_url_with_args = Printf("http://localhost:%d/exposed_more", port);
 
   {
@@ -922,17 +920,18 @@ TEST(Stream, HTTPSubscriptionCanBeTerminated) {
   std::atomic_bool chunks_done(false);
 
   std::thread slow_subscriber([&] {
-    const auto result = HTTP(ChunkedGET(base_url,
-                                        [&subscription_id](const std::string& header, const std::string& value) {
-                                          if (header == "X-Current-Stream-Subscription-Id") {
-                                            subscription_id = value;
-                                          }
-                                        },
-                                        [&chunks_count](const std::string& unused_chunk_body) {
-                                          static_cast<void>(unused_chunk_body);
-                                          ++chunks_count;
-                                        },
-                                        [&chunks_done]() { chunks_done = true; }));
+    const auto result = HTTP(ChunkedGET(
+        base_url,
+        [&subscription_id](const std::string& header, const std::string& value) {
+          if (header == "X-Current-Stream-Subscription-Id") {
+            subscription_id = value;
+          }
+        },
+        [&chunks_count](const std::string& unused_chunk_body) {
+          static_cast<void>(unused_chunk_body);
+          ++chunks_count;
+        },
+        [&chunks_done]() { chunks_done = true; }));
     EXPECT_EQ(200, static_cast<int>(result));
   });
 
@@ -1147,16 +1146,16 @@ TEST(Stream, UncheckedVsCheckedSubscription) {
       std::this_thread::yield();
     }
   };
-  const auto CollectUncheckedSubscriptionResult =
-      [&](std::vector<std::string>& rows, std::vector<std::string>& entries) {
-        rows.clear();
-        entries.clear();
-        RecordsUncheckedCollector collector(entries, rows);
-        const auto scope = exposed_stream->SubscribeUnchecked(collector);
-        while (collector.count_ < 3u) {
-          std::this_thread::yield();
-        }
-      };
+  const auto CollectUncheckedSubscriptionResult = [&](std::vector<std::string>& rows,
+                                                      std::vector<std::string>& entries) {
+    rows.clear();
+    entries.clear();
+    RecordsUncheckedCollector collector(entries, rows);
+    const auto scope = exposed_stream->SubscribeUnchecked(collector);
+    while (collector.count_ < 3u) {
+      std::this_thread::yield();
+    }
+  };
 
   {
     std::vector<std::string> all_entries;
@@ -1322,38 +1321,35 @@ TEST(Stream, ParseArbitrarilySplitChunks) {
 
   // Simulate subscription to stream stream.
   const auto scope =
-      HTTP(port)
-          .Register("/log",
-                    URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                    [](Request r) {
-                      EXPECT_EQ("GET", r.method);
-                      const std::string subscription_id = "fake_subscription";
-                      if (r.url.query.has("terminate")) {
-                        EXPECT_EQ(r.url.query["terminate"], subscription_id);
-                        r("", HTTPResponseCode.OK);
-                      } else if (r.url.query.has("i")) {
-                        const auto index = current::FromString<uint64_t>(r.url.query["i"]);
-                        auto response = r.connection.SendChunkedHTTPResponse(
-                            HTTPResponseCode.OK,
-                            current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}),
-                            "text/plain");
-                        if (index == 0u) {
-                          for (const auto& chunk : stream_golden_data_chunks) {
-                            response.Send(chunk);
-                          }
-                        } else {
-                          EXPECT_EQ(3u, index);
-                        }
-                      } else {
-                        EXPECT_EQ(1u, r.url_path_args.size());
-                        EXPECT_EQ("schema.simple", r.url_path_args[0]);
-                        r(current::stream::SubscribableStreamSchema(
-                            Value<current::reflection::ReflectedTypeBase>(
-                                current::reflection::Reflector().ReflectType<Record>()).type_id,
-                            "Record",
-                            "Namespace"));
-                      }
-                    });
+      HTTP(port).Register("/log", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, [](Request r) {
+        EXPECT_EQ("GET", r.method);
+        const std::string subscription_id = "fake_subscription";
+        if (r.url.query.has("terminate")) {
+          EXPECT_EQ(r.url.query["terminate"], subscription_id);
+          r("", HTTPResponseCode.OK);
+        } else if (r.url.query.has("i")) {
+          const auto index = current::FromString<uint64_t>(r.url.query["i"]);
+          auto response = r.connection.SendChunkedHTTPResponse(
+              HTTPResponseCode.OK,
+              current::net::http::Headers({{"X-Current-Stream-Subscription-Id", subscription_id}}),
+              "text/plain");
+          if (index == 0u) {
+            for (const auto& chunk : stream_golden_data_chunks) {
+              response.Send(chunk);
+            }
+          } else {
+            EXPECT_EQ(3u, index);
+          }
+        } else {
+          EXPECT_EQ(1u, r.url_path_args.size());
+          EXPECT_EQ("schema.simple", r.url_path_args[0]);
+          r(current::stream::SubscribableStreamSchema(
+              Value<current::reflection::ReflectedTypeBase>(current::reflection::Reflector().ReflectType<Record>())
+                  .type_id,
+              "Record",
+              "Namespace"));
+        }
+      });
 
   // Replicate data via subscription to the fake stream.
   current::stream::SubscribableRemoteStream<Record> remote_stream(
@@ -1539,22 +1535,23 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     const auto stream2_file_remover = current::FileSystem::ScopedRmFile(stream2_file_name);
     current::stream::MasterFlipController<stream_t> stream2(stream_t::CreateStream(stream2_file_name));
 
-    auto flip_key = stream1.ExposeViaHTTP(port1,
-                                          "/exposed",
-                                          current::stream::MasterFlipRestrictions().SetMaxIndexDifference(1),
-                                          // A little trick: we can publish from the `flip_started_callback`,
-                                          // the stream is still master there.
-                                          [&]() {
-                                            flip_started_called = true;
-                                            if (stream1->Data()->Size() < 3) {
-                                              current::time::SetNow(std::chrono::microseconds(30));
-                                              stream1->Publisher()->Publish(Record(3));
-                                              current::time::SetNow(std::chrono::microseconds(40));
-                                              stream1->Publisher()->Publish(Record(4));
-                                            }
-                                          },
-                                          [&]() { flip_finished_called = true; },
-                                          [&]() { flip_canceled_called = true; });
+    auto flip_key = stream1.ExposeViaHTTP(
+        port1,
+        "/exposed",
+        current::stream::MasterFlipRestrictions().SetMaxIndexDifference(1),
+        // A little trick: we can publish from the `flip_started_callback`,
+        // the stream is still master there.
+        [&]() {
+          flip_started_called = true;
+          if (stream1->Data()->Size() < 3) {
+            current::time::SetNow(std::chrono::microseconds(30));
+            stream1->Publisher()->Publish(Record(3));
+            current::time::SetNow(std::chrono::microseconds(40));
+            stream1->Publisher()->Publish(Record(4));
+          }
+        },
+        [&]() { flip_finished_called = true; },
+        [&]() { flip_canceled_called = true; });
     stream2.FollowRemoteStream(base_url1, current::stream::SubscriptionMode::Checked);
     while (stream2->Data()->Size() != stream1->Data()->Size()) {
       std::this_thread::yield();
@@ -1639,21 +1636,22 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     // Calculate the next entry size (2 stays for \t and \n) to make the restriction just 1 byte smaller.
     const auto entry_size = JSON(Record(55)).length() + JSON(idxts_t(4, std::chrono::microseconds(80))).length() + 2;
 
-    auto flip_key = stream1.ExposeViaHTTP(port1,
-                                          "/exposed",
-                                          current::stream::MasterFlipRestrictions().SetMaxDiffSize(entry_size - 1),
-                                          [&]() {
-                                            flip_started_called = true;
-                                            if (stream1->Data()->CurrentHead() < std::chrono::microseconds(80)) {
-                                              current::time::SetNow(std::chrono::microseconds(80));
-                                              stream1->Publisher()->Publish(Record(55));
-                                            } else if (stream1->Data()->CurrentHead() < std::chrono::microseconds(90)) {
-                                              current::time::SetNow(std::chrono::microseconds(90));
-                                              stream1->Publisher()->Publish(Record(6));
-                                            }
-                                          },
-                                          [&]() { flip_finished_called = true; },
-                                          [&]() { flip_canceled_called = true; });
+    auto flip_key = stream1.ExposeViaHTTP(
+        port1,
+        "/exposed",
+        current::stream::MasterFlipRestrictions().SetMaxDiffSize(entry_size - 1),
+        [&]() {
+          flip_started_called = true;
+          if (stream1->Data()->CurrentHead() < std::chrono::microseconds(80)) {
+            current::time::SetNow(std::chrono::microseconds(80));
+            stream1->Publisher()->Publish(Record(55));
+          } else if (stream1->Data()->CurrentHead() < std::chrono::microseconds(90)) {
+            current::time::SetNow(std::chrono::microseconds(90));
+            stream1->Publisher()->Publish(Record(6));
+          }
+        },
+        [&]() { flip_finished_called = true; },
+        [&]() { flip_canceled_called = true; });
     stream2.FollowRemoteStream(base_url1, current::stream::SubscriptionMode::Checked);
     while (stream2->Data()->CurrentHead() != stream1->Data()->CurrentHead()) {
       std::this_thread::yield();
@@ -1690,13 +1688,13 @@ TEST(Stream, MasterFollowerFlipRestrictions) {
     const auto head_idxts = stream1->Data()->HeadAndLastPublishedIndexAndTimestamp();
     const auto max_clock_diff = std::chrono::microseconds(10);
 
-    const auto flip_key =
-        stream1.ExposeViaHTTP(port1,
-                              "/exposed",
-                              current::stream::MasterFlipRestrictions().SetMaxClockDifference(max_clock_diff),
-                              [&]() { flip_started_called = true; },
-                              [&]() { flip_finished_called = true; },
-                              [&]() { flip_canceled_called = true; });
+    const auto flip_key = stream1.ExposeViaHTTP(
+        port1,
+        "/exposed",
+        current::stream::MasterFlipRestrictions().SetMaxClockDifference(max_clock_diff),
+        [&]() { flip_started_called = true; },
+        [&]() { flip_finished_called = true; },
+        [&]() { flip_canceled_called = true; });
     current::stream::SubscribableRemoteStream<Record>::RemoteStream remote_stream(
         base_url1, current::stream::constants::kDefaultTopLevelName, current::stream::constants::kDefaultNamespaceName);
     const auto url_checked =
@@ -1939,11 +1937,10 @@ TEST(Stream, ReleaseAndAcquirePublisher) {
   struct DynamicStreamPublisherAcquirer {
     using publisher_t = typename Stream::publisher_t;
     DynamicStreamPublisherAcquirer(current::Borrowed<publisher_t> publisher)
-        : publisher_(std::move(publisher),
-                     [this]() {
-                       requested_termination_ = true;
-                       publisher_ = nullptr;
-                     }) {}
+        : publisher_(std::move(publisher), [this]() {
+            requested_termination_ = true;
+            publisher_ = nullptr;
+          }) {}
     bool requested_termination_ = false;
     current::BorrowedWithCallback<publisher_t> publisher_;
   };
@@ -1998,14 +1995,13 @@ TEST(Stream, ReleaseAndAcquirePublisher) {
           current::BorrowedWithCallback<publisher_t> publisher_;
           bool termination_requested_ = false;
           TemporaryPublisher(current::Borrowed<publisher_t> publisher)
-              : publisher_(publisher,
-                           [this]() {
-                             CURRENT_ASSERT(!termination_requested_);
-                             termination_requested_ = true;
-                             // Note: Comment out the next line and observe the deadlock in
-                             // `stream->BecomeMasterStream();` below.
-                             publisher_ = nullptr;
-                           }) {}
+              : publisher_(publisher, [this]() {
+                  CURRENT_ASSERT(!termination_requested_);
+                  termination_requested_ = true;
+                  // Note: Comment out the next line and observe the deadlock in
+                  // `stream->BecomeMasterStream();` below.
+                  publisher_ = nullptr;
+                }) {}
         };
 
         // Transfer ownership of the stream publisher to the external object.
@@ -2113,13 +2109,14 @@ TEST(Stream, SubscribingToJustTailDoesTheJob) {
   });
 
   std::string body;
-  HTTP(ChunkedGET(base_url + "?tail&n=3&array",
-                  [&](const std::string& header, const std::string& value) {
-                    static_cast<void>(header);
-                    static_cast<void>(value);
-                    http_subscriber_started = true;
-                  },
-                  [&](const std::string& chunk_body) { body += chunk_body; }));
+  HTTP(ChunkedGET(
+      base_url + "?tail&n=3&array",
+      [&](const std::string& header, const std::string& value) {
+        static_cast<void>(header);
+        static_cast<void>(value);
+        http_subscriber_started = true;
+      },
+      [&](const std::string& chunk_body) { body += chunk_body; }));
   follow_up_publisher.join();
 
   const auto result = ParseJSON<std::vector<Record>>(body);

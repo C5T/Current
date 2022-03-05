@@ -76,7 +76,7 @@ struct StorageInGracefulShutdownException : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };
 
-}  // namespace current::storage
+}  // namespace storage
 }  // namespace current
 
 #define CURRENT_STORAGE_THROW_ROLLBACK() throw ::current::storage::StorageRollbackExceptionWithNoValue()

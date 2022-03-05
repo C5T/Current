@@ -45,8 +45,7 @@ class AccumulativeScopedDeleter {
   AccumulativeScopedDeleter(std::function<void()> f) : captured_{f} {}
 
   template <bool B>
-  AccumulativeScopedDeleter(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs)
-      : captured_(std::move(rhs.captured_)) {
+  AccumulativeScopedDeleter(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs) : captured_(std::move(rhs.captured_)) {
     rhs.captured_.clear();
   }
   template <bool B>

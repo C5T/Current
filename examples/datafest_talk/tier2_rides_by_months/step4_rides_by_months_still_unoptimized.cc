@@ -1,5 +1,5 @@
 // To run: g++ -std=c++11 -O3 step4_rides_by_months_still_unoptimized.cc && time ./a.out | tee >(md5sum)
-// 
+//
 // Count rides by month, print the counters in the lexicographically sorted order of keys.
 // The "canonical C++" implementation splitting into `Chunk`-s, not `std::string`-s.
 

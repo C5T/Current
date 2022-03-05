@@ -75,14 +75,14 @@ CURRENT_STRUCT(JSONString) {
   CURRENT_FIELD(string, std::string);
   CURRENT_CONSTRUCTOR(JSONString)(std::string string = "") : string(std::move(string)) {}
   operator std::string() const { return string; }
-  void DoAppendToJSON(std::ostream& os) const { os << JSON(string); }
+  void DoAppendToJSON(std::ostream & os) const { os << JSON(string); }
 };
 
 CURRENT_STRUCT(JSONNumber) {
   CURRENT_FIELD(number, double);
   CURRENT_CONSTRUCTOR(JSONNumber)(double number = 0) : number(number) {}
   operator double() const { return number; }
-  void DoAppendToJSON(std::ostream& os) const {
+  void DoAppendToJSON(std::ostream & os) const {
     if (number == std::floor(number)) {
       if (number < 0) {
         os << JSON(static_cast<int64_t>(number));
@@ -99,7 +99,7 @@ CURRENT_STRUCT(JSONBoolean) {
   CURRENT_FIELD(boolean, bool);
   CURRENT_CONSTRUCTOR(JSONBoolean)(bool boolean = false) : boolean(boolean) {}
   operator bool() const { return boolean; }
-  void DoAppendToJSON(std::ostream& os) const { os << JSON(boolean); }
+  void DoAppendToJSON(std::ostream & os) const { os << JSON(boolean); }
 };
 
 // clang-format off
@@ -119,7 +119,7 @@ CURRENT_STRUCT(JSONArray) {
     static JSONValue null((JSONNull()));
     return i < elements.size() ? elements[i] : null;
   }
-  void DoAppendToJSON(std::ostream& os) const {
+  void DoAppendToJSON(std::ostream & os) const {
     os << '[';
     bool first = true;
     for (const JSONValue& element : elements) {
@@ -133,19 +133,11 @@ CURRENT_STRUCT(JSONArray) {
     os << ']';
   }
   using iterator = typename std::vector<JSONValue>::iterator;
-  iterator begin() {
-    return elements.begin();
-  }
-  iterator end() {
-    return elements.end();
-  }
+  iterator begin() { return elements.begin(); }
+  iterator end() { return elements.end(); }
   using const_iterator = typename std::vector<JSONValue>::const_iterator;
-  const_iterator begin() const {
-    return elements.begin();
-  }
-  const_iterator end() const {
-    return elements.end();
-  }
+  const_iterator begin() const { return elements.begin(); }
+  const_iterator end() const { return elements.end(); }
 };
 
 CURRENT_STRUCT(JSONObject) {
@@ -176,7 +168,7 @@ CURRENT_STRUCT(JSONObject) {
     fields.erase(name);
     return *this;
   }
-  void DoAppendToJSON(std::ostream& os) const {
+  void DoAppendToJSON(std::ostream & os) const {
     os << '{';
     bool first = true;
     for (const std::string& key : keys) {
@@ -201,19 +193,11 @@ CURRENT_STRUCT(JSONObject) {
     const_iterator(const JSONObject& self, std::vector<std::string>::const_iterator cit) : self(self), cit(cit) {}
     bool operator==(const const_iterator& rhs) const { return cit == rhs.cit; }
     bool operator!=(const const_iterator& rhs) const { return cit != rhs.cit; }
-    const_element operator*() const {
-      return const_element(*cit, self.fields.at(*cit));
-    }
-    void operator++() {
-      ++cit;
-    }
+    const_element operator*() const { return const_element(*cit, self.fields.at(*cit)); }
+    void operator++() { ++cit; }
   };
-  const_iterator begin() const {
-    return const_iterator(*this, keys.begin());
-  }
-  const_iterator end() const {
-    return const_iterator(*this, keys.end());
-  }
+  const_iterator begin() const { return const_iterator(*this, keys.begin()); }
+  const_iterator end() const { return const_iterator(*this, keys.end()); }
 };
 
 inline JSONValue ParseJSONUniversally(rapidjson::Value& value) {

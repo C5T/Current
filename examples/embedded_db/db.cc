@@ -143,56 +143,46 @@ int main(int argc, char** argv) {
   HTTP(port).Register("/healthz", [](Request r) { r("OK\n"); });
 
   // Schema.
+  using reflection::Language;
   using reflection::SchemaInfo;
   using reflection::StructSchema;
-  using reflection::Language;
 
-  HTTP(port)
-      .Register(
-          "/schema.h",
-          [](Request r) {
-            StructSchema schema;
-            schema.AddType<Event>();
-            r(schema.GetSchemaInfo().Describe<Language::CPP>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
-          });
+  HTTP(port).Register("/schema.h", [](Request r) {
+    StructSchema schema;
+    schema.AddType<Event>();
+    r(schema.GetSchemaInfo().Describe<Language::CPP>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+  });
 
-  HTTP(port)
-      .Register(
-          "/schema.fs",
-          [](Request r) {
-            StructSchema schema;
-            schema.AddType<Event>();
-            r(schema.GetSchemaInfo().Describe<Language::FSharp>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
-          });
+  HTTP(port).Register("/schema.fs", [](Request r) {
+    StructSchema schema;
+    schema.AddType<Event>();
+    r(schema.GetSchemaInfo().Describe<Language::FSharp>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+  });
 
-  HTTP(port)
-      .Register("/schema.json",
-                [](Request r) {
-                  StructSchema schema;
-                  schema.AddType<Event>();
-                  r(schema.GetSchemaInfo());
-                });
+  HTTP(port).Register("/schema.json", [](Request r) {
+    StructSchema schema;
+    schema.AddType<Event>();
+    r(schema.GetSchemaInfo());
+  });
 
   // Subscribe.
   HTTP(port).Register("/data", *stream);
 
   // Publish.
-  HTTP(port)
-      .Register("/publish",
-                [&stream](Request r) {
-                  if (r.method == "POST") {
-                    try {
-                      auto event = ParseJSON<Event>(r.body);
-                      SetMicroTimestamp(event, time::Now());
-                      stream->Publisher()->Publish(std::move(event));
-                      r("", HTTPResponseCode.NoContent);
-                    } catch (const Exception& e) {
-                      r(Error(e.DetailedDescription()), HTTPResponseCode.BadRequest);
-                    }
-                  } else {
-                    r(Error("This request should be a POST."), HTTPResponseCode.MethodNotAllowed);
-                  }
-                });
+  HTTP(port).Register("/publish", [&stream](Request r) {
+    if (r.method == "POST") {
+      try {
+        auto event = ParseJSON<Event>(r.body);
+        SetMicroTimestamp(event, time::Now());
+        stream->Publisher()->Publish(std::move(event));
+        r("", HTTPResponseCode.NoContent);
+      } catch (const Exception& e) {
+        r(Error(e.DetailedDescription()), HTTPResponseCode.BadRequest);
+      }
+    } else {
+      r(Error("This request should be a POST."), HTTPResponseCode.MethodNotAllowed);
+    }
+  });
 
   // Read model.
   current::ss::StreamSubscriber<UserNicknamesReadModel, Event> read_model(port);

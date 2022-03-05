@@ -64,7 +64,8 @@ class ProgressLine final {
   ProgressLine(DoConstruct,
                std::ostream& os = std::cout,
                std::function<int()> up = nullptr,
-               std::mutex* maybe_mutex = nullptr) : os_(os), up_(up), maybe_mutex_(maybe_mutex) {
+               std::mutex* maybe_mutex = nullptr)
+      : os_(os), up_(up), maybe_mutex_(maybe_mutex) {
     if (up_) {
       // Move to the next line right away to "allocate" a new line for this "multiline" "progress instance".
       const auto maybe_lock = MaybeLock();
@@ -128,9 +129,7 @@ class ProgressLine final {
     return status;
   }
 
-  std::string GetUndecoratedString() const {
-    return current_undecorated_status_;
-  }
+  std::string GetUndecoratedString() const { return current_undecorated_status_; }
 
  protected:
   void DoUpdate(Status& status) {
@@ -139,7 +138,7 @@ class ProgressLine final {
 
     if (new_status != current_status_) {
       const size_t new_status_length =
-        current::strings::UTF8StringLength(status.oss_text_with_no_vt100_escape_sequences.str());
+          current::strings::UTF8StringLength(status.oss_text_with_no_vt100_escape_sequences.str());
       if (!up_) {
         const auto maybe_lock = MaybeLock();
         DoClearString(os_);
@@ -153,8 +152,8 @@ class ProgressLine final {
           os_ << vt100::up(n + 1) << new_status << vt100::reset << '\n' << vt100::down(n) << std::flush;
         } else {
           const size_t d = current_status_length_ - new_status_length;
-          os_ << vt100::up(n + 1) << new_status << vt100::reset
-              << std::string(d, ' ') << '\n' << vt100::down(n) << std::flush;
+          os_ << vt100::up(n + 1) << new_status << vt100::reset << std::string(d, ' ') << '\n'
+              << vt100::down(n) << std::flush;
         }
       }
       current_status_ = new_status;
@@ -172,7 +171,8 @@ class MultilineProgress final {
   current::ProgressLine operator()(std::ostream& os = std::cout) {
     ++total_;
     int index = total_;
-    return current::ProgressLine(os, [index, this]() { return total_ - index; }, mutex_);
+    return current::ProgressLine(
+        os, [index, this]() { return total_ - index; }, mutex_);
   }
 };
 

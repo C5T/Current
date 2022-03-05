@@ -37,12 +37,9 @@ class BenchmarkTestServer {
   BenchmarkTestServer(current::net::ReservedLocalPort reserved_port, const std::string& route)
       : port_(reserved_port),
         http_server_(HTTP(std::move(reserved_port))),
-        scope_(http_server_.Register(route,
-                                   [](Request r) {
-                                     r(AddResult(current::FromString<int64_t>(r.url.query["a"]) +
-                                                 current::FromString<int64_t>(r.url.query["b"])));
-                                   }) +
-               http_server_.Register("/perftest", [](Request r) { r("perftest ok\n"); })) {}
+        scope_(http_server_.Register(route, [](Request r) {
+          r(AddResult(current::FromString<int64_t>(r.url.query["a"]) + current::FromString<int64_t>(r.url.query["b"])));
+        }) + http_server_.Register("/perftest", [](Request r) { r("perftest ok\n"); })) {}
 
   void Join() { http_server_.Join(); }
 

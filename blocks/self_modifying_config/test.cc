@@ -88,8 +88,9 @@ TEST(SelfModifyingConfig, ReadFileException) {
   current::time::SetNow(
       current::IMFFixDateTimeStringToTimestamp("Tue, 16 Aug 1983 00:00:00 GMT"));  // I was born. -- D.K.
 
-  ASSERT_THROW(static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
-               current::SelfModifyingConfigReadFileException);
+  ASSERT_THROW(
+      static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
+      current::SelfModifyingConfigReadFileException);
   try {
     static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename));
   } catch (const current::SelfModifyingConfigReadFileException& e) {
@@ -115,8 +116,9 @@ TEST(SelfModifyingConfig, ParseJSONException) {
 
   current::FileSystem::WriteStringToFile("De Louboutin.", config_filename.c_str());
 
-  ASSERT_THROW(static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
-               current::SelfModifyingConfigParseJSONException);
+  ASSERT_THROW(
+      static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
+      current::SelfModifyingConfigParseJSONException);
   try {
     static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename));
   } catch (const current::SelfModifyingConfigParseJSONException& e) {
@@ -144,8 +146,9 @@ TEST(SelfModifyingConfig, WriteFileException) {
 
   current::FileSystem::WriteStringToFile(JSON(UnitTestSelfModifyingConfig(4)), config_filename.c_str());
 
-  ASSERT_THROW(static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
-               current::SelfModifyingConfigWriteFileException);
+  ASSERT_THROW(
+      static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename)),
+      current::SelfModifyingConfigWriteFileException);
   try {
     static_cast<void>(std::make_unique<current::SelfModifyingConfig<UnitTestSelfModifyingConfig>>(config_filename));
   } catch (const current::SelfModifyingConfigWriteFileException& e) {

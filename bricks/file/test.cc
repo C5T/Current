@@ -33,11 +33,11 @@ SOFTWARE.
 #include "../strings/join.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using current::FileSystem;
-using current::FileException;
 using current::DirDoesNotExistException;
-using current::PathNotDirException;
 using current::DirNotEmptyException;
+using current::FileException;
+using current::FileSystem;
+using current::PathNotDirException;
 
 DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
@@ -302,11 +302,10 @@ TEST(File, ScanDirParameters) {
   {
     std::set<std::string> names;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
-    FileSystem::ScanDir(base_dir,
-                        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          names.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        });
+    FileSystem::ScanDir(base_dir, [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+      names.insert(x.basename);
+      item_infos.insert(std::make_pair(x.basename, x));
+    });
     EXPECT_EQ("f", current::strings::Join(names, ','));
     EXPECT_EQ(f, item_infos.at("f").pathname);
     EXPECT_EQ(base_dir, item_infos.at("f").dirname);
@@ -316,12 +315,13 @@ TEST(File, ScanDirParameters) {
   {
     std::set<std::string> names;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
-    FileSystem::ScanDir(base_dir,
-                        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          names.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        },
-                        FileSystem::ScanDirParameters::ListFilesOnly);
+    FileSystem::ScanDir(
+        base_dir,
+        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+          names.insert(x.basename);
+          item_infos.insert(std::make_pair(x.basename, x));
+        },
+        FileSystem::ScanDirParameters::ListFilesOnly);
     EXPECT_EQ("f", current::strings::Join(names, ','));
     EXPECT_EQ(f, item_infos.at("f").pathname);
     EXPECT_EQ(base_dir, item_infos.at("f").dirname);
@@ -331,12 +331,13 @@ TEST(File, ScanDirParameters) {
   {
     std::set<std::string> names;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
-    FileSystem::ScanDir(base_dir,
-                        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          names.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        },
-                        FileSystem::ScanDirParameters::ListDirsOnly);
+    FileSystem::ScanDir(
+        base_dir,
+        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+          names.insert(x.basename);
+          item_infos.insert(std::make_pair(x.basename, x));
+        },
+        FileSystem::ScanDirParameters::ListDirsOnly);
     EXPECT_EQ("d", current::strings::Join(names, ','));
     EXPECT_EQ(d, item_infos.at("d").pathname);
     EXPECT_EQ(base_dir, item_infos.at("d").dirname);
@@ -346,12 +347,13 @@ TEST(File, ScanDirParameters) {
   {
     std::set<std::string> names;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
-    FileSystem::ScanDir(base_dir,
-                        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          names.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        },
-                        FileSystem::ScanDirParameters::ListFilesAndDirs);
+    FileSystem::ScanDir(
+        base_dir,
+        [&names, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+          names.insert(x.basename);
+          item_infos.insert(std::make_pair(x.basename, x));
+        },
+        FileSystem::ScanDirParameters::ListFilesAndDirs);
     EXPECT_EQ("d,f", current::strings::Join(names, ','));
     EXPECT_EQ(d, item_infos.at("d").pathname);
     EXPECT_EQ(base_dir, item_infos.at("d").dirname);
@@ -388,13 +390,14 @@ TEST(File, ScanDirRecursive) {
     std::set<std::string> basenames;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
 
-    FileSystem::ScanDir(base_dir,
-                        [&basenames, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          basenames.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        },
-                        FileSystem::ScanDirParameters::ListFilesOnly,
-                        FileSystem::ScanDirRecursive::Yes);
+    FileSystem::ScanDir(
+        base_dir,
+        [&basenames, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+          basenames.insert(x.basename);
+          item_infos.insert(std::make_pair(x.basename, x));
+        },
+        FileSystem::ScanDirParameters::ListFilesOnly,
+        FileSystem::ScanDirRecursive::Yes);
 
     EXPECT_EQ("base_dir_file,sub_dir_file,sub_sub_dir_file,sub_sub_dir_file_2", current::strings::Join(basenames, ','));
 
@@ -413,13 +416,14 @@ TEST(File, ScanDirRecursive) {
     std::set<std::string> basenames;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
 
-    FileSystem::ScanDir(base_dir,
-                        [&basenames, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          basenames.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        },
-                        FileSystem::ScanDirParameters::ListDirsOnly,
-                        FileSystem::ScanDirRecursive::Yes);
+    FileSystem::ScanDir(
+        base_dir,
+        [&basenames, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+          basenames.insert(x.basename);
+          item_infos.insert(std::make_pair(x.basename, x));
+        },
+        FileSystem::ScanDirParameters::ListDirsOnly,
+        FileSystem::ScanDirRecursive::Yes);
 
     EXPECT_EQ("sub_dir,sub_sub_dir,sub_sub_dir_2", current::strings::Join(basenames, ','));
 
@@ -436,13 +440,14 @@ TEST(File, ScanDirRecursive) {
     std::set<std::string> basenames;
     std::map<std::string, FileSystem::ScanDirItemInfo> item_infos;
 
-    FileSystem::ScanDir(base_dir,
-                        [&basenames, &item_infos](const FileSystem::ScanDirItemInfo& x) {
-                          basenames.insert(x.basename);
-                          item_infos.insert(std::make_pair(x.basename, x));
-                        },
-                        FileSystem::ScanDirParameters::ListFilesAndDirs,
-                        FileSystem::ScanDirRecursive::Yes);
+    FileSystem::ScanDir(
+        base_dir,
+        [&basenames, &item_infos](const FileSystem::ScanDirItemInfo& x) {
+          basenames.insert(x.basename);
+          item_infos.insert(std::make_pair(x.basename, x));
+        },
+        FileSystem::ScanDirParameters::ListFilesAndDirs,
+        FileSystem::ScanDirRecursive::Yes);
 
     EXPECT_EQ("base_dir_file,sub_dir,sub_dir_file,sub_sub_dir,sub_sub_dir_2,sub_sub_dir_file,sub_sub_dir_file_2",
               current::strings::Join(basenames, ','));

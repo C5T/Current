@@ -63,7 +63,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, T, std::enable_if_t<std::i
   }
 };
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_ENUM_H

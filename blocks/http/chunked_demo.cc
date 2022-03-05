@@ -105,9 +105,9 @@ y:0.183947}
 #include "../../bricks/strings/printf.h"
 #include "../../bricks/time/chrono.h"
 
-using current::time::Now;
-using current::strings::Printf;
 using current::net::http::Headers;
+using current::strings::Printf;
+using current::time::Now;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
@@ -150,58 +150,55 @@ CURRENT_STRUCT(ExampleMeta) {
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
 int main() {
-  HTTP(FLAGS_port)
-      .Register("/layout",
-                [](Request r) {
-                  LayoutItem layout;
-                  LayoutItem row;
-                  layout.col.push_back(row);
-                  r(layout,
-                    // "layout",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
-                    HTTPResponseCode.OK,
-                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
-                    "application/json; charset=utf-8");
-                });
-  HTTP(FLAGS_port)
-      .Register("/meta",
-                [](Request r) {
-                  r(ExampleMeta(),
-                    // "meta",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
-                    HTTPResponseCode.OK,
-                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
-                    "application/json; charset=utf-8");
-                });
-  HTTP(FLAGS_port)
-      .Register("/data",
-                [](Request r) {
-                  std::thread([](Request&& r) {
-                    // Since we are in another thread, need to catch exceptions ourselves.
-                    try {
-                      auto response = r.connection.SendChunkedHTTPResponse(
-                          HTTPResponseCode.OK,
-                          {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}},
-                          "application/json; charset=utf-8");
-                      std::string data;
-                      const double begin = static_cast<double>(Now().count());
-                      const double t = atof(r.url.query["t"].c_str());
-                      const double end = (t > 0) ? (begin + t * 1e3) : 1e18;
-                      double current;
-                      while ((current = static_cast<double>(Now().count())) < end) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 100 + 100));
-                        const double x = current;
-                        const double y = sin(5e-3 * (current - begin));
-                        data += Printf("{\"x\":%lf,\"y\":%lf}\n", x, y);
-                        const double f = (rand() % 101) * (rand() % 101) * (rand() % 101) * 1e-6;
-                        const size_t n = static_cast<size_t>(data.length() * f);
-                        if (n) {
-                          response.Send(data.substr(0, n));
-                          data = data.substr(n);
-                        }
-                      }
-                    } catch (const current::Exception& e) {
-                      std::cerr << "Exception in data serving thread: " << e.what() << std::endl;
-                    }
-                  }, std::move(r)).detach();
-                });
+  HTTP(FLAGS_port).Register("/layout", [](Request r) {
+    LayoutItem layout;
+    LayoutItem row;
+    layout.col.push_back(row);
+    r(layout,
+      // "layout",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
+      HTTPResponseCode.OK,
+      Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
+      "application/json; charset=utf-8");
+  });
+  HTTP(FLAGS_port).Register("/meta", [](Request r) {
+    r(ExampleMeta(),
+      // "meta",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
+      HTTPResponseCode.OK,
+      Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
+      "application/json; charset=utf-8");
+  });
+  HTTP(FLAGS_port).Register("/data", [](Request r) {
+    std::thread(
+        [](Request&& r) {
+          // Since we are in another thread, need to catch exceptions ourselves.
+          try {
+            auto response = r.connection.SendChunkedHTTPResponse(
+                HTTPResponseCode.OK,
+                {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}},
+                "application/json; charset=utf-8");
+            std::string data;
+            const double begin = static_cast<double>(Now().count());
+            const double t = atof(r.url.query["t"].c_str());
+            const double end = (t > 0) ? (begin + t * 1e3) : 1e18;
+            double current;
+            while ((current = static_cast<double>(Now().count())) < end) {
+              std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 100 + 100));
+              const double x = current;
+              const double y = sin(5e-3 * (current - begin));
+              data += Printf("{\"x\":%lf,\"y\":%lf}\n", x, y);
+              const double f = (rand() % 101) * (rand() % 101) * (rand() % 101) * 1e-6;
+              const size_t n = static_cast<size_t>(data.length() * f);
+              if (n) {
+                response.Send(data.substr(0, n));
+                data = data.substr(n);
+              }
+            }
+          } catch (const current::Exception& e) {
+            std::cerr << "Exception in data serving thread: " << e.what() << std::endl;
+          }
+        },
+        std::move(r))
+        .detach();
+  });
   HTTP(FLAGS_port).Join();
 }

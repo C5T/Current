@@ -8,13 +8,13 @@
 #include "../../../bricks/strings/strings.h"
 
 std::unordered_map<std::string, uint8_t> dow_map{
-  { "Mon", 0 },
-  { "Tue", 1 },
-  { "Wed", 2 },
-  { "Thu", 3 },
-  { "Fri", 4 },
-  { "Sat", 5 },
-  { "Sun", 6 },
+    {"Mon", 0},
+    {"Tue", 1},
+    {"Wed", 2},
+    {"Thu", 3},
+    {"Fri", 4},
+    {"Sat", 5},
+    {"Sun", 6},
 };
 
 void PackTimestamp(std::vector<current::strings::Chunk> const& pieces, Timestamp& timestamp) {

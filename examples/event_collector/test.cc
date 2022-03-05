@@ -144,9 +144,7 @@ TEST(EventCollector, Headers) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(port, os, std::chrono::microseconds(0), "/ctfo", "=");
   EXPECT_EQ("=",
-            HTTP(GET(Printf("http://localhost:%d/ctfo", port))
-                     .SetHeader("foo", "bar")
-                     .SetHeader("baz", "meh")).body);
+            HTTP(GET(Printf("http://localhost:%d/ctfo", port)).SetHeader("foo", "bar").SetHeader("baz", "meh")).body);
   auto e = ParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ("bar", e.h["foo"]);
   EXPECT_EQ("meh", e.h["baz"]);

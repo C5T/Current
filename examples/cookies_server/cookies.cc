@@ -31,15 +31,13 @@ DEFINE_int32(cookies_demo_port, 3000, "Local port to spawn the server on.");
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  HTTP(FLAGS_cookies_demo_port)
-      .Register("/",
-                [](Request r) {
-                  const auto now = current::ToString(current::time::Now().count());
-                  r(Response(r.headers.CookiesAsString())
-                        .SetCookie("Now", now)
-                        .SetCookie("SecureNow", now, {{"secure", ""}})
-                        .SetCookie("LoadedAt" + now, "Yes."));
-                });
+  HTTP(FLAGS_cookies_demo_port).Register("/", [](Request r) {
+    const auto now = current::ToString(current::time::Now().count());
+    r(Response(r.headers.CookiesAsString())
+          .SetCookie("Now", now)
+          .SetCookie("SecureNow", now, {{"secure", ""}})
+          .SetCookie("LoadedAt" + now, "Yes."));
+  });
 
   HTTP(FLAGS_cookies_demo_port).Join();
 }

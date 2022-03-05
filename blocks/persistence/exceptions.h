@@ -70,7 +70,7 @@ struct UnsafePublishBadIndexTimestampException : PersistenceException {
             "Expecting index %lld, seeing %lld.", static_cast<long long>(expected), static_cast<long long>(found))) {}
 };
 
-}  // namespace peristence
+}  // namespace persistence
 }  // namespace current
 
 #endif  // BLOCKS_PERSISTENCE_EXCEPTIONS_H

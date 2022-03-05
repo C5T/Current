@@ -47,7 +47,7 @@ struct NginxParametersInvalidPortException : KarlException {
   using KarlException::KarlException;
 };
 
-}  // namespace current::karl
+}  // namespace karl
 }  // namespace current
 
 #endif  // CURRENT_KARL_EXCEPTIONS_H

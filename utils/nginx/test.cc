@@ -68,8 +68,7 @@ TEST(Nginx, NginxInvokerCheckGoldenConfig) {
   auto& nginx = NginxInvoker();
   // Run test only if Nginx is available.
   if (nginx.IsNginxAvailable()) {
-    const std::string config_relative_path =
-        FileSystem::JoinPath(FileSystem::JoinPath("..", "golden"), "full.conf");
+    const std::string config_relative_path = FileSystem::JoinPath(FileSystem::JoinPath("..", "golden"), "full.conf");
     const std::string full_config_path = FileSystem::JoinPath(CurrentBinaryFullPath(), config_relative_path);
     EXPECT_TRUE(nginx.IsFullConfigValid(full_config_path));
   } else {

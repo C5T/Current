@@ -71,8 +71,8 @@ CURRENT_STRUCT(UserNickname) {
   CURRENT_FIELD(user_id, std::string);
   CURRENT_FIELD(nickname, std::string);
 
-  CURRENT_CONSTRUCTOR(UserNickname)(const std::string& user_id, const std::string& nickname)
-      : user_id(user_id), nickname(nickname) {}
+  CURRENT_CONSTRUCTOR(UserNickname)
+  (const std::string& user_id, const std::string& nickname) : user_id(user_id), nickname(nickname) {}
 };
 
 CURRENT_STRUCT(UserNicknameNotFound) {

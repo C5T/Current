@@ -52,7 +52,7 @@ struct HTMLGeneratorHTTPResponseScope final : HTMLGeneratorScope {
   std::ostream& OutputStream() override { return html_contents; }
 };
 
-}  // namespace current::html
+}  // namespace html
 }  // namespace current
 
 #endif  // BLOCKS_HTML_HTTP_H

@@ -43,8 +43,7 @@ struct IterateByRegexMatches {
       : copy_of_string_if_needed_(s), begin_(copy_of_string_if_needed_.begin(), copy_of_string_if_needed_.end(), re) {}
 
   template <typename T>
-  IterateByRegexMatches(const std::regex& re, T&& s)
-      : begin_(s.begin(), s.end(), re) {}
+  IterateByRegexMatches(const std::regex& re, T&& s) : begin_(s.begin(), s.end(), re) {}
 
   std::sregex_iterator begin() const { return begin_; }
   std::sregex_iterator end() const { return end_; }
@@ -106,17 +105,14 @@ class NamedRegexCapturer {
     std::smatch match;
 
     MatchResult(std::string input_string, std::shared_ptr<NamedRegexCapturer::Data> data)
-        : owned_string(std::make_unique<std::string>(std::move(input_string))),
-          data(std::move(data)) {}
+        : owned_string(std::make_unique<std::string>(std::move(input_string))), data(std::move(data)) {}
 
     MatchResult() = delete;
     MatchResult(MatchResult const&) = delete;
     MatchResult& operator=(MatchResult const&) = delete;
 
     MatchResult(MatchResult&& rhs)
-        : owned_string(std::move(rhs.owned_string)),
-          data(rhs.data),
-          match(std::move(rhs.match)) {}
+        : owned_string(std::move(rhs.owned_string)), data(rhs.data), match(std::move(rhs.match)) {}
 
     MatchResult& operator=(MatchResult&& rhs) {
       owned_string = std::move(rhs.owned_string);
@@ -180,8 +176,7 @@ class NamedRegexCapturer {
     Iterable(std::shared_ptr<NamedRegexCapturer::Data> data,
              std::string::const_iterator begin,
              std::string::const_iterator end)
-        : data_(std::move(data)),
-          begin_(begin, end, data_->transformed_re) {}
+        : data_(std::move(data)), begin_(begin, end, data_->transformed_re) {}
 
     struct Iterator {
       const std::shared_ptr<NamedRegexCapturer::Data> data_shared_ptr_;

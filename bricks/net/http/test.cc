@@ -37,19 +37,19 @@ SOFTWARE.
 
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using current::net::Socket;
+using current::net::AttemptedToSendHTTPResponseMoreThanOnce;
+using current::net::ChunkSizeNotAValidHEXValue;
 using current::net::ClientSocket;
 using current::net::Connection;
-using current::net::HTTPServerConnection;
-using current::net::HTTPRequestData;
-using current::net::HTTPResponseCodeValue;
-using current::net::HTTPResponseCodeAsString;
-using current::net::GetFileMimeType;
-using current::net::DefaultInternalServerErrorMessage;
-using current::net::SocketException;
 using current::net::ConnectionResetByPeer;
-using current::net::ChunkSizeNotAValidHEXValue;
-using current::net::AttemptedToSendHTTPResponseMoreThanOnce;
+using current::net::DefaultInternalServerErrorMessage;
+using current::net::GetFileMimeType;
+using current::net::HTTPRequestData;
+using current::net::HTTPResponseCodeAsString;
+using current::net::HTTPResponseCodeValue;
+using current::net::HTTPServerConnection;
+using current::net::Socket;
+using current::net::SocketException;
 
 static void ExpectToReceive(const std::string& golden, Connection& connection) {
   std::vector<char> response(golden.length());
@@ -71,16 +71,18 @@ CURRENT_STRUCT(HTTPTestObject) {
 TEST(PosixHTTPServerTest, Smoke) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([port](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
-    EXPECT_EQ(port, c.LocalIPAndPort().port);
-    EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
-    EXPECT_LT(0, c.RemoteIPAndPort().port);
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [port](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
+        EXPECT_EQ(port, c.LocalIPAndPort().port);
+        EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
+        EXPECT_LT(0, c.RemoteIPAndPort().port);
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   EXPECT_EQ("127.0.0.1", connection.LocalIPAndPort().ip);
   EXPECT_LT(0, connection.LocalIPAndPort().port);
@@ -106,16 +108,18 @@ TEST(PosixHTTPServerTest, Smoke) {
 TEST(PosixHTTPServerTest, SmokeWithTrailingSpaces) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([port](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
-    EXPECT_EQ(port, c.LocalIPAndPort().port);
-    EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
-    EXPECT_LT(0, c.RemoteIPAndPort().port);
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [port](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
+        EXPECT_EQ(port, c.LocalIPAndPort().port);
+        EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
+        EXPECT_LT(0, c.RemoteIPAndPort().port);
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   EXPECT_EQ("127.0.0.1", connection.LocalIPAndPort().ip);
   EXPECT_LT(0, connection.LocalIPAndPort().port);
@@ -141,12 +145,14 @@ TEST(PosixHTTPServerTest, SmokeWithTrailingSpaces) {
 TEST(PosixHTTPServerTest, SmokeWithArray) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/vector_char", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(std::vector<char>({'S', 't', 'r', 'i', 'n', 'g'}));
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/vector_char", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(std::vector<char>({'S', 't', 'r', 'i', 'n', 'g'}));
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("GET /vector_char HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -166,12 +172,14 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
 TEST(PosixHTTPServerTest, SmokeWithObject) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(HTTPTestObject());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(HTTPTestObject());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("GET /test_object HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -191,12 +199,14 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
 TEST(PosixHTTPServerTest, SmokeWithObjectWithCORSHeader) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(HTTPTestObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(HTTPTestObject(), HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("GET /test_object HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -217,15 +227,17 @@ TEST(PosixHTTPServerTest, SmokeWithObjectWithCORSHeader) {
 TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
-    auto r = c.SendChunkedHTTPResponse();
-    r.Send("onetwothree");
-    r.Send(std::vector<char>({'f', 'o', 'o'}));
-    r.Send(HTTPTestObject());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
+        auto r = c.SendChunkedHTTPResponse();
+        r.Send("onetwothree");
+        r.Send(std::vector<char>({'f', 'o', 'o'}));
+        r.Send(HTTPTestObject());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("GET /chunked HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -250,15 +262,17 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
 TEST(PosixHTTPServerTest, SmokeChunkedResponseWithCORSHeader) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
-    auto r = c.SendChunkedHTTPResponse(HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
-    r.Send("onetwothree");
-    r.Send(std::vector<char>({'f', 'o', 'o'}));
-    r.Send(HTTPTestObject());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
+        auto r = c.SendChunkedHTTPResponse(HTTPResponseCode.OK, current::net::http::Headers().SetCORSHeader());
+        r.Send("onetwothree");
+        r.Send(std::vector<char>({'f', 'o', 'o'}));
+        r.Send(HTTPTestObject());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("GET /chunked HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -284,15 +298,17 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponseWithCORSHeader) {
 TEST(PosixHTTPServerTest, SmokeWithHeaders) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/header", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse("OK",
-                       HTTPResponseCode.OK,
-                       current::net::http::Headers({{"foo", "bar"}, {"baz", "meh"}}),
-                       "here_is_" + c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/header", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse("OK",
+                           HTTPResponseCode.OK,
+                           current::net::http::Headers({{"foo", "bar"}, {"baz", "meh"}}),
+                           "here_is_" + c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST /header HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -316,16 +332,18 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
 TEST(PosixHTTPServerTest, SmokeWithLowercaseContentLength) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([port](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
-    EXPECT_EQ(port, c.LocalIPAndPort().port);
-    EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
-    EXPECT_LT(0, c.RemoteIPAndPort().port);
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [port](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
+        EXPECT_EQ(port, c.LocalIPAndPort().port);
+        EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
+        EXPECT_LT(0, c.RemoteIPAndPort().port);
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   EXPECT_EQ("127.0.0.1", connection.LocalIPAndPort().ip);
   EXPECT_LT(0, connection.LocalIPAndPort().port);
@@ -350,13 +368,15 @@ TEST(PosixHTTPServerTest, SmokeWithLowercaseContentLength) {
 TEST(PosixHTTPServerTest, SmokeWithMethodInHeader) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("PATCH", c.HTTPRequest().Method());
-    EXPECT_EQ("/ugly", c.HTTPRequest().RawPath());
-    EXPECT_EQ("YES", c.HTTPRequest().Body());
-    c.SendHTTPResponse("PASS");
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("PATCH", c.HTTPRequest().Method());
+        EXPECT_EQ("/ugly", c.HTTPRequest().RawPath());
+        EXPECT_EQ("YES", c.HTTPRequest().Body());
+        c.SendHTTPResponse("PASS");
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST /ugly HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -379,13 +399,15 @@ TEST(PosixHTTPServerTest, SmokeWithMethodInHeader) {
 TEST(PosixHTTPServerTest, SmokeWithLowercaseMethodInLowercaseHeader) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("PATCH", c.HTTPRequest().Method());
-    EXPECT_EQ("/ugly2", c.HTTPRequest().RawPath());
-    EXPECT_EQ("yes", c.HTTPRequest().Body());
-    c.SendHTTPResponse("Pass");
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("PATCH", c.HTTPRequest().Method());
+        EXPECT_EQ("/ugly2", c.HTTPRequest().RawPath());
+        EXPECT_EQ("yes", c.HTTPRequest().Body());
+        c.SendHTTPResponse("Pass");
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST /ugly2 HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -409,14 +431,16 @@ TEST(PosixHTTPServerTest, SmokeNoBodyForPOST) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
   std::atomic_bool thrown(false);
-  std::thread t([&thrown](Socket s) {
-    try {
-      HTTPServerConnection c(s.Accept());
-      ASSERT_TRUE(false);
-    } catch (const current::net::HTTPRequestBodyLengthNotProvided&) {
-      thrown = true;
-    }
-  }, std::move(reserved_port));
+  std::thread t(
+      [&thrown](Socket s) {
+        try {
+          HTTPServerConnection c(s.Accept());
+          ASSERT_TRUE(false);
+        } catch (const current::net::HTTPRequestBodyLengthNotProvided&) {
+          thrown = true;
+        }
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -438,14 +462,16 @@ TEST(PosixHTTPServerTest, SmokePOSTBodyTooLong) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
   std::atomic_bool thrown(false);
-  std::thread t([&thrown](Socket s) {
-    try {
-      HTTPServerConnection c(s.Accept());
-      ASSERT_TRUE(false);
-    } catch (const current::net::HTTPPayloadTooLarge&) {
-      thrown = true;
-    }
-  }, std::move(reserved_port));
+  std::thread t(
+      [&thrown](Socket s) {
+        try {
+          HTTPServerConnection c(s.Accept());
+          ASSERT_TRUE(false);
+        } catch (const current::net::HTTPPayloadTooLarge&) {
+          thrown = true;
+        }
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   try {
     connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
@@ -478,12 +504,14 @@ TEST(PosixHTTPServerTest, SmokePOSTBodyTooLong) {
 TEST(PosixHTTPServerTest, LargeBody) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   std::string body(1000000, '.');
   for (size_t i = 0; i < body.length(); ++i) {
     body[i] = 'A' + (i % 26);
@@ -509,12 +537,14 @@ TEST(PosixHTTPServerTest, LargeBody) {
 TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -532,13 +562,12 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
     connection.BlockingWrite("\r\n", true);
   }
   connection.BlockingWrite("0\r\n", false);
-  ExpectToReceive(current::strings::Printf(
-                      "HTTP/1.1 200 OK\r\n"
-                      "Content-Type: text/plain\r\n"
-                      "Connection: close\r\n"
-                      "Content-Length: %d\r\n"
-                      "\r\n",
-                      static_cast<int>(body.length())) +
+  ExpectToReceive(current::strings::Printf("HTTP/1.1 200 OK\r\n"
+                                           "Content-Type: text/plain\r\n"
+                                           "Connection: close\r\n"
+                                           "Content-Length: %d\r\n"
+                                           "\r\n",
+                                           static_cast<int>(body.length())) +
                       body,
                   connection);
   t.join();
@@ -572,8 +601,8 @@ TEST(PosixHTTPServerTest, ChunkedSmoke)
       for (uint64_t i = 0; i < chunks; ++i) {
         const uint64_t start = offset + length * i / chunks;
         const uint64_t end = offset + length * (i + 1) / chunks;
-        chunked_body +=
-            current::strings::Printf("%llX\r\n", static_cast<long long>(end - start)) + body.substr(static_cast<size_t>(start), static_cast<size_t>(end - start));
+        chunked_body += current::strings::Printf("%llX\r\n", static_cast<long long>(end - start)) +
+                        body.substr(static_cast<size_t>(start), static_cast<size_t>(end - start));
       }
 
       auto local_reserved_port = current::net::ReserveLocalPort();
@@ -586,13 +615,12 @@ TEST(PosixHTTPServerTest, ChunkedSmoke)
       connection.BlockingWrite("\r\n", true);
       connection.BlockingWrite(chunked_body, true);
       connection.BlockingWrite("0\r\n", false);
-      ExpectToReceive(current::strings::Printf(
-                          "HTTP/1.1 200 OK\r\n"
-                          "Content-Type: text/plain\r\n"
-                          "Connection: close\r\n"
-                          "Content-Length: %d\r\n"
-                          "\r\n",
-                          static_cast<int>(length)) +
+      ExpectToReceive(current::strings::Printf("HTTP/1.1 200 OK\r\n"
+                                               "Content-Type: text/plain\r\n"
+                                               "Connection: close\r\n"
+                                               "Content-Length: %d\r\n"
+                                               "\r\n",
+                                               static_cast<int>(length)) +
                           body.substr(static_cast<size_t>(offset)),
                       connection);
       t.join();
@@ -816,13 +844,15 @@ TEST(PosixHTTPServerTest, DISABLED_InvalidHEXAsChunkSizeDoesNotKillServer)
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
   std::atomic_bool wrong_chunk_size_exception_thrown(false);
-  std::thread t([&wrong_chunk_size_exception_thrown](Socket s) {
-    try {
-      HTTPServerConnection c(s.Accept());
-    } catch (const ChunkSizeNotAValidHEXValue&) {
-      wrong_chunk_size_exception_thrown = true;
-    }
-  }, std::move(reserved_port));
+  std::thread t(
+      [&wrong_chunk_size_exception_thrown](Socket s) {
+        try {
+          HTTPServerConnection c(s.Accept());
+        } catch (const ChunkSizeNotAValidHEXValue&) {
+          wrong_chunk_size_exception_thrown = true;
+        }
+      },
+      std::move(reserved_port));
 
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
@@ -848,12 +878,14 @@ TEST(PosixHTTPServerTest, DISABLED_InvalidHEXAsChunkSizeDoesNotKillServer)
 TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(c.HTTPRequest().Body());
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse(c.HTTPRequest().Body());
+      },
+      std::move(reserved_port));
   Connection connection(ClientSocket("localhost", port));
   connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
@@ -870,13 +902,12 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
     body += chunk;
   }
   connection.BlockingWrite("0\r\n", false);
-  ExpectToReceive(current::strings::Printf(
-                      "HTTP/1.1 200 OK\r\n"
-                      "Content-Type: text/plain\r\n"
-                      "Connection: close\r\n"
-                      "Content-Length: %d\r\n"
-                      "\r\n",
-                      static_cast<int>(body.length())) +
+  ExpectToReceive(current::strings::Printf("HTTP/1.1 200 OK\r\n"
+                                           "Content-Type: text/plain\r\n"
+                                           "Connection: close\r\n"
+                                           "Content-Length: %d\r\n"
+                                           "\r\n",
+                                           static_cast<int>(body.length())) +
                       body,
                   connection);
   t.join();
@@ -885,7 +916,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
 #ifndef CURRENT_WINDOWS
 struct HTTPClientImplCURL {
   static std::string MakeGetRequest(std::thread& server_thread, int port, const std::string& url) {
-    const auto cmd = current::strings::Printf( "curl -s localhost:%d%s", port, url.c_str());
+    const auto cmd = current::strings::Printf("curl -s localhost:%d%s", port, url.c_str());
     const std::string result = current::bricks::system::SystemCallReadPipe(cmd).ReadLine();
     server_thread.join();
     return result;
@@ -895,8 +926,7 @@ struct HTTPClientImplCURL {
                                      int port,
                                      const std::string& url,
                                      const std::string& data) {
-    const auto cmd = current::strings::Printf(
-        "curl -s -d '%s' localhost:%d%s", data.c_str(), port, url.c_str());
+    const auto cmd = current::strings::Printf("curl -s -d '%s' localhost:%d%s", data.c_str(), port, url.c_str());
     const std::string result = current::bricks::system::SystemCallReadPipe(cmd).ReadLine();
     server_thread.join();
     return result;
@@ -955,53 +985,61 @@ TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
 TYPED_TEST(HTTPTest, GET) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/unittest?foo=bar", c.HTTPRequest().RawPath());
-    EXPECT_EQ("/unittest", c.HTTPRequest().URL().path);
-    EXPECT_EQ("bar", c.HTTPRequest().URL().query["foo"]);
-    c.SendHTTPResponse("PASSED");
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/unittest?foo=bar", c.HTTPRequest().RawPath());
+        EXPECT_EQ("/unittest", c.HTTPRequest().URL().path);
+        EXPECT_EQ("bar", c.HTTPRequest().URL().query["foo"]);
+        c.SendHTTPResponse("PASSED");
+      },
+      std::move(reserved_port));
   EXPECT_EQ("PASSED", TypeParam::MakeGetRequest(t, port, "/unittest?foo=bar"));
 }
 
 TYPED_TEST(HTTPTest, POST) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
-    EXPECT_EQ(7u, c.HTTPRequest().BodyLength());
-    EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
-    c.SendHTTPResponse("POSTED");
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
+        EXPECT_EQ(7u, c.HTTPRequest().BodyLength());
+        EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
+        c.SendHTTPResponse("POSTED");
+      },
+      std::move(reserved_port));
   EXPECT_EQ("POSTED", TypeParam::MakePostRequest(t, port, "/unittest_post", "BAZINGA"));
 }
 
 TYPED_TEST(HTTPTest, NoBodyPOST) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("POST", c.HTTPRequest().Method());
-    EXPECT_EQ("/unittest_empty_post", c.HTTPRequest().RawPath());
-    EXPECT_EQ(0u, c.HTTPRequest().BodyLength());
-    c.SendHTTPResponse("ALMOST_POSTED");
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("POST", c.HTTPRequest().Method());
+        EXPECT_EQ("/unittest_empty_post", c.HTTPRequest().RawPath());
+        EXPECT_EQ(0u, c.HTTPRequest().BodyLength());
+        c.SendHTTPResponse("ALMOST_POSTED");
+      },
+      std::move(reserved_port));
   EXPECT_EQ("ALMOST_POSTED", TypeParam::MakePostRequest(t, port, "/unittest_empty_post", ""));
 }
 
 TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
-  std::thread t([](Socket s) {
-    HTTPServerConnection c(s.Accept());
-    c.SendHTTPResponse("one");
-    ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
-    ASSERT_THROW(c.SendChunkedHTTPResponse().Send("three"), AttemptedToSendHTTPResponseMoreThanOnce);
-  }, std::move(reserved_port));
+  std::thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        c.SendHTTPResponse("one");
+        ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
+        ASSERT_THROW(c.SendChunkedHTTPResponse().Send("three"), AttemptedToSendHTTPResponseMoreThanOnce);
+      },
+      std::move(reserved_port));
   EXPECT_EQ("one", TypeParam::MakeGetRequest(t, port, "/"));
 }
 

@@ -66,7 +66,7 @@ struct Index {};
 template <typename T>
 struct TypeSelector {};
 
-}  // namespace crnt::r
+}  // namespace r
 }  // namespace crnt
 
 namespace current {
@@ -75,15 +75,15 @@ using DeclareFields = ::crnt::r::DF;
 using CountFields = ::crnt::r::FC;
 using DummyTemplateType = ::crnt::r::DummyT;
 using ::crnt::r::CountFieldsImplementationType;
-using ::crnt::r::FieldTypeAndName;
-using ::crnt::r::FieldTypeAndNameAndIndex;
-using ::crnt::r::FieldNameAndPtr;
 using ::crnt::r::FieldNameAndImmutableValue;
 using ::crnt::r::FieldNameAndMutableValue;
-using ::crnt::r::SimpleIndex;
+using ::crnt::r::FieldNameAndPtr;
+using ::crnt::r::FieldTypeAndName;
+using ::crnt::r::FieldTypeAndNameAndIndex;
 using ::crnt::r::Index;
+using ::crnt::r::SimpleIndex;
 using ::crnt::r::TypeSelector;
-}  // namespace current::reflection
+}  // namespace reflection
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_BASE_H

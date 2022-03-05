@@ -39,7 +39,8 @@ namespace strings {
 #ifdef __GNUC__
 __attribute__((__format__(__printf__, 1, 2)))
 #endif
-inline std::string Printf(const char *fmt, ...) {
+inline std::string
+Printf(const char *fmt, ...) {
   // Most of the platforms now support thread locals, so 64Kb buffer seems reasonable.
   constexpr int max_string_length_for_static_buffer = 64 * 1024 - 1;
   // Absolute limit on result size is 1Mb.
@@ -67,7 +68,8 @@ inline std::string Printf(const char *fmt, ...) {
   }
 #else
   va_start(ap, fmt);
-  const int res = _vsnprintf_s(buffer, max_string_length_for_static_buffer + 1, max_string_length_for_static_buffer, fmt, ap);
+  const int res =
+      _vsnprintf_s(buffer, max_string_length_for_static_buffer + 1, max_string_length_for_static_buffer, fmt, ap);
   va_end(ap);
   if (res < 0 || errno == ERANGE) {
     va_start(ap, fmt);

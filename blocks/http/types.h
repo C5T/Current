@@ -103,15 +103,16 @@ struct ChunkedBase {
   std::function<void()> done_callback_impl;
 
   explicit ChunkedBase(std::string url)
-    : url(std::move(url)),
-      header_callback([this](const std::string& k, const std::string& v) { header_callback_wrapper(k, v); }),
-      chunk_callback([this](const std::string& c) { chunk_callback_wrapper(c); }),
-      done_callback([this]() { done_callback_wrapper(); }) {}
+      : url(std::move(url)),
+        header_callback([this](const std::string& k, const std::string& v) { header_callback_wrapper(k, v); }),
+        chunk_callback([this](const std::string& c) { chunk_callback_wrapper(c); }),
+        done_callback([this]() { done_callback_wrapper(); }) {}
 
-  explicit ChunkedBase(std::string url,
-                       std::function<void(const std::string&, const std::string&)> header_callback,
-                       std::function<void(const std::string&)> chunk_callback,
-                       std::function<void()> done_callback = []() {})
+  explicit ChunkedBase(
+      std::string url,
+      std::function<void(const std::string&, const std::string&)> header_callback,
+      std::function<void(const std::string&)> chunk_callback,
+      std::function<void()> done_callback = []() {})
       : ChunkedBase(std::move(url)) {
     header_callback_impl = header_callback;
     chunk_callback_impl = chunk_callback;
@@ -135,7 +136,7 @@ struct ChunkedBase {
   // TODO(dkorolev): Move this to `Chunk`-s if performance becomes the bottleneck.
   T& OnLine(std::function<void(const std::string&)> line_callback) {
     group_by_lines_.emplace_back(std::make_unique<current::strings::StatefulGroupByLines>(
-          [line_callback](const std::string& line) { line_callback(line); }));
+        [line_callback](const std::string& line) { line_callback(line); }));
     return static_cast<T&>(*this);
   }
 
@@ -168,12 +169,13 @@ struct ChunkedGET final : ChunkedBase<ChunkedGET> {
 struct ChunkedPOST final : ChunkedBase<ChunkedPOST> {
   const std::string body;
   const std::string content_type;
-  explicit ChunkedPOST(std::string url,
-                       std::string body,
-                       std::string content_type,
-                       std::function<void(const std::string&, const std::string&)> header_callback,
-                       std::function<void(const std::string&)> chunk_callback,
-                       std::function<void()> done_callback = []() {})
+  explicit ChunkedPOST(
+      std::string url,
+      std::string body,
+      std::string content_type,
+      std::function<void(const std::string&, const std::string&)> header_callback,
+      std::function<void(const std::string&)> chunk_callback,
+      std::function<void()> done_callback = []() {})
       : ChunkedBase(std::move(url), header_callback, chunk_callback, done_callback),
         body(std::move(body)),
         content_type(std::move(content_type)) {}
@@ -202,8 +204,9 @@ struct FillBody<REQUEST, true> {
 template <typename REQUEST>
 struct FillBody<REQUEST, false> {
   template <typename T>
-  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> Fill(
-      REQUEST& request, T&& object, const std::string& content_type) {
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> Fill(REQUEST& request,
+                                                                                  T&& object,
+                                                                                  const std::string& content_type) {
     request.body = JSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultJSONContentType;
   }
@@ -214,8 +217,7 @@ struct POST : HTTPRequestBase<POST> {
   std::string content_type;
 
   template <typename T>
-  POST(const std::string& url, T&& body, const std::string& content_type = "")
-      : HTTPRequestBase(url) {
+  POST(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
     FillBody<POST, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
@@ -233,8 +235,7 @@ struct PUT : HTTPRequestBase<PUT> {
   std::string content_type;
 
   template <typename T>
-  PUT(const std::string& url, T&& body, const std::string& content_type = "")
-      : HTTPRequestBase(url) {
+  PUT(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
     FillBody<PUT, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
@@ -244,8 +245,7 @@ struct PATCH : HTTPRequestBase<PATCH> {
   std::string content_type;
 
   template <typename T>
-  PATCH(const std::string& url, T&& body, const std::string& content_type = "")
-      : HTTPRequestBase(url) {
+  PATCH(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
     FillBody<PATCH, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
@@ -398,13 +398,13 @@ struct HTTPImpl {
 }  // namespace http
 }  // namespace current
 
+using current::http::DELETE;
 using current::http::GET;
 using current::http::HEAD;
+using current::http::PATCH;
 using current::http::POST;
 using current::http::POSTFromFile;
 using current::http::PUT;
-using current::http::PATCH;
-using current::http::DELETE;
 
 using current::http::ChunkedGET;
 using current::http::ChunkedPOST;

@@ -73,7 +73,7 @@ inline V d_add(const V& a, const V& b, const V& da, const V& db) {
     return da.value() + db.value();
   } else if (db.equals_to(0)) {
     return da;
-  } else if(da.equals_to(0)) {
+  } else if (da.equals_to(0)) {
     return db;
   } else {
     return da + db;
@@ -87,7 +87,7 @@ inline V d_sub(const V& a, const V& b, const V& da, const V& db) {
     return da.value() - db.value();
   } else if (db.equals_to(0)) {
     return da;
-  } else if(da.equals_to(0)) {
+  } else if (da.equals_to(0)) {
     return -db;
   } else {
     return da - db;
@@ -125,14 +125,10 @@ inline V d_mul(const V& a, const V& b, const V& da, const V& db) {
 inline node_index_t d_op(MathOperation operation, const V& a, const V& b, const V& da, const V& db) {
   static const size_t n = static_cast<size_t>(MathOperation::end);
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
-      d_add,
-      d_sub,
-      d_mul,
-      [](const V& a, const V& b, const V& da, const V& db) { 
+      d_add, d_sub, d_mul, [](const V& a, const V& b, const V& da, const V& db) {
         // The unary minus doesn't exist, so a "0" node would still appear there, and thus no harm.
         return (simplified_mul(b, da) - simplified_mul(a, db)) / (b * b);
-      }
-  };
+      }};
   return operation < MathOperation::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
@@ -142,7 +138,7 @@ inline node_index_t d_f(MathFunction function, const V& original, const V& x, co
       // sqr().
       [](const V&, const V& x, const V& dx) { return simplified_mul(V(2.0), simplified_mul(x, dx)); },
       // sqrt().
-      [](const V& original, const V&, const V& dx) { 
+      [](const V& original, const V&, const V& dx) {
         if (original.is_value()) {
           return simplified_mul(V(0.5 / original.value()), dx);
         } else {
@@ -152,11 +148,11 @@ inline node_index_t d_f(MathFunction function, const V& original, const V& x, co
       // exp().
       [](const V& original, const V&, const V& dx) { return simplified_mul(original, dx); },
       // log().
-      [](const V&, const V& x, const V& dx) { 
+      [](const V&, const V& x, const V& dx) {
         if (x.is_value()) {
           return simplified_mul(V(1.0) / x.value(), dx);
         } else {
-          return dx / x; 
+          return dx / x;
         }
       },
       // sin().
@@ -355,7 +351,7 @@ struct g_impl_selector<JIT::Super> {
   using type = g_super;
 };
 
-}  // namespace fncas::impl
+}  // namespace impl
 
 template <JIT JIT_IMPLEMENTATION = JIT::Super>
 using gradient_t = typename impl::g_impl_selector<JIT_IMPLEMENTATION>::type;

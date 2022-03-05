@@ -758,8 +758,8 @@ struct OptimizeImpl<ConjugateGradientOptimizerSelector, DIRECTION> {
         stats.JournalIteration();
         if (logger) {
           // `PointAsString()` is an expensive call, don't make it if `logger` is not initialized.
-          logger.Log("ConjugateGradientOptimizer: Iteration " + current::ToString(iteration + 1) + ", OF = " +
-                     current::ToString(current.value) + " @ " + super.PointAsString(current.point));
+          logger.Log("ConjugateGradientOptimizer: Iteration " + current::ToString(iteration + 1) +
+                     ", OF = " + current::ToString(current.value) + " @ " + super.PointAsString(current.point));
         }
         try {
           // Backtracking line search.
@@ -829,7 +829,7 @@ template <class F,
           JIT JIT_IMPLEMENTATION = JIT::Default>
 using DefaultOptimizer = ConjugateGradientOptimizer<F, DIRECTION, JIT_IMPLEMENTATION>;
 
-}  // namespace fncas::optimize
+}  // namespace optimize
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_FNCAS_OPTIMIZE_H

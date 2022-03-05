@@ -72,8 +72,8 @@ struct JSONSchemaException : TypeSystemParseJSONException {
   }
 };
 
-}  // namespace current::serialization::json
-}  // namespace current::serialization
+}  // namespace json
+}  // namespace serialization
 }  // namespace current
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_JSON_EXCEPTIONS_H

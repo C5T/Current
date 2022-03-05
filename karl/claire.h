@@ -111,7 +111,8 @@ class GenericClaire final : private DummyClaireNotifiable {
         karl_keepalive_route_(KarlKeepaliveRoute(karl_, codename_, port_)),
         notifiable_ref_(notifiable),
         us_start_(current::time::Now()),
-        http_scope_(HTTP(current::net::BarePort(port)).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
+        http_scope_(HTTP(current::net::BarePort(port))
+                        .Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
         destructing_(false),
         keepalive_thread_force_wakeup_(false),
         keepalive_thread_running_(false) {}
@@ -412,15 +413,15 @@ class GenericClaire final : private DummyClaireNotifiable {
       // TODO(dkorolev): Parameter or named constant for keepalive frequency?
       const std::chrono::microseconds projected_next_keepalive =
           last_keepalive_attempt_result_.timestamp +
-          std::chrono::microseconds(current::random::CSRandomUInt64(static_cast<uint64_t>(20e6 * 0.9), static_cast<uint64_t>(20e6 * 1.1)));
+          std::chrono::microseconds(
+              current::random::CSRandomUInt64(static_cast<uint64_t>(20e6 * 0.9), static_cast<uint64_t>(20e6 * 1.1)));
 
       const std::chrono::microseconds now = current::time::Now();
 
       if (projected_next_keepalive > now) {
-        keepalive_condition_variable_.wait_for(
-            lock,
-            projected_next_keepalive - now,
-            [this]() { return destructing_.load() || keepalive_thread_force_wakeup_.load(); });
+        keepalive_condition_variable_.wait_for(lock, projected_next_keepalive - now, [this]() {
+          return destructing_.load() || keepalive_thread_force_wakeup_.load();
+        });
       }
 
       if (destructing_) {
@@ -553,7 +554,7 @@ class GenericClaire final : private DummyClaireNotifiable {
 
 using Claire = GenericClaire<Variant<default_user_status::status>>;
 
-}  // namespace current::karl
+}  // namespace karl
 }  // namespace current
 
 #endif  // KARL_CLAIRE_H

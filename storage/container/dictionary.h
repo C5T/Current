@@ -43,7 +43,8 @@ template <typename T,
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
           typename PATCH_EVENT_OR_VOID,
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT
-          template <typename...> class MAP>
+          template <typename...>
+          class MAP>
 class GenericDictionary {
  public:
   using entry_t = T;
@@ -87,25 +88,22 @@ class GenericDictionary {
       const T& previous_object = map_iterator->second;
       CURRENT_ASSERT(lm_iterator != last_modified_.end());
       const auto previous_timestamp = lm_iterator->second;
-      journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             last_modified_[key] = previous_timestamp;
-                             map_[key] = previous_object;
-                           });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_object, previous_timestamp]() {
+        last_modified_[key] = previous_timestamp;
+        map_[key] = previous_object;
+      });
     } else {
       if (lm_iterator != last_modified_.end()) {
         const auto previous_timestamp = lm_iterator->second;
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key, previous_timestamp]() {
-                               last_modified_[key] = previous_timestamp;
-                               map_.erase(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_timestamp]() {
+          last_modified_[key] = previous_timestamp;
+          map_.erase(key);
+        });
       } else {
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key]() {
-                               last_modified_.erase(key);
-                               map_.erase(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() {
+          last_modified_.erase(key);
+          map_.erase(key);
+        });
       }
     }
     last_modified_[key] = now;
@@ -120,18 +118,17 @@ class GenericDictionary {
       const auto lm_iterator = last_modified_.find(key);
       CURRENT_ASSERT(lm_iterator != last_modified_.end());
       const auto previous_timestamp = lm_iterator->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             last_modified_[key] = previous_timestamp;
-                             map_[key] = previous_object;
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        last_modified_[key] = previous_timestamp;
+        map_[key] = previous_object;
+      });
       last_modified_[key] = now;
       map_.erase(map_iterator);
     }
   }
 
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
-  // NOTE(dkorolev): The `patch_object` parameter should be passed by value, 
+  // NOTE(dkorolev): The `patch_object` parameter should be passed by value,
   // as otherwise it won't be valid during the possible rollback.
   template <typename E = entry_t>
   std::enable_if_t<HasPatch<E>(), bool>::type Patch(sfinae::CF<key_t> key,
@@ -179,9 +176,8 @@ class GenericDictionary {
   }
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
   struct DummyStructForNonExistentPatch {};  // Essential, as can't form a reference to `void` even if disabled.
-  void operator()(const std::conditional_t<HasPatch<entry_t>(),
-                                           PATCH_EVENT_OR_VOID,
-                                           DummyStructForNonExistentPatch>& e) {
+  void operator()(
+      const std::conditional_t<HasPatch<entry_t>(), PATCH_EVENT_OR_VOID, DummyStructForNonExistentPatch>& e) {
     auto it = map_.find(e.key);
     if (it != map_.end()) {
       last_modified_[e.key] = e.us;
@@ -264,7 +260,7 @@ struct StorageFieldTypeSelector<container::OrderedDictionary<T, E1, E2>> {
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedDictionary;
 using current::storage::container::OrderedDictionary;
+using current::storage::container::UnorderedDictionary;
 
 #endif  // CURRENT_STORAGE_CONTAINER_DICTIONARY_H

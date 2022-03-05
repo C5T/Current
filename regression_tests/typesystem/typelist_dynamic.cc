@@ -44,8 +44,8 @@ TEST(TypeTest, TypeListImpl) {
   using namespace type_test;
 #include "include/typelist_dynamic.cc"
 
-  using current::metaprogramming::map;
   using current::metaprogramming::Flatten;
+  using current::metaprogramming::map;
   typedef Flatten<map<ST, DATA_TYPES>> STORAGE_TYPES;
 
   static_assert(TypeListSize<STORAGE_TYPES> == TypeListSize<DATA_TYPES> * 2, "");

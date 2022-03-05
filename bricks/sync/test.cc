@@ -194,11 +194,10 @@ TEST(OwnedBorrowed, BorrowedWithCallbackOutlivingTheOwner) {
             y.ExclusiveUse([](Container& container) { ++container.ref; });
           }
         },
-        std::make_unique<current::BorrowedWithCallback<Container>>(x,
-                                                                   [&log, &terminating]() {
-                                                                     terminating = true;
-                                                                     log += "Terminating.\n";
-                                                                   }));
+        std::make_unique<current::BorrowedWithCallback<Container>>(x, [&log, &terminating]() {
+          terminating = true;
+          log += "Terminating.\n";
+        }));
 
     EXPECT_EQ(1u, x.NumberOfActiveBorrowers());
     EXPECT_EQ(1u, x.TotalBorrowersSpawnedThroughoutLifetime());
@@ -231,16 +230,18 @@ TEST(OwnedBorrowed, UseInternalIsDestructingGetter) {
   std::unique_ptr<std::thread> thread;
   {
     current::Owned<Container> x(current::ConstructOwned<Container>(), container);
-    thread = std::make_unique<std::thread>([](current::Borrowed<Container> y) {
-      // Keep incrementing until external termination request.
-      while (y) {
-        y.ExclusiveUse([](Container& container) { ++container.ref; });
-      }
-      // And do another one thousand increments just because we can.
-      for (int i = 0; i < 1000; ++i) {
-        y.ExclusiveUse([](Container& container) { ++container.ref; });
-      }
-    }, current::Borrowed<Container>(x));
+    thread = std::make_unique<std::thread>(
+        [](current::Borrowed<Container> y) {
+          // Keep incrementing until external termination request.
+          while (y) {
+            y.ExclusiveUse([](Container& container) { ++container.ref; });
+          }
+          // And do another one thousand increments just because we can.
+          for (int i = 0; i < 1000; ++i) {
+            y.ExclusiveUse([](Container& container) { ++container.ref; });
+          }
+        },
+        current::Borrowed<Container>(x));
 
     int extracted_value;
     do {
@@ -253,8 +254,8 @@ TEST(OwnedBorrowed, UseInternalIsDestructingGetter) {
 }
 
 TEST(WaitableAtomic, Smoke) {
-  using current::WaitableAtomic;
   using current::IntrusiveClient;
+  using current::WaitableAtomic;
 
   struct Object {
     size_t x = 0;
@@ -269,34 +270,40 @@ TEST(WaitableAtomic, Smoke) {
     WaitableAtomic<bool, true> top_level_lock;
 
     // The `++x` thread uses mutable accessors.
-    std::thread([&top_level_lock, &object](IntrusiveClient top_level_client) {
-      // Should be able to register another client for `top_level_lock`.
-      ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
-      while (top_level_client) {
-        // This loop will be terminated as `top_level_lock` will be leaving the scope.
-        ++object.MutableScopedAccessor()->x;
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-      // Should no longer be able to register another client for `top_level_lock`.
-      ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      object.MutableScopedAccessor()->x_done = true;
-    }, top_level_lock.RegisterScopedClient()).detach();
+    std::thread(
+        [&top_level_lock, &object](IntrusiveClient top_level_client) {
+          // Should be able to register another client for `top_level_lock`.
+          ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
+          while (top_level_client) {
+            // This loop will be terminated as `top_level_lock` will be leaving the scope.
+            ++object.MutableScopedAccessor()->x;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
+          // Should no longer be able to register another client for `top_level_lock`.
+          ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          object.MutableScopedAccessor()->x_done = true;
+        },
+        top_level_lock.RegisterScopedClient())
+        .detach();
 
     // The `++y` thread uses the functional style.
-    std::thread([&top_level_lock, &object](IntrusiveClient top_level_client) {
-      // Should be able to register another client for `top_level_lock`.
-      ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
-      while (top_level_client) {
-        // This loop will be terminated as `top_level_lock` will be leaving the scope.
-        object.MutableUse([](Object& object) { ++object.y; });
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-      // Should no longer be able to register another client for `top_level_lock`.
-      ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      object.MutableUse([](Object& object) { object.y_done = true; });
-    }, top_level_lock.RegisterScopedClient()).detach();
+    std::thread(
+        [&top_level_lock, &object](IntrusiveClient top_level_client) {
+          // Should be able to register another client for `top_level_lock`.
+          ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
+          while (top_level_client) {
+            // This loop will be terminated as `top_level_lock` will be leaving the scope.
+            object.MutableUse([](Object& object) { ++object.y; });
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
+          // Should no longer be able to register another client for `top_level_lock`.
+          ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          object.MutableUse([](Object& object) { object.y_done = true; });
+        },
+        top_level_lock.RegisterScopedClient())
+        .detach();
 
     // Let `++x` and `++y` threads run 25ms.
     std::this_thread::sleep_for(std::chrono::milliseconds(25));
@@ -348,8 +355,8 @@ TEST(WaitableAtomic, ProxyConstructor) {
 }
 
 TEST(WaitableAtomic, IntrusiveClientsCanBeTransferred) {
-  using current::WaitableAtomic;
   using current::IntrusiveClient;
+  using current::WaitableAtomic;
 
   WaitableAtomic<bool, true> object;
   auto f = [](IntrusiveClient& c) { static_cast<void>(c); };

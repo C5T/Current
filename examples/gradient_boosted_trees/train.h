@@ -196,7 +196,7 @@ class TreeBuilder {
       ensemble_.nodes[node_index].value = mean_y;
     } else {
       if (dump_ostream_) {
-        *dump_ostream_ << indent << "count: " << n << ", y: " << sum_p1*(1.0 / n)
+        *dump_ostream_ << indent << "count: " << n << ", y: " << sum_p1 * (1.0 / n)
                        << ", y_stddev: " << std::sqrt(baseline_penalty / n);
       }
 

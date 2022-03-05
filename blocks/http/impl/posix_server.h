@@ -163,7 +163,9 @@ class HTTPServerPOSIX final {
   // Since instances of `HTTPServerPOSIX` are created via a singleton,
   // a listening thread will only be created once per port, on the first access to that port.
   explicit HTTPServerPOSIX(current::net::BarePort port)
-      : terminating_(false), port_(static_cast<uint16_t>(port)), thread_([this, port]() { Thread(current::net::Socket(port)); }) {}
+      : terminating_(false),
+        port_(static_cast<uint16_t>(port)),
+        thread_([this, port]() { Thread(current::net::Socket(port)); }) {}
   explicit HTTPServerPOSIX(current::net::ReservedLocalPort reserved_port)
       : terminating_(false),
         port_(reserved_port),
@@ -223,7 +225,8 @@ class HTTPServerPOSIX final {
                                 const URLPathArgs::CountMask path_args_count_mask,
                                 F& handler) {
     std::lock_guard<std::mutex> lock(mutex_);
-    return DoRegisterHandler(path, [&handler](Request r) { handler(std::move(r)); }, path_args_count_mask, POLICY);
+    return DoRegisterHandler(
+        path, [&handler](Request r) { handler(std::move(r)); }, path_args_count_mask, POLICY);
   }
 
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>

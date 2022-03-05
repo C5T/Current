@@ -57,7 +57,7 @@ struct HTTPRedirectHelper : current::net::HTTPDefaultHelper {
     current::net::HTTPDefaultHelper::OnHeader(key, value);
   }
 };
-}  // namespace current::http::impl
+}  // namespace impl
 
 template <class HTTP_HELPER>
 class GenericHTTPClientPOSIX final {
@@ -94,8 +94,7 @@ class GenericHTTPClientPOSIX final {
           port = 80;
         }
       }
-      current::net::Connection connection(
-          current::net::Connection(current::net::ClientSocket(parsed_url.host, port)));
+      current::net::Connection connection(current::net::Connection(current::net::ClientSocket(parsed_url.host, port)));
       connection.BlockingWrite(
           request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() + " HTTP/1.1\r\n", true);
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n", true);
