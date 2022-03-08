@@ -1584,6 +1584,38 @@ CURRENT_STRUCT(NonEmptyDerivedFromTemplatedBase, TemplatedBase<std::string>) {
       : SUPER(i, std::move(s)), w(w) {}
 };
 
+CURRENT_STRUCT(WithFieldCalledNew) {
+  CURRENT_FIELD(neew, bool);
+  CURRENT_FIELD_NAME(neew, "new");
+  CURRENT_CONSTRUCTOR(WithFieldCalledNew)(bool b = true) : neew(b) {}
+};
+
+CURRENT_STRUCT(SemiDummyBase) {
+  CURRENT_FIELD(is_derived, bool, true);
+};
+
+CURRENT_STRUCT(WithFieldCalledNewDerived, SemiDummyBase) {
+  CURRENT_FIELD(neew, bool);
+  CURRENT_FIELD_NAME(neew, "new");
+  CURRENT_CONSTRUCTOR(WithFieldCalledNewDerived)(bool b = true) : neew(b) {}
+};
+
+CURRENT_STRUCT_T(WithFieldCalledNewT) {
+  CURRENT_FIELD(neew, bool);
+  CURRENT_FIELD(extra, T);
+  CURRENT_FIELD_NAME(neew, "new");
+  CURRENT_CONSTRUCTOR_T(WithFieldCalledNewT)(bool b = true, T extra = T())
+      : neew(b), extra(std::move(extra)) {}
+};
+
+CURRENT_STRUCT_T(WithFieldCalledNewDerivedT, SemiDummyBase) {
+  CURRENT_FIELD(neew, bool);
+  CURRENT_FIELD(extra, T);
+  CURRENT_FIELD_NAME(neew, "new");
+  CURRENT_CONSTRUCTOR_T(WithFieldCalledNewDerivedT)(bool b = true, T extra = T())
+      : neew(b), extra(std::move(extra)) {}
+};
+
 }  // namespace serialization_test
 
 TEST(JSONSerialization, DerivedSupportsConstructorForwarding) {
@@ -1652,6 +1684,38 @@ TEST(JSONSerialization, CanSerializeWithSubtypesOfTInCurrentStructT) {
   CurrentStructTUsingDerived<VectorOfStrings> ds;
   ds.x = s;
   EXPECT_EQ("{'x':{'xs':'hello','xv':['world']}}", SingleQuoted(JSON(ds)));
+}
+
+TEST(JSONSerialization, WithFieldCalledNewToJSON) {
+  using namespace serialization_test;
+
+  EXPECT_EQ("{'new':true}", SingleQuoted(JSON(WithFieldCalledNew(true))));
+  EXPECT_EQ("{'is_derived':true,'new':true}", SingleQuoted(JSON(WithFieldCalledNewDerived(true))));
+  EXPECT_EQ("{'new':true,'extra':42}", SingleQuoted(JSON(WithFieldCalledNewT<uint32_t>(true, 42))));
+  EXPECT_EQ("{'new':true,'extra':'duh'}", SingleQuoted(JSON(WithFieldCalledNewT<std::string>(true, "duh"))));
+  EXPECT_EQ("{'is_derived':true,'new':true,'extra':42}",
+            SingleQuoted(JSON(WithFieldCalledNewDerivedT<uint32_t>(true, 42))));
+  EXPECT_EQ("{'is_derived':true,'new':true,'extra':'duh'}",
+            SingleQuoted(JSON(WithFieldCalledNewDerivedT<std::string>(true, "duh"))));
+}
+
+TEST(JSONSerialization, WithFieldCalledNewFromJSON) {
+  using namespace serialization_test;
+
+  EXPECT_TRUE(ParseJSON<WithFieldCalledNew>(JSON(WithFieldCalledNew(true))).neew);
+  EXPECT_FALSE(ParseJSON<WithFieldCalledNew>(JSON(WithFieldCalledNew(false))).neew);
+
+  EXPECT_TRUE(ParseJSON<WithFieldCalledNewDerived>(JSON(WithFieldCalledNewDerived(true))).neew);
+  EXPECT_FALSE(ParseJSON<WithFieldCalledNewDerived>(JSON(WithFieldCalledNewDerived(false))).neew);
+
+  using I = int32_t;
+  using S = std::string;
+  EXPECT_EQ(12321, ParseJSON<WithFieldCalledNewT<I>>(JSON(WithFieldCalledNewT<I>(true, 12321))).extra);
+  EXPECT_EQ("yay", ParseJSON<WithFieldCalledNewT<S>>(JSON(WithFieldCalledNewT<S>(true, "yay"))).extra);
+
+  bool F = false;
+  EXPECT_EQ(808, ParseJSON<WithFieldCalledNewDerivedT<I>>(JSON(WithFieldCalledNewDerivedT<I>(F, 808))).extra);
+  EXPECT_EQ("!", ParseJSON<WithFieldCalledNewDerivedT<S>>(JSON(WithFieldCalledNewDerivedT<S>(F, "!"))).extra);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC

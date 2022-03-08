@@ -261,6 +261,8 @@ struct CurrentStructFieldsConsistency<T, 0u> {
       CURRENT_EXPAND_MACRO(__COUNTER__) - FIELD_INDEX_BASE::CURRENT_FIELD_INDEX_BASE - 1;  \
   CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
 
+#define CURRENT_FIELD_NAME(field, name_as_string) static const char* CFN_IMPL_##field(int) { return name_as_string; }
+
 #define CURRENT_FIELD_DESCRIPTION(name, description)                    \
   static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(              \
       ::current::reflection::SimpleIndex<CURRENT_FIELD_INDEX_##name>) { \
@@ -296,33 +298,34 @@ struct CurrentStructFieldsConsistency<T, 0u> {
   }
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                                      \
+  static const char* CFN_IMPL_##name(...) { return #name; }                                                            \
   template <class F>                                                                                                   \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) {         \
-    CURRENT_CALL_F(::current::reflection::TypeSelector<CURRENT_REMOVE_PARENTHESES(type)>(), #name);                    \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<CURRENT_REMOVE_PARENTHESES(type)>(), CFN_IMPL_##name(0));       \
   }                                                                                                                    \
   template <class F>                                                                                                   \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndNameAndIndex, idx>) { \
     CURRENT_CALL_F(::current::reflection::TypeSelector<CURRENT_REMOVE_PARENTHESES(type)>(),                            \
-                   #name,                                                                                              \
+                   CFN_IMPL_##name(0),                                                                                 \
                    ::current::reflection::SimpleIndex<idx>());                                                         \
   }                                                                                                                    \
   template <class F, class SELF>                                                                                       \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                   \
                                  ::current::reflection::Index<::current::reflection::FieldNameAndPtr<SELF>, idx>) {    \
-    CURRENT_CALL_F(#name, &SELF::name);                                                                                \
+    CURRENT_CALL_F(CFN_IMPL_##name(0), &SELF::name);                                                                   \
   }                                                                                                                    \
   template <class F>                                                                                                   \
   void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                          \
                           ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>)        \
       const {                                                                                                          \
-    CURRENT_CALL_F(#name, name);                                                                                       \
+    CURRENT_CALL_F(CFN_IMPL_##name(0), name);                                                                          \
   }                                                                                                                    \
   template <class F>                                                                                                   \
   void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                                          \
                           ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {        \
-    CURRENT_CALL_F(#name, name);                                                                                       \
+    CURRENT_CALL_F(CFN_IMPL_##name(0), name);                                                                          \
   }                                                                                                                    \
   static ::crnt::r::FieldTypeWrapper<CURRENT_REMOVE_PARENTHESES(type)> CURRENT_REFLECTION(                             \
       ::current::reflection::Index<::current::reflection::FieldType, idx>);
