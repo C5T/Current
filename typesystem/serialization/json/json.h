@@ -420,29 +420,29 @@ inline Optional<T> TryParseJSON(const strings::Chunk& source) {
   return TryParseJSON<T, J>(source.c_str());
 }
 
-}  // namespace current::serialization::json
-}  // namespace current::serialization
+}  // namespace json
+}  // namespace serialization
 
 // Keep top-level symbols both in `current::` and in global namespace.
-using serialization::json::JSON;
-using serialization::json::ParseJSON;
-using serialization::json::TryParseJSON;
-using serialization::json::PatchObjectWithJSON;
-using serialization::json::JSONFormat;
-using serialization::json::TypeSystemParseJSONException;
-using serialization::json::JSONSchemaException;
 using serialization::json::InvalidJSONException;
+using serialization::json::JSON;
+using serialization::json::JSONFormat;
+using serialization::json::JSONSchemaException;
 using serialization::json::JSONUninitializedVariantObjectException;
+using serialization::json::ParseJSON;
+using serialization::json::PatchObjectWithJSON;
+using serialization::json::TryParseJSON;
+using serialization::json::TypeSystemParseJSONException;
 }  // namespace current
 
-using current::JSON;
-using current::ParseJSON;
-using current::TryParseJSON;
-using current::PatchObjectWithJSON;
-using current::JSONFormat;
-using current::TypeSystemParseJSONException;
-using current::JSONSchemaException;
 using current::InvalidJSONException;
+using current::JSON;
+using current::JSONFormat;
+using current::JSONSchemaException;
 using current::JSONUninitializedVariantObjectException;
+using current::ParseJSON;
+using current::PatchObjectWithJSON;
+using current::TryParseJSON;
+using current::TypeSystemParseJSONException;
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_JSON_H

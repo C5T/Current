@@ -56,17 +56,15 @@ class Server {
   using events_variant_t = Variant<ios_events_t>;
 
   Server(current::net::ReservedLocalPort reserved_port, const std::string& http_route)
-      : http_server_(HTTP(std::move(reserved_port))),
-        routes_(http_server_.Register(http_route,
-                                       [this](Request r) {
-                                         events_variant_t event;
-                                         try {
-                                           event = ParseJSON<events_variant_t>(r.body);
-                                           std::lock_guard<std::mutex> lock(mutex_);
-                                           event.Call(*this);
-                                         } catch (const current::Exception&) {
-                                         }
-                                       })) {}
+      : http_server_(HTTP(std::move(reserved_port))), routes_(http_server_.Register(http_route, [this](Request r) {
+          events_variant_t event;
+          try {
+            event = ParseJSON<events_variant_t>(r.body);
+            std::lock_guard<std::mutex> lock(mutex_);
+            event.Call(*this);
+          } catch (const current::Exception&) {
+          }
+        })) {}
 
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());
@@ -138,7 +136,7 @@ TEST(midichloriansClient, iOSSmokeTest) {
   [midichlorians identify:@"unit_test"];
 
   current::time::SetNow(std::chrono::microseconds(5000));
-  NSDictionary* eventParams = @{ @"s" : @"str", @"b" : @true, @"x" : @1 };
+  NSDictionary* eventParams = @{@"s" : @"str", @"b" : @true, @"x" : @1};
   [midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
 
   current::time::SetNow(std::chrono::microseconds(15000));

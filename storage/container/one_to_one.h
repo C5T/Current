@@ -44,9 +44,11 @@ template <typename T,
           typename DELETE_EVENT,
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
           typename PATCH_EVENT_OR_VOID,
-#endif // CURRENT_STORAGE_PATCH_SUPPORT
-          template <typename...> class ROW_MAP,
-          template <typename...> class COL_MAP>
+#endif  // CURRENT_STORAGE_PATCH_SUPPORT
+          template <typename...>
+          class ROW_MAP,
+          template <typename...>
+          class COL_MAP>
 class GenericOneToOne {
  public:
   using entry_t = T;
@@ -80,10 +82,9 @@ class GenericOneToOne {
       const T& previous_object = *(map_cit->second);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
     } else {
       const auto cit_row = forward_.find(row);
       const auto cit_col = transposed_.find(col);
@@ -133,11 +134,10 @@ class GenericOneToOne {
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
       } else {
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key]() {
-                               last_modified_.erase(key);
-                               DoEraseWithoutTouchingLastModified(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() {
+          last_modified_.erase(key);
+          DoEraseWithoutTouchingLastModified(key);
+        });
       }
     }
     DoUpdateWithLastModified(now, key, object);
@@ -152,10 +152,9 @@ class GenericOneToOne {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -170,10 +169,9 @@ class GenericOneToOne {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -187,10 +185,9 @@ class GenericOneToOne {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -292,36 +289,19 @@ class GenericOneToOne {
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using UnorderedOneToUnorderedOne = GenericOneToOne<T,
-                                                   UPDATE_EVENT,
-                                                   DELETE_EVENT,
-                                                   PATCH_EVENT_OR_VOID,
-                                                   Unordered,
-                                                   Unordered>;
+using UnorderedOneToUnorderedOne =
+    GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using OrderedOneToOrderedOne = GenericOneToOne<T,
-                                               UPDATE_EVENT,
-                                               DELETE_EVENT,
-                                               PATCH_EVENT_OR_VOID,
-                                               Ordered,
-                                               Ordered>;
+using OrderedOneToOrderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered, Ordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using UnorderedOneToOrderedOne = GenericOneToOne<T,
-                                                 UPDATE_EVENT,
-                                                 DELETE_EVENT,
-                                                 PATCH_EVENT_OR_VOID,
-                                                 Unordered,
-                                                 Ordered>;
+using UnorderedOneToOrderedOne =
+    GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered, Ordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using OrderedOneToUnorderedOne = GenericOneToOne<T,
-                                                 UPDATE_EVENT,
-                                                 DELETE_EVENT,
-                                                 PATCH_EVENT_OR_VOID,
-                                                 Ordered,
-                                                 Unordered>;
+using OrderedOneToUnorderedOne =
+    GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered, Unordered>;
 
 #else
 
@@ -390,9 +370,9 @@ struct StorageFieldTypeSelector<container::OrderedOneToUnorderedOne<T, E1, E2>> 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedOneToUnorderedOne;
 using current::storage::container::OrderedOneToOrderedOne;
-using current::storage::container::UnorderedOneToOrderedOne;
 using current::storage::container::OrderedOneToUnorderedOne;
+using current::storage::container::UnorderedOneToOrderedOne;
+using current::storage::container::UnorderedOneToUnorderedOne;
 
 #endif  // CURRENT_STORAGE_CONTAINER_ONE_TO_ONE_H

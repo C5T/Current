@@ -118,8 +118,7 @@ struct StreamImpl {
   mutable http_subscriptions_t http_subscriptions;
 
   template <typename... ARGS>
-  StreamImpl(ARGS&&... args)
-      : persister(publishing_mutex, std::forward<ARGS>(args)...) {}
+  StreamImpl(ARGS&&... args) : persister(publishing_mutex, std::forward<ARGS>(args)...) {}
 };
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>

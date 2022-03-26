@@ -37,8 +37,8 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using current::mmq::MMQ;
 using current::mmq::MMPQ;
+using current::mmq::MMQ;
 using current::ss::EntryResponse;
 
 TEST(InMemoryMQ, SmokeTest) {

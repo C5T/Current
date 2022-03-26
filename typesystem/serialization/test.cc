@@ -178,7 +178,7 @@ CURRENT_VARIANT(NestedQ, InnerA, InnerB);
 CURRENT_VARIANT(InnerVariant, WithVectorOfPairs, WithOptional);
 CURRENT_STRUCT(WithInnerVariant) { CURRENT_FIELD(v, InnerVariant); };
 
-}  // namespace serialization_test::named_variant
+}  // namespace named_variant
 }  // namespace serialization_test
 
 #if 0
@@ -816,11 +816,11 @@ TEST(JSONSerialization, Exceptions) {
 
 TEST(JSONSerialization, StructSchema) {
   using namespace serialization_test;
-  using current::reflection::TypeID;
+  using current::reflection::Language;
   using current::reflection::Reflector;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
-  using current::reflection::Language;
+  using current::reflection::TypeID;
 
   StructSchema struct_schema;
   struct_schema.AddType<ComplexSerializable>();
@@ -1320,10 +1320,12 @@ TEST(JSONSerialization, TemplatedValue) {
   EXPECT_EQ(43, ParseJSON<DerivedTemplatedValue<std::string>>("{\"base\":43,\"derived\":\"meh\"}").base);
   EXPECT_EQ(100ull,
             ParseJSON<DerivedTemplatedValue<Serializable>>(
-                "{\"base\":1,\"derived\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}").derived.i);
+                "{\"base\":1,\"derived\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}")
+                .derived.i);
   EXPECT_EQ(43,
             ParseJSON<DerivedTemplatedValue<Serializable>>(
-                "{\"base\":43,\"derived\":{\"i\":1,\"s\":\"\",\"b\":true,\"e\":0}}").base);
+                "{\"base\":43,\"derived\":{\"i\":1,\"s\":\"\",\"b\":true,\"e\":0}}")
+                .base);
 }
 
 TEST(JSONSerialization, SimpleTemplatedUsage) {
@@ -1580,8 +1582,8 @@ CURRENT_STRUCT(NonEmptyDerivedFromNonTemplatedBase, NonTemplatedBase) {
 
 CURRENT_STRUCT(NonEmptyDerivedFromTemplatedBase, TemplatedBase<std::string>) {
   CURRENT_FIELD(w, uint32_t);
-  CURRENT_CONSTRUCTOR(NonEmptyDerivedFromTemplatedBase)(uint32_t i, std::string s, uint32_t w)
-      : SUPER(i, std::move(s)), w(w) {}
+  CURRENT_CONSTRUCTOR(NonEmptyDerivedFromTemplatedBase)
+  (uint32_t i, std::string s, uint32_t w) : SUPER(i, std::move(s)), w(w) {}
 };
 
 }  // namespace serialization_test
@@ -1600,7 +1602,8 @@ TEST(JSONSerialization, DerivedSupportsConstructorForwarding) {
 
   EXPECT_EQ("{'i':12321,'x':'baz'}", SingleQuoted(JSON(EmptyDerivedFromTemplatedBase(12321, "baz"))));
 
-  EXPECT_EQ("{'i':12321,'x':'baz'}", SingleQuoted(JSON(TemplateDerivedFromNonTemplatedBase<std::string>(12321, "baz"))));
+  EXPECT_EQ("{'i':12321,'x':'baz'}",
+            SingleQuoted(JSON(TemplateDerivedFromNonTemplatedBase<std::string>(12321, "baz"))));
 
   EXPECT_EQ("{'i':12321,'x':'baz','w':101}", SingleQuoted(JSON(NonEmptyDerivedFromTemplatedBase(12321, "baz", 101))));
 }
@@ -1614,9 +1617,7 @@ CURRENT_STRUCT_T(CurrentStructTUsingSubtype) {
   CURRENT_FIELD(xv, std::vector<vector_element_t>);
 };
 
-CURRENT_STRUCT_T(CurrentStructTUsingDerived) {
-  CURRENT_FIELD(x, CurrentStructTUsingSubtype<T>);
-};
+CURRENT_STRUCT_T(CurrentStructTUsingDerived) { CURRENT_FIELD(x, CurrentStructTUsingSubtype<T>); };
 
 // NOTE(dkorolev): I recall we had a `static_assert` that only `CURRENT_STRUCT`-s can be the bases
 //                 for `CURRENT_STRUCT_T`-s. This test may need to be revisited as we re-enable that check.

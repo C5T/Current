@@ -35,18 +35,21 @@ TEST(TransactionalStorage, UseExternallyProvidedStream) {
   using namespace transactional_storage_test;
   using storage_t = TestStorage<StreamInMemoryStreamPersister>;
 
-  static_assert(std::is_same<typename storage_t::persister_t::stream_t,
-                             current::stream::Stream<typename storage_t::persister_t::transaction_t,
-                                                       current::persistence::Memory>>::value,
-                "");
+  static_assert(
+      std::is_same<
+          typename storage_t::persister_t::stream_t,
+          current::stream::Stream<typename storage_t::persister_t::transaction_t, current::persistence::Memory>>::value,
+      "");
 
   auto storage = storage_t::CreateMasterStorage();
 
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      fields.d.Add(Record{"own_stream", 42});
-    }).Go();
+    const auto result =
+        storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                 fields.d.Add(Record{"own_stream", 42});
+               })
+            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 
@@ -95,25 +98,29 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   // Perform a couple transactions.
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      current::time::SetNow(std::chrono::microseconds(101));
-      fields.d.Add(Record{"one", 1});
-      current::time::SetNow(std::chrono::microseconds(102));
-      fields.d.Add(Record{"two", 2});
-      fields.SetTransactionMetaField("user", "dima");
-      current::time::SetNow(std::chrono::microseconds(103));
-    }).Go();
+    const auto result = master_storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              current::time::SetNow(std::chrono::microseconds(101));
+                              fields.d.Add(Record{"one", 1});
+                              current::time::SetNow(std::chrono::microseconds(102));
+                              fields.d.Add(Record{"two", 2});
+                              fields.SetTransactionMetaField("user", "dima");
+                              current::time::SetNow(std::chrono::microseconds(103));
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      current::time::SetNow(std::chrono::microseconds(201));
-      fields.d.Add(Record{"three", 3});
-      current::time::SetNow(std::chrono::microseconds(202));
-      fields.d.Erase("two");
-      current::time::SetNow(std::chrono::microseconds(203));
-    }).Go();
+    const auto result = master_storage
+                            ->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                              current::time::SetNow(std::chrono::microseconds(201));
+                              fields.d.Add(Record{"three", 3});
+                              current::time::SetNow(std::chrono::microseconds(202));
+                              fields.d.Erase("two");
+                              current::time::SetNow(std::chrono::microseconds(203));
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
     current::time::SetNow(std::chrono::microseconds(300));
     master_storage->PublisherUsed()->UpdateHead();
@@ -141,8 +148,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   auto owned_replicated_stream(stream_t::CreateStream(replicated_stream_file_name));
 
   // Replicate data via subscription to master storage raw log.
-  current::stream::SubscribableRemoteStream<transaction_t> remote_stream(
-      Printf("http://localhost:%d/raw_log", port));
+  current::stream::SubscribableRemoteStream<transaction_t> remote_stream(Printf("http://localhost:%d/raw_log", port));
   EXPECT_TRUE(owned_replicated_stream->IsMasterStream());
   auto replicator = std::make_unique<replicator_t>(owned_replicated_stream);
   EXPECT_FALSE(owned_replicated_stream->IsMasterStream());
@@ -175,12 +181,14 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   }
 
   // Test data consistency performing a transaction in the replicated storage.
-  const auto result = replicated_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-    EXPECT_EQ(2u, fields.d.Size());
-    EXPECT_EQ(1, Value(fields.d["one"]).rhs);
-    EXPECT_EQ(3, Value(fields.d["three"]).rhs);
-    EXPECT_FALSE(Exists(fields.d["two"]));
-  }).Go();
+  const auto result = replicated_storage
+                          ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                            EXPECT_EQ(2u, fields.d.Size());
+                            EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+                            EXPECT_EQ(3, Value(fields.d["three"]).rhs);
+                            EXPECT_FALSE(Exists(fields.d["two"]));
+                          })
+                          .Go();
   EXPECT_TRUE(WasCommitted(result));
 }
 
@@ -208,63 +216,67 @@ TEST(TransactionalStorage, UseExternallyProvidedStreamStreamOfBroaderType) {
 
   static_assert(std::is_same<typename storage_t::persister_t::stream_t,
                              current::stream::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
-                                                       current::persistence::Memory>>::value,
+                                                     current::persistence::Memory>>::value,
                 "");
 
   auto owned_stream = storage_t::stream_t::CreateStream();
   auto storage = storage_t::CreateMasterStorageAtopExistingStream(owned_stream);
 
-  {
-    // Add three records to the stream: first and third externally, second through the storage.
-    { storage->PublisherUsed()->Publish(StreamEntryOutsideStorage("one"), std::chrono::microseconds(1)); }
+  {// Add three records to the stream: first and third externally, second through the storage.
+   {storage->PublisherUsed()->Publish(StreamEntryOutsideStorage("one"), std::chrono::microseconds(1));
+}
 
-    {
-      current::time::SetNow(std::chrono::microseconds(2));
-      const auto result = storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-        fields.d.Add(Record{"two", 2});
-      }).Go();
-      EXPECT_TRUE(WasCommitted(result));
-    }
-    { storage->PublisherUsed()->Publish(StreamEntryOutsideStorage("three"), std::chrono::microseconds(3)); }
-  }
+{
+  current::time::SetNow(std::chrono::microseconds(2));
+  const auto result =
+      storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+               fields.d.Add(Record{"two", 2});
+             })
+          .Go();
+  EXPECT_TRUE(WasCommitted(result));
+}
+{ storage->PublisherUsed()->Publish(StreamEntryOutsideStorage("three"), std::chrono::microseconds(3)); }
+}
 
-  {
-    // Subscribe to and collect transactions.
-    std::string collected_transactions;
-    StorageStreamTestProcessor<transaction_t> processor(collected_transactions);
-    processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
-    storage->Subscribe<transaction_t>(processor);
-    EXPECT_EQ(
-        "{\"index\":1,\"us\":2}\t"
-        "{\"meta\":{\"begin_us\":2,\"end_us\":2,\"fields\":{}},\"mutations\":["
-        "{\"RecordDictionaryUpdated\":{\"us\":2,\"data\":{\"lhs\":\"two\",\"rhs\":2}},"
-        "\"\":\"T9200018162904582576\"}]}\n",
-        collected_transactions);
-  }
+{
+  // Subscribe to and collect transactions.
+  std::string collected_transactions;
+  StorageStreamTestProcessor<transaction_t> processor(collected_transactions);
+  processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
+  storage->Subscribe<transaction_t>(processor);
+  EXPECT_EQ(
+      "{\"index\":1,\"us\":2}\t"
+      "{\"meta\":{\"begin_us\":2,\"end_us\":2,\"fields\":{}},\"mutations\":["
+      "{\"RecordDictionaryUpdated\":{\"us\":2,\"data\":{\"lhs\":\"two\",\"rhs\":2}},"
+      "\"\":\"T9200018162904582576\"}]}\n",
+      collected_transactions);
+}
 
-  {
-    // Subscribe to and collect non-transactions.
-    std::string collected_non_transactions;
-    StorageStreamTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
-    processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
-    storage->Subscribe<StreamEntryOutsideStorage>(processor);
-    EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
-              collected_non_transactions);
-  }
+{
+  // Subscribe to and collect non-transactions.
+  std::string collected_non_transactions;
+  StorageStreamTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
+  processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
+  storage->Subscribe<StreamEntryOutsideStorage>(processor);
+  EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
+            collected_non_transactions);
+}
 
-  {
-    // Confirm replaying storage with a mixed-content stream does its job.
-    auto replayed = storage_t::CreateFollowingStorageAtopExistingStream(storage->UnderlyingStream());
-    while (replayed->LastAppliedTimestamp() < std::chrono::microseconds(2)) {  // As `3` is a non-transaction.
-      std::this_thread::yield();
-    }
-    const auto result = replayed->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-      EXPECT_EQ(1u, fields.d.Size());
-      ASSERT_TRUE(Exists(fields.d["two"]));
-      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
-    }).Go();
-    EXPECT_TRUE(WasCommitted(result));
+{
+  // Confirm replaying storage with a mixed-content stream does its job.
+  auto replayed = storage_t::CreateFollowingStorageAtopExistingStream(storage->UnderlyingStream());
+  while (replayed->LastAppliedTimestamp() < std::chrono::microseconds(2)) {  // As `3` is a non-transaction.
+    std::this_thread::yield();
   }
+  const auto result = replayed
+                          ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                            EXPECT_EQ(1u, fields.d.Size());
+                            ASSERT_TRUE(Exists(fields.d["two"]));
+                            EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+                          })
+                          .Go();
+  EXPECT_TRUE(WasCommitted(result));
+}
 }
 
 TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
@@ -305,8 +317,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   const auto base_url = current::strings::Printf("http://localhost:%d", port);
 
   // Start RESTful service atop follower storage.
-  auto rest = RESTfulStorage<storage_t>(
-      *follower_storage, port, "/api", "http://unittest.current.ai");
+  auto rest = RESTfulStorage<storage_t>(*follower_storage, port, "/api", "http://unittest.current.ai");
 
   // Launch the continuous replication process.
   {
@@ -322,9 +333,10 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     // Publish one record.
     current::time::SetNow(std::chrono::microseconds(100));
     {
-      const auto result = master_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-        fields.user.Add(SimpleUser("John", "JD"));
-      }).Go();
+      const auto result =
+          master_storage
+              ->ReadWriteTransaction([](MutableFields<storage_t> fields) { fields.user.Add(SimpleUser("John", "JD")); })
+              .Go();
       EXPECT_TRUE(WasCommitted(result));
     }
 
@@ -334,9 +346,9 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
       size_t user_size;
       user_size = 0u;
       do {
-        const auto result = follower_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-          return fields.user.Size();
-        }).Go();
+        const auto result =
+            follower_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) { return fields.user.Size(); })
+                .Go();
         EXPECT_TRUE(WasCommitted(result));
         user_size = Value(result);
       } while (user_size == 0u);
@@ -345,10 +357,12 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
 
     // Check that the the following storage now has the same record as the master one.
     {
-      const auto result = follower_storage->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
-        ASSERT_TRUE(Exists(fields.user["John"]));
-        EXPECT_EQ("JD", Value(fields.user["John"]).name);
-      }).Go();
+      const auto result = follower_storage
+                              ->ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
+                                ASSERT_TRUE(Exists(fields.user["John"]));
+                                EXPECT_EQ("JD", Value(fields.user["John"]).name);
+                              })
+                              .Go();
       EXPECT_TRUE(WasCommitted(result));
     }
     {
@@ -400,9 +414,10 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   // Publish record and check that everything goes well.
   current::time::SetNow(std::chrono::microseconds(200));
   {
-    const auto result = follower_storage->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      fields.user.Add(SimpleUser("max", "MZ"));
-    }).Go();
+    const auto result =
+        follower_storage
+            ->ReadWriteTransaction([](MutableFields<storage_t> fields) { fields.user.Add(SimpleUser("max", "MZ")); })
+            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
   current::time::SetNow(std::chrono::microseconds(300));
@@ -413,13 +428,15 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
     const auto user_key = post_response.body;
 
     // Ensure that all the records are in place.
-    const auto result = follower_storage->ReadOnlyTransaction([user_key](ImmutableFields<storage_t> fields) {
-      EXPECT_EQ(3u, fields.user.Size());
-      ASSERT_TRUE(Exists(fields.user["max"]));
-      EXPECT_EQ("MZ", Value(fields.user["max"]).name);
-      ASSERT_TRUE(Exists(fields.user[user_key]));
-      EXPECT_EQ("DK", Value(fields.user[user_key]).name);
-    }).Go();
+    const auto result = follower_storage
+                            ->ReadOnlyTransaction([user_key](ImmutableFields<storage_t> fields) {
+                              EXPECT_EQ(3u, fields.user.Size());
+                              ASSERT_TRUE(Exists(fields.user["max"]));
+                              EXPECT_EQ("MZ", Value(fields.user["max"]).name);
+                              ASSERT_TRUE(Exists(fields.user[user_key]));
+                              EXPECT_EQ("DK", Value(fields.user[user_key]).name);
+                            })
+                            .Go();
     EXPECT_TRUE(WasCommitted(result));
   }
 }

@@ -168,7 +168,7 @@ struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
   using result = TypeList<typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
                           typename std::invoke_result_t<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...>;
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT
-#else  // CURRENT_FOR_CPP14
+#else   // CURRENT_FOR_CPP14
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
   using result = TypeList<typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::update_event_t...,
                           typename weed::call_with_type<FIELDS, FieldInfoByIndex<NS>>::delete_event_t...,
@@ -251,7 +251,7 @@ struct FieldsBase : BASE {
 // Default custom persister parameter, to enable binding Storage to a custom Stream.
 namespace persister {
 struct NoCustomPersisterParam {};
-}  // namespace current::storage::persister
+}  // namespace persister
 
 }  // namespace storage
 }  // namespace current

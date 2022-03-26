@@ -342,15 +342,15 @@ struct FunctionToOptimize {
     const T accuracy = fncas::exp(negative_penalty_discriminant / valid_examples);
 
     return fncas::optimize::ObjectiveFunctionValue<T>([&]() {
-      if (computation_type == ComputationType::ComputeAccuracy) {
-        // Return the probability, and the starting point should be `(1/3)`.
-        return accuracy;
-      } else {
-        // Just return the non-normalized number, for optimization purposes.
-        return computation_type == ComputationType::TrainDescriptiveModel ? negative_penalty_descriptive
-                                                                          : negative_penalty_discriminant;
-      }
-    }())
+             if (computation_type == ComputationType::ComputeAccuracy) {
+               // Return the probability, and the starting point should be `(1/3)`.
+               return accuracy;
+             } else {
+               // Just return the non-normalized number, for optimization purposes.
+               return computation_type == ComputationType::TrainDescriptiveModel ? negative_penalty_descriptive
+                                                                                 : negative_penalty_discriminant;
+             }
+           }())
         .AddPoint("accuracy", accuracy)
         .AddPoint("penalty_descriptive", -negative_penalty_descriptive)
         .AddPoint("penalty_discriminant", -negative_penalty_discriminant);
@@ -438,14 +438,15 @@ int main(int argc, char** argv) {
           fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
               fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
               flowers,
-              ComputationType::TrainDescriptiveModel).Optimize(starting_point);
+              ComputationType::TrainDescriptiveModel)
+              .Optimize(starting_point);
       descriptive_optimization_accuracy_plot =
           Value(descriptive_optimization_result.progress).additional_values.at("accuracy");
       const std::vector<double> intermediate_point = descriptive_optimization_result.point;
-      std::cout << "After training the descriptive model, the objective function is: "
-                << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy)
-                       .ObjectiveFunction(intermediate_point)
-                       .value << std::endl;
+      std::cout
+          << "After training the descriptive model, the objective function is: "
+          << FunctionToOptimize(flowers, ComputationType::ComputeAccuracy).ObjectiveFunction(intermediate_point).value
+          << std::endl;
       std::cout << "The intermediate parameters vector is: " << JSON(intermediate_point) << std::endl;
       return intermediate_point;
     } else {
@@ -458,7 +459,8 @@ int main(int argc, char** argv) {
           fncas::optimize::DefaultOptimizer<FunctionToOptimize, fncas::OptimizationDirection::Maximize>(
               fncas::optimize::OptimizerParameters().TrackOptimizationProgress(),
               flowers,
-              ComputationType::TrainDiscriminantModel).Optimize(intermediate_point);
+              ComputationType::TrainDiscriminantModel)
+              .Optimize(intermediate_point);
       discriminant_optimization_accuracy_plot =
           Value(discriminant_optimization_result.progress).additional_values.at("accuracy");
       const std::vector<double> final_point = discriminant_optimization_result.point;
@@ -549,41 +551,40 @@ int main(int argc, char** argv) {
                           current::net::constants::kDefaultHTMLContentType);
                       }
                     }) +
-      http.Register(
-          "/training_plots",
-          [descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](Request r) {
-            using namespace current::gnuplot;
-            GNUPlot plot;
-            r(plot.Title("Classification Accuracy")
-                  .Grid("back")
-                  .XLabel("Iteration")
-                  .YLabel("Classification accuracy")
-                  .Plot(WithMeta([descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](
-                                     Plotter& p) {
-                    size_t x = 0;
-                    for (double y : descriptive_optimization_accuracy_plot) {
-                      p(++x, y);
-                    }
-                  })
-                            .Name("Descriptive training phase")
-                            .Color("rgb 'blue'")
-                            .LineWidth(2.5))
-                  .Plot(WithMeta([descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](
-                                     Plotter& p) {
-                    size_t x = descriptive_optimization_accuracy_plot.size();
-                    for (double y : discriminant_optimization_accuracy_plot) {
-                      p(++x, y);
-                    }
-                  })
-                            .Name("Discriminant training phase")
-                            .Color("rgb 'red'")
-                            .LineWidth(2.5))
-                  .OutputFormat("svg")
-                  .ImageSize(800),
-              HTTPResponseCode.OK,
-              current::net::http::Headers(),
-              current::net::constants::kDefaultSVGContentType);
-          });
+      http.Register("/training_plots",
+                    [descriptive_optimization_accuracy_plot, discriminant_optimization_accuracy_plot](Request r) {
+                      using namespace current::gnuplot;
+                      GNUPlot plot;
+                      r(plot.Title("Classification Accuracy")
+                            .Grid("back")
+                            .XLabel("Iteration")
+                            .YLabel("Classification accuracy")
+                            .Plot(WithMeta([descriptive_optimization_accuracy_plot,
+                                            discriminant_optimization_accuracy_plot](Plotter& p) {
+                                    size_t x = 0;
+                                    for (double y : descriptive_optimization_accuracy_plot) {
+                                      p(++x, y);
+                                    }
+                                  })
+                                      .Name("Descriptive training phase")
+                                      .Color("rgb 'blue'")
+                                      .LineWidth(2.5))
+                            .Plot(WithMeta([descriptive_optimization_accuracy_plot,
+                                            discriminant_optimization_accuracy_plot](Plotter& p) {
+                                    size_t x = descriptive_optimization_accuracy_plot.size();
+                                    for (double y : discriminant_optimization_accuracy_plot) {
+                                      p(++x, y);
+                                    }
+                                  })
+                                      .Name("Discriminant training phase")
+                                      .Color("rgb 'red'")
+                                      .LineWidth(2.5))
+                            .OutputFormat("svg")
+                            .ImageSize(800),
+                        HTTPResponseCode.OK,
+                        current::net::http::Headers(),
+                        current::net::constants::kDefaultSVGContentType);
+                    });
 
   std::cout << "Starting the server on http://localhost:" << FLAGS_port << std::endl;
 

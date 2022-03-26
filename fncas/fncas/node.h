@@ -53,11 +53,12 @@ inline double_t unit_step(double_t x) { return x >= 0 ? 1 : 0; }
 inline double_t ramp(double_t x) { return x > 0 ? x : 0; }
 // TODO(dkorolev): Sigmoid, its derivative, normal distribution, ERF, etc.
 }  // namespace function_impl
+using function_impl::ramp;
 using function_impl::sqr;
 using function_impl::unit_step;
-using function_impl::ramp;
 
-#define FNCAS_FUNCTION(f) inline double current_fncas_##f(double_t x) { return f(x); }
+#define FNCAS_FUNCTION(f) \
+  inline double current_fncas_##f(double_t x) { return f(x); }
 #include "fncas_functions.dsl.h"
 #undef FNCAS_FUNCTION
 
@@ -96,7 +97,10 @@ inline const char* function_as_string(MathFunction function) {
 template <typename T>
 T apply_operation(MathOperation operation, T lhs, T rhs) {
   static std::function<T(T, T)> evaluator[static_cast<size_t>(MathOperation::end)] = {
-      std::plus<T>(), std::minus<T>(), std::multiplies<T>(), std::divides<T>(),
+      std::plus<T>(),
+      std::minus<T>(),
+      std::multiplies<T>(),
+      std::divides<T>(),
   };
   return operation < MathOperation::end ? evaluator[static_cast<size_t>(operation)](lhs, rhs)
                                         : std::numeric_limits<T>::quiet_NaN();
@@ -220,7 +224,9 @@ inline double_t eval_node(node_index_t index,
       node_impl& f = node_vector_singleton()[static_cast<size_t>(dependent_i)];
       if (f.type() == NodeType::operation) {
         growing_vector_access(node_value, dependent_i, 0.0) =
-            apply_operation<double_t>(f.operation(), node_value[static_cast<size_t>(f.lhs_index())], node_value[static_cast<size_t>(f.rhs_index())]);
+            apply_operation<double_t>(f.operation(),
+                                      node_value[static_cast<size_t>(f.lhs_index())],
+                                      node_value[static_cast<size_t>(f.rhs_index())]);
         growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == NodeType::function) {
         growing_vector_access(node_value, dependent_i, 0.0) =
@@ -296,7 +302,9 @@ struct GenericV : node_index_allocator {
   GenericV rhs() const { return from_index(node_vector_singleton()[static_cast<size_t>(index_)].rhs_index()); }
   MathFunction& function() const { return node_vector_singleton()[static_cast<size_t>(index_)].function(); }
   node_index_t& argument_index() const { return node_vector_singleton()[static_cast<size_t>(index_)].argument_index(); }
-  GenericV argument() const { return from_index(node_vector_singleton()[static_cast<size_t>(index_)].argument_index()); }
+  GenericV argument() const {
+    return from_index(node_vector_singleton()[static_cast<size_t>(index_)].argument_index());
+  }
   static GenericV create_variable_node(node_index_t index) {
     GenericV result;
     result.type() = NodeType::variable;
@@ -339,7 +347,7 @@ static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_t).")
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
-}  // namespace fncas::impl
+}  // namespace impl
 }  // namespace fncas
 
 // A thin wrapper replacing `std::vector<V>`, with the sole purpose of being able to inherit from it
@@ -476,8 +484,7 @@ struct f_impl<JIT::Blueprint> final : f_super {
   // Template is used here as a form of forward declaration.
   template <typename TX>
   V differentiate(const TX& x_ref, size_t variable_index) const {
-    static_assert(std::is_same_v<TX, X>,
-                  "f_impl<JIT::Blueprint>::differentiate(const x& x, size_t variable_index);");
+    static_assert(std::is_same_v<TX, X>, "f_impl<JIT::Blueprint>::differentiate(const x& x, size_t variable_index);");
     CURRENT_ASSERT(&x_ref == internals_singleton().x_ptr_);
     CURRENT_ASSERT(variable_index >= 0);
     CURRENT_ASSERT(variable_index < dim());
@@ -497,7 +504,7 @@ struct f_impl_selector<JIT::Super> {
   using type = f_super;
 };
 
-}  // namespace fncas::impl
+}  // namespace impl
 }  // namespace fncas
 
 // Arithmetic operations and mathematical functions are defined outside namespace fncas::impl.

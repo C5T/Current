@@ -134,9 +134,9 @@ std::vector<std::vector<fncas::double_t>> solve(
     std::function<bool(const std::vector<std::vector<fncas::double_t>>& strategy)> validate) {
   const auto build_probabilities =
       [N](const std::vector<fncas::double_t>& x) -> std::vector<std::vector<fncas::double_t>> {
-        return {simplex(std::vector<fncas::double_t>(x.begin(), x.begin() + N)),
-                simplex(std::vector<fncas::double_t>(x.begin() + N, x.begin() + N * 2))};
-      };
+    return {simplex(std::vector<fncas::double_t>(x.begin(), x.begin() + N)),
+            simplex(std::vector<fncas::double_t>(x.begin() + N, x.begin() + N * 2))};
+  };
 
   const auto pretty_print_simplex = [](const std::vector<fncas::double_t>& x) -> std::string {
     std::ostringstream os;

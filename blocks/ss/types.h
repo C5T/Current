@@ -37,10 +37,9 @@ template <typename ENTRY, typename STREAM_ENTRY>
 #ifndef CURRENT_FOR_CPP14
 inline
 #endif  // CURRENT_FOR_CPP14
-constexpr
-bool can_publish_v = std::is_constructible_v<STREAM_ENTRY, ENTRY>;
+    constexpr bool can_publish_v = std::is_constructible_v<STREAM_ENTRY, ENTRY>;
 
-}  // namespace current::ss
+}  // namespace ss
 }  // namespace current
 
 #endif  // BLOCKS_SS_TYPES_H

@@ -141,7 +141,7 @@ TEST(HTMLTest, Smoke) {
     {
       const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(table, border(0));  // Number, not a string.
-    } 
+    }
     EXPECT_EQ("<table border='0'></table>", oss.str());
   }
   {
@@ -149,7 +149,7 @@ TEST(HTMLTest, Smoke) {
     {
       const auto scope = current::html::HTMLGeneratorOStreamScope(oss);
       HTML(input, value(42));  // Number, not a string.
-    } 
+    }
     EXPECT_EQ("<input value='42'>", oss.str());
   }
 }

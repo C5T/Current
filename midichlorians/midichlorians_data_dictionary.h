@@ -76,8 +76,8 @@ CURRENT_STRUCT(iOSAppLaunchEvent, iOSBaseEvent) {
   CURRENT_FIELD(app_install_time, uint64_t, 0ull);
   CURRENT_FIELD(app_update_time, uint64_t, 0ull);
   CURRENT_DEFAULT_CONSTRUCTOR(iOSAppLaunchEvent) {}
-  CURRENT_CONSTRUCTOR(iOSAppLaunchEvent)(
-      const std::string& cf_version, uint64_t app_install_time, uint64_t app_update_time)
+  CURRENT_CONSTRUCTOR(iOSAppLaunchEvent)
+  (const std::string& cf_version, uint64_t app_install_time, uint64_t app_update_time)
       : binary_version(__DATE__ " " __TIME__),
         cf_version(cf_version),
         app_install_time(app_install_time),
@@ -99,8 +99,8 @@ CURRENT_STRUCT(iOSIdentifyEvent, iOSBaseEvent){};
 CURRENT_STRUCT(iOSFocusEvent, iOSBaseEvent) {
   CURRENT_FIELD(gained_focus, bool);
   CURRENT_FIELD(source, std::string);
-  CURRENT_CONSTRUCTOR(iOSFocusEvent)(bool gained_focus = false, const std::string& source = "")
-      : gained_focus(gained_focus), source(source) {}
+  CURRENT_CONSTRUCTOR(iOSFocusEvent)
+  (bool gained_focus = false, const std::string& source = "") : gained_focus(gained_focus), source(source) {}
 };
 
 CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
@@ -172,8 +172,8 @@ CURRENT_STRUCT(WebGenericEvent, WebBaseEvent) {
   CURRENT_FIELD(event_category, std::string);
   CURRENT_FIELD(event_action, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(WebGenericEvent) {}
-  CURRENT_CONSTRUCTOR(WebGenericEvent)(const std::string& category, const std::string& action)
-      : event_category(category), event_action(action) {}
+  CURRENT_CONSTRUCTOR(WebGenericEvent)
+  (const std::string& category, const std::string& action) : event_category(category), event_action(action) {}
 };
 
 using web_events_t = TypeList<WebEnterEvent, WebExitEvent, WebForegroundEvent, WebBackgroundEvent, WebGenericEvent>;

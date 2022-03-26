@@ -39,8 +39,8 @@ struct AdWordsInitializationException : AdWordsException {
   using AdWordsException::AdWordsException;
 };
 
-}  // namespace current::integrations::adwords
-}  // namespace current::integrations
+}  // namespace adwords
+}  // namespace integrations
 }  // namespace current
 
 #endif  // INTEGRATIONS_ADWORDS_EXCEPTIONS_H

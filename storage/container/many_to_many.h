@@ -46,8 +46,10 @@ template <typename T,
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
           typename PATCH_EVENT_OR_VOID,
 #endif  // CURRENT_STORAGE_PATCH_SUPPORT
-          template <typename...> class ROW_MAP,
-          template <typename...> class COL_MAP>
+          template <typename...>
+          class ROW_MAP,
+          template <typename...>
+          class COL_MAP>
 class GenericManyToMany {
  public:
   using entry_t = T;
@@ -83,21 +85,19 @@ class GenericManyToMany {
       const T& previous_object = *(map_cit->second);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(UPDATE_EVENT(now, object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(UPDATE_EVENT(now, object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
     } else {
       if (lm_cit != last_modified_.end()) {
         const auto previous_timestamp = lm_cit->second;
         journal_.LogMutation(UPDATE_EVENT(now, object),
                              [this, key, previous_timestamp]() { DoEraseWithLastModified(previous_timestamp, key); });
       } else {
-        journal_.LogMutation(UPDATE_EVENT(now, object),
-                             [this, key]() {
-                               last_modified_.erase(key);
-                               DoEraseWithoutTouchingLastModified(key);
-                             });
+        journal_.LogMutation(UPDATE_EVENT(now, object), [this, key]() {
+          last_modified_.erase(key);
+          DoEraseWithoutTouchingLastModified(key);
+        });
       }
     }
     DoUpdateWithLastModified(now, key, object);
@@ -112,10 +112,9 @@ class GenericManyToMany {
       const auto lm_cit = last_modified_.find(key);
       CURRENT_ASSERT(lm_cit != last_modified_.end());
       const auto previous_timestamp = lm_cit->second;
-      journal_.LogMutation(DELETE_EVENT(now, previous_object),
-                           [this, key, previous_object, previous_timestamp]() {
-                             DoUpdateWithLastModified(previous_timestamp, key, previous_object);
-                           });
+      journal_.LogMutation(DELETE_EVENT(now, previous_object), [this, key, previous_object, previous_timestamp]() {
+        DoUpdateWithLastModified(previous_timestamp, key, previous_object);
+      });
       DoEraseWithLastModified(now, key);
     }
   }
@@ -257,36 +256,20 @@ class GenericManyToMany {
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using UnorderedManyToUnorderedMany = GenericManyToMany<T, 
-                                                       UPDATE_EVENT,
-                                                       DELETE_EVENT,
-                                                       PATCH_EVENT_OR_VOID,
-                                                       Unordered,
-                                                       Unordered>;
+using UnorderedManyToUnorderedMany =
+    GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using OrderedManyToOrderedMany = GenericManyToMany<T,
-                                                   UPDATE_EVENT,
-                                                   DELETE_EVENT,
-                                                   PATCH_EVENT_OR_VOID,
-                                                   Ordered,
-                                                   Ordered>;
+using OrderedManyToOrderedMany =
+    GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered, Ordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using UnorderedManyToOrderedMany = GenericManyToMany<T,
-                                                     UPDATE_EVENT,
-                                                     DELETE_EVENT,
-                                                     PATCH_EVENT_OR_VOID,
-                                                     Unordered,
-                                                     Ordered>;
+using UnorderedManyToOrderedMany =
+    GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Unordered, Ordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, typename PATCH_EVENT_OR_VOID>
-using OrderedManyToUnorderedMany = GenericManyToMany<T,
-                                                     UPDATE_EVENT,
-                                                     DELETE_EVENT,
-                                                     PATCH_EVENT_OR_VOID,
-                                                     Ordered,
-                                                     Unordered>;
+using OrderedManyToUnorderedMany =
+    GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, PATCH_EVENT_OR_VOID, Ordered, Unordered>;
 
 #else
 
@@ -355,9 +338,9 @@ struct StorageFieldTypeSelector<container::OrderedManyToUnorderedMany<T, E1, E2>
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedManyToUnorderedMany;
 using current::storage::container::OrderedManyToOrderedMany;
-using current::storage::container::UnorderedManyToOrderedMany;
 using current::storage::container::OrderedManyToUnorderedMany;
+using current::storage::container::UnorderedManyToOrderedMany;
+using current::storage::container::UnorderedManyToUnorderedMany;
 
 #endif  // CURRENT_STORAGE_CONTAINER_MANY_TO_MANY_H

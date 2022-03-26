@@ -135,13 +135,13 @@ inline double CSRandomDouble(const double a, const double b) { return RandomReal
 }  // namespace random
 }  // namespace current
 
-using current::random::RandomInt;
-using current::random::RandomLong;
-using current::random::RandomULong;
-using current::random::RandomInt64;
-using current::random::RandomUInt64;
-using current::random::RandomFloat;
 using current::random::RandomDouble;
+using current::random::RandomFloat;
+using current::random::RandomInt;
+using current::random::RandomInt64;
+using current::random::RandomLong;
+using current::random::RandomUInt64;
+using current::random::RandomULong;
 
 using current::random::SetRandomSeed;
 

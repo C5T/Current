@@ -341,10 +341,10 @@ void call_function_from_rdx_pointers_array_by_index(C& c, uint8_t index) {
   c.push_back((index + 1) * 0x08);
 }
 
-}  // namespace current::fncas::x64_native_jit::opcodes
+}  // namespace opcodes
 
-}  // namespace current::fncas::x64_native_jit
-}  // namespace current::fncas
+}  // namespace x64_native_jit
+}  // namespace fncas
 }  // namespace current
 
 #endif  // defined(__x86_64__)

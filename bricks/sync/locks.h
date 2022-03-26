@@ -41,8 +41,7 @@ struct NoOpLock {
 };
 
 template <MutexLockStatus MLS, class MUTEX = std::mutex>
-using SmartMutexLockGuard =
-    std::conditional_t<MLS == MutexLockStatus::NeedToLock, std::lock_guard<MUTEX>, NoOpLock>;
+using SmartMutexLockGuard = std::conditional_t<MLS == MutexLockStatus::NeedToLock, std::lock_guard<MUTEX>, NoOpLock>;
 
 static_assert(std::is_same_v<std::lock_guard<std::mutex>, SmartMutexLockGuard<MutexLockStatus::NeedToLock>>, "");
 static_assert(std::is_same_v<NoOpLock, SmartMutexLockGuard<MutexLockStatus::AlreadyLocked>>, "");

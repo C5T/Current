@@ -102,15 +102,11 @@ struct UD final {
   explicit UD(int by) : down(by) {}
 };
 
-inline UD up(int d) {
-  return UD(-d);
-}
+inline UD up(int d) { return UD(-d); }
 
-inline UD down(int d) {
-  return UD(+d);
-}
+inline UD down(int d) { return UD(+d); }
 
-}  // namespace current::vt100
+}  // namespace vt100
 }  // namespace current
 
 inline void EnableVirtualTerminalProcessing() {

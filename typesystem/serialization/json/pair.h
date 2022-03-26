@@ -94,7 +94,7 @@ struct IsJSONSerializable<std::pair<F, S>> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_PAIR_H

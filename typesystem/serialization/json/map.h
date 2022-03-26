@@ -88,8 +88,8 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
   }
 
   template <typename K = TK>
-  static std::enable_if_t<!std::is_same_v<std::string, K>> DoDeserialize(
-      json::JSONParser<JSON_FORMAT>& json_parser, std::map<TK, TV, TC, TA>& destination) {
+  static std::enable_if_t<!std::is_same_v<std::string, K>> DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
+                                                                         std::map<TK, TV, TC, TA>& destination) {
     if (json_parser && json_parser.Current().IsArray()) {
       destination.clear();
       for (rapidjson::Value::ValueIterator cit = json_parser.Current().Begin(); cit != json_parser.Current().End();
@@ -119,7 +119,7 @@ struct IsJSONSerializable<std::map<K, V, CMP, ALLOC>> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_MAP_H

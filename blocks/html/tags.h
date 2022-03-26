@@ -78,7 +78,6 @@ namespace htmltag {
 #define CURRENT_HTML_TAG(...) \
   CURRENT_HTML_TAG_SWITCH(CURRENT_HTML_TAG_SWITCH_N(CURRENT_HTML_TAG_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-
 // clang-format off
 
 #define CURRENT_HTML_START_ONLY_TAG_COUNT_3(tag, param1, param2)                                                            \
@@ -148,6 +147,6 @@ CURRENT_HTML_TAG(table, border, cellpadding);
 CURRENT_HTML_TAG(tr);
 CURRENT_HTML_TAG(td, align, colspan, valign);
 
-}  // namespace ::htmltag
+}  // namespace htmltag
 
 #endif  // BLOCKS_HTML_TAGS_H

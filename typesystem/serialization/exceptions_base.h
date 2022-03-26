@@ -47,14 +47,14 @@ struct InvalidJSONException : TypeSystemParseJSONException {
 
 struct JSONUninitializedVariantObjectException : TypeSystemParseJSONException {};
 
-}  // namepsace current::serialization::json
+}  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 using current::serialization::json::InvalidJSONException;
-using current::serialization::json::TypeSystemParseJSONException;
-using current::serialization::json::RapidJSONAssertionFailedException;
 using current::serialization::json::JSONUninitializedVariantObjectException;
+using current::serialization::json::RapidJSONAssertionFailedException;
+using current::serialization::json::TypeSystemParseJSONException;
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_BASE_H

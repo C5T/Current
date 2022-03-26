@@ -223,7 +223,6 @@ struct FromStringImpl<INPUT, uint8_t, false, false> {
   }
 };
 
-
 template <typename INPUT>
 struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
   static const std::chrono::milliseconds& Go(INPUT&& input, std::chrono::milliseconds& output) {
@@ -272,7 +271,7 @@ inline OUTPUT FromString(INPUT&& input) {
 inline std::string FromString(const std::string& input) { return input; }
 
 template <size_t N>
-constexpr std::enable_if_t<(N > 0), size_t> CompileTimeStringLength(char const(&)[N]) {
+constexpr std::enable_if_t<(N > 0), size_t> CompileTimeStringLength(char const (&)[N]) {
   return N - 1;
 }
 
@@ -341,8 +340,8 @@ inline const char* ConstCharPtr(const std::string& s) { return s.c_str(); }
 
 }  // namespace strings
 
-using strings::ToString;
 using strings::FromString;
+using strings::ToString;
 
 }  // namespace current
 

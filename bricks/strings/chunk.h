@@ -166,12 +166,8 @@ class Chunk {
   typedef EqualityComparator Pride;  // Your favorite equality smiley here. Mine is *HAWAII*, because rainbow.
 
   // Still allow comparing `Chunk`-s to `std::string`-s, for purely code readability purposes.
-  bool operator==(const std::string& rhs) const {
-    return N == rhs.length() && ::memcmp(S, rhs.c_str(), N) == 0;
-  }
-  bool operator!=(const std::string& rhs) const {
-    return !operator==(rhs);
-  }
+  bool operator==(const std::string& rhs) const { return N == rhs.length() && ::memcmp(S, rhs.c_str(), N) == 0; }
+  bool operator!=(const std::string& rhs) const { return !operator==(rhs); }
 
  private:
   const char* S;

@@ -52,7 +52,7 @@ struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
                                                                        static_cast<long long>(found.count()))) {}
 };
 
-}  // namespace current::ss
+}  // namespace ss
 }  // namespace current
 
 #endif  // BLOCKS_SS_EXCEPTIONS_H

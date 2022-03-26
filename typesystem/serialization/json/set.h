@@ -71,7 +71,7 @@ struct IsJSONSerializable<std::set<T, CMP, ALLOC>> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_SET_H

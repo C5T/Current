@@ -109,7 +109,7 @@ CURRENT_STRUCT(error) {
 
 // clang-format on
 
-}  // namespace current::reflection::variant_clean_type_names
+}  // namespace variant_clean_type_names
 
 CURRENT_STRUCT(JSONSchemaObjectField) {
   CURRENT_FIELD(field, std::string);
@@ -124,7 +124,7 @@ CURRENT_STRUCT(JSONSchemaObject) {
 
 using JSONSchema = std::vector<JSONSchemaObject>;
 
-}  // namespace current::reflection
+}  // namespace reflection
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_JSON_SCHEMA_FORMAT_CC

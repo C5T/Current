@@ -148,14 +148,14 @@ struct Has_CURRENT_EXPORTED_STRUCT_NAME {
   static constexpr bool value = Has_CURRENT_EXPORTED_STRUCT_NAME_Impl<ENTRY>(0);
 };
 
-}  // namespace crnt::sfinae
+}  // namespace sfinae
 }  // namespace crnt
 
 namespace current {
 
+using ::crnt::CurrentStruct;
 using ::crnt::CurrentSuper;
 using ::crnt::CurrentSuperDeleter;
-using ::crnt::CurrentStruct;
 using ::crnt::CurrentVariant;
 
 namespace reflection {
@@ -299,14 +299,14 @@ struct VisitAllFields {
   static void WithObjectImpl(TT&&, const F&, crnt::vi::is<>) {}
 };
 
-}  // namespace current::reflection
+}  // namespace reflection
 
 namespace sfinae {
+using ::crnt::sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME;
+using ::crnt::sfinae::HasCheckIntegrityImplMethod;
 using ::crnt::sfinae::HasExistsImplMethod;
 using ::crnt::sfinae::ValueImplMethodTest;
-using ::crnt::sfinae::HasCheckIntegrityImplMethod;
-using ::crnt::sfinae::Has_CURRENT_EXPORTED_STRUCT_NAME;
-}  // namespace current::sfinae
+}  // namespace sfinae
 
 }  // namespace current
 

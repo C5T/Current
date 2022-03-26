@@ -299,56 +299,44 @@ TEST(RipCurrent, MoreTypeSystemGuarantees) {
   const auto emit_mult_mult_dump_3 = ((emit | mult) | mult) | dump;
   const auto emit_mult_mult_dump_4 = emit | (mult | (mult | dump));
 
-  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::input_t, current::ripcurrent::LHSTypes<>>,
-                "");
-  static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::output_t, current::ripcurrent::RHSTypes<Integer>>, "");
-
-  static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::input_t, current::ripcurrent::LHSTypes<Integer>>, "");
-  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::output_t, current::ripcurrent::RHSTypes<>>,
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::input_t, current::ripcurrent::LHSTypes<>>, "");
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult)::output_t, current::ripcurrent::RHSTypes<Integer>>,
                 "");
 
-  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::input_t, current::ripcurrent::LHSTypes<>>,
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::input_t, current::ripcurrent::LHSTypes<Integer>>,
                 "");
-  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::output_t, current::ripcurrent::RHSTypes<>>,
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(mult_dump)::output_t, current::ripcurrent::RHSTypes<>>, "");
+
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::input_t, current::ripcurrent::LHSTypes<>>, "");
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_dump)::output_t, current::ripcurrent::RHSTypes<>>, "");
+
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>,
+                "");
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>,
                 "");
 
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>,
+                "");
+  static_assert(std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>,
+                "");
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>, "");
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>, "");
 
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>, "");
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>, "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>, "");
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::input_t, current::ripcurrent::LHSTypes<>>,
-      "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::input_t, current::ripcurrent::LHSTypes<>>, "");
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_1)::output_t, current::ripcurrent::RHSTypes<>>,
-      "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::output_t, current::ripcurrent::RHSTypes<>>, "");
 
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::input_t, current::ripcurrent::LHSTypes<>>,
-      "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::input_t, current::ripcurrent::LHSTypes<>>, "");
   static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_2)::output_t, current::ripcurrent::RHSTypes<>>,
-      "");
-  static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::input_t, current::ripcurrent::LHSTypes<>>,
-      "");
-  static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_3)::output_t, current::ripcurrent::RHSTypes<>>,
-      "");
-
-  static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::input_t, current::ripcurrent::LHSTypes<>>,
-      "");
-  static_assert(
-      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::output_t, current::ripcurrent::RHSTypes<>>,
-      "");
+      std::is_same_v<RIPCURRENT_UNDERLYING_TYPE(emit_mult_mult_dump_4)::output_t, current::ripcurrent::RHSTypes<>>, "");
 
   emit_mult.Dismiss();
   mult_dump.Dismiss();
@@ -598,31 +586,36 @@ TEST(RipCurrent, PlusIntrospection) {
       "DumpString() + DumpBool()",
       ((EmitInteger() + EmitString() + EmitBool()) |
        (RIPCURRENT_PASS(Integer) + RIPCURRENT_PASS(String) + RIPCURRENT_PASS(Bool)) |
-       (DumpInteger() + DumpString() + DumpBool())).Describe());
+       (DumpInteger() + DumpString() + DumpBool()))
+          .Describe());
 
   EXPECT_EQ(
       "EmitInteger() + EmitString() + EmitBool() | Pass(Integer, String, Bool) | DumpInteger() + DumpString() + "
       "DumpBool()",
       ((EmitInteger() + EmitString() + EmitBool()) | RIPCURRENT_PASS(Integer, String, Bool) |
-       (DumpInteger() + DumpString() + DumpBool())).Describe());
+       (DumpInteger() + DumpString() + DumpBool()))
+          .Describe());
 
   EXPECT_EQ(
       "EmitInteger() + EmitString() + EmitBool() | Pass(Integer, String) + DumpBool() | DumpInteger() + DumpString()",
       ((EmitInteger() + EmitString() + EmitBool()) | (RIPCURRENT_PASS(Integer, String) + DumpBool()) |
-       (DumpInteger() + DumpString())).Describe());
+       (DumpInteger() + DumpString()))
+          .Describe());
 
   EXPECT_EQ(
       "EmitInteger() + EmitString() + EmitBool() | DumpInteger() + Pass(String, Bool) | Pass(String) + DumpBool() | "
       "DumpString()",
       ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + RIPCURRENT_PASS(String, Bool)) |
-       ((RIPCURRENT_PASS(String) + DumpBool()) | DumpString())).Describe());
+       ((RIPCURRENT_PASS(String) + DumpBool()) | DumpString()))
+          .Describe());
 
   EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | DumpInteger() + Drop(String, Bool)",
             ((EmitInteger() + EmitString() + EmitBool()) | (DumpInteger() + RIPCURRENT_DROP(String, Bool))).Describe());
 
   EXPECT_EQ("EmitInteger() + EmitString() + EmitBool() | Pass(Integer) + Drop(String, Bool) | Drop(Integer)",
             ((EmitInteger() + EmitString() + EmitBool()) | (RIPCURRENT_PASS(Integer) + RIPCURRENT_DROP(String, Bool)) |
-             RIPCURRENT_DROP(Integer)).Describe());
+             RIPCURRENT_DROP(Integer))
+                .Describe());
 
   EXPECT_EQ("EmitInteger() + EmitString() => { Integer, String } | ...",
             (EmitInteger() + EmitString()).DescribeWithTypes());
@@ -798,8 +791,9 @@ CURRENT_STRUCT(RequestContainer) {
 
 RIPCURRENT_NODE(RCHTTPAcceptor, void, RequestContainer) {
   RCHTTPAcceptor(uint16_t port)
-      : scope(HTTP(current::net::BarePort(port))
-                  .Register("/ripcurrent", [this](Request request) { emit<RequestContainer>(std::move(request)); })) {
+      : scope(HTTP(current::net::BarePort(port)).Register("/ripcurrent", [this](Request request) {
+          emit<RequestContainer>(std::move(request));
+        })) {
     const std::string base_url = Printf("http://localhost:%d/ripcurrent", static_cast<int>(port));
     EXPECT_EQ("1\n", HTTP(GET(base_url)).body);
     EXPECT_EQ("2\n", HTTP(HEAD(base_url)).body);

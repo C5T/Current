@@ -72,7 +72,7 @@ struct IsJSONSerializable<std::unordered_set<T, HASH, ALLOC>> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_UNORDERED_SET_H

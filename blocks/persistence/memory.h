@@ -334,12 +334,12 @@ class MemoryPersister {
   Owned<Container> container_;  // `Owned`, as iterators borrow it.
 };
 
-}  // namespace current::persistence::impl
+}  // namespace impl
 
 template <typename ENTRY>
 using Memory = ss::EntryPersister<impl::MemoryPersister<ENTRY>, ENTRY>;
 
-}  // namespace current::persistence
+}  // namespace persistence
 }  // namespace current
 
 #endif  // BLOCKS_PERSISTENCE_MEMORY_H

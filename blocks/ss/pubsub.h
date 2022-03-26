@@ -52,8 +52,7 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
 
  public:
   template <typename... ARGS>
-  explicit EntryPublisher(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  explicit EntryPublisher(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
 
   virtual ~EntryPublisher() {}
 
@@ -133,8 +132,7 @@ template <typename IMPL, typename ENTRY>
 class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
  public:
   template <typename... ARGS>
-  EntrySubscriber(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  EntrySubscriber(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntrySubscriber() {}
 
   EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) { return IMPL::operator()(e, current, last); }
@@ -211,7 +209,7 @@ struct PassEntryToSubscriberIfTypeMatchesImpl<T, T> {
   }
 };
 
-}  // namespace current::ss::impl
+}  // namespace impl
 
 template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT, typename F, typename G, typename E>
 EntryResponse PassEntryToSubscriberIfTypeMatches(F&& f, G&& fallback, E&& entry, idxts_t current, idxts_t last) {
@@ -219,7 +217,7 @@ EntryResponse PassEntryToSubscriberIfTypeMatches(F&& f, G&& fallback, E&& entry,
       std::forward<F>(f), std::forward<G>(fallback), std::forward<E>(entry), current, last);
 }
 
-}  // namespace current::ss
+}  // namespace ss
 }  // namespace current
 
 #endif  // BLOCKS_SS_PUBSUB_H

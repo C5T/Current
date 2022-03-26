@@ -134,8 +134,8 @@ inline std::string OT(const std::string& json) {
   return OT(json, PassthroughProcessor());
 }
 
-}  // namespace current::utils::ot
-}  // namespace current::utils
+}  // namespace ot
+}  // namespace utils
 }  // namespace current
 
 #endif  // UTILS_OPERATIONAL_TRANSFORMATION_H

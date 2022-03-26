@@ -61,7 +61,10 @@ static_assert(std::is_same_v<double, double_t>, "FnCAS JIT assumes `double_t` is
 
 inline const char* operation_as_assembler_opcode(MathOperation operation) {
   static const char* representation[static_cast<size_t>(MathOperation::end)] = {
-      "addpd", "subpd", "mulpd", "divpd",
+      "addpd",
+      "subpd",
+      "mulpd",
+      "divpd",
   };
   return operation < MathOperation::end ? representation[static_cast<size_t>(operation)] : "?";
 }
@@ -859,9 +862,8 @@ struct JITCodeGenerator final {
           auto const op = node.operation();
           opcodes::load_from_memory_by_rbx_offset_to_xmm0(code, node.lhs_index() + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
-          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = Z["
-                    << node.lhs_index() << " + " << dim << "] " << operation_as_string(op) << " Z["
-                    << node.rhs_index() << " + " << dim << "];\n";
+          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = Z[" << node.lhs_index() << " + " << dim << "] "
+                    << operation_as_string(op) << " Z[" << node.rhs_index() << " + " << dim << "];\n";
 
           std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.lhs_index() + dim << ");\n";
 #endif
@@ -879,7 +881,7 @@ struct JITCodeGenerator final {
           opcodes::store_xmm0_to_memory_by_rbx_offset(code, dependent_i + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
           std::cerr << std::string(operation_as_assembler_opcode(op)).substr(0, 3)
-                    << "_from_memory_by_rbx_offset_to_xmm0("<< node.rhs_index() + dim << ");\n";
+                    << "_from_memory_by_rbx_offset_to_xmm0(" << node.rhs_index() + dim << ");\n";
           std::cerr << "store_xmm0_to_memory_by_rbx_offset(" << dependent_i + dim << ");\n";
 #endif
         } else if (node.type() == NodeType::function) {
@@ -891,8 +893,8 @@ struct JITCodeGenerator final {
           opcodes::pop_rdi(code);
           opcodes::store_xmm0_to_memory_by_rbx_offset(code, dependent_i + dim);
 #ifdef FNCAS_DEBUG_NATIVE_JIT
-          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = "
-                    << function_as_string(node.function()) << "(Z[" << node.argument_index() << " + " << dim << "]);\n";
+          std::cerr << "# Z[" << dependent_i << " + " << dim << "] = " << function_as_string(node.function()) << "(Z["
+                    << node.argument_index() << " + " << dim << "]);\n";
           std::cerr << "load_from_memory_by_rbx_offset_to_xmm0(" << node.argument_index() + dim << ");\n";
           std::cerr << "push_rdi();\n";
           std::cerr << "push_rdx();\n";
@@ -951,13 +953,9 @@ struct f_compiled_x64_native_jit final {
     actual_heap.resize(required_heap_size);
   }
 
-  explicit f_compiled_x64_native_jit(V const& node) {
-    generate_code_for_f(node);
-  }
+  explicit f_compiled_x64_native_jit(V const& node) { generate_code_for_f(node); }
 
-  explicit f_compiled_x64_native_jit(const f_impl<JIT::Blueprint>& f) {
-    generate_code_for_f(f.f_);
-  }
+  explicit f_compiled_x64_native_jit(const f_impl<JIT::Blueprint>& f) { generate_code_for_f(f.f_); }
 
   double operator()(const std::vector<double>& x) const {
     return (*jit_compiled_code)(&x[0], &actual_heap[0], &x64_native_jit_function_pointers::tls().p[0]);
@@ -1089,7 +1087,7 @@ struct g_impl_selector<JIT::X64NativeJIT> {
 };
 #endif  // FNCAS_X64_NATIVE_JIT_ENABLED
 
-}  // namespace fncas::impl
+}  // namespace impl
 }  // namespace fncas
 
 #endif  // FNCAS_USE_LONG_DOUBLE

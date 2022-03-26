@@ -59,12 +59,12 @@ struct SimpleResponseFormatter {
   }
 };
 
-}  // namespace current::storage::rest::simple
+}  // namespace simple
 
 using Simple = generic::Structured<simple::SimpleResponseFormatter>;
 
-}  // namespace current::storage::rest
-}  // namespace current::storage
+}  // namespace rest
+}  // namespace storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_REST_SIMPLE_H

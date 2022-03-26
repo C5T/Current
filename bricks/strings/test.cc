@@ -32,39 +32,39 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using current::strings::Printf;
-using current::strings::FixedSizeSerializer;
-using current::strings::PackToString;
-using current::strings::UnpackFromString;
+using current::strings::ByLines;
+using current::strings::ByWhitespace;
+using current::strings::Chunk;
+using current::strings::ChunkDB;
 using current::strings::CompileTimeStringLength;
-using current::strings::Trim;
-using current::strings::ToLower;
-using current::strings::ToUpper;
+using current::strings::CreateExceptionFriendlyStatefulGroupByLines;
+using current::strings::CreateStatefulGroupByLines;
+using current::strings::EmptyFields;
+using current::strings::EscapeForCPlusPlus;
+using current::strings::EscapeForMarkdown;
+using current::strings::ExceptionFriendlyStatefulGroupByLines;
+using current::strings::FastEditDistance;
+using current::strings::FixedSizeSerializer;
+using current::strings::is_string_type;
 using current::strings::Join;
+using current::strings::KeyValueMultipleValuesException;
+using current::strings::KeyValueNoValueException;
+using current::strings::KeyValueParsing;
+using current::strings::PackToString;
+using current::strings::Printf;
+using current::strings::RoundDoubleToString;
+using current::strings::SlowEditDistance;
 using current::strings::Split;
 using current::strings::SplitIntoChunks;
 using current::strings::SplitIntoKeyValuePairs;
 using current::strings::StatefulGroupByLines;
-using current::strings::CreateStatefulGroupByLines;
-using current::strings::ExceptionFriendlyStatefulGroupByLines;
-using current::strings::CreateExceptionFriendlyStatefulGroupByLines;
-using current::strings::EmptyFields;
-using current::strings::KeyValueParsing;
-using current::strings::KeyValueNoValueException;
-using current::strings::KeyValueMultipleValuesException;
-using current::strings::ByWhitespace;
-using current::strings::ByLines;
-using current::strings::SlowEditDistance;
-using current::strings::FastEditDistance;
-using current::strings::Chunk;
-using current::strings::UniqueChunk;
-using current::strings::ChunkDB;
-using current::strings::RoundDoubleToString;
-using current::strings::TimeIntervalAsHumanReadableString;
 using current::strings::TimeDifferenceAsHumanReadableString;
-using current::strings::EscapeForCPlusPlus;
-using current::strings::EscapeForMarkdown;
-using current::strings::is_string_type;
+using current::strings::TimeIntervalAsHumanReadableString;
+using current::strings::ToLower;
+using current::strings::ToUpper;
+using current::strings::Trim;
+using current::strings::UniqueChunk;
+using current::strings::UnpackFromString;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -880,7 +880,9 @@ TEST(Regex, SubmatchesDoTheirJobForUnnamedSuperGroups) {
 
 TEST(Regex, SimpleTokenization) {
   const std::vector<std::string> clauses({
-      "(?<uppercase>[A-Z]+)", "(?<lowercase>[a-z]+)", "(?<digits>[0-9]+)",
+      "(?<uppercase>[A-Z]+)",
+      "(?<lowercase>[a-z]+)",
+      "(?<digits>[0-9]+)",
   });
   const current::strings::NamedRegexCapturer re(current::strings::Join(clauses, '|'));
   EXPECT_EQ("([A-Z]+)|([a-z]+)|([0-9]+)", re.GetTransformedRegexBody());
@@ -905,7 +907,8 @@ TEST(Regex, SimpleTokenization) {
 
 TEST(Regex, MemoryOwnershipSmokeTest) {
   const std::vector<std::string> cs({
-      "(?<foo>foo)", "(?<bar>bar)",
+      "(?<foo>foo)",
+      "(?<bar>bar)",
   });
   std::vector<std::string> output;
   for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate("foo bar")) {
@@ -922,12 +925,14 @@ TEST(Regex, MemoryOwnershipSmokeTest) {
 
 TEST(Regex, SubstringIterationSmokeTest) {
   const std::vector<std::string> cs({
-      "(?<foo>foo)", "(?<bar>bar)",
+      "(?<foo>foo)",
+      "(?<bar>bar)",
   });
   std::string const foo_bar = "foo bar";
   {
     std::vector<std::string> output;
-    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin(), foo_bar.end())) {
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                                 .Iterate(foo_bar.begin(), foo_bar.end())) {
       if (token.Has("foo")) {
         output.push_back("foo@" + current::ToString(token.position()));
       } else if (token.Has("bar")) {
@@ -940,7 +945,8 @@ TEST(Regex, SubstringIterationSmokeTest) {
   }
   {
     std::vector<std::string> output;
-    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin(), foo_bar.begin() + 3u)) {
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                                 .Iterate(foo_bar.begin(), foo_bar.begin() + 3u)) {
       if (token.Has("foo")) {
         output.push_back("foo@" + current::ToString(token.position()));
       } else if (token.Has("bar")) {
@@ -953,7 +959,8 @@ TEST(Regex, SubstringIterationSmokeTest) {
   }
   {
     std::vector<std::string> output;
-    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 3u, foo_bar.begin() + 7u)) {
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                                 .Iterate(foo_bar.begin() + 3u, foo_bar.begin() + 7u)) {
       if (token.Has("foo")) {
         output.push_back("foo@" + current::ToString(token.position()));
       } else if (token.Has("bar")) {
@@ -966,7 +973,8 @@ TEST(Regex, SubstringIterationSmokeTest) {
   }
   {
     std::vector<std::string> output;
-    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 5u, foo_bar.begin() + 7u)) {
+    for (const auto& token : current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                                 .Iterate(foo_bar.begin() + 5u, foo_bar.begin() + 7u)) {
       if (token.Has("foo")) {
         output.push_back("foo@" + current::ToString(token.position()));
       } else if (token.Has("bar")) {
@@ -978,15 +986,18 @@ TEST(Regex, SubstringIterationSmokeTest) {
     EXPECT_TRUE(output.empty());
   }
   {
-    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 0u, foo_bar.begin() + 7u);
+    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                              .Iterate(foo_bar.begin() + 0u, foo_bar.begin() + 7u);
     EXPECT_FALSE(iterable.begin() == iterable.end());
   }
   {
-    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 0u, foo_bar.begin() + 2u);
+    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                              .Iterate(foo_bar.begin() + 0u, foo_bar.begin() + 2u);
     EXPECT_TRUE(iterable.begin() == iterable.end());
   }
   {
-    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|')).Iterate(foo_bar.begin() + 5u, foo_bar.begin() + 7u);
+    const auto iterable = current::strings::NamedRegexCapturer(current::strings::Join(cs, '|'))
+                              .Iterate(foo_bar.begin() + 5u, foo_bar.begin() + 7u);
     EXPECT_TRUE(iterable.begin() == iterable.end());
   }
 }
@@ -998,7 +1009,8 @@ TEST(UTF8StringLength, Smoke) {
 
 TEST(StatefulGroupByLines, SmokeTrivial) {
   std::vector<std::string> lines;
-  StatefulGroupByLines splitter = CreateStatefulGroupByLines([&lines](const std::string& line) { lines.push_back(line); });
+  StatefulGroupByLines splitter =
+      CreateStatefulGroupByLines([&lines](const std::string& line) { lines.push_back(line); });
   splitter.Feed("foo\n");
   splitter.Feed("bar\n");
   splitter.Feed("baz\n");
@@ -1091,9 +1103,7 @@ TEST(StatefulGroupByLines, DoneMustBeCalledForExceptionFriendlySplitter) {
   bool done_not_called_failure = false;
   auto& handler = current::Singleton<current::strings::ExceptionFriendlyStatefulGroupByLinesDoneNotCalledHandler>();
   handler.InjectHandler([&done_not_called_failure]() { done_not_called_failure = true; });
-  {
-    RunTest(lines).DoRunTest();
-  }
+  { RunTest(lines).DoRunTest(); }
   handler.ResetHandler();
   ASSERT_TRUE(done_not_called_failure);
   ASSERT_EQ(2u, lines.size());
@@ -1103,9 +1113,7 @@ TEST(StatefulGroupByLines, DoneMustBeCalledForExceptionFriendlySplitter) {
 
 TEST(StatefulGroupByLines, CanNotCallDoneTwiceOnExceptionFriendlySplitter) {
   std::vector<std::string> lines;
-  auto splitter = CreateExceptionFriendlyStatefulGroupByLines([&lines](const char* line) {
-    lines.push_back(line);
-  });
+  auto splitter = CreateExceptionFriendlyStatefulGroupByLines([&lines](const char* line) { lines.push_back(line); });
   ASSERT_EQ(0u, lines.size());
   splitter.Feed("foo\nba");
   ASSERT_EQ(1u, lines.size());

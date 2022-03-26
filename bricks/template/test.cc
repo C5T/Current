@@ -137,8 +137,8 @@ TEST(TemplateMetaprogrammingInternalTest, Combine) {
 }
 
 TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
-  using current::variadic_indexes::indexes;
   using current::variadic_indexes::generate_indexes;
+  using current::variadic_indexes::indexes;
 
   static_assert(std::is_same_v<indexes<>, generate_indexes<0>>, "");
   static_assert(std::is_same_v<indexes<0>, generate_indexes<1>>, "");
@@ -316,8 +316,7 @@ static_assert(is_same_v<const char*, decay_t<decltype("test")>>, "");
 
 // `current::decay_t` + `std::tuple`.
 static_assert(is_same_v<std::tuple<int, int, int, int>, decay_t<std::tuple<int, int, int, int>>>, "");
-static_assert(is_same_v<std::tuple<int, int, int, int>, decay_t<std::tuple<const int, int&, const int&, int&&>>>,
-              "");
+static_assert(is_same_v<std::tuple<int, int, int, int>, decay_t<std::tuple<const int, int&, const int&, int&&>>>, "");
 
 static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<std::string>>>, "");
 static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<const std::string>>>, "");
@@ -332,17 +331,13 @@ static_assert(is_same_v<std::tuple<std::string>, decay_t<const std::tuple<const 
 static_assert(is_same_v<std::tuple<std::string>, decay_t<const std::tuple<const std::string&>&>>, "");
 static_assert(is_same_v<std::tuple<std::string>, decay_t<std::tuple<const std::string&>&&>>, "");
 
-static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<const std::string>>>>,
-              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<const std::string>>>>, "");
 static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<std::string&>>>>, "");
-static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<const std::string&>>>>,
-              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<const std::string&>>>>, "");
 static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<std::string&&>>>>, "");
 static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<std::tuple<std::tuple<std::string>>>>, "");
-static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string>>&>>,
-              "");
-static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string>&>&>>,
-              "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string>>&>>, "");
+static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string>&>&>>, "");
 static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string&>&>&>>,
               "");
 static_assert(is_same_v<std::tuple<std::tuple<std::string>>, decay_t<const std::tuple<std::tuple<std::string&&>&>&>>,

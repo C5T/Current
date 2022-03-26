@@ -28,7 +28,9 @@ SOFTWARE.
 
 #if __cplusplus >= 201703L
 TEST(CPlusPlus17, Enabled) {
-  auto const generic_lambda = [](auto const x) { return current::reflection::TypeName<current::decay_t<decltype(x)>>(); };
+  auto const generic_lambda = [](auto const x) {
+    return current::reflection::TypeName<current::decay_t<decltype(x)>>();
+  };
 
   EXPECT_STREQ("uint32_t", generic_lambda(static_cast<uint32_t>(42)));
   EXPECT_STREQ("bool", generic_lambda(true));

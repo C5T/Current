@@ -175,7 +175,7 @@ struct HypermediaResponseFormatter {
   }
 };
 
-}  // namespace current::storage::rest::hypermedia
+}  // namespace hypermedia
 
 struct Hypermedia : generic::Structured<hypermedia::HypermediaResponseFormatter> {
   using STRUCTURED = generic::Structured<hypermedia::HypermediaResponseFormatter>;
@@ -205,8 +205,8 @@ struct Hypermedia : generic::Structured<hypermedia::HypermediaResponseFormatter>
   };
 };
 
-}  // namespace current::storage::rest
-}  // namespace current::storage
+}  // namespace rest
+}  // namespace storage
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_REST_HYPERMEDIA_H

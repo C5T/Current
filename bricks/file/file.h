@@ -326,26 +326,27 @@ struct FileSystem {
       // Inner lambdas have distinct types thus creating template instantiation limit,
       // which is fixed by casting the lambda to its canonical type.
       ScanDirUntil(directory,
-                   static_cast<const std::function<bool(const ScanDirItemInfo&)>>([&item_handler, parameters, &context](
-                       const ScanDirItemInfo& item_info) {
-                     const ScanDirParameters mask =
-                         item_info.is_directory ? ScanDirParameters::ListDirsOnly : ScanDirParameters::ListFilesOnly;
-                     if (static_cast<int>(parameters) & static_cast<int>(mask)) {
-                       if (!item_handler(item_info)) {
-                         return false;
-                       }
-                     }
-                     if (item_info.is_directory) {
-                       context.path_components.push_back(item_info.basename);
-                       const auto guard = current::MakeScopeGuard([&context]() { context.path_components.pop_back(); });
-                       ScanDirUntil<ITEM_HANDLER>(item_info.pathname,
-                                                  std::forward<ITEM_HANDLER>(item_handler),
-                                                  parameters,
-                                                  ScanDirRecursive::Yes,
-                                                  context);
-                     }
-                     return true;
-                   }),
+                   static_cast<const std::function<bool(const ScanDirItemInfo&)>>(
+                       [&item_handler, parameters, &context](const ScanDirItemInfo& item_info) {
+                         const ScanDirParameters mask = item_info.is_directory ? ScanDirParameters::ListDirsOnly
+                                                                               : ScanDirParameters::ListFilesOnly;
+                         if (static_cast<int>(parameters) & static_cast<int>(mask)) {
+                           if (!item_handler(item_info)) {
+                             return false;
+                           }
+                         }
+                         if (item_info.is_directory) {
+                           context.path_components.push_back(item_info.basename);
+                           const auto guard =
+                               current::MakeScopeGuard([&context]() { context.path_components.pop_back(); });
+                           ScanDirUntil<ITEM_HANDLER>(item_info.pathname,
+                                                      std::forward<ITEM_HANDLER>(item_handler),
+                                                      parameters,
+                                                      ScanDirRecursive::Yes,
+                                                      context);
+                         }
+                         return true;
+                       }),
                    ScanDirParameters::ListFilesAndDirs,
                    ScanDirRecursive::No,
                    context);
@@ -357,13 +358,14 @@ struct FileSystem {
                              ITEM_HANDLER&& item_handler,
                              ScanDirParameters parameters = ScanDirParameters::ListFilesOnly,
                              ScanDirRecursive recursive = ScanDirRecursive::No) {
-    ScanDirUntil(directory,
-                 [&item_handler](const ScanDirItemInfo& item_info) {
-                   item_handler(item_info);
-                   return true;
-                 },
-                 parameters,
-                 recursive);
+    ScanDirUntil(
+        directory,
+        [&item_handler](const ScanDirItemInfo& item_info) {
+          item_handler(item_info);
+          return true;
+        },
+        parameters,
+        recursive);
   }
 
   enum class RmFileParameters { ThrowExceptionOnError, Silent };
@@ -416,18 +418,18 @@ struct FileSystem {
       }
     } else {
       try {
-        ScanDir(directory,
-                [parameters](const ScanDirItemInfo& item_info) {
-                  if (item_info.is_directory) {
-                    RmDir(item_info.pathname, parameters, RmDirRecursive::Yes);
-                  } else {
-                    RmFile(item_info.pathname,
-                           (parameters == RmDirParameters::ThrowExceptionOnError)
-                               ? RmFileParameters::ThrowExceptionOnError
-                               : RmFileParameters::Silent);
-                  }
-                },
-                ScanDirParameters::ListFilesAndDirs);
+        ScanDir(
+            directory,
+            [parameters](const ScanDirItemInfo& item_info) {
+              if (item_info.is_directory) {
+                RmDir(item_info.pathname, parameters, RmDirRecursive::Yes);
+              } else {
+                RmFile(item_info.pathname,
+                       (parameters == RmDirParameters::ThrowExceptionOnError) ? RmFileParameters::ThrowExceptionOnError
+                                                                              : RmFileParameters::Silent);
+              }
+            },
+            ScanDirParameters::ListFilesAndDirs);
         RmDir(directory, parameters, RmDirRecursive::No);
       } catch (const current::Exception&) {
         if (parameters == RmDirParameters::ThrowExceptionOnError) {

@@ -84,33 +84,33 @@ int main(int argc, char** argv) {
         .ImageSize(1000)
         .OutputFormat("png")
         .Plot(WithMeta([&](Plotter p) {
-          double twice_area_under_pr_curve = 0.0;
-          double previous_precision = 1.0;
-          double previous_recall = 0.0;
+                double twice_area_under_pr_curve = 0.0;
+                double previous_precision = 1.0;
+                double previous_recall = 0.0;
 
-          size_t scanned = 0u;
-          double scanned_positives = 0u;
+                size_t scanned = 0u;
+                double scanned_positives = 0u;
 
-          p(0.0, 1.0);
-          for (const auto& per_score : sorted) {
-            const double save_scanned_positives = scanned_positives;
-            for (size_t point = 0; point < per_score.second.second; ++point) {
-              ++scanned;
-              scanned_positives =
-                  save_scanned_positives + 1.0 * (point + 1) * per_score.second.first / per_score.second.second;
-              const double recall = scanned_positives / total_positives;
-              const double precision = scanned_positives / scanned;
-              p(recall, precision);
-              twice_area_under_pr_curve += (precision + previous_precision) * (recall - previous_recall);
-              previous_recall = recall;
-              previous_precision = precision;
-            }
-          }
-          p(1.0, 0.0);
-          twice_area_under_pr_curve += previous_precision * (1.0 - previous_recall);
+                p(0.0, 1.0);
+                for (const auto& per_score : sorted) {
+                  const double save_scanned_positives = scanned_positives;
+                  for (size_t point = 0; point < per_score.second.second; ++point) {
+                    ++scanned;
+                    scanned_positives =
+                        save_scanned_positives + 1.0 * (point + 1) * per_score.second.first / per_score.second.second;
+                    const double recall = scanned_positives / total_positives;
+                    const double precision = scanned_positives / scanned;
+                    p(recall, precision);
+                    twice_area_under_pr_curve += (precision + previous_precision) * (recall - previous_recall);
+                    previous_recall = recall;
+                    previous_precision = precision;
+                  }
+                }
+                p(1.0, 0.0);
+                twice_area_under_pr_curve += previous_precision * (1.0 - previous_recall);
 
-          std::cout << "Area under the P/R curve: " << 0.5 * twice_area_under_pr_curve << std::endl;
-        })
+                std::cout << "Area under the P/R curve: " << 0.5 * twice_area_under_pr_curve << std::endl;
+              })
                   .Name("Ensemble output")
                   .LineWidth(3));
 

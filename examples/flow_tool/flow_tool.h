@@ -33,7 +33,8 @@ SOFTWARE.
 namespace flow_tool {
 
 template <template <template <typename...> class, template <typename> class, typename> class CURRENT_STORAGE_TYPE,
-          template <typename...> class DB_PERSISTER>
+          template <typename...>
+          class DB_PERSISTER>
 class FlowTool final {
  public:
   using transaction_t = current::storage::transaction_t<CURRENT_STORAGE_TYPE>;

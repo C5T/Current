@@ -52,7 +52,7 @@ struct call_with_impl {
   }
 };
 
-}  // namespace current::weed::impl
+}  // namespace impl
 
 template <typename T, typename... XS>
 struct call_with {
@@ -83,7 +83,7 @@ static_assert(!call_with<TEST2, int>::implemented, "");
 
 }  // namespace smoke_test
 
-}  // namespace current::weed
+}  // namespace weed
 }  // namespace current
 
 #endif  // BRICKS_TEMPLATE_WEED_H

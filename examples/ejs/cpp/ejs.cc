@@ -45,48 +45,47 @@ int main(int argc, char** argv) {
 
   auto& http_server = HTTP(FLAGS_ejs_server_port);
 
-  const auto http_route_scope = http_server.Register(
-      "/",
-      [](Request request) {
-        const PrimesResponse response = [&request]() {
-          PrimesResponse response;
-          response.a = current::FromString<int64_t>(request.url.query.get("a", "1"));
-          response.b = current::FromString<int64_t>(request.url.query.get("b", "100"));
-          for (int64_t p = response.a; p <= response.b; ++p) {
-            bool is_prime = (p % 2) ? true : false;
-            for (int64_t d = 3; d * d <= p && is_prime; d += 2) {
-              if ((p % d) == 0) {
-                is_prime = false;
-              }
-            }
-            if (is_prime) {
-              response.x.push_back(p);
-            }
+  const auto http_route_scope = http_server.Register("/", [](Request request) {
+    const PrimesResponse response = [&request]() {
+      PrimesResponse response;
+      response.a = current::FromString<int64_t>(request.url.query.get("a", "1"));
+      response.b = current::FromString<int64_t>(request.url.query.get("b", "100"));
+      for (int64_t p = response.a; p <= response.b; ++p) {
+        bool is_prime = (p % 2) ? true : false;
+        for (int64_t d = 3; d * d <= p && is_prime; d += 2) {
+          if ((p % d) == 0) {
+            is_prime = false;
           }
-          return response;
-        }();
-
-        const bool html = [&request]() {
-          const char* kAcceptHeader = "Accept";
-          if (request.headers.Has(kAcceptHeader)) {
-            for (const auto& h : current::strings::Split(request.headers[kAcceptHeader].value, ',')) {
-              if (current::strings::Split(h, ';').front() == "text/html") {  // Allow "text/html; charset=...", etc.
-                return true;
-              }
-            }
-          }
-          return false;
-        }();
-
-        if (html) {
-          request(HTTP(POST(current::strings::Printf("http://localhost:%d", static_cast<int>(FLAGS_ejs_renderer_port)),
-                            response)).body,
-                  HTTPResponseCode.OK,
-                  current::net::constants::kDefaultHTMLContentType);
-        } else {
-          request(response);
         }
-      });
+        if (is_prime) {
+          response.x.push_back(p);
+        }
+      }
+      return response;
+    }();
+
+    const bool html = [&request]() {
+      const char* kAcceptHeader = "Accept";
+      if (request.headers.Has(kAcceptHeader)) {
+        for (const auto& h : current::strings::Split(request.headers[kAcceptHeader].value, ',')) {
+          if (current::strings::Split(h, ';').front() == "text/html") {  // Allow "text/html; charset=...", etc.
+            return true;
+          }
+        }
+      }
+      return false;
+    }();
+
+    if (html) {
+      request(HTTP(POST(current::strings::Printf("http://localhost:%d", static_cast<int>(FLAGS_ejs_renderer_port)),
+                        response))
+                  .body,
+              HTTPResponseCode.OK,
+              current::net::constants::kDefaultHTMLContentType);
+    } else {
+      request(response);
+    }
+  });
 
   std::cout << "c++ app listening on port " << FLAGS_ejs_server_port << std::endl;
 

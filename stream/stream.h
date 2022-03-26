@@ -102,8 +102,8 @@ CURRENT_STRUCT(SubscribableStreamSchema) {
   CURRENT_FIELD(namespace_name, std::string);
 
   CURRENT_DEFAULT_CONSTRUCTOR(SubscribableStreamSchema) {}
-  CURRENT_CONSTRUCTOR(SubscribableStreamSchema)(
-      current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
+  CURRENT_CONSTRUCTOR(SubscribableStreamSchema)
+  (current::reflection::TypeID type_id, const std::string& entry_name, const std::string& namespace_name)
       : type_id(type_id), entry_name(entry_name), namespace_name(namespace_name) {}
 
   bool operator==(const SubscribableStreamSchema& rhs) const {
@@ -405,14 +405,12 @@ class Stream final {
         } else {
           std::unique_lock<std::mutex> lock(impl_->publishing_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(impl_->notifier, terminate_signal_);
-          terminate_signal_.WaitUntil(
-              lock,
-              [this, &index, &begin_idx, &head]() {
-                return terminate_signal_ ||
-                       impl_->persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
-                       (index > begin_idx &&
-                        impl_->persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() > head);
-              });
+          terminate_signal_.WaitUntil(lock, [this, &index, &begin_idx, &head]() {
+            return terminate_signal_ ||
+                   impl_->persister.template Size<current::locks::MutexLockStatus::AlreadyLocked>() > index ||
+                   (index > begin_idx &&
+                    impl_->persister.template CurrentHead<current::locks::MutexLockStatus::AlreadyLocked>() > head);
+          });
         }
       }
     }

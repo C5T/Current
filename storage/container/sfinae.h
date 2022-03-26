@@ -250,7 +250,7 @@ void SetCol(ENTRY& entry, typename col_accessor_t<ENTRY>::cf_col_t col) {
 
 #ifdef CURRENT_STORAGE_PATCH_SUPPORT
 
-CURRENT_STRUCT(DummyPatchObjectForNonPatchableEntries) {};
+CURRENT_STRUCT(DummyPatchObjectForNonPatchableEntries){};
 
 template <bool, class>
 struct patch_object_t_accessor {

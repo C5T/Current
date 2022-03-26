@@ -263,8 +263,7 @@ TEST(midichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   midichloriansHTTPServer<GenericConsumer> server(port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
 
   NSDictionary* launchOptions = [NSDictionary new];
-  [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", port]
-      withLaunchOptions:launchOptions];
+  [midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", port] withLaunchOptions:launchOptions];
 
   current::time::SetNow(std::chrono::microseconds(1000));
   [midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
@@ -273,7 +272,7 @@ TEST(midichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   [midichlorians identify:@"unit_test"];
 
   current::time::SetNow(std::chrono::microseconds(5000));
-  NSDictionary* eventParams = @{ @"s" : @"str", @"b" : @true, @"x" : @1 };
+  NSDictionary* eventParams = @{@"s" : @"str", @"b" : @true, @"x" : @1};
   [midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
 
   current::time::SetNow(std::chrono::microseconds(15000));

@@ -85,9 +85,7 @@ struct CurrentTypeNameCaller {
 
 template <NameFormat NF>
 struct CurrentTypeNameCaller<NF, CurrentSuper> {
-  static const char* CallGetCurrentTypeName() {
-    return "CurrentSuper";
-  }
+  static const char* CallGetCurrentTypeName() { return "CurrentSuper"; }
 };
 
 template <NameFormat NF, typename T>
@@ -336,7 +334,7 @@ struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::tuple<TS...>, false, f
   }
 };
 
-}  // namespace current::reflection::impl
+}  // namespace impl
 
 template <typename T, NameFormat NF = NameFormat::FullCPP>
 const char* CurrentTypeName() {
@@ -371,9 +369,9 @@ struct JoinTypeNames<NF, TypeListImpl<T, TS...>> {
   }
 };
 
-}  // namespace current::reflection::impl
+}  // namespace impl
 
-}  // namespace current::reflection
+}  // namespace reflection
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_TYPENAME_H

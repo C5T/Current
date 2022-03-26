@@ -528,8 +528,8 @@ bool operator>=(const T& v, const Optional<T>& x) {
 
 }  // namespace current
 
+using current::FromBarePointer;
 using current::ImmutableOptional;
 using current::Optional;
-using current::FromBarePointer;
 
 #endif  // CURRENT_TYPE_SYSTEM_OPTIONAL_H

@@ -45,8 +45,7 @@ struct SerializeTupleImpl {
 
 template <class JSON_FORMAT, class TUPLE, int N>
 struct SerializeTupleImpl<JSON_FORMAT, TUPLE, N, N> {
-  static void DoIt(json::JSONStringifier<JSON_FORMAT>&, const TUPLE&) {
-  }
+  static void DoIt(json::JSONStringifier<JSON_FORMAT>&, const TUPLE&) {}
 };
 
 template <class JSON_FORMAT, typename... TS>
@@ -67,8 +66,7 @@ struct DeserializeTupleImpl {
 
 template <class JSON_FORMAT, class TUPLE, int N>
 struct DeserializeTupleImpl<JSON_FORMAT, TUPLE, N, N> {
-  static void DoIt(json::JSONParser<JSON_FORMAT>&, TUPLE&) {
-  }
+  static void DoIt(json::JSONParser<JSON_FORMAT>&, TUPLE&) {}
 };
 
 template <class JSON_FORMAT, typename... TS>
@@ -98,7 +96,7 @@ struct IsJSONSerializable<std::tuple<T, TS...>> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_TUPLE_H

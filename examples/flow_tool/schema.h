@@ -85,7 +85,7 @@ CURRENT_STORAGE(FlowToolDB) {
   CURRENT_STORAGE_FIELD(node, PersistedNode);
 };
 
-}  // namespace flow_tool::db
+}  // namespace db
 
 // HTTP API
 // ========
@@ -116,7 +116,7 @@ CURRENT_STRUCT(PutDirRequest){};
 
 CURRENT_VARIANT(PutRequest, PutDirRequest, PutFileRequest);
 
-}  // namespace flow_tool::api
+}  // namespace request
 
 namespace error {
 
@@ -156,7 +156,7 @@ CURRENT_STRUCT(ErrorPathNotFound, ErrorBase) {
   CURRENT_DEFAULT_CONSTRUCTOR(ErrorPathNotFound) : SUPER("ErrorPathNotFound") {}
 };
 
-}  // namespace flow_tool::api::error
+}  // namespace error
 
 namespace success {
 
@@ -168,11 +168,11 @@ CURRENT_STRUCT(FileOrDirResponse) {
 CURRENT_STRUCT(FileResponse, FileOrDirResponse) { CURRENT_FIELD(data, std::string); };
 CURRENT_STRUCT(DirResponse, FileOrDirResponse) { CURRENT_FIELD(dir, std::vector<std::string>); };
 
-}  // namespace flow_tool::api::success
+}  // namespace success
 
 CURRENT_VARIANT(SuccessfulResponse, success::FileResponse, success::DirResponse);
 
-}  // namespace flow_tool::api
+}  // namespace api
 
 }  // namespace flow_tool
 

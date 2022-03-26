@@ -48,13 +48,10 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   current::WaitableAtomic<bool> shutdown(false);
-  const auto http_routes_scope = HTTP(FLAGS_karl_keepalives_port)
-                                     .Register("/shutdown",
-                                               [&shutdown](Request r) {
-                                                 shutdown.SetValue(true);
-                                                 r("OK\n");
-                                               }) +
-                                 HTTP(FLAGS_karl_keepalives_port).Register("/up", [](Request r) { r("OK\n"); });
+  const auto http_routes_scope = HTTP(FLAGS_karl_keepalives_port).Register("/shutdown", [&shutdown](Request r) {
+    shutdown.SetValue(true);
+    r("OK\n");
+  }) + HTTP(FLAGS_karl_keepalives_port).Register("/up", [](Request r) { r("OK\n"); });
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_storage_persistence_file);

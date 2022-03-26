@@ -127,7 +127,9 @@ class UniqueDefinition<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>> final : p
   explicit UniqueDefinition(const UniqueDefinition&) = default;
 
   // Can be marked as used in any way.
-  void MarkAs(BlockUsageBit bit) { mask_ = BlockUsageBitMask(size_t(mask_) | (static_cast<size_t>(1) << static_cast<size_t>(bit))); }
+  void MarkAs(BlockUsageBit bit) {
+    mask_ = BlockUsageBitMask(size_t(mask_) | (static_cast<size_t>(1) << static_cast<size_t>(bit)));
+  }
 
   // Builds the full description of this `Definition`, down to source code file names and line numbers.
   void FullDescription(std::ostream& os = std::cerr) const {
@@ -592,8 +594,8 @@ class UserCodeInstantiator<LHSTypes<LHS_TYPES...>, RHSTypes<RHS_TYPES...>, USER_
   UserCodeInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
       : AbstractCurrent<instantiator_input_t, instantiator_output_t>(definition),
         lazy_instance_(current::DelayedInstantiateWithExtraParameterFromTuple<
-            UserClassInstantiator<instantiator_input_t, instantiator_output_t, USER_CLASS>,
-            std::shared_ptr<BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<RHS_TYPES...>>>>(
+                       UserClassInstantiator<instantiator_input_t, instantiator_output_t, USER_CLASS>,
+                       std::shared_ptr<BlockOutgoingInterface<ThreadUnsafeOutgoingTypes<RHS_TYPES...>>>>(
             std::forward<ARGS_AS_TUPLE>(params))) {}
 
   class Scope final : public SubCurrentScope<instantiator_input_t, instantiator_output_t> {
@@ -1016,7 +1018,7 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
   Drop() : super_t(Definition("DROP", __FILE__, __LINE__), std::make_tuple()) {}
 };
 
-}  // namespace current::ripcurrent
+}  // namespace ripcurrent
 }  // namespace current
 
 // Macros to wrap user code into RipCurrent building blocks.
@@ -1047,12 +1049,11 @@ struct Drop : UserCodeImpl<LHSTypes<T, TS...>, RHSTypes<>, DropImpl<T, TS...>> {
                                         ::current::ripcurrent::VoidOrRHSTypes<CURRENT_REMOVE_PARENTHESES(RHS_TS)>, \
                                         USER_CLASS_T<T>>
 
-#define RIPCURRENT_MACRO_T(USER_CLASS, T, ...)                                                         \
-  ::current::ripcurrent::UserCodeImpl<typename USER_CLASS<T>::input_t,                                 \
-                                      typename USER_CLASS<T>::output_t,                                \
-                                      USER_CLASS<T>>(                                                  \
-      ::current::ripcurrent::Definition(#USER_CLASS "<" #T ">(" #__VA_ARGS__ ")", __FILE__, __LINE__), \
-      std::make_tuple(__VA_ARGS__))
+#define RIPCURRENT_MACRO_T(USER_CLASS, T, ...)                                                             \
+  ::current::ripcurrent::                                                                                  \
+      UserCodeImpl<typename USER_CLASS<T>::input_t, typename USER_CLASS<T>::output_t, USER_CLASS<T>>(      \
+          ::current::ripcurrent::Definition(#USER_CLASS "<" #T ">(" #__VA_ARGS__ ")", __FILE__, __LINE__), \
+          std::make_tuple(__VA_ARGS__))
 
 // A shortcut for `current::ripcurrent::Pass<...>()`, with the benefit of listing types as RipCurrent node name.
 #define RIPCURRENT_PASS(...)                                                                                     \

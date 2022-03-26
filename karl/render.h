@@ -289,7 +289,7 @@ class DefaultFleetViewRenderer : public IKarlFleetViewRenderer<INNER_STATUSES_VA
   }
 };
 
-}  // namespace current::karl
+}  // namespace karl
 }  // namespace current
 
 #endif  // KARL_RENDER_H

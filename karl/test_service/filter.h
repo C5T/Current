@@ -47,7 +47,7 @@ class ServiceFilter final {
         http_scope_(HTTP(current::net::BarePort(port)).Register("/primes", *stream_primes_) +
                     HTTP(current::net::BarePort(port)).Register("/composites", *stream_composites_)),
         http_stream_subscriber_(source_annotated_numbers_stream_,
-                                [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
+                                [this](idxts_t, Number&& n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {
     claire_.BoilerplateStatus().cloud_instance_name = "Computer";
     claire_.BoilerplateStatus().cloud_availability_group = "Earth";

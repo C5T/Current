@@ -44,8 +44,8 @@ CURRENT_STRUCT(KarlNginxParameters) {
   CURRENT_FIELD(route_prefix, std::string);
   CURRENT_FIELD_DESCRIPTION(route_prefix, "Non-standard top-level route, if set.");
 
-  CURRENT_CONSTRUCTOR(KarlNginxParameters)(
-      uint16_t port, const std::string& config_file, const std::string& route_prefix = "/live")
+  CURRENT_CONSTRUCTOR(KarlNginxParameters)
+  (uint16_t port, const std::string& config_file, const std::string& route_prefix = "/live")
       : port(port), config_file(config_file), route_prefix(route_prefix) {}
 };
 
@@ -226,10 +226,11 @@ CURRENT_STRUCT(up) {
   CURRENT_FIELD_DESCRIPTION(uptime, "The uptime of the service based on the most recent keepalive, human-readable.");
 
   CURRENT_DEFAULT_CONSTRUCTOR(up) {}
-  CURRENT_CONSTRUCTOR(up)(const std::chrono::microseconds start_time_epoch_microseconds,
-                          const std::string& last_keepalive_received,
-                          const std::chrono::microseconds last_keepalive_received_epoch_microseconds,
-                          const std::string& uptime)
+  CURRENT_CONSTRUCTOR(up)
+  (const std::chrono::microseconds start_time_epoch_microseconds,
+   const std::string& last_keepalive_received,
+   const std::chrono::microseconds last_keepalive_received_epoch_microseconds,
+   const std::string& uptime)
       : start_time_epoch_microseconds(start_time_epoch_microseconds),
         last_keepalive_received(last_keepalive_received),
         last_keepalive_received_epoch_microseconds(last_keepalive_received_epoch_microseconds),
@@ -254,10 +255,11 @@ CURRENT_STRUCT(down) {
                             "The uptime of the service as of right before it went offline, human-readable.");
 
   CURRENT_DEFAULT_CONSTRUCTOR(down) {}
-  CURRENT_CONSTRUCTOR(down)(const std::chrono::microseconds start_time_epoch_microseconds,
-                            const std::string& last_keepalive_received,
-                            const std::chrono::microseconds last_keepalive_received_epoch_microseconds,
-                            const std::string& last_confirmed_uptime)
+  CURRENT_CONSTRUCTOR(down)
+  (const std::chrono::microseconds start_time_epoch_microseconds,
+   const std::string& last_keepalive_received,
+   const std::chrono::microseconds last_keepalive_received_epoch_microseconds,
+   const std::string& last_confirmed_uptime)
       : start_time_epoch_microseconds(start_time_epoch_microseconds),
         last_keepalive_received(last_keepalive_received),
         last_keepalive_received_epoch_microseconds(last_keepalive_received_epoch_microseconds),
@@ -267,7 +269,7 @@ CURRENT_STRUCT(down) {
 // TODO(dkorolev): `Variant<up, down, done>`, where `done` == "has been shut down gracefully".
 using state_variant_t = Variant<up, down>;
 
-}  // namespace current::karl::current_service_state
+}  // namespace current_service_state
 
 CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD(currently, current_service_state::state_variant_t);
@@ -369,12 +371,12 @@ CURRENT_STRUCT_T(SnapshotOfKeepalive) {
   CURRENT_FIELD(snapshot, ClaireServiceStatus<T>);
   CURRENT_FIELD_DESCRIPTION(snapshot, "The snapshot itself.");
 
-  CURRENT_CONSTRUCTOR_T(SnapshotOfKeepalive)(std::chrono::microseconds dt,
-                                             const ClaireServiceStatus<T>& data = ClaireServiceStatus<T>())
+  CURRENT_CONSTRUCTOR_T(SnapshotOfKeepalive)
+  (std::chrono::microseconds dt, const ClaireServiceStatus<T>& data = ClaireServiceStatus<T>())
       : age(strings::TimeDifferenceAsHumanReadableString(dt)), snapshot(data) {}
 };
 
-}  // namespace current::karl
+}  // namespace karl
 }  // namespace current
 
 #endif  // KARL_SCHEMA_KARL_H

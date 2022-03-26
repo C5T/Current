@@ -53,8 +53,7 @@ inline bool IsNormal(double_t arg) { return (std::isnormal(arg) || arg == 0.0); 
 namespace impl {
 
 template <typename T>
-std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector<T> a,
-                                                                     const std::vector<T>& b) {
+std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector<T> a, const std::vector<T>& b) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -69,9 +68,9 @@ std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector
 }
 
 template <typename T>
-std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>>SumVectors(std::vector<T> a,
-                                                                    const std::vector<T>& b,
-                                                                    double_t kb) {
+std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector<T> a,
+                                                                     const std::vector<T>& b,
+                                                                     double_t kb) {
 #ifndef NDEBUG
   CURRENT_ASSERT(a.size() == b.size());
 #endif
@@ -104,8 +103,7 @@ std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>> SumVectors(std::vector
 }
 
 template <typename T>
-std::enable_if_t<std::is_arithmetic_v<T>, T> DotProduct(const std::vector<T>& v1,
-                                                        const std::vector<T>& v2) {
+std::enable_if_t<std::is_arithmetic_v<T>, T> DotProduct(const std::vector<T>& v1, const std::vector<T>& v2) {
 #ifndef NDEBUG
   CURRENT_ASSERT(v1.size() == v2.size());
 #endif
@@ -191,7 +189,7 @@ ValueAndPoint Backtracking(F&& f,
   }
 }
 
-}  // namespace fncas::impl
+}  // namespace impl
 }  // namespace fncas
 
 #endif  // #ifndef FNCAS_FNCAS_MATHUTIL_H

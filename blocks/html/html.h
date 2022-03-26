@@ -150,7 +150,7 @@ struct HTMLGeneratorOStreamScope final : HTMLGeneratorScope {
 #define CURRENT_HTML_SWITCH(x, y) x y
 #define HTML(...) CURRENT_HTML_SWITCH(CURRENT_HTML_SWITCH_N(CURRENT_HTML_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-}  // namespace current::html
+}  // namespace html
 }  // namespace current
 
 // The `htmltag` namespace is intentionally in the global scope, not within `::current`, so that it can be amended to.
@@ -168,7 +168,7 @@ struct _ final {
   }
 };
 
-}  // namespace ::htmltag
+}  // namespace htmltag
 
 #include "tags.h"
 

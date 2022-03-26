@@ -97,7 +97,7 @@ struct IsJSONSerializable<std::vector<T, ALLOC>> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_VECTOR_H

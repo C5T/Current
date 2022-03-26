@@ -58,8 +58,8 @@ CURRENT_STRUCT(WithOptional) {
   CURRENT_FIELD(maybe_name, Optional<FullName>);
   CURRENT_DEFAULT_CONSTRUCTOR(WithOptional) {}
   CURRENT_CONSTRUCTOR(WithOptional)(std::integral_constant<int, 2>) : maybe_name(nullptr) {}
-  CURRENT_CONSTRUCTOR(WithOptional)(std::integral_constant<int, 3>)
-      : maybe_name(FullName(std::integral_constant<int, 2>())) {}
+  CURRENT_CONSTRUCTOR(WithOptional)
+  (std::integral_constant<int, 3>) : maybe_name(FullName(std::integral_constant<int, 2>())) {}
 };
 
 CURRENT_STRUCT(CustomTypeA) {
@@ -119,14 +119,14 @@ CURRENT_STRUCT(TopLevel) {
   CURRENT_FIELD(data, All);
   CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 0>) : data(Basic(std::integral_constant<int, 0>())) {}
   CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 1>) : data(FullName(std::integral_constant<int, 1>())) {}
-  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 2>)
-      : data(WithOptional(std::integral_constant<int, 2>())) {}
-  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 3>)
-      : data(WithOptional(std::integral_constant<int, 3>())) {}
-  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 4>)
-      : data(WithExpandingVariant(std::integral_constant<int, 4>())) {}
-  CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 5>)
-      : data(WithShrinkingVariant(std::integral_constant<int, 5>())) {}
+  CURRENT_CONSTRUCTOR(TopLevel)
+  (std::integral_constant<int, 2>) : data(WithOptional(std::integral_constant<int, 2>())) {}
+  CURRENT_CONSTRUCTOR(TopLevel)
+  (std::integral_constant<int, 3>) : data(WithOptional(std::integral_constant<int, 3>())) {}
+  CURRENT_CONSTRUCTOR(TopLevel)
+  (std::integral_constant<int, 4>) : data(WithExpandingVariant(std::integral_constant<int, 4>())) {}
+  CURRENT_CONSTRUCTOR(TopLevel)
+  (std::integral_constant<int, 5>) : data(WithShrinkingVariant(std::integral_constant<int, 5>())) {}
   CURRENT_CONSTRUCTOR(TopLevel)(std::integral_constant<int, 6>) : data(WithFieldsToRemove()) {}
 };
 

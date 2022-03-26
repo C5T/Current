@@ -54,8 +54,8 @@ CURRENT_STRUCT(UInt32KeyValuePair) {
 CURRENT_STRUCT(StringKeyValuePair) {
   CURRENT_FIELD(key, std::string);
   CURRENT_FIELD(value, uint32_t);
-  CURRENT_CONSTRUCTOR(StringKeyValuePair)(const std::string key = "", uint32_t value = 0)
-      : key(std::move(key)), value(value) {}
+  CURRENT_CONSTRUCTOR(StringKeyValuePair)
+  (const std::string key = "", uint32_t value = 0) : key(std::move(key)), value(value) {}
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, UInt32KeyValuePair, PersistedUInt32KeyValuePair);
@@ -91,32 +91,31 @@ SCENARIO(storage, "Storage transactions test.") {
         {{"size"},
          [this]() {
            db->ReadOnlyTransaction([this](ImmutableFields<storage_t> fields) {
-             if (fields.hashmap_uint32.Size() != actual_size_uint32 ||
-                 fields.hashmap_string.Size() != actual_size_string) {
-               std::cerr << "Test failed." << std::endl;
-               std::exit(-1);
-             }
-           }).Wait();
+               if (fields.hashmap_uint32.Size() != actual_size_uint32 ||
+                   fields.hashmap_string.Size() != actual_size_string) {
+                 std::cerr << "Test failed." << std::endl;
+                 std::exit(-1);
+               }
+             }).Wait();
          }},
         {{"get"},
          [this, testing_string]() {
            Value(db->ReadOnlyTransaction([this, testing_string](ImmutableFields<storage_t> fields) {
-             if (!testing_string) {
-               return Exists(fields.hashmap_uint32[RandomUInt32()]);
-             } else {
-               return Exists(fields.hashmap_string[RandomString()]);
-             }
-           }).Go());
+                     if (!testing_string) {
+                       return Exists(fields.hashmap_uint32[RandomUInt32()]);
+                     } else {
+                       return Exists(fields.hashmap_string[RandomString()]);
+                     }
+                   }).Go());
          }},
-        {{"put"},
-         [this, testing_string]() {
+        {{"put"}, [this, testing_string]() {
            db->ReadWriteTransaction([this, testing_string](MutableFields<storage_t> fields) {
-             if (!testing_string) {
-               fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
-             } else {
-               fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
-             }
-           }).Wait();
+               if (!testing_string) {
+                 fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
+               } else {
+                 fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
+               }
+             }).Wait();
          }}};
     const auto cit = tests.find(FLAGS_storage_transaction);
 
@@ -132,13 +131,14 @@ SCENARIO(storage, "Storage transactions test.") {
       CURRENT_ASSERT(false);
     }
 
-    const auto pair = Value(db->ReadWriteTransaction([](MutableFields<storage_t> fields) {
-      for (uint32_t i = 0; i < FLAGS_storage_initial_size; ++i) {
-        fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
-        fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
-      }
-      return NonSerializablePairOfTwoSizeT(fields.hashmap_uint32.Size(), fields.hashmap_string.Size());
-    }).Go());
+    const auto pair =
+        Value(db->ReadWriteTransaction([](MutableFields<storage_t> fields) {
+                  for (uint32_t i = 0; i < FLAGS_storage_initial_size; ++i) {
+                    fields.hashmap_uint32.Add(UInt32KeyValuePair(RandomUInt32(), RandomUInt32()));
+                    fields.hashmap_string.Add(StringKeyValuePair(RandomString(), RandomUInt32()));
+                  }
+                  return NonSerializablePairOfTwoSizeT(fields.hashmap_uint32.Size(), fields.hashmap_string.Size());
+                }).Go());
     actual_size_uint32 = pair.first;
     actual_size_string = pair.second;
 

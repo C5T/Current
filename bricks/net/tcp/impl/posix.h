@@ -24,11 +24,11 @@ SOFTWARE.
 
 #if 0
 
-# NOTE(dkorolev): I have tested the `ReserveLocalPort` logic in the following way.
-# Step one: build.
+#NOTE(dkorolev) : I have tested the `ReserveLocalPort` logic in the following way.
+#Step one : build.
 g++ -g -std=c++17 -W -Wall -Wno-strict-aliasing   -o ".current/test" "test.cc" -pthread -ldl
 ulimit -c unlimited
-# Step two: run in two terminals in parallel.
+#Step two : run in two terminals in parallel.
 rm -f core ; while true ; do ./.current/test --gtest_throw_on_failure --gtest_catch_exceptions=0 || break ; done
 
 #endif
@@ -108,9 +108,8 @@ enum class BarePort : uint16_t {};
 class SocketHandle : private SocketSystemInitializer {
  private:
   struct InternalInit final {};
-  explicit SocketHandle(InternalInit,
-                        NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
-    : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
+  explicit SocketHandle(InternalInit, NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
+      : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
@@ -126,11 +125,7 @@ class SocketHandle : private SocketSystemInitializer {
     // NOTE(dkorolev): On Windows, `SO_REUSEADDR` is unnecessary.
     // First, local ports can be reused right away, so it doesn't win anything.
     // Second, on Windows this setting allows binding the second socket to the same port, which is just bad.
-    if (::setsockopt(socket_,
-                     SOL_SOCKET,
-                     SO_REUSEADDR,
-                     &just_one,
-                     sizeof(just_one))) {
+    if (::setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(just_one))) {
       CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #endif
@@ -154,7 +149,6 @@ class SocketHandle : private SocketSystemInitializer {
       }
     }
     // LCOV_EXCL_STOP
-    
   }
 
  public:
@@ -188,7 +182,7 @@ class SocketHandle : private SocketSystemInitializer {
 
   struct DoNotBind final {};
   explicit SocketHandle(DoNotBind, NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
-        : SocketHandle(InternalInit(), nagle_algorithm_policy) {}
+      : SocketHandle(InternalInit(), nagle_algorithm_policy) {}
 
   struct FromAcceptedHandle final {
     SOCKET handle;
@@ -215,9 +209,7 @@ class SocketHandle : private SocketSystemInitializer {
     }
   }
 
-  explicit SocketHandle(SocketHandle&& rhs) : socket_(static_cast<SOCKET>(-1)) {
-    std::swap(socket_, rhs.socket_);
-  }
+  explicit SocketHandle(SocketHandle&& rhs) : socket_(static_cast<SOCKET>(-1)) { std::swap(socket_, rhs.socket_); }
 
  private:
   friend class Socket;
@@ -295,11 +287,10 @@ class ReservedLocalPort final : public current::net::SocketHandle {
  public:
   struct Construct final {};
   ReservedLocalPort() = delete;
-  ReservedLocalPort(Construct, uint16_t port, current::net::SocketHandle&& socket) : super_t(std::move(socket)), port_(port) {}
+  ReservedLocalPort(Construct, uint16_t port, current::net::SocketHandle&& socket)
+      : super_t(std::move(socket)), port_(port) {}
   ReservedLocalPort(const ReservedLocalPort&) = delete;
-  ReservedLocalPort(ReservedLocalPort&& rhs) : super_t(std::move(rhs)), port_(rhs.port_) {
-    rhs.port_ = 0;
-  }
+  ReservedLocalPort(ReservedLocalPort&& rhs) : super_t(std::move(rhs)), port_(rhs.port_) { rhs.port_ = 0; }
   ReservedLocalPort& operator=(const ReservedLocalPort&) = delete;
   ReservedLocalPort& operator=(ReservedLocalPort&&) = delete;
   operator uint16_t() const { return port_; }
@@ -323,10 +314,9 @@ class ReserveLocalPortImpl final {
     index_ = 0u;
   }
 
-  current::net::ReservedLocalPort DoIt(
-      uint16_t hint,
-      NagleAlgorithm nagle_algorithm_policy,
-      MaxServerQueuedConnectionsValue max_connections) {
+  current::net::ReservedLocalPort DoIt(uint16_t hint,
+                                       NagleAlgorithm nagle_algorithm_policy,
+                                       MaxServerQueuedConnectionsValue max_connections) {
     size_t save_index = index_;
     bool keep_searching = true;
     while (keep_searching) {
@@ -350,13 +340,12 @@ class ReserveLocalPortImpl final {
         return retval;
       }();
       try {
-        current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(), 
+        current::net::SocketHandle try_to_hold_port(current::net::SocketHandle::BindAndListen(),
                                                     BarePort(candidate_port),
                                                     nagle_algorithm_policy,
                                                     max_connections);
-        return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
-                                          candidate_port,
-                                          std::move(try_to_hold_port));
+        return current::net::ReservedLocalPort(
+            current::net::ReservedLocalPort::Construct(), candidate_port, std::move(try_to_hold_port));
       } catch (const current::net::SocketConnectException&) {
         // Keep trying.
         // std::cerr << "Failed in `connect`." << candidate_port << '\n';
@@ -374,7 +363,7 @@ class ReserveLocalPortImpl final {
   }
 };
 
-}  // namespace current::net::impl
+}  // namespace impl
 
 // Pick an available local port.
 [[nodiscard]] inline ReservedLocalPort ReserveLocalPort(
@@ -387,7 +376,8 @@ class ReserveLocalPortImpl final {
     uint16_t hint,
     NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
     MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
-  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(hint, nagle_algorithm_policy, max_connections);
+  return current::ThreadLocalSingleton<impl::ReserveLocalPortImpl>().DoIt(
+      hint, nagle_algorithm_policy, max_connections);
 }
 
 class Connection : public SocketHandle {
@@ -411,9 +401,7 @@ class Connection : public SocketHandle {
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
   inline std::enable_if_t<sizeof(T) == 1, size_t> BlockingRead(
-      T* output_buffer,
-      size_t max_length,
-      BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
+      T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     if (max_length == 0) {
       return 0;  // LCOV_EXCL_LINE
     } else {
@@ -580,8 +568,7 @@ class Socket final : public SocketHandle {
   explicit Socket(BarePort bare_port,
                   NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
                   MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections)
-      : SocketHandle(SocketHandle::BindAndListen(), bare_port, nagle_algorithm_policy, max_connections) {
-  }
+      : SocketHandle(SocketHandle::BindAndListen(), bare_port, nagle_algorithm_policy, max_connections) {}
 
   explicit Socket(ReservedLocalPort&& reserved_port) : SocketHandle(std::move(reserved_port)) {}
 
@@ -637,7 +624,7 @@ namespace addrinfo_t_impl {
 struct Deleter {
   void operator()(struct addrinfo* ptr) { ::freeaddrinfo(ptr); }
 };
-}
+}  // namespace addrinfo_t_impl
 using addrinfo_t = std::unique_ptr<struct addrinfo, addrinfo_t_impl::Deleter>;
 
 inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv = "") {
@@ -671,7 +658,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
   class ClientSocket final : public SocketHandle {
    public:
     explicit ClientSocket(const std::string& host,
-                          const std::string& serv, 
+                          const std::string& serv,
                           NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
         : SocketHandle(SocketHandle::DoNotBind(), nagle_algorithm_policy) {
       CURRENT_BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));

@@ -52,14 +52,14 @@
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
 
-using current::midichlorians::ios::iOSBaseEvent;
-using current::midichlorians::ios::iOSFirstLaunchEvent;
+using current::midichlorians::ios::ios_events_t;
 using current::midichlorians::ios::iOSAppLaunchEvent;
+using current::midichlorians::ios::iOSBaseEvent;
 using current::midichlorians::ios::iOSDeviceInfo;
-using current::midichlorians::ios::iOSIdentifyEvent;
+using current::midichlorians::ios::iOSFirstLaunchEvent;
 using current::midichlorians::ios::iOSFocusEvent;
 using current::midichlorians::ios::iOSGenericEvent;
-using current::midichlorians::ios::ios_events_t;
+using current::midichlorians::ios::iOSIdentifyEvent;
 
 // Define the iOS interface, being comfortably within a C++ header file included exclusively from an `.mm` one.
 @interface midichlorians_impl : NSObject

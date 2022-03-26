@@ -62,7 +62,7 @@ struct IsJSONSerializable<reflection::TypeID> {
 };
 }  // namespace json
 
-}  // namespace current::serialization
+}  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_TYPEID_H

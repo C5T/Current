@@ -82,9 +82,9 @@ CURRENT_STRUCT(Event) {
   CURRENT_FIELD(version, Optional<double>);  // What if they decide to use `2.1`. -- D.K.
 };
 
-}  // namespace current::integrations::web
-}  // namespace current::integrations::segment
-}  // namespace current::integrations
+}  // namespace web
+}  // namespace segment
+}  // namespace integrations
 }  // namespace current
 
 #endif  // INTEGRATIONS_SEGMENT_SCHEMA_WEB_H
