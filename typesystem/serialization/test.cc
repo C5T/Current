@@ -1713,9 +1713,8 @@ TEST(JSONSerialization, WithFieldCalledNewFromJSON) {
   EXPECT_EQ(12321, ParseJSON<WithFieldCalledNewT<I>>(JSON(WithFieldCalledNewT<I>(true, 12321))).extra);
   EXPECT_EQ("yay", ParseJSON<WithFieldCalledNewT<S>>(JSON(WithFieldCalledNewT<S>(true, "yay"))).extra);
 
-  bool F = false;
-  EXPECT_EQ(808, ParseJSON<WithFieldCalledNewDerivedT<I>>(JSON(WithFieldCalledNewDerivedT<I>(F, 808))).extra);
-  EXPECT_EQ("!", ParseJSON<WithFieldCalledNewDerivedT<S>>(JSON(WithFieldCalledNewDerivedT<S>(F, "!"))).extra);
+  EXPECT_EQ(808, ParseJSON<WithFieldCalledNewDerivedT<I>>(JSON(WithFieldCalledNewDerivedT<I>(false, 808))).extra);
+  EXPECT_EQ("!", ParseJSON<WithFieldCalledNewDerivedT<S>>(JSON(WithFieldCalledNewDerivedT<S>(false, "!"))).extra);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
