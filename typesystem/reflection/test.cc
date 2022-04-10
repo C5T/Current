@@ -78,6 +78,31 @@ CURRENT_STRUCT_T(Templated) {
 CURRENT_ENUM(Enum, uint32_t) { Value1 = 1u, Value2 = 2u };
 // clang-format on
 
+namespace custom_ns1 {
+
+CURRENT_STRUCT(SameStruct) {
+  CURRENT_FIELD(foo, std::string);
+};
+
+}  // namespace custom_ns1
+
+namespace custom_ns2 {
+
+CURRENT_STRUCT(SameStruct) {
+  CURRENT_FIELD(foo, std::string);
+};
+
+}  // namespace custom_ns2
+
+namespace custom_ns3 {
+
+CURRENT_STRUCT(SameStruct) {
+  CURRENT_FIELD(still_foo, std::string);
+  CURRENT_FIELD_NAME(still_foo, "foo");
+};
+
+}  // namespace custom_ns3
+
 using current::reflection::Reflector;
 
 static_assert(
@@ -903,6 +928,14 @@ TEST(Reflection, DerivingFromTemplatedStructsReflectsCorrectly) {
   EXPECT_EQ(static_cast<uint64_t>(CurrentTypeID<RSRange<double>>()), static_cast<uint64_t>(Value(dff.super_id)));
   EXPECT_EQ("RSRange_Z",
             Value(dff.super_name));  // Still `Z-notation` internally. Hope we could fix it one day. -- D.K.
+}
+
+TEST(Reflection, SameStructsHaveSameTypeIDs) {
+  const auto a = static_cast<uint64_t>(current::reflection::CurrentTypeID<reflection_test::custom_ns1::SameStruct>());
+  const auto b = static_cast<uint64_t>(current::reflection::CurrentTypeID<reflection_test::custom_ns2::SameStruct>());
+  const auto c = static_cast<uint64_t>(current::reflection::CurrentTypeID<reflection_test::custom_ns3::SameStruct>());
+  EXPECT_EQ(a, b);
+  EXPECT_EQ(a, c);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
