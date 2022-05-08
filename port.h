@@ -180,7 +180,9 @@ using namespace current_injected_cpp17;
 #elif defined(CURRENT_EMSCRIPTEN)
 #define CURRENT_ARCH_UNAME std::string("Emscripten")
 #define CURRENT_ARCH_UNAME_AS_IDENTIFIER Emscripten
+#ifndef CURRENT_SUPPRESS_EMSCRIPTEN_WARNING
 #warning "Emscripten support is experimental in Current."
+#endif  // CURRENT_SUPPRESS_EMSCRIPTEN_WARNING
 #else
 #error "Unknown architecture."
 #endif
