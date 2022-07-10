@@ -692,6 +692,22 @@ TEST(TypeSystemTest, Optional) {
     b = nullptr;
     EXPECT_FALSE(Exists(b));
   }
+  // Assignment of zero should work for all numberic `Optional<>`-s.
+  // THIS IS BROKEN NOW DUE TO AMBIGUITY BETWEEN `int` 0 and `std::nullptr_t` 0.
+  {
+    Optional<int> a;
+    EXPECT_FALSE(Exists(a));
+    a = 0;
+    EXPECT_TRUE(Exists(a));
+    a = nullptr;
+    EXPECT_FALSE(Exists(a));
+    Optional<size_t> b;
+    EXPECT_FALSE(Exists(b));
+    b = 0;
+    EXPECT_TRUE(Exists(b));
+    b = nullptr;
+    EXPECT_FALSE(Exists(b));
+  }
 }
 
 namespace optionals_test {
