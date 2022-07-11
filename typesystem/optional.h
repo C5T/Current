@@ -249,6 +249,14 @@ class Optional<T, std::enable_if_t<std::is_pod<T>::value>> final {
     return *this;
   }
 
+  // Important to be able to assign `0` to `Optional<double` et. al.
+  template <typename TT = T, class ENABLE = std::enable_if_t<std::is_arithmetic_v<TT>>>
+  Optional<T>& operator=(int value) {
+    value_ = value;
+    exists_ = true;
+    return *this;
+  }
+
   Optional<T>& operator=(const Optional<T>& rhs) {
     value_ = rhs.value_;
     exists_ = rhs.exists_;
