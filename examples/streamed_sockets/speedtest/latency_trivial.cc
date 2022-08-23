@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
 
   current::net::Connection sendto(current::net::ClientSocket(FLAGS_sendto_host, FLAGS_sendto_port));
 
-  current::net::Socket socket(FLAGS_listen_port);
+  current::net::Socket socket((current::net::BarePort(FLAGS_listen_port)));
   current::net::Connection recvfrom(socket.Accept());
 
   std::vector<std::chrono::microseconds> send_begin(FLAGS_k);
