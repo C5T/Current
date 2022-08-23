@@ -677,6 +677,36 @@ TEST(TypeSystemTest, Optional) {
     EXPECT_EQ(100u, foo_i_value);
     EXPECT_EQ(300u, foo_i_ref);
   }
+  // Assignment of one should work for all numeric `Optional<>`-s.
+  {
+    Optional<int> a;
+    EXPECT_FALSE(Exists(a));
+    a = 1;
+    EXPECT_TRUE(Exists(a));
+    a = nullptr;
+    EXPECT_FALSE(Exists(a));
+    Optional<size_t> b;
+    EXPECT_FALSE(Exists(b));
+    b = 1;
+    EXPECT_TRUE(Exists(b));
+    b = nullptr;
+    EXPECT_FALSE(Exists(b));
+  }
+  // Assignment of zero should work for all numeric `Optional<>`-s.
+  {
+    Optional<int> a;
+    EXPECT_FALSE(Exists(a));
+    a = 0;
+    EXPECT_TRUE(Exists(a));
+    a = nullptr;
+    EXPECT_FALSE(Exists(a));
+    Optional<size_t> b;
+    EXPECT_FALSE(Exists(b));
+    b = 0;
+    EXPECT_TRUE(Exists(b));
+    b = nullptr;
+    EXPECT_FALSE(Exists(b));
+  }
 }
 
 namespace optionals_test {
