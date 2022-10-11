@@ -139,7 +139,7 @@ struct DLSymException final : ExternalLibraryException {
 };
 
 #ifndef CURRENT_WINDOWS
-class DynamicLibrary final {
+class DynamicLibrary {
  private:
   const std::string library_file_name_;
   void* lib_ = nullptr;
@@ -167,7 +167,7 @@ class DynamicLibrary final {
   }
 
   template <typename F, typename S>
-  F GetFunction(S&& function_name) {
+  F Get(S&& function_name) {
     if (!lib_) {
       CURRENT_THROW(DLOpenException("Failed to load the library."));
     } else {
@@ -181,8 +181,8 @@ class DynamicLibrary final {
   }
 };
 
-class JITCompiledCPP final {
- private:
+class JITCPPCompiler {
+ protected:
   const std::string dir_name_;
   const std::string source_file_name_;
   const std::string current_header_file_name_;
@@ -192,11 +192,9 @@ class JITCompiledCPP final {
   const current::FileSystem::ScopedRmFile source_file_remover_;
   const current::FileSystem::ScopedRmFile library_file_remover_;
   const std::unique_ptr<current::FileSystem::ScopedRmFile> current_symlink_remover_;
-  std::unique_ptr<DynamicLibrary> library_;
 
- public:
   template <typename S>
-  explicit JITCompiledCPP(S&& source, const std::string& optional_current_dir = "")
+  explicit JITCPPCompiler(S&& source, const std::string& optional_current_dir = "")
       : dir_name_(current::FileSystem::GenTmpFileName()),
         source_file_name_(current::FileSystem::JoinPath(dir_name_, "code.cc")),
         current_header_file_name_(current::FileSystem::JoinPath(dir_name_, "current.h")),
@@ -253,27 +251,17 @@ class JITCompiledCPP final {
       CURRENT_THROW(CompilationException("Compilation error."));
     }
 #endif
-
-    library_ = std::make_unique<DynamicLibrary>(library_file_name_);
-  }
-
-  operator bool() const {
-    return library_ != nullptr;
-  }
-
-  const std::string& GetSOName() const {
-    return library_->GetSOName();
-  }
-
-  template <typename F, typename S>
-  F Get(S&& function_name) {
-    if (!library_) {
-      CURRENT_THROW(DLOpenException("Failed to load the library."));
-    } else {
-      return library_->template GetFunction<F, S>(std::forward<S>(function_name));
-    }
   }
 };
+
+class JITCompiledCPP final : protected JITCPPCompiler, public DynamicLibrary {
+ public:
+  template <typename S>
+  explicit JITCompiledCPP(S&& source, const std::string& optional_current_dir = "")
+      : JITCPPCompiler(std::forward<S>(source), optional_current_dir),
+        DynamicLibrary(JITCPPCompiler::library_file_name_) {}
+};
+
 #endif  // CURRENT_WINDOWS
 
 }  // namespace system

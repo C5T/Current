@@ -80,7 +80,7 @@ TEST(Syscalls, DLOpen) {
   EXPECT_EQ(42, foo1());
   EXPECT_EQ(43, foo1());
   auto dynamic_lib = current::bricks::system::DynamicLibrary(lib.GetSOName());
-  auto foo2 = dynamic_lib.template GetFunction<int (*)()>("_Z3foov");
+  auto foo2 = dynamic_lib.template Get<int (*)()>("_Z3foov");
   EXPECT_EQ(44, foo2());
   EXPECT_EQ(45, foo1());
 }
@@ -90,7 +90,7 @@ TEST(Syscalls, DLOpenExternC) {
   auto bar1 = lib.template Get<int (*)()>("bar");
   EXPECT_EQ(100, bar1());
   auto dynamic_lib = current::bricks::system::DynamicLibrary(lib.GetSOName());
-  auto bar2 = dynamic_lib.template GetFunction<int (*)()>("bar");
+  auto bar2 = dynamic_lib.template Get<int (*)()>("bar");
   EXPECT_EQ(101, bar2());
   EXPECT_EQ(102, bar1());
   EXPECT_EQ(103, bar2());
