@@ -167,7 +167,7 @@ class DynamicLibrary {
   }
 
   template <typename F, typename S>
-  F Get(S&& function_name) {
+  F Get(S&& function_name) const {
     if (!lib_) {
       CURRENT_THROW(DLOpenException("Failed to load the library."));
     } else {
