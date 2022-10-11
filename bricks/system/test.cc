@@ -76,7 +76,7 @@ TEST(Syscalls, SystemCall) {
 #ifndef CURRENT_WINDOWS
 TEST(Syscalls, DLOpen) {
   current::bricks::system::JITCompiledCPP lib("int foo() { static int c = 42; return c++; }");
-  auto foo1 = lib.template Get<int (*)()>("_Z3foov");  // The C++-mangled name for `foo1`, use `objdump -t` if unsure.
+  auto foo1 = lib.template Get<int (*)()>("_Z3foov");  // The C++-mangled name for `foo`, use `objdump -t` if unsure.
   EXPECT_EQ(42, foo1());
   EXPECT_EQ(43, foo1());
   auto dynamic_lib = current::bricks::system::DynamicLibrary(lib.GetSOName());
@@ -87,7 +87,7 @@ TEST(Syscalls, DLOpen) {
 
 TEST(Syscalls, DLOpenExternC) {
   current::bricks::system::JITCompiledCPP lib("extern \"C\" int bar() { static int c = 100; return c++; }");
-  auto bar1 = lib.template Get<int (*)()>("bar");
+  auto bar1 = lib.template Get<int (*)()>("bar");  // With `extern "C"` there's no mangling.
   EXPECT_EQ(100, bar1());
   auto dynamic_lib = current::bricks::system::DynamicLibrary(lib.GetSOName());
   auto bar2 = dynamic_lib.template Get<int (*)()>("bar");
