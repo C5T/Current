@@ -139,6 +139,48 @@ struct DLSymException final : ExternalLibraryException {
 };
 
 #ifndef CURRENT_WINDOWS
+class DynamicLibrary final {
+ private:
+  const std::string library_file_name_;
+  void* lib_ = nullptr;
+
+ public:
+  DynamicLibrary(const std::string& library_file_name) : library_file_name_(library_file_name) {
+    lib_ = ::dlopen(library_file_name_.c_str(), RTLD_LAZY);
+    if (!lib_) {
+      CURRENT_THROW(DLOpenException("Failed to load the library."));
+    }
+  }
+
+  ~DynamicLibrary() {
+    if (lib_) {
+      ::dlclose(lib_);
+    }
+  }
+
+  operator bool() const {
+    return lib_ != nullptr;
+  }
+
+  const std::string& GetSOName() const {
+    return library_file_name_;
+  }
+
+  template <typename F, typename S>
+  F GetFunction(S&& function_name) {
+    if (!lib_) {
+      CURRENT_THROW(DLOpenException("Failed to load the library."));
+    } else {
+      void* f = ::dlsym(lib_, current::strings::ConstCharPtr(std::forward<S>(function_name)));
+      if (!f) {
+        CURRENT_THROW(DLSymException("Failed to load the symbol."));
+      } else {
+        return reinterpret_cast<F>(f);
+      }
+    }
+  }
+};
+
 class JITCompiledCPP final {
  private:
   const std::string dir_name_;
@@ -150,7 +192,7 @@ class JITCompiledCPP final {
   const current::FileSystem::ScopedRmFile source_file_remover_;
   const current::FileSystem::ScopedRmFile library_file_remover_;
   const std::unique_ptr<current::FileSystem::ScopedRmFile> current_symlink_remover_;
-  void* lib_ = nullptr;
+  std::unique_ptr<DynamicLibrary> library_;
 
  public:
   template <typename S>
@@ -212,29 +254,23 @@ class JITCompiledCPP final {
     }
 #endif
 
-    lib_ = ::dlopen(library_file_name_.c_str(), RTLD_LAZY);
-    if (!lib_) {
-      CURRENT_THROW(DLOpenException("Failed to load the library."));
-    }
+    library_ = std::make_unique<DynamicLibrary>(library_file_name_);
   }
 
-  ~JITCompiledCPP() {
-    if (lib_) {
-      ::dlclose(lib_);
-    }
+  operator bool() const {
+    return library_ != nullptr;
+  }
+
+  const std::string& GetSOName() const {
+    return library_->GetSOName();
   }
 
   template <typename F, typename S>
   F Get(S&& function_name) {
-    if (!lib_) {
+    if (!library_) {
       CURRENT_THROW(DLOpenException("Failed to load the library."));
     } else {
-      void* f = ::dlsym(lib_, current::strings::ConstCharPtr(std::forward<S>(function_name)));
-      if (!f) {
-        CURRENT_THROW(DLSymException("Failed to load the symbol."));
-      } else {
-        return reinterpret_cast<F>(f);
-      }
+      return library_->template GetFunction<F, S>(std::forward<S>(function_name));
     }
   }
 };
