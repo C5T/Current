@@ -139,8 +139,50 @@ struct DLSymException final : ExternalLibraryException {
 };
 
 #ifndef CURRENT_WINDOWS
-class JITCompiledCPP final {
+class DynamicLibrary {
  private:
+  const std::string library_file_name_;
+  void* lib_ = nullptr;
+
+ public:
+  DynamicLibrary(const std::string& library_file_name) : library_file_name_(library_file_name) {
+    lib_ = ::dlopen(library_file_name_.c_str(), RTLD_LAZY);
+    if (!lib_) {
+      CURRENT_THROW(DLOpenException("Failed to load the library."));
+    }
+  }
+
+  ~DynamicLibrary() {
+    if (lib_) {
+      ::dlclose(lib_);
+    }
+  }
+
+  operator bool() const {
+    return lib_ != nullptr;
+  }
+
+  const std::string& GetSOName() const {
+    return library_file_name_;
+  }
+
+  template <typename F, typename S>
+  F Get(S&& function_name) const {
+    if (!lib_) {
+      CURRENT_THROW(DLOpenException("Failed to load the library."));
+    } else {
+      void* f = ::dlsym(lib_, current::strings::ConstCharPtr(std::forward<S>(function_name)));
+      if (!f) {
+        CURRENT_THROW(DLSymException("Failed to load the symbol."));
+      } else {
+        return reinterpret_cast<F>(f);
+      }
+    }
+  }
+};
+
+class JITCPPCompiler {
+ protected:
   const std::string dir_name_;
   const std::string source_file_name_;
   const std::string current_header_file_name_;
@@ -150,11 +192,9 @@ class JITCompiledCPP final {
   const current::FileSystem::ScopedRmFile source_file_remover_;
   const current::FileSystem::ScopedRmFile library_file_remover_;
   const std::unique_ptr<current::FileSystem::ScopedRmFile> current_symlink_remover_;
-  void* lib_ = nullptr;
 
- public:
   template <typename S>
-  explicit JITCompiledCPP(S&& source, const std::string& optional_current_dir = "")
+  explicit JITCPPCompiler(S&& source, const std::string& optional_current_dir = "")
       : dir_name_(current::FileSystem::GenTmpFileName()),
         source_file_name_(current::FileSystem::JoinPath(dir_name_, "code.cc")),
         current_header_file_name_(current::FileSystem::JoinPath(dir_name_, "current.h")),
@@ -211,33 +251,17 @@ class JITCompiledCPP final {
       CURRENT_THROW(CompilationException("Compilation error."));
     }
 #endif
-
-    lib_ = ::dlopen(library_file_name_.c_str(), RTLD_LAZY);
-    if (!lib_) {
-      CURRENT_THROW(DLOpenException("Failed to load the library."));
-    }
-  }
-
-  ~JITCompiledCPP() {
-    if (lib_) {
-      ::dlclose(lib_);
-    }
-  }
-
-  template <typename F, typename S>
-  F Get(S&& function_name) {
-    if (!lib_) {
-      CURRENT_THROW(DLOpenException("Failed to load the library."));
-    } else {
-      void* f = ::dlsym(lib_, current::strings::ConstCharPtr(std::forward<S>(function_name)));
-      if (!f) {
-        CURRENT_THROW(DLSymException("Failed to load the symbol."));
-      } else {
-        return reinterpret_cast<F>(f);
-      }
-    }
   }
 };
+
+class JITCompiledCPP final : protected JITCPPCompiler, public DynamicLibrary {
+ public:
+  template <typename S>
+  explicit JITCompiledCPP(S&& source, const std::string& optional_current_dir = "")
+      : JITCPPCompiler(std::forward<S>(source), optional_current_dir),
+        DynamicLibrary(JITCPPCompiler::library_file_name_) {}
+};
+
 #endif  // CURRENT_WINDOWS
 
 }  // namespace system
