@@ -152,7 +152,7 @@ class DynamicLibrary {
     }
   }
 
-  ~DynamicLibrary() {
+  virtual ~DynamicLibrary() {
     if (lib_) {
       ::dlclose(lib_);
     }
