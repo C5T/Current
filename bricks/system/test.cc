@@ -125,11 +125,11 @@ TEST(Syscalls, DLOpenTwoLibraries) {
 TEST(Syscalls, DLOpenTwoLibrariesSameNamespaceCollisionNuance) {
   // clang-format off
   current::bricks::system::JITCompiledCPP lib1(R"(
-    namespace magic {
+    namespace nuance {
       inline int N = 42;
     }
     extern "C" int Get42Correct() {
-      return magic::N;
+      return nuance::N;
     }
   )");
   // clang-format on
@@ -138,11 +138,11 @@ TEST(Syscalls, DLOpenTwoLibrariesSameNamespaceCollisionNuance) {
 
   // clang-format off
   current::bricks::system::JITCompiledCPP lib2(R"(
-    namespace magic {
+    namespace nuance {
       inline int N = 101;
     }
     extern "C" int Get101WithANuance() {
-      return magic::N;
+      return nuance::N;
     }
   )");
   // clang-format on
@@ -154,11 +154,11 @@ TEST(Syscalls, DLOpenTwoLibrariesSameNamespaceCollisionNuance) {
 TEST(Syscalls, DLOpenTwoLibrariesTwoNamespaces) {
   // clang-format off
   current::bricks::system::JITCompiledCPP lib1(R"(
-    namespace magic42 {
+    namespace nuance42 {
       inline int N = 42;
     }
     extern "C" int Get42Correct() {
-      return magic42::N;
+      return nuance42::N;
     }
   )");
   // clang-format on
@@ -167,11 +167,11 @@ TEST(Syscalls, DLOpenTwoLibrariesTwoNamespaces) {
 
   // clang-format off
   current::bricks::system::JITCompiledCPP lib2(R"(
-    namespace magic101 {
+    namespace nuance101 {
       inline int N = 101;
     }
     extern "C" int Get101Correct() {
-      return magic101::N;
+      return nuance101::N;
     }
   )");
   // clang-format on
