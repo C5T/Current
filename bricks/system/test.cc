@@ -114,6 +114,45 @@ TEST(Syscalls, DLOpenHasSymlinkToCurrent) {
   }
 }
 
+TEST(Syscalls, DLOpenNamespaceRequiredExternSingleton) {
+  struct StructLayout final {
+    int value;
+    const char* string;
+  };
+
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib1(R"(
+    struct Struct1 final {
+      int i = 42;
+      const char* s = "foo";
+    };
+    extern "C" const Struct1* GetStruct1() {
+      static Struct1 instance;
+      return &instance;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(42, lib1.template Get<const StructLayout* (*)()>("GetStruct1")()->value);
+  EXPECT_STREQ("foo", lib1.template Get<const StructLayout* (*)()>("GetStruct1")()->string);
+
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib2(R"(
+    struct Struct2 final {
+      int j = 1001;
+      const char* t = "bar";
+    };
+    extern "C" const Struct2* GetStruct2() {
+      static Struct2 instance;
+      return &instance;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(1001, lib2.template Get<const StructLayout* (*)()>("GetStruct2")()->value);
+  EXPECT_STREQ("bar", lib2.template Get<const StructLayout* (*)()>("GetStruct2")()->string);
+}
+
 TEST(Syscalls, DLOpenExceptions) {
   ASSERT_THROW(current::bricks::system::JITCompiledCPP("*"), current::bricks::system::CompilationException);
   {
