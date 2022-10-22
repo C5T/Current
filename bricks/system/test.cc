@@ -114,43 +114,69 @@ TEST(Syscalls, DLOpenHasSymlinkToCurrent) {
   }
 }
 
-TEST(Syscalls, DLOpenNamespaceRequiredExternSingleton) {
-  struct StructLayout final {
-    int value;
-    const char* string;
-  };
+TEST(Syscalls, DLOpenTwoLibraries) {
+  current::bricks::system::JITCompiledCPP lib1("extern \"C\" int Get42() { return 42; }");
+  EXPECT_EQ(42, lib1.template Get<int(*)()>("Get42")());
 
+  current::bricks::system::JITCompiledCPP lib2("extern \"C\" int Get101() { return 101; }");
+  EXPECT_EQ(101, lib2.template Get<int(*)()>("Get101")());
+}
+
+TEST(Syscalls, DLOpenTwoLibrariesSameNamespaceCollisionNuance) {
   // clang-format off
   current::bricks::system::JITCompiledCPP lib1(R"(
-    struct Struct1 final {
-      int i = 42;
-      const char* s = "foo";
-    };
-    extern "C" const Struct1* GetStruct1() {
-      static Struct1 instance;
-      return &instance;
+    namespace magic {
+      inline int N = 42;
+    }
+    extern "C" int Get42Correct() {
+      return magic::N;
     }
   )");
   // clang-format on
 
-  EXPECT_EQ(42, lib1.template Get<const StructLayout* (*)()>("GetStruct1")()->value);
-  EXPECT_STREQ("foo", lib1.template Get<const StructLayout* (*)()>("GetStruct1")()->string);
+  EXPECT_EQ(42, lib1.template Get<int(*)()>("Get42Correct")());
 
   // clang-format off
   current::bricks::system::JITCompiledCPP lib2(R"(
-    struct Struct2 final {
-      int j = 1001;
-      const char* t = "bar";
-    };
-    extern "C" const Struct2* GetStruct2() {
-      static Struct2 instance;
-      return &instance;
+    namespace magic {
+      inline int N = 101;
+    }
+    extern "C" int Get101WithANuance() {
+      return magic::N;
     }
   )");
   // clang-format on
 
-  EXPECT_EQ(1001, lib2.template Get<const StructLayout* (*)()>("GetStruct2")()->value);
-  EXPECT_STREQ("bar", lib2.template Get<const StructLayout* (*)()>("GetStruct2")()->string);
+  EXPECT_NE(101, lib2.template Get<int(*)()>("Get101WithANuance")());
+  EXPECT_EQ(42, lib2.template Get<int(*)()>("Get101WithANuance")());
+}
+
+TEST(Syscalls, DLOpenTwoLibrariesTwoNamespaces) {
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib1(R"(
+    namespace magic42 {
+      inline int N = 42;
+    }
+    extern "C" int Get42Correct() {
+      return magic42::N;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(42, lib1.template Get<int(*)()>("Get42Correct")());
+
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib2(R"(
+    namespace magic101 {
+      inline int N = 101;
+    }
+    extern "C" int Get101Correct() {
+      return magic101::N;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(101, lib2.template Get<int(*)()>("Get101Correct")());
 }
 
 TEST(Syscalls, DLOpenExceptions) {
