@@ -114,6 +114,71 @@ TEST(Syscalls, DLOpenHasSymlinkToCurrent) {
   }
 }
 
+TEST(Syscalls, DLOpenTwoLibraries) {
+  current::bricks::system::JITCompiledCPP lib1("extern \"C\" int Get42() { return 42; }");
+  EXPECT_EQ(42, lib1.template Get<int(*)()>("Get42")());
+
+  current::bricks::system::JITCompiledCPP lib2("extern \"C\" int Get101() { return 101; }");
+  EXPECT_EQ(101, lib2.template Get<int(*)()>("Get101")());
+}
+
+TEST(Syscalls, DLOpenTwoLibrariesSameNamespaceCollisionNuance) {
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib1(R"(
+    namespace nuance {
+      inline int N = 42;
+    }
+    extern "C" int Get42Correct() {
+      return nuance::N;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(42, lib1.template Get<int(*)()>("Get42Correct")());
+
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib2(R"(
+    namespace nuance {
+      inline int N = 101;
+    }
+    extern "C" int Get101WithANuance() {
+      return nuance::N;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_NE(101, lib2.template Get<int(*)()>("Get101WithANuance")());
+  EXPECT_EQ(42, lib2.template Get<int(*)()>("Get101WithANuance")());
+}
+
+TEST(Syscalls, DLOpenTwoLibrariesTwoNamespaces) {
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib1(R"(
+    namespace nuance42 {
+      inline int N = 42;
+    }
+    extern "C" int Get42Correct() {
+      return nuance42::N;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(42, lib1.template Get<int(*)()>("Get42Correct")());
+
+  // clang-format off
+  current::bricks::system::JITCompiledCPP lib2(R"(
+    namespace nuance101 {
+      inline int N = 101;
+    }
+    extern "C" int Get101Correct() {
+      return nuance101::N;
+    }
+  )");
+  // clang-format on
+
+  EXPECT_EQ(101, lib2.template Get<int(*)()>("Get101Correct")());
+}
+
 TEST(Syscalls, DLOpenExceptions) {
   ASSERT_THROW(current::bricks::system::JITCompiledCPP("*"), current::bricks::system::CompilationException);
   {

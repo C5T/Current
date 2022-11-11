@@ -148,7 +148,7 @@ class DynamicLibrary {
   DynamicLibrary(const std::string& library_file_name) : library_file_name_(library_file_name) {
     lib_ = ::dlopen(library_file_name_.c_str(), RTLD_LAZY);
     if (!lib_) {
-      CURRENT_THROW(DLOpenException("Failed to load the library."));
+      CURRENT_THROW(DLOpenException(std::string("Failed to load the library: ") + ::dlerror()));
     }
   }
 
