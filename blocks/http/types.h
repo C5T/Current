@@ -188,25 +188,23 @@ struct HEAD : HTTPRequestBase<HEAD> {
 };
 
 // A helper class to fill in request body as either plain text or JSON-ified object.
-template <typename REQUEST, bool IS_STRING_TYPE>
+template <typename REQUEST, bool IS_STRING_TYPE, bool IS_JSON_SERIALIZEABLT>
 struct FillBody {};
 
 // Body as string, default the type to "text/plain", when `is_string_type<T>::value == true`.
-template <typename REQUEST>
-struct FillBody<REQUEST, true> {
+template <typename REQUEST, bool _>
+struct FillBody<REQUEST, true, _> {
   static void Fill(REQUEST& request, const std::string& body, const std::string& content_type) {
     request.body = body;
     request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultContentType;
   }
 };
 
-// Body as JSON, default the type to "application/json", when `is_string_type<T>::value == false`.
+// Body as JSON, default the type to "application/json", when the input is `CURRENT_{STRUCT,VARIANT}`, or an STL type.
 template <typename REQUEST>
-struct FillBody<REQUEST, false> {
+struct FillBody<REQUEST, false, true> {
   template <typename T>
-  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> Fill(REQUEST& request,
-                                                                                  T&& object,
-                                                                                  const std::string& content_type) {
+  static void Fill(REQUEST& request, T&& object, const std::string& content_type) {
     request.body = JSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultJSONContentType;
   }
@@ -218,7 +216,9 @@ struct POST : HTTPRequestBase<POST> {
 
   template <typename T>
   POST(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
-    FillBody<POST, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
+    constexpr bool IS_STRING = current::strings::is_string_type<T>::value;
+    constexpr bool CAN_JSON = current::serialization::json::IsJSONSerializable<current::decay_t<T>>::value;
+    FillBody<POST, IS_STRING, CAN_JSON>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 
@@ -236,7 +236,9 @@ struct PUT : HTTPRequestBase<PUT> {
 
   template <typename T>
   PUT(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
-    FillBody<PUT, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
+    constexpr bool IS_STRING = current::strings::is_string_type<T>::value;
+    constexpr bool CAN_JSON = current::serialization::json::IsJSONSerializable<current::decay_t<T>>::value;
+    FillBody<PUT, IS_STRING, CAN_JSON>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 
@@ -246,7 +248,9 @@ struct PATCH : HTTPRequestBase<PATCH> {
 
   template <typename T>
   PATCH(const std::string& url, T&& body, const std::string& content_type = "") : HTTPRequestBase(url) {
-    FillBody<PATCH, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
+    constexpr bool IS_STRING = current::strings::is_string_type<T>::value;
+    constexpr bool CAN_JSON = current::serialization::json::IsJSONSerializable<current::decay_t<T>>::value;
+    FillBody<PATCH, IS_STRING, CAN_JSON>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 

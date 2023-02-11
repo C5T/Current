@@ -75,7 +75,10 @@ CURRENT_STRUCT(HTTPAPITestObject) {
   CURRENT_FIELD(number, int32_t);
   CURRENT_FIELD(text, std::string);
   CURRENT_FIELD(array, std::vector<int>);
-  CURRENT_DEFAULT_CONSTRUCTOR(HTTPAPITestObject) : number(42), text("text"), array({1, 2, 3}) {}
+  CURRENT_CONSTRUCTOR(HTTPAPITestObject)(int32_t number = 42, std::string text = "text", std::vector<int> array = {1, 2, 3})
+    : number(number),
+      text(std::move(text)),
+      array(std::move(array)) {}
 };
 
 CURRENT_STRUCT(HTTPAPITestStructWithS) {
@@ -1296,6 +1299,81 @@ TEST(HTTPAPI, PatchRequest) {
   });
   const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", port), "test"));
   EXPECT_EQ("Patch OK.", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, PatchRequestWithJSON) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/patch", [](Request r) {
+    EXPECT_EQ("PATCH", r.method);
+    EXPECT_EQ("{\"number\":100,\"text\":\"foo\",\"array\":[1,2,3]}", r.body);
+    ASSERT_TRUE(r.headers.Has("Content-Type"));
+    EXPECT_EQ("application/json; charset=utf-8", r.headers.Get("Content-Type"));
+    r("PATCH with JSON OK.");
+  });
+  const auto response = HTTP(PATCH(Printf("http://localhost:%d/patch", port), HTTPAPITestObject(100, "foo")));
+  EXPECT_EQ("PATCH with JSON OK.", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, POSTRequestWithVector) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/post_with_vector", [](Request r) {
+    EXPECT_EQ("POST", r.method);
+    EXPECT_EQ("[101,102,103]", r.body);
+    ASSERT_TRUE(r.headers.Has("Content-Type"));
+    EXPECT_EQ("application/json; charset=utf-8", r.headers.Get("Content-Type"));
+    r("POST with JSON Array OK.");
+  });
+  std::vector<int> v{101,102,103};
+  const auto response = HTTP(POST(Printf("http://localhost:%d/post_with_vector", port), v));
+  EXPECT_EQ("POST with JSON Array OK.", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, POSTRequestWithMapStringInt) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/post_with_map", [](Request r) {
+    EXPECT_EQ("POST", r.method);
+    EXPECT_EQ("{\"bar\":2,\"foo\":1}", r.body);
+    ASSERT_TRUE(r.headers.Has("Content-Type"));
+    EXPECT_EQ("application/json; charset=utf-8", r.headers.Get("Content-Type"));
+    r("POST with JSON MapStringInt OK.");
+  });
+  std::map<std::string, int32_t> m;
+  m["foo"] = 1;
+  m["bar"] = 2;
+  const auto response = HTTP(POST(Printf("http://localhost:%d/post_with_map", port), m));
+  EXPECT_EQ("POST with JSON MapStringInt OK.", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, POSTRequestWithMapIntString) {
+  auto reserved_port = current::net::ReserveLocalPort();
+  const int port = reserved_port;
+  auto& http_server = HTTP(std::move(reserved_port));
+
+  const auto scope = http_server.Register("/post_with_map", [](Request r) {
+    EXPECT_EQ("POST", r.method);
+    EXPECT_EQ("[[0,\"the\"],[42,\"answer\"]]", r.body);  // TODO(dkorolev): Maybe revisit `map<non-string, T>` JSONs?
+    ASSERT_TRUE(r.headers.Has("Content-Type"));
+    EXPECT_EQ("application/json; charset=utf-8", r.headers.Get("Content-Type"));
+    r("POST with JSON MapIntString OK.");
+  });
+  std::map<int32_t, std::string> m;
+  m[42] = "answer";
+  m[0] = "the";
+  const auto response = HTTP(POST(Printf("http://localhost:%d/post_with_map", port), m));
+  EXPECT_EQ("POST with JSON MapIntString OK.", response.body);
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
