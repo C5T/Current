@@ -34,8 +34,6 @@ SOFTWARE.
 #include "iterable_subset.h"
 #include "train.h"
 
-#define GBT_LARGE_EPSILON 0.001  // For relative improvements in standard deviation, which is computed in doubles.
-
 DEFINE_string(input, "train.json", "The name of the input file.");
 DEFINE_string(output, "ensemble.json", "The name of the output file.");
 DEFINE_double(test_set_fraction, 0.33, "Fraction of examples to use as the test set; 0 to train on all data.");
