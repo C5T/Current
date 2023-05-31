@@ -28,17 +28,38 @@ SOFTWARE.
 #include "../../current.h"
 
 CURRENT_STRUCT(InputOfBinaryLabelsAndBinaryFeatures) {
+  // The number of features, see `GetNumberOfFeatures()` below.
+  // Will be derived from `feature_names` if not present.
+  // If `feature_names` is also not present, the number of features is assumed to be `max_element(matrix) + 1.
+  CURRENT_FIELD(M, Optional<uint32_t>);
+
   // Label of each example, 0/1.
   CURRENT_FIELD(labels, std::vector<uint8_t>);
+
+  // Sorted list of features present in example `i`, `matrix.size()` == `points.size()`.
+  CURRENT_FIELD(matrix, std::vector<std::vector<uint32_t>>);
 
   // Name of each indexed example, optional. If present, `point_names.size()` == `labels.size()`.
   CURRENT_FIELD(point_names, Optional<std::vector<std::string>>);
 
   // Name of each indexed feature.
-  CURRENT_FIELD(features, std::vector<std::string>);
+  CURRENT_FIELD(feature_names, Optional<std::vector<std::string>>);
 
-  // Sorted list of features present in example `i`, `matrix.size()` == `points.size()`.
-  CURRENT_FIELD(matrix, std::vector<std::vector<uint32_t>>);
+  size_t GetNumberOfFeatures() const {
+    if (Exists(M)) {
+      return static_cast<size_t>(Value(M));
+    } else if (Exists(feature_names)) {
+      return Value(feature_names).size();
+    } else {
+      uint32_t max_index = static_cast<uint32_t>(-1);
+      for (auto const& e : matrix) {
+        for (auto const& ee : e) {
+          max_index = std::max(max_index, ee);
+        }
+      }
+      return static_cast<size_t>(max_index + 1u);
+    }
+  }
 };
 
 CURRENT_STRUCT(TreeNode) {

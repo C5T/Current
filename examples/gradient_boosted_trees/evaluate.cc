@@ -37,7 +37,8 @@ int main(int argc, char** argv) {
   const auto ensemble = ParseJSON<TreeEnsemble>(current::FileSystem::ReadFileAsString(FLAGS_ensemble));
 
   const size_t N = input.labels.size();
-  const size_t M = input.features.size();
+  const size_t M = input.GetNumberOfFeatures();
+
   std::vector<std::vector<bool>> X(N, std::vector<bool>(M));
   for (size_t point = 0; point < N; ++point) {
     for (int32_t feature : input.matrix[point]) {

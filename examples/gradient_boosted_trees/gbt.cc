@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
       ParseJSON<InputOfBinaryLabelsAndBinaryFeatures>(current::FileSystem::ReadFileAsString(FLAGS_input));
 
   const size_t N = input.labels.size();
-  const size_t M = input.features.size();
+  const size_t M = input.GetNumberOfFeatures();
 
   std::vector<std::vector<size_t>> examples(2);
   for (size_t i = 0; i < N; ++i) {
@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
   }
 
   // The data structured to keep building new trees.
-  TreeBuilder builder(N, transposed_adjacency_lists, dense_transposed_matrix, input.features, logging_ostream);
+  TreeBuilder builder(N, transposed_adjacency_lists, dense_transposed_matrix, input.feature_names, logging_ostream);
   const double param_ff = FLAGS_fraction_of_features_to_use_per_iteration;
   CURRENT_ASSERT(param_ff > 0);
   CURRENT_ASSERT(param_ff <= 1);

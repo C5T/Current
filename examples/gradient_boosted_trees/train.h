@@ -47,8 +47,9 @@ class TreeBuilder {
   const size_t m_;                                 // The total number of features (not all may be in use).
   const std::vector<std::vector<uint32_t>>& g_;    // The features-to-points adjacency lists, `.size()` == m_.
   const std::vector<std::vector<bool>>& matrix_;   // The dense represeneation of the [feature][points] -> 0/1 matrix.
-  const std::vector<std::string>& feature_names_;  // Feature names, for debug output purposes.
   std::ostream* dump_ostream_ = nullptr;           // If set, the node.js-compliant JSON with the tree will be dumped.
+
+  const Optional<std::vector<std::string>>& feature_names_;  // Feature names, for debug output purposes.
 
   // Mutable members: The goal to train towards, and the training parameters.
   const std::vector<int64_t>* py_ = nullptr;  // The pointer to the vector of objective functions per training example.
@@ -82,14 +83,14 @@ class TreeBuilder {
   TreeBuilder(size_t n,
               const std::vector<std::vector<uint32_t>>& transposed_matrix_adjacency_lists,
               const std::vector<std::vector<bool>>& transposed_matrix,
-              const std::vector<std::string>& feature_names,
+              const Optional<std::vector<std::string>>& feature_names,
               std::ostream* dump_ostream = nullptr)
       : n_(n),
         m_(transposed_matrix_adjacency_lists.size()),
         g_(transposed_matrix_adjacency_lists),
         matrix_(transposed_matrix),
-        feature_names_(feature_names),
         dump_ostream_(dump_ostream),
+        feature_names_(feature_names),
         points_to_consider_(n_) {
     for (const auto& col : g_) {
       for (uint32_t point_index : col) {
@@ -300,20 +301,24 @@ class TreeBuilder {
       }
 
       if (best_candidate.second && depth < max_depth_) {
-        size_t feature_to_split_on = *best_candidate.second;
+        size_t pivot_feature = *best_candidate.second;
         if (dump_ostream_) {
-          *dump_ostream_ << ", feature: " << JSON(feature_names_[feature_to_split_on]) << ", split: { yes: {\n";
+          if (Exists(feature_names_)) {
+            *dump_ostream_ << ", feature: " << JSON(Value(feature_names_)[pivot_feature]) << ", split: { yes: {\n";
+          } else {
+            *dump_ostream_ << ", feature #: " << pivot_feature << ", split: { yes: {\n";
+          }
         }
         std::swap(*best_candidate.second, *features_to_consider_begin_);
         ++features_to_consider_begin_;
-        const std::vector<bool>& matrix_row = matrix_[feature_to_split_on];
+        const std::vector<bool>& matrix_row = matrix_[pivot_feature];
         ensemble_.nodes[node_index].leaf = false;
-        ensemble_.nodes[node_index].feature = static_cast<uint64_t>(feature_to_split_on);
+        ensemble_.nodes[node_index].feature = static_cast<uint64_t>(pivot_feature);
         points_to_consider_.Partition(
             [&](size_t point) {
-              GBT_EXTRA_CHECK(CURRENT_ASSERT(std::binary_search(g_[feature_to_split_on].begin(),
-                                                                g_[feature_to_split_on].end(),
-                                                                point) == matrix_[feature_to_split_on][point]));
+              GBT_EXTRA_CHECK(CURRENT_ASSERT(std::binary_search(g_[pivot_feature].begin(),
+                                                                g_[pivot_feature].end(),
+                                                                point) == matrix_[pivot_feature][point]));
               // NOTE: This is only marginally faster than binary search for the cases I ran. -- D.K.
               //       Which means the code can support huge inputs as long as they are sparse. -- D.K.
               return matrix_row[point];
