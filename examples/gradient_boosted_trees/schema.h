@@ -39,6 +39,9 @@ CURRENT_STRUCT(InputOfBinaryLabelsAndBinaryFeatures) {
   // Sorted list of features present in example `i`, `matrix.size()` == `points.size()`.
   CURRENT_FIELD(matrix, std::vector<std::vector<uint32_t>>);
 
+  // Weights of input points, unless they are all `1.0`.
+  CURRENT_FIELD(weights, Optional<std::vector<double>>);
+
   // Name of each indexed example, optional. If present, `point_names.size()` == `labels.size()`.
   CURRENT_FIELD(point_names, Optional<std::vector<std::string>>);
 

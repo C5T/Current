@@ -165,7 +165,12 @@ int main(int argc, char** argv) {
   }
 
   // The data structured to keep building new trees.
-  TreeBuilder builder(N, transposed_adjacency_lists, dense_transposed_matrix, input.feature_names, logging_ostream);
+  TreeBuilder builder(N,
+                      transposed_adjacency_lists,
+                      dense_transposed_matrix,
+                      input.weights,
+                      input.feature_names,
+                      logging_ostream);
   const double param_ff = FLAGS_fraction_of_features_to_use_per_iteration;
   CURRENT_ASSERT(param_ff > 0);
   CURRENT_ASSERT(param_ff <= 1);
