@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
   const auto input =
       ParseJSON<InputOfBinaryLabelsAndBinaryFeatures>(current::FileSystem::ReadFileAsString(FLAGS_input));
 
-  const size_t N = input.points.size();
+  const size_t N = input.labels.size();
   const size_t M = input.features.size();
 
   std::vector<std::vector<size_t>> examples(2);

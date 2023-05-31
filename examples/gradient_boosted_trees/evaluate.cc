@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
       ParseJSON<InputOfBinaryLabelsAndBinaryFeatures>(current::FileSystem::ReadFileAsString(FLAGS_input));
   const auto ensemble = ParseJSON<TreeEnsemble>(current::FileSystem::ReadFileAsString(FLAGS_ensemble));
 
-  const size_t N = input.points.size();
+  const size_t N = input.labels.size();
   const size_t M = input.features.size();
   std::vector<std::vector<bool>> X(N, std::vector<bool>(M));
   for (size_t point = 0; point < N; ++point) {

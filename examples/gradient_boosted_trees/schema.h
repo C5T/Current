@@ -28,14 +28,14 @@ SOFTWARE.
 #include "../../current.h"
 
 CURRENT_STRUCT(InputOfBinaryLabelsAndBinaryFeatures) {
-  // Name of each indexed example.
-  CURRENT_FIELD(points, std::vector<std::string>);
+  // Label of each example, 0/1.
+  CURRENT_FIELD(labels, std::vector<uint8_t>);
+
+  // Name of each indexed example, optional. If present, `point_names.size()` == `labels.size()`.
+  CURRENT_FIELD(point_names, Optional<std::vector<std::string>>);
 
   // Name of each indexed feature.
   CURRENT_FIELD(features, std::vector<std::string>);
-
-  // Label of each example, 0/1, `labels.size()` == `points.size()`.
-  CURRENT_FIELD(labels, std::vector<uint8_t>);
 
   // Sorted list of features present in example `i`, `matrix.size()` == `points.size()`.
   CURRENT_FIELD(matrix, std::vector<std::vector<uint32_t>>);
