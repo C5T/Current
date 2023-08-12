@@ -135,6 +135,11 @@ struct RecursiveTypeTraverser {
     return ReflectedType_Enum(EnumName<T>(), CurrentTypeID_<typename std::underlying_type<T>::type>()).type_id;
   }
 
+  template <typename T, size_t N>
+  TypeID operator()(TypeSelector<std::array<T, N>>) {
+    return CalculateTypeID(ReflectedType_Array(CurrentTypeID_<T>(), static_cast<uint64_t>(N)));
+  }
+
   template <typename T>
   TypeID operator()(TypeSelector<std::vector<T>>) {
     return CalculateTypeID(ReflectedType_Vector(CurrentTypeID_<T>()));
