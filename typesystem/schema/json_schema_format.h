@@ -39,6 +39,7 @@ namespace variant_clean_type_names {
 
 CURRENT_FORWARD_DECLARE_STRUCT(primitive);
 CURRENT_FORWARD_DECLARE_STRUCT(key);                   // a.k.a. `CURRENT_ENUM()`.
+CURRENT_FORWARD_DECLARE_STRUCT(fixed_size_array);      // a.k.a. `array<>`.
 CURRENT_FORWARD_DECLARE_STRUCT(array);                 // a.k.a. `vector<>`.
 CURRENT_FORWARD_DECLARE_STRUCT(ordered_dictionary);    // a.k.a. `map<>`.
 CURRENT_FORWARD_DECLARE_STRUCT(unordered_dictionary);  // a.k.a. `unordered_map<>`.
@@ -50,7 +51,7 @@ CURRENT_FORWARD_DECLARE_STRUCT(algebraic);             // a.k.a. `Variant<>.
 CURRENT_FORWARD_DECLARE_STRUCT(object);                // a.k.a. `CURRENT_STRUCT()`.
 CURRENT_FORWARD_DECLARE_STRUCT(error);
 
-using type_variant_t = Variant<primitive, key, array, ordered_dictionary, unordered_dictionary, ordered_set, unordered_set, pair, optional, algebraic, object, error>;
+using type_variant_t = Variant<primitive, key, fixed_size_array, array, ordered_dictionary, unordered_dictionary, ordered_set, unordered_set, pair, optional, algebraic, object, error>;
 
 CURRENT_STRUCT(primitive) {
   CURRENT_FIELD(type, std::string);
@@ -61,6 +62,11 @@ CURRENT_STRUCT(key) {
   CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(type, std::string);
   CURRENT_FIELD(text, std::string);
+};
+
+CURRENT_STRUCT(fixed_size_array) {
+  CURRENT_FIELD(element, type_variant_t);
+  CURRENT_FIELD(size, uint64_t);
 };
 
 CURRENT_STRUCT(array) {

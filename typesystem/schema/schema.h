@@ -1056,8 +1056,9 @@ struct LanguageSyntaxImpl<Language::JSON> final {
             }
           }
           void operator()(const ReflectedType_Array& a) const {
-            variant_clean_type_names::array result;
+            variant_clean_type_names::fixed_size_array result;
             result.element = self_.TypeDescriptionForJSON(a.element_type);
+            result.size = a.size;
             result_ = result;
           }
           void operator()(const ReflectedType_Vector& v) const {

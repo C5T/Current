@@ -169,7 +169,8 @@ struct CurrentTypeNameImpl<NF, T, false, false, true, false> {
 template <NameFormat NF, typename T, size_t N>
 struct CurrentTypeNameImpl<NF, std::array<T, N>, false, false, false, false> {
   static std::string GetCurrentTypeName() {
-    return std::string("std::array<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() + ',' + std::to_string(N) + '>';
+    return std::string("std::array<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() +
+           ", " + std::to_string(N) + '>';
   }
 };
 

@@ -85,6 +85,11 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD_DESCRIPTION(primitives, "A structure with a lot of primitive types.");
   CURRENT_FIELD(v1, std::vector<std::string>);
   CURRENT_FIELD(v2, std::vector<Primitives>);
+#if 0
+  CURRENT_FIELD(a1, (std::array<int64_t, 2>));
+  CURRENT_FIELD(a2, (std::array<std::pair<std::string, std::string>, 4>));
+  CURRENT_FIELD(a3, (std::array<Primitives, 8>));
+#endif
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
   CURRENT_FIELD(q, (Variant<A, B, B2, C, Empty>));

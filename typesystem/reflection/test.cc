@@ -180,6 +180,7 @@ TEST(Reflection, CurrentTypeName) {
   EXPECT_STREQ("double", (CurrentTypeName<double, NameFormat::Z>()));
 
   // Composite types.
+  EXPECT_STREQ("std::array<std::string, 3>", (CurrentTypeName<std::array<std::string, 3u>, NameFormat::Z>()));
   EXPECT_STREQ("std::vector<std::string>", (CurrentTypeName<std::vector<std::string>, NameFormat::Z>()));
   EXPECT_STREQ("std::set<int8_t>", (CurrentTypeName<std::set<int8_t>, NameFormat::Z>()));
   EXPECT_STREQ("std::unordered_set<int16_t>", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::Z>()));

@@ -377,6 +377,15 @@ struct ReflectorImpl {
     return ReflectedType(ReflectedType_Enum(EnumName<T>(), CurrentTypeID<typename std::underlying_type<T>::type>()));
   }
 
+  template <typename T, size_t N>
+  ReflectedType operator()(TypeSelector<std::array<T, N>>) {
+    ReflectType<T>();
+    ReflectedType_Array result(CurrentTypeID<T>());
+    result.type_id = CurrentTypeID<std::vector<T>>();
+    result.size = static_cast<uint64_t>(N);
+    return ReflectedType(std::move(result));
+  }
+
   template <typename T>
   ReflectedType operator()(TypeSelector<std::vector<T>>) {
     ReflectType<T>();
