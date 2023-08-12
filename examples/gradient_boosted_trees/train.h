@@ -46,9 +46,11 @@ class TreeBuilder {
   const size_t n_;                                 // The total number of training examples (not all may be in use).
   const size_t m_;                                 // The total number of features (not all may be in use).
   const std::vector<std::vector<uint32_t>>& g_;    // The features-to-points adjacency lists, `.size()` == m_.
-  const std::vector<std::vector<bool>>& matrix_;   // The dense represeneation of the [feature][points] -> 0/1 matrix.
-  const std::vector<std::string>& feature_names_;  // Feature names, for debug output purposes.
+  const std::vector<std::vector<bool>>& matrix_;   // The dense representation of the [feature][points] -> 0/1 matrix.
+  const Optional<std::vector<double>>& weights_;   // If provided, per-point weights.
   std::ostream* dump_ostream_ = nullptr;           // If set, the node.js-compliant JSON with the tree will be dumped.
+
+  const Optional<std::vector<std::string>>& feature_names_;  // Feature names, for debug output purposes.
 
   // Mutable members: The goal to train towards, and the training parameters.
   const std::vector<int64_t>* py_ = nullptr;  // The pointer to the vector of objective functions per training example.
@@ -82,14 +84,16 @@ class TreeBuilder {
   TreeBuilder(size_t n,
               const std::vector<std::vector<uint32_t>>& transposed_matrix_adjacency_lists,
               const std::vector<std::vector<bool>>& transposed_matrix,
-              const std::vector<std::string>& feature_names,
+              const Optional<std::vector<double>> weights,
+              const Optional<std::vector<std::string>>& feature_names,
               std::ostream* dump_ostream = nullptr)
       : n_(n),
         m_(transposed_matrix_adjacency_lists.size()),
         g_(transposed_matrix_adjacency_lists),
         matrix_(transposed_matrix),
-        feature_names_(feature_names),
+        weights_(weights),
         dump_ostream_(dump_ostream),
+        feature_names_(feature_names),
         points_to_consider_(n_) {
     for (const auto& col : g_) {
       for (uint32_t point_index : col) {
@@ -163,8 +167,8 @@ class TreeBuilder {
     CURRENT_ASSERT(indent_size <= indent_placeholder.length());
     const char* indent = indent_placeholder.c_str() + indent_placeholder.length() - indent_size;
 
-    const size_t n = points_to_consider_.size();
-    CURRENT_ASSERT(n > 0);
+    const size_t n_points = points_to_consider_.size();
+    CURRENT_ASSERT(n_points > 0);
 
     // Allocate a new node to build the tree from.
     const size_t node_index = ensemble_.nodes.size();
@@ -173,31 +177,34 @@ class TreeBuilder {
     // Sum and sum of squares of the values of the objective function per points considered.
     int64_t sum_p1 = 0;
     int64_t sum_p2 = 0;
+    double total_weight = 0.0;
     GBT_EXTRA_CHECK(size_t safe_n = 0u);
     for (size_t point : points_to_consider_) {
       const int64_t y = (*py_)[point];
-      sum_p1 += y;
-      sum_p2 += y * y;
+      const double weight = Exists(weights_) ? Value(weights_)[point] : 1.0;
+      sum_p1 += y * weight;
+      sum_p2 += y * y * weight;
+      total_weight += weight;
       GBT_EXTRA_CHECK(++safe_n);
     }
-    GBT_EXTRA_CHECK(CURRENT_ASSERT(safe_n == n));
+    GBT_EXTRA_CHECK(CURRENT_ASSERT(safe_n == n_points));
 
-    const double mean_y = sum_p1 * (1.0 / n);
-    const double baseline_penalty = sum_p2 - sum_p1 * sum_p1 * (1.0 / n);
+    const double mean_y = double(sum_p1) / total_weight;
+    const double baseline_penalty = double(sum_p2 - sum_p1 * sum_p1) / total_weight;
 
     // The penalty function is the sum of squares of the differences between the objective function for each
     // considered point and the average value of the objective function across all considered points.
-    if (sum_p2 * static_cast<int64_t>(n) == sum_p1 * sum_p1) {
-      // Compared `baseline_penalty` to zero in integers. -- D.K.
+    if (std::fabs(sum_p2 * total_weight - sum_p1 * sum_p1) < 1e-6) {
+      // Effectively, the numbers are either all equal or too close to each other, no need to split further.
       if (dump_ostream_) {
-        *dump_ostream_ << indent << "count: " << n << ", y: " << mean_y << "\n";
+        *dump_ostream_ << indent << "count: " << n_points << ", y: " << mean_y << "\n";
       }
       ensemble_.nodes[node_index].leaf = true;
       ensemble_.nodes[node_index].value = mean_y;
     } else {
       if (dump_ostream_) {
-        *dump_ostream_ << indent << "count: " << n << ", y: " << sum_p1 * (1.0 / n)
-                       << ", y_stddev: " << std::sqrt(baseline_penalty / n);
+        *dump_ostream_ << indent << "count: " << n_points << ", y: " << sum_p1 * (1.0 / total_weight)
+                       << ", y_stddev: " << std::sqrt(baseline_penalty / total_weight);
       }
 
       GBT_EXTRA_CHECK({
@@ -214,7 +221,7 @@ class TreeBuilder {
         CURRENT_ASSERT(p2 == sum_p2);
 
         double slowly_computed_penalty = 0.0;
-        double mean = 1.0 * sum_p1 / n;
+        double mean = 1.0 * sum_p1 / total_weight;
         for (size_t point = 0; point < n_; ++point) {
           if (points_to_consider_[point]) {
             const double d = y_[point] - mean;
@@ -241,11 +248,12 @@ class TreeBuilder {
             ++candidate_lhs_n;
           }
         }
-        GBT_EXTRA_CHECK(CURRENT_ASSERT(candidate_lhs_n <= n));
-        if (candidate_lhs_n > 0 && candidate_lhs_n < n) {
+        GBT_EXTRA_CHECK(CURRENT_ASSERT(candidate_lhs_n <= n_points));
+        if (candidate_lhs_n > 0 && candidate_lhs_n < n_points) {
+          // TODO(dkorolev): Better check by weight here; maybe even have weights as integers too, and carry them down.
           const int64_t candidate_rhs_sum_p1 = sum_p1 - candidate_lhs_sum_p1;
           const int64_t candidate_rhs_sum_p2 = sum_p2 - candidate_lhs_sum_p2;
-          const uint64_t candidate_rhs_n = n - candidate_lhs_n;
+          const uint64_t candidate_rhs_n = n_points - candidate_lhs_n;
 
           const double candidate_penalty =
               (candidate_lhs_sum_p2 - candidate_lhs_sum_p1 * candidate_lhs_sum_p1 * (1.0 / candidate_lhs_n)) +
@@ -300,20 +308,24 @@ class TreeBuilder {
       }
 
       if (best_candidate.second && depth < max_depth_) {
-        size_t feature_to_split_on = *best_candidate.second;
+        size_t pivot_feature = *best_candidate.second;
         if (dump_ostream_) {
-          *dump_ostream_ << ", feature: " << JSON(feature_names_[feature_to_split_on]) << ", split: { yes: {\n";
+          if (Exists(feature_names_)) {
+            *dump_ostream_ << ", feature: " << JSON(Value(feature_names_)[pivot_feature]) << ", split: { yes: {\n";
+          } else {
+            *dump_ostream_ << ", feature #: " << pivot_feature << ", split: { yes: {\n";
+          }
         }
         std::swap(*best_candidate.second, *features_to_consider_begin_);
         ++features_to_consider_begin_;
-        const std::vector<bool>& matrix_row = matrix_[feature_to_split_on];
+        const std::vector<bool>& matrix_row = matrix_[pivot_feature];
         ensemble_.nodes[node_index].leaf = false;
-        ensemble_.nodes[node_index].feature = static_cast<uint64_t>(feature_to_split_on);
+        ensemble_.nodes[node_index].feature = static_cast<uint64_t>(pivot_feature);
         points_to_consider_.Partition(
             [&](size_t point) {
-              GBT_EXTRA_CHECK(CURRENT_ASSERT(std::binary_search(g_[feature_to_split_on].begin(),
-                                                                g_[feature_to_split_on].end(),
-                                                                point) == matrix_[feature_to_split_on][point]));
+              GBT_EXTRA_CHECK(CURRENT_ASSERT(std::binary_search(g_[pivot_feature].begin(),
+                                                                g_[pivot_feature].end(),
+                                                                point) == matrix_[pivot_feature][point]));
               // NOTE: This is only marginally faster than binary search for the cases I ran. -- D.K.
               //       Which means the code can support huge inputs as long as they are sparse. -- D.K.
               return matrix_row[point];

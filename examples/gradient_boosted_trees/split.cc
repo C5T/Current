@@ -40,7 +40,8 @@ int main(int argc, char** argv) {
   const auto input =
       ParseJSON<InputOfBinaryLabelsAndBinaryFeatures>(current::FileSystem::ReadFileAsString(FLAGS_input));
 
-  const size_t N = input.points.size();
+  const size_t N = input.labels.size();
+  const size_t M = input.GetNumberOfFeatures();
 
   std::vector<std::vector<size_t>> examples(2);
   for (size_t i = 0; i < N; ++i) {
@@ -59,11 +60,19 @@ int main(int argc, char** argv) {
   }
 
   InputOfBinaryLabelsAndBinaryFeatures output[2];
-  output[0].features = output[1].features = input.features;
+  output[0].M = output[1].M = M;
+  output[0].feature_names = output[1].feature_names = input.feature_names;
+
+  if (Exists(input.point_names)) {
+    output[0].point_names = std::vector<std::string>();
+    output[1].point_names = std::vector<std::string>();
+  }
 
   for (size_t i = 0; i < N; ++i) {
     auto& placeholder = output[split[i]];
-    placeholder.points.push_back(input.points[i]);
+    if (Exists(input.point_names)) {
+      Value(placeholder.point_names).push_back(Value(input.point_names)[i]);
+    }
     placeholder.labels.push_back(input.labels[i]);
     placeholder.matrix.push_back(input.matrix[i]);
   }

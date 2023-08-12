@@ -34,8 +34,6 @@ SOFTWARE.
 #include "iterable_subset.h"
 #include "train.h"
 
-#define GBT_LARGE_EPSILON 0.001  // For relative improvements in standard deviation, which is computed in doubles.
-
 DEFINE_string(input, "train.json", "The name of the input file.");
 DEFINE_string(output, "ensemble.json", "The name of the output file.");
 DEFINE_double(test_set_fraction, 0.33, "Fraction of examples to use as the test set; 0 to train on all data.");
@@ -115,8 +113,8 @@ int main(int argc, char** argv) {
   const auto input =
       ParseJSON<InputOfBinaryLabelsAndBinaryFeatures>(current::FileSystem::ReadFileAsString(FLAGS_input));
 
-  const size_t N = input.points.size();
-  const size_t M = input.features.size();
+  const size_t N = input.labels.size();
+  const size_t M = input.GetNumberOfFeatures();
 
   std::vector<std::vector<size_t>> examples(2);
   for (size_t i = 0; i < N; ++i) {
@@ -167,7 +165,12 @@ int main(int argc, char** argv) {
   }
 
   // The data structured to keep building new trees.
-  TreeBuilder builder(N, transposed_adjacency_lists, dense_transposed_matrix, input.features, logging_ostream);
+  TreeBuilder builder(N,
+                      transposed_adjacency_lists,
+                      dense_transposed_matrix,
+                      input.weights,
+                      input.feature_names,
+                      logging_ostream);
   const double param_ff = FLAGS_fraction_of_features_to_use_per_iteration;
   CURRENT_ASSERT(param_ff > 0);
   CURRENT_ASSERT(param_ff <= 1);
