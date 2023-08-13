@@ -135,6 +135,11 @@ struct RecursiveTypeTraverser {
     return ReflectedType_Enum(EnumName<T>(), CurrentTypeID_<typename std::underlying_type<T>::type>()).type_id;
   }
 
+  template <typename T, size_t N>
+  TypeID operator()(TypeSelector<std::array<T, N>>) {
+    return CalculateTypeID(ReflectedType_Array(CurrentTypeID_<T>(), static_cast<uint64_t>(N)));
+  }
+
   template <typename T>
   TypeID operator()(TypeSelector<std::vector<T>>) {
     return CalculateTypeID(ReflectedType_Vector(CurrentTypeID_<T>()));
@@ -370,6 +375,15 @@ struct ReflectorImpl {
   std::enable_if_t<std::is_enum_v<T>, ReflectedType> operator()(TypeSelector<T>) {
     ReflectType<typename std::underlying_type<T>::type>();
     return ReflectedType(ReflectedType_Enum(EnumName<T>(), CurrentTypeID<typename std::underlying_type<T>::type>()));
+  }
+
+  template <typename T, size_t N>
+  ReflectedType operator()(TypeSelector<std::array<T, N>>) {
+    ReflectType<T>();
+    ReflectedType_Array result(CurrentTypeID<T>());
+    result.type_id = CurrentTypeID<std::vector<T>>();
+    result.size = static_cast<uint64_t>(N);
+    return ReflectedType(std::move(result));
   }
 
   template <typename T>

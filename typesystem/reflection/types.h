@@ -56,6 +56,7 @@ constexpr uint64_t TYPEID_STRUCT_PREFIX   = 920u;
 constexpr uint64_t TYPEID_OPTIONAL_PREFIX = 921u;
 constexpr uint64_t TYPEID_VARIANT_PREFIX  = 922u;
 // STL containers prefixes.
+constexpr uint64_t TYPEID_ARRAY_PREFIX          = 930u;
 constexpr uint64_t TYPEID_VECTOR_PREFIX         = 931u;
 constexpr uint64_t TYPEID_SET_PREFIX            = 932u;
 constexpr uint64_t TYPEID_PAIR_PREFIX           = 933u;
@@ -76,6 +77,7 @@ constexpr uint64_t TYPEID_STRUCT_TYPE   = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREF
 constexpr uint64_t TYPEID_OPTIONAL_TYPE = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
 constexpr uint64_t TYPEID_VARIANT_TYPE  = TYPEID_TYPE_RANGE * TYPEID_VARIANT_PREFIX;
 // Base TypeID-s for STL containers.
+constexpr uint64_t TYPEID_ARRAY_TYPE         = TYPEID_TYPE_RANGE * TYPEID_ARRAY_PREFIX;
 constexpr uint64_t TYPEID_VECTOR_TYPE        = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
 constexpr uint64_t TYPEID_SET_TYPE           = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
 constexpr uint64_t TYPEID_PAIR_TYPE          = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
@@ -118,6 +120,12 @@ CURRENT_STRUCT(ReflectedType_Enum, ReflectedTypeBase) {
   (const std::string& name = "", TypeID rt = TypeID::UninitializedType) : name(name), underlying_type(rt) {
     ReflectedTypeBase::type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + current::CRC32(name));
   }
+};
+
+CURRENT_STRUCT(ReflectedType_Array, ReflectedTypeBase) {
+  CURRENT_FIELD(element_type, TypeID);
+  CURRENT_FIELD(size, uint64_t);
+  CURRENT_CONSTRUCTOR(ReflectedType_Array)(TypeID re = TypeID::UninitializedType, size_t size = 0u) : element_type(re), size(static_cast<uint64_t>(size)) {}
 };
 
 CURRENT_STRUCT(ReflectedType_Vector, ReflectedTypeBase) {
@@ -214,6 +222,7 @@ CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
 
 using ReflectedType = Variant<ReflectedType_Primitive,
                               ReflectedType_Enum,
+                              ReflectedType_Array,
                               ReflectedType_Vector,
                               ReflectedType_Map,
                               ReflectedType_UnorderedMap,
@@ -241,6 +250,11 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
     ++i;
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Array& a) {
+  CURRENT_ASSERT(a.element_type != TypeID::UninitializedType);
+  return static_cast<TypeID>(TYPEID_ARRAY_TYPE + ROL64(a.element_type, 3u) % TYPEID_TYPE_RANGE + ROL64(static_cast<TypeID>(a.size), 7u));
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {

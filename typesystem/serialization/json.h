@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "serialization.h"
 
+#include "json/array.h"
 #include "json/enum.h"
 #include "json/immutable_optional.h"
 #include "json/map.h"

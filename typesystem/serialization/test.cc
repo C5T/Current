@@ -130,6 +130,7 @@ CURRENT_STRUCT(WithTime) {
 static_assert(current::serialization::json::IsJSONSerializable<int>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<std::string>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<bool>::value, "");
+static_assert(current::serialization::json::IsJSONSerializable<std::array<int, 42>>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<std::vector<int>>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<std::pair<int, int>>::value, "");
 static_assert(current::serialization::json::IsJSONSerializable<std::map<int, int>>::value, "");
@@ -277,6 +278,10 @@ TEST(JSONSerialization, CPPTypes) {
 
   EXPECT_EQ("\"a\\u0000b\"", JSON(std::string("a\0b", 3)));
   EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>("\"c\\u0000d\""));
+
+  // `std::array<>` is always serialized as array.
+  EXPECT_EQ("[0,0,0]", JSON(std::array<uint64_t, 3>()));
+  EXPECT_EQ(42u, (ParseJSON<std::array<uint64_t, 1>>("[42]")[0]));
 
   // `std::vector<>` is always serialized as array.
   EXPECT_EQ("[]", JSON(std::vector<uint64_t>()));

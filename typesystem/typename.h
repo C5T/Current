@@ -166,6 +166,14 @@ struct CurrentTypeNameImpl<NF, T, false, false, true, false> {
 #include "primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
+template <NameFormat NF, typename T, size_t N>
+struct CurrentTypeNameImpl<NF, std::array<T, N>, false, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("std::array<") + CurrentTypeNameCaller<NF, T>::CallGetCurrentTypeName() +
+           ", " + std::to_string(N) + '>';
+  }
+};
+
 template <NameFormat NF, typename T>
 struct CurrentTypeNameImpl<NF, std::vector<T>, false, false, false, false> {
   static std::string GetCurrentTypeName() {
@@ -219,6 +227,13 @@ struct CurrentTypeNameImpl<NF, Optional<T>, false, false, false, false> {
 };
 
 // Names for `AsIdentifier` name decoration.
+template <typename T, size_t N>
+struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::array<T, N>, false, false, false, false> {
+  static std::string GetCurrentTypeName() {
+    return std::string("Array_") + CurrentTypeNameCaller<NameFormat::AsIdentifier, T>::CallGetCurrentTypeName() + '_' + std::to_string(N);
+  }
+};
+
 template <typename T>
 struct CurrentTypeNameImpl<NameFormat::AsIdentifier, std::vector<T>, false, false, false, false> {
   static std::string GetCurrentTypeName() {

@@ -103,6 +103,26 @@ CURRENT_STRUCT(SameStruct) {
 
 }  // namespace custom_ns3
 
+CURRENT_STRUCT(WithNoArray) {
+  CURRENT_FIELD(foo, uint32_t);
+  CURRENT_FIELD(x0, uint32_t);
+  CURRENT_FIELD(x1, uint32_t);
+};
+
+namespace of_size_one {
+CURRENT_STRUCT(WithArray) {
+  CURRENT_FIELD(foo, uint32_t);
+  CURRENT_FIELD(bar, (std::array<uint32_t, 1>));
+};
+}  // namespace of_size_one
+
+namespace of_size_two {
+CURRENT_STRUCT(WithArray) {
+  CURRENT_FIELD(foo, uint32_t);
+  CURRENT_FIELD(bar, (std::array<uint32_t, 2>));
+};
+}  // namespace of_size_two
+
 using current::reflection::Reflector;
 
 static_assert(
@@ -160,6 +180,7 @@ TEST(Reflection, CurrentTypeName) {
   EXPECT_STREQ("double", (CurrentTypeName<double, NameFormat::Z>()));
 
   // Composite types.
+  EXPECT_STREQ("std::array<std::string, 3>", (CurrentTypeName<std::array<std::string, 3u>, NameFormat::Z>()));
   EXPECT_STREQ("std::vector<std::string>", (CurrentTypeName<std::vector<std::string>, NameFormat::Z>()));
   EXPECT_STREQ("std::set<int8_t>", (CurrentTypeName<std::set<int8_t>, NameFormat::Z>()));
   EXPECT_STREQ("std::unordered_set<int16_t>", (CurrentTypeName<std::unordered_set<int16_t>, NameFormat::Z>()));
@@ -243,6 +264,14 @@ TEST(Reflection, CurrentTypeName) {
   EXPECT_STREQ("Tuple_Bool_Bool", (CurrentTypeName<std::tuple<bool, bool>, NameFormat::AsIdentifier>()));
   EXPECT_STREQ("Tuple_String_Char_Double",
                (CurrentTypeName<std::tuple<std::string, char, double>, NameFormat::AsIdentifier>()));
+
+  // Arrays.
+  EXPECT_STREQ("WithNoArray", (CurrentTypeName<WithNoArray>()));
+  EXPECT_STREQ("WithArray", (CurrentTypeName<of_size_one::WithArray>()));
+  EXPECT_STREQ("WithArray", (CurrentTypeName<of_size_two::WithArray>()));
+  EXPECT_STREQ("WithNoArray", (CurrentTypeName<WithNoArray, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("WithArray", (CurrentTypeName<of_size_one::WithArray, NameFormat::AsIdentifier>()));
+  EXPECT_STREQ("WithArray", (CurrentTypeName<of_size_two::WithArray, NameFormat::AsIdentifier>()));
 }
 
 TEST(Reflection, ConstInCurrentTypeName) {
@@ -545,6 +574,26 @@ TEST(Reflection, TemplatedTypeIDs) {
     EXPECT_EQ("Foo", Value(dff.super_name));
   }
 }
+
+TEST(Relection, TypeIDForArrays) {
+  using namespace reflection_test;
+  using current::reflection::CurrentTypeID;
+  EXPECT_EQ(9203440661079201605ull, static_cast<uint64_t>(CurrentTypeID<WithNoArray>()));
+  EXPECT_EQ(9204926548798288167ull, static_cast<uint64_t>(CurrentTypeID<of_size_one::WithArray>()));
+  EXPECT_EQ(9204926548831842599ull, static_cast<uint64_t>(CurrentTypeID<of_size_two::WithArray>()));
+};
+
+TEST(Reflection, ArrayLayout) {
+  using namespace reflection_test;
+  WithNoArray tmp;
+  tmp.foo = 42u;
+  tmp.x0 = 100u;
+  tmp.x1 = 101u;
+  const auto& retmp = *reinterpret_cast<const of_size_two::WithArray*>(&tmp);
+  EXPECT_EQ(42u, retmp.foo);
+  EXPECT_EQ(100u, retmp.bar[0]);
+  EXPECT_EQ(101u, retmp.bar[1]);
+};
 
 namespace reflection_test {
 CURRENT_STRUCT(A){};

@@ -331,10 +331,12 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           }
 
           void operator()(const ReflectedType_Enum& e) const { oss_ << OptionalNamespaceName(e) << e.name; }
+          void operator()(const ReflectedType_Array& a) const {
+            oss_ << "std::array<" << self_.TypeName(a.element_type, nmspc_) << ',' << a.size << '>';
+          }
           void operator()(const ReflectedType_Vector& v) const {
             oss_ << "std::vector<" << self_.TypeName(v.element_type, nmspc_) << '>';
           }
-
           void operator()(const ReflectedType_Map& m) const {
             oss_ << "std::map<" << self_.TypeName(m.key_type, nmspc_) << ", " << self_.TypeName(m.value_type, nmspc_)
                  << '>';
@@ -659,6 +661,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
       CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::PrintCurrentEnum(
           os_, e, [this](TypeID id, const std::string& nmspc) -> std::string { return TypeName(id, nmspc); });
     }
+    void operator()(const ReflectedType_Array&) const {}
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
@@ -737,6 +740,9 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             }
           }
           void operator()(const ReflectedType_Enum& e) const { oss_ << SanitizeFSharpSymbol(e.name); }
+          void operator()(const ReflectedType_Array& a) const {
+            oss_ << SanitizeFSharpSymbol(self_.TypeName(a.element_type)) << " array";
+          }
           void operator()(const ReflectedType_Vector& v) const {
             oss_ << SanitizeFSharpSymbol(self_.TypeName(v.element_type)) << " array";
           }
@@ -788,6 +794,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     void operator()(const ReflectedType_Enum& e) const {
       os_ << "\ntype " << SanitizeFSharpSymbol(e.name) << " = " << TypeName(e.underlying_type) << '\n';
     }
+    void operator()(const ReflectedType_Array&) const {}
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
@@ -878,6 +885,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
           void operator()(const ReflectedType_Enum& e) const {
             oss_ << "Index `" << e.name << "`, underlying type `" << self_.TypeName(e.underlying_type) << '`';
           }
+          void operator()(const ReflectedType_Array& a) const {
+            oss_ << "Array of " << self_.TypeName(a.element_type);  // TODO(dkorolev): Size omitted for now.
+          }
           void operator()(const ReflectedType_Vector& v) const {
             oss_ << "Array of " << self_.TypeName(v.element_type);
           }
@@ -925,6 +935,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
 
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum&) const {}
+    void operator()(const ReflectedType_Array&) const {}
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
@@ -1044,6 +1055,12 @@ struct LanguageSyntaxImpl<Language::JSON> final {
               result_ = error;
             }
           }
+          void operator()(const ReflectedType_Array& a) const {
+            variant_clean_type_names::fixed_size_array result;
+            result.element = self_.TypeDescriptionForJSON(a.element_type);
+            result.size = a.size;
+            result_ = result;
+          }
           void operator()(const ReflectedType_Vector& v) const {
             variant_clean_type_names::array result;
             result.element = self_.TypeDescriptionForJSON(v.element_type);
@@ -1114,6 +1131,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum&) const {}
+    void operator()(const ReflectedType_Array&) const {}
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
@@ -1290,6 +1308,9 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
             }
           }
           void operator()(const ReflectedType_Enum& e) const { oss_ << e.name; }
+          void operator()(const ReflectedType_Array& a) const {
+            oss_ << HackyGetName(a.element_type, ShouldAddParens::Yes) << "[]";
+          }
           void operator()(const ReflectedType_Vector& v) const {
             // TODO(dkorolev): Add more test cases for `std::vector<Optional<...>>`.
             oss_ << HackyGetName(v.element_type, ShouldAddParens::Yes) << "[]";
@@ -1353,6 +1374,7 @@ struct LanguageSyntaxImpl<Language::TypeScript> final {
       os_ << "\nexport type " << e.name << " = number;\n";
       // NOTE(dkorolev): Ignoring `e.underlying_type` for now, only `number` is supported.
     }
+    void operator()(const ReflectedType_Array&) const {}
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
@@ -1498,6 +1520,14 @@ struct StructSchema final {
         schema_.types.emplace(e.type_id, e);
         Reflector().ReflectedTypeByTypeID(e.underlying_type).Call(*this);
         schema_.order.push_back(e.type_id);
+      }
+    }
+
+    void operator()(const ReflectedType_Array& a) {
+      if (!schema_.types.count(a.type_id)) {
+        schema_.types.emplace(a.type_id, a);
+        Reflector().ReflectedTypeByTypeID(a.element_type).Call(*this);
+        schema_.order.push_back(a.type_id);
       }
     }
 
