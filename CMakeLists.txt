@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.14.1)
 
-project(C5T C CXX OBJC)
+project(C5T C CXX OBJC OBJCXX)
 
 message(STATUS "Add `C5T` into `target_link_libraries()` of your `CMakeLists.txt` to use `current` headers.")
 
