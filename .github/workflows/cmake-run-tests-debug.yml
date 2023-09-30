@@ -7,7 +7,7 @@ on:
 
 jobs:
   cmake-run-tests-debug:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: git clone
         uses: actions/checkout@v3
