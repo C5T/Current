@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.14.1)
 
 if(APPLE)
-  project(C5T C CXX OBJC OBJCXX)
+  project(C5T C CXX OBJC)
   message(STATUS "We are on 'Darwin'!")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -x objective-c++")
 elseif(UNIX)
