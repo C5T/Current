@@ -86,7 +86,7 @@ CURRENT_STRUCT(HTTPAPITestStructWithS) {
   CURRENT_CONSTRUCTOR(HTTPAPITestStructWithS)(std::string s = "") : s(std::move(s)) {}
 };
 
-#if !defined(CURRENT_COVERAGE_REPORT_MODE) && !defined(CURRENT_WINDOWS)
+#if !defined(CURRENT_COVERAGE_REPORT_MODE) && !defined(CURRENT_WINDOWS) && !defined(CURRENT_CMAKE_BUILT_TEST)
 TEST(ArchitectureTest, CURRENT_ARCH_UNAME_AS_IDENTIFIER) { ASSERT_EQ(CURRENT_ARCH_UNAME, FLAGS_current_runtime_arch); }
 #endif
 

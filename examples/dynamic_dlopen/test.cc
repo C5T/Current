@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-#ifndef CURRENT_COVERAGE_REPORT_MODE
+#if !defined(CURRENT_COVERAGE_REPORT_MODE) && !defined(CURRENT_CMAKE_BUILT_TEST)
 static const char* const kDefaultPathToIrisDataset = "../iris/data/dataset.json";
 #else
 static const char* const kDefaultPathToIrisDataset = "golden/dataset.json";
