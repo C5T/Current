@@ -2,13 +2,15 @@
 
 cmake_minimum_required(VERSION 3.14.1)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+if(APPLE)
   project(C5T C CXX OBJC OBJCXX)
-  message(STATUS "We are on 'Darwin', as evident by '${CMAKE_SYSTEM_NAME}'")
+  message(STATUS "We are on 'Darwin'!")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -x objective-c++")
-else()
+elseif(UNIX)
   project(C5T C CXX)
-  message(STATUS "We are NOT on 'Darwin', as evident by '${CMAKE_SYSTEM_NAME}'")
+  message(STATUS "We are on Unix!")
+else()
+  message(ERROR "We are neither on Unix nor on Darwin, can not proceed.")
 endif()
 
 message(STATUS "Add `C5T` into `target_link_libraries()` of your `CMakeLists.txt` to use `current` headers.")
