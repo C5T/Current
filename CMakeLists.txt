@@ -3,11 +3,11 @@
 cmake_minimum_required(VERSION 3.14.1)
 
 if(APPLE)
-  project(C5T C CXX OBJC)
+  project(C5T LANGUAGES C CXX OBJC)
   message(STATUS "We are on 'Darwin'!")
   #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -x objective-c++")
 elseif(UNIX)
-  project(C5T C CXX)
+  project(C5T LANGUAGES C CXX)
   message(STATUS "We are on Unix!")
 else()
   message(ERROR "We are neither on Unix nor on Darwin, can not proceed.")
