@@ -2,7 +2,11 @@
 
 cmake_minimum_required(VERSION 3.14.1)
 
-project(C5T C CXX OBJC OBJCXX)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  project(C5T C CXX OBJC OBJCXX)
+else()
+  project(C5T C CXX)
+endif()
 
 message(STATUS "Add `C5T` into `target_link_libraries()` of your `CMakeLists.txt` to use `current` headers.")
 
