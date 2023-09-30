@@ -35,6 +35,6 @@ foreach(TEST_SOURCE_FULL_NAME_CC ${TEST_SOURCE_FILES_FULL_PATHS})
   add_executable(${TEST_NAME} "${TEST_SOURCE_FULL_NAME_CC}") 
   target_compile_definitions(${TEST_NAME} PRIVATE CURRENT_CMAKE_BUILT_TEST)
   target_include_directories(${TEST_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/scripts")  # For `current_build.h`, needed for `karl/`.
-  target_link_libraries(${TEST_NAME} PRIVATE Threads::Threads C5T)
+  target_link_libraries(${TEST_NAME} PRIVATE Threads::Threads dl C5T)
   add_test(${TEST_NAME} ${TEST_NAME} COMMAND ${TEST_NAME})
 endforeach()
