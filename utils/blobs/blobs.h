@@ -30,7 +30,7 @@ SOFTWARE.
 #include <iostream>
 
 #include "bricks/file/file.h"
-#include "typesystem/reflection/reflection.h"
+#include "typesystem/reflection/typeid.h"
 
 namespace current {
 
