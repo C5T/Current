@@ -50,7 +50,6 @@ x64
 
 # CLion.
 .idea
-CMakeLists.txt
 
 # Let's not even talk about it.
 node_modules
