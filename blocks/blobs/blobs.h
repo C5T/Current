@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_UTILS_BLOBS_BLOBS_H
-#define CURRENT_UTILS_BLOBS_BLOBS_H
+#ifndef CURRENT_BLOCKS_BLOBS_BLOBS_H
+#define CURRENT_BLOCKS_BLOBS_BLOBS_H
 
 #include "../../port.h"
 
@@ -60,4 +60,4 @@ void ProcessBlob(const std::string& filename, F&& f) {
 
 }  // namespace current
 
-#endif  // CURRENT_UTILS_BLOBS_BLOBS_H
+#endif  // CURRENT_BLOCKS_BLOBS_BLOBS_H
