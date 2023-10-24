@@ -66,7 +66,7 @@ reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const c
 // of correponding calls to `InternalCurrentTypeID` may and will be different in case of cyclic dependencies,
 // as the order of their resolution by definition depends on which part of the cycle was the starting point.
 
-// Called from `CurrentTypeID<T>()` defined in `typeid.h`, to be lightwaithg-injectable.
+// Called from `CurrentTypeID<T>()` defined in `typeid.h`, to be lightweight-injectable.
 template <typename T>
 struct DefaultCurrentTypeIDImpl final {
   static TypeID GetTypeID() {
