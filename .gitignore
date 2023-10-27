@@ -50,7 +50,9 @@ x64
 
 # CLion.
 .idea
-CMakeLists.txt
+
+# QT Creator.
+CMakeLists.txt.user
 
 # Let's not even talk about it.
 node_modules

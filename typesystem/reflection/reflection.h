@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
 
+#include "typeid.h"
+
 #include <map>
 #include <set>
 #include <typeindex>
@@ -63,10 +65,14 @@ reflection::TypeID InternalCurrentTypeID(std::type_index top_level_type, const c
 // `CurrentTypeID<T>()` is the "user-facing" type ID of `T`, whereas for each individual `T` the values
 // of correponding calls to `InternalCurrentTypeID` may and will be different in case of cyclic dependencies,
 // as the order of their resolution by definition depends on which part of the cycle was the starting point.
+
+// Called from `CurrentTypeID<T>()` defined in `typeid.h`, to be lightweight-injectable.
 template <typename T>
-reflection::TypeID CurrentTypeID() {
-  return InternalCurrentTypeID<T>(typeid(T), CurrentTypeName<T, NameFormat::Z>());
-}
+struct DefaultCurrentTypeIDImpl final {
+  static TypeID GetTypeID() {
+    return InternalCurrentTypeID<T>(typeid(T), CurrentTypeName<T, NameFormat::Z>());
+  }
+};
 
 #ifdef TODO_DKOROLEV_EXTRA_PARANOID_DEBUG_SYMBOL_NAME
 // Unused in user code, just to cover the external safety condition LOC from the unit test. -- D.K.
