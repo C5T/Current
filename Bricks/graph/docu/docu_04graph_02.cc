@@ -52,11 +52,11 @@ const size_t image_dim = e ? 800 : 112;
   const size_t image_dim = 800;
 #endif
   const std::string result = GNUPlot()
-    .Title("отпусти меня")
+    .Title("Let me go")
     .NoKey()
     .Grid("back")
-    .YLabel("чудо")
-    .XLabel("трава")
+    .YLabel("Magic")
+    .XLabel("Grass from 2016")
     .Plot(WithMeta([](Plotter p) {
       const size_t N = 100001;
       for (size_t i = 0; i < N; ++i) {
