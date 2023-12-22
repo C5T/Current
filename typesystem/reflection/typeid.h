@@ -26,6 +26,10 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_TYPEID_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_TYPEID_H
 
+#include "../../port.h"
+
+#include <cstdint>
+
 // The most lightweight header to make build times of exported `CURRENT_STRUCT`-s as fast as possible.
 
 // TODO(dkorolev): If I get to extend this further, also export original names in schema-dumped C-structs.
