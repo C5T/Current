@@ -29,6 +29,7 @@
 #define FNCAS_FNCAS_JIT_H
 
 #ifndef CURRENT_WINDOWS
+#if defined(__x86_64__)
 
 #ifndef FNCAS_USE_LONG_DOUBLE
 
@@ -1092,6 +1093,7 @@ struct g_impl_selector<JIT::X64NativeJIT> {
 
 #endif  // FNCAS_USE_LONG_DOUBLE
 
+#endif  // defined(__x86_64__)
 #endif  // !CURRENT_WINDOWS
 
 #endif  // #ifndef FNCAS_FNCAS_JIT_H
