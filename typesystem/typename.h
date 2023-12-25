@@ -30,6 +30,7 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <array>
 #include <chrono>
 #include <map>
 #include <set>
