@@ -31,4 +31,4 @@ jobs:
       - name: install nasm
         run: brew install nasm
       - name: make -j individual_tests
-        run: make -j individual_tests
+        run: GTEST_COLOR=yes make -j individual_tests
