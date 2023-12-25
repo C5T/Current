@@ -20,5 +20,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
+      - name: install md5sum
+        run: brew install md5sha1sum
       - name: make -j individual_tests
         run: make -j individual_tests
