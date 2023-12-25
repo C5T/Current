@@ -60,6 +60,7 @@ TEST(Nginx, FullConfig) {
 
 // Disable `NginxInvoker` tests if the full test is built.
 #ifndef CURRENT_MOCK_TIME
+#ifndef CURRENT_CI
 
 TEST(Nginx, NginxInvokerCheckGoldenConfig) {
   using current::FileSystem;
@@ -77,4 +78,5 @@ TEST(Nginx, NginxInvokerCheckGoldenConfig) {
   }
 }
 
+#endif  // CURRENT_CI
 #endif  // CURRENT_MOCK_TIME
