@@ -15,8 +15,6 @@ jobs:
           fetch-depth: 1
       - name: sudo apt-get install nasm
         run: sudo apt-get install nasm
-      - name: sudo apt-get install nginx
-        run: sudo apt-get install nginx
       - name: make -j individual_tests
         run: GTEST_COLOR=yes make -j individual_tests
   run-macos:
