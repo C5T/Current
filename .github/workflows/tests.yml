@@ -14,7 +14,7 @@ jobs:
       - name: sudo apt-get install nasm
         run: sudo apt-get install nasm
       - name: make -j individual_tests
-        run: make -j individual_tests
+        run: GTEST_COLOR=yes make -j individual_tests
   run-macos:
     runs-on: macos-latest
     steps:
