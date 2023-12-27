@@ -24,7 +24,7 @@ for i in $(find . -name test.cc | sort) ; do
     echo "Excluded."
   elif [[ $SHARD == $DESIRED_SHARD ]]; then
     cd $DIR
-    if ! make -s test ; then
+    if ! CONTINUOUS_INTEGRATION=true make -s test ; then
       FAILURES="$FAILURES\n- $DIR"
     fi
     cd - >/dev/null
@@ -37,7 +37,7 @@ if [[ $DESIRED_SHARD == 0 ]]; then
   ( \
     DIR=$(./scripts/fullpath.sh $PWD) && \
     cd bricks/system && \
-    make .current/test > /dev/null \
+    CONTINUOUS_INTEGRATION=true make .current/test > /dev/null \
     && ./.current/test --current_base_dir_for_dlopen_test=$DIR \
   ) || FAILURES="$FAILURES\n- bricks/system [with --current_base_dir_for_dlopen_test set]"
 fi

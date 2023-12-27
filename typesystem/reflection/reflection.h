@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "typeid.h"
 
+#include <array>
 #include <map>
 #include <set>
 #include <typeindex>

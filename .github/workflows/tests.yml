@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  run-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: git clone
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: sudo apt-get install nasm
+        run: sudo apt-get install nasm
+      - name: make -j individual_tests
+        run: GTEST_COLOR=yes make -j individual_tests
+  run-macos:
+    runs-on: macos-latest
+    steps:
+      - name: git clone
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: install md5sum
+        run: brew install md5sha1sum
+      - name: install nasm
+        run: brew install nasm
+      - name: make -j individual_tests
+        run: GTEST_COLOR=yes make -j individual_tests

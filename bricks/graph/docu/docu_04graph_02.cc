@@ -37,11 +37,7 @@ SOFTWARE.
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #ifndef CURRENT_CI
-TEST(Graph, Love)
-#else
-TEST(Graph, DISABLED_Love)
-#endif
-{
+TEST(Graph, Love) {
   // Where visualization meets love.
   using namespace current::gnuplot;
 #ifndef CURRENT_APPLE
@@ -80,6 +76,7 @@ if (FLAGS_regenerate_golden_graphs) { current::FileSystem::WriteStringToFile(res
 if (!e) { ASSERT_EQ(result, current::FileSystem::ReadFileAsString("golden/love-" + CURRENT_ARCH_UNAME + '.' + extensions[e])); }
 }
 }
+#endif  // CURRENT_CI
 
 #endif  // CURRENT_WINDOWS
 
