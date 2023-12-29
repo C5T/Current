@@ -26,6 +26,14 @@ CPLUSPLUS?=g++
 CPPFLAGS=-std=c++17 -W -Wall
 CPPFLAGS+= -Wno-strict-aliasing  # To suppress FnCAS tight struct packing warnings. -- D.K.
 
+ifneq ($(wildcard current/port.h),)
+  CPPFLAGS+= -Icurrent/
+else ifneq ($(wildcard ../current/port.h),)
+  CPPFLAGS+= -I../current/
+else ifneq ($(wildcard ../../current/port.h),)
+  CPPFLAGS+= -I../../current/
+endif
+
 # Disabled as it generates `-Wno-noexcept-type` on clang++. -- D.K.
 # CPPFLAGS+= -Wno-noexcept-type    # To suppress the "warning: mangled name will change in C++17" warnings. -- D.K.
 
