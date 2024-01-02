@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
   auto dl = current::bricks::system::DynamicLibrary::CrossPlatform(FLAGS_dlib);
   auto pf = dl.template Get<int (*)(int, int)>("dynamic_mul");
   if (!pf) {
-    std::cout << "Must set '--dlib'." << std::endl;
+    std::cout << "Something's wrong, the 'dynamic_mul' function was not found in the library'." << std::endl;
     return 1;
   }
   auto f = *pf;
