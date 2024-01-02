@@ -32,7 +32,9 @@ int main() {
 EOF
 
 # This runs `cmake .` for Release mode, which is output into `.current`.
+echo "::group::configure"
 make .current
+echo "::endgroup::"
 
 # The run of `cmake .` must have cloned `current` and `googletest` and added them into `.gitignore`.
 if ! [ -d current ] || ! [ -d googletest ] ; then
@@ -47,7 +49,9 @@ if ! diff golden_gitignore .gitignore ; then
   exit 1
 fi
 
+echo "::group::make [release]"
 make
+echo "::endgroup::"
 
 echo '.current/' >>golden_gitignore
 if ! diff golden_gitignore .gitignore ; then
@@ -55,14 +59,20 @@ if ! diff golden_gitignore .gitignore ; then
   exit 1
 fi
 
+echo "::group::.current/hw"
 .current/hw
+echo "::endgroup::"
 
+echo "::group::make debug"
 make debug
+echo "::endgroup::"
 
 echo '.current_debug/' >>golden_gitignore
 diff golden_gitignore .gitignore || (echo 'Wrong `.gitignore`, exiting.'; exit 1)
 
+echo "::group::.current_debug/hw"
 .current_debug/hw
+echo "::endgroup::"
 
 cat >src/test_gtest.cc <<EOF
 #include <gtest/gtest.h>  // IWYU pragma: keep
@@ -78,28 +88,40 @@ TEST(SmokeCurrentGoogletest, TwoTimesTwo) {
 }
 EOF
 
+echo "::group::release_test"
 make test
+echo "::endgroup::"
 
+echo "::group::debug_test"
 make debug_test
+echo "::endgroup::"
 
 touch src/test_gtest.cc
 T0_GTEST=$(date +%s)
+echo "::group::one line change google gtest release"
 make test
+echo "::endgroup::"
 T1_GTEST=$(date +%s)
 
 touch src/test_current_gtest.cc
 T0_CURRENT_GTEST=$(date +%s)
+echo "::group::one line change current gtest release"
 make test
+echo "::endgroup::"
 T1_CURRENT_GTEST=$(date +%s)
 
 touch src/test_gtest.cc
 T0_DEBUG_GTEST=$(date +%s)
+echo "::group::one line change google gtest debug"
 make debug_test
+echo "::endgroup::"
 T1_DEBUG_GTEST=$(date +%s)
 
 touch src/test_current_gtest.cc
 T0_DEBUG_CURRENT_GTEST=$(date +%s)
+echo "::group::one line change current gtest debug"
 make debug_test
+echo "::endgroup::"
 T1_DEBUG_CURRENT_GTEST=$(date +%s)
 
 echo "=== ALL DONE ==="
