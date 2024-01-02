@@ -42,11 +42,11 @@ UseOrGitClone(current https://github.com/dimacurrentai/current cmake)
 UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
 
 # Declare shared libraries as shared library targets. Do not link them against anything external.
-file(GLOB_RECURSE BINARY_SOURCE_FILES "src/so_*.cc")
+file(GLOB_RECURSE BINARY_SOURCE_FILES "src/dlib_*.cc")
 foreach(SHARED_LIBRARY_SOURCE_FILE ${BINARY_SOURCE_FILES})
   get_filename_component(SHARED_LIBRARY_TARGET_NAME "${SHARED_LIBRARY_SOURCE_FILE}" NAME_WE)
   add_library(${SHARED_LIBRARY_TARGET_NAME} SHARED "${SHARED_LIBRARY_SOURCE_FILE}") 
-  # TODO(dkorolev): Might be worth it to `grep` this `so_*.cc` source file for required library dependencies.
+  # TODO(dkorolev): Might be worth it to `grep` this `dlib_*.cc` source file for required library dependencies.
   target_link_libraries(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${ALL_LIBRARIES}")
 endforeach()
 
@@ -63,7 +63,7 @@ endforeach()
 file(GLOB_RECURSE BINARY_SOURCE_FILES "src/*.cc")
 foreach(BINARY_SOURCE_FILE ${BINARY_SOURCE_FILES})
   get_filename_component(BINARY_TARGET_NAME "${BINARY_SOURCE_FILE}" NAME_WE)
-  if(NOT (BINARY_TARGET_NAME MATCHES "^lib_.*$" OR BINARY_TARGET_NAME MATCHES "^test_.*$" OR BINARY_TARGET_NAME MATCHES "^so_.*$"))
+  if(NOT (BINARY_TARGET_NAME MATCHES "^lib_.*$" OR BINARY_TARGET_NAME MATCHES "^test_.*$" OR BINARY_TARGET_NAME MATCHES "^dlib_.*$"))
     add_executable(${BINARY_TARGET_NAME} "${BINARY_SOURCE_FILE}") 
     target_link_libraries(${BINARY_TARGET_NAME} PRIVATE "${ALL_LIBRARIES}")
   endif()

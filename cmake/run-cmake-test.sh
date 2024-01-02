@@ -166,7 +166,7 @@ done
 
 echo
 
-cat >src/dynamic_mul.cc <<EOF
+cat >src/dlib_mul.cc <<EOF
 extern "C" int dynamic_mul(int a, int b) {
   return a * b;
 }
@@ -204,17 +204,17 @@ EOF
 # TODO(dkorolev): This should probably happen automatically if the set of files under `src/` has changed!
 touch CMakeLists.txt
 
-echo "::group::build .current/libdynamic_mul.so and .current/call_dynamic_mul"
+echo "::group::build .current/libdlib_mul.{so|dylib} and .current/call_dynamic_mul"
 make
 echo "::endgroup::"
 
-echo "::group::build .current_debug/libdynamic_mul.so and .current_debug/call_dynamic_mul"
+echo "::group::build .current_debug/libdlib_mul.{so|dylib} and .current_debug/call_dynamic_mul"
 make debug
 echo "::endgroup::"
 
 echo "::group::call .so-defined functions from manually built binaries, debug <=> release"
-./.current/call_dynamic_mul --dlib .current/libdynamic_mul
-./.current/call_dynamic_mul --dlib .current_debug/libdynamic_mul
-./.current_debug/call_dynamic_mul --dlib .current_debug/libdynamic_mul
-./.current_debug/call_dynamic_mul --dlib .current/libdynamic_mul
+./.current/call_dynamic_mul --dlib .current/libdlib_mul
+./.current/call_dynamic_mul --dlib .current_debug/libdlib_mul
+./.current_debug/call_dynamic_mul --dlib .current_debug/libdlib_mul
+./.current_debug/call_dynamic_mul --dlib .current/libdlib_mul
 echo "::endgroup::"
