@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-ubuntu:
+  try-cmake:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
