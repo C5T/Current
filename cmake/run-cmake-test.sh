@@ -208,6 +208,13 @@ echo "::group::build .current_debug/libso_mul.so and .current_debug/call_so"
 make debug
 echo "::endgroup::"
 
+# NOTE(dkorolev): Debugging macOS runs.
+echo
+ls -las .current
+echo
+ls -las .current_debug
+echo
+
 echo "::group::call .so-defined functions from manually built binaries, debug <=> release"
 ./.current/call_so --so .current/libso_mul.so
 ./.current/call_so --so .current_debug/libso_mul.so
