@@ -35,7 +35,10 @@ function(UseOrGitClone dep remote branch)
   endif()
 endfunction()
 
-UseOrGitClone(current https://github.com/c5t/current stable)
+#UseOrGitClone(current https://github.com/c5t/current stable)
+UseOrGitClone(current https://github.com/dimacurrentai/current cmake)
+# TODO(dkorolev): Fix this once the PR is merged.
+
 UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
 
 # Declare shared libraries as shared library targets. Do not link them against anything external.

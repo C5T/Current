@@ -166,27 +166,27 @@ done
 
 echo
 
-cat >src/so_mul.cc <<EOF
-extern "C" int so_mul(int a, int b) {
+cat >src/dynamic_mul.cc <<EOF
+extern "C" int dynamic_mul(int a, int b) {
   return a * b;
 }
 EOF
 
-cat >src/call_so.cc <<EOF
+cat >src/call_dynamic_mul.cc <<EOF
 #include <iostream>
 #include "bricks/dflags/dflags.h"
 #include "bricks/system/syscalls.h"
-DEFINE_string(so, "", "The path to the '.so' library to use.");
+DEFINE_string(dlib, "", "The path to the '.so' or '.dylib' library to use, without the extension.");
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  if (FLAGS_so.empty()) {
-    std::cout << "Must set '--so'." << std::endl;
+  if (FLAGS_dlib.empty()) {
+    std::cout << "Must set '--dlib'." << std::endl;
     return 1;
   }
-  auto dl = current::bricks::system::DynamicLibrary(FLAGS_so);
-  auto pf = dl.template Get<int (*)(int, int)>("so_mul");
+  auto dl = current::bricks::system::DynamicLibrary::CrossPlatform(FLAGS_dlib);
+  auto pf = dl.template Get<int (*)(int, int)>("dynamic_mul");
   if (!pf) {
-    std::cout << "Must set '--so'." << std::endl;
+    std::cout << "Must set '--dlib'." << std::endl;
     return 1;
   }
   auto f = *pf;
@@ -204,24 +204,17 @@ EOF
 # TODO(dkorolev): This should probably happen automatically if the set of files under `src/` has changed!
 touch CMakeLists.txt
 
-echo "::group::build .current/libso_mul.so and .current/call_so"
+echo "::group::build .current/libdynamic_mul.so and .current/call_dynamic_mul"
 make
 echo "::endgroup::"
 
-echo "::group::build .current_debug/libso_mul.so and .current_debug/call_so"
+echo "::group::build .current_debug/libdynamic_mul.so and .current_debug/call_dynamic_mul"
 make debug
 echo "::endgroup::"
 
 echo "::group::call .so-defined functions from manually built binaries, debug <=> release"
-if [ "$(uname)" == "Darwin" ] ; then
-  SO_EXT=dylib
-  echo "Using '.${SO_EXT}' extension for shared libraries instead of '.so' because we're on macOS."
-  # TODO(dkorolev): Unify this on the level of Current code? =)
-else
-  SO_EXT=so
-fi
-./.current/call_so --so .current/libso_mul.${SO_EXT}
-./.current/call_so --so .current_debug/libso_mul.${SO_EXT}
-./.current_debug/call_so --so .current_debug/libso_mul.${SO_EXT}
-./.current_debug/call_so --so .current/libso_mul.${SO_EXT}
+./.current/call_dynamic_mul --dlib .current/libdynamic_mul
+./.current/call_dynamic_mul --dlib .current_debug/libdynamic_mul
+./.current_debug/call_dynamic_mul --dlib .current_debug/libdynamic_mul
+./.current_debug/call_dynamic_mul --dlib .current/libdynamic_mul
 echo "::endgroup::"
