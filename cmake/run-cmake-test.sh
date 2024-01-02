@@ -68,7 +68,10 @@ make debug
 echo "::endgroup::"
 
 echo '.current_debug/' >>golden_gitignore
-diff golden_gitignore .gitignore || (echo 'Wrong `.gitignore`, exiting.'; exit 1)
+if ! diff golden_gitignore .gitignore ; then
+  echo "Diff failed on line ${LINENO}."
+  exit 1
+fi
 
 echo "::group::.current_debug/hw"
 .current_debug/hw
