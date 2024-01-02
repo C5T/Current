@@ -200,6 +200,10 @@ int main(int argc, char** argv) {
 }
 EOF
 
+# This forces `cmake` re-configuration, for both Debug and Release builds.
+# TODO(dkorolev): This should probably happen automatically if the set of files under `src/` has changed!
+touch CMakeLists.txt
+
 echo "::group::build .current/libso_mul.so and .current/call_so"
 make
 echo "::endgroup::"
@@ -216,8 +220,14 @@ ls -las .current_debug
 echo
 
 echo "::group::call .so-defined functions from manually built binaries, debug <=> release"
-./.current/call_so --so .current/libso_mul.so
-./.current/call_so --so .current_debug/libso_mul.so
-./.current_debug/call_so --so .current_debug/libso_mul.so
-./.current_debug/call_so --so .current/libso_mul.so
+if [ "$(uname)" == "Darwin" ] ; then
+  SO_EXT=dylib
+else
+  SO_EXT=so
+fi
+echo "Using '.${SO_EXT}' extension for shared libraries."
+./.current/call_so --so .current/libso_mul.${SO_EXT}
+./.current/call_so --so .current_debug/libso_mul.${SO_EXT}
+./.current_debug/call_so --so .current_debug/libso_mul.${SO_EXT}
+./.current_debug/call_so --so .current/libso_mul.${SO_EXT}
 echo "::endgroup::"
