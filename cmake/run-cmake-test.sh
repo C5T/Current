@@ -74,17 +74,37 @@ echo "::group::.current_debug/hw"
 .current_debug/hw
 echo "::endgroup::"
 
+cat >src/lib_add.cc <<EOF
+#include "lib_add.h"
+int lib_add(int a, int b) {
+  return a + b;
+}
+EOF
+
+cat >src/lib_add.h <<EOF
+#pragma once
+int lib_add(int a, int b);
+EOF
+
 cat >src/test_gtest.cc <<EOF
 #include <gtest/gtest.h>  // IWYU pragma: keep
+#include "lib_add.h"
 TEST(SmokeGoogletest, TwoTimesTwo) {
   EXPECT_EQ(4, 2 * 2);
+}
+TEST(SmokeGoogletest, TwoPlusThree) {
+  EXPECT_EQ(5, lib_add(2, 3));
 }
 EOF
 
 cat >src/test_current_gtest.cc <<EOF
 #include "3rdparty/gtest/gtest-main.h"  // IWYU pragma: keep
+#include "lib_add.h"
 TEST(SmokeCurrentGoogletest, TwoTimesTwo) {
   EXPECT_EQ(4, 2 * 2);
+}
+TEST(SmokeCurrentGoogletest, TwoPlusThree) {
+  EXPECT_EQ(5, lib_add(2, 3));
 }
 EOF
 
@@ -132,4 +152,8 @@ echo "One-line change time, Google gtest, release: $((T1_GTEST - T0_GTEST))s"
 echo
 echo '(The numbers for `Current gtest` should be worse, as Current is header-only.)'
 
-# TODO(dkorolev): Add tests for `lib_*.cc` targets too, both as binaries and from tests.
+for i in ./.current/test_gtest ./.current/test_current_gtest ./.current_debug/test_gtest ./.current_debug/test_current_gtest ; do
+  echo "::group::test output for $i"
+  $i
+  echo "::endgroup::"
+done
