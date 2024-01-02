@@ -212,20 +212,14 @@ echo "::group::build .current_debug/libso_mul.so and .current_debug/call_so"
 make debug
 echo "::endgroup::"
 
-# NOTE(dkorolev): Debugging macOS runs.
-echo
-ls -las .current
-echo
-ls -las .current_debug
-echo
-
 echo "::group::call .so-defined functions from manually built binaries, debug <=> release"
 if [ "$(uname)" == "Darwin" ] ; then
   SO_EXT=dylib
+  echo "Using '.${SO_EXT}' extension for shared libraries instead of '.so' because we're on macOS."
+  # TODO(dkorolev): Unify this on the level of Current code? =)
 else
   SO_EXT=so
 fi
-echo "Using '.${SO_EXT}' extension for shared libraries."
 ./.current/call_so --so .current/libso_mul.${SO_EXT}
 ./.current/call_so --so .current_debug/libso_mul.${SO_EXT}
 ./.current_debug/call_so --so .current_debug/libso_mul.${SO_EXT}
