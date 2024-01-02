@@ -108,6 +108,8 @@ TEST(SmokeCurrentGoogletest, TwoPlusThree) {
 }
 EOF
 
+echo
+
 echo "::group::release_test"
 make test
 echo "::endgroup::"
@@ -115,6 +117,8 @@ echo "::endgroup::"
 echo "::group::debug_test"
 make debug_test
 echo "::endgroup::"
+
+echo
 
 touch src/test_gtest.cc
 T0_GTEST=$(date +%s)
@@ -144,6 +148,7 @@ make debug_test
 echo "::endgroup::"
 T1_DEBUG_CURRENT_GTEST=$(date +%s)
 
+echo
 echo "One-line change time, Current gtest, debug: $((T1_DEBUG_CURRENT_GTEST - T0_DEBUG_CURRENT_GTEST))s"
 echo "One-line change time, Current gtest, release: $((T1_CURRENT_GTEST - T0_CURRENT_GTEST))s"
 echo
@@ -151,9 +156,61 @@ echo "One-line change time, Google gtest, debug: $((T1_DEBUG_GTEST - T0_DEBUG_GT
 echo "One-line change time, Google gtest, release: $((T1_GTEST - T0_GTEST))s"
 echo
 echo '(The numbers for `Current gtest` should be worse, as Current is header-only.)'
+echo
 
 for i in ./.current/test_gtest ./.current/test_current_gtest ./.current_debug/test_gtest ./.current_debug/test_current_gtest ; do
   echo "::group::test output for $i"
   $i
   echo "::endgroup::"
 done
+
+echo
+
+cat >src/so_mul.cc <<EOF
+extern "C" int so_mul(int a, int b) {
+  return a * b;
+}
+EOF
+
+cat >src/call_so.cc <<EOF
+#include <iostream>
+#include "bricks/dflags/dflags.h"
+#include "bricks/system/syscalls.h"
+DEFINE_string(so, "", "The path to the `.so` library to use.");
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
+  if (FLAGS_so.empty()) {
+    std::cout << "Must set `--so`." << std::endl;
+    return 1;
+  }
+  auto dl = current::bricks::system::DynamicLibrary(FLAGS_so);
+  auto pf = dl.template Get<int (*)(int, int)>("so_mul");
+  if (!pf) {
+    std::cout << "Must set `--so`." << std::endl;
+    return 1;
+  }
+  auto f = *pf;
+  int result = f(2, 3);
+  if (result == 6) {
+    std::cout << "OK, 2 * 3 == 6." << std::endl;
+  } else {
+    std::cout << "WA, 2 * 3 != " << result << '.' << std::endl;
+    return 1;
+  }
+}
+EOF
+
+echo "::group::build .current/libso_mul.so and .current/call_so"
+make
+echo "::endgroup::"
+
+echo "::group::build .current_debug/libso_mul.so and .current_debug/call_so"
+make debug
+echo "::endgroup::"
+
+echo "::group::call .so-defined functions from manually built binaries, debug <=> release"
+./.current/call_so --so .current/libso_mul.so
+./.current/call_so --so .current_debug/libso_mul.so
+./.current_debug/call_so --so .current_debug/libso_mul.so
+./.current_debug/call_so --so .current/libso_mul.so
+echo "::endgroup::"
