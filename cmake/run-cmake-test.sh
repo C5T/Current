@@ -124,8 +124,6 @@ make debug_test
 echo "::endgroup::"
 T1_DEBUG_CURRENT_GTEST=$(date +%s)
 
-echo "=== ALL DONE ==="
-echo
 echo "One-line change time, Current gtest, debug: $((T1_DEBUG_CURRENT_GTEST - T0_DEBUG_CURRENT_GTEST))s"
 echo "One-line change time, Current gtest, release: $((T1_CURRENT_GTEST - T0_CURRENT_GTEST))s"
 echo
@@ -133,3 +131,5 @@ echo "One-line change time, Google gtest, debug: $((T1_DEBUG_GTEST - T0_DEBUG_GT
 echo "One-line change time, Google gtest, release: $((T1_GTEST - T0_GTEST))s"
 echo
 echo '(The numbers for `Current gtest` should be worse, as Current is header-only.)'
+
+# TODO(dkorolev): Add tests for `lib_*.cc` targets too, both as binaries and from tests.
