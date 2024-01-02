@@ -176,17 +176,17 @@ cat >src/call_so.cc <<EOF
 #include <iostream>
 #include "bricks/dflags/dflags.h"
 #include "bricks/system/syscalls.h"
-DEFINE_string(so, "", "The path to the `.so` library to use.");
+DEFINE_string(so, "", "The path to the '.so' library to use.");
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
   if (FLAGS_so.empty()) {
-    std::cout << "Must set `--so`." << std::endl;
+    std::cout << "Must set '--so'." << std::endl;
     return 1;
   }
   auto dl = current::bricks::system::DynamicLibrary(FLAGS_so);
   auto pf = dl.template Get<int (*)(int, int)>("so_mul");
   if (!pf) {
-    std::cout << "Must set `--so`." << std::endl;
+    std::cout << "Must set '--so'." << std::endl;
     return 1;
   }
   auto f = *pf;
