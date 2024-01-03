@@ -8,6 +8,16 @@
 
 set -e
 
+# A few precondititons to run this clean test.
+if [ -d ./current ] || [ -d ../current ] || [ -d ../../current ] ; then
+  echo 'Should not have `current` in `./`, `../, and `../../`.'
+  exit 1
+fi
+if [ -d ./googletest ] || [ -d ../googletest ] || [ -d ../../googletest ] ; then
+  echo 'Should not have `googletest` in `./`, `../, and `../../`.'
+  exit 1
+fi
+
 touch .gitignore
 touch golden_gitignore
 
@@ -21,6 +31,9 @@ if ! [ -s Makefile ] ; then
   curl -s https://raw.githubusercontent.com/dimacurrentai/Current/cmake/cmake/Makefile >Makefile
 	# TODO(dkorolev): Fix the repo & branch on the line above once merged.
 fi
+
+# NOTE(dkorolev): This test run `curl`-s the `Makefile`.
+# No need to `curl` the very `CMakeLists.txt` file, as the `Makefile` will do it if and as needed.
 
 mkdir -p src
 cat >src/hw.cc <<EOF
