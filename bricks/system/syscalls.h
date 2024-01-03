@@ -152,6 +152,16 @@ class DynamicLibrary {
     }
   }
 
+  static DynamicLibrary CrossPlatform(const std::string library_file_name_without_extension) {
+    return DynamicLibrary(library_file_name_without_extension +
+#ifdef CURRENT_APPLE
+      ".dylib"
+#else
+      ".so"
+#endif
+    );
+  }
+
   virtual ~DynamicLibrary() {
     if (lib_) {
       ::dlclose(lib_);
