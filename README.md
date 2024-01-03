@@ -1,4 +1,4 @@
-# Current [![Travis](https://travis-ci.org/C5T/Current.svg?branch=stable)](https://travis-ci.org/C5T/Current) [![Semaphore](https://semaphoreci.com/api/v1/dkorolev/current/branches/unstable/shields_badge.svg)](https://semaphoreci.com/dkorolev/current)
+# Current [![tests](https://github.com/C5T/Current/actions/workflows/tests.yml/badge.svg?branch=stable)](https://github.com/C5T/Current/actions/workflows/tests.yml) [![cmake](https://github.com/C5T/Current/actions/workflows/cmake.yml/badge.svg?branch=stable)](https://github.com/C5T/Current/actions/workflows/cmake.yml)
 
 #### [TypeSystem](https://github.com/C5T/Current/blob/stable/typesystem/README.md)
 The type system used in Current framework.
