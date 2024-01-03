@@ -28,8 +28,7 @@ fi
 
 if ! [ -s Makefile ] ; then
   echo 'Need the `Makefile`, `curl`-ing one.'
-  curl -s https://raw.githubusercontent.com/dimacurrentai/Current/cmake/cmake/Makefile >Makefile
-	# TODO(dkorolev): Fix the repo & branch on the line above once merged.
+  curl -s https://raw.githubusercontent.com/C5T/Current/stable/cmake/Makefile >Makefile
 fi
 
 # NOTE(dkorolev): This test run `curl`-s the `Makefile`.
