@@ -18,9 +18,9 @@ jobs:
           fetch-depth: 1
       - name: run test
         run: |
-          export TESTDIR="cmake_test_$(date +%s)"
+          export TESTDIR="cmake_test_$(date +%s)/deeply/nested/dir"
           echo "Running in ${TESTDIR}"
-          mkdir "${TESTDIR}"
+          mkdir -p "${TESTDIR}"
           cp cmake/Makefile "${TESTDIR}/"
           cp cmake/CMakeLists.txt "${TESTDIR}/"
           cp cmake/run-cmake-test.sh "${TESTDIR}/"
