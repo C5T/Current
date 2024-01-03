@@ -1,4 +1,4 @@
-# Current [![tests](https://github.com/C5T/Current/actions/workflows/tests.yml/badge.svg?branch=stable)](https://github.com/C5T/Current/actions/workflows/tests.yml) [![cmake](https://github.com/C5T/Current/actions/workflows/cmake.yml/badge.svg?branch=stable)](https://github.com/C5T/Current/actions/workflows/cmake.yml)
+# Current [![tests](https://github.com/C5T/Current/actions/workflows/tests.yml/badge.svg?branch=stable)](https://github.com/C5T/Current/actions/workflows/tests.yml?query=branch%3Astable) [![cmake](https://github.com/C5T/Current/actions/workflows/cmake.yml/badge.svg?branch=stable)](https://github.com/C5T/Current/actions/workflows/cmake.yml?query=branch%3Astable)
 
 #### [TypeSystem](https://github.com/C5T/Current/blob/stable/typesystem/README.md)
 The type system used in Current framework.
