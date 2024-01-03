@@ -2,6 +2,9 @@
 #
 # This script illustrates how to use the CMakeLists.txt-based build of project that use `current`.
 # It is meant to be run from within an empty directory.
+#
+# The `current/` and `googletest/` directories should not be found in `./`, `../`, and `../../`
+# from the directory in which this test script is run.
 
 set -e
 
