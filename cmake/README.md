@@ -22,6 +22,4 @@ This `CMakeLists.txt` is accompanied by a `Makefile`. Together, they:
 
 The `test/` directory in this repo illustrates what it takes to use this `Makefile` + `CMakeLists.txt`.
 
-Please refer to [`run-cmake-test.sh`](https://github.com/dimacurrentai/Current/blob/cmake/cmake/run-cmake-test.sh) for a comprehensive end-to-end test for the above.
-
-TODO(dkorolev): Fix the path once the the PR is merged in.
+Please refer to [`run-cmake-test.sh`](https://github.com/c5t/Current/blob/stable/cmake/run-cmake-test.sh) for a comprehensive end-to-end test for the above.

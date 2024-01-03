@@ -3,8 +3,7 @@
 # Yes, I am well aware it is ugly to have a `Makefile` for a `cmake`-built project.
 #
 # However, there is quite some value.
-# Please see the README of https://github.com/dimacurrentai/Current/tree/cmake/cmake for more details.
-# TODO(dkorolev): Fix the repo & branch on the line above once merged.
+# Please see the README of https://github.com/C5T/Current/tree/stable/cmake for more details.
 #
 # Besides, this `Makefiles` makes `:mak` in Vim work like a charm!
 
@@ -51,10 +50,8 @@ test: release_test
 fmt:
 	${CLANG_FORMAT} -i src/*.cc src/*.h
 
-# TODO(dkorolev): Use the proper repo & branch name.
 CMakeLists.txt:
-	@curl -s https://raw.githubusercontent.com/dimacurrentai/Current/cmake/cmake/CMakeLists.txt >$@
-	# TODO(dkorolev): Fix the repo & branch on the line above once merged.
+	@curl -s https://raw.githubusercontent.com/C5T/Current/stable/cmake/CMakeLists.txt >$@
 
 clean:
 	rm -rf "${DEBUG_BUILD_DIR}" "${RELEASE_BUILD_DIR}"
