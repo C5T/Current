@@ -24,7 +24,7 @@ CLANG_FORMAT=$(shell echo "$${CLANG_FORMAT:-clang-format}")
 release: release_dir CMakeLists.txt
 	@MAKEFLAGS=--no-print-directory cmake --build "${RELEASE_BUILD_DIR}" -j ${CORES}
 
-release_dir: ${RELEASE_BUILD_DIR}
+release_dir: ${RELEASE_BUILD_DIR} .gitignore
 	@grep "^${RELEASE_BUILD_DIR}/$$" .gitignore >/dev/null || echo "${RELEASE_BUILD_DIR}/" >>.gitignore
 
 ${RELEASE_BUILD_DIR}: CMakeLists.txt src
@@ -36,7 +36,7 @@ test: release
 debug: debug_dir CMakeLists.txt
 	@MAKEFLAGS=--no-print-directory cmake --build "${DEBUG_BUILD_DIR}" -j ${CORES}
 
-debug_dir: ${DEBUG_BUILD_DIR}
+debug_dir: ${DEBUG_BUILD_DIR} .gitignore
 	@grep "^${DEBUG_BUILD_DIR}/$$" .gitignore >/dev/null || echo "${DEBUG_BUILD_DIR}/" >>.gitignore
 
 ${DEBUG_BUILD_DIR}: CMakeLists.txt src
@@ -52,6 +52,9 @@ fmt:
 
 CMakeLists.txt:
 	@curl -s https://raw.githubusercontent.com/C5T/Current/stable/cmake/CMakeLists.txt >$@
+
+.gitignore:
+	@touch .gitignore
 
 clean:
 	rm -rf "${DEBUG_BUILD_DIR}" "${RELEASE_BUILD_DIR}"
