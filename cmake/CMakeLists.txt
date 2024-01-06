@@ -38,21 +38,24 @@ endfunction()
 UseOrGitClone(current https://github.com/c5t/current stable)
 UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
 
+set(C5T_LIBRARIES "Threads::Threads" "C5T")
+
 # Declare shared libraries as shared library targets. Do not link them against anything external.
 file(GLOB_RECURSE BINARY_SOURCE_FILES "src/dlib_*.cc")
 foreach(SHARED_LIBRARY_SOURCE_FILE ${BINARY_SOURCE_FILES})
   get_filename_component(SHARED_LIBRARY_TARGET_NAME "${SHARED_LIBRARY_SOURCE_FILE}" NAME_WE)
   add_library(${SHARED_LIBRARY_TARGET_NAME} SHARED "${SHARED_LIBRARY_SOURCE_FILE}") 
   # TODO(dkorolev): Might be worth it to `grep` this `dlib_*.cc` source file for required library dependencies.
-  target_link_libraries(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${ALL_LIBRARIES}")
+  target_link_libraries(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${C5T_LIBRARIES}")
 endforeach()
 
-set(ALL_LIBRARIES "Threads::Threads" "C5T")
+set(ALL_LIBRARIES "${C5T_LIBRARIES}")
 # Declare libraries as library targets. And add them into the `ALL_LIBRARIES` list.
 file(GLOB_RECURSE LIBRARY_SOURCE_FILES "src/lib_*.cc")
 foreach(LIBRARY_SOURCE_FILE ${LIBRARY_SOURCE_FILES})
   get_filename_component(LIBRARY_TARGET_NAME "${LIBRARY_SOURCE_FILE}" NAME_WE)
   add_library(${LIBRARY_TARGET_NAME} "${LIBRARY_SOURCE_FILE}")
+  target_link_libraries(${LIBRARY_TARGET_NAME} PRIVATE "${C5T_LIBRARIES}")
   list(APPEND ALL_LIBRARIES "${LIBRARY_TARGET_NAME}")
 endforeach()
 
