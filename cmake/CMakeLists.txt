@@ -4,12 +4,17 @@ cmake_minimum_required(VERSION 3.14.1)
 
 project(cmake_trivial_2023 C CXX)
 
-set (CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
 find_package(Threads REQUIRED)
 
-# Settings for `googletest`. It builds faste without `gmock`.
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-option(BUILD_GMOCK OFF)
+if(NOT DEFINED ENV{CURRENT_WITH_LEVELDB})
+  message(STATUS "Disabling gmock.")
+  # Settings for `googletest`. It builds faste without `gmock`.
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  option(BUILD_GMOCK OFF)
+else()
+  message(STATUS "Using Current with LevelDB.")
+endif()
 
 # The helper to clone a dependency, or use it from a sibling dir if available.
 function(UseOrGitClone dep remote branch)
@@ -36,9 +41,18 @@ function(UseOrGitClone dep remote branch)
 endfunction()
 
 UseOrGitClone(current https://github.com/c5t/current stable)
-UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
 
-set(C5T_LIBRARIES "Threads::Threads" "C5T")
+if(NOT DEFINED ENV{CURRENT_WITH_LEVELDB})
+  UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
+else()
+  UseOrGitClone(googletest https://github.com/c5t/leveldb main)
+endif()
+
+if(NOT DEFINED ENV{CURRENT_WITH_LEVELDB})
+  set(C5T_LIBRARIES "Threads::Threads" "C5T")
+else()
+  set(C5T_LIBRARIES "Threads::Threads" "C5T" "leveldb")
+endif()
 
 # Declare shared libraries as shared library targets. Do not link them against anything external.
 file(GLOB_RECURSE BINARY_SOURCE_FILES "src/dlib_*.cc")
