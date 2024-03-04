@@ -45,21 +45,23 @@ if [[ $? -ne 0 ]]; then
 fi
 
 cat >${1:-/dev/stdout} << EOF
+// NOTE: With 'CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT' '#define'-d it takes ~0.03 seconds to "build" this file.
+
 // clang-format off
 
 #ifndef CURRENT_BUILD_H
 #define CURRENT_BUILD_H
 
+#ifndef CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
 #include "$SCRIPT_DIR/../port.h"
-
 #include <chrono>
 #include <ctime>
 #include <vector>
 #include <string>
-
 #include "$SCRIPT_DIR/../typesystem/struct.h"
 #include "$SCRIPT_DIR/../typesystem/optional.h"
 #include "$SCRIPT_DIR/../bricks/strings/split.h"
+#endif  // CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
 
 namespace current {
 namespace build {
@@ -73,6 +75,7 @@ constexpr static const char* kCompilerFlags = "$CPPFLAGS";
 constexpr static const char* kLinkerFlags = "$LDFLAGS";
 constexpr static const char* kCompilerInfo = "$COMPILER_INFO";
 
+#ifndef CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
 inline const std::vector<std::string>& GitDiffNames() {
   static std::vector<std::string> result = current::strings::Split("$GIT_DIFF_NAMES", '\n');
   return result;
@@ -201,6 +204,7 @@ CURRENT_STRUCT(BuildInfo) {
     return !operator==(rhs);
   }
 };
+#endif  // CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
 
 }  // namespace current::build
 }  // namespace current
