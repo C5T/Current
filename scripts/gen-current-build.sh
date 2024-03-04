@@ -9,7 +9,7 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-COMPILER_INFO="$($CPLUSPLUS -v 2>&1)"
+COMPILER_INFO="$(${CPLUSPLUS:-g++} -v 2>&1)"
 if [[ $? -ne 0 ]]; then
 	exit 1
 fi
@@ -44,7 +44,7 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-cat >$1 << EOF
+cat >${1:-/dev/stdout} << EOF
 // clang-format off
 
 #ifndef CURRENT_BUILD_H
@@ -68,7 +68,7 @@ constexpr static const char* kBuildDateTime = __DATE__ ", " __TIME__;
 constexpr static const char* kGitCommit = "$GIT_COMMIT";
 constexpr static const char* kGitBranch = "$GIT_BRANCH";
 constexpr static const char* kOS = "$OS_VERSION";
-constexpr static const char* kCompiler = "$CPLUSPLUS";
+constexpr static const char* kCompiler = "${CPLUSPLUS:-default[g++]}";
 constexpr static const char* kCompilerFlags = "$CPPFLAGS";
 constexpr static const char* kLinkerFlags = "$LDFLAGS";
 constexpr static const char* kCompilerInfo = "$COMPILER_INFO";
