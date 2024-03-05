@@ -37,6 +37,9 @@ fi
 mkdir -p src
 cat >src/hw.cc <<EOF
 #include <iostream>
+#ifndef C5T_CMAKE_PROJECT
+#error "'C5T_CMAKE_PROJECT' is not defined, are you using Current under 'cmake' with the proper 'CMakeLists.txt'?"
+#endif
 int main() {
 #ifdef NDEBUG
   std::cout << "Hello, World! NDEBUG=1." << std::endl;
