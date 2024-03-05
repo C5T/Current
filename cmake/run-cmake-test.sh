@@ -92,8 +92,12 @@ echo "::group::.current_debug/hw"
 .current_debug/hw
 echo "::endgroup::"
 
+echo
+
+# Test that the `current_build.h` file is generated automatically and added into the path.
+# TODO(dkorolev): It should make it into `CMakeLists.txt` to generate this file.
+
 echo "::group::build build_info"
-# TODO(dkorolev): It should make it into `CMakeLists.txt` to generate this file.s
 ./current/scripts/gen-current-build.sh src/tmp_current_build.h
 cat >src/build_info.cc <<EOF
 #include <iostream>
@@ -107,6 +111,8 @@ int main() {
 EOF
 make
 echo "::endgroup::"
+
+echo
 
 echo "::group::run build_info"
 .current/build_info
