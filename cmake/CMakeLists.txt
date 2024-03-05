@@ -35,6 +35,7 @@ function(UseOrGitClone dep remote branch)
   endif()
 endfunction()
 
+# NOTE(dkorolev): This is about to be changed back once https://github.com/C5T/Current/pull/966 is merged!
 UseOrGitClone(current https://github.com/dkorolev/current current_build_autogen_header_for_cmake)
 UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
 
