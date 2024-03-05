@@ -94,17 +94,14 @@ echo "::endgroup::"
 
 echo
 
-# Test that the `current_build.h` file is generated automatically and added into the path.
-# TODO(dkorolev): It should make it into `CMakeLists.txt` to generate this file.
-
+# Test that the `current_build.h` file is generated automatically for each build.
 echo "::group::build build_info"
-./current/scripts/gen-current-build.sh src/tmp_current_build.h
 cat >src/build_info.cc <<EOF
 #include <iostream>
 #ifndef C5T_CMAKE_PROJECT
 #error "'C5T_CMAKE_PROJECT' is not defined, are you using Current under 'cmake' with the proper 'CMakeLists.txt'?"
 #endif
-#include "tmp_current_build.h"
+#include "current_build.h"
 int main() {
   std::cout << "Successfully built at: " << current::build::cmake::kBuildDateTime << std::endl;
 }
@@ -115,6 +112,14 @@ echo "::endgroup::"
 echo
 
 echo "::group::run build_info"
+.current/build_info
+echo "::endgroup::"
+
+echo
+
+echo "::group::re-run build_info"
+touch src/build_info.cc
+make
 .current/build_info
 echo "::endgroup::"
 
