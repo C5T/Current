@@ -92,7 +92,7 @@ echo "::group::.current_debug/hw"
 .current_debug/hw
 echo "::endgroup::"
 
-echo "::group::build_info"
+echo "::group::build build_info"
 # TODO(dkorolev): It should make it into `CMakeLists.txt` to generate this file.s
 ./current/scripts/gen-current-build.sh src/tmp_current_build.h
 cat >src/build_info.cc <<EOF
@@ -102,10 +102,13 @@ cat >src/build_info.cc <<EOF
 #endif
 #include "tmp_current_build.h"
 int main() {
-  std::cout << current::build::cmake::kBuildDateTime << std::endl;
+  std::cout << "Successfully built at: " << current::build::cmake::kBuildDateTime << std::endl;
 }
 EOF
 make
+echo "::endgroup::"
+
+echo "::group::run build_info"
 .current/build_info
 echo "::endgroup::"
 

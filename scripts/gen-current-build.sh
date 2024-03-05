@@ -15,10 +15,10 @@ if [[ $? -ne 0 ]]; then
 fi
 COMPILER_INFO=${COMPILER_INFO//$'\n'/\\n}  # JSON-friendly newlines.
 
-GIT_COMMIT="$(git rev-parse HEAD || echo '<not under git>')"
-GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD || echo '<not under git>')"
-GIT_STATUS="$(git status || echo '<not under git>')"
-GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only || echo '<not under git>')"
+GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo '<not under git>')"
+GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '<not under git>')"
+GIT_STATUS="$(git status 2>/dev/null || echo '<not under git>')"
+GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only 2>/dev/null || echo '<not under git>')"
 GIT_DIFF_NAMES=${GIT_DIFF_NAMES_MULTILINE//$'\n'/\\n}
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -27,7 +27,7 @@ else
   MD5SUM=md5sum
 fi
 
-GIT_DIFF_MD5SUM="$(git diff --no-ext-diff | $MD5SUM || echo '<not under git>')"
+GIT_DIFF_MD5SUM="$(git diff --no-ext-diff 2>/dev/null | $MD5SUM || echo '<not under git>')"
 
 cat >${1:-/dev/stdout} << EOF
 // NOTE: With 'C5T_CMAKE_PROJECT' '#define'-d it takes ~0.03 seconds to "build" this file.
