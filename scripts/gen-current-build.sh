@@ -45,14 +45,14 @@ if [[ $? -ne 0 ]]; then
 fi
 
 cat >${1:-/dev/stdout} << EOF
-// NOTE: With 'CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT' '#define'-d it takes ~0.03 seconds to "build" this file.
+// NOTE: With 'C5T_CMAKE_PROJECT' '#define'-d it takes ~0.03 seconds to "build" this file.
 
 // clang-format off
 
 #ifndef CURRENT_BUILD_H
 #define CURRENT_BUILD_H
 
-#ifndef CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
+#ifndef C5T_CMAKE_PROJECT
 #include "$SCRIPT_DIR/../port.h"
 #include <chrono>
 #include <ctime>
@@ -61,10 +61,14 @@ cat >${1:-/dev/stdout} << EOF
 #include "$SCRIPT_DIR/../typesystem/struct.h"
 #include "$SCRIPT_DIR/../typesystem/optional.h"
 #include "$SCRIPT_DIR/../bricks/strings/split.h"
-#endif  // CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
+#endif  // C5T_CMAKE_PROJECT
 
 namespace current {
 namespace build {
+
+#ifdef C5T_CMAKE_PROJECT
+namespace cmake {
+#endif  // C5T_CMAKE_PROJECT
 
 constexpr static const char* kBuildDateTime = __DATE__ ", " __TIME__;
 constexpr static const char* kGitCommit = "$GIT_COMMIT";
@@ -75,11 +79,13 @@ constexpr static const char* kCompilerFlags = "$CPPFLAGS";
 constexpr static const char* kLinkerFlags = "$LDFLAGS";
 constexpr static const char* kCompilerInfo = "$COMPILER_INFO";
 
-#ifndef CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
+#ifndef C5T_CMAKE_PROJECT
 inline const std::vector<std::string>& GitDiffNames() {
   static std::vector<std::string> result = current::strings::Split("$GIT_DIFF_NAMES", '\n');
   return result;
 }
+
+// TODO(dkorolev): Maybe this function should be elsewhere, under some "proper" Current source dir?
 
 // A hacky, but cross-platform way to parse \`kBuildDateTime\` since:
 // * \`__DATE__\` always contains English months,
@@ -204,7 +210,12 @@ CURRENT_STRUCT(BuildInfo) {
     return !operator==(rhs);
   }
 };
-#endif  // CURRENT_BUILD_H_FOR_CMAKE_BASED_PROJECT
+#endif  // C5T_CMAKE_PROJECT
+
+#ifdef C5T_CMAKE_PROJECT
+}  // namespace current::build::cmake
+using namespace cmake;
+#endif  // C5T_CMAKE_PROJECT
 
 }  // namespace current::build
 }  // namespace current
