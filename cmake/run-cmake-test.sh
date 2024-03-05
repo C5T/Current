@@ -35,20 +35,14 @@ fi
 # No need to `curl` the very `CMakeLists.txt` file, as the `Makefile` will do it if and as needed.
 
 mkdir -p src
-./current/scripts/gen-current-build.sh src/tmp_current_build.h
 cat >src/hw.cc <<EOF
 #include <iostream>
-#ifndef C5T_CMAKE_PROJECT
-#error "'C5T_CMAKE_PROJECT' is not defined, are you using Current under 'cmake' with the proper 'CMakeLists.txt'?"
-#endif
-#include "tmp_current_build.h"
 int main() {
 #ifdef NDEBUG
   std::cout << "Hello, World! NDEBUG=1." << std::endl;
 #else
   std::cout << "Hello, World! NDEBUG is unset." << std::endl;
 #endif
-  std::cout << current::build::cmake::kBuildDateTime << std::endl;
 }
 EOF
 
@@ -96,6 +90,28 @@ fi
 
 echo "::group::.current_debug/hw"
 .current_debug/hw
+echo "::endgroup::"
+
+echo "::group::build_info"
+# TODO(dkorolev): It should make it into `CMakeLists.txt` to generate this file.s
+./current/scripts/gen-current-build.sh src/tmp_current_build.h
+cat >src/build_info.cc <<EOF
+#include <iostream>
+#ifndef C5T_CMAKE_PROJECT
+#error "'C5T_CMAKE_PROJECT' is not defined, are you using Current under 'cmake' with the proper 'CMakeLists.txt'?"
+#endif
+#include "tmp_current_build.h"
+int main() {
+  std::cout << current::build::cmake::kBuildDateTime << std::endl;
+}
+EOF
+make
+.current/build_info
+echo "::endgroup::"
+
+# This runs `cmake .` for Release mode, which is output into `.current`.
+echo "::group::configure"
+make .current
 echo "::endgroup::"
 
 cat >src/lib_add.cc <<EOF
