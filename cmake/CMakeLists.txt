@@ -17,14 +17,17 @@ function(UseOrGitClone dep remote branch)
     message(STATUS "Using `${dep}` from `CMAKE_SOURCE_DIR/${dep}'.")
     add_subdirectory("${CMAKE_SOURCE_DIR}/${dep}" ${dep})
     message(STATUS "Using `${dep}` from `CMAKE_SOURCE_DIR/${dep}': Configured.")
+    set("SRC_DIR_${dep}" "${CMAKE_SOURCE_DIR}/${dep}" PARENT_SCOPE)
   elseif(EXISTS "${CMAKE_SOURCE_DIR}/../${dep}" AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/../${dep}")
     message(STATUS "Using `${dep}` from `CMAKE_SOURCE_DIR/../${dep}'.")
     add_subdirectory("${CMAKE_SOURCE_DIR}/../${dep}" ${dep})
     message(STATUS "Using `${dep}` from `CMAKE_SOURCE_DIR/../${dep}': Configured.")
+    set("SRC_DIR_${dep}" "${CMAKE_SOURCE_DIR}/../${dep}" PARENT_SCOPE)
   elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../${dep}" AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../${dep}")
     message(STATUS "Using `${dep}` from `CMAKE_CURRENT_SOURCE_DIR/../${dep}'.")
     add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../${dep}" ${dep})
     message(STATUS "Using `${dep}` from `CMAKE_CURRENT_SOURCE_DIR/../${dep}': Configured.")
+    set("SRC_DIR_${dep}" "${CMAKE_CURRENT_SOURCE_DIR}/../${dep}" PARENT_SCOPE)
   else()
     message(STATUS "Cloning `${dep}` from `${remote}:${branch}` ...")
     execute_process(OUTPUT_QUIET ERROR_QUIET COMMAND git clone --depth 1 -b ${branch} ${remote})
@@ -32,12 +35,20 @@ function(UseOrGitClone dep remote branch)
     file(APPEND .gitignore "${dep}/\n")
     add_subdirectory("${CMAKE_SOURCE_DIR}/${dep}" ${dep})
     message(STATUS "Cloning `${dep}` from `${remote}:${branch}`: Configured.")
+    set("SRC_DIR_${dep}" "${CMAKE_SOURCE_DIR}/${dep}" PARENT_SCOPE)
   endif()
 endfunction()
 
 # NOTE(dkorolev): This is about to be changed back once https://github.com/C5T/Current/pull/966 is merged!
 UseOrGitClone(current https://github.com/dkorolev/current current_build_autogen_header_for_cmake)
 UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
+
+add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${SRC_DIR_current}/current_build.h")
+
+add_custom_command(OUTPUT "${SRC_DIR_current}/current_build.h"
+                   COMMAND "${SRC_DIR_current}/scripts/gen-current-build.sh"
+                   ARGS "${SRC_DIR_current}/current_build.h"
+                   DEPENDS src)
 
 set(C5T_LIBRARIES "Threads::Threads" "C5T")
 
