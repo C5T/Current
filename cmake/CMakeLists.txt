@@ -35,7 +35,7 @@ function(UseOrGitClone dep remote branch)
   endif()
 endfunction()
 
-UseOrGitClone(current https://github.com/c5t/current stable)
+UseOrGitClone(current https://github.com/dkorolev/current current_build_autogen_header_for_cmake)
 UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
 
 set(C5T_LIBRARIES "Threads::Threads" "C5T")
