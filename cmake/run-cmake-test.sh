@@ -118,6 +118,7 @@ echo "::endgroup::"
 echo
 
 echo "::group::re-run build_info"
+sleep 1
 touch src/build_info.cc
 make
 .current/build_info
