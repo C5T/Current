@@ -162,6 +162,9 @@ TEST(SmokeCurrentGoogletest, TwoPlusThree) {
 }
 EOF
 
+# Force re-configure after adding more into `src/`, appears to be important on the `macos-latest` GitHub test runner.
+touch CMakeLists.txt
+
 echo
 
 echo "::group::release_test"
