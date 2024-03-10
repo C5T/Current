@@ -9,28 +9,16 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-COMPILER_INFO="$($CPLUSPLUS -v 2>&1)"
+COMPILER_INFO="$(${CPLUSPLUS:-g++} -v 2>&1)"
 if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 COMPILER_INFO=${COMPILER_INFO//$'\n'/\\n}  # JSON-friendly newlines.
 
-GIT_COMMIT="$(git rev-parse HEAD)"
-if [[ $? -ne 0 ]]; then
-	exit 1
-fi
-
-GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-if [[ $? -ne 0 ]]; then
-	exit 1
-fi
-
-GIT_STATUS="$(git status)"
-if [[ $? -ne 0 ]]; then
-	exit 1
-fi
-
-GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only)"
+GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo '<not under git>')"
+GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '<not under git>')"
+GIT_STATUS="$(git status 2>/dev/null || echo '<not under git>')"
+GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only 2>/dev/null || echo '<not under git>')"
 GIT_DIFF_NAMES=${GIT_DIFF_NAMES_MULTILINE//$'\n'/\\n}
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -39,44 +27,50 @@ else
   MD5SUM=md5sum
 fi
 
-GIT_DIFF_MD5SUM="$(git diff --no-ext-diff | $MD5SUM)"
-if [[ $? -ne 0 ]]; then
-	exit 1
-fi
+GIT_DIFF_MD5SUM="$(git diff --no-ext-diff 2>/dev/null | $MD5SUM || echo '<not under git>')"
 
-cat >$1 << EOF
+cat >${1:-/dev/stdout} << EOF
+// NOTE: With 'C5T_CMAKE_PROJECT' '#define'-d it takes ~0.03 seconds to "build" this file.
+
 // clang-format off
 
 #ifndef CURRENT_BUILD_H
 #define CURRENT_BUILD_H
 
+#ifndef C5T_CMAKE_PROJECT
 #include "$SCRIPT_DIR/../port.h"
-
 #include <chrono>
 #include <ctime>
 #include <vector>
 #include <string>
-
 #include "$SCRIPT_DIR/../typesystem/struct.h"
 #include "$SCRIPT_DIR/../typesystem/optional.h"
 #include "$SCRIPT_DIR/../bricks/strings/split.h"
+#endif  // C5T_CMAKE_PROJECT
 
 namespace current {
 namespace build {
+
+#ifdef C5T_CMAKE_PROJECT
+namespace cmake {
+#endif  // C5T_CMAKE_PROJECT
 
 constexpr static const char* kBuildDateTime = __DATE__ ", " __TIME__;
 constexpr static const char* kGitCommit = "$GIT_COMMIT";
 constexpr static const char* kGitBranch = "$GIT_BRANCH";
 constexpr static const char* kOS = "$OS_VERSION";
-constexpr static const char* kCompiler = "$CPLUSPLUS";
+constexpr static const char* kCompiler = "${CPLUSPLUS:-default[g++]}";
 constexpr static const char* kCompilerFlags = "$CPPFLAGS";
 constexpr static const char* kLinkerFlags = "$LDFLAGS";
 constexpr static const char* kCompilerInfo = "$COMPILER_INFO";
 
+#ifndef C5T_CMAKE_PROJECT
 inline const std::vector<std::string>& GitDiffNames() {
   static std::vector<std::string> result = current::strings::Split("$GIT_DIFF_NAMES", '\n');
   return result;
 }
+
+// TODO(dkorolev): Maybe this function should be elsewhere, under some "proper" Current source dir?
 
 // A hacky, but cross-platform way to parse \`kBuildDateTime\` since:
 // * \`__DATE__\` always contains English months,
@@ -201,6 +195,12 @@ CURRENT_STRUCT(BuildInfo) {
     return !operator==(rhs);
   }
 };
+#endif  // C5T_CMAKE_PROJECT
+
+#ifdef C5T_CMAKE_PROJECT
+}  // namespace current::build::cmake
+using namespace cmake;
+#endif  // C5T_CMAKE_PROJECT
 
 }  // namespace current::build
 }  // namespace current
