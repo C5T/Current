@@ -47,10 +47,14 @@ endfunction()
 
 function(UseGitOrClone remote)
   UseGitOrCloneImpl("${remote}" FALSE _)
+  cmake_path(GET remote FILENAME dep)
+  set("SRC_DIR_${dep}" "${SRC_DIR_${dep}}" PARENT_SCOPE)
 endfunction()
 
 function(UseGitOrCloneBranch remote branch)
   UseGitOrCloneImpl("${remote}" TRUE "${branch}")
+  cmake_path(GET remote FILENAME dep)
+  set("SRC_DIR_${dep}" "${SRC_DIR_${dep}}" PARENT_SCOPE)
 endfunction()
 
 UseGitOrClone(https://github.com/c5t/current)
