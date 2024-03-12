@@ -94,7 +94,7 @@ echo "::endgroup::"
 
 echo
 
-# Test that the `current_build.h` file is generated automatically for each build.
+# Test that the `current_build_info.h` file is [re-]generated automatically for each build.
 echo "::group::build build_info"
 cat >src/build_info.cc <<EOF
 #include <iostream>
@@ -118,10 +118,13 @@ echo "::endgroup::"
 
 echo
 
-echo "::group::re-run build_info"
+echo "::group::re-build build_info after sleep 1"
 sleep 1
 touch src/build_info.cc
 make
+echo "::endgroup::"
+
+echo "::group::re-run build_info"
 .current/build_info
 echo "::endgroup::"
 
