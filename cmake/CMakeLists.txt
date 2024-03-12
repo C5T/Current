@@ -52,8 +52,7 @@ function(UseGitOrCloneBranch dep remote branch)
   UseGitOrCloneImpl("${dep}" "${remote}" TRUE "${branch}")
 endfunction()
 
-# NOTE(dkorolev): This is about to be changed back once https://github.com/C5T/Current/pull/966 is merged!
-UseGitOrCloneBranch(current https://github.com/dkorolev/current current_build_autogen_header_for_cmake)
+UseGitOrClone(current https://github.com/c5t/current)
 UseGitOrClone(googletest https://github.com/c5t/googletest)
 
 add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${SRC_DIR_current}/current_build.h")
