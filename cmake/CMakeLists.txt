@@ -12,7 +12,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 option(BUILD_GMOCK OFF)
 
 # The helper to clone a dependency, or use it from a sibling dir if available.
-function(UseOrGitClone dep remote branch)
+function(UseGitOrCloneImpl dep remote use_custom_branch custom_branch)
   if(EXISTS "${CMAKE_SOURCE_DIR}/${dep}" AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/${dep}")
     message(STATUS "Using `${dep}` from `CMAKE_SOURCE_DIR/${dep}'.")
     add_subdirectory("${CMAKE_SOURCE_DIR}/${dep}" ${dep})
@@ -29,19 +29,32 @@ function(UseOrGitClone dep remote branch)
     message(STATUS "Using `${dep}` from `CMAKE_CURRENT_SOURCE_DIR/../${dep}': Configured.")
     set("SRC_DIR_${dep}" "${CMAKE_CURRENT_SOURCE_DIR}/../${dep}" PARENT_SCOPE)
   else()
-    message(STATUS "Cloning `${dep}` from `${remote}:${branch}` ...")
-    execute_process(OUTPUT_QUIET ERROR_QUIET COMMAND git clone --depth 1 -b ${branch} ${remote})
-    file(TOUCH .gitignore)
-    file(APPEND .gitignore "${dep}/\n")
+    if(NOT use_custom_branch)
+      message(STATUS "Cloning `${dep}` from `${remote}` using the default branch ...")
+      execute_process(OUTPUT_QUIET ERROR_QUIET COMMAND git clone --depth 1 ${remote})
+    else()
+      message(STATUS "Cloning `${dep}` from `${remote}:${branch}` ...")
+      execute_process(OUTPUT_QUIET ERROR_QUIET COMMAND git clone --depth 1 -b ${custom_branch} ${remote})
+    endif()
     add_subdirectory("${CMAKE_SOURCE_DIR}/${dep}" ${dep})
-    message(STATUS "Cloning `${dep}` from `${remote}:${branch}`: Configured.")
+    message(STATUS "Cloning `${dep}` from `${remote}`: Configured.")
+    file(TOUCH .gitignore)
+    file(APPEND .gitignore "${dep}/\n")  # NOTE(dkorolev): This may add extra `.gitignore` lines, ignore for now.
     set("SRC_DIR_${dep}" "${CMAKE_SOURCE_DIR}/${dep}" PARENT_SCOPE)
   endif()
 endfunction()
 
+function(UseGitOrClone dep remote)
+  UseGitOrCloneImpl("${dep}" "${remote}" FALSE _)
+endfunction()
+
+function(UseGitOrCloneBranch dep remote branch)
+  UseGitOrCloneImpl("${dep}" "${remote}" TRUE "${branch}")
+endfunction()
+
 # NOTE(dkorolev): This is about to be changed back once https://github.com/C5T/Current/pull/966 is merged!
-UseOrGitClone(current https://github.com/dkorolev/current current_build_autogen_header_for_cmake)
-UseOrGitClone(googletest https://github.com/c5t/googletest v1.14)
+UseGitOrCloneBranch(current https://github.com/dkorolev/current current_build_autogen_header_for_cmake)
+UseGitOrClone(googletest https://github.com/c5t/googletest)
 
 add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${SRC_DIR_current}/current_build.h")
 
