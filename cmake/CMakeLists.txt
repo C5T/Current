@@ -56,19 +56,14 @@ endfunction()
 UseGitOrClone(https://github.com/c5t/current)
 UseGitOrClone(https://github.com/c5t/googletest)
 
-add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${C5T_DEP_DIR_current}/current_build.h")
-
-add_custom_command(OUTPUT "${C5T_DEP_DIR_current}/current_build.h"
-                   COMMAND "${C5T_DEP_DIR_current}/scripts/gen-current-build.sh"
-                   ARGS "${C5T_DEP_DIR_current}/current_build.h"
-                   DEPENDS src)
-
 add_custom_target(C5T_CURRENT_BUILD_INFO_H_TARGET ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
                    COMMAND "${C5T_DEP_DIR_current}/scripts/gen-current-build.sh"
                    ARGS "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
-                   DEPENDS src)
+                   DEPENDS inc/current_build_info.h.force_rebuild)
+
+add_custom_command(OUTPUT inc/current_build_info.h.force_rebuild COMMAND cmake -E echo >/dev/null)
 
 set(C5T_LIBRARIES "Threads::Threads" "C5T")
 

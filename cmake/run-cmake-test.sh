@@ -94,16 +94,17 @@ echo "::endgroup::"
 
 echo
 
-# Test that the `current_build.h` file is generated automatically for each build.
+# Test that the `current_build_info.h` file is [re-]generated automatically for each build.
 echo "::group::build build_info"
 cat >src/build_info.cc <<EOF
 #include <iostream>
 #ifndef C5T_CMAKE_PROJECT
 #error "'C5T_CMAKE_PROJECT' is not defined, are you using Current under 'cmake' with the proper 'CMakeLists.txt'?"
 #endif
-#include "current_build.h"
+#include "current_build_info.h"
 int main() {
   std::cout << "Successfully built at: " << current::build::cmake::kBuildDateTime << std::endl;
+  std::cout << "Autogen .h 'date +%s': " << current::build::cmake::kCurrentBuildHeaderUnixEpochSeconds << std::endl;
 }
 EOF
 make
@@ -117,10 +118,13 @@ echo "::endgroup::"
 
 echo
 
-echo "::group::re-run build_info"
+echo "::group::re-build build_info after sleep 1"
 sleep 1
 touch src/build_info.cc
 make
+echo "::endgroup::"
+
+echo "::group::re-run build_info"
 .current/build_info
 echo "::endgroup::"
 
