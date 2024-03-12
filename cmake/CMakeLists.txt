@@ -56,11 +56,11 @@ endfunction()
 UseGitOrClone(https://github.com/c5t/current)
 UseGitOrClone(https://github.com/c5t/googletest)
 
-add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${SRC_DIR_current}/current_build.h")
+add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${C5T_DEP_DIR_current}/current_build.h")
 
-add_custom_command(OUTPUT "${SRC_DIR_current}/current_build.h"
-                   COMMAND "${SRC_DIR_current}/scripts/gen-current-build.sh"
-                   ARGS "${SRC_DIR_current}/current_build.h"
+add_custom_command(OUTPUT "${C5T_DEP_DIR_current}/current_build.h"
+                   COMMAND "${C5T_DEP_DIR_current}/scripts/gen-current-build.sh"
+                   ARGS "${C5T_DEP_DIR_current}/current_build.h"
                    DEPENDS src)
 
 set(C5T_LIBRARIES "Threads::Threads" "C5T")
