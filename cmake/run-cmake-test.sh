@@ -101,9 +101,10 @@ cat >src/build_info.cc <<EOF
 #ifndef C5T_CMAKE_PROJECT
 #error "'C5T_CMAKE_PROJECT' is not defined, are you using Current under 'cmake' with the proper 'CMakeLists.txt'?"
 #endif
-#include "current_build.h"
+#include "current_build_info.h"
 int main() {
   std::cout << "Successfully built at: " << current::build::cmake::kBuildDateTime << std::endl;
+  std::cout << "Autogen .h 'date +%s': " << current::build::cmake::kCurrentBuildHeaderUnixEpochSeconds << std::endl;
 }
 EOF
 make
