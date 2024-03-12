@@ -12,7 +12,8 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 option(BUILD_GMOCK OFF)
 
 # The helper to clone a dependency, or use it from a sibling dir if available.
-function(UseGitOrCloneImpl dep remote use_custom_branch custom_branch)
+function(UseGitOrCloneImpl remote use_custom_branch custom_branch)
+  cmake_path(GET remote FILENAME dep)
   if(EXISTS "${CMAKE_SOURCE_DIR}/${dep}" AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/${dep}")
     message(STATUS "Using `${dep}` from `CMAKE_SOURCE_DIR/${dep}'.")
     add_subdirectory("${CMAKE_SOURCE_DIR}/${dep}" ${dep})
@@ -44,16 +45,16 @@ function(UseGitOrCloneImpl dep remote use_custom_branch custom_branch)
   endif()
 endfunction()
 
-function(UseGitOrClone dep remote)
-  UseGitOrCloneImpl("${dep}" "${remote}" FALSE _)
+function(UseGitOrClone remote)
+  UseGitOrCloneImpl("${remote}" FALSE _)
 endfunction()
 
-function(UseGitOrCloneBranch dep remote branch)
-  UseGitOrCloneImpl("${dep}" "${remote}" TRUE "${branch}")
+function(UseGitOrCloneBranch remote branch)
+  UseGitOrCloneImpl("${remote}" TRUE "${branch}")
 endfunction()
 
-UseGitOrClone(current https://github.com/c5t/current)
-UseGitOrClone(googletest https://github.com/c5t/googletest)
+UseGitOrClone(https://github.com/c5t/current)
+UseGitOrClone(https://github.com/c5t/googletest)
 
 add_custom_target(C5T_CURRENT_BUILD_H_TARGET ALL DEPENDS "${SRC_DIR_current}/current_build.h")
 
