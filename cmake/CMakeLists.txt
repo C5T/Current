@@ -63,12 +63,11 @@ add_custom_command(OUTPUT "${C5T_DEP_DIR_current}/current_build.h"
                    ARGS "${C5T_DEP_DIR_current}/current_build.h"
                    DEPENDS src)
 
-# TODO(dkorolev): [re-]add `/inc/` after the respective `mkdir -p` command is live in `C5T/Current:stable`.
-add_custom_target(C5T_CURRENT_BUILD_INFO_H_TARGET ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/current_build_info.h")  # TODO add inc/
+add_custom_target(C5T_CURRENT_BUILD_INFO_H_TARGET ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h")
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/current_build_info.h"  # TODO add inc/
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
                    COMMAND "${C5T_DEP_DIR_current}/scripts/gen-current-build.sh"
-                   ARGS "${CMAKE_CURRENT_BINARY_DIR}/current_build_info.h"  # TODO add inc/
+                   ARGS "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
                    DEPENDS src)
 
 set(C5T_LIBRARIES "Threads::Threads" "C5T")
@@ -81,7 +80,7 @@ foreach(SHARED_LIBRARY_SOURCE_FILE ${BINARY_SOURCE_FILES})
   add_dependencies(${SHARED_LIBRARY_TARGET_NAME} C5T_CURRENT_BUILD_INFO_H_TARGET)
   # TODO(dkorolev): Might be worth it to `grep` this `dlib_*.cc` source file for required library dependencies.
   target_compile_definitions(${SHARED_LIBRARY_TARGET_NAME} PRIVATE C5T_CMAKE_PROJECT)
-  target_include_directories(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")  # TODO add inc/
+  target_include_directories(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/inc")
   target_link_libraries(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${C5T_LIBRARIES}")
 endforeach()
 
@@ -93,7 +92,7 @@ foreach(LIBRARY_SOURCE_FILE ${LIBRARY_SOURCE_FILES})
   add_library(${LIBRARY_TARGET_NAME} "${LIBRARY_SOURCE_FILE}")
   add_dependencies(${LIBRARY_TARGET_NAME} C5T_CURRENT_BUILD_INFO_H_TARGET)
   target_compile_definitions(${LIBRARY_TARGET_NAME} PRIVATE C5T_CMAKE_PROJECT)
-  target_include_directories(${LIBRARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/")  # TODO add inc/
+  target_include_directories(${LIBRARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/inc")
   target_link_libraries(${LIBRARY_TARGET_NAME} PRIVATE "${C5T_LIBRARIES}")
   list(APPEND ALL_LIBRARIES "${LIBRARY_TARGET_NAME}")
 endforeach()
@@ -106,7 +105,7 @@ foreach(BINARY_SOURCE_FILE ${BINARY_SOURCE_FILES})
     add_executable(${BINARY_TARGET_NAME} "${BINARY_SOURCE_FILE}") 
     add_dependencies(${BINARY_TARGET_NAME} C5T_CURRENT_BUILD_INFO_H_TARGET)
     target_compile_definitions(${BINARY_TARGET_NAME} PRIVATE C5T_CMAKE_PROJECT)
-    target_include_directories(${BINARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")  # TODO add inc/
+    target_include_directories(${BINARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/inc")
     target_link_libraries(${BINARY_TARGET_NAME} PRIVATE "${ALL_LIBRARIES}")
   endif()
 endforeach()
@@ -118,7 +117,7 @@ foreach(TEST_SOURCE_FILE ${TEST_SOURCE_FILES})
   get_filename_component(TEST_TARGET_NAME "${TEST_SOURCE_FILE}" NAME_WE)
   add_executable(${TEST_TARGET_NAME} "${TEST_SOURCE_FILE}") 
   add_dependencies(${TEST_TARGET_NAME} C5T_CURRENT_BUILD_INFO_H_TARGET)
-  target_include_directories(${TEST_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")  # TODO add inc/
+  target_include_directories(${TEST_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/inc")
   target_link_libraries(${TEST_TARGET_NAME} PRIVATE gtest_main "${ALL_LIBRARIES}")
   add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
 endforeach()
