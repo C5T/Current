@@ -18,18 +18,24 @@ COMPILER_INFO=${COMPILER_INFO//$'\n'/\\n}  # JSON-friendly newlines.
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo '<not under git>')"
 GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '<not under git>')"
 GIT_STATUS="$(git status 2>/dev/null || echo '<not under git>')"
-GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only 2>/dev/null || echo '<not under git>')"
-GIT_DIFF_NAMES=${GIT_DIFF_NAMES_MULTILINE//$'\n'/\\n}
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  MD5SUM=md5
-else
-  MD5SUM=md5sum
+# NOTE(dkorolev): Removing the commands that may potentially run for a long time.
+#GIT_DIFF_NAMES_MULTILINE="$(git diff --name-only 2>/dev/null || echo '<not under git>')"
+#GIT_DIFF_NAMES=${GIT_DIFF_NAMES_MULTILINE//$'\n'/\\n}
+#if [[ "$OSTYPE" == "darwin"* ]]; then
+#  MD5SUM=md5
+#else
+#  MD5SUM=md5sum
+#fi
+#GIT_DIFF_MD5SUM="$(git diff --no-ext-diff 2>/dev/null | $MD5SUM || echo '<not under git>')"
+
+OUTPUT_FILE="${1:-/dev/stdout}"
+
+if [ "$1" != "" ] ; then
+  mkdir -p "$(dirname "$1")" >/dev/null 2>&1
 fi
 
-GIT_DIFF_MD5SUM="$(git diff --no-ext-diff 2>/dev/null | $MD5SUM || echo '<not under git>')"
-
-cat >${1:-/dev/stdout} << EOF
+cat >"$OUTPUT_FILE" << EOF
 // NOTE: With 'C5T_CMAKE_PROJECT' '#define'-d it takes ~0.03 seconds to "build" this file.
 
 // clang-format off
@@ -54,6 +60,8 @@ namespace build {
 #ifdef C5T_CMAKE_PROJECT
 namespace cmake {
 #endif  // C5T_CMAKE_PROJECT
+
+constexpr static unsigned long kCurrentBuildHeaderUnixEpochSeconds = $(date +%s);
 
 constexpr static const char* kBuildDateTime = __DATE__ ", " __TIME__;
 constexpr static const char* kGitCommit = "$GIT_COMMIT";
@@ -208,7 +216,10 @@ using namespace cmake;
 #endif  // CURRENT_BUILD_H
 
 // clang-format on
+EOF
 
+# NOTE(dkorolev): The commands below can be slow to run, and they're best to remove now, at least from `C5T/stable`.
+cat >/dev/null <<EOF
 // Not to make it to the structure above, but for the human reader to be able to look into later.
 
 /*
