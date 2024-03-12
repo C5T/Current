@@ -68,7 +68,9 @@ add_custom_target(C5T_CURRENT_BUILD_INFO_H_TARGET ALL DEPENDS "${CMAKE_CURRENT_B
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
                    COMMAND "${C5T_DEP_DIR_current}/scripts/gen-current-build.sh"
                    ARGS "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
-                   DEPENDS src)
+                   DEPENDS inc/current_build_info.h.force_rebuild)
+
+add_custom_command(OUTPUT inc/current_build_info.h.force_rebuild COMMAND cmake -E echo >/dev/null)
 
 set(C5T_LIBRARIES "Threads::Threads" "C5T")
 
