@@ -11,6 +11,8 @@ find_package(Threads REQUIRED)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 option(BUILD_GMOCK OFF)
 
+set_property(GLOBAL PROPERTY C5T_LIBRARIES_PROPERTY "Threads::Threads" "C5T")
+
 # The helper to clone a dependency, or use it from a sibling dir if available.
 function(UseGitOrCloneImpl remote use_custom_branch custom_branch)
   cmake_path(GET remote FILENAME dep)
@@ -43,6 +45,16 @@ function(UseGitOrCloneImpl remote use_custom_branch custom_branch)
     file(APPEND .gitignore "${dep}/\n")  # NOTE(dkorolev): This may add extra `.gitignore` lines, ignore for now.
     set("C5T_DEP_DIR_${dep}" "${CMAKE_SOURCE_DIR}/${dep}" CACHE INTERNAL "")
   endif()
+  # If the added repository contains the `.c5t_cmake_dependency` file,
+  # then add this repo's C5T library name to all targets built by this `CMakeLists.txt`.
+  if(EXISTS "${C5T_DEP_DIR_${dep}}/.c5t_cmake_dependency")
+    message(STATUS "EXISTS ${C5T_DEP_DIR_${dep}}/.c5t_cmake_dependency!")
+    string(TOUPPER ${dep} UPPERCASE_DEP)
+    message(STATUS "ADDING C5T_${UPPERCASE_DEP}")
+    get_property(tmp GLOBAL PROPERTY C5T_LIBRARIES_PROPERTY)
+    list(APPEND tmp "C5T_${UPPERCASE_DEP}")  #"C5T_TRIVIAL_DEP")
+    set_property(GLOBAL PROPERTY C5T_LIBRARIES_PROPERTY ${tmp}) # C5T_TRIVIAL_DEP")
+  endif()
 endfunction()
 
 function(UseGitOrClone remote)
@@ -56,6 +68,15 @@ endfunction()
 UseGitOrClone(https://github.com/c5t/current)
 UseGitOrClone(https://github.com/c5t/googletest)
 
+# TODO(dkorolev): Support more than one dependency, this is just the demo / test for v0.1.
+set(C5T_DEPS $ENV{C5T_DEPS})
+if(NOT "${C5T_DEPS}" STREQUAL "")
+  message(STATUS "C5T_DEPS=${C5T_DEPS}")
+  UseGitOrClone("https://github.com/c5t/${C5T_DEPS}")  # TODO(dkorolev): `foreach()`.
+endif()
+
+get_property(C5T_LIBRARIES GLOBAL PROPERTY C5T_LIBRARIES_PROPERTY)
+
 add_custom_target(C5T_CURRENT_BUILD_INFO_H_TARGET ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
@@ -64,8 +85,6 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/inc/current_build_info.h"
                    DEPENDS inc/current_build_info.h.force_rebuild)
 
 add_custom_command(OUTPUT inc/current_build_info.h.force_rebuild COMMAND cmake -E echo >/dev/null)
-
-set(C5T_LIBRARIES "Threads::Threads" "C5T")
 
 # Declare shared libraries as shared library targets. Do not link them against anything external.
 file(GLOB_RECURSE BINARY_SOURCE_FILES "src/dlib_*.cc")

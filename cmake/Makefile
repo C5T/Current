@@ -9,6 +9,12 @@
 
 .PHONY: release debug release_dir debug_dir release_test debug_test test fmt clean
 
+# Then this `Makefile` is used to run a `cmake`-based Current build,
+# user-defined dependencies go here.
+# TODO(dkorolev): Support more than one of them on the `CMakeLists.txt` level.
+# TODO(dkorolev): Test that this works with `leveldb` too.
+C5T_DEPS=""
+
 DEBUG_BUILD_DIR=$(shell echo "$${DEBUG_BUILD_DIR:-.current_debug}")
 RELEASE_BUILD_DIR=$(shell echo "$${RELEASE_BUILD_DIR:-.current}")
 
@@ -28,7 +34,7 @@ release_dir: ${RELEASE_BUILD_DIR} .gitignore
 	@grep "^${RELEASE_BUILD_DIR}/$$" .gitignore >/dev/null || echo "${RELEASE_BUILD_DIR}/" >>.gitignore
 
 ${RELEASE_BUILD_DIR}: CMakeLists.txt src
-	@cmake -DCMAKE_BUILD_TYPE=Release -B "${RELEASE_BUILD_DIR}" .
+	@C5T_DEPS="${C5T_DEPS}" cmake -DCMAKE_BUILD_TYPE=Release -B "${RELEASE_BUILD_DIR}" .
 
 test: release
 	@(cd "${RELEASE_BUILD_DIR}"; make test)
@@ -40,7 +46,7 @@ debug_dir: ${DEBUG_BUILD_DIR} .gitignore
 	@grep "^${DEBUG_BUILD_DIR}/$$" .gitignore >/dev/null || echo "${DEBUG_BUILD_DIR}/" >>.gitignore
 
 ${DEBUG_BUILD_DIR}: CMakeLists.txt src
-	@cmake -B "${DEBUG_BUILD_DIR}" .
+	@C5T_DEPS="${C5T_DEPS}" cmake -B "${DEBUG_BUILD_DIR}" .
 
 debug_test: debug
 	@(cd "${DEBUG_BUILD_DIR}"; make test)
