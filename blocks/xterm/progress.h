@@ -174,6 +174,12 @@ class MultilineProgress final {
     return current::ProgressLine(
         os, [index, this]() { return total_ - index; }, mutex_);
   }
+  std::unique_ptr<current::ProgressLine> UniqueProgressLine(std::ostream& os = std::cout) {
+    ++total_;
+    int index = total_;
+    return std::make_unique<current::ProgressLine>(
+        os, [index, this]() { return total_ - index; }, mutex_);
+  }
 };
 
 }  // namespace current
