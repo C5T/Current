@@ -140,36 +140,36 @@ int main(int argc, char** argv) {
     std::cerr << "Demo Embedded Event Log DB running on localhost:" << port << std::flush << std::endl;
   }
 
-  HTTP(port).Register("/healthz", [](Request r) { r("OK\n"); });
+  HTTPRoutesScope scope = HTTP(port).Register("/healthz", [](Request r) { r("OK\n"); });
 
   // Schema.
   using reflection::Language;
   using reflection::SchemaInfo;
   using reflection::StructSchema;
 
-  HTTP(port).Register("/schema.h", [](Request r) {
+  scope += HTTP(port).Register("/schema.h", [](Request r) {
     StructSchema schema;
     schema.AddType<Event>();
     r(schema.GetSchemaInfo().Describe<Language::CPP>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
   });
 
-  HTTP(port).Register("/schema.fs", [](Request r) {
+  scope += HTTP(port).Register("/schema.fs", [](Request r) {
     StructSchema schema;
     schema.AddType<Event>();
     r(schema.GetSchemaInfo().Describe<Language::FSharp>(), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
   });
 
-  HTTP(port).Register("/schema.json", [](Request r) {
+  scope += HTTP(port).Register("/schema.json", [](Request r) {
     StructSchema schema;
     schema.AddType<Event>();
     r(schema.GetSchemaInfo());
   });
 
   // Subscribe.
-  HTTP(port).Register("/data", *stream);
+  scope += HTTP(port).Register("/data", *stream);
 
   // Publish.
-  HTTP(port).Register("/publish", [&stream](Request r) {
+  scope += HTTP(port).Register("/publish", [&stream](Request r) {
     if (r.method == "POST") {
       try {
         auto event = ParseJSON<Event>(r.body);
