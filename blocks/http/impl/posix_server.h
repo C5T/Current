@@ -221,6 +221,7 @@ class HTTPServerPOSIX final {
   // NOTE: The implementation of the above logic requires two separate signatures.
   //       An xvalue reference won't do it. Trust me, I've tried, and it results in horrible bugs. -- D.K.
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
+  [[nodiscard]]
   HTTPRoutesScopeEntry Register(const std::string& path,
                                 const URLPathArgs::CountMask path_args_count_mask,
                                 F& handler) {
@@ -230,6 +231,7 @@ class HTTPServerPOSIX final {
   }
 
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
+  [[nodiscard]]
   HTTPRoutesScopeEntry Register(const std::string& path,
                                 const URLPathArgs::CountMask path_args_count_mask,
                                 std::function<void(Request)> handler) {
@@ -239,12 +241,14 @@ class HTTPServerPOSIX final {
 
   // Two argument version registers handler with no URL path arguments.
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
+  [[nodiscard]]
   HTTPRoutesScopeEntry Register(const std::string& path, F& handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(
         path, [&handler](Request r) { handler(std::move(r)); }, URLPathArgs::CountMask::None, POLICY);
   }
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
+  [[nodiscard]]
   HTTPRoutesScopeEntry Register(const std::string& path, std::function<void(Request)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(path, handler, URLPathArgs::CountMask::None, POLICY);
