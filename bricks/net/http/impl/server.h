@@ -121,7 +121,7 @@ struct HTTPResponder {
     }
   }
 
-  // The actual implementation of sending the HTTP response.
+  // The generic implementation.
   template <typename T>
   static void SendHTTPResponseImpl(Connection& connection,
                                    const T& begin,
@@ -136,34 +136,162 @@ struct HTTPResponder {
     connection.BlockingWrite(begin, end, false);
   }
 
-  // Only support STL containers of chars and bytes, this does not yet cover std::string.
+  // The actual implementations of sending the HTTP response.
+  // To avoid any and all confusion with overloads, write every signature verbatim, with no default arguments.
+  // Hope this also makes builds faster. =)
+
+  // STL containers of chars and bytes, this does not yet cover std::string.
   template <typename T>
   static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       Connection& connection,
       const T& begin,
       const T& end,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = constants::kDefaultContentType,
-      const http::Headers& headers = http::Headers()) {
+      HTTPResponseCodeValue code,
+      const std::string& content_type,
+      const http::Headers& headers) {
     SendHTTPResponseImpl(connection, begin, end, code, headers, content_type);
   }
+
   template <typename T>
   static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       Connection& connection,
-      T&& container,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const http::Headers& headers = http::Headers(),
-      const std::string& content_type = constants::kDefaultContentType) {
-    SendHTTPResponseImpl(connection, container.begin(), container.end(), code, headers, content_type);
+      const T& begin,
+      const T& end,
+      HTTPResponseCodeValue code,
+      const http::Headers& headers,
+      const std::string& content_type) {
+    SendHTTPResponseImpl(connection, begin, end, code, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& begin,
+      const T& end,
+      const std::string& content_type,
+      const http::Headers& headers) {
+    SendHTTPResponseImpl(connection, begin, end, HTTPResponseCode.OK, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& begin,
+      const T& end,
+      const http::Headers& headers,
+      const std::string& content_type) {
+    SendHTTPResponseImpl(connection, begin, end, HTTPResponseCode.OK, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& begin,
+      const T& end,
+      HTTPResponseCodeValue code) {
+    SendHTTPResponseImpl(connection, begin, end, code, http::Headers(), constants::kDefaultContentType);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& begin,
+      const T& end) {
+    SendHTTPResponseImpl(connection, begin, end, HTTPResponseCode.OK, http::Headers(), constants::kDefaultContentType);
+  }
+
+  // STL containers of chars and bytes.
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& obj,
+      HTTPResponseCodeValue code,
+      const std::string& content_type,
+      const http::Headers& headers) {
+    SendHTTPResponseImpl(connection, obj.begin(), obj.end(), code, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& obj,
+      HTTPResponseCodeValue code,
+      const http::Headers& headers,
+      const std::string& content_type) {
+    SendHTTPResponseImpl(connection, obj.begin(), obj.end(), code, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& obj,
+      const std::string& content_type,
+      const http::Headers& headers) {
+    SendHTTPResponseImpl(connection, obj.begin(), obj.end(), HTTPResponseCode.OK, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& obj,
+      const http::Headers& headers,
+      const std::string& content_type) {
+    SendHTTPResponseImpl(connection, obj.begin(), obj.end(), HTTPResponseCode.OK, headers, content_type);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse(
+      Connection& connection,
+      const T& obj,
+      HTTPResponseCodeValue code) {
+    SendHTTPResponseImpl(connection, obj.begin(), obj.end(), code, http::Headers(), constants::kDefaultContentType);
+  }
+
+  template <typename T>
+  static std::enable_if_t<sizeof(typename T::value_type) == 1> SendHTTPResponse( Connection& connection,
+      const T& obj) {
+    SendHTTPResponseImpl(connection, obj.begin(), obj.end(), HTTPResponseCode.OK, http::Headers(), constants::kDefaultContentType);
   }
 
   // Special case to handle std::string.
   static void SendHTTPResponse(Connection& connection,
                                const std::string& string,
-                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                               const http::Headers& headers = http::Headers(),
-                               const std::string& content_type = constants::kDefaultContentType) {
+                               HTTPResponseCodeValue code,
+                               const http::Headers& headers,
+                               const std::string& content_type) {
     SendHTTPResponseImpl(connection, string.begin(), string.end(), code, headers, content_type);
+  }
+
+  static void SendHTTPResponse(Connection& connection,
+                               const std::string& string,
+                               HTTPResponseCodeValue code,
+                               const http::Headers& headers) {
+    SendHTTPResponseImpl(connection, string.begin(), string.end(), code, headers, constants::kDefaultContentType);
+  }
+
+  static void SendHTTPResponse(Connection& connection,
+                               const std::string& string,
+                               HTTPResponseCodeValue code,
+                               const std::string& content_type) {
+    SendHTTPResponseImpl(connection, string.begin(), string.end(), code, http::Headers(), content_type);
+  }
+
+  static void SendHTTPResponse(Connection& connection, const std::string& string, HTTPResponseCodeValue code) {
+    SendHTTPResponseImpl(connection,
+                         string.begin(),
+                         string.end(),
+                         code,
+                         http::Headers(),
+                         constants::kDefaultContentType);
+  }
+
+  static void SendHTTPResponse(Connection& connection, const std::string& string) {
+    SendHTTPResponseImpl(connection,
+                         string.begin(),
+                         string.end(),
+                         HTTPResponseCode.OK,
+                         http::Headers(),
+                         constants::kDefaultContentType);
   }
 
   // Support `CURRENT_STRUCT`-s and `CURRENT_VARIANT`-s.
@@ -171,12 +299,58 @@ struct HTTPResponder {
   static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> SendHTTPResponse(
       Connection& connection,
       T&& object,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const http::Headers& headers = http::Headers(),
-      const std::string& content_type = constants::kDefaultJSONContentType) {
+      HTTPResponseCodeValue code,
+      const http::Headers& headers,
+      const std::string& content_type) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
     SendHTTPResponseImpl(connection, s.begin(), s.end(), code, headers, content_type);
+  }
+
+  template <class T>
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> SendHTTPResponse(
+      Connection& connection,
+      T&& object,
+      HTTPResponseCodeValue code,
+      const http::Headers& headers) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = JSON(std::forward<T>(object)) + '\n';
+    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, headers, constants::kDefaultJSONContentType);
+  }
+
+  template <class T>
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> SendHTTPResponse(
+      Connection& connection,
+      T&& object,
+      HTTPResponseCodeValue code,
+      const std::string& content_type) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = JSON(std::forward<T>(object)) + '\n';
+    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, http::Headers(), content_type);
+  }
+
+  template <class T>
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> SendHTTPResponse(
+      Connection& connection,
+      T&& object,
+      HTTPResponseCodeValue code) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = JSON(std::forward<T>(object)) + '\n';
+    SendHTTPResponseImpl(connection, s.begin(), s.end(), code, http::Headers(), constants::kDefaultJSONContentType);
+  }
+
+  template <class T>
+  static std::enable_if_t<IS_CURRENT_STRUCT_OR_VARIANT(current::decay_t<T>)> SendHTTPResponse(
+      Connection& connection,
+      T&& object) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = JSON(std::forward<T>(object)) + '\n';
+    SendHTTPResponseImpl(connection,
+                         s.begin(),
+                         s.end(),
+                         HTTPResponseCode.OK,
+                         http::Headers(),
+                         constants::kDefaultJSONContentType);
   }
 };
 
