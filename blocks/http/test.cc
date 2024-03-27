@@ -96,7 +96,7 @@ TEST(HTTPAPI, Register) {
   auto reserved_port = current::net::ReserveLocalPort();
   const int port = reserved_port;
   const auto scope = HTTP(std::move(reserved_port)).Register("/get", [](Request r) { r("OK"); });
-  ASSERT_THROW(HTTP(port).Register("/get", nullptr), HandlerAlreadyExistsException);
+  ASSERT_THROW(static_cast<void>(HTTP(port).Register("/get", nullptr)), HandlerAlreadyExistsException);
   const string url = Printf("http://localhost:%d/get", port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -109,10 +109,10 @@ TEST(HTTPAPI, RegisterExceptions) {
   using namespace current::http;
   auto reserved_port = current::net::ReserveLocalPort();
   auto& http_server = HTTP(std::move(reserved_port));
-  ASSERT_THROW(http_server.Register("no_slash", nullptr), PathDoesNotStartWithSlash);
-  ASSERT_THROW(http_server.Register("/wrong_slash/", nullptr), PathEndsWithSlash);
+  ASSERT_THROW(static_cast<void>(http_server.Register("no_slash", nullptr)), PathDoesNotStartWithSlash);
+  ASSERT_THROW(static_cast<void>(http_server.Register("/wrong_slash/", nullptr)), PathEndsWithSlash);
   // The curly brackets are not necessarily wrong, but `URL::IsPathValidToRegister()` is `false` for them.
-  ASSERT_THROW(http_server.Register("/{}", nullptr), PathContainsInvalidCharacters);
+  ASSERT_THROW(static_cast<void>(http_server.Register("/{}", nullptr)), PathContainsInvalidCharacters);
 }
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
@@ -133,10 +133,12 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
                      HTTP(port).Register("/user/a", URLPathArgs::CountMask::One, handler) +
                      HTTP(port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
 
-  ASSERT_THROW(HTTP(port).Register("/", handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(port).Register("/user", URLPathArgs::CountMask::Two, handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(port).Register("/user/a", URLPathArgs::CountMask::One, handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(port).Register("/user/a/1", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(static_cast<void>(HTTP(port).Register("/", handler)), HandlerAlreadyExistsException);
+  ASSERT_THROW(static_cast<void>(HTTP(port).Register("/user", URLPathArgs::CountMask::Two, handler)),
+               HandlerAlreadyExistsException);
+  ASSERT_THROW(static_cast<void>(HTTP(port).Register("/user/a", URLPathArgs::CountMask::One, handler)),
+               HandlerAlreadyExistsException);
+  ASSERT_THROW(static_cast<void>(HTTP(port).Register("/user/a/1", handler)), HandlerAlreadyExistsException);
 
   const auto run = [port](const std::string& path) -> std::string {
     return HTTP(GET(Printf("http://localhost:%d", port) + path)).body;
@@ -233,18 +235,6 @@ TEST(HTTPAPI, ComposeURLPathWithURLPathArgs) {
 
   EXPECT_EQ("/ (/user/a/1/blah, /user/a/1/blah)", run("/user/a/1/blah"));
   EXPECT_EQ("/ (/user/a/1/blah, /user/a/1/blah)", run("/user/a/1/blah/"));
-}
-
-TEST(HTTPAPI, ScopeLeftHangingThrowsAnException) {
-  auto reserved_port = current::net::ReserveLocalPort();
-  const int port = reserved_port;
-  auto& http_server = HTTP(std::move(reserved_port));
-
-  const string url = Printf("http://localhost:%d/foo", port);
-
-  http_server.Register("/foo", [](Request r) { r("bar"); });
-  // DIMA DIMA
-  // ASSERT_THROW(http_server.UnRegister("/foo"), HandlerDoesNotExistException);
 }
 
 TEST(HTTPAPI, ScopedUnRegister) {

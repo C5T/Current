@@ -150,7 +150,7 @@ CURRENT_STRUCT(ExampleMeta) {
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
 int main() {
-  HTTP(FLAGS_port).Register("/layout", [](Request r) {
+  HTTPRoutesScope scope = HTTP(FLAGS_port).Register("/layout", [](Request r) {
     LayoutItem layout;
     LayoutItem row;
     layout.col.push_back(row);
@@ -160,14 +160,14 @@ int main() {
       Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
       "application/json; charset=utf-8");
   });
-  HTTP(FLAGS_port).Register("/meta", [](Request r) {
+  scope += HTTP(FLAGS_port).Register("/meta", [](Request r) {
     r(ExampleMeta(),
       // "meta",  <--  @dkorolev, remove this source file entirely, as it's obsolete.
       HTTPResponseCode.OK,
       Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}),
       "application/json; charset=utf-8");
   });
-  HTTP(FLAGS_port).Register("/data", [](Request r) {
+  scope += HTTP(FLAGS_port).Register("/data", [](Request r) {
     std::thread(
         [](Request&& r) {
           // Since we are in another thread, need to catch exceptions ourselves.
