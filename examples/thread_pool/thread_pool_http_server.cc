@@ -63,29 +63,28 @@ int main(int argc, char** argv) {
                 }
               },
               std::chrono::seconds(1));
-        if (req.die) {
-          // Time to die. All the threads will see it and terminate.
-          break;
-        } else if (req.r) {
-          // NOTE(dkorolev): This could be done with `.WaitFor()` to not wait "the remainder of the second" when dying.
-          std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
-          (*req.r)("ok from thread " + current::ToString(i) + '\n');
-        } else {
-          std::lock_guard cout_lock(cout_mutex);
-          std::cout << "thread " + current::ToString(i) + " is still waiting" << std::endl;
+          if (req.die) {
+            // Time to die. All the threads will see it and terminate.
+            break;
+          } else if (req.r) {
+            // NOTE(dkorolev): This could be done with `.WaitFor()` to not wait "the remainder of the second" when dying.
+            std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
+            (*req.r)("ok from thread " + current::ToString(i) + '\n');
+          } else {
+            std::lock_guard cout_lock(cout_mutex);
+            std::cout << "thread " + current::ToString(i) + " is still waiting" << std::endl;
+          }
         }
+      });
+    }
 
-      }
-    });
+    std::cout << "listening with " << FLAGS_n << " threads on port " << FLAGS_port << std::endl;
+
+    for (auto& t : threads) {
+      t.join();
+    }
   }
-
-  std::cout << "listening with " << FLAGS_n << " threads on port " << FLAGS_port << std::endl;
-
-  for (auto& t : threads) {
-    t.join();
+  catch (current::net::SocketBindException const&) {
+    std::cout << "the local port " << FLAGS_port << " is already taken" << std::endl;
   }
-}
-catch (current::net::SocketBindException const&) {
-  std::cout << "the local port " << FLAGS_port << " is already taken" << std::endl;
-}
 }
