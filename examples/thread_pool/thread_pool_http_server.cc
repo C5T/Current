@@ -35,47 +35,42 @@ int main(int argc, char** argv) {
     for (size_t i = 0; i < threads.size(); ++i) {
       threads[i] = std::thread([&safe_state, i]() {
         while (true) {
-          bool die = false;
-          safe_state.Wait([&die](SharedState const& state) {
-            if (state.die) {
-              die = true;
-              return true;
-            } else {
-              return !state.reqs.empty();
-            }
-          });
-          if (die) {
-            break;
-          }
-          // TODO(dkorolev): Tweak two to `WaitableAtomic`: offer `Wait(wait_cb, post_wait_cb)` to only lock it once.
-          struct OptionalRequest final {
-            Request r;
-            explicit OptionalRequest(Request r) : r(std::move(r)) {}
+          struct OptionalRequestOrDie final {
+            std::unique_ptr<Request> r;
+            OptionalRequestOrDie() {}
+            OptionalRequestOrDie(Request r) : r(std::make_unique<Request>(std::move(r))) {}
           };
-          auto req = safe_state.MutableUse([](SharedState& state) -> std::unique_ptr<OptionalRequest> {
-            // NOTE(dkorolev): And now this extra check is super ugly, but necessary. Tweak Two would make it go away!
-            if (!state.reqs.empty()) {
-              auto req = std::make_unique<OptionalRequest>(std::move(state.reqs.front()));
-              state.reqs.pop();
-              return req;
-            } else {
-              return nullptr;
-            }
-          });
-          if (req) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
-            req->r("ok from thread " + current::ToString(i) + '\n');
-          }
+          auto req = safe_state.Wait(
+              [](SharedState const& state) { return state.die || !state.reqs.empty(); },
+              [](SharedState& state) -> OptionalRequestOrDie {
+                if (state.die) {
+                  return OptionalRequestOrDie();
+                } else {
+                  // No need to check if another thread may have claimed the last request from the queue, since
+                  // this lambda will be called from the same locked section in which the first one returned `true`.
+                  auto req = OptionalRequestOrDie(std::move(state.reqs.front()));
+                  state.reqs.pop();
+                  return req;
+                }
+              });
+        if (!req.r) {
+          // Time to die.
+          break;
+        } else {
+          std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
+          (*req.r)("ok from thread " + current::ToString(i) + '\n');
         }
-      });
-    }
-
-    std::cout << "listening with " << FLAGS_n << " threads on port " << FLAGS_port << std::endl;
-
-    for (auto& t : threads) {
-      t.join();
-    }
-  } catch (current::net::SocketBindException const&) {
-    std::cout << "the local port " << FLAGS_port << " is already taken" << std::endl;
+      }
+    });
   }
+
+  std::cout << "listening with " << FLAGS_n << " threads on port " << FLAGS_port << std::endl;
+
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+catch (current::net::SocketBindException const&) {
+  std::cout << "the local port " << FLAGS_port << " is already taken" << std::endl;
+}
 }

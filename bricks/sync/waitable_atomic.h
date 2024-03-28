@@ -200,6 +200,25 @@ class WaitableAtomicImpl {
       return true;
     }
 
+#ifndef CURRENT_FOR_CPP14
+
+    // NOTE(dkorolev): Deliberately not bothering with C++14 for this two-lambdas `Wait()`.
+    // TODO(dkorolev): The `.Wait()` above always returning `true` could use some TLC.
+
+    template <typename F>
+    std::invoke_result_t<F, data_t&> Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (!wait_predicate(data_)) {
+        const data_t& data = data_;
+        data_condition_variable_.wait(lock, [&wait_predicate, &data] { return wait_predicate(data); });
+        return retval_predicate(data_);
+      } else {
+        return retval_predicate(data_);
+      }
+    }
+
+#endif  // CURRENT_FOR_CPP14
+
     template <typename T>
     bool WaitFor(std::function<bool(const data_t&)> predicate, T duration) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
