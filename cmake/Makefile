@@ -15,6 +15,9 @@
 # TODO(dkorolev): Test that this works with `leveldb` too.
 C5T_DEPS=""
 
+# Set this var to anything non-empty to speed up builds that do not require `googletest`.
+C5T_NO_GTEST=""
+
 DEBUG_BUILD_DIR=$(shell echo "$${DEBUG_BUILD_DIR:-.current_debug}")
 RELEASE_BUILD_DIR=$(shell echo "$${RELEASE_BUILD_DIR:-.current}")
 
@@ -34,7 +37,7 @@ release_dir: ${RELEASE_BUILD_DIR} .gitignore
 	@grep "^${RELEASE_BUILD_DIR}/$$" .gitignore >/dev/null || echo "${RELEASE_BUILD_DIR}/" >>.gitignore
 
 ${RELEASE_BUILD_DIR}: CMakeLists.txt src
-	@C5T_DEPS="${C5T_DEPS}" cmake -DCMAKE_BUILD_TYPE=Release -B "${RELEASE_BUILD_DIR}" .
+	@C5T_DEPS="${C5T_DEPS}" C5T_NO_GTEST="${C5T_NO_GTEST}" cmake -DCMAKE_BUILD_TYPE=Release -B "${RELEASE_BUILD_DIR}" .
 
 test: release
 	@(cd "${RELEASE_BUILD_DIR}"; make test)
@@ -46,7 +49,7 @@ debug_dir: ${DEBUG_BUILD_DIR} .gitignore
 	@grep "^${DEBUG_BUILD_DIR}/$$" .gitignore >/dev/null || echo "${DEBUG_BUILD_DIR}/" >>.gitignore
 
 ${DEBUG_BUILD_DIR}: CMakeLists.txt src
-	@C5T_DEPS="${C5T_DEPS}" cmake -B "${DEBUG_BUILD_DIR}" .
+	@C5T_DEPS="${C5T_DEPS}" C5T_NO_GTEST="${C5T_NO_GTEST}" cmake -B "${DEBUG_BUILD_DIR}" .
 
 debug_test: debug
 	@(cd "${DEBUG_BUILD_DIR}"; make test)
