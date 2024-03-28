@@ -200,6 +200,25 @@ class WaitableAtomicImpl {
       return true;
     }
 
+#ifndef CURRENT_FOR_CPP14
+
+    // NOTE(dkorolev): Deliberately not bothering with C++14 for this two-lambdas `Wait()`.
+    // TODO(dkorolev): The `.Wait()` above always returning `true` could use some TLC.
+
+    template <typename F>
+    std::invoke_result_t<F, data_t&> Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (!wait_predicate(data_)) {
+        const data_t& data = data_;
+        data_condition_variable_.wait(lock, [&wait_predicate, &data] { return wait_predicate(data); });
+        return retval_predicate(data_);
+      } else {
+        return retval_predicate(data_);
+      }
+    }
+
+#endif  // CURRENT_FOR_CPP14
+
     template <typename T>
     bool WaitFor(std::function<bool(const data_t&)> predicate, T duration) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
@@ -212,30 +231,75 @@ class WaitableAtomicImpl {
 
 #ifndef CURRENT_FOR_CPP14
 
-    template <typename F>
-    std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f) const {
-      auto scope = ImmutableScopedAccessor();
-      return f(*scope);
+    // NOTE(dkorolev): Deliberately not bothering with C++14 for these three- and four-argument `WaitFor()`-s.
+
+    template <typename T, typename F>
+    std::invoke_result_t<F, data_t&> WaitFor(std::function<bool(const data_t&)> predicate,
+                                             F&& retval_predicate,
+                                             T duration) {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (!predicate(data_)) {
+        const data_t& data = data_;
+        if (data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); })) {
+          return retval_predicate(data_);
+        } else {
+          // The three-argument `WaitFor()` assumes the default constructor for the return type indicates that
+          // the wait should continue. Use the four-argument `WaitFor()` to provide a custom retval initializer.
+          // The custom retval predicate can also mutate the waited upon object as it sees fit.
+          return std::invoke_result_t<F, data_t&>();
+        }
+      } else {
+        return retval_predicate(data_);
+      }
     }
 
-    template <typename F>
-    std::invoke_result_t<F, data_t&> MutableUse(F&& f) {
+    template <typename T, typename F, typename G>
+    std::invoke_result_t<F, data_t&> WaitFor(std::function<bool(const data_t&)> predicate,
+                                             F&& retval_predicate,
+                                             G&& wait_unsuccessul_predicate,
+                                             T duration) {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (!predicate(data_)) {
+        const data_t& data = data_;
+        if (data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); })) {
+          return retval_predicate(data_);
+        } else {
+          return wait_unsuccessul_predicate(data_);
+        }
+      } else {
+        return retval_predicate(data_);
+      }
+    }
+
+
+#endif  // CURRENT_FOR_CPP14
+
+#ifndef CURRENT_FOR_CPP14
+
+    template <typename F, typename... ARGS>
+    std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f, ARGS&&... args) const {
+      auto scope = ImmutableScopedAccessor();
+      return f(*scope, std::forward<ARGS>(args)...);
+    }
+
+    template <typename F, typename... ARGS>
+    std::invoke_result_t<F, data_t&, ARGS...> MutableUse(F&& f, ARGS&&... args) {
       auto scope = MutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
 #else
 
-    template <typename F>
-    weed::call_with_type<F, const data_t&> ImmutableUse(F&& f) const {
+    template <typename F, typename... ARGS>
+    weed::call_with_type<F, const data_t&, ARGS...> ImmutableUse(F&& f, ARGS&&... args) const {
       auto scope = ImmutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
-    template <typename F>
-    weed::call_with_type<F, data_t&> MutableUse(F&& f) {
+    template <typename F, typename... ARGS>
+    weed::call_with_type<F, data_t&, ARGS...> MutableUse(F&& f, ARGS&&... args) {
       auto scope = MutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
 #endif  // CURRENT_FOR_CPP14
