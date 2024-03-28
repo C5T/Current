@@ -52,17 +52,20 @@ int main(int argc, char** argv) {
             Request r;
             explicit OptionalRequest(Request r) : r(std::move(r)) {}
           };
-          std::unique_ptr<OptionalRequest> req;
-          // TODO(dkorolev): Potential Tweak three, before the other two: `return` from MutableUse!
-          safe_state.MutableUse([&req](SharedState& state) {
+          auto req = safe_state.MutableUse([](SharedState& state) -> std::unique_ptr<OptionalRequest> {
             // NOTE(dkorolev): And now this extra check is super ugly, but necessary. Tweak Two would make it go away!
             if (!state.reqs.empty()) {
-              req = std::make_unique<OptionalRequest>(std::move(state.reqs.front()));
+              auto req = std::make_unique<OptionalRequest>(std::move(state.reqs.front()));
               state.reqs.pop();
+              return req;
+            } else {
+              return nullptr;
             }
           });
-          std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
-          req->r("ok from thread " + current::ToString(i) + '\n');
+          if (req) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
+            req->r("ok from thread " + current::ToString(i) + '\n');
+          }
         }
       });
     }
