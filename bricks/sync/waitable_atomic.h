@@ -231,6 +231,51 @@ class WaitableAtomicImpl {
 
 #ifndef CURRENT_FOR_CPP14
 
+    // NOTE(dkorolev): Deliberately not bothering with C++14 for these three- and four-argument `WaitFor()`-s.
+
+    template <typename T, typename F>
+    std::invoke_result_t<F, data_t&> WaitFor(std::function<bool(const data_t&)> predicate,
+                                             F&& retval_predicate,
+                                             T duration) {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (!predicate(data_)) {
+        const data_t& data = data_;
+        if (data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); })) {
+          return retval_predicate(data_);
+        } else {
+          // The three-argument `WaitFor()` assumes the default constructor for the return type indicates that
+          // the wait should continue. Use the four-argument `WaitFor()` to provide a custom retval initializer.
+          // The custom retval predicate can also mutate the waited upon object as it sees fit.
+          return std::invoke_result_t<F, data_t&>();
+        }
+      } else {
+        return retval_predicate(data_);
+      }
+    }
+
+    template <typename T, typename F, typename G>
+    std::invoke_result_t<F, data_t&> WaitFor(std::function<bool(const data_t&)> predicate,
+                                             F&& retval_predicate,
+                                             G&& wait_unsuccessul_predicate,
+                                             T duration) {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (!predicate(data_)) {
+        const data_t& data = data_;
+        if (data_condition_variable_.wait_for(lock, duration, [&predicate, &data] { return predicate(data); })) {
+          return retval_predicate(data_);
+        } else {
+          return wait_unsuccessul_predicate(data_);
+        }
+      } else {
+        return retval_predicate(data_);
+      }
+    }
+
+
+#endif  // CURRENT_FOR_CPP14
+
+#ifndef CURRENT_FOR_CPP14
+
     template <typename F, typename... ARGS>
     std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f, ARGS&&... args) const {
       auto scope = ImmutableScopedAccessor();
