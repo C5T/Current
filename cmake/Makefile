@@ -16,7 +16,7 @@
 C5T_DEPS=""
 
 # Set this var to anything non-empty to speed up builds that do not require `googletest`.
-C5T_NO_GTEST="true"
+C5T_NO_GTEST=""
 
 DEBUG_BUILD_DIR=$(shell echo "$${DEBUG_BUILD_DIR:-.current_debug}")
 RELEASE_BUILD_DIR=$(shell echo "$${RELEASE_BUILD_DIR:-.current}")
