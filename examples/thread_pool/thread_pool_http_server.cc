@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
           };
           auto req = safe_state.Wait(
               [](SharedState const& state) { return state.die || !state.reqs.empty(); },
-              [](SharedState& state) -> OptionalRequestOrDie {
+              [](SharedState& state) {
                 if (state.die) {
                   return OptionalRequestOrDie();
                 } else {
