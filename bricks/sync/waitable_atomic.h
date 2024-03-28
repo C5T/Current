@@ -212,30 +212,30 @@ class WaitableAtomicImpl {
 
 #ifndef CURRENT_FOR_CPP14
 
-    template <typename F>
-    std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f) const {
+    template <typename F, typename... ARGS>
+    std::invoke_result_t<F, const data_t&> ImmutableUse(F&& f, ARGS&&... args) const {
       auto scope = ImmutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
-    template <typename F>
-    std::invoke_result_t<F, data_t&> MutableUse(F&& f) {
+    template <typename F, typename... ARGS>
+    std::invoke_result_t<F, data_t&, ARGS...> MutableUse(F&& f, ARGS&&... args) {
       auto scope = MutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
 #else
 
-    template <typename F>
-    weed::call_with_type<F, const data_t&> ImmutableUse(F&& f) const {
+    template <typename F, typename... ARGS>
+    weed::call_with_type<F, const data_t&, ARGS...> ImmutableUse(F&& f, ARGS&&... args) const {
       auto scope = ImmutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
-    template <typename F>
-    weed::call_with_type<F, data_t&> MutableUse(F&& f) {
+    template <typename F, typename... ARGS>
+    weed::call_with_type<F, data_t&, ARGS...> MutableUse(F&& f, ARGS&&... args) {
       auto scope = MutableScopedAccessor();
-      return f(*scope);
+      return f(*scope, std::forward<ARGS>(args)...);
     }
 
 #endif  // CURRENT_FOR_CPP14

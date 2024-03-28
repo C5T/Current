@@ -22,8 +22,7 @@ int main(int argc, char** argv) {
     current::WaitableAtomic<SharedState> safe_state;
 
     auto scope = http.Register("/", [&safe_state](Request r) {
-      // TODO(dkorolev): Tweak one to `WaitableAtomic`: make it legal to pass extra arguments to `.MutableUse()`.
-      safe_state.MutableUse([&r](SharedState& state) { state.reqs.push(std::move(r)); });
+      safe_state.MutableUse([](SharedState& state, Request r) { state.reqs.push(std::move(r)); }, std::move(r));
     });
 
     scope += http.Register("/kill", [&safe_state](Request r) {
