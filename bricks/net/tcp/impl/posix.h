@@ -380,6 +380,25 @@ class ReserveLocalPortImpl final {
       hint, nagle_algorithm_policy, max_connections);
 }
 
+// Acquires the local port with the explicltly provided number, or throws the exception.
+// Used to cleanly construct the HTTP server on the specific port number,
+// or fail early, from the thread that is attempting to construct this HTTP server.
+// The alternative way used before has the issue that the port is acquired in the thread, not outside it,
+// and catching the exception that might occur during its construction might not do what the user expected it to do.
+// TODO(dkorolev): Maybe rewrite the default logic as well and retire the `safe_http_construction` example?
+[[nodiscard]] inline ReservedLocalPort AcquireLocalPort(
+    uint16_t port,
+    NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+    MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
+  auto hold_port_or_throw = current::net::SocketHandle(current::net::SocketHandle::BindAndListen(),
+                                                current::net::BarePort(port),
+                                                nagle_algorithm_policy,
+                                                max_connections);
+  return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
+                                         port,
+                                         std::move(hold_port_or_throw));
+}
+
 class Connection : public SocketHandle {
  public:
   Connection(SocketHandle&& rhs, IPAndPort&& local_ip_and_port, IPAndPort&& remote_ip_and_port)
