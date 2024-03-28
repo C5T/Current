@@ -41,14 +41,10 @@ int main(int argc, char** argv) {
             bool die = false;
             std::unique_ptr<Request> r;
 
-            // Commented out for now to test the most sophisticated four-argument `.WaitFor()` syntax.
             // The default constructor is invoked if the wait timed out.
-            // OptionalRequestOrDie() {}
+            OptionalRequestOrDie() {}
 
-            struct NeedToWaitMore final {};
-            OptionalRequestOrDie(NeedToWaitMore) : die(false) {}
-
-            // The now-explicit constructor that signals it is time to die.
+            // The explicit constructor to signals it is time to die.
             struct TimeToDie final {};
             OptionalRequestOrDie(TimeToDie) : die(true) {}
 
@@ -61,21 +57,17 @@ int main(int argc, char** argv) {
                 if (state.die) {
                   return OptionalRequestOrDie(OptionalRequestOrDie::TimeToDie());
                 } else {
-                  // No need to check if another thread may have claimed the last request from the queue, since
-                  // this lambda will be called from the same locked section in which the first one returned `true`.
                   auto req = OptionalRequestOrDie(std::move(state.reqs.front()));
                   state.reqs.pop();
                   return req;
                 }
               },
-              [](SharedState&) {
-                return OptionalRequestOrDie(OptionalRequestOrDie::NeedToWaitMore());
-              },
               std::chrono::seconds(1));
         if (req.die) {
-          // Time to die.
+          // Time to die. All the threads will see it and terminate.
           break;
         } else if (req.r) {
+          // NOTE(dkorolev): This could be done with `.WaitFor()` to not wait "the remainder of the second" when dying.
           std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1'000 * FLAGS_delay_s)));
           (*req.r)("ok from thread " + current::ToString(i) + '\n');
         } else {
