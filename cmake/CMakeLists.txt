@@ -65,7 +65,13 @@ function(UseGitOrCloneBranch remote branch)
 endfunction()
 
 UseGitOrClone(https://github.com/c5t/current)
-UseGitOrClone(https://github.com/c5t/googletest)
+
+# Set `C5T_NO_GTEST` in the `Makefile` to any non-empty value to speed up the builds that do not need `googletest`.
+if("$ENV{C5T_NO_GTEST}" STREQUAL "")
+  UseGitOrClone(https://github.com/c5t/googletest)
+else()
+  message(STATUS "Skipping `googletest` as `C5T_NO_GTEST` is set.")
+endif()
 
 # TODO(dkorolev): Support more than one dependency, this is just the demo / test for v0.1.
 set(C5T_DEPS $ENV{C5T_DEPS})
@@ -98,8 +104,15 @@ foreach(SHARED_LIBRARY_SOURCE_FILE ${BINARY_SOURCE_FILES})
   target_link_libraries(${SHARED_LIBRARY_TARGET_NAME} PRIVATE "${C5T_LIBRARIES}")
 endforeach()
 
+# Declare libraries as library targets. First, and add them into the `ALL_LIBRARIES` list.
 set(ALL_LIBRARIES "${C5T_LIBRARIES}")
-# Declare libraries as library targets. And add them into the `ALL_LIBRARIES` list.
+file(GLOB_RECURSE LIBRARY_SOURCE_FILES "src/lib_*.cc")
+foreach(LIBRARY_SOURCE_FILE ${LIBRARY_SOURCE_FILES})
+  get_filename_component(LIBRARY_TARGET_NAME "${LIBRARY_SOURCE_FILE}" NAME_WE)
+  list(APPEND ALL_LIBRARIES "${LIBRARY_TARGET_NAME}")
+endforeach()
+
+# Then build all the libraries, such that every library is linked against every other library.
 file(GLOB_RECURSE LIBRARY_SOURCE_FILES "src/lib_*.cc")
 foreach(LIBRARY_SOURCE_FILE ${LIBRARY_SOURCE_FILES})
   get_filename_component(LIBRARY_TARGET_NAME "${LIBRARY_SOURCE_FILE}" NAME_WE)
@@ -107,8 +120,9 @@ foreach(LIBRARY_SOURCE_FILE ${LIBRARY_SOURCE_FILES})
   add_dependencies(${LIBRARY_TARGET_NAME} C5T_CURRENT_BUILD_INFO_H_TARGET)
   target_compile_definitions(${LIBRARY_TARGET_NAME} PRIVATE C5T_CMAKE_PROJECT)
   target_include_directories(${LIBRARY_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/inc")
-  target_link_libraries(${LIBRARY_TARGET_NAME} PRIVATE "${C5T_LIBRARIES}")
-  list(APPEND ALL_LIBRARIES "${LIBRARY_TARGET_NAME}")
+  set(LIBRARY_DEPS_WO_SELF "${ALL_LIBRARIES}")
+  list(REMOVE_ITEM LIBRARY_DEPS_WO_SELF ${LIBRARY_TARGET_NAME})
+  target_link_libraries(${LIBRARY_TARGET_NAME} PRIVATE "${LIBRARY_DEPS_WO_SELF}")
 endforeach()
 
 # Declare binaries as binary targets. And link them against all the libraries.
