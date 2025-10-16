@@ -33,13 +33,17 @@ SOFTWARE.
 
 #ifndef CURRENT_FOR_CPP14  // NOTE(dkorolev): Excluding this part from the C++14 version of Current.
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 struct SourceA {};
 struct SourceB {};
 struct WorkerX {};
 struct WorkerY {};
 struct WorkerZ {};
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 TEST(NextRipcurrent, SequentialProcessingTypes) {
   using namespace current::examples::streamed_sockets;
@@ -427,7 +431,9 @@ TEST(NextRipcurrent, ParallelProcessingTypes) {
   }
 }
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 struct TestBlob final {
   uint64_t x[4];
@@ -640,6 +646,8 @@ void RunProcessingTest(std::array<uint64_t, 4>& init,
 }
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 TEST(NextRipcurrent, SequentialProcessing) {
   using namespace current::examples::streamed_sockets;

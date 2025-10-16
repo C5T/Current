@@ -37,7 +37,9 @@ SOFTWARE.
 #include "../../../../bricks/strings/printf.h"
 #include "../../../../bricks/time/chrono.h"
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 struct SavingWorker final {
   const std::string dirname;
@@ -123,5 +125,7 @@ struct SavingWorker final {
 };
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 #endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_WORKERS_SAVER_H

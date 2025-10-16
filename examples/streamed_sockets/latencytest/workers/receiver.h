@@ -30,7 +30,9 @@ SOFTWARE.
 #include "../../../../bricks/net/tcp/tcp.h"
 #include "../../../../bricks/time/chrono.h"
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 struct ReceivingWorker final {
   struct ReceivingWorkerImpl {
@@ -58,5 +60,7 @@ struct ReceivingWorker final {
 };
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 #endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_WORKERS_RECEIVER_H

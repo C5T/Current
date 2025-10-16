@@ -187,9 +187,9 @@ class WaitableAtomic {
     {
       // Only lock the subscribers, no need to lock the data.
       // Friendly reminder that the subscribers are expected to return quickly.
-      std::lock_guard lock(subscribers_mutex_);
-      for (const auto& [_, f] : subscribers_) {
-        f();
+      std::lock_guard<std::mutex> lock(subscribers_mutex_);
+      for (const auto& unused_and_f : subscribers_) {
+        unused_and_f.second();
       }
     }
   }
@@ -208,13 +208,11 @@ class WaitableAtomic {
     return true;
   }
 
-#ifndef CURRENT_FOR_CPP14
-
   // NOTE(dkorolev): Deliberately not bothering with C++14 for this two-lambdas `Wait()`.
   // TODO(dkorolev): The `.Wait()` above always returning `true` could use some TLC.
 
   template <typename F>
-  std::invoke_result_t<F, data_t&> DoWait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
+  typename std::result_of<F(data_t&)>::type DoWait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
     std::unique_lock<std::mutex> lock(data_mutex_);
     if (!wait_predicate(data_)) {
       const data_t& data = data_;
@@ -225,20 +223,18 @@ class WaitableAtomic {
     }
   }
 
-  template <typename F, class = std::enable_if_t<std::is_same_v<std::invoke_result_t<F, data_t&>, void>>>
+  template <typename F, class = std::enable_if_t<std::is_same_v<typename std::result_of<F(data_t&)>::type, void>>>
   void Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
     DoWait(wait_predicate, std::forward<F>(retval_predicate));
     Notify();
   }
 
-  template <typename F, class = std::enable_if_t<!std::is_same_v<std::invoke_result_t<F, data_t&>, void>>>
-  std::invoke_result_t<F, data_t&> Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
-    std::invoke_result_t<F, data_t&> retval = DoWait(wait_predicate, std::forward<F>(retval_predicate));
+  template <typename F, class = std::enable_if_t<!std::is_same_v<typename std::result_of<F(data_t&)>::type, void>>>
+  typename std::result_of<F(data_t&)>::type Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
+    typename std::result_of<F(data_t&)>::type retval = DoWait(wait_predicate, std::forward<F>(retval_predicate));
     Notify();
     return retval;
   }
-
-#endif  // CURRENT_FOR_CPP14
 
   template <typename T>
   bool WaitFor(std::function<bool(const data_t&)> predicate, T duration) const {
@@ -260,14 +256,10 @@ class WaitableAtomic {
     return true;
   }
 
-#ifndef CURRENT_FOR_CPP14
-
-  // NOTE(dkorolev): Deliberately not bothering with C++14 for these three- and four-argument `WaitFor()`-s.
-
   template <typename T, typename F>
-  std::invoke_result_t<F, data_t&> WaitFor(std::function<bool(const data_t&)> predicate,
-                                           F&& retval_predicate,
-                                           T duration) {
+  typename std::result_of<F(data_t&)>::type WaitFor(std::function<bool(const data_t&)> predicate,
+                                                    F&& retval_predicate,
+                                                    T duration) {
     std::unique_lock<std::mutex> lock(data_mutex_);
     if (!predicate(data_)) {
       const data_t& data = data_;
@@ -277,7 +269,7 @@ class WaitableAtomic {
         // The three-argument `WaitFor()` assumes the default constructor for the return type indicates that
         // the wait should continue. Use the four-argument `WaitFor()` to provide a custom retval initializer.
         // The custom retval predicate can also mutate the waited upon object as it sees fit.
-        return std::invoke_result_t<F, data_t&>();
+        return typename std::result_of<F(data_t&)>::type();
       }
     } else {
       return retval_predicate(data_);
@@ -285,10 +277,10 @@ class WaitableAtomic {
   }
 
   template <typename T, typename F, typename G>
-  std::invoke_result_t<F, data_t&> WaitFor(std::function<bool(const data_t&)> predicate,
-                                           F&& retval_predicate,
-                                           G&& wait_unsuccessul_predicate,
-                                           T duration) {
+  typename std::result_of<F(data_t&)>::type WaitFor(std::function<bool(const data_t&)> predicate,
+                                                    F&& retval_predicate,
+                                                    G&& wait_unsuccessul_predicate,
+                                                    T duration) {
     std::unique_lock<std::mutex> lock(data_mutex_);
     if (!predicate(data_)) {
       const data_t& data = data_;
@@ -301,9 +293,6 @@ class WaitableAtomic {
       return retval_predicate(data_);
     }
   }
-
-
-#endif  // CURRENT_FOR_CPP14
 
 #ifndef CURRENT_FOR_CPP14
 
@@ -365,7 +354,7 @@ class WaitableAtomic {
     WaitableAtomicSubscriberRemoverImpl& operator=(WaitableAtomicSubscriberRemoverImpl const&) = delete;
     WaitableAtomicSubscriberRemoverImpl(WaitableAtomic& self, size_t id) : self_(self), id_(id) {}    void Remove() override {
       // Okay to only lock the subscribers map, but not the data.
-      std::lock_guard lock(self_.subscribers_mutex_);
+      std::lock_guard<std::mutex> lock(self_.subscribers_mutex_);
       self_.subscribers_.erase(id_);
     }
   };
@@ -376,8 +365,8 @@ class WaitableAtomic {
     // The order is this way because subscribers are assumed to be locked for a shorter period of time.
     // The assumption is that the clients will not perform slow operations and/or lock anything while notified,
     // but at most schedule some tasks to be executed in their respective threads, thus releasing this lock quickly.
-    std::lock_guard lock_data(data_mutex_);
-    std::lock_guard lock_subscribers(subscribers_mutex_);
+    std::lock_guard<std::mutex> lock_data(data_mutex_);
+    std::lock_guard<std::mutex> lock_subscribers(subscribers_mutex_);
     const size_t id = subscriber_next_id_;
     ++subscriber_next_id_;
     subscribers_[id] = f;

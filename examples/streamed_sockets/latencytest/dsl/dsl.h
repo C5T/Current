@@ -46,7 +46,9 @@ SOFTWARE.
 #include "../../../../bricks/template/typelist.h"
 #include "../../../../bricks/util/lazy_instantiation.h"
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 enum class SourceOrWorker : bool { Source = true, Worker = false };
 
@@ -869,5 +871,7 @@ struct PipelineRunner<PipelineImpl<SOURCE, WORKERS_AS_TUPLE>> final {
 };
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 #endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_DSL_DSL_H
