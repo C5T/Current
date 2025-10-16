@@ -223,13 +223,13 @@ class WaitableAtomic {
     }
   }
 
-  template <typename F, class = std::enable_if_t<std::is_same_v<typename std::result_of<F(data_t&)>::type, void>>>
+  template <typename F, class = std::enable_if_t<std::is_same<typename std::result_of<F(data_t&)>::type, void>::value>>
   void Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
     DoWait(wait_predicate, std::forward<F>(retval_predicate));
     Notify();
   }
 
-  template <typename F, class = std::enable_if_t<!std::is_same_v<typename std::result_of<F(data_t&)>::type, void>>>
+  template <typename F, class = std::enable_if_t<!std::is_same<typename std::result_of<F(data_t&)>::type, void>::value>>
   typename std::result_of<F(data_t&)>::type Wait(std::function<bool(const data_t&)> wait_predicate, F&& retval_predicate) {
     typename std::result_of<F(data_t&)>::type retval = DoWait(wait_predicate, std::forward<F>(retval_predicate));
     Notify();

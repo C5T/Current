@@ -79,7 +79,7 @@ class BlockSourceOrWorker final {
   BlockSourceOrWorker() { impl_ = std::make_shared<Impl>(); }
 
   // NOTE(dkorolev): This ugliness is essential, otherwise this constructor is chosed instead of the copy/move ones. :-(
-  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same_v<std::decay_t<X>, BlockSourceOrWorker>>>
+  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<std::decay_t<X>, BlockSourceOrWorker>::value>>
   BlockSourceOrWorker(X&& arg, XS&&... args) {
     impl_ = std::make_shared<Impl>(std::forward<X>(arg), std::forward<XS>(args)...);
   }

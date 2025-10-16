@@ -44,7 +44,7 @@ class StreamStreamPersisterImpl final {
   using variant_t = MUTATIONS_VARIANT;
   using transaction_t = Transaction<variant_t>;
   using stream_entry_t =
-      std::conditional_t<std::is_same_v<STREAM_RECORD_TYPE, NoCustomPersisterParam>, transaction_t, STREAM_RECORD_TYPE>;
+      std::conditional_t<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value, transaction_t, STREAM_RECORD_TYPE>;
   using stream_t = stream::Stream<stream_entry_t, UNDERLYING_PERSISTER>;
   using fields_update_function_t = std::function<void(const variant_t&)>;
 

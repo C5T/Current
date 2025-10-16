@@ -226,7 +226,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
   using karl_notifiable_t = IKarlNotifiable<runtime_status_variant_t>;
   using fleet_view_renderer_t = IKarlFleetViewRenderer<runtime_status_variant_t>;
 
-  template <class S = STORAGE_TYPE, class = std::enable_if_t<std::is_same_v<S, UseOwnStorage>>>
+  template <class S = STORAGE_TYPE, class = std::enable_if_t<std::is_same<S, UseOwnStorage>::value>>
   explicit GenericKarl(const KarlParameters& parameters)
       : GenericKarl(parameters.storage_persistence_file, parameters, *this, *this, PrivateConstructorSelector()) {}
   GenericKarl(const KarlParameters& parameters, karl_notifiable_t& notifiable)
@@ -237,7 +237,7 @@ class GenericKarl final : private KarlStorage<STORAGE_TYPE>,
       : GenericKarl(
             parameters.storage_persistence_file, parameters, notifiable, renderer, PrivateConstructorSelector()) {}
 
-  template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same_v<S, UseOwnStorage>>>
+  template <class S = STORAGE_TYPE, class = std::enable_if_t<!std::is_same<S, UseOwnStorage>::value>>
   GenericKarl(Borrowed<STORAGE_TYPE> storage, const KarlParameters& parameters)
       : GenericKarl(storage, parameters, *this, *this, PrivateConstructorSelector()) {}
   GenericKarl(Borrowed<STORAGE_TYPE> storage, const KarlParameters& parameters, karl_notifiable_t& notifiable)

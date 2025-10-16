@@ -64,10 +64,16 @@ namespace sfinae {
 template <typename T, typename = void>
 struct is_container : std::false_type {};
 
+// NOTE(dkorolev): To avoid `std::void_t` in C++14.
+template <typename... TS>
+struct make_void {
+  typedef void type;
+};
+
 template <typename T>
 struct is_container<
     T,
-    std::void_t<decltype(std::declval<T>().begin()), decltype(std::declval<T>().end()), typename T::value_type>>
+    typename make_void<decltype(std::declval<T>().begin()), decltype(std::declval<T>().end()), typename T::value_type>::type>
     : std::true_type {};
 
 #ifndef CURRENT_FOR_CPP14
@@ -75,7 +81,7 @@ struct is_container<
 template <typename T>
 constexpr bool is_container_of_strings() {
   if constexpr (is_container<T>::value) {
-    return std::is_same_v<typename T::value_type, std::string>;
+    return std::is_same<typename T::value_type, std::string>::value;
   }
   return false;
 }
@@ -92,7 +98,7 @@ struct is_container_of_strings_impl final {
 
 template <typename T>
 struct is_container_of_strings_impl<true, T> final {
-  constexpr static bool value = std::is_same_v<typename T::value_type, std::string>;
+  constexpr static bool value = std::is_same<typename T::value_type, std::string>::value;
 };
 
 template <typename T>

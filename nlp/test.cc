@@ -548,6 +548,9 @@ NLPSchema(VariantTypes, MultidimensionalAnnotation) {
   DictionaryAnnotation(c);
 }
 
+template <typename A, typename B>
+constexpr bool is_same_v = std::is_same<A, B>::value;
+
 TEST(NLP, VariantTypes) {
   UseNLPSchema(VariantTypes);
 
@@ -559,107 +562,107 @@ TEST(NLP, VariantTypes) {
   {
     auto r = JustMatchQuery(a | b, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | c, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery(a | (b | c), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery(a | b | c, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | a, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | b, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery(a | (a | b), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery(b | (a | b), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<B, A>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<B, A>>>, "");
   }
 
   {
     auto r = JustMatchQuery(c | (a | b), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<C, A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<C, A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | c, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | (b | a), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | (a | c), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | (b | c), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery((a | b) | (c | b), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<Variant<A, B, C>>>, "");
   }
 
   {
     auto r = JustMatchQuery(a & b, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<std::tuple<A, B>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<std::tuple<A, B>>>, "");
   }
 
   {
     auto r = JustMatchQuery(a & b & c, "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<std::tuple<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<std::tuple<A, B, C>>>, "");
   }
   {
     auto r = JustMatchQuery(a & (b & c), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<std::tuple<A, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<std::tuple<A, B, C>>>, "");
   }
   {
     auto r = JustMatchQuery((a & b) & (b & c), "");
     EXPECT_FALSE(Exists(r));
-    static_assert(std::is_same_v<decltype(r), Optional<std::tuple<A, B, B, C>>>, "");
+    static_assert(is_same_v<decltype(r), Optional<std::tuple<A, B, B, C>>>, "");
   }
 }
 

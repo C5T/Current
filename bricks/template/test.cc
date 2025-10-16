@@ -28,6 +28,9 @@ SOFTWARE.
 #include "is_unique_ptr.h"
 #include "variadic_indexes.h"
 
+template <typename A, typename B>
+constexpr bool is_same_v = std::is_same<A, B>::value;
+
 // The internal test uses `std::tuple<>`, and not a single `TypeList`.
 // The one that goes into the documentation uses `TypeList<>`, and not a single `std::tuple<>`.
 
@@ -140,10 +143,10 @@ TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
   using current::variadic_indexes::generate_indexes;
   using current::variadic_indexes::indexes;
 
-  static_assert(std::is_same_v<indexes<>, generate_indexes<0>>, "");
-  static_assert(std::is_same_v<indexes<0>, generate_indexes<1>>, "");
-  static_assert(std::is_same_v<indexes<0, 1>, generate_indexes<2>>, "");
-  static_assert(std::is_same_v<indexes<0, 1, 2>, generate_indexes<3>>, "");
+  static_assert(is_same_v<indexes<>, generate_indexes<0>>, "");
+  static_assert(is_same_v<indexes<0>, generate_indexes<1>>, "");
+  static_assert(is_same_v<indexes<0, 1>, generate_indexes<2>>, "");
+  static_assert(is_same_v<indexes<0, 1, 2>, generate_indexes<3>>, "");
 }
 
 TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
@@ -153,12 +156,12 @@ TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
   struct C {};
   struct D {};
   struct E {};
-  static_assert(std::is_same_v<TypeList<>, EvensOnly<TypeList<>>>, "");
-  static_assert(std::is_same_v<TypeList<A>, EvensOnly<TypeList<A>>>, "");
-  static_assert(std::is_same_v<TypeList<A>, EvensOnly<TypeList<A, B>>>, "");
-  static_assert(std::is_same_v<TypeList<A, C>, EvensOnly<TypeList<A, B, C>>>, "");
-  static_assert(std::is_same_v<TypeList<A, C>, EvensOnly<TypeList<A, B, C, D>>>, "");
-  static_assert(std::is_same_v<TypeList<A, C, E>, EvensOnly<TypeList<A, B, C, D, E>>>, "");
+  static_assert(is_same_v<TypeList<>, EvensOnly<TypeList<>>>, "");
+  static_assert(is_same_v<TypeList<A>, EvensOnly<TypeList<A>>>, "");
+  static_assert(is_same_v<TypeList<A>, EvensOnly<TypeList<A, B>>>, "");
+  static_assert(is_same_v<TypeList<A, C>, EvensOnly<TypeList<A, B, C>>>, "");
+  static_assert(is_same_v<TypeList<A, C>, EvensOnly<TypeList<A, B, C, D>>>, "");
+  static_assert(is_same_v<TypeList<A, C, E>, EvensOnly<TypeList<A, B, C, D, E>>>, "");
 };
 
 TEST(TemplateMetaprogrammingInternalTest, CallIf) {
@@ -283,7 +286,6 @@ TEST(TemplateMetaprogrammingInternalTest, NonemptyConstructorForCombiner) {
 namespace current_decay_t_test {
 
 using current::decay_t;
-using std::is_same_v;
 
 static_assert(is_same_v<int, decay_t<int>>, "");
 static_assert(is_same_v<int, decay_t<int&>>, "");
@@ -359,9 +361,9 @@ namespace current_is_unique_ptr_test {
 using current::is_unique_ptr;
 
 static_assert(!is_unique_ptr<int>::value, "");
-static_assert(std::is_same_v<int, typename is_unique_ptr<int>::underlying_type>, "");
+static_assert(is_same_v<int, typename is_unique_ptr<int>::underlying_type>, "");
 
 static_assert(is_unique_ptr<std::unique_ptr<int>>::value, "");
-static_assert(std::is_same_v<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>, "");
+static_assert(is_same_v<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>, "");
 
 }  // namespace current_is_unique_ptr_test

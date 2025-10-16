@@ -59,7 +59,7 @@ constexpr auto HasHashMethod(int) -> decltype(std::declval<const T>().Hash(), bo
 
 template <typename T>
 struct GenericHashFunctionSelector {
-  typedef custom_comparator_and_hash_function::GenericHashFunctionImpl<T, HasHashMethod<T>(0), std::is_enum_v<T>> type;
+  typedef custom_comparator_and_hash_function::GenericHashFunctionImpl<T, HasHashMethod<T>(0), std::is_enum<T>::value> type;
 };
 
 }  // namespace custom_comparator_and_hash_function
@@ -117,7 +117,7 @@ struct CurrentComparatorImpl<T, true> {
 }  // namespace custom_comparator_and_hash_function
 
 template <typename T>
-using CurrentComparator = custom_comparator_and_hash_function::CurrentComparatorImpl<T, std::is_enum_v<T>>;
+using CurrentComparator = custom_comparator_and_hash_function::CurrentComparatorImpl<T, std::is_enum<T>::value>;
 
 }  // namespace current
 

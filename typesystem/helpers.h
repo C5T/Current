@@ -106,7 +106,7 @@ struct ExistsImplCaller<T, T> {
 struct DefaultExistsInvocation {};
 template <typename TEST = DefaultExistsInvocation, typename T>
 bool Exists(T&& x) {
-  return ExistsImplCaller<std::conditional_t<std::is_same_v<TEST, DefaultExistsInvocation>, current::decay_t<T>, TEST>,
+  return ExistsImplCaller<std::conditional_t<std::is_same<TEST, DefaultExistsInvocation>::value, current::decay_t<T>, TEST>,
                           current::decay_t<T>>::CallExistsImpl(std::forward<T>(x));
 }
 
@@ -150,10 +150,10 @@ struct PowerfulValueImplCaller<T, T, true> {
 struct DefaultValueInvocation {};
 template <typename OUTPUT = DefaultValueInvocation, typename INPUT>
 auto Value(INPUT&& x) -> decltype(
-    PowerfulValueImplCaller<std::conditional_t<std::is_same_v<OUTPUT, DefaultValueInvocation>, INPUT, OUTPUT>,
+    PowerfulValueImplCaller<std::conditional_t<std::is_same<OUTPUT, DefaultValueInvocation>::value, INPUT, OUTPUT>,
                             INPUT,
                             sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::declval<INPUT>())) {
-  return PowerfulValueImplCaller<std::conditional_t<std::is_same_v<OUTPUT, DefaultValueInvocation>, INPUT, OUTPUT>,
+  return PowerfulValueImplCaller<std::conditional_t<std::is_same<OUTPUT, DefaultValueInvocation>::value, INPUT, OUTPUT>,
                                  INPUT,
                                  sfinae::ValueImplMethodTest<INPUT>::value>::AccessValue(std::forward<INPUT>(x));
 }

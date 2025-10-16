@@ -208,7 +208,7 @@ TEST(TransactionalStorage, UseExternallyProvidedStreamStreamOfBroaderType) {
   using pre_storage_t = TestStorage<StreamInMemoryStreamPersister>;
   using transaction_t = typename pre_storage_t::transaction_t;
 
-  static_assert(std::is_same_v<transaction_t, typename pre_storage_t::persister_t::transaction_t>, "");
+  static_assert(std::is_same<transaction_t, typename pre_storage_t::persister_t::transaction_t>::value, "");
 
   using storage_t = TestStorage<StreamInMemoryStreamPersister,
                                 current::storage::transaction_policy::Synchronous,
