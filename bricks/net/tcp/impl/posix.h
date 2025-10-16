@@ -390,7 +390,7 @@ class ReserveLocalPortImpl final {
     uint16_t port,
     NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
     MaxServerQueuedConnectionsValue max_connections = kMaxServerQueuedConnections) {
-  auto hold_port_or_throw = current::net::SocketHandle(current::net::SocketHandle::BindAndListen(),
+  current::net::SocketHandle hold_port_or_throw(current::net::SocketHandle::BindAndListen(),
                                                 current::net::BarePort(port),
                                                 nagle_algorithm_policy,
                                                 max_connections);

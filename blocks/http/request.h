@@ -97,7 +97,7 @@ struct Request final {
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   template <typename T, typename... TS>
-  std::enable_if_t<!std::is_base_of_v<IHasDoRespondViaHTTP, current::decay_t<T>>> operator()(T&& arg, TS&&... args) {
+  std::enable_if_t<!std::is_base_of<IHasDoRespondViaHTTP, current::decay_t<T>>::value> operator()(T&& arg, TS&&... args) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }
@@ -106,7 +106,7 @@ struct Request final {
 
   // Support `Response`, as well as custom objects with user-defined HTTP response handlers.
   template <class T>
-  std::enable_if_t<std::is_base_of_v<IHasDoRespondViaHTTP, current::decay_t<T>>> operator()(T&& response) {
+  std::enable_if_t<std::is_base_of<IHasDoRespondViaHTTP, current::decay_t<T>>::value> operator()(T&& response) {
     if (!unique_connection) {
       CURRENT_THROW(net::AttemptedToSendHTTPResponseMoreThanOnce());
     }

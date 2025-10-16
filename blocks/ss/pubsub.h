@@ -107,17 +107,17 @@ class StreamPublisher : public GenericStreamPublisher<ENTRY>, public EntryPublis
 // TODO(dkorolev): `Variant` stream types, and publishing those?
 template <typename T>
 struct IsPublisher {
-  static constexpr bool value = std::is_base_of_v<GenericPublisher, current::decay_t<T>>;
+  static constexpr bool value = std::is_base_of<GenericPublisher, current::decay_t<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsEntryPublisher {
-  static constexpr bool value = std::is_base_of_v<GenericEntryPublisher<current::decay_t<E>>, current::decay_t<T>>;
+  static constexpr bool value = std::is_base_of<GenericEntryPublisher<current::decay_t<E>>, current::decay_t<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsStreamPublisher {
-  static constexpr bool value = std::is_base_of_v<GenericStreamPublisher<current::decay_t<E>>, current::decay_t<T>>;
+  static constexpr bool value = std::is_base_of<GenericStreamPublisher<current::decay_t<E>>, current::decay_t<T>>::value;
 };
 
 enum class EntryResponse { Done = 0, More = 1 };
@@ -162,17 +162,17 @@ class StreamSubscriber : public GenericStreamSubscriber<ENTRY>, public EntrySubs
 // For `static_assert`-s. Must `decay_t<>` for template xvalue references support.
 template <typename T>
 struct IsSubscriber {
-  static constexpr bool value = std::is_base_of_v<GenericSubscriber, current::decay_t<T>>;
+  static constexpr bool value = std::is_base_of<GenericSubscriber, current::decay_t<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsEntrySubscriber {
-  static constexpr bool value = std::is_base_of_v<GenericEntrySubscriber<current::decay_t<E>>, current::decay_t<T>>;
+  static constexpr bool value = std::is_base_of<GenericEntrySubscriber<current::decay_t<E>>, current::decay_t<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsStreamSubscriber {
-  static constexpr bool value = std::is_base_of_v<GenericStreamSubscriber<current::decay_t<E>>, current::decay_t<T>>;
+  static constexpr bool value = std::is_base_of<GenericStreamSubscriber<current::decay_t<E>>, current::decay_t<T>>::value;
 };
 
 namespace impl {

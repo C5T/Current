@@ -58,38 +58,6 @@ SOFTWARE.
 #include <memory>       // For `std::unique_ptr`.
 #include <type_traits>  // For `std::is_same_v`
 
-#ifdef CURRENT_FOR_CPP14
-namespace current_injected_cpp17 {
-
-template <class T, class U>
-constexpr bool is_same_v = ::std::is_same<T, U>::value;
-
-template <class B, class D>
-constexpr bool is_base_of_v = ::std::is_base_of<B, D>::value;
-
-template <class T>
-constexpr bool is_enum_v = ::std::is_enum<T>::value;
-
-template <class T>
-constexpr bool is_arithmetic_v = ::std::is_arithmetic<T>::value;
-
-template <class T, class... TS>
-constexpr bool is_constructible_v = ::std::is_constructible<T, TS...>::value;
-
-template <typename... TS>
-struct make_void {
-  typedef void type;
-};
-template <typename... TS>
-using void_t = typename make_void<TS...>::type;
-
-}  // namespace current_injected_cpp17
-
-namespace std {
-using namespace current_injected_cpp17;
-}
-#endif  // CURRENT_FOR_CPP14
-
 // TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
 // I have not enconutered those yet. Uncomment once we confirm them. -- D.K.
 // #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
@@ -244,7 +212,7 @@ static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
 template <typename T1, typename T2>
 struct is_same_or_compile_error {
-  enum { value = std::is_same_v<T1, T2> };
+  enum { value = std::is_same<T1, T2>::value };
   char is_same_static_assert_failed[value ? 1 : -1];
 };
 #define CURRENT_FAIL_IF_NOT_SAME_TYPE(A, B) static_assert(sizeof(is_same_or_compile_error<A, B>), "")

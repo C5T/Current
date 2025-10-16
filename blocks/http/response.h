@@ -85,7 +85,7 @@ struct Response final : IHasDoRespondViaHTTP {
   Response& operator=(const Response&) = default;
   Response& operator=(Response&&) = default;
 
-  template <typename ARG, typename... ARGS, class = std::enable_if_t<!std::is_same_v<Response, current::decay_t<ARG>>>>
+  template <typename ARG, typename... ARGS, class = std::enable_if_t<!std::is_same<Response, current::decay_t<ARG>>::value>>
   Response(ARG&& arg, ARGS&&... args) : initialized(true) {
     Construct(std::forward<ARG>(arg), std::forward<ARGS>(args)...);
   }

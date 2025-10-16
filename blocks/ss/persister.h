@@ -153,12 +153,12 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
 // For `static_assert`-s.
 template <typename T>
 struct IsPersister {
-  static constexpr bool value = std::is_base_of_v<GenericPersister, T>;
+  static constexpr bool value = std::is_base_of<GenericPersister, T>::value;
 };
 
 template <typename T, typename E>
 struct IsEntryPersister {
-  static constexpr bool value = std::is_base_of_v<GenericEntryPersister<E>, T>;
+  static constexpr bool value = std::is_base_of<GenericEntryPersister<E>, T>::value;
 };
 
 }  // namespace ss

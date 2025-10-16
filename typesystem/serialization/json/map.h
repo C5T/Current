@@ -69,7 +69,7 @@ struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, std::map<std::string, T
 template <class JSON_FORMAT, typename TK, typename TV, typename TC, typename TA, class J>
 struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, J> {
   template <typename K = TK>
-  static std::enable_if_t<std::is_same_v<std::string, K>> DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
+  static std::enable_if_t<std::is_same<std::string, K>::value> DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
                                                                         std::map<TK, TV, TC, TA>& destination) {
     if (json_parser && json_parser.Current().IsObject()) {
       destination.clear();
@@ -88,7 +88,7 @@ struct DeserializeImpl<json::JSONParser<JSON_FORMAT>, std::map<TK, TV, TC, TA>, 
   }
 
   template <typename K = TK>
-  static std::enable_if_t<!std::is_same_v<std::string, K>> DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
+  static std::enable_if_t<!std::is_same<std::string, K>::value> DoDeserialize(json::JSONParser<JSON_FORMAT>& json_parser,
                                                                          std::map<TK, TV, TC, TA>& destination) {
     if (json_parser && json_parser.Current().IsArray()) {
       destination.clear();

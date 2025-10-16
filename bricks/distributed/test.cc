@@ -30,27 +30,26 @@ SOFTWARE.
 using namespace std::chrono_literals;
 
 TEST(VectorClock, SmokeTest) {
-  auto v = VectorClock();
+  auto v = VectorClock<>();
   v.Step();
 
   auto data = DiscreteClocks(1);
   EXPECT_FALSE(v.AdvanceTo(data)) << "Merge from future should return false.";
   EXPECT_EQ(v.State().size(), static_cast<size_t>(1));
 
-  auto v2 = VectorClock(data, 0);
+  auto v2 = VectorClock<>(data, 0);
   EXPECT_TRUE(v2.AdvanceTo(data)) << "Test lte t==t'.";
 }
 
 TEST(VectorClock, ToString) {
   DiscreteClocks c1 = {1, 2};
-  auto v = VectorClock(c1, 0);
+  auto v = VectorClock<>(c1, 0);
   EXPECT_EQ(v.ToString(), "VCLOCK ID=0: [1, 2]");
 }
 
 TEST(VectorClock, Merge) {
-  auto base_time = current::time::Now();
   DiscreteClocks c1 = {1, 2};
-  auto v = VectorClock(c1, 0);
+  auto v = VectorClock<>(c1, 0);
 
   // Merge correct update
   DiscreteClocks c2 = {2, 3};
@@ -65,14 +64,14 @@ TEST(VectorClock, Merge) {
   EXPECT_EQ(v.State()[1], cur_state[1]);
 
   // Merge partially equals using lte validation
-  v = VectorClock(c1, 0);
+  v = VectorClock<>(c1, 0);
   c2 = {1, 3};
   EXPECT_TRUE(v.AdvanceTo(c2)) << "0 is equals, 1 is greater - ok to merge.";
   cur_state = v.State();
   EXPECT_GT(cur_state[0], c2[0]) << "Local time should be updated after merge.";
   EXPECT_EQ(c2[1], cur_state[1]) << "Merged time should be equal c2[1].";
 
-  v = VectorClock(c1, 0);
+  v = VectorClock<>(c1, 0);
   cur_state = v.State();
   c2 = DiscreteClocks({1, 0});
   EXPECT_FALSE(v.AdvanceTo(c2)) << "Merge partially incorrect.";
@@ -96,7 +95,6 @@ TEST(VectorClock, ContinuousTime) {
 }
 
 TEST(VectorClock, StrictMerge) {
-  auto base_time = current::time::Now();
   DiscreteClocks c1 = {1, 2};
   auto v = VectorClock<DiscreteClocks, StrictMergeStrategy>(c1, 0);
 

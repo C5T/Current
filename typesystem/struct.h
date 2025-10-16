@@ -57,10 +57,10 @@ template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T, t
 struct SUPER_IMPL : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   using super_t = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
 
-  template <class IT = INSTANTIATION_TYPE, class = std::enable_if_t<std::is_same_v<IT, DF>>>
+  template <class IT = INSTANTIATION_TYPE, class = std::enable_if_t<std::is_same<IT, DF>::value>>
   SUPER_IMPL(const super_t& self) : super_t(self) {}
 
-  template <class IT = INSTANTIATION_TYPE, class = std::enable_if_t<std::is_same_v<IT, DF>>>
+  template <class IT = INSTANTIATION_TYPE, class = std::enable_if_t<std::is_same<IT, DF>::value>>
   SUPER_IMPL(super_t&& self) : super_t(self) {}
 
   using super_t::super_t;
@@ -336,12 +336,12 @@ struct CurrentStructFieldsConsistency<T, 0u> {
       class SUPER =                                                                                               \
           ::crnt::r::SUPER_IMPL<CRH_##s, INSTANTIATION_TYPE, typename CSSH_##s::INTERNAL_SUPER, std::false_type>, \
       typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                      \
-      class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>>    \
+      class = std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>>    \
   CSI_##s
 
 #define CURRENT_ASSIGN_OPER(s)                                                                                       \
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                   \
-            class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
+            class = std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSI_##s& operator=
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
@@ -352,7 +352,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
                                                 typename CURRENT_STRUCT_T_SUPER_HELPER_##s::INTERNAL_SUPER_T,        \
                                                 std::true_type>,                                                     \
             typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                   \
-            class = std::enable_if_t<std::is_same_v<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>>> \
+            class = std::enable_if_t<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CSTI_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR_T(s) CURRENT_CONSTRUCTOR_T(s)()
@@ -386,7 +386,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
     using subtype = int;                                          \
   };                                                              \
   using exported_subtype = typename std::                         \
-      conditional_t<std::is_same_v<T, ::crnt::r::DummyT>, CRNT_##exported_subtype##_helper_t, T>::subtype
+      conditional_t<std::is_same<T, ::crnt::r::DummyT>::value, CRNT_##exported_subtype##_helper_t, T>::subtype
 
 #define CETS_IMPL1(a) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, a)
 #define CETS_IMPL2(a, b) CURRENT_EXTRACT_T_SUBTYPE_IMPL(a, b)
@@ -424,7 +424,7 @@ constexpr bool HasPatch() {
 
 template <class B, class D>
 struct is_same_or_base_of {
-  constexpr static bool value = std::is_base_of_v<B, D>;
+  constexpr static bool value = std::is_base_of<B, D>::value;
 };
 template <class C>
 struct is_same_or_base_of<C, C> {

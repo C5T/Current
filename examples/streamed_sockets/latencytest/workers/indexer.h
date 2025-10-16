@@ -27,7 +27,9 @@ SOFTWARE.
 
 #include "../blob.h"
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 struct IndexingWorker final {
   uint64_t total_index = 0u;
@@ -46,5 +48,7 @@ struct IndexingWorker final {
 };
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 #endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_WORKERS_INDEXER_H

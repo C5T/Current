@@ -317,7 +317,7 @@ struct ConstructOwned {};
 template <typename T>
 class Owned final : private impl::UniqueInstanceContainer<T>, public WeakBorrowed<T> {
  private:
-  static_assert(std::is_same_v<T, decay_t<T>>, "`Owned<>` requires a clean type.");
+  static_assert(std::is_same<T, decay_t<T>>::value, "`Owned<>` requires a clean type.");
 
   using impl_t = impl::UniqueInstanceContainer<T>;
   using base_t = WeakBorrowed<T>;
@@ -365,7 +365,7 @@ class Owned final : private impl::UniqueInstanceContainer<T>, public WeakBorrowe
 template <typename T>
 class BorrowedWithCallback final : public WeakBorrowed<T> {
  private:
-  static_assert(std::is_same_v<T, decay_t<T>>, "`BorrowedWithCallback<>` requires a clean type.");
+  static_assert(std::is_same<T, decay_t<T>>::value, "`BorrowedWithCallback<>` requires a clean type.");
 
   using base_t = WeakBorrowed<T>;
 
@@ -394,7 +394,7 @@ class BorrowedWithCallback final : public WeakBorrowed<T> {
 template <typename T>
 class Borrowed final : public WeakBorrowed<T> {
  private:
-  static_assert(std::is_same_v<T, decay_t<T>>, "`Borrowed<>` requires a clean type.");
+  static_assert(std::is_same<T, decay_t<T>>::value, "`Borrowed<>` requires a clean type.");
 
   using base_t = WeakBorrowed<T>;
 
@@ -433,7 +433,7 @@ inline void BorrowedOfGuaranteedLifetimeInvariantErrorCallback() {
 template <typename T>
 class BorrowedOfGuaranteedLifetime final : public WeakBorrowed<T> {
  private:
-  static_assert(std::is_same_v<T, decay_t<T>>, "`BorrowedOfGuaranteedLifetime<>` requires a clean type.");
+  static_assert(std::is_same<T, decay_t<T>>::value, "`BorrowedOfGuaranteedLifetime<>` requires a clean type.");
 
   using base_t = WeakBorrowed<T>;
 

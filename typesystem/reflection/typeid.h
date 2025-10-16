@@ -34,7 +34,8 @@ SOFTWARE.
 
 // TODO(dkorolev): If I get to extend this further, also export original names in schema-dumped C-structs.
 
-namespace current::reflection {
+namespace current {
+namespace reflection {
 
 enum class TypeID : uint64_t;
 
@@ -57,15 +58,18 @@ reflection::TypeID CurrentTypeID() {
 }
 
 }  // namespace current::reflection
+}  // namespace current
 
 #define CURRENT_INJECT_TYPE_ID(type,id)      \
-namespace current::reflection {              \
+namespace current {                          \
+namespace reflection {                       \
 template <>                                  \
 struct InjectableCurrentTypeID<type> final { \
   static TypeID GetTypeID() {                \
     return static_cast<TypeID>(id);          \
   }                                          \
 };                                           \
+}                                            \
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TYPEID_H

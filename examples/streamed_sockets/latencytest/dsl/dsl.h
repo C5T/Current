@@ -46,7 +46,9 @@ SOFTWARE.
 #include "../../../../bricks/template/typelist.h"
 #include "../../../../bricks/util/lazy_instantiation.h"
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 enum class SourceOrWorker : bool { Source = true, Worker = false };
 
@@ -77,7 +79,7 @@ class BlockSourceOrWorker final {
   BlockSourceOrWorker() { impl_ = std::make_shared<Impl>(); }
 
   // NOTE(dkorolev): This ugliness is essential, otherwise this constructor is chosed instead of the copy/move ones. :-(
-  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same_v<std::decay_t<X>, BlockSourceOrWorker>>>
+  template <typename X, typename... XS, class = std::enable_if_t<!std::is_same<std::decay_t<X>, BlockSourceOrWorker>::value>>
   BlockSourceOrWorker(X&& arg, XS&&... args) {
     impl_ = std::make_shared<Impl>(std::forward<X>(arg), std::forward<XS>(args)...);
   }
@@ -869,5 +871,7 @@ struct PipelineRunner<PipelineImpl<SOURCE, WORKERS_AS_TUPLE>> final {
 };
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 #endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_DSL_DSL_H

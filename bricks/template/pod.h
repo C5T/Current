@@ -35,8 +35,8 @@ namespace current {
 template <typename T>
 using copy_free = std::conditional_t<std::is_pod<T>::value, T, const T&>;
 
-static_assert(std::is_same_v<int, copy_free<int>>, "");
-static_assert(std::is_same_v<const std::string&, copy_free<std::string>>, "");
+static_assert(std::is_same<int, copy_free<int>>::value, "");
+static_assert(std::is_same<const std::string&, copy_free<std::string>>::value, "");
 
 }  // namespace current
 

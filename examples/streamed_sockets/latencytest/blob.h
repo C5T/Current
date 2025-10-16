@@ -28,7 +28,9 @@ SOFTWARE.
 #include <cstddef>
 #include <cstdint>
 
-namespace current::examples::streamed_sockets {
+namespace current {
+namespace examples {
+namespace streamed_sockets {
 
 struct Blob {
   uint64_t index;
@@ -49,5 +51,7 @@ constexpr static uint64_t request_origin_latencytest = 0xaaffffffff;
 // clang-format on
 
 }  // namespace current::examples::streamed_sockets
+}  // namespace current::examples
+}  // namespace current
 
 #endif  // EXAMPLES_STREAMED_SOCKETS_LATENCYTEST_BLOB_H

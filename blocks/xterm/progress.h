@@ -101,7 +101,7 @@ class ProgressLine final {
     }
 
     // The `std::enable_if_t` is necessary, as well as `current::decay`, because of `vt100::Color`. -- D.K.
-    template <typename T, class = std::enable_if_t<!std::is_base_of_v<vt100::E, current::decay_t<T>>>>
+    template <typename T, class = std::enable_if_t<!std::is_base_of<vt100::E, current::decay_t<T>>::value>>
     Status& operator<<(T&& whatever) {
       oss_text << whatever;
       oss_text_with_no_vt100_escape_sequences << whatever;
