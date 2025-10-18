@@ -155,7 +155,7 @@ struct CurrentTypeNameImpl<NF, T, false, false, true, false> {
   static std::string GetCurrentTypeName() { return reflection::EnumName<T>(); }
 };
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, rstype, fs_type, md_type, ts_type) \
   template <NameFormat NF>                                                                                      \
   struct CurrentTypeNameImpl<NF, cpp_type, false, false, false, false> {                                        \
     static const char* GetCurrentTypeName() { return #cpp_type; }                                               \

@@ -132,7 +132,7 @@ struct RecursiveTypeTraverser {
     fields_list_t& fields_;
   };
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, rs_type, fs_type, md_type, typescript_type) \
   TypeID operator()(TypeSelector<cpp_type>) { return TypeID::current_type; }
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
@@ -371,9 +371,9 @@ struct ReflectorImpl {
 
   size_t KnownTypesCountForUnitTest() const { return map_.size(); }
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
-  ReflectedType operator()(TypeSelector<cpp_type>) {                                                            \
-    return ReflectedType(ReflectedType_Primitive(TypeID::current_type));                                        \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, rs_type, fs_type, md_type, ts_type) \
+  ReflectedType operator()(TypeSelector<cpp_type>) {                                                             \
+    return ReflectedType(ReflectedType_Primitive(TypeID::current_type));                                         \
   }
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

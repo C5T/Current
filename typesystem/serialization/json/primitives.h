@@ -58,7 +58,7 @@ struct JSONValueAssignerImpl<std::chrono::milliseconds> {
 };
 }  // namespace json
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, currnt_type, rs_type, fs_type, md_type, ts_type) \
   template <class JSON_FORMAT>                                                                                  \
   struct SerializeImpl<json::JSONStringifier<JSON_FORMAT>, cpp_type> {                                          \
     static void DoSerialize(json::JSONStringifier<JSON_FORMAT>& json_stringifier, copy_free<cpp_type> value) {  \
