@@ -90,7 +90,7 @@ constexpr uint64_t TYPEID_CYCLIC_DEPENDENCY_TYPE = TYPEID_TYPE_RANGE * TYPEID_CY
 
 // clang-format off
 CURRENT_ENUM(TypeID, uint64_t) {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, rs_type, fs_type, md_type, ts_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

@@ -66,15 +66,17 @@ CURRENT_STRUCT(NamespaceToExpose) {
 // TODO(dkorolev): Refactor `PrimitiveTypesList` to avoid copy-pasting of `operator()(const *_Primitive& p)`.
 struct PrimitiveTypesListImpl final {
   std::map<TypeID, std::string> cpp_name;
+  std::map<TypeID, std::string> rust_name;
   std::map<TypeID, std::string> fsharp_name;
   std::map<TypeID, std::string> markdown_name;
   std::map<TypeID, std::string> typescript_name;
   PrimitiveTypesListImpl() {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type, typescript_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, rstype, fs_type, md_type, ts_type) \
   cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;                                  \
+  rust_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #rstype;                                   \
   fsharp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = fs_type;                                 \
   markdown_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = md_type;                               \
-  typescript_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = typescript_type;
+  typescript_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = ts_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
   }
@@ -95,6 +97,7 @@ enum class Language : int {
   Current,             // C++, `CURRENT_STRUCT`-s.
   CPP,                 // C++, native `struct`-s.
   FSharp,              // F#.
+  Rust,                // Rust.
   Markdown,            // [GitHub] Markdown.
   JSON,                // A compact JSON we use to describe schema to third parties.
   TypeScript,          // TypeScript.
@@ -845,6 +848,167 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       }
     }
   };  // struct LanguageSyntax<Language::FSharp>::FullSchemaPrinter
+
+  // LCOV_EXCL_START
+  static std::string ErrorMessageWithTypeId(TypeID type_id, FullSchemaPrinter&) {
+    return "#error \"Unknown struct with `type_id` = " + current::ToString(type_id) + "\"\n";
+  }
+  // LCOV_EXCL_STOP
+};
+
+template <>
+struct LanguageSyntaxImpl<Language::Rust> final {
+  static std::string Header(const std::string&) {
+    return "#![allow(unused_imports)]\n"
+           "use serde::{Deserialize, Serialize};\n"
+           "use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};\n";
+  }
+
+  static std::string Footer(const std::string&) { return ""; }
+
+  static std::string SanitizeRustSymbol(const std::string& unsanitized_name) {
+    // TODO(dkorolev): Definitely not a complete list.
+    static std::set<std::string> fsharp_reserved_symbols{"type","pub","in"};
+    return fsharp_reserved_symbols.count(unsanitized_name) ? "r#" + unsanitized_name : unsanitized_name;
+  }
+
+  struct FullSchemaPrinter final {
+    const std::map<TypeID, ReflectedType>& types_;
+    std::ostream& os_;
+    mutable std::unordered_set<TypeID, GenericHashFunction<TypeID>>
+        empty_structs_;  // To not print the type of a DU case for empty structs.
+
+    std::string TypeName(TypeID type_id) const {
+      const auto cit = types_.find(type_id);
+      if (cit == types_.end()) {
+        return "UNKNOWN_TYPE_" + current::ToString(type_id);  // LCOV_EXCL_LINE
+      } else {
+        struct RustTypeNamePrinter final {
+          const FullSchemaPrinter& self_;
+          std::ostringstream& oss_;
+
+          RustTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss) : self_(self), oss_(oss) {}
+
+          // `operator()(...)`-s of this block print F# type name only, without the expansion.
+          // They assume the declaration order is respected, and any dependencies have already been listed.
+          void operator()(const ReflectedType_Primitive& p) const {
+            const auto& globals = PrimitiveTypesList();
+            if (globals.rust_name.count(p.type_id)) {
+              oss_ << globals.rust_name.at(p.type_id);
+            } else {
+              oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
+            }
+          }
+          void operator()(const ReflectedType_Enum& e) const { oss_ << SanitizeRustSymbol(e.name); }
+          void operator()(const ReflectedType_Array& a) const {
+            oss_ << "Vec<" << SanitizeRustSymbol(self_.TypeName(a.element_type)) << '>';
+          }
+          void operator()(const ReflectedType_Vector& v) const {
+            oss_ << "Vec<" << SanitizeRustSymbol(self_.TypeName(v.element_type)) << '>';
+          }
+          void operator()(const ReflectedType_Map& m) const {
+            // TODO(dkorolev): Use an ordered dictionary in .NET one day.
+            oss_ << "BTreeMap<" << SanitizeRustSymbol(self_.TypeName(m.key_type)) << ", "
+                 << self_.TypeName(m.value_type) << '>';
+          }
+          void operator()(const ReflectedType_UnorderedMap& m) const {
+            oss_ << "HashMap<" << SanitizeRustSymbol(self_.TypeName(m.key_type)) << ", "
+                 << self_.TypeName(m.value_type) << '>';
+          }
+          void operator()(const ReflectedType_Set& s) const {
+            // TODO(dkorolev): Wrong!
+            oss_ << "BTreeSet<" << self_.TypeName(s.value_type) << '>';
+          }
+          void operator()(const ReflectedType_UnorderedSet& s) const {
+            oss_ << "HashSet<" << self_.TypeName(s.value_type) << '>';
+          }
+          void operator()(const ReflectedType_Pair& p) const {
+            oss_ << '(' << SanitizeRustSymbol(self_.TypeName(p.first_type)) << ", "
+                 << SanitizeRustSymbol(self_.TypeName(p.second_type)) << ')';
+          }
+          void operator()(const ReflectedType_Optional& o) const {
+            oss_ << "Option<" << SanitizeRustSymbol(self_.TypeName(o.optional_type)) << '>';
+          }
+          void operator()(const ReflectedType_Variant& v) const { oss_ << SanitizeRustSymbol(v.name); }
+          void operator()(const ReflectedType_Struct& s) const {
+            oss_ << SanitizeRustSymbol(s.TemplateInnerTypeExpandedName());
+          }
+        };
+
+        std::ostringstream oss;
+        cit->second.Call(RustTypeNamePrinter(*this, oss));
+        return oss.str();
+      }
+    }
+
+    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types,
+                      std::ostream& os,
+                      const std::string&,
+                      const Optional<NamespaceToExpose>&)
+        : types_(types), os_(os) {}
+
+    // `operator()`-s of this block print complete declarations of F# types.
+    // The types that require complete declarations in F# are records and discriminated unions.
+    void operator()(const ReflectedType_Primitive&) const {}
+    void operator()(const ReflectedType_Enum& e) const {
+      os_ << "\nTODO(dkorolev): type " << SanitizeRustSymbol(e.name) << " = " << TypeName(e.underlying_type) << '\n';
+    }
+    void operator()(const ReflectedType_Array&) const {}
+    void operator()(const ReflectedType_Vector&) const {}
+    void operator()(const ReflectedType_Pair&) const {}
+    void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_UnorderedMap&) const {}
+    void operator()(const ReflectedType_Set&) const {}
+    void operator()(const ReflectedType_UnorderedSet&) const {}
+    void operator()(const ReflectedType_Optional&) const {}
+    void operator()(const ReflectedType_Variant& v) const {
+      os_ << "\n"
+          << "#[derive(Debug, Serialize, Deserialize)]\n"
+          << "pub enum " << v.name << " {\n";
+      for (TypeID c : v.cases) {
+        const auto name = TypeName(c);
+        const auto& t = types_.at(c);
+        CURRENT_ASSERT(Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t));  // Must be one of.
+        if (!empty_structs_.count(Value<ReflectedTypeBase>(t).type_id)) {
+          os_ << "  " << name << '(' << name << "),\n";
+        }
+      }
+      os_ << "}\n";
+    }
+
+    // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
+    // all base class fields are hoisted to the top of the record.
+    void RecursivelyListStructFieldsForRust(std::ostringstream& os, const ReflectedType_Struct& s) const {
+      if (Exists(s.super_id)) {
+        RecursivelyListStructFieldsForRust(os, Value<ReflectedType_Struct>(types_.at(Value(s.super_id))));
+      }
+      for (const auto& f : s.fields) {
+        if (Exists(f.description)) {
+          AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
+        }
+        const auto& t = types_.at(f.type_id);
+        if (Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t)) {
+          os << "  pub " << SanitizeRustSymbol(f.name) << ": Box<" << TypeName(f.type_id) << ">,\n";
+        } else {
+          os << "  pub " << SanitizeRustSymbol(f.name) << ": " << TypeName(f.type_id) << ",\n";
+        }
+      }
+    }
+    void operator()(const ReflectedType_Struct& s) const {
+      std::ostringstream os;
+      RecursivelyListStructFieldsForRust(os, s);
+      const std::string fields = os.str();
+      if (!fields.empty()) {
+        os_ << "\n"
+            << "#[derive(Debug, Serialize, Deserialize)]\n"
+            << "pub struct " << s.TemplateInnerTypeExpandedName() << " {\n"
+            << fields
+            << "}\n";
+      } else {
+        empty_structs_.insert(s.type_id);
+      }
+    }
+  };  // struct LanguageSyntax<Language::Rust>::FullSchemaPrinter
 
   // LCOV_EXCL_START
   static std::string ErrorMessageWithTypeId(TypeID type_id, FullSchemaPrinter&) {
@@ -1641,6 +1805,8 @@ struct ToStringImpl<reflection::Language, false, true> final {
         return "cpp";
       case reflection::Language::FSharp:
         return "fs";
+      case reflection::Language::Rust:
+        return "rs";
       case reflection::Language::Markdown:
         return "md";
       case reflection::Language::JSON:

@@ -425,7 +425,7 @@ TEST(Schema, LanguageEnumIteration) {
   for (auto l = Language::begin; l != Language::end; ++l) {
     s.push_back(current::ToString(l));
   }
-  EXPECT_EQ("internal_json h cpp fs md json ts", current::strings::Join(s, ' '));
+  EXPECT_EQ("internal_json h cpp fs rs md json ts", current::strings::Join(s, ' '));
 }
 
 namespace schema_test {
@@ -442,7 +442,7 @@ TEST(Schema, LanguageEnumCompileTimeForEach) {
   auto it = schema_test::LanguagesIterator();
   EXPECT_EQ("", current::strings::Join(it.s, ' '));
   current::reflection::ForEachLanguage(it);
-  EXPECT_EQ("internal_json h cpp fs md json ts", current::strings::Join(it.s, ' '));
+  EXPECT_EQ("internal_json h cpp fs rs md json ts", current::strings::Join(it.s, ' '));
 }
 
 #define SMOKE_TEST_TEMPLATES_NAMESPACE smoke_test_templates_namespace_native
