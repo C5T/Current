@@ -987,7 +987,7 @@ struct LanguageSyntaxImpl<Language::Rust> final {
           AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
         }
         const auto& t = types_.at(f.type_id);
-        if (Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t)) {
+        if (Exists<ReflectedType_Variant>(t)) {
           os << "  pub " << SanitizeRustSymbol(f.name) << ": Box<" << TypeName(f.type_id) << ">,\n";
         } else {
           os << "  pub " << SanitizeRustSymbol(f.name) << ": " << TypeName(f.type_id) << ",\n";
