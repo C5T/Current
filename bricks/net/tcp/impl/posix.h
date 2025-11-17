@@ -81,6 +81,7 @@ typedef int SOCKET;
 namespace current {
 namespace net {
 
+const timeval DefaultSocketTimeout = {1, 0};
 enum class NagleAlgorithm : bool { Disable, Keep };
 const NagleAlgorithm kDefaultNagleAlgorithmPolicy = NagleAlgorithm::Keep;
 
@@ -394,9 +395,8 @@ class ReserveLocalPortImpl final {
                                                 current::net::BarePort(port),
                                                 nagle_algorithm_policy,
                                                 max_connections);
-  return current::net::ReservedLocalPort(current::net::ReservedLocalPort::Construct(),
-                                         port,
-                                         std::move(hold_port_or_throw));
+  return current::net::ReservedLocalPort(
+      current::net::ReservedLocalPort::Construct(), port, std::move(hold_port_or_throw));
 }
 
 class Connection : public SocketHandle {
@@ -673,12 +673,17 @@ inline std::string ResolveIPFromHostname(const std::string& hostname) {
 
 // POSIX allows numeric ports, as well as strings like "http".
 template <typename T>
-inline Connection ClientSocket(const std::string& host, T port_or_serv) {
+inline Connection ClientSocket(const std::string& host,
+                               T port_or_serv,
+                               const timeval& read_timeout = DefaultSocketTimeout,
+                               const timeval& write_timeout = DefaultSocketTimeout) {
   class ClientSocket final : public SocketHandle {
    public:
     explicit ClientSocket(const std::string& host,
                           const std::string& serv,
-                          NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy)
+                          NagleAlgorithm nagle_algorithm_policy = kDefaultNagleAlgorithmPolicy,
+                          const timeval& read_timeout = DefaultSocketTimeout,
+                          const timeval& write_timeout = DefaultSocketTimeout)
         : SocketHandle(SocketHandle::DoNotBind(), nagle_algorithm_policy) {
       CURRENT_BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));
       // Deliberately left non-const because of possible Windows issues. -- M.Z.
@@ -693,6 +698,10 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       remote_ip_and_port.port = htons(p_addr_in->sin_port);
 
       CURRENT_BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
+
+      setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
+      setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &write_timeout, sizeof(write_timeout));
+
       const int retval = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval) {
         CURRENT_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
@@ -715,7 +724,8 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
     IPAndPort local_ip_and_port;
     IPAndPort remote_ip_and_port;
   };
-  auto client_socket = ClientSocket(host, std::to_string(port_or_serv));
+  auto client_socket =
+      ClientSocket(host, std::to_string(port_or_serv), kDefaultNagleAlgorithmPolicy, read_timeout, write_timeout);
   IPAndPort local_ip_and_port(std::move(client_socket.local_ip_and_port));
   IPAndPort remote_ip_and_port(std::move(client_socket.remote_ip_and_port));
   return Connection(std::move(client_socket), std::move(local_ip_and_port), std::move(remote_ip_and_port));
