@@ -196,13 +196,13 @@ TEST(TCPTest, SocketReadTimeoutCompatibility) {
 TEST(TCPTest, SocketReadTimeoutOK) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  const timeval timeout = {0, 10000};
+  const timeval timeout = {0, 100000};
   std::thread server(
       [](Socket socket) {
         Connection connection = socket.Accept();
-        // Default socket timeout is 10 ms
+        // Default socket timeout is 100 ms
         // client should receive the string
-        sleep_for(milliseconds(5));
+        sleep_for(milliseconds(10));
         connection.BlockingWrite("TEST", false);
       },
       std::move(port_reservation));
