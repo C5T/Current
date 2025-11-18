@@ -52,6 +52,7 @@ using current::net::Socket;
 using current::strings::Printf;
 
 using current::net::AttemptedToUseMovedAwayConnection;
+using current::net::EmptySocketReadException;
 using current::net::SocketBindException;
 using current::net::SocketException;
 using current::net::SocketResolveAddressException;
@@ -152,6 +153,45 @@ TEST(TCPTest, ReceiveDelayedMessage) {
   char response[5] = "????";
   ASSERT_EQ(4u, client.BlockingRead(response, 4, Connection::FillFullBuffer));
   EXPECT_EQ("BLAH", std::string(response));
+  server.join();
+}
+
+TEST(TCPTest, SocketReadTimeoutFailed) {
+  current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
+  const uint16_t port_number = port_reservation;
+  const timeval timeout = {1, 0};
+  std::thread server(
+      [](Socket socket) {
+        Connection connection = socket.Accept();
+        // Socket timeout is 1 sec
+        // client should not receive anything
+        sleep_for(milliseconds(1200));
+        connection.BlockingWrite("TEST", false);
+      },
+      std::move(port_reservation));
+  Connection client(ClientSocket("localhost", port_number, timeout));
+  char response[5] = "????";
+  ASSERT_THROW(client.BlockingRead(response, 4, Connection::FillFullBuffer), EmptySocketReadException);
+  server.join();
+}
+
+TEST(TCPTest, SocketReadTimeoutOK) {
+  current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
+  const uint16_t port_number = port_reservation;
+  const timeval timeout = {1, 0};
+  std::thread server(
+      [](Socket socket) {
+        Connection connection = socket.Accept();
+        // Default socket timeout is 100 ms
+        // client should receive the string
+        sleep_for(milliseconds(10));
+        connection.BlockingWrite("TEST", false);
+      },
+      std::move(port_reservation));
+  Connection client(ClientSocket("localhost", port_number, timeout));
+  char response[5] = "????";
+  ASSERT_EQ(4u, client.BlockingRead(response, 4, Connection::FillFullBuffer));
+  EXPECT_EQ("TEST", std::string(response));
   server.join();
 }
 
