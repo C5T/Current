@@ -159,13 +159,13 @@ TEST(TCPTest, ReceiveDelayedMessage) {
 TEST(TCPTest, SocketReadTimeoutFailed) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  const timeval timeout = {0, 10000};
+  const timeval timeout = {1, 0};
   std::thread server(
       [](Socket socket) {
         Connection connection = socket.Accept();
-        // Socket timeout is 10 ms
+        // Socket timeout is 1 sec
         // client should not receive anything
-        sleep_for(milliseconds(20));
+        sleep_for(milliseconds(1200));
         connection.BlockingWrite("TEST", false);
       },
       std::move(port_reservation));
@@ -175,28 +175,10 @@ TEST(TCPTest, SocketReadTimeoutFailed) {
   server.join();
 }
 
-TEST(TCPTest, SocketReadTimeoutCompatibility) {
-  current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
-  const uint16_t port_number = port_reservation;
-  std::thread server(
-      [](Socket socket) {
-        Connection connection = socket.Accept();
-        // Socket timeout is 1 second
-        // client should not receive anything
-        sleep_for(milliseconds(1100));
-        connection.BlockingWrite("TEST", false);
-      },
-      std::move(port_reservation));
-  Connection client(ClientSocket("localhost", port_number));
-  char response[5] = "????";
-  ASSERT_THROW(client.BlockingRead(response, 4, Connection::FillFullBuffer), EmptySocketReadException);
-  server.join();
-}
-
 TEST(TCPTest, SocketReadTimeoutOK) {
   current::net::ReservedLocalPort port_reservation = ReserveLocalPort();
   const uint16_t port_number = port_reservation;
-  const timeval timeout = {0, 100000};
+  const timeval timeout = {1, 0};
   std::thread server(
       [](Socket socket) {
         Connection connection = socket.Accept();

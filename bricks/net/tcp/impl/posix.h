@@ -81,7 +81,7 @@ typedef int SOCKET;
 namespace current {
 namespace net {
 
-const timeval DefaultSocketTimeout = {1, 0};
+const timeval DefaultSocketTimeout = {0, 0};
 enum class NagleAlgorithm : bool { Disable, Keep };
 const NagleAlgorithm kDefaultNagleAlgorithmPolicy = NagleAlgorithm::Keep;
 
@@ -699,8 +699,13 @@ inline Connection ClientSocket(const std::string& host,
 
       CURRENT_BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
 
-      setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
-      setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &write_timeout, sizeof(write_timeout));
+      // Set socket timeout if it's not default 0,0
+      if (read_timeout.tv_sec > 0 || read_timeout.tv_usec > 0) {
+        setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
+      }
+      if (write_timeout.tv_sec > 0 || write_timeout.tv_usec > 0) {
+        setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &write_timeout, sizeof(write_timeout));
+      }
 
       const int retval = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval) {
